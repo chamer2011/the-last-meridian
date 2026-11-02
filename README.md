@@ -446,3 +446,12 @@ Then go to http://localhost:3210. Three things stay on the computer they're on, 
 - **`backups/` and `dist/`:** the old copies of the game and the installer. Git keeps the game's history from now on, and `npm run build-app` makes a new installer.
 
 `CLAUDE.md` and `docs/notes/` tell whoever works on the game next, including Claude, what you've decided so far and why.
+
+## The public copy
+
+Anyone can download the game and leave feedback at [chamer2011/last-meridian](https://github.com/chamer2011/last-meridian). It's a separate copy with only the game in it. Your own repository stays private, because `CLAUDE.md` and `docs/notes/` talk about you.
+
+- **It doesn't change by itself.** Whatever you change here stays here until you ask for a new version to be published. `tools/publish.mjs` says how that's done.
+- **Feedback** arrives under **Issues** on that page, and GitHub normally emails you about each one. Claude can read it for you, too.
+- **What's only on that page:** its front page, pictures, permission statement, feedback form and installer.
+- **To take it down,** go to **Settings** on that page, then **Danger Zone**, then **Change visibility**. Copies people have already made stay where they are.
