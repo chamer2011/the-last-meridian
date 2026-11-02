@@ -5,8 +5,8 @@
 //   git clone https://github.com/chamer2011/last-meridian.git <folder>
 //   node tools/publish.mjs <folder>
 //
-// That replaces the game in <folder> and remakes its GUIDE.md. It leaves what only the public copy has
-// alone: README.md, LICENSE, .gitignore, .github/ and pictures/. It stops if anything private turns up.
+// That replaces the game and its licences in <folder> and remakes its GUIDE.md. It leaves what only the
+// public copy has alone: README.md, .gitignore, .github/ and pictures/. It stops if anything private turns up.
 //
 // Then, in <folder>: read `git status`, run the tests, and commit and push. For a new installer, run
 // `npm install` and `node app/build.js --for-others`, then attach dist/The-Last-Meridian-Setup.exe to a
@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const target = process.argv[2];
-const GAME = ["app", "public", "src", "test", "world", "server.js", "package.json", "package-lock.json", "start-game.bat", ".gitattributes"];
+const GAME = ["app", "public", "src", "test", "world", "server.js", "package.json", "package-lock.json", "start-game.bat", ".gitattributes", "LICENSE", "STORY-AND-WORLD.md"];
 
 function stop(message) {
   console.error(message);

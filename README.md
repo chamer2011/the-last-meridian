@@ -8,7 +8,7 @@ As it stands right now, AI is overwhelmingly present in every part of the projec
 The style I have in mind for the finality of the project is the games AGE OF DECADENCE, Colony Ship: A Post-Earth Role Playing Game, both excellent games from a passionate developer!
 
 MOREOVER : The description is written by AI. THIS WILL CHANGE SOON (and I will use my great skill of writing to do it!) as the project is merely 6 days old (as of 02/11/26 or 11/02/26) and I wanted to get the game out as soon as possible to get feedback.
-The game is OPENSOURCE and will stay the same. I might have a patreon soon if you want to support me since I fear the cost of everything will slowly creep up
+The code is OPENSOURCE and will stay the same. I might have a patreon soon if you want to support me since I fear the cost of everything will slowly creep up
 
 PS : English being my second language, please excuse the possible grammatical errors.
 
@@ -468,5 +468,6 @@ Anyone can download the game and leave feedback at [chamer2011/last-meridian](ht
 
 - **It doesn't change by itself.** Whatever you change here stays here until you ask for a new version to be published. `tools/publish.mjs` says how that's done.
 - **Feedback** arrives under **Issues** on that page, and GitHub normally emails you about each one. Claude can read it for you, too.
-- **What's only on that page:** its front page, pictures, permission statement, feedback form and installer.
+- **What's only on that page:** its front page, pictures, feedback form and installer.
+- **Who can do what:** the code is open source under GPL-3.0 (`LICENSE`), so people can use, change and share it, as long as what they release stays open too. The story and world stay yours (`STORY-AND-WORLD.md`).
 - **To take it down,** go to **Settings** on that page, then **Danger Zone**, then **Change visibility**. Copies people have already made stay where they are.
