@@ -1,0 +1,101 @@
+// Makes the public copy of the game, chamer2011/last-meridian, from what's committed here. Only what's
+// listed under GAME goes across, so anything new in this repository stays private until it's added to
+// that list. CLAUDE.md and docs/notes/ talk about the owner, and they must never go across.
+//
+//   git clone https://github.com/chamer2011/last-meridian.git <folder>
+//   node tools/publish.mjs <folder>
+//
+// That replaces the game in <folder> and remakes its GUIDE.md. It leaves what only the public copy has
+// alone: README.md, LICENSE, .gitignore, .github/ and pictures/. It stops if anything private turns up.
+//
+// Then, in <folder>: read `git status`, run the tests, and commit and push. For a new installer, run
+// `npm install` and `node app/build.js --for-others`, then attach dist/The-Last-Meridian-Setup.exe to a
+// new release with `gh release create`. Only publish when the owner asks.
+
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const here = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const target = process.argv[2];
+const GAME = ["app", "public", "src", "test", "world", "server.js", "package.json", "package-lock.json", "start-game.bat", ".gitattributes"];
+
+function stop(message) {
+  console.error(message);
+  process.exit(1);
+}
+
+if (!target || !fs.existsSync(path.join(target, ".git"))) stop("It needs a clone of the public repository: node tools/publish.mjs <folder>");
+if (path.resolve(target) === here) stop("That's this repository, not the public copy.");
+
+const git = (...args) => execFileSync("git", ["-C", here, ...args], { maxBuffer: 1 << 28 });
+const committed = (file) => git("show", `HEAD:${file}`);
+
+// ---- The game ----------------------------------------------------------------
+
+for (const name of GAME) fs.rmSync(path.join(target, name), { recursive: true, force: true });
+const files = git("ls-tree", "-r", "-z", "--name-only", "HEAD", "--", ...GAME).toString("utf8").split("\0").filter(Boolean);
+for (const file of files) {
+  const out = path.join(target, file);
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, committed(file));
+}
+
+// ---- The guide: this repository's README, without what's only about this computer ----
+
+const THE_APP = `## The app
+
+The installer gives the game its own window, with shortcuts on your desktop and in the Start menu. It holds its own copy of the game, so you don't need anything else installed.
+
+- **Where your things are:** your saved games, your settings and your API key are in \`%APPDATA%\\The Last Meridian\\data\`, which is what \`data/\` means in this guide if you used the installer.
+- **A new version:** run the newer installer. It replaces the game and leaves your saves alone.
+- **If something goes wrong:** what the game printed is in \`%APPDATA%\\The Last Meridian\\game.log\`.
+- **Uninstalling:** use **Installed apps** in Windows Settings. That only removes the game. Your saves and API key stay until you delete \`%APPDATA%\\The Last Meridian\` yourself.
+`;
+
+const GUIDE_CHANGES = [
+  ["# The Last Meridian\n\nA sci-fi text RPG where an AI writes the story and the game's code keeps the rules fair.",
+    "# The Last Meridian: the full guide\n\nHow everything in the game works. It names places and people you'll meet, but it doesn't say how the story ends. To get the game, see the [front page](README.md)."],
+  ["You can still play in your browser if you prefer:", "If you've downloaded the source instead of the installer, you can play in your browser:"],
+  ["Both ways use the same saves. Only one copy", "Only one copy"],
+  ["and you can give one its own drawing: Section Fourteen's file shows how.", "and you can give one its own drawing."],
+];
+
+function guide() {
+  let text = committed("README.md").toString("utf8").replaceAll("\r\n", "\n");
+  const end = text.indexOf("## The app\n");
+  if (end < 0) stop("The README has no section called The app, so the guide needs a look.");
+  text = text.slice(0, end) + THE_APP;
+  for (const [from, to] of GUIDE_CHANGES) {
+    if (!text.includes(from)) stop(`The README has changed, so the guide needs a look: ${from}`);
+    text = text.replace(from, to);
+  }
+  return text;
+}
+
+fs.writeFileSync(path.join(target, "GUIDE.md"), guide());
+
+// ---- Nothing private goes across ----------------------------------------------
+
+const PRIVATE = [/sk-ant-[A-Za-z0-9_-]{10,}/, /@gmail\./i, /CLAUDE\.md/, /docs\/notes/, /MORNING-SUMMARY/, /private repository/i];
+const THIS_COMPUTER = [os.userInfo().username, here, here.replaceAll("\\", "/")];
+
+function everyFile(folder) {
+  return fs.readdirSync(folder, { withFileTypes: true }).flatMap((entry) => {
+    if ([".git", "node_modules", "dist", "pictures"].includes(entry.name)) return [];
+    const full = path.join(folder, entry.name);
+    return entry.isDirectory() ? everyFile(full) : [full];
+  });
+}
+
+const found = [];
+for (const file of everyFile(target)) {
+  const text = fs.readFileSync(file, "utf8");
+  const hit = PRIVATE.find((pattern) => pattern.test(text)) ?? THIS_COMPUTER.find((words) => text.includes(words));
+  if (hit) found.push(`${path.relative(target, file)}: ${hit}`);
+}
+if (found.length) stop(`Private things found, so don't publish this:\n${found.join("\n")}`);
+
+console.log(`${files.length} game files copied, the guide remade, and nothing private found.`);
