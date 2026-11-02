@@ -1,16 +1,16 @@
 # The Last Meridian
 
 *DISCLAMER*
-Hello i'm the solo "developper" working on this project. I would like to say that i do not have any experience nor knowledge of how to code, as such, I have used Claude code to write the game. Knowing that AI is a divise subject right now (with merit I might had), I understand if it cause contreversy and uninterest from you. That bieng said this project is a passion project I wouldn't have been able to do without AI though. NO AI was used to generate ART, MUSIC, etc. as I feel it is a HUMONGUS problem of AI right now. It is in my future plans to hire an artist help me with the art, if your interested, please contact me!
+Hello I'm the solo "developer" working on this project. I would like to say that I do not have any experience nor knowledge of how to code; as such, I have used Claude's code to write the game. Knowing that AI is a divided subject right now (with merit I might have), I understand if it causes controversy and disinterest from you. That being said, this project is a passion project I wouldn't have been able to do without AI, though. NO AI was used to generate ART, MUSIC, etc. as I feel it is a HUMONGUS problem of AI right now. It is in my future plans to hire an artist to help me with the art; if you're interested, please contact me!
 
-As it stand right now, AI is overwelmingly present in every part of the project, my vision going forward would be the eleminate the used of AI progressively in a way that, at term, the AI would be an optional features to had dept to the story and make it feels more interactive and not the main part of the game. THIS IS NOT THE CASE RIGHT NOW, it is everywhere and the game is very much EARLY STAGE. If that sound interesting to you then I would ask to please give me feedback on your experience (bugs, ideas for features, how the menus feels) as I am now at university and working at the same time, I do not have the time to deeply test the game. I hope you enjoy it. 
+As it stands right now, AI is overwhelmingly present in every part of the project, my vision going forward would be to eliminate the use of AI progressively in a way that, in term, the AI would be an optional features to add dept to the story and make it feel more interactive and not the main part of the game. THIS IS NOT THE CASE RIGHT NOW, it is everywhere and the game is very much EARLY STAGE. If that sounds interesting to you then I would ask you to please give me feedback on your experience (bugs, ideas for features, how the menus feel) as I am now at university and working at the same time; I do not have the time to deeply test the game. I hope you enjoy it. 
 
-The style I have in mind for the finality of the project are the games AGE OF DECADENCE, Colony Ship: A Post-Earth Role Playing Game both excellent games from a passionate developper!
+The style I have in mind for the finality of the project is the games AGE OF DECADENCE, Colony Ship: A Post-Earth Role Playing Game, both excellent games from a passionate developer!
 
-MOREOVER : The description is wtitten by AI. THIS WILL CHANGE SOON as the project is merely 6 days old (as of 02/11/26 or 11/02/26) and I wanted to get the game out as soon as possible to get feedback.
-The game is OPENSOURCE and will stay the same. I might had a patreon soon if you want to support me since I fear the cost of everything will slowly creep up
+MOREOVER : The description is written by AI. THIS WILL CHANGE SOON as the project is merely 6 days old (as of 02/11/26 or 11/02/26) and I wanted to get the game out as soon as possible to get feedback.
+The game is OPENSOURCE and will stay the same. I might have a patreon soon if you want to support me since I fear the cost of everything will slowly creep up
 
-PS : English bieng my second language, please excuse the possible grammatical errors.
+PS : English being my second language, please excuse the possible grammatical errors.
 
 A sci-fi text RPG where an AI writes the story and the game's code keeps the rules fair.
 
