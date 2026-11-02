@@ -1,0 +1,34 @@
+# The Last Meridian
+
+A sci-fi RPG where an AI writes the story and local code keeps the rules. It's plain Node with no build step: `server.js` and `src/` are the rules, `public/` is the page, `world/` is the content, and `app/` is the Windows app around it. `README.md` explains all of it for the player. `docs/notes/` has the history of what was decided and why, so read the note on whatever you're about to change.
+
+## Who you're working for
+
+The owner has no coding experience and judges the game by playing it. Describe changes by what they'll see on screen, and handle installs and commands for them. They're bad with a keyboard, so everything has to work by clicking, with no time limits on typing. Their pronouns aren't known, so use they/them.
+
+## Rules
+
+- **Their Anthropic API key is in `data/settings.json`.** Never read it, print it or commit it. All of `data/` stays out of git, and that includes their saved games.
+- **Real AI calls cost their money,** so don't make any without asking. Test against a stand-in AI with `GAME_DATA_DIR` pointing at a temporary folder and `PORT` set to something other than 3210. `test/fleet.test.js` has a stand-in server to copy.
+- **They may be playing while you work.** Never overwrite or restore `data/saves/`, and treat a changed autosave as their own progress. Port 3210 is the lock: only one copy of the game can run on it.
+- **Changing the AI's instructions or tool list makes the next turn reload the whole story once,** which costs money, so tell them when you do. Neither can vary from game to game, or the prompt cache stops working.
+- **Don't use subagents.** Eight running at once used a whole 5-hour allowance.
+- **Anything mechanical stays local and free.** The AI writes the story and only acts through validated tools.
+- **Fights stay the way they are, with more options.** They explicitly turned down Fallout's action points, grids and aimed shots.
+- **Nothing from another game goes in.** UnderRail and the rest are references for mood only.
+
+## When something's done
+
+The tests pass (`npm test`, with `GAME_DATA_DIR` set as above), every new screen has been checked at about 810 and 1400 wide with nothing overlapping, the README explains it, and the report says in plain language what was tested and what wasn't. Before a big change, make sure everything's committed, so there's a way back.
+
+## Where things stand, as of 2026-11-02
+
+- **Their plan for a living world** has six steps, and all six are in: people with lives, all 24 places with daily supplies and factions, stories that move on without the player, a player who can be anyone, more options in fights, and the look of the game. They've played the first of these and only some of the rest. See `docs/notes/project-world-engine.md`.
+- **The look is isometric,** in the mood of UnderRail, drawn by the game itself with no graphics engine (`public/iso.js`, `world/looks.json`). That was their choice, so don't reopen it unless they do. See `docs/notes/project-world-engine.md`.
+- **The story comes up over the room** in the game's own console windows, with what people say written out over their heads. It went in on 2026-11-02, and they haven't played it yet. See `docs/notes/project-story-popups.md`.
+- **The real AI has hardly run any of this:** one Haiku turn on the world engine, and nothing yet on talking in fights, stories that have moved on, a player who isn't the captain, or the popups. Check `data/usage.jsonl` after they've played.
+- **The checks of whole screens so far were throwaway scripts,** run against a stand-in AI in a headless browser and in the real app window, and they aren't in this repository. `npm test` covers the rules and everything that can run without a screen.
+
+## On a new computer
+
+`npm install`, then `npm start`, then open http://localhost:3210. The game makes its own `data/` folder on first run, and the API key goes in through its Settings menu. On the owner's Windows computer the installed app runs the game straight from `D:\Test IA`: see `docs/notes/project-app.md`.

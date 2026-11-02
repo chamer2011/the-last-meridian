@@ -1,0 +1,9 @@
+node_modules/
+# The installer, which app/build.js makes
+dist/
+# Your API key and saved games
+data/
+# Copies of the game from before each big change, which only matter on this computer
+backups/
+# Claude's own settings for this computer
+.claude/settings.local.json
