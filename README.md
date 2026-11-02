@@ -7,10 +7,13 @@ As it stands right now, AI is overwhelmingly present in every part of the projec
 
 The style I have in mind for the finality of the project is the games AGE OF DECADENCE, Colony Ship: A Post-Earth Role Playing Game, both excellent games from a passionate developer!
 
-MOREOVER : The description is written by AI. THIS WILL CHANGE SOON as the project is merely 6 days old (as of 02/11/26 or 11/02/26) and I wanted to get the game out as soon as possible to get feedback.
+MOREOVER : The description is written by AI. THIS WILL CHANGE SOON (and I will use my great skill of writing to do it!) as the project is merely 6 days old (as of 02/11/26 or 11/02/26) and I wanted to get the game out as soon as possible to get feedback.
 The game is OPENSOURCE and will stay the same. I might have a patreon soon if you want to support me since I fear the cost of everything will slowly creep up
 
 PS : English being my second language, please excuse the possible grammatical errors.
+
+
+
 
 A sci-fi text RPG where an AI writes the story and the game's code keeps the rules fair.
 
