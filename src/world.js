@@ -38,6 +38,7 @@ export const WORLD_PLACES = readFolder(path.join(worldDir, "places"));
 export const WORLD_THREADS = readFolder(path.join(worldDir, "threads"));
 export const WORLD_MAPS = readFolder(path.join(worldDir, "maps"));
 export const WORLD_LIFE = readFolder(path.join(worldDir, "life"));
+export const WORLD_SCENES = readFolder(path.join(worldDir, "scenes"));
 export const WORLD_ITEMS = readFile("items.json");
 export const WORLD_PERKS = readFile("perks.json");
 export const WORLD_FACTIONS = readFile("factions.json");

@@ -236,9 +236,9 @@ export function talkNode() {
         el("button", { class: "mobile-toggle", onclick: () => app.openMenu(app.ui.tab) }, "Menu")),
       el("div", { class: "talk-desk" }, personPanel(view), logPanel(view)),
       talk.message && el("div", { class: "notice-inline fail talk-message" }, talk.message),
-      el("div", { class: "check-controls" }, optionsNode(view), inputNode()),
+      el("div", { class: "check-controls" }, optionsNode(view), !view.written && inputNode()),
       el("footer", { class: "check-taskbar" },
-        el("span", { class: "check-hint" }, "Each thing you say is one call to the AI. Free ones are marked."),
+        el("span", { class: "check-hint" }, view.written ? "Written conversations aren't in yet. For now, people pass on what they've heard." : "Each thing you say is one call to the AI. Free ones are marked."),
         el("span", { class: "check-spacer" }),
         el("span", { class: "check-meter" }, `THIS TALK ${money(talk.spent)}`))));
 }

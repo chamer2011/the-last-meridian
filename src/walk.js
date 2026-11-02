@@ -967,7 +967,10 @@ export function talkView(game) {
   const home = Object.values(map?.levels ?? {}).flatMap((level) => level.homes).find((one) => one.id === talk.personId);
   const own = (!isCaptain(game) && home?.asksOther) || home?.asks || [];
   const said = new Set(talk.log.filter((line) => line.role === "player").map((line) => line.text));
+  // Without an AI, the things to say would have nobody to answer them. Written talks come later.
+  const written = game.mode === "written";
   return {
+    written,
     id: talk.id,
     name: talk.name,
     short: talk.short,
@@ -981,7 +984,7 @@ export function talkView(game) {
     relationship: person ? audienceBonus(game, person.id) : 0,
     log: talk.log,
     lastReply: talk.lastReply,
-    asks: [...own, ...(map?.talk?.asks ?? [])].filter((ask) => !said.has(ask)),
+    asks: written ? [] : [...own, ...(map?.talk?.asks ?? [])].filter((ask) => !said.has(ask)),
     rumors: rumorsLeft(game, talk).length,
     rumorLabel: map?.talk?.rumor ?? "Ask what they've heard",
     goodbyeLabel: map?.talk?.goodbye ?? "Say goodbye",

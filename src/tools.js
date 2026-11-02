@@ -669,6 +669,12 @@ export function newTurnLimits() {
 // The tool list itself stays the same, because changing it would make Claude reload the whole story.
 const NOT_IN_A_TALK = ["pass_time", "travel", "set_scene"];
 
+// What's wrong with a call before it's made, for checking written scenes. Null means it would be accepted.
+export function toolProblem(name, input) {
+  const def = TOOL_DEFS.find((t) => t.name === name);
+  return def ? validate(def, input) : `Unknown tool: ${name}`;
+}
+
 export function runTool(game, name, input, turn) {
   const def = TOOL_DEFS.find((t) => t.name === name);
   if (!def) return { result: `Unknown tool: ${name}`, isError: true };

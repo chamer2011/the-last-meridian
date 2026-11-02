@@ -35,6 +35,8 @@ Both ways use the same saves. Only one copy of the game can run at a time, so th
 
 At the prompt, type what you want to do, or the number of a listed choice. You can also click anything on screen.
 
+The story can be written in advance, or written by an AI as you go: see [Who writes the story](#who-writes-the-story). Without an AI key, a new game uses the written story, which is free.
+
 ## Menus
 
 The story has the whole window to itself. The buttons down the right edge open the menus, which slide out over the story and always take up the same space: three quarters of the screen. To close one, press **Close** or Esc, click the story behind it, or click its button again. On a phone, press **Menu** instead.
@@ -282,6 +284,7 @@ There's a lot more out there than the places you start out knowing about, and yo
 
 The world is kept in files you can open with any text editor. Be warned that most of them contain spoilers, including everyone's secrets and how the whole story ends.
 
+- `world/scenes/` has the written story, one file for each scene: its parts, what each says, the choices, the checks and fights they lead to, and what they change in the game. Instructions are at the top of `opening_captain.json`. `npm test` checks every scene for dead ends and choices that lead nowhere.
 - `world/characters/` has one file for each important person, whether you've met them or not.
 - `world/enemies/` has one file for each type of enemy, with its stats, why it usually fights (`motive`) and who for (`faction`). Against you, threat levels 2 and up fight harder than their files say, by the amounts in `FIGHT_DIFFICULTIES` in `src/combat.js`, depending on the difficulty you've chosen.
 - `world/places/` has one file for each place: what it's like, who's there, what could happen and what people say.
@@ -350,6 +353,15 @@ Your life history, traits and beliefs go to the AI, so it can build the story ar
 
 Saved games from before this system still load. They get a basic character profile, and you need to start a new game to use the creator. When you start a new game, your last one is kept as **Previous game** on the title screen.
 
+## Who writes the story
+
+**Who writes the story** in the Settings menu decides it for new games, and a game keeps what it started with:
+
+- **Written story:** the story is written in advance, in `world/scenes/`, so it's free and needs no AI. The choices are the ones on offer, and typing part of one is enough. What the story can't answer, it says so. For now that's the captain's opening scene, and anyone else gets a short opening while theirs is written. Walking, people's lives, the wider world, fights, skill checks, the fleet and the menus all work as usual. In a talk, people pass on what they've heard, and written conversations come later.
+- **AI game master:** an AI writes the story as you go and answers whatever you type or say, which needs a key or a local model, as below.
+
+Until you choose, a new game uses the written story if no AI is set up, and the AI game master if one is. A game that an AI has been writing can't switch to the written story, because the written story wouldn't know what happened in it.
+
 ## Choosing your AI
 
 Open the **Settings** menu in the game. You can switch at any time, even in the middle of a story.
@@ -406,6 +418,7 @@ The download is several GB. Local models make more mistakes with game actions th
 - `src/life.js` runs everyone's days, and how they get around. `src/daily.js` runs each place's supplies, prices and factions, day by day. `src/story-clock.js` moves the stories on when nobody has stepped in. None of them has any screens, and none of them uses the AI.
 - `src/checks.js` runs the skill check windows, `src/check-games/` has the game behind each one, and `public/check.js` draws them.
 - `src/story-library.js` decides which leads, rumors and notes the player and the game master get.
+- `src/scenes.js` plays the written story from `world/scenes/`, through the same tools, checks and fights as the AI, and checks the scene files.
 - `src/npc.js` generates the stats of anyone the AI adds, and `src/campaign.js` saves them to their files.
 - `src/tools.js` lists what the AI is allowed to do, and the limits on it.
 - `src/ai.js` holds the AI's instructions and the connection to it.

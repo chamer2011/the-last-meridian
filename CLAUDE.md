@@ -22,6 +22,10 @@ The owner has no coding experience and judges the game by playing it. Describe c
 
 The tests pass (`npm test`, with `GAME_DATA_DIR` set as above), every new screen has been checked at about 810 and 1400 wide with nothing overlapping, the README explains it, and the report says in plain language what was tested and what wasn't. Before a big change, make sure everything's committed, so there's a way back.
 
+## The direction now: the AI becomes optional
+
+On 2026-11-02 the owner set the next direction: the game should play with or without an API key, like Age of Decadence and Colony Ship, with the AI as an optional layer that makes the story more reactive. The plan has seven steps, each tested by them before the next: (1) the No AI / With AI switch and a written-story engine, with one test scene; (2) scene files they can edit, with conditions and a checker; (3) one whole story written out; (4) people and things with no AI; (5) the opening and act 1 for three lives; (6) the AI as the layer on top, reading the written scene; (7) the rest, one story at a time. **Nothing goes to the public copy until they've tested it and said so.** Step 1 is in: `src/scenes.js`, `world/scenes/`, the `story` setting, `game.mode` ("written" or "ai", fixed when a game starts), `game.scene`, `game.lastCheck` and `game.lastFight`, save version 15. Writing is the biggest part of the plan, and who writes it is their decision at step 3.
+
 ## Where things stand, as of 2026-11-02
 
 - **Their long-term vision is at the top of `README.md`, in their own words:** the AI gets cut back over time until it's an optional extra, with no AI art or music, an artist hired later, and the style of Age of Decadence and Colony Ship. They're at university and working, so they have little time to test. Don't make the game lean on the AI more than it has to.

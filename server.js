@@ -14,6 +14,7 @@ import { fleetCommand } from "./src/fleet.js";
 import { noteLoreSeen } from "./src/lore.js";
 import { openingFor } from "./src/role.js";
 import { migrateGame } from "./src/migrate.js";
+import { StoryError, writtenTurn } from "./src/scenes.js";
 import { dataDir, projectDir } from "./src/paths.js";
 import {
   buy, buyPerk, captainSheet, clockFor, combatAction, equip, notePeopleSeen, publicState, raiseSkill, raiseStat, rest, sell, setDifficulty, startCombat, useItem, workShift,
@@ -31,7 +32,9 @@ fs.mkdirSync(savesDir, { recursive: true });
 
 // ---- Settings -----------------------------------------------------------
 
-const DEFAULT_SETTINGS = { provider: "claude", model: "claude-opus-5-5", effort: "medium", apiKey: "" };
+// story is who writes a new game's story: "written" for the scenes in world/scenes, "ai" for the AI
+// game master, or null to leave it to the game, which uses the written story until an AI is set up.
+const DEFAULT_SETTINGS = { provider: "claude", model: "claude-opus-5-5", effort: "medium", apiKey: "", story: null };
 
 function loadSettings() {
   try {
@@ -45,12 +48,16 @@ let settings = loadSettings();
 
 const saveSettings = () => fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
 const hasKey = () => Boolean(settings.apiKey || process.env.ANTHROPIC_API_KEY);
+const aiIsSetUp = () => settings.provider === "ollama" || hasKey();
+const storyMode = () => settings.story ?? (aiIsSetUp() ? "ai" : "written");
 
 async function settingsView() {
   return {
     provider: settings.provider,
     model: settings.model,
     effort: settings.effort,
+    story: settings.story,
+    storyApplies: storyMode(),
     hasKey: hasKey(),
     claudeModels: CLAUDE_MODELS,
     ollama: await listOllamaModels(),
@@ -186,42 +193,42 @@ export function finishSaving() {
 
 export const gameIsBusy = () => busy;
 
-// ---- Streaming an AI turn to the browser --------------------------------
+// ---- Streaming a turn of the story to the browser --------------------------
 
-async function streamTurn(res, { playerText, gameEvent, threadId, talking = false }) {
+// What the AI is told when the player starts or continues the story. The written story reads the event itself.
+const eventFor = (event) => (event === "start" ? openingFor(game) : event === "continue" ? "Continue the story from here." : undefined);
+
+// One turn, from the AI game master or the written story, whichever this game has.
+async function streamTurn(res, { playerText, event, threadId, talking = false }) {
   res.writeHead(200, { "content-type": "application/x-ndjson", "cache-control": "no-store" });
   const send = (obj) => res.write(`${JSON.stringify(obj)}\n`);
   const before = structuredClone(game);
+  const written = game.mode === "written";
   busy = true;
   spending.lastTurn = 0;
   try {
     const talk = talking ? talkBrief(game) : null;
     if (talking) talkSaid(game, playerText);
-    else if (playerText) log("player", playerText);
+    // The written story records what the player did itself, once it knows which choice they meant.
+    else if (playerText && !written) log("player", playerText);
     // Narration and game messages are kept in the order they happened.
     const pieces = [];
-    await runTurn({
-      game,
-      settings,
-      playerText,
-      gameEvent,
-      threadId,
-      talk,
-      emit: (e) => {
-        if (e.type === "text") {
-          const last = pieces.at(-1);
-          if (last?.role === "narrator") last.text += e.text;
-          else pieces.push({ role: "narrator", text: e.text });
-          send({ type: "text", text: e.text });
-        }
-        if (e.type === "notice") {
-          pieces.push({ role: "notice", text: e.text });
-          send({ type: "notice", text: e.text });
-        }
-        if (e.type === "state") send({ type: "state", state: publicState(game) });
-        if (e.type === "usage") spending.lastTurn += recordUsage(e);
-      },
-    });
+    const emit = (e) => {
+      if (e.type === "text") {
+        const last = pieces.at(-1);
+        if (last?.role === "narrator") last.text += e.text;
+        else pieces.push({ role: "narrator", text: e.text });
+        send({ type: "text", text: e.text });
+      }
+      if (e.type === "notice") {
+        pieces.push({ role: "notice", text: e.text });
+        send({ type: "notice", text: e.text });
+      }
+      if (e.type === "state") send({ type: "state", state: publicState(game) });
+      if (e.type === "usage") spending.lastTurn += recordUsage(e);
+    };
+    if (written) writtenTurn({ game, playerText, event, threadId, emit, log });
+    else await runTurn({ game, settings, playerText, gameEvent: eventFor(event), threadId, talk, emit });
     for (const piece of pieces) {
       const text = piece.text.trim();
       if (!text) continue;
@@ -238,9 +245,9 @@ async function streamTurn(res, { playerText, gameEvent, threadId, talking = fals
     autosave();
     send({ type: "done", state: publicState(game), spending });
   } catch (err) {
-    // Put the game back, so a failed AI call doesn't change the story.
+    // Put the game back, so a failed turn doesn't change the story.
     game = before;
-    const message = err instanceof AiError ? err.message : `Unexpected error: ${err.message}`;
+    const message = err instanceof AiError || err instanceof StoryError ? err.message : `Unexpected error: ${err.message}`;
     send({ type: "error", message, state: publicState(game), spending });
   } finally {
     busy = false;
@@ -322,6 +329,7 @@ async function handleApi(req, res, route) {
     if (typeof body.apiKey === "string" && body.apiKey.trim()) settings.apiKey = body.apiKey.trim();
     if (body.clearKey) settings.apiKey = "";
     if (body.effort === "medium" || body.effort === "low") settings.effort = body.effort;
+    if (body.story === "written" || body.story === "ai") settings.story = body.story;
     if (body.provider === "claude") {
       if (!CLAUDE_MODELS.some((m) => m.id === body.model)) throw new Error("Unknown Claude model.");
       settings.provider = "claude";
@@ -357,6 +365,8 @@ async function handleApi(req, res, route) {
   if (route === "/api/new") {
     const created = createGameFromDraft(body.draft);
     created.campaign = newCampaignId(created.name);
+    // Who writes this game's story is decided now, and stays decided: a story the AI has been writing can't be picked up by the written one.
+    created.mode = storyMode();
     // People from the captain's past get their files now.
     ensureContactFiles(created);
     keepAsPrevious();
@@ -467,6 +477,7 @@ async function handleApi(req, res, route) {
     if (game.fleet?.raid) throw new Error(RAID_WAITING);
     if (body.action === "say") {
       if (!game.talk) throw new Error("You're not talking to anyone right now.");
+      if (game.mode === "written") throw new Error("Written conversations aren't in yet. For now, people only pass on what they've heard.");
       const text = typeof body.text === "string" ? body.text.trim().slice(0, 2000) : "";
       if (!text) throw new Error("Choose something to say.");
       return streamTurn(res, { playerText: text, talking: true });
@@ -483,10 +494,8 @@ async function handleApi(req, res, route) {
     // Anything that would move the story on leaves the talk first.
     closeTalk(game);
     const text = typeof body.text === "string" ? body.text.trim().slice(0, 2000) : "";
-    if (body.event === "start" && !game.transcript.length) {
-      return streamTurn(res, { gameEvent: openingFor(game) });
-    }
-    if (body.event === "start" || body.event === "continue") return streamTurn(res, { gameEvent: "Continue the story from here." });
+    if (body.event === "start" && !game.transcript.length) return streamTurn(res, { event: "start" });
+    if (body.event === "start" || body.event === "continue") return streamTurn(res, { event: "continue" });
     if (!text) throw new Error("Type what you want to do.");
     // A lead picked from the menu comes with its story thread.
     return streamTurn(res, { playerText: text, threadId: typeof body.thread === "string" ? body.thread : null });
