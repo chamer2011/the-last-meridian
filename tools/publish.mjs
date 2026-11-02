@@ -40,7 +40,9 @@ const files = git("ls-tree", "-r", "-z", "--name-only", "HEAD", "--", ...GAME).t
 for (const file of files) {
   const out = path.join(target, file);
   fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, committed(file));
+  const body = committed(file);
+  // Git checks this one kind of file out with Windows line endings, so it's written the same way here.
+  fs.writeFileSync(out, file.endsWith(".bat") ? body.toString("utf8").replace(/\r?\n/g, "\r\n") : body);
 }
 
 // ---- The guide: this repository's README, without what's only about this computer ----
@@ -55,9 +57,9 @@ The installer gives the game its own window, with shortcuts on your desktop and 
 - **Uninstalling:** use **Installed apps** in Windows Settings. That only removes the game. Your saves and API key stay until you delete \`%APPDATA%\\The Last Meridian\` yourself.
 `;
 
+const GUIDE_TOP = "# The Last Meridian: the full guide\n\nHow everything in the game works. It names places and people you'll meet, but it doesn't say how the story ends. To get the game, see the [front page](README.md).\n\n";
+
 const GUIDE_CHANGES = [
-  ["# The Last Meridian\n\nA sci-fi text RPG where an AI writes the story and the game's code keeps the rules fair.",
-    "# The Last Meridian: the full guide\n\nHow everything in the game works. It names places and people you'll meet, but it doesn't say how the story ends. To get the game, see the [front page](README.md)."],
   ["You can still play in your browser if you prefer:", "If you've downloaded the source instead of the installer, you can play in your browser:"],
   ["Both ways use the same saves. Only one copy", "Only one copy"],
   ["and you can give one its own drawing: Section Fourteen's file shows how.", "and you can give one its own drawing."],
@@ -65,9 +67,11 @@ const GUIDE_CHANGES = [
 
 function guide() {
   let text = committed("README.md").toString("utf8").replaceAll("\r\n", "\n");
+  // Whatever's above How to play is the owner's own introduction, so it doesn't go in the guide.
+  const start = text.indexOf("## How to play\n");
   const end = text.indexOf("## The app\n");
-  if (end < 0) stop("The README has no section called The app, so the guide needs a look.");
-  text = text.slice(0, end) + THE_APP;
+  if (start < 0 || end < start) stop("The README's sections have changed, so the guide needs a look.");
+  text = GUIDE_TOP + text.slice(start, end) + THE_APP;
   for (const [from, to] of GUIDE_CHANGES) {
     if (!text.includes(from)) stop(`The README has changed, so the guide needs a look: ${from}`);
     text = text.replace(from, to);

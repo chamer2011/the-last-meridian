@@ -12,6 +12,7 @@ The owner has no coding experience and judges the game by playing it. Describe c
 - **Real AI calls cost their money,** so don't make any without asking. Test against a stand-in AI with `GAME_DATA_DIR` pointing at a temporary folder and `PORT` set to something other than 3210. `test/fleet.test.js` has a stand-in server to copy.
 - **They may be playing while you work.** Never overwrite or restore `data/saves/`, and treat a changed autosave as their own progress. Port 3210 is the lock: only one copy of the game can run on it.
 - **Changing the AI's instructions or tool list makes the next turn reload the whole story once,** which costs money, so tell them when you do. Neither can vary from game to game, or the prompt cache stops working.
+- **They also edit on GitHub's website.** Run `git fetch` before starting work, and never force a push.
 - **Don't use subagents.** Eight running at once used a whole 5-hour allowance.
 - **Anything mechanical stays local and free.** The AI writes the story and only acts through validated tools.
 - **Fights stay the way they are, with more options.** They explicitly turned down Fallout's action points, grids and aimed shots.
@@ -23,6 +24,7 @@ The tests pass (`npm test`, with `GAME_DATA_DIR` set as above), every new screen
 
 ## Where things stand, as of 2026-11-02
 
+- **Their long-term vision is at the top of `README.md`, in their own words:** the AI gets cut back over time until it's an optional extra, with no AI art or music, an artist hired later, and the style of Age of Decadence and Colony Ship. They're at university and working, so they have little time to test. Don't make the game lean on the AI more than it has to.
 - **Their plan for a living world** has six steps, and all six are in: people with lives, all 24 places with daily supplies and factions, stories that move on without the player, a player who can be anyone, more options in fights, and the look of the game. They've played the first of these and only some of the rest. See `docs/notes/project-world-engine.md`.
 - **The look is isometric,** in the mood of UnderRail, drawn by the game itself with no graphics engine (`public/iso.js`, `world/looks.json`). That was their choice, so don't reopen it unless they do. See `docs/notes/project-world-engine.md`.
 - **The story comes up over the room** in the game's own console windows, with what people say written out over their heads. It went in on 2026-11-02, and they haven't played it yet. See `docs/notes/project-story-popups.md`.

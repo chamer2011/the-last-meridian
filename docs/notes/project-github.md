@@ -14,6 +14,10 @@ On 2026-11-02 they asked how to make it public to get feedback from people. I re
 
 Choices I made that they've only seen on the page: the name, the permission wording, saying it was built with Claude Code, one place for feedback (issues, no Discussions), and the feedback questions.
 
+**Waiting on them, as of 2026-11-02:** their own introduction (see [project-last-meridian](project-last-meridian.md)) isn't on the public page. They'd added it to the private README on the GitHub website, I hadn't fetched, and I only saw it when my push was refused, after the page was live. It says the game is open source, where the page's LICENSE keeps all rights. I asked whether to put it on the page word for word and change the licence, recommending GPL-3.0 because they said it will stay open. Don't change either without their answer. It also says no AI was used for art, while Claude wrote the code that draws everything, the console art, the level plans and the script that made the icon, and I told them that.
+
+They edit on the GitHub website, and those commits carry their real Gmail address unless they turn on **Keep my email addresses private** under Emails in GitHub's settings, so warn them before they edit the public copy that way. Fetch before assuming either repository is unchanged, and never force a push.
+
 Still open: the link hasn't been posted anywhere, and going public brings nobody by itself, so that's theirs to do. The installer's own setup steps haven't been run, because here they would replace the player's own app: 37 first-run checks ran on `dist/win-unpacked` with a stand-in AI, and the installer's contents were compared with it. Nobody has posted through the feedback form, though GitHub shows its preview with no errors. After a failed start with no key, the error box stays up while walking and keeps the old room's name.
 
 Scratchpad scripts that won't last: `stranger-check.mjs` (the first-run checks), `public-shots.mjs` (the pictures) and `preview-page.mjs`. `walk-test-server.mjs` starts from a copy of the player's real save, so never take public pictures with it.
