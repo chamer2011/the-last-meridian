@@ -325,7 +325,9 @@ function leadsMenu() {
     columns(
       section("Leads here",
         here.length
-          ? here.map((lead) => card(lead, el("div", {}, el("button", { disabled: busy, onclick: () => followLead(lead) }, "Look into this"))))
+          ? here.map((lead) => card(lead, el("div", {}, g.mode === "written" && !lead.written
+            ? el("span", { class: "muted small", title: "This story hasn't been written out yet. It plays out by itself for now, and an AI game master could run it from its notes." }, "Not written yet")
+            : el("button", { disabled: busy, onclick: () => followLead(lead) }, "Look into this"))))
           : empty("Nothing new here at the moment. Try somewhere else, or come back later.")),
       section("What people are saying",
         rumors.length
@@ -589,7 +591,7 @@ function settingsMenu() {
           "aria-pressed": String(s.storyApplies === id),
           onclick: runAction(async () => { ui.settings = await api("/api/settings", { story: id }); }),
         }, label))),
-      muted("Written story: the story is written in advance, so it's free and needs no AI. For now that's the captain's opening scene, and the rest is being written. AI game master: an AI writes the story as you go, and answers whatever you type or say, which needs a key or a local model from below."),
+      muted("Written story: the story is written in advance, so it's free and needs no AI. For now that's the captain's opening and one whole story aboard the Meridian, from the Leads menu, and the rest is being written. AI game master: an AI writes the story as you go, and answers whatever you type or say, which needs a key or a local model from below."),
       muted(`${s.story === null ? `Until you choose, it's the ${s.storyApplies === "written" ? "written story, because no AI is set up" : "AI game master, because an AI is set up"}. ` : ""}It applies to new games. This game has ${g.mode === "written" ? "the written story" : "an AI game master"}, and that can't change once a game has started.`)),
     section("AI model",
       s.claudeModels.map((m) => choice("claude", m.id, m.name, m.note)),

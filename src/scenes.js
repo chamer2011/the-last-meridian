@@ -13,6 +13,7 @@ import { startChoiceCheck } from "./checks.js";
 import { worldDir } from "./paths.js";
 import { DIFFICULTY, attr, maxHp, skillRank } from "./rules.js";
 import { conditionHolds, parseCondition, parseSceneText } from "./scene-text.js";
+import { noteThreadStarted } from "./story-library.js";
 import { newTurnLimits, runTool, toolProblem } from "./tools.js";
 
 // Something the player did that the written story has no answer to. The turn changes nothing, and they read this.
@@ -271,6 +272,8 @@ export function writtenTurn({ game, playerText, event, threadId, emit, log, scen
     const id = `thread_${threadId}`;
     if (!loaded.scenes[id]) throw new StoryError(brokenMessage(id, loaded.broken) ?? `This story hasn't been written out yet. For now it plays out by itself, and the Leads menu and the news say how it's going. ${AI_HINT}`);
     log("player", playerText);
+    // The story is taken up: the Leads menu lists it as followed, and it stops moving on by itself.
+    noteThreadStarted(game, threadId);
     return startScene(game, id, loaded.scenes, context);
   }
   const scene = sceneFor(game, loaded.scenes);

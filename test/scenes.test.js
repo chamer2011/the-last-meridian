@@ -412,7 +412,7 @@ test("what the written story can't answer leaves the game exactly as it was, and
   play(game, { event: "start" });
   const before = JSON.stringify(game);
   assert.throws(() => play(game, { playerText: "fly to the moon" }), (err) => err instanceof StoryError && /isn't one of the choices/.test(err.message));
-  assert.throws(() => play(game, { playerText: "I look into this", threadId: "crew_naomi_under_crew" }), (err) => err instanceof StoryError && /hasn't been written out yet/.test(err.message));
+  assert.throws(() => play(game, { playerText: "I look into this", threadId: "crew_marrow_aft_hold" }), (err) => err instanceof StoryError && /hasn't been written out yet/.test(err.message));
   assert.equal(JSON.stringify(game), before);
   // Once the scene is over, typing gets a different answer.
   play(game, { playerText: "listen" });
@@ -460,6 +460,194 @@ test("an older save keeps its AI game master, and a new game says which it has",
   const fresh = createGameFromDraft(randomDraft({ seed: 3, archetype: "officer" }));
   assert.equal(fresh.mode, "ai", "the server decides, from the Settings menu");
   assert.equal(publicState(fresh).mode, "ai");
+});
+
+// ---- The Downstairs Crew: one whole story, written out ----------------------------------------
+
+const DOWNSTAIRS = "crew_naomi_under_crew";
+// Settles the check that's open, without the dice, the way its window would.
+function settleCheck(game, success) {
+  assert.ok(game.check, "a check is open");
+  game.lastCheck = { id: game.check.id, skill: game.check.skill, difficulty: game.check.difficulty, success, reason: game.check.reason, source: game.check.source, used: false };
+  game.check = null;
+  game.pendingEvents.push("The check is done.");
+}
+const roomNow = (game) => publicState(game).walk.here.name;
+
+test("the Downstairs Crew ends every way it can end with the quest settled, and every ending is reachable", () => {
+  const scene = WORLD_SCENES[`thread_${DOWNSTAIRS}`];
+  assert.ok(scene, "the scene exists");
+  const endings = Object.entries(scene.parts).filter(([, part]) => part.end);
+  assert.ok(endings.length >= 14, `${endings.length} endings`);
+  for (const [name, part] of endings) {
+    if (name === "back_up") continue;
+    const settled = (part.do ?? []).find((step) => step.tool === "update_quest" && step.id === DOWNSTAIRS && step.status !== "active");
+    assert.ok(settled, `${name} doesn't settle the quest`);
+  }
+  // The parts that lead to back_up settle it on the way.
+  for (const name of ["sworn", "sworn_after_reunion"]) assert.ok(scene.parts[name].do.some((step) => step.tool === "update_quest" && step.status === "completed"), name);
+  const words = fs.readFileSync(path.join(projectDir, "world", "scenes", `thread_${DOWNSTAIRS}.txt`), "utf8");
+  assert.ok(words.split(/\s+/).length > 4000, "it's a whole story, not a sketch");
+});
+
+test("the captain plays the Downstairs Crew through to the treaty, and the game's records follow", () => {
+  const game = newGame();
+  play(game, { event: "start" });
+  play(game, { playerText: "listen" });
+  play(game, { playerText: "go on" });
+  play(game, { playerText: "see the ship" });
+  assert.equal(game.scene, null);
+  // Taken up from the Leads menu.
+  const lead = publicState(game).story.here.find((one) => one.id === DOWNSTAIRS);
+  assert.ok(lead, "the lead is on offer aboard the Meridian");
+  assert.equal(lead.written, true);
+  assert.equal(publicState(game).story.here[0].id, DOWNSTAIRS, "a written story comes first in a written game");
+  const opening = play(game, { playerText: `I look into this: ${lead.title}`, threadId: DOWNSTAIRS });
+  assert.match(opening[0].text, /Naomi Cass is in your doorway/);
+  assert.equal(game.story.threads[DOWNSTAIRS], "active", "the Leads menu lists it as followed");
+  assert.ok(game.quests.find((quest) => quest.id === DOWNSTAIRS)?.status === "active");
+  assert.equal(game.scene.part, "doorway");
+
+  play(game, { playerText: "ask her what's in section fourteen" });
+  play(game, { playerText: "Ask Chief Marrow about the hull work first" });
+  assert.equal(roomNow(game), "Engineering", "the map followed the story to Marrow");
+  play(game, { playerText: "Ask Quartermaster Brandt" });
+  assert.equal(game.flags.brandt_knows, true);
+  play(game, { playerText: "Go down through the Cold Elbow" });
+  assert.equal(game.scene.part, "which_way");
+  // The quiet way: a stealth check, settled as a pass.
+  play(game, { playerText: "Take the Whistler" });
+  settleCheck(game, true);
+  play(game, { event: "continue" });
+  assert.equal(game.scene.part, "crawl");
+  play(game, { playerText: "go on" });
+  assert.equal(game.scene.part, "tour");
+  assert.equal(roomNow(game), "Section Fourteen", "the story put the player in a room of its own");
+  assert.ok(publicState(game).walk.people.some((one) => /Naomi/.test(one.name)));
+
+  play(game, { playerText: "Ask about the coughing" });
+  play(game, { playerText: "Send up for Dr. Aduro" });
+  assert.equal(game.flags.aduro_knows, true);
+  assert.ok(game.contacts.some((one) => /Aduro/.test(one.name) && one.attitude === "friendly"));
+  assert.equal(game.scene.part, "aduro_comes");
+  play(game, { playerText: "Go back to the council" });
+  assert.equal(game.scene.part, "fourteen");
+  assert.doesNotMatch(lastNarration(game), /coughing behind the curtain/, "a part already seen isn't offered again");
+  play(game, { playerText: "Ask the council what they want" });
+  play(game, { playerText: "Ask Naomi about clause nine" });
+  assert.equal(game.flags.clause_nine, true);
+  play(game, { playerText: "go on" });
+  play(game, { playerText: "time to decide" });
+  assert.equal(game.scene.part, "decide");
+  assert.match(lastNarration(game), /Swear them in as ship's cadets/, "reading the treaty opens the cadets' oath");
+
+  play(game, { playerText: "Put it to their council" });
+  settleCheck(game, true);
+  play(game, { event: "continue" });
+  assert.equal(game.scene.part, "council_pass");
+  play(game, { playerText: "sign" });
+  assert.equal(game.scene.part, "sworn");
+  assert.equal(game.quests.find((quest) => quest.id === DOWNSTAIRS).status, "completed");
+  assert.equal(game.story.threads[DOWNSTAIRS], "done", "the story is finished in the game's records");
+  assert.equal(game.contacts.find((one) => /Naomi/.test(one.name)).attitude, "ally");
+  assert.equal(game.flags.children_are_crew, true);
+  assert.ok(game.xp >= 40);
+  assert.match(lastNarration(game), /clause nine/, "clause nine is on the table, because she read the treaty");
+  play(game, { playerText: "Tell Naomi the truth" });
+  assert.equal(game.flags.naomi_knows_father, true);
+  play(game, { playerText: "climb back up" });
+  assert.equal(game.scene, null);
+  assert.equal(roomNow(game), "Engineering", "back where the wall opens");
+  assert.ok(game.journal.length >= 4, `the journal has the story: ${game.journal.length} entries`);
+});
+
+test("the Downstairs Crew's other roads: a fight in the deep duct, the council saying no, and giving the order", () => {
+  const scenes = loadScenes().scenes;
+  const start = (seed) => {
+    const game = newGame("captain", seed);
+    play(game, { event: "start" });
+    play(game, { playerText: "listen" });
+    play(game, { playerText: "go on" });
+    play(game, { playerText: "see the ship" });
+    play(game, { playerText: "I look into this", threadId: DOWNSTAIRS });
+    play(game, { playerText: "go with her now" });
+    play(game, { playerText: "Take the Cold Elbow" });
+    settleCheck(game, true);
+    play(game, { event: "continue" });
+    assert.equal(game.scene.part, "tour");
+    return game;
+  };
+  // The rats, drawn weapon: a real fight starts, and losing it is survivable.
+  const fighter = start(3);
+  play(fighter, { playerText: "Ask about the coughing" });
+  play(fighter, { playerText: "Draw your weapon" });
+  assert.ok(fighter.combat, "the fight is on");
+  assert.equal(fighter.combat.enemies.length, 2);
+  fighter.combat = null;
+  fighter.lastFight = { result: "defeat", enemies: ["scrap_rat"], summary: "You lost.", used: false };
+  fighter.pendingEvents.push("The player lost.");
+  play(fighter, { event: "continue" });
+  assert.equal(fighter.scene.part, "rats_lost");
+  play(fighter, { playerText: "go on" });
+  assert.equal(fighter.scene.part, "bedside");
+
+  // The council says no, and the choice is gone, but the others remain.
+  const talker = start(4);
+  play(talker, { playerText: "seen enough" });
+  play(talker, { playerText: "Put it to their council" });
+  settleCheck(talker, false);
+  play(talker, { event: "continue" });
+  assert.equal(talker.scene.part, "council_fail");
+  play(talker, { playerText: "go on" });
+  assert.equal(talker.scene.part, "decide");
+  assert.doesNotMatch(lastNarration(talker), /Put it to their council/);
+  assert.doesNotMatch(lastNarration(talker), /Swear them in/, "the treaty wasn't read, so there's no oath to swear by");
+  assert.match(lastNarration(talker), /Reroute Marrow's hull work/);
+
+  // The order, given and obeyed by some.
+  play(talker, { playerText: "Order them out" });
+  settleCheck(talker, true);
+  play(talker, { event: "continue" });
+  assert.equal(talker.scene, null);
+  assert.equal(talker.quests.find((quest) => quest.id === DOWNSTAIRS).status, "completed");
+  assert.equal(talker.flags.downstairs_enemies, true);
+  assert.equal(talker.contacts.find((one) => /Naomi/.test(one.name)).attitude, "hostile");
+
+  // Letting the vent run, from the doorway, fails the quest without a single check.
+  const cold = newGame("captain", 5);
+  play(cold, { event: "start" });
+  play(cold, { playerText: "listen" });
+  play(cold, { playerText: "go on" });
+  play(cold, { playerText: "see the ship" });
+  play(cold, { playerText: "I look into this", threadId: DOWNSTAIRS });
+  play(cold, { playerText: "ask her what's in" });
+  play(cold, { playerText: "Tell her the vent goes ahead" });
+  assert.equal(cold.scene, null);
+  assert.equal(cold.quests.find((quest) => quest.id === DOWNSTAIRS).status, "failed");
+  assert.equal(cold.story.threads[DOWNSTAIRS], "done");
+  assert.ok(Object.keys(scenes).includes(`thread_${DOWNSTAIRS}`));
+});
+
+test("someone who isn't the captain gets the smaller story, and can still make it come out right", () => {
+  const game = newGame("engine_hand", 8);
+  play(game, { event: "start" });
+  play(game, { playerText: "get on with the day" });
+  const lead = publicState(game).story.here.find((one) => one.id === DOWNSTAIRS);
+  assert.ok(lead, "the lead reaches an engine hand aboard the Meridian");
+  assert.match(lead.lead, /told everyone who'll listen/);
+  const opening = play(game, { playerText: "I look into this", threadId: DOWNSTAIRS });
+  assert.equal(game.scene.part, "heard", "the rule sent them past the captain's doorway");
+  assert.match(opening[0].text, /You're not the Upstairs Captain/);
+  play(game, { playerText: "Follow her" });
+  settleCheck(game, true);
+  play(game, { event: "continue" });
+  assert.equal(game.scene.part, "followed");
+  assert.equal(roomNow(game), "Section Fourteen");
+  play(game, { playerText: "bring Dr. Aduro down" });
+  assert.equal(game.scene, null);
+  assert.equal(game.quests.find((quest) => quest.id === DOWNSTAIRS).status, "completed");
+  assert.equal(game.flags.downstairs_crew, true);
+  assert.match(JSON.stringify(game.journal), /Aduro/, "the journal has the story");
 });
 
 // ---- Over the real server, with no key and no AI anywhere -------------------------------------
@@ -561,6 +749,21 @@ test("over the real server: with no key, a new game gets the written story, and 
   const over = await post("/api/chat", { text: "go and see the ship" });
   assert.equal(over.done.scene, null);
   assert.match(over.done.quests.find((quest) => quest.id === "the_beacon").objective, /Haven Station is one jump away/);
+
+  // A story taken up from the Leads menu, the way the page sends it.
+  const lead = over.done.story.here.find((one) => one.id === "crew_naomi_under_crew");
+  assert.ok(lead?.written, "the written story is on offer");
+  const taken = await post("/api/chat", { text: `I look into this: ${lead.title}`, thread: lead.id });
+  assert.equal(taken.error, null, taken.error);
+  assert.match(taken.text, /Section Fourteen will not be vented tomorrow/);
+  assert.equal(taken.done.scene.part, "doorway");
+  assert.ok(taken.done.story.active.some((one) => one.id === "crew_naomi_under_crew"), "the Leads menu now lists it as followed");
+  assert.ok(taken.done.quests.some((quest) => quest.id === "crew_naomi_under_crew"));
+  const unwritten = over.done.story.here.find((one) => !one.written);
+  if (unwritten) {
+    const refused = await post("/api/chat", { text: `I look into this: ${unwritten.title}`, thread: unwritten.id });
+    assert.match(refused.error, /hasn't been written out yet/);
+  }
   assert.equal(aiCalls, 0, "nothing went anywhere near the AI");
 });
 

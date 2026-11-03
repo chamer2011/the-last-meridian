@@ -202,7 +202,7 @@ function titleScreen() {
     )),
     !ui.settings.hasKey && ui.settings.provider === "claude" && el("div", { class: "card small" },
       ui.settings.storyApplies === "written"
-        ? "No AI is set up, so a new game uses the written story, which is free. For now that's the captain's opening scene, and the rest is being written. To have an AI write the story instead, open the Settings menu once you've started and paste an Anthropic API key, or pick a local model."
+        ? "No AI is set up, so a new game uses the written story, which is free. For now that's the captain's opening and one whole story aboard the Meridian, and the rest is being written. To have an AI write the story instead, open the Settings menu once you've started and paste an Anthropic API key, or pick a local model."
         : "You'll need to choose an AI before you can play the story. Once you start, open the Settings menu to paste an Anthropic API key or pick a local model."),
   );
 }
