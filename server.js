@@ -15,6 +15,7 @@ import { noteLoreSeen } from "./src/lore.js";
 import { openingFor } from "./src/role.js";
 import { migrateGame } from "./src/migrate.js";
 import { StoryError, writtenTurn } from "./src/scenes.js";
+import { openWrittenTalk, writtenTalkTurn } from "./src/talks.js";
 import { dataDir, projectDir } from "./src/paths.js";
 import {
   buy, buyPerk, captainSheet, clockFor, combatAction, equip, notePeopleSeen, publicState, raiseSkill, raiseStat, rest, sell, setDifficulty, startCombat, useItem, workShift,
@@ -227,7 +228,8 @@ async function streamTurn(res, { playerText, event, threadId, talking = false })
       if (e.type === "state") send({ type: "state", state: publicState(game) });
       if (e.type === "usage") spending.lastTurn += recordUsage(e);
     };
-    if (written) writtenTurn({ game, playerText, event, threadId, emit, log });
+    if (written && talking) writtenTalkTurn({ game, playerText, emit });
+    else if (written) writtenTurn({ game, playerText, event, threadId, emit, log });
     else await runTurn({ game, settings, playerText, gameEvent: eventFor(event), threadId, talk, emit });
     for (const piece of pieces) {
       const text = piece.text.trim();
@@ -467,6 +469,12 @@ async function handleApi(req, res, route) {
     if (game.fleet?.raid) throw new Error(RAID_WAITING);
     if (game.talk) throw new Error(TALK_WAITING);
     const reply = walkCommand(game, body);
+    // Using a thing or asking at a door changes more than where the player stands, and the story keeps a line about it.
+    if (body.action === "use" || body.action === "ask") {
+      if (reply.said) log("notice", reply.said);
+      autosave();
+      return json(res, 200, { game: publicState(game), said: reply.said ?? null, check: Boolean(game.check) });
+    }
     saveAfterWalking();
     return json(res, 200, reply);
   }
@@ -477,12 +485,13 @@ async function handleApi(req, res, route) {
     if (game.fleet?.raid) throw new Error(RAID_WAITING);
     if (body.action === "say") {
       if (!game.talk) throw new Error("You're not talking to anyone right now.");
-      if (game.mode === "written") throw new Error("Written conversations aren't in yet. For now, people only pass on what they've heard.");
       const text = typeof body.text === "string" ? body.text.trim().slice(0, 2000) : "";
       if (!text) throw new Error("Choose something to say.");
       return streamTurn(res, { playerText: text, talking: true });
     }
     talkCommand(game, body);
+    // Without an AI, the person speaks first, from their written conversation or from stock lines.
+    if (body.action === "open" && game.mode === "written") openWrittenTalk(game);
     autosave();
     return json(res, 200, { game: publicState(game) });
   }

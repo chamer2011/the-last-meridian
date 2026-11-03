@@ -15,13 +15,15 @@ import { DIFFICULTY, attr, maxHp, skillRank } from "./rules.js";
 import { conditionHolds, parseCondition, parseSceneText } from "./scene-text.js";
 import { noteThreadStarted } from "./story-library.js";
 import { newTurnLimits, runTool, toolProblem } from "./tools.js";
+import { answerDoor } from "./walk.js";
 
 // Something the player did that the written story has no answer to. The turn changes nothing, and they read this.
 export class StoryError extends Error {}
 
 const AI_HINT = "With an AI game master, chosen in Settings, you can type anything you like.";
 const FIGHT_ENDINGS = { victory: "won", talked: "talked", defeat: "lost", fled: "fled", surrendered: "gaveUp" };
-const HELPERS = { attr, skillRank, maxHp };
+// What conditions need from the rules. A conversation adds what's been said in it, as seen.
+export const HELPERS = { attr, skillRank, maxHp };
 export const SCENES_DIR = path.join(worldDir, "scenes");
 
 // ---- Loading the files ------------------------------------------------------------
@@ -90,14 +92,17 @@ export function openingSceneId(game, scenes = loadScenes().scenes) {
 export const choiceLine = (choice) => ["> ", choice.check ? `[${choice.check}] ` : "", ...(choice.tags ?? []).map((tag) => `[${tag}] `), choice.say].join("");
 
 // The choices this player gets to see: the ones whose conditions hold.
-export const openChoices = (part, game) => (part.choices ?? []).filter((choice) => !choice.if || conditionHolds(game, choice.if, HELPERS));
+export const openChoices = (part, game, helpers = HELPERS) => (part.choices ?? []).filter((choice) => !choice.if || conditionHolds(game, choice.if, helpers));
 
 // What the player reads when a part begins, in the game master's own format.
-export function partText(part, game = null) {
+export function partText(part, game = null, helpers = HELPERS) {
   const lines = (Array.isArray(part.text) ? part.text : [part.text]).filter(Boolean);
-  const choices = (game ? openChoices(part, game) : part.choices ?? []).map(choiceLine);
+  const choices = (game ? openChoices(part, game, helpers) : part.choices ?? []).map(choiceLine);
   return [lines.join("\n\n"), choices.join("\n")].filter(Boolean).join("\n\n");
 }
+
+// The first rule of a part that holds, if any, which sends the story somewhere else instead.
+export const ruleThatHolds = (part, game, helpers = HELPERS) => (part.when ?? []).find((one) => !one.if || conditionHolds(game, one.if, helpers)) ?? null;
 
 // ---- Finding the choice the player meant ----------------------------------
 
@@ -161,7 +166,7 @@ function partOf(scene, id, sceneId) {
 function enterPart(game, scene, id, { emit, turn }, hops = 0) {
   const part = partOf(scene, id, game.scene.id);
   // A rule that holds sends the story on without showing this part.
-  const rule = (part.when ?? []).find((one) => !one.if || conditionHolds(game, one.if, HELPERS));
+  const rule = ruleThatHolds(part, game);
   if (rule) {
     if (hops > 20) throw new Error(`The scene ${game.scene.id} goes round in circles from ${id}.`);
     return enterPart(game, scene, rule.to, { emit, turn }, hops + 1);
@@ -232,6 +237,13 @@ function nextAfter(game, pending) {
 function carryOn(game, scenes, context) {
   // The AI isn't here to read these, so the written story decides what they mean.
   game.pendingEvents.splice(0);
+  // Asking at a closed door opened a check. Its result decides whether the door opens.
+  if (game.lastCheck && !game.lastCheck.used && game.lastCheck.source === "door" && game.doorAsked) {
+    game.lastCheck.used = true;
+    context.emit({ type: "notice", text: answerDoor(game, game.lastCheck.success) });
+    context.emit({ type: "state" });
+    return;
+  }
   const scene = sceneFor(game, scenes);
   if (scene) {
     const part = partOf(scene, game.scene.part, game.scene.id);
@@ -308,8 +320,9 @@ function checkProblem(text) {
 }
 
 // Everything wrong with a scene, in plain words, so a mistake is found before anyone plays it. Each
-// problem names the file's line when the scene came from a text file.
-export function sceneProblems(scene, id = "the scene") {
+// problem names the file's line when the scene came from a text file. A conversation (talk_<person>)
+// has no checks or fights, and a part with nothing more to say is where it ends.
+export function sceneProblems(scene, id = "the scene", { talk = false } = {}) {
   const problems = [];
   const parts = scene?.parts ?? {};
   const at = (holder, where) => (holder?.line ? `${where} (line ${holder.line})` : where);
@@ -345,17 +358,18 @@ export function sceneProblems(scene, id = "the scene") {
     const always = (part.when ?? []).some((rule) => !rule.if);
     // A fight brings its own lead-in, and a check its own window, so those parts can stand without text.
     if (!text.length && !part.note && !always && !part.check && !part.fight) problems.push(`${where} has no text`);
-    if (part.check) {
+    if (talk && (part.check || part.fight)) problems.push(`${where} has a ${part.check ? "check" : "fight"}, and a conversation can't open one: put it in a scene instead`);
+    if (part.check && !talk) {
       const problem = checkProblem(part.check);
       if (problem) problems.push(`${where} has ${problem}`);
       if (!part.pass || !part.fail) problems.push(`${where} has a check, so it needs pass and fail`);
     }
-    if (part.fight) {
+    if (part.fight && !talk) {
       const problem = toolProblem("start_combat", part.fight);
       if (problem) problems.push(`${where}: the fight ${problem}`);
       if (!part.won || !part.lost) problems.push(`${where} has a fight, so it needs won and lost`);
     }
-    if (!part.check && !part.fight && !part.end && !always && !(part.choices ?? []).length) problems.push(`${where} has no choices and doesn't end the scene`);
+    if (!talk && !part.check && !part.fight && !part.end && !always && !(part.choices ?? []).length) problems.push(`${where} has no choices and doesn't end the scene`);
     for (const [i, step] of (part.do ?? []).entries()) {
       const { tool, set, clear, line: _line, ...input } = step;
       if (set || clear) continue;
@@ -367,7 +381,8 @@ export function sceneProblems(scene, id = "the scene") {
       if (!choice.say) problems.push(`${what} has no words`);
       goes(choice, what);
       if (choice.if) condition(choice.if, what);
-      if (choice.check) {
+      if (choice.check && talk) problems.push(`${what} has a check, and a conversation can't open one: put it in a scene instead`);
+      else if (choice.check) {
         const problem = checkProblem(choice.check);
         if (problem) problems.push(`${what} has ${problem}`);
         if (!choice.pass || !choice.fail) problems.push(`${what} has a check, so it needs pass and fail`);
@@ -381,6 +396,6 @@ export function sceneProblems(scene, id = "the scene") {
 export function allSceneProblems(dir = SCENES_DIR) {
   const { scenes, problems } = loadScenes(dir);
   const found = problems.map((one) => `${one.file}${one.line ? ` (line ${one.line})` : ""}: ${one.message}`);
-  for (const [id, scene] of Object.entries(scenes)) found.push(...sceneProblems(scene, id).map((one) => `${one}`));
+  for (const [id, scene] of Object.entries(scenes)) found.push(...sceneProblems(scene, id, { talk: id.startsWith("talk_") }));
   return { count: Object.keys(scenes).length, problems: found };
 }

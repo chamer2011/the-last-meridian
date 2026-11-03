@@ -118,7 +118,8 @@ function termHolds(game, term, helpers) {
   switch (term.kind) {
     case "has": result = (game.inventory?.[term.id] ?? 0) > 0; break;
     case "flag": result = Boolean(game.flags?.[term.id]); break;
-    case "seen": result = Boolean(game.scene?.seen?.includes(term.id)); break;
+    // In a conversation, "seen" is what's been said in it; in a scene, the parts the player has been through.
+    case "seen": result = Boolean((helpers.seen ?? game.scene?.seen)?.includes(term.id)); break;
     case "met": result = Boolean(contact(term.id)); break;
     case "likes": result = attitudeRank(contact(term.id)?.attitude) >= attitudeRank("friendly"); break;
     case "dislikes": result = Boolean(contact(term.id)) && attitudeRank(contact(term.id)?.attitude) <= attitudeRank("wary"); break;

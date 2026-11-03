@@ -9,11 +9,12 @@
 // and a campaign can keep its own rooms in its folder, so they stay the same from then on.
 
 import { allCharacters, campaignRooms, findCampaignRoom, findCharacter, fullName, saveCampaignRoom } from "./campaign.js";
-import { startChoiceCheck } from "./checks.js";
-import { LOCATIONS } from "./data.js";
+import { startCheck, startChoiceCheck } from "./checks.js";
+import { ITEMS, LOCATIONS } from "./data.js";
 import { hasADay, livesHere, peopleAboard } from "./life.js";
 import { isCaptain, toOutsider } from "./role.js";
-import { audienceBonus, clockRuns } from "./rules.js";
+import { addItem, audienceBonus, clockRuns } from "./rules.js";
+import { conditionHolds } from "./scene-text.js";
 import { rumorsFrom } from "./story-library.js";
 import { colorForName, parseNarration } from "../public/story.js";
 import { COMBAT_ART, LOOKS, ROOM_KINDS, ROOM_TALK, WORLD_MAPS } from "./world.js";
@@ -157,6 +158,63 @@ function openDoorsTo(game, id) {
   game.opened ??= {};
   game.opened[game.location] ??= [];
   if (!game.opened[game.location].includes(id)) game.opened[game.location].push(id);
+}
+
+// Without an AI, asking at a closed door goes by the rule written in the map file, under closed.ask:
+// an answer that leaves it closed, a condition that opens it, or a check whose result decides.
+export function askAtDoor(game, key) {
+  const walk = walkOf(game);
+  const level = levelOf(game, walk, mapFor(game.location));
+  const exit = level.exits.find((one) => one.key === key);
+  if (!exit || !isClosed(game, exit)) throw new Error("That door isn't closed.");
+  const rule = exit.closed.ask ?? {};
+  const open = (said) => {
+    openDoorsTo(game, exit.to);
+    if (rule.flag) (game.flags ??= {})[rule.flag] = true;
+    return { said: said ?? "The way is open.", opened: true };
+  };
+  // In order: a condition that opens it, a check whose result decides, a door that simply opens when asked, or an answer that leaves it closed.
+  if (rule.if) {
+    if (conditionHolds(game, rule.if, { attr: () => 0, skillRank: () => 0, maxHp: () => 1 })) return open(rule.opens);
+    if (!rule.check) return { said: rule.else ?? "Not this way, not yet." };
+  }
+  if (rule.check) {
+    const [skill, difficulty, audience] = rule.check.split(":");
+    startCheck(game, { skill, difficulty, audience: audience ?? null, reason: rule.reason ?? `Get through: ${exit.label}`, scene: exit.closed.look, source: "door" });
+    game.doorAsked = { place: game.location, to: exit.to, pass: rule.pass ?? "The way is open.", fail: rule.fail ?? "The way stays closed.", flag: rule.flag ?? null };
+    return { check: true };
+  }
+  if (rule.opens) return open(rule.opens);
+  return { said: rule.answer ?? "Asking gets you nowhere, for now. The story will have to take you through." };
+}
+
+// A door's check is done, and this says how it went, opening the door if it passed.
+export function answerDoor(game, success) {
+  const asked = game.doorAsked;
+  game.doorAsked = null;
+  if (!asked) return "Nothing more is written here for now.";
+  if (success && game.location === asked.place) {
+    game.opened ??= {};
+    game.opened[asked.place] ??= [];
+    if (!game.opened[asked.place].includes(asked.to)) game.opened[asked.place].push(asked.to);
+    if (asked.flag) (game.flags ??= {})[asked.flag] = true;
+  }
+  return success ? asked.pass : asked.fail;
+}
+
+// Without an AI, using a thing is what its file says it is: something to pick up, a written result, or nothing much.
+export function useThing(game, key) {
+  const walk = walkOf(game);
+  const level = levelOf(game, walk, mapFor(game.location));
+  const thing = level.things.find((one) => one.id === key);
+  if (!thing) throw new Error("That isn't here.");
+  if (thing.item && !game.inventory?.[thing.item]) {
+    addItem(game, thing.item);
+    return { said: `[ITEM] Received: ${ITEMS[thing.item]?.name ?? thing.item}. ${thing.used ?? ""}`.trim() };
+  }
+  if (thing.item) return { said: "You've already got one." };
+  const written = (!isCaptain(game) && thing.usedOther) || thing.used;
+  return { said: written ?? "Nothing more comes of it, for now." };
 }
 
 // Where the captain can get to from here without the story's help.
@@ -488,6 +546,11 @@ export function walkCommand(game, body) {
       }
       return answer([]);
     }
+    // Using a thing or asking at a door, without the AI. The page shows what came of it.
+    case "use":
+      return useThing(game, String(body.key ?? ""));
+    case "ask":
+      return askAtDoor(game, String(body.key ?? ""));
     default:
       throw new Error("Unknown order.");
   }
@@ -967,7 +1030,7 @@ export function talkView(game) {
   const home = Object.values(map?.levels ?? {}).flatMap((level) => level.homes).find((one) => one.id === talk.personId);
   const own = (!isCaptain(game) && home?.asksOther) || home?.asks || [];
   const said = new Set(talk.log.filter((line) => line.role === "player").map((line) => line.text));
-  // Without an AI, the things to say would have nobody to answer them. Written talks come later.
+  // Without an AI, the things to say come from the person's written conversation, or from stock lines, and the map's own asks have nobody to answer them.
   const written = game.mode === "written";
   return {
     written,

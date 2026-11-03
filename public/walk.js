@@ -535,7 +535,7 @@ function openThing(id) {
 // A closed door says why it's closed, straight away, and asking at it goes to the story.
 function openDoor(key) {
   const door = app.ui.game.walk.exits.find((exit) => exit.key === key);
-  walk.thing = door ? { name: door.label, look: door.look, use: door.use, door: true } : null;
+  walk.thing = door ? { key, name: door.label, look: door.look, use: door.use, door: true } : null;
   walk.looked = true;
   app.render();
 }
@@ -547,20 +547,42 @@ function closeWindow() {
   app.render();
 }
 
-function useThing() {
-  const { use } = walk.thing;
-  walk.thing = null;
-  walk.looked = false;
-  app.sendChat({ text: use });
+// With an AI game master, using something is the player's next line in the story. Without one, the
+// game answers from the thing's own file, and a door from its rule, right here in the window.
+async function useThing() {
+  const thing = walk.thing;
+  if (app.ui.game.mode !== "written") {
+    walk.thing = null;
+    walk.looked = false;
+    app.sendChat({ text: thing.use });
+    return;
+  }
+  try {
+    const reply = await api("/api/walk", { action: thing.door ? "ask" : "use", key: thing.door ? thing.key : thing.id });
+    app.ui.game = reply.game;
+    if (reply.check) {
+      // The door's check has its own window, and the answer comes with Continue the story.
+      walk.thing = null;
+      walk.looked = false;
+    } else {
+      walk.thing = { ...thing, look: reply.said, done: true, have: thing.have || /^\[ITEM\]/.test(reply.said ?? "") };
+      walk.looked = true;
+    }
+  } catch (err) {
+    walk.thing = { ...thing, look: err.message, done: true };
+    walk.looked = true;
+  }
+  app.render();
 }
 
 function thingWindow(thing) {
+  const written = app.ui.game.mode === "written";
   const choices = [
-    ...(thing.door ? [] : [["Look", "free", () => {
+    ...(thing.door || thing.done ? [] : [["Look", "free", () => {
       walk.looked = true;
       app.render();
     }]]),
-    [thing.door ? "Ask to go through" : "Use", thing.have ? "you're already carrying one" : "this goes to the story, as your next action", useThing, thing.have],
+    ...(thing.done ? [] : [[thing.door ? "Ask to go through" : "Use", thing.have ? "you're already carrying one" : written ? "free" : "this goes to the story, as your next action", useThing, thing.have]]),
     ["Close", "", closeWindow],
   ];
   return el("div", { class: "check-window walk-thing-window", "data-theme": "green", role: "dialog", "aria-label": thing.name, tabindex: "-1", id: "walk-window" },

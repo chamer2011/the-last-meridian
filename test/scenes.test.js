@@ -650,6 +650,189 @@ test("someone who isn't the captain gets the smaller story, and can still make i
   assert.match(JSON.stringify(game.journal), /Aduro/, "the journal has the story");
 });
 
+// ---- People and things, with no AI ------------------------------------------------------------
+
+const { openWrittenTalk, stockTalk, writtenTalkTurn } = await import("../src/talks.js");
+const { askAtDoor, useThing, walkCommand } = await import("../src/walk.js");
+
+// Says one thing in a talk the way the server does: the answer goes in the talk's log.
+function sayInTalk(game, text) {
+  const { talkHeard, talkSaid } = walkModule;
+  talkSaid(game, text);
+  const pieces = [];
+  writtenTalkTurn({ game, playerText: text, emit: (e) => { if (e.type !== "state") pieces.push(e); } });
+  for (const piece of pieces) talkHeard(game, piece.text, piece.type === "text" ? "narrator" : "notice");
+  return pieces;
+}
+const walkModule = await import("../src/walk.js");
+const personKey = (game, pattern) => publicState(game).walk.people.find((one) => pattern.test(one.name))?.key;
+function openTalkWith(game, pattern) {
+  const key = personKey(game, pattern);
+  assert.ok(key, `someone matching ${pattern} is in the room`);
+  talkCommand(game, { action: "open", person: key });
+  openWrittenTalk(game);
+  return talkView(game);
+}
+
+test("in a written game, someone with a conversation of their own speaks first, and what you say leads on", () => {
+  const game = newGame();
+  play(game, { event: "start" });
+  const view = openTalkWith(game, /Voss/);
+  assert.equal(view.written, true);
+  assert.match(view.lastReply, /@Commander Ilya Voss: "Captain\."/);
+  assert.match(view.lastReply, /> What's our real situation, Commander\?/);
+  assert.equal(game.talk.written.id, "talk_voss");
+  const said = sayInTalk(game, "what's our real situation");
+  assert.match(said[0].text, /Fuel for two weeks/);
+  assert.equal(game.talk.written.part, "situation");
+  assert.doesNotMatch(talkView(game).lastReply, /> What's our real situation/, "a question asked isn't offered again");
+  assert.match(talkView(game).lastReply, /> Is there anything I should be worried about\?/);
+  assert.throws(() => sayInTalk(game, "tell me a joke"), (err) => err instanceof StoryError && /isn't one of the things to say/.test(err.message));
+  sayInTalk(game, "That's all for now");
+  assert.equal(game.talk.written.part, "done");
+  assert.doesNotMatch(talkView(game).lastReply, />/, "nothing more to say, so only the free buttons are left");
+  talkCommand(game, { action: "close" });
+  assert.equal(game.talk, null);
+  assert.ok(game.transcript.some((entry) => /\[TALK\] You talked with Commander Ilya Voss/.test(entry.text)));
+});
+
+test("a conversation remembers what the story did, through flags, and what's said in it changes the game", () => {
+  const game = newGame();
+  play(game, { event: "start" });
+  game.flags.knows_about_the_list = true;
+  const view = openTalkWith(game, /Voss/);
+  assert.equal(game.talk.written.part, "start_list", "the rule took her straight to the list");
+  assert.match(view.lastReply, /Two more names on it since yesterday/);
+  const journalBefore = game.journal.length;
+  sayInTalk(game, "which ships are on the list");
+  assert.equal(game.journal.length, journalBefore + 1, "the part's effect wrote the journal");
+  talkCommand(game, { action: "close" });
+  // Someone who isn't the captain gets her other side.
+  const hand = newGame("engine_hand", 8);
+  play(hand, { event: "start" });
+  play(hand, { playerText: "get on with the day" });
+  walkCommand(hand, { action: "room", to: "bridge" });
+  openTalkWith(hand, /Voss/);
+  assert.equal(hand.talk.written.part, "other");
+  assert.match(talkView(hand).lastReply, /The captain's shorter/);
+});
+
+test("anyone without a conversation of their own gets stock lines, put together from who they are", () => {
+  const game = newGame();
+  play(game, { event: "start" });
+  walkCommand(game, { action: "room", to: "mess" });
+  const local = publicState(game).walk.people.find((one) => one.crowd || !/Halm|Brandt|Seven|Roe/.test(one.name));
+  assert.ok(local, "someone ordinary is in the mess");
+  talkCommand(game, { action: "open", person: local.key });
+  openWrittenTalk(game);
+  assert.equal(game.talk.written.id, null);
+  assert.ok(game.talk.written.stock, "the stock conversation was made when it opened");
+  const view = talkView(game);
+  assert.match(view.lastReply, new RegExp(`^@${local.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}: `));
+  assert.match(view.lastReply, /> What's it like, here\?/);
+  sayInTalk(game, "what's it like here");
+  assert.match(talkView(game).lastReply, /One hall, four sittings/, "the room's own description, as what they say");
+  assert.doesNotMatch(talkView(game).lastReply, /> What's it like, here\?/);
+  const stock = stockTalk(game, game.talk);
+  assert.equal(stock.start, "start");
+  talkCommand(game, { action: "close" });
+});
+
+test("a conversation can't open a check or a fight, and the checker says so", () => {
+  const { scene } = parseSceneText("== start\n@Someone: \"Hello.\"\n> [persuasion:hard] Push -> a | b\n== a\nFIGHT scrap_rat: Rats.\n  won -> start\n  lost -> start\n== b\nFine.\nEND\n", "talk_test");
+  const problems = sceneProblems(scene, "talk_test", { talk: true });
+  assert.ok(problems.some((one) => /choice 1 .* has a check, and a conversation can't open one/.test(one)), problems.join(" / "));
+  assert.ok(problems.some((one) => /part a .* has a fight, and a conversation can't open one/.test(one)), problems.join(" / "));
+  assert.deepEqual(sceneProblems(scene, "scene_test"), [], "the same file is fine as a scene");
+});
+
+test("using a thing with no AI: something to pick up is picked up, and a thing with a written result gives it", () => {
+  const game = newGame();
+  play(game, { event: "start" });
+  const chip = useThing(game, "bridge:d");
+  assert.match(chip.said, /^\[ITEM\] Received: .*Data Chip/i);
+  assert.equal(game.inventory.data_chip, 1);
+  assert.match(useThing(game, "bridge:d").said, /already got one/);
+  assert.match(useThing(game, "bridge:c").said, /The chair takes your weight/);
+  assert.throws(() => useThing(game, "bridge:zzz"), /isn't here/);
+  // Over the walk command, which is what the page calls.
+  const reply = walkCommand(game, { action: "use", key: "bridge:a" });
+  assert.match(reply.said, /Slow Harriet/);
+  // Somewhere with nothing written yet, there's still an answer.
+  walkCommand(game, { action: "room", to: "aft" });
+  const aft = publicState(game).walk.things.find((thing) => /Coolant/.test(thing.name));
+  assert.match(useThing(game, aft.id).said, /Nothing more comes of it/);
+});
+
+test("asking at a closed door with no AI: a door that opens when asked, one that needs a flag, and one that opens a check", () => {
+  // The picket line at Cinder Reach opens to anyone who crosses it, and it's remembered.
+  const miner = newGame("miner", 11);
+  play(miner, { event: "start" });
+  play(miner, { playerText: "get on with the day" });
+  const picket = publicState(miner).walk.exits.find((exit) => exit.closed);
+  assert.ok(picket, "the picket line is a closed way out of the Row");
+  const crossed = askAtDoor(miner, picket.key);
+  assert.match(crossed.said, /They watch you cross/);
+  assert.equal(crossed.opened, true);
+  assert.equal(miner.flags.crossed_the_picket, true);
+  assert.ok(!publicState(miner).walk.exits.find((exit) => exit.key === picket.key).closed, "the way is open now");
+
+  // The Velvet Deck wants an invitation, and takes money otherwise, through a check.
+  const dealer = newGame("dealer", 7);
+  play(dealer, { event: "start" });
+  play(dealer, { playerText: "get on with the day" });
+  const lift = publicState(dealer).walk.exits.find((exit) => exit.closed);
+  assert.ok(lift);
+  const asked = askAtDoor(dealer, lift.key);
+  assert.equal(asked.check, true);
+  assert.ok(dealer.check, "the check's window is open");
+  assert.equal(dealer.check.source, "door");
+  assert.equal(dealer.check.skill, "commerce");
+  assert.deepEqual(Object.keys(dealer.doorAsked).sort(), ["fail", "flag", "pass", "place", "to"]);
+  settleCheck(dealer, true);
+  const pieces = play(dealer, { event: "continue" });
+  assert.match(pieces[0].text, /the grille does/);
+  assert.ok(dealer.opened.wheel?.includes("velvet"), "the door is open");
+  assert.equal(dealer.doorAsked, null);
+  // The same door, with the invitation in hand, opens without a check.
+  const invited = newGame("dealer", 9);
+  play(invited, { event: "start" });
+  play(invited, { playerText: "get on with the day" });
+  invited.flags.velvet_invitation = true;
+  const welcome = askAtDoor(invited, publicState(invited).walk.exits.find((exit) => exit.closed).key);
+  assert.equal(welcome.opened, true);
+  assert.match(welcome.said, /has your invitation/);
+  // Asking at a door that's already open is refused.
+  assert.throws(() => askAtDoor(miner, picket.key), /isn't closed/);
+});
+
+test("every closed door in the world has a written rule, and every rule is sound", async () => {
+  const { WORLD_MAPS } = await import("../src/world.js");
+  let doors = 0;
+  for (const [place, map] of Object.entries(WORLD_MAPS)) {
+    for (const [levelId, level] of Object.entries(map.levels)) {
+      for (const [key, exit] of Object.entries(level.exits ?? {})) {
+        if (!exit.closed) continue;
+        doors += 1;
+        const rule = exit.closed.ask;
+        assert.ok(rule, `${place}:${levelId}:${key} has no rule`);
+        const kinds = ["if", "check", "opens", "answer"].filter((field) => rule[field]);
+        assert.ok(kinds.length, `${place}:${levelId}:${key} has a rule with nothing in it`);
+        if (rule.if) {
+          assert.deepEqual(parseCondition(rule.if).problems, [], `${place}:${levelId}:${key}: ${rule.if}`);
+          assert.ok(rule.opens, `${place}:${levelId}:${key} needs opens`);
+        }
+        if (rule.check) {
+          const [skill, difficulty] = rule.check.split(":");
+          assert.ok(SKILLS[skill] && difficulty, `${place}:${levelId}:${key}: ${rule.check}`);
+          assert.ok(rule.pass && rule.fail, `${place}:${levelId}:${key} needs pass and fail`);
+        }
+      }
+    }
+  }
+  assert.equal(doors, 15);
+});
+
 // ---- Over the real server, with no key and no AI anywhere -------------------------------------
 
 const serverData = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-scenes-server-"));
@@ -767,7 +950,7 @@ test("over the real server: with no key, a new game gets the written story, and 
   assert.equal(aiCalls, 0, "nothing went anywhere near the AI");
 });
 
-test("over the real server: a talk in a written game has nothing to type, and saying something is refused", async () => {
+test("over the real server: a talk in a written game is the person's own written words, with nothing to type and no AI", async () => {
   const current = (await state()).game;
   const voss = current.walk.people.find((one) => /Voss/.test(one.name));
   assert.ok(voss);
@@ -775,10 +958,26 @@ test("over the real server: a talk in a written game has nothing to type, and sa
   assert.equal(opened.status, 200, JSON.stringify(opened));
   assert.equal(opened.game.talk.written, true);
   assert.deepEqual(opened.game.talk.asks, []);
-  const said = await post("/api/talk", { action: "say", text: "Hello" });
-  assert.equal(said.status, 400);
-  assert.match(said.error, /Written conversations aren't in yet/);
+  assert.match(opened.game.talk.lastReply, /@Commander Ilya Voss/);
+  const said = await post("/api/talk", { action: "say", text: "What's our real situation, Commander?" });
+  assert.equal(said.status, 200);
+  assert.equal(said.error, null, said.error);
+  assert.match(said.text, /Fuel for two weeks/);
+  assert.equal(said.done.talk.log.at(-1).role, "narrator");
+  const wrong = await post("/api/talk", { action: "say", text: "Dance for me" });
+  assert.match(wrong.error, /isn't one of the things to say/);
   await post("/api/talk", { action: "close" });
+  assert.equal(aiCalls, 0);
+});
+
+test("over the real server: using a thing and asking at a door come back as what happened, with no AI", async () => {
+  await post("/api/talk", { action: "close" });
+  const chair = (await state()).game.walk.things.find((thing) => /chair/.test(thing.name));
+  const sat = await post("/api/walk", { action: "use", key: chair.id });
+  assert.equal(sat.status, 200, JSON.stringify(sat));
+  assert.match(sat.said, /The chair takes your weight/);
+  assert.equal(sat.check, false);
+  assert.ok(sat.game.transcript.some((entry) => entry.role === "notice" && /chair takes your weight/.test(entry.text)), "the story keeps a line about it");
   assert.equal(aiCalls, 0);
 });
 

@@ -186,6 +186,53 @@ guarding, cause, belief, grudge or honor. The first line of text in a part with 
 needed: the lead_in is what the player reads as it starts.
 
 
+CONVERSATIONS
+-------------
+
+A file called talk_<id>.txt is what that person says when the player walks up to them, with the id
+from world/characters: talk_voss.txt, talk_marrow.txt. It's written like a scene, and plays in the
+talk window. The person speaks first, from the first part, and each choice is a thing the player can
+say. A part with no choices is where the conversation runs out, and the player says goodbye.
+
+    == start
+    ? flag knows_about_the_list -> start_list
+    @Commander Ilya Voss: "Captain. Go on."
+    > What's our real situation? -> situation ? not seen situation
+    > That's all for now -> done
+
+    == situation
+    @Commander Ilya Voss: "Fuel for two weeks."
+    > That's all for now -> done
+
+    == done
+    @Commander Ilya Voss: "Captain."
+
+In a conversation, "seen" means said in this conversation, so ? not seen situation hides a
+question once it's been asked. Flags set anywhere last, so a conversation can know what the
+story did. Effects (* lines) work, except time, travel and set_scene, because the clock stops
+in a talk. A conversation can't open a CHECK or a FIGHT: put those in a scene.
+
+Use ? not captain -> other at the start when the person would speak differently to someone who
+isn't the captain. Anyone without a file of their own gets stock lines, made from who they are and
+what they're doing, from the templates at the end of world/rooms.json.
+
+
+THINGS AND DOORS
+----------------
+
+These are in the map files, world/maps/<place>.json, not here. A thing's used is what happens
+when the player uses it without an AI (usedOther for someone who isn't the captain), and a thing
+with an item is picked up. A closed door's ask is the rule when the player asks at it:
+
+    "ask": { "check": "persuasion:moderate", "reason": "Talk your way past", "pass": "...", "fail": "..." }
+    "ask": { "if": "flag quill_invited", "opens": "...", "else": "..." }
+    "ask": { "opens": "...", "flag": "crossed_the_picket" }
+    "ask": { "answer": "Not yet." }
+
+if can be any condition from above. A door with if and check tries the condition first, then
+the check. flag is remembered when the door opens.
+
+
 GAME MESSAGES
 -------------
 

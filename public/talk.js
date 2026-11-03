@@ -238,7 +238,7 @@ export function talkNode() {
       talk.message && el("div", { class: "notice-inline fail talk-message" }, talk.message),
       el("div", { class: "check-controls" }, optionsNode(view), !view.written && inputNode()),
       el("footer", { class: "check-taskbar" },
-        el("span", { class: "check-hint" }, view.written ? "Written conversations aren't in yet. For now, people pass on what they've heard." : "Each thing you say is one call to the AI. Free ones are marked."),
+        el("span", { class: "check-hint" }, view.written ? "A written conversation. Nothing here uses the AI, so it's all free." : "Each thing you say is one call to the AI. Free ones are marked."),
         el("span", { class: "check-spacer" }),
         el("span", { class: "check-meter" }, `THIS TALK ${money(talk.spent)}`))));
 }
