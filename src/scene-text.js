@@ -390,6 +390,12 @@ export function parseSceneText(text, name = "the scene") {
       part.note = trimmed.replace(/^NOTE:\s*/i, "");
       return;
     }
+    // A note for the AI game master alone, when there is one, about what the people here would and wouldn't do. The player never sees it.
+    if (/^AI:/i.test(trimmed)) {
+      flush();
+      part.ai = [part.ai, trimmed.replace(/^AI:\s*/i, "")].filter(Boolean).join(" ");
+      return;
+    }
     if (/^END\b/i.test(trimmed)) {
       flush();
       part.end = true;

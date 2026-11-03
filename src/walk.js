@@ -797,12 +797,14 @@ const thingView = (game, thing) => ({
   x: thing.x,
   y: thing.y,
   have: Boolean(thing.item && game.inventory?.[thing.item]),
+  // Something to pick up or a written result answers from the file, even with an AI, so the page knows it's free.
+  written: Boolean(thing.item || thing.used || (!isCaptain(game) && thing.usedOther)),
 });
 
 function exitView(game, exit) {
   const { key, x, y, label, glyph, side } = exit;
   if (!isClosed(game, exit)) return { key, x, y, label, glyph, side };
-  return { key, x, y, label, glyph: "x", side, closed: true, look: exit.closed.look, use: exit.closed.use };
+  return { key, x, y, label, glyph: "x", side, closed: true, look: exit.closed.look, use: exit.closed.use, written: Boolean(exit.closed.ask) };
 }
 
 function overviewView(game, walk, map) {
@@ -1011,14 +1013,17 @@ export function talkLineOver(game) {
   if (game.combat || game.check || game.fleet?.raid) closeTalk(game);
 }
 
-// What runTurn needs for one line of a talk.
-export function talkBrief(game) {
+// What runTurn needs for one line of a talk. In a written conversation, the AI fits the line to the written ones instead of answering freely.
+export function talkBrief(game, { written = false } = {}) {
   const talk = needTalk(game);
   const free = talk.unheard.splice(0);
   const told = free.length ? ` Since your last line, they also passed on what people are saying: ${free.map((rumor) => `"${rumor}"`).join(" ")}` : "";
   const soFar = talkRecord(talk).map((line) => (line.role === "player" ? `${isCaptain(game) ? "Captain" : game.name}: ${line.text}` : line.text)).join(" ");
   // The reminder is on every line, because a long story sets a habit of writing long scenes.
-  return { name: talk.name, lastReply: talk.lastReply, tag: `<talk with="${talk.name}" at="${talk.where}"${talk.doing ? ` doing="${talk.doing}"` : ""}>Answer only as them, in one to three sentences, then 2 or 3 short > choices.${told}</talk>`, soFar };
+  const asked = written
+    ? "This conversation is written in advance: fit what the player said to one of the numbered lines in the written_scene block with follow_scene, or answer only as them in one to three sentences with 0, and write no > choices."
+    : "Answer only as them, in one to three sentences, then 2 or 3 short > choices.";
+  return { name: talk.name, lastReply: talk.lastReply, tag: `<talk with="${talk.name}" at="${talk.where}"${talk.doing ? ` doing="${talk.doing}"` : ""}>${asked}${told}</talk>`, soFar };
 }
 
 export function talkView(game) {
@@ -1030,10 +1035,12 @@ export function talkView(game) {
   const home = Object.values(map?.levels ?? {}).flatMap((level) => level.homes).find((one) => one.id === talk.personId);
   const own = (!isCaptain(game) && home?.asksOther) || home?.asks || [];
   const said = new Set(talk.log.filter((line) => line.role === "player").map((line) => line.text));
-  // Without an AI, the things to say come from the person's written conversation, or from stock lines, and the map's own asks have nobody to answer them.
-  const written = game.mode === "written";
+  // In a written conversation, the things to say are its own, and the map's asks have nobody to answer them: without an AI that's
+  // every talk, and with one it's the people with a conversation of their own. typed says whether there's a line to type on.
+  const written = game.mode === "written" || Boolean(talk.written);
   return {
     written,
+    typed: game.mode !== "written",
     id: talk.id,
     name: talk.name,
     short: talk.short,

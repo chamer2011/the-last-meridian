@@ -79,17 +79,21 @@ function readScene(file, name) {
   return { scene: Object.keys(scene.parts).length ? scene : null, problems };
 }
 
-// How the story opens for this life: its own scene if one's written, or the one that fits anyone.
+// How the story opens for this life: its own scene if one's written, or the one that fits anyone. With an AI
+// game master, a life without an opening of its own gets the AI's instead, so only its own counts there.
 export function openingSceneId(game, scenes = loadScenes().scenes) {
   const own = `opening_${game.role?.id ?? "captain"}`;
   if (scenes[own]) return own;
-  return scenes.opening ? "opening" : null;
+  return scenes.opening && game.mode !== "ai" ? "opening" : null;
 }
 
 // ---- Reading a part ----------------------------------------------------------------
 
 // How a choice reads in the story: its check, its other tags, then its words.
 export const choiceLine = (choice) => ["> ", choice.check ? `[${choice.check}] ` : "", ...(choice.tags ?? []).map((tag) => `[${tag}] `), choice.say].join("");
+
+// Text without its > choice lines, for when the choices are given another way, or shouldn't be there at all.
+export const withoutChoices = (text) => String(text ?? "").split("\n").filter((line) => !line.trim().startsWith(">")).join("\n").replace(/\n{3,}/g, "\n\n").trim();
 
 // The choices this player gets to see: the ones whose conditions hold.
 export const openChoices = (part, game, helpers = HELPERS) => (part.choices ?? []).filter((choice) => !choice.if || conditionHolds(game, choice.if, helpers));
@@ -108,6 +112,10 @@ export const ruleThatHolds = (part, game, helpers = HELPERS) => (part.when ?? []
 
 const normalize = (text) => String(text ?? "").toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
 
+// Words that say nothing about which choice is meant. With an AI, a wrong match here would play a written
+// choice the player didn't mean, for free, instead of asking the AI, so these never count as a match.
+const FILLER = new Set("the a an and or but of to in on at for with from by as is are was were be been it its this that these those you your yours him his her hers them their they she he we our us me my i do does did what which who whom how why when where not no yes up out off down into about all any some one there here then than so if can will would could should let have has had am just now too very own same more most other again once".split(" "));
+
 // Typing is forgiving: the whole choice, the start of it, or most of its words, with typos in the rest.
 export function matchChoice(text, choices) {
   const wanted = normalize(text);
@@ -116,13 +124,18 @@ export function matchChoice(text, choices) {
   if (exact) return exact;
   const starts = choices.filter((choice) => normalize(choice.say).startsWith(wanted));
   if (starts.length === 1) return starts[0];
-  const words = wanted.split(" ").filter((word) => word.length > 2);
-  if (!words.length) return null;
+  const all = wanted.split(" ").filter((word) => word.length > 2);
+  const words = all.filter((word) => !FILLER.has(word));
+  // Most of the real words have to be there. A line of nothing but filler, like "go with her now", still means
+  // something, so it counts when every one of its words is there.
+  const looked = words.length ? words : all;
+  const needed = words.length ? Math.max(1, Math.ceil(words.length * 0.6)) : all.length;
+  if (!looked.length) return null;
   const scored = choices.map((choice) => {
-    const have = normalize(choice.say).split(" ");
-    const hits = words.filter((word) => have.some((one) => one === word || (word.length >= 4 && (one.startsWith(word) || word.startsWith(one) || sameButOne(one, word))))).length;
+    const have = normalize(choice.say).split(" ").filter((one) => one.length > 2 && (!words.length || !FILLER.has(one)));
+    const hits = looked.filter((word) => have.some((one) => one === word || (word.length >= 4 && (one.startsWith(word) || word.startsWith(one) || sameButOne(one, word))))).length;
     return { choice, hits };
-  }).filter((one) => one.hits >= Math.max(1, Math.ceil(words.length * 0.6))).sort((a, b) => b.hits - a.hits);
+  }).filter((one) => one.hits >= needed).sort((a, b) => b.hits - a.hits);
   if (!scored.length || (scored.length > 1 && scored[0].hits === scored[1].hits)) return null;
   return scored[0].choice;
 }
@@ -311,6 +324,52 @@ export function writtenTurn({ game, playerText, event, threadId, emit, log, scen
   }
   log("player", choice.say);
   enterPart(game, scene, choice.to, context);
+}
+
+// ---- With an AI game master on top -------------------------------------------
+
+// Who answers a turn of the story in a game with an AI game master: the written story, when it has this moment
+// ("written"); the AI by itself ("ai"); or the AI fitting the player's own words to the written part they're in
+// ("fit"). Without an AI it's always the written story. A file that can't be read goes to the written story too,
+// so that it says what's wrong instead of the AI quietly taking over.
+export function storyTurnKind(game, { playerText, event, threadId }, loaded = loadScenes()) {
+  if (game.mode !== "ai") return "written";
+  const { scenes, broken } = loaded;
+  if (event === "start") return broken[`opening_${game.role?.id ?? "captain"}`] || openingSceneId(game, scenes) ? "written" : "ai";
+  if (event === "continue") {
+    if (game.lastCheck && !game.lastCheck.used && game.lastCheck.source === "door" && game.doorAsked) return "written";
+    if (game.arrived && scenes[`arrive_${game.arrived}`] && !game.scene) return "written";
+    return game.scene ? "written" : "ai";
+  }
+  if (threadId) return scenes[`thread_${threadId}`] || broken[`thread_${threadId}`] ? "written" : "ai";
+  if (!game.scene) return "ai";
+  const part = sceneFor(game, scenes)?.parts?.[game.scene.part];
+  if (!part) return "written";
+  return matchChoice(playerText, openChoices(part, game)) ? "written" : "fit";
+}
+
+// What the AI is told about the part the player is in, when they've typed their own words there: what they've just
+// read, without its choice lines, the writer's notes for the AI, and the choices on offer, which it answers by number.
+// follow_scene fills in followed.
+export function sceneBrief(game, scenes = loadScenes().scenes) {
+  const scene = sceneFor(game, scenes);
+  const part = scene?.parts?.[game.scene?.part];
+  if (!part) return null;
+  return { title: scene.title ?? game.scene.id, talk: false, text: withoutChoices(partText(part, game)), notes: part.ai ?? null, choices: openChoices(part, game), followed: undefined };
+}
+
+// The AI has fitted the player's words to one of the written choices, and the story goes on as if it had been clicked.
+export function followChoice(game, choice, { emit }, scenes = loadScenes().scenes) {
+  const scene = sceneFor(game, scenes);
+  if (!scene) throw new StoryError(`The scene ${game.scene?.id} has gone from world\\scenes, so the story can't go on from here.`);
+  const part = partOf(scene, game.scene.part, game.scene.id);
+  if (choice.check) {
+    // The player's own words are in the story by now, so the choice's tags are read from the part itself.
+    if (!startChoiceCheck(game, choice.say, [{ role: "narrator", text: partText(part, game) }])) throw new StoryError("That choice isn't on offer any more.");
+    emit({ type: "state" });
+    return;
+  }
+  enterPart(game, scene, choice.to, { emit, turn: newTurnLimits() });
 }
 
 // ---- Checking a scene --------------------------------------------------------

@@ -218,7 +218,8 @@ in a talk. A conversation can't open a CHECK or a FIGHT: put those in a scene.
 
 Use ? not captain -> other at the start when the person would speak differently to someone who
 isn't the captain. Anyone without a file of their own gets stock lines, made from who they are and
-what they're doing, from the templates at the end of world/rooms.json.
+what they're doing, from the templates at the end of world/rooms.json. With an AI game master, the
+AI plays them instead, and a person with a file still speaks from it.
 
 
 THINGS AND DOORS
@@ -243,9 +244,28 @@ GAME MESSAGES
     NOTE: [STORY] A message shown with the part, in the colored lines, not in the story's own voice.
 
 
+NOTES FOR THE AI
+----------------
+
+    AI: Sable won't go below forty, and a threat makes her stop talking.
+
+With an AI game master, the written parts still play as written, and clicking a choice is free.
+But the player can also type their own words, and then the AI reads this part, these notes and
+the choices, and either takes the choice the words come to, or answers in a sentence or two
+without moving the story on. An AI: line is for the AI alone: the player never sees it. Use it
+for what the people here would and wouldn't do, what they know, and what can't happen here, so
+the AI's answers stay true to the part. Several AI: lines in one part are read together. Without
+an AI the line does nothing. A conversation (talk_<id>.txt) can have them too.
+
+
 WHAT THE PLAYER CAN TYPE
 ------------------------
 
 Without an AI, the player picks from the choices, or types part of one. Typing is forgiving:
 "say nothing" is enough for "Say nothing, and listen to it". Anything else is refused in plain
 words, and nothing changes. So every part the player can stay in needs choices.
+
+With an AI game master, anything else they type goes to the AI, which fits it to one of the
+choices or answers it in a few words, and the written part still decides what happens next: the
+AI can't change the game from a written part any other way. So the choices still have to cover
+every way through, and an AI: line can say what the AI should and shouldn't allow in between.

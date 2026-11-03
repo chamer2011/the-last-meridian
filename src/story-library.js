@@ -69,14 +69,14 @@ function threadOpen(id, thread, game) {
   return fitsHere(thread, game);
 }
 
-// A few of the stories that could start here, with a mix of kinds. Main story threads come first, and in a
-// game with the written story, the stories that have been written out come before all of those.
+// A few of the stories that could start here, with a mix of kinds. Main story threads come first, and the
+// stories that have been written out come before all of those, in every game: with an AI they're the free ones.
 export function leadsHere(game) {
   const open = Object.entries(WORLD_THREADS).filter(([id, thread]) => threadOpen(id, thread, game));
   const shuffled = seededShuffle(open, cycleSeed(game, "leads"));
   shuffled.sort(([, a], [, b]) => Number(b.kind === "main") - Number(a.kind === "main"));
   const written = writtenThreadIds();
-  if (game.mode === "written") shuffled.sort(([a], [b]) => Number(written.has(b)) - Number(written.has(a)));
+  shuffled.sort(([a], [b]) => Number(written.has(b)) - Number(written.has(a)));
   const chosen = [];
   const kinds = new Set();
   for (const entry of shuffled) {

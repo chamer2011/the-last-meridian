@@ -6,7 +6,7 @@
 
 import { findCharacter } from "./campaign.js";
 import { toOutsider } from "./role.js";
-import { HELPERS, StoryError, loadScenes, matchChoice, openChoices, partText, ruleThatHolds } from "./scenes.js";
+import { HELPERS, StoryError, loadScenes, matchChoice, openChoices, partText, ruleThatHolds, withoutChoices } from "./scenes.js";
 import { newTurnLimits, runTool } from "./tools.js";
 import { seedFrom, talkHeard, walkView } from "./walk.js";
 import { ROOM_TALK } from "./world.js";
@@ -83,13 +83,16 @@ function enterTalkPart(game, talk, scene, id, emit, hops = 0) {
   emit({ type: "state" });
 }
 
-// The talk window has just opened. The person speaks first, in their written words or in stock ones.
-export function openWrittenTalk(game) {
+// The talk window has just opened. The person speaks first, in their written words or in stock ones. With an AI game
+// master (filesOnly), only someone with a conversation of their own speaks from a file, and the AI plays everyone
+// else, so this says whether anyone spoke.
+export function openWrittenTalk(game, { filesOnly = false } = {}) {
   const talk = game.talk;
-  if (!talk) return;
+  if (!talk) return false;
   const id = talk.personId ? `talk_${talk.personId}` : null;
   const { scenes, broken } = loadScenes();
   const own = id ? scenes[id] ?? null : null;
+  if (filesOnly && !own) return false;
   talk.written = { id: own ? id : null, part: null, seen: [], stock: own ? null : stockTalk(game, talk) };
   if (id && broken[id]) talkHeard(game, `[STORY] The conversation file ${id} can't be read: ${broken[id]}. Stock lines are used instead.`, "notice");
   const emit = (e) => {
@@ -97,6 +100,7 @@ export function openWrittenTalk(game) {
     if (e.type === "notice") talkHeard(game, e.text, "notice");
   };
   enterTalkPart(game, talk, own ?? talk.written.stock, (own ?? talk.written.stock).start, emit);
+  return true;
 }
 
 // One thing said in a written conversation. emit() streams the answer, the way an AI turn would.
@@ -110,4 +114,36 @@ export function writtenTalkTurn({ game, playerText, emit }) {
   if (!choice) throw new StoryError("That isn't one of the things to say here. Pick one from the list.");
   if (choice.check) throw new StoryError("A conversation can't open a check. That's a mistake in the file: run npm run check-story.");
   enterTalkPart(game, talk, scene, choice.to, emit);
+}
+
+// ---- With an AI game master on top --------------------------------------------------
+
+// Who answers a line in a talk with an AI game master: the written conversation, when the line is one of its own
+// ("written"); the AI fitting the player's words to it ("fit"); or the AI by itself, for anyone without a conversation
+// of their own ("ai"). Without an AI it's always written.
+export function talkTurnKind(game, playerText) {
+  if (game.mode !== "ai") return "written";
+  const talk = game.talk;
+  if (!talk?.written) return "ai";
+  const part = sceneOf(game, talk).parts[talk.written.part];
+  if (!part) return "written";
+  return matchChoice(playerText, openChoices(part, game, helpersFor(talk))) ? "written" : "fit";
+}
+
+// What the AI is told about a written conversation when the player types their own words in it: what the person
+// has just said, the writer's notes for the AI, and the lines the player could say, which it answers by number.
+export function talkSceneBrief(game) {
+  const talk = game.talk;
+  if (!talk?.written) return null;
+  const scene = sceneOf(game, talk);
+  const part = scene.parts[talk.written.part];
+  if (!part) return null;
+  const helpers = helpersFor(talk);
+  return { title: scene.title ?? `Talking with ${talk.name}`, talk: true, text: withoutChoices(partText(part, game, helpers)), notes: part.ai ?? null, choices: openChoices(part, game, helpers), followed: undefined };
+}
+
+// The AI has fitted what the player said to one of the written lines, and the person answers it as written.
+export function followTalkChoice(game, choice, emit) {
+  const talk = game.talk;
+  enterTalkPart(game, talk, sceneOf(game, talk), choice.to, emit);
 }

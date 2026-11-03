@@ -3,6 +3,7 @@
 start: bridge
 
 == bridge
+AI: Voss gives facts, not comfort, and she won't say what she'd do with the chair unless she's asked straight. Sorel is frightened of the signal and hides it badly. Nobody on the bridge will talk about the dead captain yet, and nobody has orders to give the player but the player.
 The bridge is cold enough to see your breath, and nobody has said the word captain yet. The last one is three hours dead, and the chair still has his thumb worn into the armrest.
 
 Forty-one green dots sit on the plot table. One of them flickers.

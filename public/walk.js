@@ -547,11 +547,11 @@ function closeWindow() {
   app.render();
 }
 
-// With an AI game master, using something is the player's next line in the story. Without one, the
-// game answers from the thing's own file, and a door from its rule, right here in the window.
+// A thing with a written result, or a door with a rule, answers from its file right here in the window, for free.
+// With an AI game master, anything else is the player's next line in the story.
 async function useThing() {
   const thing = walk.thing;
-  if (app.ui.game.mode !== "written") {
+  if (app.ui.game.mode !== "written" && !thing.written) {
     walk.thing = null;
     walk.looked = false;
     app.sendChat({ text: thing.use });
@@ -576,7 +576,7 @@ async function useThing() {
 }
 
 function thingWindow(thing) {
-  const written = app.ui.game.mode === "written";
+  const written = app.ui.game.mode === "written" || Boolean(thing.written);
   const choices = [
     ...(thing.door || thing.done ? [] : [["Look", "free", () => {
       walk.looked = true;

@@ -325,9 +325,10 @@ function leadsMenu() {
     columns(
       section("Leads here",
         here.length
-          ? here.map((lead) => card(lead, el("div", {}, g.mode === "written" && !lead.written
+          ? here.map((lead) => card(lead, el("div", { class: "row" }, g.mode === "written" && !lead.written
             ? el("span", { class: "muted small", title: "This story hasn't been written out yet. It plays out by itself for now, and an AI game master could run it from its notes." }, "Not written yet")
-            : el("button", { disabled: busy, onclick: () => followLead(lead) }, "Look into this"))))
+            : el("button", { disabled: busy, onclick: () => followLead(lead) }, "Look into this"),
+          lead.written && g.mode !== "written" && el("span", { class: "muted small", title: "This story is written out, so it plays from its file for free. Your own words in it go to the AI." }, "written, so it's free"))))
           : empty("Nothing new here at the moment. Try somewhere else, or come back later.")),
       section("What people are saying",
         rumors.length
@@ -591,7 +592,7 @@ function settingsMenu() {
           "aria-pressed": String(s.storyApplies === id),
           onclick: runAction(async () => { ui.settings = await api("/api/settings", { story: id }); }),
         }, label))),
-      muted("Written story: the story is written in advance, so it's free and needs no AI. For now that's the captain's opening and one whole story aboard the Meridian, from the Leads menu, and the rest is being written. AI game master: an AI writes the story as you go, and answers whatever you type or say, which needs a key or a local model from below."),
+      muted("Written story: the story is written in advance, so it's free and needs no AI. For now that's the openings for three lives, the arrival at Haven, two whole stories from the Leads menu and the crew's conversations, and the rest is being written. AI game master: the written parts still play as written, for free, and the AI reads whatever you type or say in them and fits it to the story, plays everyone and everything that isn't written, and runs the stories that haven't been written out. It needs a key or a local model from below."),
       muted(`${s.story === null ? `Until you choose, it's the ${s.storyApplies === "written" ? "written story, because no AI is set up" : "AI game master, because an AI is set up"}. ` : ""}It applies to new games. This game has ${g.mode === "written" ? "the written story" : "an AI game master"}, and that can't change once a game has started.`)),
     section("AI model",
       s.claudeModels.map((m) => choice("claude", m.id, m.name, m.note)),

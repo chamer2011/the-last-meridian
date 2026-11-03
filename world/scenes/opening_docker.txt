@@ -2,6 +2,7 @@
 // How the story opens for a dock hand at Haven Station.
 
 == shift
+AI: Mott won't say what's in the crate, and he gets short with anyone who keeps asking. The crate doesn't open: it's sealed, cold and heavy, and leaving it alone is a choice the story already has.
 The Manifest Docks at the start of a shift: forty berths under lights that were meant to be temporary, a queue of people who are already angry, and every speaker on the station arguing about a signal. Six seconds, then it starts again, under the noodle hatch and the fee schedules and Dockmaster Jessup's voice from the glass box over the dock.
 
 @Dockmaster Mott Jessup: "The office says berth nineteen's closed till the fee's paid. Mott says, what've you brought him?" He's eating something somebody gave him. "Clipboard. You. Berth eleven. Count what's in it and sign for it."

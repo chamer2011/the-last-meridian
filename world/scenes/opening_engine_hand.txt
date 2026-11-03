@@ -2,6 +2,7 @@
 // How the story opens for an engine-room hand on the Meridian.
 
 == shift
+AI: Marrow swears, answers questions about the work and nothing else, and won't be drawn on the signal: the bridge is the bridge's business. The line can't be fixed by talking about it.
 The coolant line went at the start of the watch, which is when they go, and Chief Marrow has been swearing at it for an hour in a way that's nearly a language. You're the one with your arms in it. That's the job.
 
 @Chief Engineer Dunn Marrow: "Hold that. No, hold it like you mean it, she can tell. Flaming thing's weeping like a widow." He wipes his face with the back of a hand that's missing two fingers. "Twenty years I've nursed worse than this, and this is the one that'll kill me. Mark it."

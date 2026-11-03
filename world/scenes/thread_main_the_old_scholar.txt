@@ -5,6 +5,7 @@
 start: start
 
 == start
+AI: Sable won't go below forty credits and won't be charmed or hurried. A threat makes her stop talking and walk off. She knows where Tharel lives and nothing of what he knows. The Ilari woman at the end of the bar is Sister Yara, and Sable won't point her out.
 ? life engine_hand -> hand_start
 ? life docker -> dock_start
 ? not captain -> other_start
@@ -161,6 +162,7 @@ You and Sorel pull at the frame headers for an hour and get noise, which Sorel s
 > Take it to Tharel -> back_to_warm_room
 
 == back_to_warm_room
+AI: The men on the stair won't talk. They're Mother Quill's, they want Tharel and not a fight with the fleet, and they'll come up the stair unless they're stopped. Tharel won't leave his frame without his coat, which takes him a minute.
 * raw set_scene {"area": "Tharel's Warm Room", "people": ["Oss Tharel"]}
 
 The Warm Room again, hotter than before, and Tharel with the chip in his pale hands, turning it over as if it were the Codex itself.

@@ -3,6 +3,7 @@
 // first, from start. "seen" means said in this conversation. Flags remember things across all of them.
 
 == start
+AI: Voss gives facts, not comfort. She doesn't gossip about the crew, she won't speak of her list unless the player already knows of it, and she won't say what she'd do with the chair unless asked straight. Short answers, and she keeps working at the plot while she talks.
 ? not captain -> other
 ? flag knows_about_the_list -> start_list
 

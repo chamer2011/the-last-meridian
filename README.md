@@ -229,7 +229,7 @@ Under **Reading** in the Settings menu:
 
 **The talk window** shows the person, how they feel about you, what's been said, and things you can click to say. You can type your own words instead if you'd like.
 
-- **What it costs:** each thing you say is one call to the AI, and the window shows what the talk has cost so far. Opening a talk, closing it, and **Ask what they've heard** are free.
+- **What it costs:** each thing you say is one call to the AI, and the window shows what the talk has cost so far. Opening a talk, closing it, and **Ask what they've heard** are free, and so are the written lines of someone with a written conversation, which are marked.
 - **Time:** the clock stops during a talk, so talking can never use up a day in the fleet. The game refuses if the AI tries to pass time or move you, and sleeping and the Fleet menu's orders wait until you've closed the window.
 - **Checks and fights:** if something you say leads to a skill check or a fight, its own window takes over, and the talk ends there.
 - **Afterwards:** the story keeps one line about the talk, with **What was said** folded under it.
@@ -362,7 +362,10 @@ Saved games from before this system still load. They get a basic character profi
   - **Things and doors:** **Use** on a thing gives its written result or picks it up, and **Ask to go through** at a closed door follows that door's rule: some open when asked, some need something you've earned, and some open a skill check whose result decides. All 15 doors have a rule, and the bridge's things have results, with a plain answer anywhere that hasn't been written yet.
   - **Writing it yourself:** open a file in `world/scenes/` with Notepad, change it and save. The game reads it again the next time the story gets there, with no restart. `world/scenes/_how-to-write-a-scene.txt` explains the format: parts, choices, checks, fights, what a part changes, and conditions such as `? has data_chip` or `? skill persuasion >= 3` that decide which choices are offered and where the story goes. A choice can lead to a check whose pass and fail go different ways, and a part can remember a flag for any later scene.
   - **Finding mistakes:** run `npm run check-story` in the game's folder. It lists every problem with the line it's on, in plain words, and changes nothing. A file the game can't read is explained in the game too.
-- **AI game master:** an AI writes the story as you go and answers whatever you type or say, which needs a key or a local model, as below.
+- **AI game master:** the written parts play exactly as above, and they're still free. The three lives' openings, the arrival at Haven, the two written stories and the crew's conversations come from their files, and clicking a choice costs nothing, which the choices say. The AI is the layer on top:
+  - **Your own words.** Type anything in a written part and one call to the AI reads the part, the writer's notes for it and the choices on offer. It either takes the choice your words come to, with a sentence or two of its own to bridge them, and the story says how your words were taken, or it answers you in a few words without moving anything on, and the same choices come back. In a written part it can't change the story any other way: every other action is refused to it there. In a written conversation it's the same, in the person's voice.
+  - **Everything that isn't written** is the AI's, as before: the other lives' openings, the stories the Leads menu hasn't got written out, people without a conversation of their own, and things without a written result. The AI is told what the written story played, so it carries on from where the written part left off.
+  - It needs a key or a local model, as below. Adding this to the AI's instructions makes it reload your story once, the next time it writes.
 
 Until you choose, a new game uses the written story if no AI is set up, and the AI game master if one is. A game that an AI has been writing can't switch to the written story, because the written story wouldn't know what happened in it.
 
