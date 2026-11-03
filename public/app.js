@@ -202,7 +202,7 @@ function titleScreen() {
     )),
     !ui.settings.hasKey && ui.settings.provider === "claude" && el("div", { class: "card small" },
       ui.settings.storyApplies === "written"
-        ? "No AI is set up, so a new game uses the written story, which is free. For now that's the openings for three lives, the arrival at Haven and two whole stories, and the rest is being written. An AI, added in the Settings menu once you've started, with an Anthropic API key or a local model, reads whatever you type and writes what isn't written yet."
+        ? "No AI is set up, so a new game uses the written story, which is free. For now that's the openings for three lives, the arrival at Haven, the whole of the main story's first act and a story aboard the Meridian, and the rest is being written. An AI, added in the Settings menu once you've started, with an Anthropic API key or a local model, reads whatever you type and writes what isn't written yet."
         : "You'll need to choose an AI before you can play the story. Once you start, open the Settings menu to paste an Anthropic API key or pick a local model."),
   );
 }

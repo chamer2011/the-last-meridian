@@ -99,9 +99,11 @@ Lines starting with * happen when the part begins, and the player sees each as a
     * faction fleet 2: The reason           (a minus sign lowers it)
     * stress 5: The reason                  (a minus sign relieves it)
     * health -4: The reason                 (a minus sign hurts, and it can't kill)
-    * time 2 hours: The reason              (add work or rest after hours if that's what it was)
+    * time 2 hours: The reason              (add work or rest after hours if that's what it was; 72 at most in one part)
     * flag told_the_fleet                   (remembers something, for conditions later, in any scene)
     * unflag told_the_fleet
+    * fuel 6: The reason                    (the fleet's fuel, which jumps use; a minus sign burns it)
+    * act 2                                 (the main story moves on to that act)
     * raw add_lore {"term": "The Rim", "kind": "place", "text": "What the player would know."}
 
 The last one does anything the AI can do, with the fields from src/tools.js. The rules are the
@@ -128,6 +130,7 @@ and join several with "and":
     captain                          The player is the captain.
     life engine_hand                 The player started as that life. The ids are in starts.json.
     at haven                         The player is at that place.
+    act < 2                          The main story's act, with the same comparisons as credits.
     chance 30                        True 30 times in 100, at random.
 
 A condition with a mistake in it is never true, and check-story points it out.
@@ -148,6 +151,12 @@ in order, before the text:
     END
 
 A part that only has rules, and a final -> part, is a fork in the road with no text of its own.
+
+The rules are read again when the player presses Continue the story while they're in that part,
+so a part can wait for something. A part with ? at kessara -> parlor and text telling the player
+to set course from the Star map sends the story on to the parlor once the fleet has jumped there
+and they press Continue. The part's choices stay on offer meanwhile, for anything else they'd
+rather do first.
 
 
 A CHECK THE STORY DEMANDS

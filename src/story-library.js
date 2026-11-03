@@ -81,7 +81,8 @@ export function leadsHere(game) {
   const kinds = new Set();
   for (const entry of shuffled) {
     if (chosen.length >= LEADS_SHOWN) break;
-    if (kinds.has(entry[1].kind)) continue;
+    // One of each kind, except that a story that's written out is never left off for its kind.
+    if (kinds.has(entry[1].kind) && !written.has(entry[0])) continue;
     chosen.push(entry);
     kinds.add(entry[1].kind);
   }

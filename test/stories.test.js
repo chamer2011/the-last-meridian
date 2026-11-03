@@ -57,7 +57,7 @@ function until(game, reached, limit = 400) {
 
 test("every story says what happens if nobody steps in, or why it has to wait", () => {
   const ids = Object.keys(WORLD_THREADS);
-  assert.equal(ids.length, 127);
+  assert.equal(ids.length, 128);
   for (const id of ids) {
     const entry = STORY_CLOCK.threads[id];
     assert.ok(entry, `${id} has nothing written for it`);

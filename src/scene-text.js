@@ -85,6 +85,7 @@ export function parseCondition(text) {
       case "health":
       case "day":
       case "level":
+      case "act":
       case "chance": {
         // chance 30 is true 30 times in 100: a number from 1 to 100 comes up at or under it.
         const [op, amount] = term.kind === "chance" ? ["<=", rest[0]] : rest;
@@ -113,6 +114,7 @@ function termHolds(game, term, helpers) {
     health: () => Math.round((game.hp / Math.max(1, maxHp(game))) * 100),
     day: () => Math.floor((game.clock?.hours ?? 0) / 24) + 1,
     level: () => game.level,
+    act: () => game.story?.act ?? 1,
     skill: () => skillRank(game, term.id),
     stat: () => attr(game, term.id),
     faction: () => game.factions?.[term.id] ?? 0,
@@ -210,12 +212,21 @@ export function parseEffect(text) {
     case "time": {
       const hours = signed(words[1] ?? "");
       const activity = ["active", "work", "rest"].includes(words[3]?.toLowerCase()) ? words[3].toLowerCase() : "active";
+      if (hours > 72) return { problem: "time can pass at most 72 hours in one part: use another part for the rest, or let the story say it took longer" };
       return hours > 0 && /^hours?$/i.test(words[2] ?? "") && after ? { do: { tool: "pass_time", hours, activity, reason: after } } : { problem: "time is written * time 2 hours: A long talk, with work or rest after hours if that's what it was" };
     }
     case "flag":
     case "unflag": {
       const name = words.slice(1).join(" ");
       return need(name, `${verb} needs a name after it`) ? { problem: `${verb} needs a name after it` } : { do: verb === "flag" ? { set: name } : { clear: name } };
+    }
+    case "fuel": {
+      const amount = signed(words[1] ?? "");
+      return amount !== null && amount !== 0 && after ? { do: { tool: "change_ship", hull: 0, fuel: amount, morale: 0, reason: after } } : { problem: "fuel needs a number, with - to burn it, then a colon and the reason: * fuel 6: Mother Quill's depot" };
+    }
+    case "act": {
+      const act = Number(words[1]);
+      return Number.isInteger(act) && act >= 1 && words.length === 2 && !after ? { do: { tool: "update_story", act } } : { problem: "act needs the act's number and nothing else: * act 2" };
     }
     case "raw": {
       const tool = words[1];

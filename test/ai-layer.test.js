@@ -136,7 +136,7 @@ test("who answers a turn with an AI: the written story where it's written, the A
   assert.equal(storyTurnKind(game, { playerText: "I pour myself a coffee and wait" }), "fit");
   assert.equal(storyTurnKind(game, { event: "continue" }), "written");
   assert.equal(storyTurnKind(game, { playerText: "I look into this", threadId: "crew_naomi_under_crew" }), "written");
-  assert.equal(storyTurnKind(game, { playerText: "I look into this", threadId: "main_two_weeks_of_fuel" }), "ai");
+  assert.equal(storyTurnKind(game, { playerText: "I look into this", threadId: "main_the_walkouts" }), "ai");
   // Arriving somewhere with a written arrival is the written story's, and anywhere else the AI tells it.
   const arrived = newGame();
   arrived.arrived = "haven";

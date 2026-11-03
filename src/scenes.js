@@ -275,6 +275,10 @@ function carryOn(game, scenes, context) {
       const next = nextAfter(game, pending);
       if (next) return enterPart(game, scene, next, context);
     }
+    // A part can wait for something, such as the fleet arriving somewhere: its rules are read again now, and one
+    // that has come to hold since the part began sends the story on.
+    const rule = ruleThatHolds(part, game);
+    if (rule) return enterPart(game, scene, rule.to, context);
   }
   context.emit({ type: "notice", text: "[STORY] Nothing more is written here for now." });
   context.emit({ type: "state" });
@@ -290,6 +294,9 @@ function brokenMessage(id, broken) {
 export function writtenTurn({ game, playerText, event, threadId, emit, log, scenes = null, broken = {} }) {
   const loaded = scenes ? { scenes, broken } : loadScenes();
   const context = { emit, turn: newTurnLimits() };
+  // Whatever was waiting to be told, such as a crossing or a jump, the written story has read: otherwise the page
+  // would keep offering Continue the story over a scene that has just begun.
+  game.pendingEvents.splice(0);
   if (event === "start") {
     // A life's own opening that can't be read is a mistake to fix, not a reason to play the plain one instead.
     const own = brokenMessage(`opening_${game.role?.id ?? "captain"}`, loaded.broken);
