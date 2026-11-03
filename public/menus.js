@@ -643,6 +643,7 @@ function settingsMenu() {
       fileEntry(`${g.files.worldCharacters} important characters`, `${g.files.world}\\characters`),
       fileEntry(`${g.enemiesTotal - g.files.campaignEnemies} enemy types`, `${g.files.world}\\enemies`),
       fileEntry("Everything said in a fight", `${g.files.world}\\combat-text.json`),
+      fileEntry("The written story, which you can change while the game is running", `${g.files.world}\\scenes`),
       g.files.campaign && fileEntry(`This campaign: ${g.files.campaignCharacters} ${g.files.campaignCharacters === 1 ? "person" : "people"} and ${g.files.campaignEnemies} enemy ${g.files.campaignEnemies === 1 ? "type" : "types"} added, plus your character's sheet`, g.files.campaign)),
   );
 }

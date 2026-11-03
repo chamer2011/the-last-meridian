@@ -19,9 +19,13 @@ const { migrateGame } = await import("../src/migrate.js");
 const { projectDir } = await import("../src/paths.js");
 const { START_LIST } = await import("../src/role.js");
 const { publicState } = await import("../src/rules.js");
-const { StoryError, choiceLine, matchChoice, openingSceneId, partText, sceneProblems, writtenTurn } = await import("../src/scenes.js");
+const { conditionHolds, parseCondition, parseEffect, parseSceneText } = await import("../src/scene-text.js");
+const { StoryError, allSceneProblems, choiceLine, loadScenes, matchChoice, openingSceneId, partText, sceneProblems, writtenTurn } = await import("../src/scenes.js");
+const { attr, maxHp, skillRank } = await import("../src/rules.js");
 const { talkCommand, talkView } = await import("../src/walk.js");
-const { WORLD_SCENES } = await import("../src/world.js");
+
+const WORLD_SCENES = loadScenes().scenes;
+const HELPERS = { attr, skillRank, maxHp };
 
 // The page's own vocabulary: every skill, and every belief.
 const vocab = buildVocab(SKILLS);
@@ -51,9 +55,211 @@ const lastNarration = (game) => [...game.transcript].reverse().find((entry) => e
 
 // ---- The scene files ------------------------------------------------------------
 
-test("every written scene is sound: it starts somewhere, every part can be reached, and every choice goes somewhere real", () => {
-  assert.ok(Object.keys(WORLD_SCENES).length >= 2);
-  for (const [id, scene] of Object.entries(WORLD_SCENES)) assert.deepEqual(sceneProblems(scene, id), [], id);
+test("every written scene is sound: it reads, it starts somewhere, every part can be reached, and every choice goes somewhere real", () => {
+  const { count, problems } = allSceneProblems();
+  assert.ok(count >= 2);
+  assert.deepEqual(problems, []);
+  assert.ok(loadScenes().scenes.opening_captain.title, "the title is read");
+});
+
+// ---- The text format ------------------------------------------------------------------
+
+const SAMPLE = `# A test
+// a comment
+start: first
+
+== first
+One line
+that runs on.
+
+@Someone: "Speech stands alone."
+=> So does a consequence.
+NOTE: [STORY] A message.
+* journal: Written down.
+* flag it_happened
+> [+Voss] Go -> second
+> [persuasion:hard:voss] [mercy] Talk -> won | lost ? credits >= 20 and not flag done
+> Pay [! costs 20 credits] -> second ? has medkit
+
+== second
+? flag it_happened -> third
+-> first
+
+== third
+CHECK engineering:easy
+  reason: Open it
+  pass -> won
+  fail -> lost
+
+== won
+FIGHT scrap_rat: Something looks at your boots.
+  allies: voss
+  why: desperate
+  won -> lost
+  lost -> lost
+  fled -> lost
+
+== lost
+Over.
+END
+`;
+
+test("a scene written as text is read into the parts the game plays, with the line of everything", () => {
+  const { scene, problems } = parseSceneText(SAMPLE, "sample");
+  assert.deepEqual(problems, []);
+  assert.equal(scene.title, "A test");
+  assert.equal(scene.start, "first");
+  const first = scene.parts.first;
+  assert.deepEqual(first.text, ["One line that runs on.", '@Someone: "Speech stands alone."', "=> So does a consequence."]);
+  assert.equal(first.note, "[STORY] A message.");
+  assert.deepEqual(first.do.map(({ line, ...step }) => step), [{ tool: "add_journal", entry: "Written down." }, { set: "it_happened" }]);
+  assert.equal(first.choices.length, 3);
+  assert.deepEqual({ ...first.choices[0], line: undefined }, { say: "Go", tags: ["+Voss"], to: "second", line: undefined });
+  assert.deepEqual({ ...first.choices[1], line: undefined }, { say: "Talk", tags: ["mercy"], check: "persuasion:hard:voss", pass: "won", fail: "lost", if: "credits >= 20 and not flag done", line: undefined });
+  assert.equal(first.choices[2].say, "Pay [! costs 20 credits]", "a tag that isn't at the front stays in the words");
+  assert.equal(first.choices[2].if, "has medkit");
+  assert.equal(first.choices[0].line, 14);
+  assert.deepEqual(scene.parts.second.when.map(({ line, ...rule }) => rule), [{ if: "flag it_happened", to: "third" }, { to: "first" }]);
+  assert.deepEqual({ check: scene.parts.third.check, reason: scene.parts.third.reason, pass: scene.parts.third.pass, fail: scene.parts.third.fail }, { check: "engineering:easy", reason: "Open it", pass: "won", fail: "lost" });
+  assert.deepEqual(scene.parts.won.fight, { enemy: "scrap_rat", lead_in: "Something looks at your boots.", allies: ["voss"], why: "desperate" });
+  assert.deepEqual([scene.parts.won.won, scene.parts.won.lost, scene.parts.won.fled], ["lost", "lost", "lost"]);
+  assert.equal(scene.parts.lost.end, true);
+  assert.deepEqual(sceneProblems(scene, "sample"), []);
+  // What it plays as is the same text the game master would write.
+  assert.match(partText(first), /^One line that runs on\.\n\n@Someone: "Speech stands alone\."\n\n=> So does a consequence\.\n\n> \[\+Voss\] Go\n> \[persuasion:hard:voss\] \[mercy\] Talk\n> Pay/);
+});
+
+test("a mistake in a text file is reported with its line, in plain words", () => {
+  const text = `words before any part
+== first
+> A choice with no arrow
+> [persuasion:hard] One way only -> here
+* xp ten: Not a number
+* dance
+? -> nowhere
+CHECK persuasion:hard
+  pass -> first
+  sideways -> first
+== bad name!
+Text.
+`;
+  const { problems } = parseSceneText(text, "broken");
+  const lines = Object.fromEntries(problems.map((one) => [one.line, one.message]));
+  assert.match(lines[1], /before the first part/);
+  assert.match(lines[3], /needs -> and the part/);
+  assert.match(lines[4], /two parts after the arrow, pass \| fail/);
+  assert.match(lines[5], /xp needs a number/);
+  assert.match(lines[6], /isn't an effect the game knows/);
+  assert.match(lines[7], /rule is written/);
+  assert.match(lines[8], /only has pass and fail, not sideways/);
+  assert.match(lines[11], /letters, numbers and underscores/);
+});
+
+test("effects are the same calls the AI makes, and say what's wrong when they're not", () => {
+  assert.deepEqual(parseEffect(" credits -20: A round").do, { tool: "change_credits", amount: -20, reason: "A round" });
+  assert.deepEqual(parseEffect(" item +medkit").do, { tool: "give_item", item: "medkit" });
+  assert.deepEqual(parseEffect(" item -medkit").do, { tool: "take_item", item: "medkit" });
+  assert.deepEqual(parseEffect(" quest the_beacon done: Found it").do, { tool: "update_quest", id: "the_beacon", status: "completed", objective: "Found it" });
+  assert.deepEqual(parseEffect(" new quest find_him: Find Him | He's lost | Look at Haven").do, { tool: "add_quest", id: "find_him", title: "Find Him", description: "He's lost", objective: "Look at Haven" });
+  assert.deepEqual(parseEffect(" contact Ilya Voss friendly: She likes you").do, { tool: "note_contact", name: "Ilya Voss", attitude: "friendly", note: "She likes you" });
+  assert.deepEqual(parseEffect(" belief mercy 2: Spared him").do, { tool: "shift_ideology", toward: "mercy", amount: 2, reason: "Spared him" });
+  assert.deepEqual(parseEffect(" time 8 hours rest: A night").do, { tool: "pass_time", hours: 8, activity: "rest", reason: "A night" });
+  assert.deepEqual(parseEffect(' raw add_lore {"term": "The Rim", "kind": "place", "text": "Far out."}').do, { tool: "add_lore", term: "The Rim", kind: "place", text: "Far out." });
+  assert.match(parseEffect(" item +pony").problem, /no item called pony/);
+  assert.match(parseEffect(" belief kindness 1: x").problem, /belief needs one of/);
+  assert.match(parseEffect(" contact Voss: no attitude").problem, /how they feel/);
+});
+
+test("conditions read the game, say what's wrong with them, and never hold when they're wrong", () => {
+  const game = newGame();
+  game.flags = { told: true };
+  game.credits = 50;
+  game.inventory.medkit = 1;
+  game.scene = { id: "x", part: "a", seen: ["a", "b"] };
+  const holds = (text) => conditionHolds(game, text, HELPERS);
+  assert.equal(holds("has medkit"), true);
+  assert.equal(holds("not has medkit"), false);
+  assert.equal(holds("credits >= 50 and flag told"), true);
+  assert.equal(holds("credits > 50"), false);
+  assert.equal(holds("seen b and not seen c"), true);
+  assert.equal(holds("captain"), true);
+  assert.equal(holds("at meridian"), true);
+  assert.equal(holds("quest the_beacon active"), true);
+  assert.equal(holds("quest the_beacon done"), false);
+  assert.equal(holds("quest nothing_here none"), true);
+  assert.equal(holds("met Voss"), true, "the crew are the captain's contacts");
+  assert.equal(holds(`skill persuasion >= ${skillRank(game, "persuasion")}`), true);
+  assert.equal(holds(`stat presence > ${attr(game, "presence")}`), false);
+  assert.equal(holds("day = 1"), true);
+  assert.equal(holds("health >= 100"), true);
+  assert.equal(holds("chance 100"), true);
+  assert.equal(holds("chance 0"), false);
+  assert.equal(holds("has pony"), false, "a condition with a mistake never holds");
+  assert.deepEqual(parseCondition("has pony and skill flying >= 2 and credits more 3 and wibble").problems, [
+    "there's no item called pony",
+    "there's no skill called flying",
+    '"credits" needs one of >= <= > < = != and a number: "credits more 3"',
+    '"wibble" isn\'t a condition the game knows',
+  ]);
+});
+
+test("a choice with a condition is only offered when it holds, a rule sends the story on, and a flag is remembered", () => {
+  const game = newGame();
+  play(game, { event: "start" });
+  play(game, { playerText: "tell the fleet the truth" });
+  assert.equal(game.flags.told_the_fleet, true);
+  play(game, { playerText: "go on" });
+  assert.equal(game.scene.part, "orders");
+  assert.match(lastNarration(game), /> Ask her what she'd do/, "not asked yet, so it's offered");
+  play(game, { playerText: "ask her what she'd do" });
+  assert.equal(game.scene.part, "voss_answer");
+  play(game, { playerText: "go on" });
+  assert.doesNotMatch(lastNarration(game), /> Ask her what she'd do/, "asked once, so it's gone");
+  assert.throws(() => play(game, { playerText: "ask her what she'd do" }), /isn't one of the choices/);
+  play(game, { playerText: "have pell plot" });
+  assert.match(lastNarration(game), /The Sundial's asking if you meant it/, "the rule took the story to the part that knows");
+  assert.equal(game.scene, null);
+  assert.equal(game.flags.told_the_fleet, true, "flags outlive the scene");
+});
+
+test("the files are read again when they change, so a writer sees a change without restarting", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-scenes-live-"));
+  const file = path.join(dir, "opening_captain.txt");
+  fs.writeFileSync(file, "== a\nFirst words.\nEND\n");
+  assert.equal(loadScenes(dir).scenes.opening_captain.parts.a.text[0], "First words.");
+  fs.writeFileSync(file, "== a\nSecond words.\nEND\n");
+  const later = new Date(Date.now() + 2000);
+  fs.utimesSync(file, later, later);
+  assert.equal(loadScenes(dir).scenes.opening_captain.parts.a.text[0], "Second words.");
+  // A file that can't be read is left out, and the story says so instead of breaking.
+  fs.writeFileSync(file, "nothing here\n");
+  fs.utimesSync(file, new Date(Date.now() + 4000), new Date(Date.now() + 4000));
+  const broken = loadScenes(dir);
+  assert.equal(broken.scenes.opening_captain, undefined);
+  assert.match(broken.broken.opening_captain, /^line 1: .*before the first part/);
+  assert.equal(broken.problems[0].file, "opening_captain.txt");
+  // The captain's own opening being broken is said so, rather than quietly playing the plain one.
+  fs.writeFileSync(path.join(dir, "opening.txt"), "== a\nPlain.\nEND\n");
+  const game = newGame();
+  assert.throws(() => writtenTurn({ game, event: "start", emit: () => {}, log: () => {}, scenes: loadScenes(dir).scenes, broken: loadScenes(dir).broken }), (err) => err instanceof StoryError && /opening_captain can't be read: line 1/.test(err.message));
+  fs.writeFileSync(path.join(dir, "_notes.txt"), "Not a scene.");
+  assert.deepEqual(Object.keys(loadScenes(dir).scenes), ["opening"], "a file starting with _ is a note, and a broken one is left out");
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("the check-story command says what's wrong, with the line, and exits with 1; and 0 when all is well", async () => {
+  const { execFile } = await import("node:child_process");
+  const run = (args) => new Promise((resolve) => { execFile(process.execPath, ["src/check-scenes.js", ...args], { cwd: projectDir }, (error, stdout) => resolve({ code: error?.code ?? 0, stdout })); });
+  const good = await run([]);
+  assert.equal(good.code, 0, good.stdout);
+  assert.match(good.stdout, /All \d+ scenes are sound/);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-scenes-bad-"));
+  fs.writeFileSync(path.join(dir, "thread_x.txt"), "== a\nHello.\n> Go -> nowhere\n* xp lots: x\n");
+  const bad = await run([dir]);
+  assert.equal(bad.code, 1);
+  assert.match(bad.stdout, /thread_x\.txt \(line 4\): xp needs a number/);
+  assert.match(bad.stdout, /choice 1 \(line 3\) goes to nowhere, which isn't a part/);
+  fs.rmSync(dir, { recursive: true, force: true });
 });
 
 test("the captain's opening is written, and every other life has an opening to fall back on", () => {
@@ -76,7 +282,7 @@ test("the checker finds what's wrong with a scene, in plain words", () => {
     },
   };
   const problems = sceneProblems(broken, "broken");
-  for (const expected of ["starts at nowhere", "part c can't be reached", "part b has no text", "part b has no choices", "goes to nowhere_else", "unknown difficulty brutal", "needs pass and fail", "has no words", "step 1", "Unknown tool: make_tea"]) {
+  for (const expected of ["starts at nowhere", "part c can't be reached", "part b has no text", "part b has no choices", "goes to nowhere_else", "unknown difficulty brutal", "needs pass and fail", "has no words", "effect 1", "Unknown tool: make_tea"]) {
     assert.ok(problems.some((problem) => problem.includes(expected)), `${expected}: ${problems.join(" / ")}`);
   }
 });
@@ -120,7 +326,7 @@ test("the captain's opening plays through with no AI: speech, a choice, conseque
   const opening = play(game, { event: "start" });
   assert.equal(opening[0].role, "narrator");
   assert.match(opening[0].text, /@Commander Ilya Voss: "Captain\."/);
-  assert.deepEqual(game.scene, { id: "opening_captain", part: "bridge", pending: null });
+  assert.deepEqual(game.scene, { id: "opening_captain", part: "bridge", pending: null, seen: ["bridge"] });
   assert.equal(game.transcript.filter((entry) => entry.role === "player").length, 0, "nothing's logged as the player's until they choose");
 
   const heard = play(game, { playerText: "say nothing" });
@@ -133,6 +339,7 @@ test("the captain's opening plays through with no AI: speech, a choice, conseque
   assert.equal(game.scene.part, "orders");
   play(game, { playerText: "Have Pell plot the course for Haven" });
   assert.equal(game.scene, null, "the scene is over");
+  assert.doesNotMatch(lastNarration(game), /Sundial's asking/, "the fleet wasn't told, so the plain ending plays");
   assert.match(game.quests.find((quest) => quest.id === "the_beacon").objective, /Haven Station is plotted/);
   assert.equal(game.xp, 10);
   assert.ok(game.transcript.some((entry) => entry.role === "notice" && /XP/.test(entry.text)), "the award shows as a game message");
@@ -249,6 +456,7 @@ test("an older save keeps its AI game master, and a new game says which it has",
   assert.equal(migrated.version, 15);
   assert.equal(migrated.mode, "ai");
   assert.equal(migrated.scene, null);
+  assert.deepEqual(migrated.flags, {});
   const fresh = createGameFromDraft(randomDraft({ seed: 3, archetype: "officer" }));
   assert.equal(fresh.mode, "ai", "the server decides, from the Settings menu");
   assert.equal(publicState(fresh).mode, "ai");

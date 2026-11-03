@@ -654,6 +654,7 @@ export function assembleGame(profile) {
     // Who writes the story: "written" plays the scenes in world/scenes, and "ai" is the AI game master. The server sets it from the Settings menu.
     mode: "ai",
     scene: null,
+    flags: {},
     lastCheck: null,
     lastFight: null,
     name: profile.name,

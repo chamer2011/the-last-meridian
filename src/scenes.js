@@ -2,34 +2,99 @@
 // has text in the same format the game master writes, so the page shows it the same way, and choices
 // that lead to other parts. A part can open a skill check or start a fight, and where the story goes
 // next depends on how that came out. Whatever a part changes in the game goes through the same tools
-// the AI uses, so the rules are the same either way. world/scenes/opening_captain.json has the format.
+// the AI uses, so the rules are the same either way. The files are plain text, read again whenever the
+// story needs them, so a change shows up without restarting the game. world/scenes/_how-to-write-a-scene.txt
+// explains how to write one.
 
+import fs from "node:fs";
+import path from "node:path";
 import { SKILLS } from "./character-data.js";
 import { startChoiceCheck } from "./checks.js";
-import { DIFFICULTY } from "./rules.js";
+import { worldDir } from "./paths.js";
+import { DIFFICULTY, attr, maxHp, skillRank } from "./rules.js";
+import { conditionHolds, parseCondition, parseSceneText } from "./scene-text.js";
 import { newTurnLimits, runTool, toolProblem } from "./tools.js";
-import { WORLD_SCENES } from "./world.js";
 
 // Something the player did that the written story has no answer to. The turn changes nothing, and they read this.
 export class StoryError extends Error {}
 
 const AI_HINT = "With an AI game master, chosen in Settings, you can type anything you like.";
 const FIGHT_ENDINGS = { victory: "won", talked: "talked", defeat: "lost", fled: "fled", surrendered: "gaveUp" };
+const HELPERS = { attr, skillRank, maxHp };
+export const SCENES_DIR = path.join(worldDir, "scenes");
+
+// ---- Loading the files ------------------------------------------------------------
+
+const cache = new Map();
+
+// Every scene in the folder, read fresh when a file has changed: a .txt file in the written format, or a .json
+// one in the shape the game plays. Files whose names start with _ are notes, not scenes. A file with a mistake
+// that stops it being read at all is left out, and problems says why, with the line.
+export function loadScenes(dir = SCENES_DIR) {
+  const scenes = {};
+  const problems = [];
+  const broken = {};
+  if (!fs.existsSync(dir)) return { scenes, problems, broken };
+  for (const name of fs.readdirSync(dir).sort()) {
+    if (name.startsWith("_") || !/\.(txt|json)$/.test(name)) continue;
+    const file = path.join(dir, name);
+    const id = name.replace(/\.(txt|json)$/, "");
+    let stamp;
+    try {
+      stamp = fs.statSync(file).mtimeMs;
+    } catch {
+      continue;
+    }
+    const kept = cache.get(file);
+    const entry = kept?.stamp === stamp ? kept : { stamp, ...readScene(file, name) };
+    cache.set(file, entry);
+    if (entry.scene) scenes[id] = entry.scene;
+    else {
+      const first = entry.problems[0];
+      broken[id] = first ? `${first.line ? `line ${first.line}: ` : ""}${first.message}` : "can't be read";
+    }
+    for (const found of entry.problems) problems.push({ file: name, ...found });
+  }
+  return { scenes, problems, broken };
+}
+
+function readScene(file, name) {
+  let text;
+  try {
+    text = fs.readFileSync(file, "utf8");
+  } catch (err) {
+    return { scene: null, problems: [{ line: 0, message: `can't be read: ${err.message}` }] };
+  }
+  if (name.endsWith(".json")) {
+    try {
+      return { scene: JSON.parse(text), problems: [] };
+    } catch (err) {
+      return { scene: null, problems: [{ line: 0, message: `isn't valid JSON: ${err.message}` }] };
+    }
+  }
+  const { scene, problems } = parseSceneText(text, name);
+  return { scene: Object.keys(scene.parts).length ? scene : null, problems };
+}
 
 // How the story opens for this life: its own scene if one's written, or the one that fits anyone.
-export function openingSceneId(game, scenes = WORLD_SCENES) {
+export function openingSceneId(game, scenes = loadScenes().scenes) {
   const own = `opening_${game.role?.id ?? "captain"}`;
   if (scenes[own]) return own;
   return scenes.opening ? "opening" : null;
 }
 
+// ---- Reading a part ----------------------------------------------------------------
+
 // How a choice reads in the story: its check, its other tags, then its words.
 export const choiceLine = (choice) => ["> ", choice.check ? `[${choice.check}] ` : "", ...(choice.tags ?? []).map((tag) => `[${tag}] `), choice.say].join("");
 
+// The choices this player gets to see: the ones whose conditions hold.
+export const openChoices = (part, game) => (part.choices ?? []).filter((choice) => !choice.if || conditionHolds(game, choice.if, HELPERS));
+
 // What the player reads when a part begins, in the game master's own format.
-export function partText(part) {
+export function partText(part, game = null) {
   const lines = (Array.isArray(part.text) ? part.text : [part.text]).filter(Boolean);
-  const choices = (part.choices ?? []).map(choiceLine);
+  const choices = (game ? openChoices(part, game) : part.choices ?? []).map(choiceLine);
   return [lines.join("\n\n"), choices.join("\n")].filter(Boolean).join("\n\n");
 }
 
@@ -90,17 +155,34 @@ function partOf(scene, id, sceneId) {
   return part;
 }
 
-// Plays a part: its text, what it changes, and whatever it opens. A check or a fight ends the turn,
-// and the story picks up from its result when the player continues.
-function enterPart(game, scene, id, { emit, turn }) {
+// Plays a part: its rules for going elsewhere, its text, what it changes, and whatever it opens. A check
+// or a fight ends the turn, and the story picks up from its result when the player continues.
+function enterPart(game, scene, id, { emit, turn }, hops = 0) {
   const part = partOf(scene, id, game.scene.id);
+  // A rule that holds sends the story on without showing this part.
+  const rule = (part.when ?? []).find((one) => !one.if || conditionHolds(game, one.if, HELPERS));
+  if (rule) {
+    if (hops > 20) throw new Error(`The scene ${game.scene.id} goes round in circles from ${id}.`);
+    return enterPart(game, scene, rule.to, { emit, turn }, hops + 1);
+  }
   game.scene.part = id;
   game.scene.pending = null;
-  const text = partText(part);
+  game.scene.seen ??= [];
+  if (!game.scene.seen.includes(id)) game.scene.seen.push(id);
+  const text = partText(part, game);
   if (text) emit({ type: "text", text });
   if (part.note) emit({ type: "notice", text: part.note });
+  game.flags ??= {};
   for (const step of part.do ?? []) {
-    const { tool, ...input } = step;
+    const { tool, set, clear, line: _line, ...input } = step;
+    if (set) {
+      game.flags[set] = true;
+      continue;
+    }
+    if (clear) {
+      delete game.flags[clear];
+      continue;
+    }
     const outcome = runTool(game, tool, input, turn);
     if (outcome.isError) throw new Error(`In the scene ${game.scene.id}, part ${id}, ${tool} failed: ${outcome.result}`);
     if (outcome.narration) emit({ type: "text", text: outcome.narration });
@@ -126,7 +208,7 @@ function enterPart(game, scene, id, { emit, turn }) {
 function startScene(game, id, scenes, context) {
   const scene = scenes[id];
   if (!scene) throw new StoryError("That part of the story hasn't been written yet.");
-  game.scene = { id, part: null, pending: null };
+  game.scene = { id, part: null, pending: null, seen: [] };
   enterPart(game, scene, scene.start, context);
 }
 
@@ -166,26 +248,38 @@ function carryOn(game, scenes, context) {
   context.emit({ type: "state" });
 }
 
+// What's wrong with the scene file the player needs, if it can't be read at all.
+function brokenMessage(id, broken) {
+  return broken[id] ? `The scene ${id} can't be read: ${broken[id]}. Fix the file in world\\scenes, or run npm run check-story to see every problem.` : null;
+}
+
 // One turn of the written story. emit() streams what the player reads, the same as an AI turn does,
 // and log() records what the player did, before the story answers it.
-export function writtenTurn({ game, playerText, event, threadId, emit, log, scenes = WORLD_SCENES }) {
+export function writtenTurn({ game, playerText, event, threadId, emit, log, scenes = null, broken = {} }) {
+  const loaded = scenes ? { scenes, broken } : loadScenes();
   const context = { emit, turn: newTurnLimits() };
   if (event === "start") {
-    const id = openingSceneId(game, scenes);
-    if (!id) throw new StoryError("There's no written opening yet. Choose an AI game master in Settings to start the story.");
-    return startScene(game, id, scenes, context);
+    // A life's own opening that can't be read is a mistake to fix, not a reason to play the plain one instead.
+    const own = brokenMessage(`opening_${game.role?.id ?? "captain"}`, loaded.broken);
+    if (own) throw new StoryError(own);
+    const id = openingSceneId(game, loaded.scenes);
+    if (!id) throw new StoryError(brokenMessage("opening", loaded.broken) ?? "There's no written opening yet. Choose an AI game master in Settings to start the story.");
+    return startScene(game, id, loaded.scenes, context);
   }
-  if (event === "continue") return carryOn(game, scenes, context);
+  if (event === "continue") return carryOn(game, loaded.scenes, context);
   if (threadId) {
     const id = `thread_${threadId}`;
-    if (!scenes[id]) throw new StoryError(`This story hasn't been written out yet. For now it plays out by itself, and the Leads menu and the news say how it's going. ${AI_HINT}`);
+    if (!loaded.scenes[id]) throw new StoryError(brokenMessage(id, loaded.broken) ?? `This story hasn't been written out yet. For now it plays out by itself, and the Leads menu and the news say how it's going. ${AI_HINT}`);
     log("player", playerText);
-    return startScene(game, id, scenes, context);
+    return startScene(game, id, loaded.scenes, context);
   }
-  const scene = sceneFor(game, scenes);
-  if (!scene) throw new StoryError(`There's no more written story here for now. You can walk around, talk to people about what they've heard, and watch the world go on. ${AI_HINT}`);
+  const scene = sceneFor(game, loaded.scenes);
+  if (!scene) {
+    if (game.scene) throw new StoryError(brokenMessage(game.scene.id, loaded.broken) ?? `The scene ${game.scene.id} has gone from world\\scenes, so the story can't go on from here.`);
+    throw new StoryError(`There's no more written story here for now. You can walk around, talk to people about what they've heard, and watch the world go on. ${AI_HINT}`);
+  }
   const part = partOf(scene, game.scene.part, game.scene.id);
-  const choice = matchChoice(playerText, part.choices ?? []);
+  const choice = matchChoice(playerText, openChoices(part, game));
   if (!choice) throw new StoryError(`That isn't one of the choices here. Pick one, or type part of it. ${AI_HINT}`);
   if (choice.check) {
     // The check's window opens first, the same as when the choice is clicked, and the story goes on once it's done.
@@ -198,7 +292,7 @@ export function writtenTurn({ game, playerText, event, threadId, emit, log, scen
   enterPart(game, scene, choice.to, context);
 }
 
-// ---- Checking a scene file --------------------------------------------------
+// ---- Checking a scene --------------------------------------------------------
 
 const GOES_TO = ["to", "pass", "fail", "won", "lost", "fled", "gaveUp", "talked"];
 
@@ -210,10 +304,12 @@ function checkProblem(text) {
   return null;
 }
 
-// Everything wrong with a scene, in plain words, so a mistake is found before anyone plays it.
+// Everything wrong with a scene, in plain words, so a mistake is found before anyone plays it. Each
+// problem names the file's line when the scene came from a text file.
 export function sceneProblems(scene, id = "the scene") {
   const problems = [];
   const parts = scene?.parts ?? {};
+  const at = (holder, where) => (holder?.line ? `${where} (line ${holder.line})` : where);
   if (!scene?.start) problems.push(`${id} doesn't say which part it starts at`);
   else if (!parts[scene.start]) problems.push(`${id} starts at ${scene.start}, which isn't a part`);
   const reached = new Set();
@@ -224,17 +320,28 @@ export function sceneProblems(scene, id = "the scene") {
     reached.add(name);
     const part = parts[name];
     for (const key of GOES_TO) if (part[key] && parts[part[key]]) stack.push(part[key]);
+    for (const rule of part.when ?? []) if (parts[rule.to]) stack.push(rule.to);
     for (const choice of part.choices ?? []) for (const key of GOES_TO) if (choice[key] && parts[choice[key]]) stack.push(choice[key]);
   }
+  const condition = (text, what) => {
+    for (const found of parseCondition(text).problems) problems.push(`${what}: ${found}`);
+  };
   for (const [name, part] of Object.entries(parts)) {
-    const where = `${id}, part ${name}`;
+    const where = at(part, `${id}, part ${name}`);
     if (!reached.has(name)) problems.push(`${where} can't be reached`);
     const text = (Array.isArray(part.text) ? part.text : [part.text]).filter(Boolean);
-    if (!text.length && !part.note) problems.push(`${where} has no text`);
     const goes = (holder, what) => {
       for (const key of GOES_TO) if (holder[key] !== undefined && !parts[holder[key]]) problems.push(`${what} goes to ${holder[key]}, which isn't a part`);
     };
     goes(part, where);
+    for (const rule of part.when ?? []) {
+      const what = at(rule, `${where}, rule`);
+      if (!parts[rule.to]) problems.push(`${what} goes to ${rule.to}, which isn't a part`);
+      if (rule.if) condition(rule.if, what);
+    }
+    const always = (part.when ?? []).some((rule) => !rule.if);
+    // A fight brings its own lead-in, and a check its own window, so those parts can stand without text.
+    if (!text.length && !part.note && !always && !part.check && !part.fight) problems.push(`${where} has no text`);
     if (part.check) {
       const problem = checkProblem(part.check);
       if (problem) problems.push(`${where} has ${problem}`);
@@ -245,16 +352,18 @@ export function sceneProblems(scene, id = "the scene") {
       if (problem) problems.push(`${where}: the fight ${problem}`);
       if (!part.won || !part.lost) problems.push(`${where} has a fight, so it needs won and lost`);
     }
-    if (!part.check && !part.fight && !part.end && !(part.choices ?? []).length) problems.push(`${where} has no choices and doesn't end the scene`);
+    if (!part.check && !part.fight && !part.end && !always && !(part.choices ?? []).length) problems.push(`${where} has no choices and doesn't end the scene`);
     for (const [i, step] of (part.do ?? []).entries()) {
-      const { tool, ...input } = step;
+      const { tool, set, clear, line: _line, ...input } = step;
+      if (set || clear) continue;
       const problem = toolProblem(tool, input);
-      if (problem) problems.push(`${where}, step ${i + 1}: ${problem}`);
+      if (problem) problems.push(`${at(step, `${where}, effect ${i + 1}`)}: ${problem}`);
     }
     for (const [i, choice] of (part.choices ?? []).entries()) {
-      const what = `${where}, choice ${i + 1}`;
+      const what = at(choice, `${where}, choice ${i + 1}`);
       if (!choice.say) problems.push(`${what} has no words`);
       goes(choice, what);
+      if (choice.if) condition(choice.if, what);
       if (choice.check) {
         const problem = checkProblem(choice.check);
         if (problem) problems.push(`${what} has ${problem}`);
@@ -263,4 +372,12 @@ export function sceneProblems(scene, id = "the scene") {
     }
   }
   return problems;
+}
+
+// Every problem in the whole folder, for the checker and the tests: files that can't be read, and scenes that can.
+export function allSceneProblems(dir = SCENES_DIR) {
+  const { scenes, problems } = loadScenes(dir);
+  const found = problems.map((one) => `${one.file}${one.line ? ` (line ${one.line})` : ""}: ${one.message}`);
+  for (const [id, scene] of Object.entries(scenes)) found.push(...sceneProblems(scene, id).map((one) => `${one}`));
+  return { count: Object.keys(scenes).length, problems: found };
 }

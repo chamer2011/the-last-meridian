@@ -202,7 +202,7 @@ function fromVersion11(save) {
 
 // A game from before there was a written story has an AI game master, and keeps it.
 function fromVersion14(save) {
-  return { ...save, version: 15, mode: "ai", scene: null, lastCheck: null, lastFight: null };
+  return { ...save, version: 15, mode: "ai", scene: null, flags: {}, lastCheck: null, lastFight: null };
 }
 
 export function migrateGame(save) {
