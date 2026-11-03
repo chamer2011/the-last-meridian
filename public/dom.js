@@ -58,6 +58,21 @@ export function meter(label, value, max) {
     `${label} [${"#".repeat(filled)}${"-".repeat(10 - filled)}] ${value}/${max}`);
 }
 
+// A part of a menu that folds away. Its heading is a line like [ + Orders ], or [ - Orders ] while it's open, and
+// what's inside shows only then. fold starts open and folded starts closed, and which ones are open is remembered
+// while the game's open. The screen redraws through onFoldChange.
+const folds = new Map();
+let foldChanged = () => {};
+export const onFoldChange = (fn) => { foldChanged = fn; };
+function foldable(open, key, title, children) {
+  const isOpen = folds.has(key) ? folds.get(key) : open;
+  return el("section", { class: `menu-section fold${isOpen ? " open" : ""}` },
+    el("button", { class: "fold-toggle", "aria-expanded": String(isOpen), onclick: () => { folds.set(key, !isOpen); foldChanged(); } }, `${isOpen ? "-" : "+"} ${title}`),
+    isOpen ? children : null);
+}
+export const fold = (key, title, ...children) => foldable(true, key, title, children);
+export const folded = (key, title, ...children) => foldable(false, key, title, children);
+
 // For stress and fatigue, where high numbers are the bad ones.
 export function strainMeter(label, value) {
   const filled = Math.round(Math.min(100, value) / 10);

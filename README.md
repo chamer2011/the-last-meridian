@@ -39,7 +39,7 @@ The story can be written in advance, or written by an AI as you go: see [Who wri
 
 ## Menus
 
-The story has the whole window to itself. The buttons down the right edge open the menus, which slide out over the story and always take up the same space: three quarters of the screen. To close one, press **Close** or Esc, click the story behind it, or click its button again. On a phone, press **Menu** instead.
+The buttons down the right edge open the menus, grouped under **You**, **The story**, **The fleet**, **Gear** and **Game**. A menu slides out over the story and always takes up the same space: three quarters of the screen. To close one, press **Close** or Esc, click the story behind it, or click its button again. On a narrow window, press **Menu** instead, and the same groups run along the top. Inside a menu, the parts you don't need every time fold away behind a line like **[ + Fleet log ]**: click it to open them, and they stay open while the game's running. Rest the mouse on a button to see what its menu holds.
 
 Each menu also has a command you can type:
 
@@ -50,17 +50,17 @@ Each menu also has a command you can type:
 | `/traits` | Traits | Traits, convictions, and everything currently affecting you |
 | `/perks` | Perks | What you've learned, what you can learn now, and what's locked |
 | `/beliefs` | Beliefs | Where you stand on each axis, and your standing with each faction |
-| `/dossier` | Dossier | Your personal record and life history |
+| `/dossier` | Your past | Your personal record, career and life history |
 | `/people` | People | Everyone you've met or heard of |
 | `/quests` | Quests | Active and finished quests, and the journal |
 | `/leads` | Leads | Stories you could start here, what people are saying, and the stories you're following |
-| `/codex` | Codex | Places, factions and ideas, with a search box |
+| `/codex` | What you know | Places, factions, ships and ideas you've come across, with a search box |
 | `/inv` | Inventory | What you're carrying and wearing |
 | `/ship` | Ship | The Meridian and its crew, with the way to the star map. Only if you're the captain |
 | `/fleet` | Fleet | All 41 ships, supplies, rations, work crews and orders. If you aren't the captain, how things stand |
 | `/map` | Star map | The chart of known space, with Set course, or Book passage if you aren't the captain |
 | `/market` | Market | Buying and selling, where there's a market |
-| `/bestiary` | Bestiary | Enemies you know of, their stats, why they fight, what you could try on them, and the simulator |
+| `/bestiary` | Enemies met | Enemies you know of, their stats, why they fight, what you could try on them, and the simulator |
 | `/settings` | Settings | Reading and display options, AI choice, saved games, and where your files are |
 
 `/close` closes the open menu, and `/help` shows this list in the game.
@@ -102,7 +102,7 @@ It takes your whole turn, and the enemies still get theirs. Your followers hold 
 
 Fights run entirely on this computer, from the stats in the game's files. The AI only decides that a fight starts and who's in it. After that it isn't involved, so a fight costs nothing however long it lasts. When it ends, the story gets one line saying how it went, and nothing is sent to the AI until you choose **Continue the story** or type what you do next. Talking in a fight doesn't use the AI either.
 
-To try a fight without the AI at all, use **Run in simulator** in the Bestiary, aboard the Meridian, or **With followers** to have your crew and more enemies join in. Nothing that happens in the simulator carries over.
+To try a fight without the AI at all, use **Run in simulator** in **Enemies met**, aboard the Meridian, or **With followers** to have your crew and more enemies join in. Nothing that happens in the simulator carries over.
 
 ## Skill checks
 
@@ -416,7 +416,7 @@ The download is several GB. Local models make more mistakes with game actions th
 - `src/data.js` holds the items, perks, locations and story background. Restart the game after you change it.
 - `src/character-data.js` holds the skills, species, origins, traits, beliefs and ready-made characters.
 - `src/life-data.js` holds the careers and everything that can happen in the life simulation.
-- `src/lore.js` holds the Codex entries. Only put what your character would know in there, because players can read it.
+- `src/lore.js` holds the entries of **What you know**. Only put what your character would know in there, because players can read it.
 - `src/creator.js` works out a character from the choices made in the creator, and `src/role.js` works out who that makes them in the world, and what the game master is told about it.
 - `src/rules.js` holds the rules: dice, leveling, stress and beliefs.
 - `src/combat.js` holds the rules for fights, including talking in them, and `public/fight.js` draws the fight window.

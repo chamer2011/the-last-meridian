@@ -2,7 +2,7 @@
 // game's state, so a menu can never disagree with the rules.
 
 import { checkStyle, setCheckStyle } from "./check.js";
-import { api, beliefBar, el, meter, money, signed, strainMeter } from "./dom.js";
+import { api, beliefBar, el, folded, meter, money, signed, strainMeter } from "./dom.js";
 import { fleetMenu, mapMenu } from "./fleet.js";
 import { oddsFor } from "./story.js";
 
@@ -148,7 +148,7 @@ function traitsMenu() {
     section("Convictions",
       g.convictions.length ? g.convictions.map((c) => el("div", { class: "card" },
         el("strong", {}, c.name), el("span", { class: "muted small" }, ` (${c.pole})`), effects(c.effects))) : muted("None. A belief of 5 or more becomes a conviction.")),
-    section("Everything affecting you",
+    folded("traits-effects", `Everything affecting you (${g.effects.length})`,
       g.effects.length ? g.effects.map((e) => el("div", { class: "menu-entry" },
         el("div", { class: "spread" }, el("span", {}, e.name), el("span", { class: "tag" }, e.source)),
         effects(e.effects))) : muted("Nothing at the moment.")),
@@ -231,8 +231,8 @@ function dossierMenu() {
     d.bond && section("Closest bond", small(d.bond)),
     d.careers.length > 0 && section("Career",
       d.careers.map((c) => row(c.name, c.rankTitle, `${c.terms * 4} years`))),
-    d.biography.length > 0 && section("Life history", el("ul", { class: "bio small" }, d.biography.map((line) => el("li", {}, line)))),
-    d.hooks.length > 0 && section("Loose ends", el("ul", { class: "bio small" }, d.hooks.map((line) => el("li", {}, line)))),
+    d.biography.length > 0 && folded("past-history", `Life history (${d.biography.length})`, el("ul", { class: "bio small" }, d.biography.map((line) => el("li", {}, line)))),
+    d.hooks.length > 0 && folded("past-loose-ends", `Loose ends (${d.hooks.length})`, el("ul", { class: "bio small" }, d.hooks.map((line) => el("li", {}, line)))),
     d.legacy && muted("This captain was created before the deep character creator. Start a new game to build one."),
   );
 }
@@ -298,8 +298,8 @@ function questsMenu() {
     el("div", { class: "small" }, q.status === "active" ? `Next: ${q.objective}` : q.objective));
   return columns(
     section(`Active (${active.length})`, active.length ? active.map(card) : empty("No active quests.")),
-    section(`Finished (${done.length})`, done.length ? done.map(card) : muted("Nothing finished yet.")),
-    section(`Journal (${g.journal.length})`, g.journal.length
+    folded("quests-finished", `Finished (${done.length})`, done.length ? done.map(card) : muted("Nothing finished yet.")),
+    folded("quests-journal", `Journal (${g.journal.length})`, g.journal.length
       ? [...g.journal].reverse().map((j) => el("div", { class: "menu-entry small" }, j.entry))
       : muted("Important events will be recorded here.")),
   );
@@ -321,9 +321,8 @@ function leadsMenu() {
     el("div", { class: "small" }, lead.lead),
     action);
   return [
-    el("div", { class: "menu-intro small" }, `What you've heard about at ${g.location.name}. Looking into one starts it in the story. Nothing here costs anything until you do. New leads turn up as you travel, as time passes, and as your name gets around. Stories don't wait for you: a lead can change if you leave it, but you can still step in.`),
     columns(
-      section("Leads here",
+      section(`Leads here, at ${g.location.name}`,
         here.length
           ? here.map((lead) => card(lead, el("div", { class: "row" }, g.mode === "written" && !lead.written
             ? el("span", { class: "muted small", title: "This story hasn't been written out yet. It plays out by itself for now, and an AI game master could run it from its notes." }, "Not written yet")
@@ -338,8 +337,8 @@ function leadsMenu() {
           : muted("Nobody's saying much here.")),
       section(`Following (${active.length})`,
         active.length ? active.map((lead) => card(lead)) : muted("Stories you take up will be listed here, along with your Quests.")),
-      done.length > 0 && section(`Finished (${done.length})`, done.map((lead) => el("div", { class: "menu-entry small" }, lead.title))),
-      moved?.length > 0 && section("Moved on without you", moved.map((entry) => el("div", { class: "menu-entry small" },
+      done.length > 0 && folded("leads-finished", `Finished (${done.length})`, done.map((lead) => el("div", { class: "menu-entry small" }, lead.title))),
+      moved?.length > 0 && folded("leads-moved", `Moved on without you (${moved.length})`, moved.map((entry) => el("div", { class: "menu-entry small" },
         el("div", {}, el("strong", {}, entry.title), el("span", { class: "muted" }, ` Day ${entry.day}`)),
         el("div", {}, entry.text)))),
     ),
@@ -559,9 +558,10 @@ function settingsMenu() {
         el("button", { class: reading.view === "iso" ? "primary" : "", "aria-pressed": String(reading.view === "iso"), onclick: () => changeReading({ view: "iso" }) }, "Isometric"),
         el("button", { class: reading.view === "walk" ? "primary" : "", "aria-pressed": String(reading.view === "walk"), onclick: () => changeReading({ view: "walk" }) }, "Walk-around"),
         el("button", { class: reading.view === "classic" ? "primary" : "", "aria-pressed": String(reading.view === "classic"), onclick: () => changeReading({ view: "classic" }) }, "Classic")),
-      muted("Isometric shows the room you're in, seen from an angle, wherever you are, and you can walk around and click on people and things. The story comes up over the room a piece at a time: click anywhere to go on. Walking is free. The clock runs while you explore, because everyone lives their own day, and the buttons at the top of the room pause it or speed it up. Each thing you say in a talk is one call to the AI, with the clock stopped."),
-      muted("Walk-around is the same thing, drawn in console art, with the story under it. Classic gives the story the whole window, and only the story moves the clock. Popup font is for the story over the room, and Story font is for the whole story, Classic and the panel under the room.")),
-    section("Display",
+      folded("settings-views", "What the story views mean",
+        muted("Isometric shows the room you're in, seen from an angle, wherever you are, and you can walk around and click on people and things. The story comes up over the room a piece at a time: click anywhere to go on. Walking is free. The clock runs while you explore, because everyone lives their own day, and the buttons at the top of the room pause it or speed it up. Each thing you say in a talk is one call to the AI, with the clock stopped."),
+        muted("Walk-around is the same thing, drawn in console art, with the story under it. Classic gives the story the whole window, and only the story moves the clock. Popup font is for the story over the room, and Story font is for the whole story, Classic and the panel under the room."))),
+    folded("settings-display", "Display",
       pickRow("Interface size:", "interface", [
         ["auto", "Automatic", "Everything grows with the window, so it looks the same on any screen"],
         ["small", "Small"],
@@ -571,12 +571,12 @@ function settingsMenu() {
       ]),
       el("div", { class: "row small" }, "Full screen:", el("button", { "aria-pressed": String(Boolean(document.fullscreenElement)), onclick: toggleFullScreen }, document.fullscreenElement ? "Leave full screen" : "Go full screen")),
       muted("You can also press F11 for full screen, and pull the edges of the window to make it any size. Automatic makes everything bigger in a bigger window, so it looks the same on any screen. A size can't go past what still fits in the window.")),
-    section("Skill checks",
+    folded("settings-checks", "Skill checks",
       el("div", { class: "row small" }, "Checks open as:",
         el("button", { class: checkStyle() === "play" ? "primary" : "", "aria-pressed": String(checkStyle() === "play"), onclick: () => { setCheckStyle("play"); app.renderMenus(); } }, "A game"),
         el("button", { class: checkStyle() === "roll" ? "primary" : "", "aria-pressed": String(checkStyle() === "roll"), onclick: () => { setCheckStyle("roll"); app.renderMenus(); } }, "Just a roll")),
       muted("Playing a check's window well improves your odds. If you'd rather not, a check can go straight to the roll, at your character's own odds. Either way, the Skills menu lets you practice any of them.")),
-    section("Fights",
+    folded("settings-fights", "Fights",
       el("div", { class: "row small" }, "How hard enemies fight:",
         [["easy", "Easy"], ["normal", "Normal"], ["hard", "Hard"]].map(([id, label]) => el("button", {
           class: g.difficulty === id ? "primary" : "",
@@ -592,9 +592,10 @@ function settingsMenu() {
           "aria-pressed": String(s.storyApplies === id),
           onclick: runAction(async () => { ui.settings = await api("/api/settings", { story: id }); }),
         }, label))),
-      muted("Written story: the story is written in advance, so it's free and needs no AI. For now that's the openings for three lives, the arrival at Haven, the main story's whole first act and a story aboard the Meridian from the Leads menu, and the crew's conversations, and the rest is being written. AI game master: the written parts still play as written, for free, and the AI reads whatever you type or say in them and fits it to the story, plays everyone and everything that isn't written, and runs the stories that haven't been written out. It needs a key or a local model from below."),
+      folded("settings-writers", "What the two mean",
+        muted("Written story: the story is written in advance, so it's free and needs no AI. For now that's the openings for three lives, the arrival at Haven, the main story's whole first act and a story aboard the Meridian from the Leads menu, and the crew's conversations, and the rest is being written. AI game master: the written parts still play as written, for free, and the AI reads whatever you type or say in them and fits it to the story, plays everyone and everything that isn't written, and runs the stories that haven't been written out. It needs a key or a local model from below.")),
       muted(`${s.story === null ? `Until you choose, it's the ${s.storyApplies === "written" ? "written story, because no AI is set up" : "AI game master, because an AI is set up"}. ` : ""}It applies to new games. This game has ${g.mode === "written" ? "the written story" : "an AI game master"}, and that can't change once a game has started.`)),
-    section("AI model",
+    folded("settings-model", "AI model",
       s.claudeModels.map((m) => choice("claude", m.id, m.name, m.note)),
       s.ollama.models.map((m) => choice("ollama", m, `Local: ${m}`, "Free and private. Runs on your graphics card.")),
       !s.ollama.running && muted("Local models: Ollama isn't running, so none are listed. See the README to set it up, then come back here."),
@@ -613,12 +614,12 @@ function settingsMenu() {
           onclick: runAction(async () => { ui.settings = await api("/api/settings", { effort }); }),
         }, effort === "medium" ? "Medium" : "Low"))),
       s.provider === "claude" && muted("Low costs less per turn, but Claude may be less careful with the story and the rules. Changing this makes Claude reload your story once.")),
-    section("What the AI has cost",
+    folded("settings-cost", "What the AI has cost",
       row("Last turn", s.spending.lastTurn === null ? "None yet" : money(s.spending.lastTurn)),
       row("Since you opened the game", money(s.spending.session), `${s.spending.calls} ${s.spending.calls === 1 ? "call" : "calls"}`),
       row("Since this meter was added", money(s.spending.total)),
       muted("Worked out from Anthropic's prices. Your exact bill is at console.anthropic.com. Fights and menus cost nothing.")),
-    section("Anthropic API key",
+    folded("settings-key", "Anthropic API key",
       small(s.hasKey ? "A key is saved on this computer." : "No key saved yet. You only need one for Claude models. Create one at console.anthropic.com."),
       keyInput = el("input", { type: "password", placeholder: "Paste your key here", autocomplete: "off", "aria-label": "Anthropic API key" }),
       el("div", { class: "row" },
@@ -641,7 +642,7 @@ function settingsMenu() {
             !save?.empty && el("button", { disabled: ui.streaming, onclick: runAction(() => loadGame(slot)) }, "Load")));
       }),
       el("div", {}, el("button", { disabled: ui.streaming, onclick: toTitle }, "Title screen"))),
-    section("Your files",
+    folded("settings-files", "Your files",
       small("The world is kept in files on this computer, inside the game's folder. You can open them with any text editor. If you change one, restart the game to see the change."),
       fileEntry(`${g.files.worldCharacters} important characters`, `${g.files.world}\\characters`),
       fileEntry(`${g.enemiesTotal - g.files.campaignEnemies} enemy types`, `${g.files.world}\\enemies`),
@@ -653,22 +654,32 @@ function settingsMenu() {
 
 // ---- The list of menus --------------------------------------------------
 
+// about is what a menu holds, for the tooltip on its button: it isn't written on the screen.
 export const MENUS = {
-  character: { label: "Character", command: "char", view: characterMenu },
-  skills: { label: "Skills", command: "skills", view: skillsMenu },
-  traits: { label: "Traits", command: "traits", view: traitsMenu },
-  perks: { label: "Perks", command: "perks", view: perksMenu },
-  beliefs: { label: "Beliefs", command: "beliefs", view: beliefsMenu },
-  dossier: { label: "Dossier", command: "dossier", view: dossierMenu },
-  people: { label: "People", command: "people", view: peopleMenu },
-  quests: { label: "Quests", command: "quests", view: questsMenu },
-  leads: { label: "Leads", command: "leads", view: leadsMenu },
-  codex: { label: "Codex", command: "codex", view: codexMenu },
-  inventory: { label: "Inventory", command: "inv", view: inventoryMenu },
-  ship: { label: "Ship", command: "ship", view: shipMenu, captainOnly: true },
-  fleet: { label: "Fleet", command: "fleet", view: fleetMenu },
-  map: { label: "Star map", command: "map", view: mapMenu },
-  market: { label: "Market", command: "market", view: marketMenu },
-  bestiary: { label: "Bestiary", command: "bestiary", view: bestiaryMenu },
-  settings: { label: "Settings", command: "settings", view: settingsMenu },
+  character: { label: "Character", command: "char", about: "Level, condition, attributes, and your numbers in a fight", view: characterMenu },
+  skills: { label: "Skills", command: "skills", about: "What you're good at, your odds, and practice", view: skillsMenu },
+  traits: { label: "Traits", command: "traits", about: "Traits, convictions, and everything affecting you", view: traitsMenu },
+  perks: { label: "Perks", command: "perks", about: "What you've learned, and what you can learn now", view: perksMenu },
+  beliefs: { label: "Beliefs", command: "beliefs", about: "Where you stand, and your standing with each faction", view: beliefsMenu },
+  dossier: { label: "Your past", command: "dossier", about: "Your record, career and life history", view: dossierMenu },
+  people: { label: "People", command: "people", about: "Everyone you've met or heard of", view: peopleMenu },
+  quests: { label: "Quests", command: "quests", about: "What you've taken on, and the journal", view: questsMenu },
+  leads: { label: "Leads", command: "leads", about: "Stories you could start here, and what people are saying", view: leadsMenu },
+  codex: { label: "What you know", command: "codex", about: "Places, factions, ships and ideas you've come across", view: codexMenu },
+  inventory: { label: "Inventory", command: "inv", about: "What you're carrying and wearing", view: inventoryMenu },
+  ship: { label: "Ship", command: "ship", about: "The Meridian and her crew", view: shipMenu, captainOnly: true },
+  fleet: { label: "Fleet", command: "fleet", about: "All 41 ships: supplies, rations, work crews and orders", view: fleetMenu },
+  map: { label: "Star map", command: "map", about: "The chart of known space, and setting course", view: mapMenu },
+  market: { label: "Market", command: "market", about: "Buying and selling, where there's a market", view: marketMenu },
+  bestiary: { label: "Enemies met", command: "bestiary", about: "Enemies you know of, how they fight, and the simulator", view: bestiaryMenu },
+  settings: { label: "Settings", command: "settings", about: "Reading, the AI, saved games, and your files", view: settingsMenu },
 };
+
+// The groups the menus sit in on the rail, each under its own heading.
+export const MENU_GROUPS = [
+  { title: "You", ids: ["character", "skills", "traits", "perks", "beliefs", "dossier"] },
+  { title: "The story", ids: ["quests", "leads", "people", "codex", "bestiary"] },
+  { title: "The fleet", ids: ["fleet", "ship", "map"] },
+  { title: "Gear", ids: ["inventory", "market"] },
+  { title: "Game", ids: ["settings"] },
+];

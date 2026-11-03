@@ -282,6 +282,15 @@ button.fighter:hover:not(:disabled), button.fighter:focus-visible { background: 
 .rail button:hover .badge, .rail button.active .badge, .drawer-tabs button:hover .badge, .drawer-tabs button.active .badge { color: var(--bg); }
 .badge::before { content: "("; }
 .badge::after { content: ")"; }
+/* The menus sit in groups on the rail, each under its own heading, and on the tabs when the window's narrow. */
+.rail-group { padding: 10px 10px 2px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+.rail-group::before { content: "-- "; }
+.rail-group::after { content: " --"; }
+.rail .rail-group:first-child { padding-top: 2px; }
+.drawer-tabs .rail-group { padding: 0 2px 0 0; }
+/* A part of a page that folds away behind its own line. */
+.fold-toggle { color: var(--text); font-size: 13px; text-transform: uppercase; letter-spacing: .02em; }
+.fold.open > .fold-toggle { color: var(--bright); }
 
 /* The menus slide out over the story. Every menu is this one panel, so they're all the same size. */
 .drawer {

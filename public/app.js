@@ -2,10 +2,10 @@
 
 import { creatorScreen, initCreator, openCreator, resetCreator } from "./creator.js";
 import { checkNode, checkOpen, focusCheck, initCheck, resetCheck, startChoiceCheck, startPractice } from "./check.js";
-import { api, el, meter, money, readLines } from "./dom.js";
+import { api, el, meter, money, onFoldChange, readLines } from "./dom.js";
 import { fightNode, fightOpen, focusFight, initFight, resetFight, startSim } from "./fight.js";
 import { focusRaid, initFleet, raidNode, raidOpen, resetRaid } from "./fleet.js";
-import { MENUS, initMenus } from "./menus.js";
+import { MENUS, MENU_GROUPS, initMenus } from "./menus.js";
 import { choicesFor, dropStaleTooltip, initStory, loreCatalog, optionContent, setStoryContext, storyEntryNode, thinkingNode } from "./story-view.js";
 import { focusTalk, initTalk, resetTalk, startTalk, talkNode, talkOpen } from "./talk.js";
 import { beginScene, initPopups, openPopups, popupNext, popupsAttached, popupsOpen, updatePopups } from "./popups.js";
@@ -461,13 +461,19 @@ const act = (body) => runAction(async () => {
 
 const menuAlerts = (g) => ({ character: g.statPoints, skills: g.skillPoints, perks: g.perkPoints, fleet: g.role.captain ? g.fleet.shortages.length : 0 });
 
+// The menus, in their groups, each group under its own heading. What a menu holds is on its tooltip, not on the screen.
 function menuButtons(g) {
   const alerts = menuAlerts(g);
-  return Object.entries(MENUS).filter(([, menu]) => !menu.captainOnly || g.role.captain).map(([id, menu]) => el("button", {
-    class: ui.sideOpen && id === ui.tab ? "active" : "",
-    "aria-pressed": String(ui.sideOpen && id === ui.tab),
-    onclick: () => toggleMenu(id),
-  }, menu.label, alerts[id] > 0 && el("span", { class: "badge" }, String(alerts[id]))));
+  return MENU_GROUPS.flatMap((group) => {
+    const entries = group.ids.map((id) => [id, MENUS[id]]).filter(([, menu]) => !menu.captainOnly || g.role.captain);
+    if (!entries.length) return [];
+    return [el("div", { class: "rail-group" }, group.title), ...entries.map(([id, menu]) => el("button", {
+      class: ui.sideOpen && id === ui.tab ? "active" : "",
+      "aria-pressed": String(ui.sideOpen && id === ui.tab),
+      title: menu.about,
+      onclick: () => toggleMenu(id),
+    }, menu.label, alerts[id] > 0 && el("span", { class: "badge" }, String(alerts[id]))))];
+  });
 }
 
 const railNode = () => el("nav", { class: "rail", id: "rail", "aria-label": "Menus" }, menuButtons(ui.game));
@@ -635,6 +641,8 @@ initStory({
   openEntry: (entry) => openMenu(entry.kind === "person" ? "people" : "codex", entry.id),
 });
 
+// Folding a part of a menu open or shut redraws the menu.
+onFoldChange(() => renderMenus());
 initMenus({
   ui,
   act,
