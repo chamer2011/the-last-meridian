@@ -269,7 +269,8 @@ test("the captain's opening is written, and every other life has an opening to f
     assert.ok(openingSceneId(game), id);
   }
   assert.equal(openingSceneId(newGame("captain")), "opening_captain");
-  assert.equal(openingSceneId(newGame("docker")), "opening");
+  assert.equal(openingSceneId(newGame("docker")), "opening_docker");
+  assert.equal(openingSceneId(newGame("miner")), "opening");
 });
 
 test("the checker finds what's wrong with a scene, in plain words", () => {
@@ -423,7 +424,7 @@ test("what the written story can't answer leaves the game exactly as it was, and
 });
 
 test("someone who isn't the captain gets the opening that fits anyone, with a note saying theirs is to come", () => {
-  const game = newGame("docker", 5);
+  const game = newGame("miner", 5);
   const pieces = play(game, { event: "start" });
   assert.match(pieces[0].text, /The signal is on every band/);
   assert.ok(pieces.some((piece) => piece.role === "notice" && /hasn't been written yet/.test(piece.text)));
@@ -631,7 +632,8 @@ test("the Downstairs Crew's other roads: a fight in the deep duct, the council s
 test("someone who isn't the captain gets the smaller story, and can still make it come out right", () => {
   const game = newGame("engine_hand", 8);
   play(game, { event: "start" });
-  play(game, { playerText: "get on with the day" });
+  play(game, { playerText: "Keep your head down" });
+  play(game, { playerText: "Get back to work" });
   const lead = publicState(game).story.here.find((one) => one.id === DOWNSTAIRS);
   assert.ok(lead, "the lead reaches an engine hand aboard the Meridian");
   assert.match(lead.lead, /told everyone who'll listen/);
@@ -710,7 +712,8 @@ test("a conversation remembers what the story did, through flags, and what's sai
   // Someone who isn't the captain gets her other side.
   const hand = newGame("engine_hand", 8);
   play(hand, { event: "start" });
-  play(hand, { playerText: "get on with the day" });
+  play(hand, { playerText: "Keep your head down" });
+  play(hand, { playerText: "Get back to work" });
   walkCommand(hand, { action: "room", to: "bridge" });
   openTalkWith(hand, /Voss/);
   assert.equal(hand.talk.written.part, "other");
@@ -831,6 +834,214 @@ test("every closed door in the world has a written rule, and every rule is sound
     }
   }
   assert.equal(doors, 15);
+});
+
+// ---- Act 1, for three lives: arriving at Haven, two more openings, and the Warm Room -------------
+
+const { fleetCommand } = await import("../src/fleet.js");
+const WARM = "main_the_old_scholar";
+const quest = (game, id) => game.quests.find((one) => one.id === id);
+
+test("a condition can ask which life the player chose", () => {
+  assert.deepEqual(parseCondition("life docker").problems, []);
+  assert.match(parseCondition("life nobody").problems[0], /no life called nobody/);
+  assert.equal(conditionHolds(newGame("docker", 2), "life docker", HELPERS), true);
+  assert.equal(conditionHolds(newGame("docker", 2), "life captain", HELPERS), false);
+  assert.equal(conditionHolds(newGame(), "life captain and captain", HELPERS), true);
+});
+
+test("the engine hand and the dock hand have openings of their own, and they play", () => {
+  const hand = newGame("engine_hand", 4);
+  assert.equal(openingSceneId(hand), "opening_engine_hand");
+  const first = play(hand, { event: "start" });
+  assert.match(first[0].text, /The coolant line went at the start of the watch/);
+  play(hand, { playerText: "Ask the chief what the bridge is on about" });
+  play(hand, { playerText: "Ask what he needs" });
+  assert.equal(hand.flags.marrow_wants_a_capacitor, true);
+  assert.match(quest(hand, "keep_her_running").objective, /capacitor/);
+  play(hand, { playerText: "get back to work" });
+  assert.equal(hand.scene, null);
+
+  const docker = newGame("docker", 5);
+  assert.equal(openingSceneId(docker), "opening_docker");
+  play(docker, { event: "start" });
+  play(docker, { playerText: "Take the clipboard back up" });
+  assert.equal(docker.flags.asked_about_the_crate, true);
+  assert.equal(docker.contacts.find((one) => /Jessup/.test(one.name))?.attitude, "neutral");
+  play(docker, { playerText: "get on with the shift" });
+  assert.equal(docker.scene, null);
+  assert.ok(docker.journal.length >= 1);
+});
+
+test("arriving somewhere with a written arrival plays it when the player continues, once at length and then in a line", () => {
+  const game = newGame();
+  play(game, { event: "start" });
+  play(game, { playerText: "listen" });
+  play(game, { playerText: "go on" });
+  play(game, { playerText: "have pell plot" });
+  const jump = fleetCommand(game, { action: "course", id: "haven" });
+  assert.equal(jump.moved, true);
+  assert.equal(game.location, "haven");
+  assert.equal(game.arrived, "haven");
+  assert.equal(game.pendingEvents.length, 1, "the page offers Continue the story");
+  const arrival = play(game, { event: "continue" });
+  assert.match(arrival[0].text, /Haven Station comes up on the viewport/);
+  assert.equal(game.arrived, null);
+  assert.equal(game.flags.arrived_haven, true);
+  assert.equal(game.scene, null, "the arrival ends by itself");
+  assert.ok(arrival.some((piece) => piece.role === "notice" && /Leads menu/.test(piece.text)));
+  // Back and forth: the second arrival is a line.
+  fleetCommand(game, { action: "course", id: "meridian" });
+  play(game, { event: "continue" });
+  fleetCommand(game, { action: "course", id: "haven" });
+  const again = play(game, { event: "continue" });
+  assert.match(again[0].text, /Haven again/);
+  // Someone arriving alone gets their own words.
+  const hand = newGame("engine_hand", 6);
+  play(hand, { event: "start" });
+  play(hand, { playerText: "Keep your head down" });
+  play(hand, { playerText: "Get back to work" });
+  hand.credits = 200;
+  fleetCommand(hand, { action: "course", id: "haven" });
+  assert.equal(hand.location, "haven");
+  const alone = play(hand, { event: "continue" });
+  assert.match(alone[0].text, /Haven Station, on your own/);
+});
+
+test("the captain plays the Warm Room through to the reveal: Sable, Tharel's test, Sorel's recording, the stair, and the news", () => {
+  const game = newGame();
+  play(game, { event: "start" });
+  play(game, { playerText: "listen" });
+  play(game, { playerText: "go on" });
+  play(game, { playerText: "have pell plot" });
+  fleetCommand(game, { action: "course", id: "haven" });
+  play(game, { event: "continue" });
+  const leads = publicState(game).story.here;
+  assert.equal(leads[0].id, WARM, "the main story comes first at Haven");
+  play(game, { playerText: "I look into this", threadId: WARM });
+  assert.equal(game.scene.part, "start");
+  assert.equal(quest(game, WARM).status, "active");
+  play(game, { playerText: "Ask who else has been paying" });
+  settleCheck(game, true);
+  play(game, { event: "continue" });
+  assert.equal(game.scene.part, "who_pays");
+  assert.equal(game.flags.who_pays_known, true);
+  play(game, { playerText: "speak to the Ilari" });
+  assert.equal(game.scene.part, "yara");
+  play(game, { playerText: "Follow her" });
+  assert.equal(game.scene.part, "warm_room");
+  assert.equal(roomNow(game), "Tharel's Warm Room");
+  play(game, { playerText: "The truth. Always" });
+  assert.equal(game.flags.tharel_trusts, true);
+  play(game, { playerText: "Ask him what he needs" });
+  play(game, { playerText: "Shuttle back across" });
+  assert.equal(game.scene.part, "sorel");
+  play(game, { playerText: "pull the signal's frame headers" });
+  settleCheck(game, true);
+  play(game, { event: "continue" });
+  assert.equal(game.scene.part, "headers_pass");
+  assert.ok(game.story.clues.includes("two_layers"), "the clue is in the main story's record");
+  assert.equal(game.inventory.data_chip, 1);
+  play(game, { playerText: "Take it to Tharel" });
+  assert.equal(game.scene.part, "back_to_warm_room");
+  play(game, { playerText: "Stand in the corridor" });
+  settleCheck(game, true);
+  play(game, { event: "continue" });
+  assert.equal(game.scene.part, "held");
+  play(game, { playerText: "go on" });
+  assert.equal(game.scene.part, "reveal_trusted", "trust earned, so he gives everything");
+  assert.equal(game.inventory.beacon_shard, 1);
+  assert.equal(game.contacts.find((one) => /Tharel/.test(one.name)).attitude, "ally");
+  play(game, { playerText: "Listen to it with him" });
+  settleCheck(game, false);
+  play(game, { event: "continue" });
+  assert.equal(game.scene.part, "one_voice");
+  play(game, { playerText: "what you should tell the fleet" });
+  play(game, { playerText: "Announce it to the fleet" });
+  assert.equal(game.scene, null);
+  assert.equal(quest(game, WARM).status, "completed");
+  assert.equal(game.story.threads[WARM], "done");
+  assert.equal(game.flags.announced_navy_survivors, true);
+});
+
+test("the Warm Room lost: standing aside, Quill's people take him, and Sable sells what he'd have said", () => {
+  const game = newGame("captain", 12);
+  play(game, { event: "start" });
+  play(game, { playerText: "listen" });
+  play(game, { playerText: "go on" });
+  play(game, { playerText: "have pell plot" });
+  fleetCommand(game, { action: "course", id: "haven" });
+  play(game, { event: "continue" });
+  play(game, { playerText: "I look into this", threadId: WARM });
+  game.credits = 100;
+  play(game, { playerText: "Pay Sable's forty" });
+  assert.equal(game.credits, 60);
+  play(game, { playerText: "Go to the Warm Room" });
+  play(game, { playerText: "A direction" });
+  play(game, { playerText: "Ask him what he needs" });
+  play(game, { playerText: "Shuttle back across" });
+  play(game, { playerText: "Take the recording to Tharel" });
+  play(game, { playerText: "Stand aside" });
+  assert.equal(game.scene.part, "let_them");
+  play(game, { playerText: "go on" });
+  assert.equal(game.scene.part, "taken");
+  assert.equal(game.flags.tharel_taken_by_quill, true);
+  play(game, { playerText: "Pay Sable's sixty" });
+  assert.equal(game.scene, null);
+  assert.equal(game.credits, 0);
+  assert.ok(game.story.clues.includes("two_layers"));
+  assert.equal(game.flags.sable_favor, true);
+  assert.match(quest(game, WARM).objective, /Getting Tharel back/);
+});
+
+test("the engine hand and the dock hand each get their own way into the Warm Room, and can save the old man", () => {
+  const hand = newGame("engine_hand", 6);
+  play(hand, { event: "start" });
+  play(hand, { playerText: "Keep your head down" });
+  play(hand, { playerText: "Get back to work" });
+  hand.credits = 200;
+  fleetCommand(hand, { action: "course", id: "haven" });
+  play(hand, { event: "continue" });
+  assert.ok(publicState(hand).story.here.some((one) => one.id === WARM), "the lead reaches a fleet hand who's crossed to Haven");
+  play(hand, { playerText: "I look into this", threadId: WARM });
+  assert.equal(hand.scene.part, "hand_start", "the rule knew the life");
+  play(hand, { playerText: "Offer to fix the boiler" });
+  play(hand, { playerText: "Get the boiler running" });
+  settleCheck(hand, true);
+  play(hand, { event: "continue" });
+  assert.equal(hand.scene.part, "hand_fixed");
+  assert.equal(hand.flags.tharel_trusts, true);
+  play(hand, { playerText: "Sit, and ask him" });
+  assert.equal(hand.scene.part, "outsider_warm");
+  assert.equal(hand.flags.two_layers_known, true);
+  assert.ok(hand.story.clues.includes("two_layers"));
+  play(hand, { playerText: "Get him out through the ventilation" });
+  settleCheck(hand, true);
+  play(hand, { event: "continue" });
+  assert.equal(hand.scene, null);
+  assert.equal(hand.flags.sable_favor, true);
+  assert.equal(quest(hand, WARM).status, "completed");
+
+  const docker = newGame("docker", 5);
+  play(docker, { event: "start" });
+  play(docker, { playerText: "Count the crates as told" });
+  play(docker, { playerText: "get on with the shift" });
+  assert.ok(publicState(docker).story.here.some((one) => one.id === WARM), "the lead is local to a dock hand");
+  play(docker, { playerText: "I look into this", threadId: WARM });
+  assert.equal(docker.scene.part, "dock_start");
+  play(docker, { playerText: "Take the crate up" });
+  assert.equal(docker.scene.part, "dock_warm");
+  play(docker, { playerText: "Sit, and ask him" });
+  assert.equal(docker.scene.part, "outsider_warm");
+  play(docker, { playerText: "Stand in the doorway" });
+  assert.ok(docker.combat, "the snatch team is a real fight");
+  docker.combat = null;
+  docker.lastFight = { result: "defeat", enemies: ["dock_thug"], summary: "You lost.", used: false };
+  docker.pendingEvents.push("The player lost.");
+  play(docker, { event: "continue" });
+  assert.equal(docker.scene, null);
+  assert.equal(docker.flags.tharel_taken_by_quill, true);
+  assert.equal(quest(docker, WARM).status, "completed");
 });
 
 // ---- Over the real server, with no key and no AI anywhere -------------------------------------

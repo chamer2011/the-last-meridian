@@ -4,6 +4,7 @@
 
 import { POLES, SKILLS } from "./character-data.js";
 import { FACTIONS, ITEMS, LOCATIONS, STATS } from "./data.js";
+import { START_LIST } from "./role.js";
 import { DIFFICULTY } from "./rules.js";
 
 const ATTITUDES = ["hostile", "wary", "neutral", "friendly", "ally"];
@@ -49,6 +50,10 @@ export function parseCondition(text) {
         term.id = rest.join(" ");
         break;
       case "captain":
+        break;
+      case "life":
+        if (!START_LIST[rest[0]]) problems.push(`there's no life called ${rest[0] ?? "nothing"}. The ids are in starts.json`);
+        term.id = rest[0];
         break;
       case "at":
         if (!LOCATIONS[rest[0]]) problems.push(`there's no place called ${rest[0] ?? "nothing"}`);
@@ -124,6 +129,7 @@ function termHolds(game, term, helpers) {
     case "likes": result = attitudeRank(contact(term.id)?.attitude) >= attitudeRank("friendly"); break;
     case "dislikes": result = Boolean(contact(term.id)) && attitudeRank(contact(term.id)?.attitude) <= attitudeRank("wary"); break;
     case "captain": result = game.role?.captain !== false; break;
+    case "life": result = (game.role?.id ?? "captain") === term.id; break;
     case "at": result = game.location === term.id; break;
     case "quest": {
       const quest = game.quests?.find((one) => one.id === term.id);

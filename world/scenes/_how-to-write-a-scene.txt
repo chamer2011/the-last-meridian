@@ -21,6 +21,9 @@ opening_captain.txt    How the story opens for the captain. For another life, us
 opening.txt            The opening for any life that has none of its own.
 thread_<story>.txt     Plays when a story from the Leads menu is taken up, for example
                        thread_crew_naomi_under_crew.txt. The ids are the file names in world/threads.
+arrive_<place>.txt     Plays when the player arrives at that place, by jump, passage or shuttle, when
+                       they press Continue the story. The ids are the file names in world/places.
+talk_<person>.txt      What that person says in a talk. See CONVERSATIONS below.
 
 
 THE SHAPE OF A SCENE
@@ -123,6 +126,7 @@ and join several with "and":
     met Voss                         They're in the player's contacts.
     likes Voss                       Friendly or better. dislikes Voss is wary or worse.
     captain                          The player is the captain.
+    life engine_hand                 The player started as that life. The ids are in starts.json.
     at haven                         The player is at that place.
     chance 30                        True 30 times in 100, at random.
 

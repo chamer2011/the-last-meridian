@@ -244,6 +244,12 @@ function carryOn(game, scenes, context) {
     context.emit({ type: "state" });
     return;
   }
+  // The fleet, or the player alone, has just arrived somewhere with a written arrival. A scene already under way comes first.
+  if (game.arrived) {
+    const place = game.arrived;
+    game.arrived = null;
+    if (scenes[`arrive_${place}`] && !game.scene) return startScene(game, `arrive_${place}`, scenes, context);
+  }
   const scene = sceneFor(game, scenes);
   if (scene) {
     const part = partOf(scene, game.scene.part, game.scene.id);
