@@ -2,7 +2,7 @@
 // game's state, so a menu can never disagree with the rules.
 
 import { checkStyle, setCheckStyle } from "./check.js";
-import { api, beliefBar, el, folded, meter, money, signed, strainMeter } from "./dom.js";
+import { api, beliefBar, columns, el, folded, meter, money, signed, strainMeter } from "./dom.js";
 import { fleetMenu, mapMenu } from "./fleet.js";
 import { oddsFor } from "./story.js";
 
@@ -15,7 +15,6 @@ export function initMenus(hooks) {
 
 // ---- Shared pieces ------------------------------------------------------
 
-const columns = (...children) => el("div", { class: "menu-columns" }, children);
 const section = (title, ...children) => el("section", { class: "menu-section" }, title && el("h3", {}, title), children);
 const effects = (list) => (list?.length ? el("div", { class: "effects small" }, list.join(" | ")) : null);
 const muted = (text) => el("div", { class: "muted small" }, text);
@@ -276,13 +275,12 @@ function peopleMenu() {
   const shown = g.people.filter(PEOPLE_FILTERS[filter][1]);
   return [
     el("div", { class: "menu-intro" },
-      el("div", { class: "small" }, "Everyone you've met or heard of. Each has a file on this computer, so they stay the same person."),
       el("div", { class: "row" }, Object.entries(PEOPLE_FILTERS).map(([id, [label]]) => el("button", {
         class: id === filter ? "primary" : "",
         "aria-pressed": String(id === filter),
         onclick: () => { ui.peopleFilter = id; renderMenus(); },
       }, label)))),
-    shown.length ? el("div", { class: "menu-columns" }, shown.map((p) => personCard(p, ui.menuFocus))) : empty("Nobody here yet."),
+    shown.length ? el("div", { class: "menu-cards" }, shown.map((p) => personCard(p, ui.menuFocus))) : empty("Nobody here yet."),
   ];
 }
 
@@ -355,7 +353,7 @@ function codexMenu() {
   const inCodex = (e) => e.id.startsWith("custom:") || (e.kind !== "person" && g.seenLore.includes(e.id));
   const found = loreCatalog().filter(inCodex);
   const total = ui.setup.lore.filter((e) => e.kind !== "person").length + g.lore.length;
-  const results = el("div", { class: "menu-columns" });
+  const results = el("div", { class: "menu-cards" });
   const draw = () => {
     const search = (ui.codexSearch ?? "").trim().toLowerCase();
     const shown = search ? found.filter((e) => `${e.name} ${e.text}`.toLowerCase().includes(search)) : found;
@@ -375,7 +373,7 @@ function codexMenu() {
   draw();
   return [
     el("div", { class: "menu-intro" },
-      el("div", { class: "small" }, `${found.length} of ${total} entries found. Underlined words in the story open their entry here.`),
+      el("div", { class: "small" }, `${found.length} of ${total} entries found.`),
       el("input", {
         type: "text",
         placeholder: "Search the codex",
@@ -497,8 +495,7 @@ function bestiaryMenu() {
   const g = ui.game;
   const p = g.combatProfile;
   return [
-    el("div", { class: "menu-intro small" }, "Fights run entirely on this computer, from these stats, and use no AI. You can also practice against anything here in the Meridian's simulator, where nothing you do carries over. Stronger enemies appear once you've faced them."),
-    el("div", { class: "menu-columns" }, g.enemies.map((e) => el("div", { class: "card stack gap-small" },
+    el("div", { class: "menu-cards" }, g.enemies.map((e) => el("div", { class: "card stack gap-small" },
       el("div", { class: "spread" }, el("strong", {}, e.name), e.threat && el("span", { class: "tag" }, e.threat)),
       muted(e.desc),
       small(`Health ${e.hp}, attack ${signed(e.attack)}, defense ${e.defense}, damage ${e.damage[0]}-${e.damage[1]}${e.weapon ? `, ${e.weapon}` : ""}.`),

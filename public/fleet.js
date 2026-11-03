@@ -1,7 +1,7 @@
 // The fleet's screens: the Fleet menu, the star map, and the raid window. Everything here is drawn
 // from the game's state, and every button runs on this computer, without the AI.
 
-import { api, el, folded, meter, signed, strainMeter } from "./dom.js";
+import { api, el, folded, meter, signed, strainMeter, twoColumns } from "./dom.js";
 
 const raid = { report: null, message: null, sending: false };
 
@@ -240,7 +240,7 @@ export function fleetMenu() {
     el("div", { class: "row" }, tabButton("command", g.role.captain ? "Command" : "How it stands"), tabButton("ships", `Ships (${f.shipCount})`)),
     tab === "ships"
       ? shipsSection(f)
-      : !g.role.captain ? outsiderFleet(g) : el("div", { class: "menu-columns" }, statusSection(g), suppliesSection(f), ordersSection(g), rationsSection(f), crewsSection(f), councilSection(f), logSection(f)),
+      : !g.role.captain ? outsiderFleet(g) : twoColumns([statusSection(g), suppliesSection(f)], [ordersSection(g), rationsSection(f), crewsSection(f), councilSection(f), logSection(f)]),
   ];
 }
 

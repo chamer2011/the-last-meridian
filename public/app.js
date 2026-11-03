@@ -2,7 +2,7 @@
 
 import { creatorScreen, initCreator, openCreator, resetCreator } from "./creator.js";
 import { checkNode, checkOpen, focusCheck, initCheck, resetCheck, startChoiceCheck, startPractice } from "./check.js";
-import { api, el, meter, money, onFoldChange, readLines } from "./dom.js";
+import { api, el, meter, money, readLines } from "./dom.js";
 import { fightNode, fightOpen, focusFight, initFight, resetFight, startSim } from "./fight.js";
 import { focusRaid, initFleet, raidNode, raidOpen, resetRaid } from "./fleet.js";
 import { MENUS, MENU_GROUPS, initMenus } from "./menus.js";
@@ -641,8 +641,6 @@ initStory({
   openEntry: (entry) => openMenu(entry.kind === "person" ? "people" : "codex", entry.id),
 });
 
-// Folding a part of a menu open or shut redraws the menu.
-onFoldChange(() => renderMenus());
 initMenus({
   ui,
   act,
