@@ -12,23 +12,23 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-world-text-"));
 process.env.GAME_DATA_DIR = dataDir;
 // One test writes a file, so these work on copies.
 const realWorld = fileURLToPath(new URL("../world/", import.meta.url));
-for (const [folder, env] of [["characters", "GAME_PEOPLE_DIR"], ["places", "GAME_PLACES_DIR"], ["species", "GAME_SPECIES_DIR"], ["enemies", "GAME_ENEMIES_DIR"], ["items", "GAME_ITEMS_DIR"], ["factions", "GAME_FACTIONS_DIR"]]) {
+for (const [folder, env] of [["characters", "GAME_PEOPLE_DIR"], ["places", "GAME_PLACES_DIR"], ["species", "GAME_SPECIES_DIR"], ["enemies", "GAME_ENEMIES_DIR"], ["items", "GAME_ITEMS_DIR"], ["factions", "GAME_FACTIONS_DIR"], ["perks", "GAME_PERKS_DIR"]]) {
   const copy = path.join(dataDir, folder);
   fs.mkdirSync(copy);
   for (const name of fs.readdirSync(path.join(realWorld, folder))) fs.copyFileSync(path.join(realWorld, folder, name), path.join(copy, name));
   process.env[env] = copy;
 }
 
-const { ENEMY, FACTION, ITEM, PERSON, PLACE, SPECIES_SPEC, parsePersonText, parsePlaceText, parseSpeciesText, parseWorldText, writePersonText, writeWorldText } = await import("../public/world-text.js");
-const { ENEMIES_DIR, FACTIONS_DIR, ITEMS_DIR, PEOPLE_DIR, PLACES_DIR, SPECIES_DIR, WORLD_CHARACTERS, WORLD_ENEMIES, WORLD_FACTIONS, WORLD_FILE_PROBLEMS, WORLD_ITEMS, WORLD_PLACES, WORLD_SPECIES, reloadWorld } = await import("../src/world.js");
+const { ENEMY, FACTION, ITEM, PERK, PERSON, PLACE, SPECIES_SPEC, parsePersonText, parsePlaceText, parseSpeciesText, parseWorldText, writePersonText, writeWorldText } = await import("../public/world-text.js");
+const { ENEMIES_DIR, FACTIONS_DIR, ITEMS_DIR, PEOPLE_DIR, PERKS_DIR, PLACES_DIR, SPECIES_DIR, WORLD_CHARACTERS, WORLD_ENEMIES, WORLD_FACTIONS, WORLD_FILE_PROBLEMS, WORLD_ITEMS, WORLD_PERKS, WORLD_PLACES, WORLD_SPECIES, reloadWorld } = await import("../src/world.js");
 const { FACTION_BELIEFS, NOTABLES, SPECIES, refreshFactionBeliefs } = await import("../src/character-data.js");
-const { ENEMIES, FACTIONS, ITEMS, LOCATIONS, STARTING_FACTIONS, refreshFactions, refreshLocations } = await import("../src/data.js");
+const { ENEMIES, FACTIONS, ITEMS, LOCATIONS, PERKS, STARTING_FACTIONS, refreshFactions, refreshLocations } = await import("../src/data.js");
 
 const canon = (value) => JSON.stringify(value, (key, inner) => (inner && typeof inner === "object" && !Array.isArray(inner) ? Object.fromEntries(Object.keys(inner).sort().map((k) => [k, inner[k]])) : inner));
 
 test("every person, place and species reads without a problem, writes back the same, and the game holds them all", () => {
   assert.deepEqual(WORLD_FILE_PROBLEMS, []);
-  for (const [dir, spec, count] of [[PEOPLE_DIR, PERSON, 61], [PLACES_DIR, PLACE, 24], [SPECIES_DIR, SPECIES_SPEC, 6], [ENEMIES_DIR, ENEMY, 34], [ITEMS_DIR, ITEM, 60], [FACTIONS_DIR, FACTION, 12]]) {
+  for (const [dir, spec, count] of [[PEOPLE_DIR, PERSON, 61], [PLACES_DIR, PLACE, 24], [SPECIES_DIR, SPECIES_SPEC, 6], [ENEMIES_DIR, ENEMY, 34], [ITEMS_DIR, ITEM, 60], [FACTIONS_DIR, FACTION, 12], [PERKS_DIR, PERK, 53]]) {
     const files = fs.readdirSync(dir).filter((name) => name.endsWith(".txt") && !name.startsWith("_"));
     assert.equal(files.length, count, dir);
     for (const name of files) {
@@ -77,6 +77,38 @@ test("every person, place and species reads without a problem, writes back the s
   assert.equal(STARTING_FACTIONS.guild, 0);
   assert.deepEqual(FACTION_BELIEFS.fleet, { loyalty: -6, violence: -1 });
   assert.deepEqual(FACTION_BELIEFS.guild, { authority: -4, loyalty: 5, belief: -3 });
+  assert.equal(PERKS, WORLD_PERKS);
+  assert.equal(Object.keys(PERKS).length, 53);
+  assert.equal(Object.keys(PERKS)[0], "chain_of_command", "the perks keep the order they had in the code");
+  assert.deepEqual(PERKS.chain_of_command.fx, { skills: { leadership: 2 } });
+  assert.equal(PERKS.chain_of_command.starting, true);
+  assert.deepEqual(PERKS.dead_ship_passwords.requiresSkill, { hacking: 5 });
+  assert.deepEqual(PERKS.dead_ship_passwords.fx.windowTier, { hacking: 1 });
+  assert.ok(Object.values(PERKS).some((perk) => perk.ability === "rally"));
+  assert.ok(Object.values(PERKS).some((perk) => perk.fx?.healRate === 1.25));
+  assert.ok(Object.values(PERKS).some((perk) => typeof perk.requires === "string"));
+});
+
+test("a perk's file holds what it needs at the top and what it changes below", () => {
+  const { value, problems } = parseWorldText(`# Dead Ship Passwords
+order: 12
+starting: no
+needs perk: chain_of_command
+needs skill: hacking 5
+needs attribute: intellect 6
+ability: spike
+
+In a line:
+You've opened enough dead ships.
+
+Effects:
+skills: hacking 1
+better tools in: hacking 1
+max hp: 5
+heal rate: 1.25
+`, PERK, "dead_ship_passwords");
+  assert.deepEqual(problems, []);
+  assert.deepEqual(value, { name: "Dead Ship Passwords", order: 12, starting: false, requires: "chain_of_command", requiresSkill: { hacking: 5 }, requiresStat: { intellect: 6 }, ability: "spike", desc: "You've opened enough dead ships.", fx: { skills: { hacking: 1 }, windowTier: { hacking: 1 }, maxHp: 5, healRate: 1.25 } });
 });
 
 test("an enemy's file holds its numbers at the top and its lines below", () => {

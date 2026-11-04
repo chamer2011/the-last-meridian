@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { worldDir } from "./paths.js";
 import { parseStoryText } from "../public/story-text.js";
-import { ENEMY, FACTION, ITEM, PERSON, PLACE, SPECIES_SPEC, parseWorldText } from "../public/world-text.js";
+import { ENEMY, FACTION, ITEM, PERK, PERSON, PLACE, SPECIES_SPEC, parseWorldText } from "../public/world-text.js";
 
 // A file with a mistake in it is skipped, so one typo can't stop the whole game.
 export function readFolder(folder) {
@@ -42,12 +42,14 @@ export const SPECIES_DIR = process.env.GAME_SPECIES_DIR ?? path.join(worldDir, "
 export const ENEMIES_DIR = process.env.GAME_ENEMIES_DIR ?? path.join(worldDir, "enemies");
 export const ITEMS_DIR = process.env.GAME_ITEMS_DIR ?? path.join(worldDir, "items");
 export const FACTIONS_DIR = process.env.GAME_FACTIONS_DIR ?? path.join(worldDir, "factions");
+export const PERKS_DIR = process.env.GAME_PERKS_DIR ?? path.join(worldDir, "perks");
 export const WORLD_CHARACTERS = {};
 export const WORLD_PLACES = {};
 export const WORLD_SPECIES = {};
 export const WORLD_ENEMIES = {};
 export const WORLD_ITEMS = {};
 export const WORLD_FACTIONS = {};
+export const WORLD_PERKS = {};
 export const WORLD_FILE_PROBLEMS = [];
 function readTextFolder(dir, spec, into, folder) {
   for (const key of Object.keys(into)) delete into[key];
@@ -72,6 +74,7 @@ export function reloadWorld() {
   readTextFolder(ENEMIES_DIR, ENEMY, WORLD_ENEMIES, "enemies");
   readTextFolder(ITEMS_DIR, ITEM, WORLD_ITEMS, "items");
   readTextFolder(FACTIONS_DIR, FACTION, WORLD_FACTIONS, "factions");
+  readTextFolder(PERKS_DIR, PERK, WORLD_PERKS, "perks");
 }
 reloadWorld();
 // The stories are plain-text files in world/stories, read by public/story-text.js into the shape the game uses, and
@@ -90,7 +93,7 @@ export const FACT_LINES = {};
 export const WORLD_LIFE = readFolder(path.join(worldDir, "life"));
 // The written scenes aren't here: src/scenes.js reads them whenever the story needs them, so a change shows up without a restart.
 
-export const WORLD_PERKS = readFile("perks.json");
+
 
 export const WORLD_ARC = readFile("arc.json");
 export const FLEET_EVENTS = readFile("fleet-events.json");

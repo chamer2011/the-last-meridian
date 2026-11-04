@@ -44,7 +44,9 @@ const threads = Object.fromEntries(fs.readdirSync(path.join(world, "stories"))
   .filter((name) => name.endsWith(".txt") && !name.startsWith("_"))
   .map((name) => [name.slice(0, -".txt".length), parseStoryText(fs.readFileSync(path.join(world, "stories", name), "utf8"), name.slice(0, -".txt".length)).story]));
 const items = textFolder("items", ITEM);
-const perks = single("perks.json");
+const { PERK } = await import("../public/world-text.js");
+const { ABILITIES } = await import("../src/data.js");
+const perks = textFolder("perks", PERK);
 const factions = textFolder("factions", FACTION);
 const art = single("art.json");
 const arc = single("arc.json");
@@ -145,7 +147,7 @@ test("items and perks are complete", () => {
   for (const [id, perk] of Object.entries(perks)) {
     const where = `perks/${id}`;
     if (!text(perk.name) || !text(perk.desc)) report(where, "needs a name and a desc");
-    if (perk.ability) report(where, "new perks can't use ability");
+    if (perk.ability && !ABILITIES[perk.ability]) report(where, `unknown ability ${perk.ability}: abilities are part of the game's code`);
     for (const skill of Object.keys(perk.requiresSkill ?? {})) if (!SKILLS.includes(skill)) report(where, `unknown skill ${skill}`);
     for (const skill of Object.keys(perk.fx?.skills ?? {})) if (!SKILLS.includes(skill)) report(where, `unknown skill ${skill}`);
     for (const skill of Object.keys(perk.fx?.windowTier ?? {})) if (!SKILLS.includes(skill)) report(where, `unknown skill ${skill}`);

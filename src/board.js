@@ -5,15 +5,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { AXES, CONTEXTS, SKILLS, refreshFactionBeliefs } from "./character-data.js";
-import { ENEMIES, FACTIONS, ITEMS, LOCATIONS, STATS, refreshFactions, refreshLocations } from "./data.js";
+import { ABILITIES, ENEMIES, FACTIONS, ITEMS, LOCATIONS, PERKS, STATS, refreshFactions, refreshLocations } from "./data.js";
 import { writtenThreadIds } from "./scene-files.js";
 import { parseSceneText } from "./scene-text.js";
 import { SCENES_DIR, factsLeft, loadScenes, sceneProblems } from "./scenes.js";
 import { clockProblems } from "./story-clock.js";
 import { notesProblems } from "./story-library.js";
-import { ENEMIES_DIR, FACTIONS_DIR, ITEMS_DIR, PEOPLE_DIR, PLACES_DIR, SPECIES_DIR, STORIES_DIR, STORY_CLOCK, STORY_FILE_PROBLEMS, WORLD_CHARACTERS, WORLD_ENEMIES, WORLD_FACTIONS, WORLD_FILE_PROBLEMS, WORLD_ITEMS, WORLD_PLACES, WORLD_SPECIES, WORLD_THREADS, endingsOf, reloadStories, reloadWorld } from "./world.js";
+import { ENEMIES_DIR, FACTIONS_DIR, ITEMS_DIR, PEOPLE_DIR, PERKS_DIR, PLACES_DIR, SPECIES_DIR, STORIES_DIR, STORY_CLOCK, STORY_FILE_PROBLEMS, WORLD_CHARACTERS, WORLD_ENEMIES, WORLD_FACTIONS, WORLD_FILE_PROBLEMS, WORLD_ITEMS, WORLD_PERKS, WORLD_PLACES, WORLD_SPECIES, WORLD_THREADS, endingsOf, reloadStories, reloadWorld } from "./world.js";
 import { parseStoryText, writeStoryText } from "../public/story-text.js";
-import { ENEMY, FACTION, ITEM, PERSON, PLACE, SPECIES_SPEC, parseWorldText, writeWorldText } from "../public/world-text.js";
+import { ENEMY, FACTION, ITEM, PERK, PERSON, PLACE, SPECIES_SPEC, parseWorldText, writeWorldText } from "../public/world-text.js";
 
 const ID = /^[a-z][a-z0-9_]{1,60}$/;
 function checkId(id) {
@@ -153,9 +153,10 @@ const WORLD_KINDS = {
   enemy: { dir: () => ENEMIES_DIR, spec: ENEMY, all: WORLD_ENEMIES, folder: "enemies", what: "enemy" },
   item: { dir: () => ITEMS_DIR, spec: ITEM, all: WORLD_ITEMS, folder: "items", what: "item" },
   faction: { dir: () => FACTIONS_DIR, spec: FACTION, all: WORLD_FACTIONS, folder: "factions", what: "faction" },
+  perk: { dir: () => PERKS_DIR, spec: PERK, all: WORLD_PERKS, folder: "perks", what: "perk" },
 };
 const kindOf = (kind) => {
-  if (!WORLD_KINDS[kind]) throw new Error("The board knows stories, people, places, species, enemies, items and factions.");
+  if (!WORLD_KINDS[kind]) throw new Error("The board knows stories, people, places, species, enemies, items, factions and perks.");
   return WORLD_KINDS[kind];
 };
 const talkIds = () => new Set(fs.existsSync(SCENES_DIR) ? fs.readdirSync(SCENES_DIR).map((name) => name.match(/^talk_(.+)\.txt$/)?.[1]).filter(Boolean) : []);
@@ -163,7 +164,7 @@ const talkIds = () => new Set(fs.existsSync(SCENES_DIR) ? fs.readdirSync(SCENES_
 export function boardWorldList(kind) {
   const { all } = kindOf(kind);
   const written = kind === "person" ? talkIds() : new Set();
-  const groupOf = (one) => (kind === "person" || kind === "place" ? one.faction ?? "none" : kind === "enemy" ? one.motive ?? "other" : kind === "item" ? one.type ?? "other" : kind);
+  const groupOf = (one) => (kind === "person" || kind === "place" ? one.faction ?? "none" : kind === "enemy" ? one.motive ?? "other" : kind === "item" ? one.type ?? "other" : kind === "perk" ? (one.starting ? "starting" : one.ability ? "with an ability" : "learned") : kind);
   const ordered = Object.values(all).some((one) => one.order !== undefined);
   return Object.entries(all)
     .map(([id, one]) => ({ id, name: [one.title, one.name].filter(Boolean).join(" ") || id, kind: groupOf(one), written: written.has(id) }))
@@ -188,6 +189,8 @@ function boardLists() {
     kinds: ["main", "crew", "dilemma", "mystery", "exploration", "survival", "politics", "job", "faction"],
     motives: [...new Set(Object.values(WORLD_ENEMIES).map((one) => one.motive).filter(Boolean))].sort(),
     itemTypes: ["weapon", "armor", "consumable", "gadget", "story"],
+    perks: named(PERKS),
+    abilities: named(ABILITIES),
   };
 }
 
@@ -215,7 +218,9 @@ export function boardWorldItem(kind, id) {
           ? { faction: factionLink(value.faction), places: places((place) => (place.gm?.enemies ?? []).includes(id)) }
           : kind === "item"
             ? { sold: places((place) => (place.market ?? []).includes(id)), found: places((place) => (place.gm?.items ?? []).includes(id)) }
-            : { people: people((one) => one.faction === id), places: places((place) => place.faction === id), stories: stories((thread) => (thread.factions ?? []).includes(id)), enemies: enemies((one) => one.faction === id) };
+            : kind === "faction"
+              ? { people: people((one) => one.faction === id), places: places((place) => place.faction === id), stories: stories((thread) => (thread.factions ?? []).includes(id)), enemies: enemies((one) => one.faction === id) }
+              : { needs: value.requires ? { id: value.requires, name: PERKS[value.requires]?.name ?? value.requires } : null, neededBy: Object.entries(PERKS).filter(([, perk]) => perk.requires === id).map(([perkId, perk]) => ({ id: perkId, name: perk.name })), ability: value.ability ? { id: value.ability, name: ABILITIES[value.ability]?.name ?? value.ability } : null };
   return { id, kind, text, value, links, lists: boardLists(), problems: WORLD_FILE_PROBLEMS.filter((one) => one.startsWith(`${folder}/${id}.txt`)) };
 }
 

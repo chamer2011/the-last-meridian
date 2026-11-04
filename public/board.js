@@ -7,7 +7,7 @@
 
 import { el } from "./dom.js";
 import { writeStoryText } from "./story-text.js";
-import { LINE_PHRASES, SPECS, writeWorldText } from "./world-text.js";
+import { LINE_PHRASES, PERK_NUMBERS, SPECS, writeWorldText } from "./world-text.js";
 
 const state = {
   kind: "story", id: null, lists: {},
@@ -22,8 +22,8 @@ const $ = (id) => document.getElementById(id);
 const spaced = (id) => String(id ?? "").replaceAll("_", " ");
 const fill = (parent, ...children) => { for (const child of children.flat()) if (child !== null && child !== undefined && child !== false) parent.append(child); return parent; };
 const STOP = new Set("if the they she he it you someone anyone a an and or of is are that this their them its in on at for as has have then when there".split(" "));
-const KIND_WORDS = { story: "The story", place: "The place", person: "The person", species: "The species", enemy: "The enemy", item: "The item", faction: "The faction" };
-const FOLDERS = { story: "stories", person: "characters", place: "places", species: "species", enemy: "enemies", item: "items", faction: "factions" };
+const KIND_WORDS = { story: "The story", place: "The place", person: "The person", species: "The species", enemy: "The enemy", item: "The item", faction: "The faction", perk: "The perk" };
+const FOLDERS = { story: "stories", person: "characters", place: "places", species: "species", enemy: "enemies", item: "items", faction: "factions", perk: "perks" };
 
 // A name made from words, for an ending or a fact, so nobody has to type one.
 export function nameFrom(text) {
@@ -101,7 +101,7 @@ function boardNode() {
     el("header", { class: "board-head" },
       el("h2", {}, "Story board"),
       el("select", { id: "board-what", title: "Stories, places, people or species", onchange: (event) => changeKind(event.target.value) },
-        ...[["story", "Stories"], ["place", "Places"], ["person", "People"], ["species", "Species"], ["enemy", "Enemies"], ["item", "Items"], ["faction", "Factions"]].map(([kind, label]) => el("option", { value: kind }, label))),
+        ...[["story", "Stories"], ["place", "Places"], ["person", "People"], ["species", "Species"], ["enemy", "Enemies"], ["item", "Items"], ["faction", "Factions"], ["perk", "Perks"]].map(([kind, label]) => el("option", { value: kind }, label))),
       el("select", { id: "board-pick", title: "Which one", onchange: (event) => load(state.kind, event.target.value) }),
       el("nav", { class: "board-tabs", role: "tablist" },
         ...[["notes", "The story"], ["scene", "The written scene"], ["file", "As the file"]].map(([tab, label]) => el("button", { class: "board-tab", role: "tab", "data-tab": tab, "aria-selected": "false", onclick: () => showTab(tab) }, label))),
@@ -342,6 +342,21 @@ function factionGraph() {
   return { list, ws };
 }
 
+function perkGraph() {
+  const P = state.item, L = state.links;
+  const list = [], ws = [];
+  const add = (node) => { list.push(node); return node.id; };
+  const needs = [...Object.entries(P.requiresSkill ?? {}).map(([name, amount]) => `${spaced(name)} ${amount}`), ...Object.entries(P.requiresStat ?? {}).map(([name, amount]) => `${spaced(name)} ${amount}`)];
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${P.starting ? "A starting perk, from a career. " : ""}${needs.length ? `Needs ${needs.join(", ")}. ` : ""}${L.needs ? `Needs ${L.needs.name} first. ` : ""}${L.ability ? `Gives the ability ${L.ability.name}.` : ""}`, label: "About this perk" });
+  add({ id: "desc", kind: "lead", col: 1, name: "In a line", text: P.desc ?? "", label: "What the player reads", bind: { path: "desc" } });
+  const fx = P.fx ?? {};
+  add({ id: "effects", kind: "ending", col: 2, name: "Effects", text: Object.entries(fx).map(([key, value]) => `${PERK_NUMBERS.find(([path]) => path === key)?.[1] ?? spaced(key)}: ${typeof value === "object" ? Object.entries(value).map(([name, amount]) => `${name} ${amount}`).join(", ") : value}`).join("\n") || "none", label: "What it changes", bind: { effects: true } });
+  ws.push({ from: "desc", to: "effects" });
+  if (L.needs) { add(linkNode(`link_perk_${L.needs.id}`, "perk", L.needs.name, "Learned first.", "Needs")); ws.push({ from: `link_perk_${L.needs.id}`, to: "desc" }); }
+  for (const one of L.neededBy ?? []) { add(linkNode(`link_perk_${one.id}`, "perk", one.name, "Needs this one first.", "Leads to")); ws.push({ from: "desc", to: `link_perk_${one.id}` }); }
+  return { list, ws };
+}
+
 function sceneGraph() {
   const scene = state.scene;
   const list = [], ws = [];
@@ -372,7 +387,7 @@ function sceneGraph() {
 }
 
 function build() {
-  const builders = { story: notesGraph, place: placeGraph, person: personGraph, species: speciesGraph, enemy: enemyGraph, item: itemGraph, faction: factionGraph };
+  const builders = { story: notesGraph, place: placeGraph, person: personGraph, species: speciesGraph, enemy: enemyGraph, item: itemGraph, faction: factionGraph, perk: perkGraph };
   const graph = state.tab === "scene" ? sceneGraph() : builders[state.kind]();
   nodes = graph.list;
   wires = graph.ws;
@@ -790,7 +805,8 @@ function inspectNothing(inspector) {
             : state.kind === "species" ? "The species as a board: what the player reads, how the game master plays them, their numbers, and the people who are one. Click any box to read all of it and change it."
               : state.kind === "enemy" ? "The enemy as a board: what the player sees, what they say in a fight, who they fight for, and where they turn up. Their numbers are in the box on the left."
                 : state.kind === "item" ? "The item as a board: what the player reads, its effects, and where it's sold or found. Its numbers are in the box on the left."
-                  : "The faction as a board: what the player reads, what they believe, and their people, places, enemies and stories, each a box that opens."),
+                  : state.kind === "faction" ? "The faction as a board: what the player reads, what they believe, and their people, places, enemies and stories, each a box that opens."
+                    : "The perk as a board: what the player reads, what it changes, and the perks it needs or leads to. What it needs is in the box on the left."),
     el("div", { class: "legend" }, ...(state.tab === "scene" ? [["beat", "parts"], ["ending", "checks and fights"], ["end", "ends"], ["clock", "missing"]]
       : state.kind === "story" ? [["lead", "the lead"], ["beat", "beats"], ["route", "ways through"], ["ending", "endings"], ["fact", "facts"], ["consequence", "consequences"], ["clock", "the clock"], ["next", "other stories"]]
         : [["lead", "for the player"], ["beat", "for the game master"], ["route", "lists and numbers"], ["ending", "the dice"], ["next", "links to open"]]).map(([kind, words]) => el("span", { class: `l-${kind}` }, words))),
@@ -888,7 +904,8 @@ function inspectWorldAbout(inspector) {
   const boxes = [];
   const optionsFor = (path) => (path === "species" ? lists.species : path === "location" ? lists.places : path === "faction" ? lists.factions
     : path === "stat" ? lists.attributes.map((one) => ({ id: one, name: one })) : path === "skill" ? lists.skills.map((one) => ({ id: one, name: one }))
-      : path === "type" ? lists.itemTypes.map((one) => ({ id: one, name: one })) : path === "art" ? lists.arts.map((one) => ({ id: one, name: one })) : path === "motive" ? lists.motives.map((one) => ({ id: one, name: one })) : null);
+      : path === "type" ? lists.itemTypes.map((one) => ({ id: one, name: one })) : path === "art" ? lists.arts.map((one) => ({ id: one, name: one })) : path === "motive" ? lists.motives.map((one) => ({ id: one, name: one }))
+        : path === "requires" ? lists.perks.filter((one) => one.id !== state.id) : path === "ability" ? lists.abilities : null);
   const title = textBox("edit-title", item[spec.title]);
   for (const field of spec.header) {
     const value = get(item, field.path);
@@ -896,7 +913,7 @@ function inspectWorldAbout(inspector) {
     let box;
     if (field.type === "pairs") {
       // Numbers with names, like on hit: stress 2, have an editor of their own, with Keep buttons of its own.
-      const names = field.path === "onHit" ? ["stress", "energy"] : field.path === "effect" ? ["hp", "energy", "hull", "fuel"] : lists.axes;
+      const names = field.path === "onHit" ? ["stress", "energy"] : field.path === "effect" ? ["hp", "energy", "hull", "fuel"] : field.path === "requiresSkill" ? lists.skills : field.path === "requiresStat" ? lists.attributes : lists.axes;
       boxes.push({ field, box: pairsEditor(item, field.path, field.key, names), own: true });
       continue;
     }
@@ -980,12 +997,15 @@ function inspectEffects(inspector, node) {
   const P = state.item, lists = state.lists;
   P.fx ??= {};
   const fx = P.fx;
-  const numbers = (state.kind === "species" ? [["maxHp", "max hp", 1], ["fatigueRate", "fatigue rate", 0.05], ["healRate", "heal rate", 0.05], ["stressRate", "stress rate", 0.05]] : []).map(([key, label, step]) => {
+  const numberList = state.kind === "species" ? [["maxHp", "max hp", 1], ["fatigueRate", "fatigue rate", 0.05], ["healRate", "heal rate", 0.05], ["stressRate", "stress rate", 0.05]]
+    : state.kind === "perk" ? PERK_NUMBERS.map(([key, label]) => [key, label, /Rate|Recovery|Bonus/.test(key) ? 0.05 : 1]) : [];
+  const numbers = numberList.map(([key, label, step]) => {
     const box = numberBox(`edit-fx-${key}`, fx[key] ?? "", step);
     return row(el("label", { for: box.id }, label), box, button("Keep", () => { if (box.value === "") delete fx[key]; else fx[key] = Number(box.value); changed(); }, { class: "small" }));
   });
-  fill(inspector, h2("Effects"), hint(state.kind === "species" ? "Leave a number empty for none. Rates are fractions of the usual: 0.5 is half." : "While it's worn or carried: a bonus or a penalty in a setting, or to a skill."), ...numbers,
-    pairsEditor(fx, "context", "In a setting", lists.contexts), state.kind === "species" ? pairsEditor(fx, "factions", "Standing with", lists.factions.map((one) => one.id)) : null, pairsEditor(fx, "skills", "Skills", lists.skills));
+  fill(inspector, h2("Effects"), hint(state.kind === "species" ? "Leave a number empty for none. Rates are fractions of the usual: 0.5 is half." : state.kind === "perk" ? "Leave a number empty for none. Rates are fractions of the usual: 1.25 is a quarter more." : "While it's worn or carried: a bonus or a penalty in a setting, or to a skill."), ...numbers,
+    pairsEditor(fx, "skills", "Skills", lists.skills), state.kind === "perk" ? pairsEditor(fx, "windowTier", "Better tools in check windows", lists.skills) : null,
+    pairsEditor(fx, "context", "In a setting", lists.contexts), state.kind === "species" ? pairsEditor(fx, "factions", "Standing with", lists.factions.map((one) => one.id)) : null);
 }
 function inspectFight(inspector, node) {
   const P = state.item, lists = state.lists;

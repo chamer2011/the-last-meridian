@@ -125,7 +125,28 @@ export const FACTION = {
   ],
 };
 
-export const SPECS = { person: PERSON, place: PLACE, species: SPECIES_SPEC, enemy: ENEMY, item: ITEM, faction: FACTION };
+// What a perk changes, besides skills: the numbers it can carry, by their key in the game and the words in the file.
+export const PERK_NUMBERS = [
+  ["maxHp", "max hp"], ["maxEnergy", "max energy"], ["attack", "attack"], ["defense", "defense"], ["damage", "damage"], ["flee", "flee"],
+  ["healRate", "heal rate"], ["stressRate", "stress rate"], ["stressRecovery", "stress recovery"], ["fatigueRate", "fatigue rate"], ["learnRate", "learn rate"], ["priceBonus", "price bonus"],
+];
+export const PERK = {
+  kind: "perk",
+  title: "name",
+  header: [
+    { path: "order", key: "order", type: "number" }, { path: "starting", key: "starting", type: "flag" }, { path: "requires", key: "needs perk", type: "string" },
+    { path: "requiresSkill", key: "needs skill", type: "pairs" }, { path: "requiresStat", key: "needs attribute", type: "pairs" }, { path: "ability", key: "ability", type: "string" },
+  ],
+  sections: [
+    { path: "desc", phrase: "In a line", type: "text" },
+    { path: "fx", phrase: "Effects", type: "fields", fields: [
+      { path: "skills", key: "skills", type: "pairs" }, { path: "windowTier", key: "better tools in", type: "pairs" }, { path: "context", key: "in a setting", type: "pairs" },
+      ...PERK_NUMBERS.map(([path, key]) => ({ path, key, type: "number" })),
+    ] },
+  ],
+};
+
+export const SPECS = { person: PERSON, place: PLACE, species: SPECIES_SPEC, enemy: ENEMY, item: ITEM, faction: FACTION, perk: PERK };
 
 // ---- Reading one value ------------------------------------------------------------------------
 function readValue(type, text, problem) {
