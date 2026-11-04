@@ -101,6 +101,8 @@ Lines starting with * happen when the part begins, and the player sees each as a
     * health -4: The reason                 (a minus sign hurts, and it can't kill)
     * time 2 hours: The reason              (add work or rest after hours if that's what it was; 72 at most in one part)
     * flag told_the_fleet                   (remembers something, for conditions later, in any scene)
+    * flag kessara_closed: Kessara is closed to the fleet     (with words, the player reads it on the record,
+                                            in the Quests menu, and so does the AI)
     * unflag told_the_fleet
     * fuel 6: The reason                    (the fleet's fuel, which jumps use; a minus sign burns it)
     * act 2                                 (the main story moves on to that act)

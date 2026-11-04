@@ -171,7 +171,7 @@ export function threadNotes(id, game = null) {
   const { gm } = thread;
   return [
     `<story_thread id="${id}" title="${thread.title}">`,
-    "Your notes for this story. Treat them as a starting point: improvise, and let the player's choices change where it goes. Use add_quest with this thread's id as the quest's id when it begins, and update_quest when it ends.",
+    "Your notes for this story. Treat them as a starting point, and let the player's choices change where it goes, but keep to what's on the record. Use add_quest with this thread's id as the quest's id when it begins, and end_story when it ends.",
     game && !isCaptain(game) && `The player isn't the captain, and these notes were written with the captain in mind. Where they say the captain, read the player if it's something they could do from where they stand. Otherwise it's ${chairOf(game)?.name ?? "whoever has the chair"}, and the player will have to get to them, or work around them.`,
     `The lead: ${thread.lead}`,
     game && whatHappened(game, id),
@@ -183,6 +183,7 @@ export function threadNotes(id, game = null) {
     inline("Checks that fit", gm.checks),
     list("If it comes to a fight", gm.fights),
     list("Where it can end up", gm.outcomes),
+    game && thread.after && game.story?.record?.endings?.[thread.after] && `Before it, ${WORLD_THREADS[thread.after].title} ended: ${game.story.record.endings[thread.after].summary}`,
     gm.rewards && `Rewards: ${gm.rewards}`,
     "</story_thread>",
   ].filter(Boolean).join("\n");

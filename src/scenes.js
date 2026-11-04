@@ -13,6 +13,7 @@ import { startChoiceCheck } from "./checks.js";
 import { worldDir } from "./paths.js";
 import { DIFFICULTY, attr, maxHp, skillRank } from "./rules.js";
 import { conditionHolds, parseCondition, parseSceneText } from "./scene-text.js";
+import { clearFact, recordFact } from "./record.js";
 import { noteThreadStarted } from "./story-library.js";
 import { newTurnLimits, runTool, toolProblem } from "./tools.js";
 import { answerDoor } from "./walk.js";
@@ -195,11 +196,11 @@ function enterPart(game, scene, id, { emit, turn }, hops = 0) {
   for (const step of part.do ?? []) {
     const { tool, set, clear, line: _line, ...input } = step;
     if (set) {
-      game.flags[set] = true;
+      recordFact(game, { id: set, text: step.text ?? null, from: game.scene?.id ?? null });
       continue;
     }
     if (clear) {
-      delete game.flags[clear];
+      clearFact(game, clear);
       continue;
     }
     const outcome = runTool(game, tool, input, turn);
@@ -444,7 +445,10 @@ export function sceneProblems(scene, id = "the scene", { talk = false } = {}) {
     if (!talk && !part.check && !part.fight && !part.end && !always && !(part.choices ?? []).length) problems.push(`${where} has no choices and doesn't end the scene`);
     for (const [i, step] of (part.do ?? []).entries()) {
       const { tool, set, clear, line: _line, ...input } = step;
-      if (set || clear) continue;
+      if (set || clear) {
+        if (!/^[a-z][a-z0-9_]{1,39}$/.test(set ?? clear)) problems.push(`${at(step, `${where}, effect ${i + 1}`)}: a flag's name is lowercase letters, digits and underscores, like told_the_fleet`);
+        continue;
+      }
       const problem = toolProblem(tool, input);
       if (problem) problems.push(`${at(step, `${where}, effect ${i + 1}`)}: ${problem}`);
     }

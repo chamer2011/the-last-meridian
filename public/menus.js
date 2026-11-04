@@ -289,10 +289,16 @@ function peopleMenu() {
 function questsMenu() {
   const g = app.ui.game;
   const active = [...g.quests.filter((q) => q.status === "active")].sort((a, b) => Number(b.main) - Number(a.main));
-  const done = g.quests.filter((q) => q.status !== "active");
+  // The record may be missing while a page from after it talks to a game from before it.
+  const record = g.story.record ?? { endings: [], facts: [] };
+  // A story that ended on the record without a quest of its own is finished too.
+  const done = [
+    ...g.quests.filter((q) => q.status !== "active"),
+    ...record.endings.filter((ending) => !g.quests.some((q) => q.id === ending.id)).map((ending) => ({ id: ending.id, title: ending.title, main: false, status: "completed", desc: "", objective: ending.summary })),
+  ];
   const card = (q) => el("div", { class: "card stack gap-small" },
     el("div", { class: "spread" }, el("strong", {}, q.title), q.main ? el("span", { class: "tag on" }, "main") : q.status !== "active" && el("span", { class: `tag ${q.status === "failed" ? "bad" : "on"}` }, q.status)),
-    muted(q.desc),
+    q.desc && muted(q.desc),
     el("div", { class: "small" }, q.status === "active" ? `Next: ${q.objective}` : q.objective));
   return columns(
     section(`Active (${active.length})`, active.length ? active.map(card) : empty("No active quests.")),
@@ -300,6 +306,9 @@ function questsMenu() {
     folded("quests-journal", `Journal (${g.journal.length})`, g.journal.length
       ? [...g.journal].reverse().map((j) => el("div", { class: "menu-entry small" }, j.entry))
       : muted("Important events will be recorded here.")),
+    folded("quests-facts", `Facts on record (${record.facts.length})`, record.facts.length
+      ? [...record.facts].reverse().map((fact) => el("div", { class: "menu-entry small" }, el("span", {}, fact.text), fact.from && el("span", { class: "muted" }, ` ${fact.from}`)))
+      : muted("What the stories leave behind is kept here, for the stories that come after.")),
   );
 }
 

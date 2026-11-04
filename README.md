@@ -274,6 +274,10 @@ The world isn't waiting for you. Each story has what happens if nobody steps in,
 - **You won't be swamped.** Only a few of these come up in the story at once. All of it is under **Moved on without you** in the **Leads** menu, and in the **News** on the **Star map**.
 - **Every game's world goes at its own pace,** so you won't see the same things on the same days twice.
 
+## The record
+
+The game keeps a record of what you did: how each story ended, and the lasting facts that left, such as a door closed to the fleet or a debt owed. It's in the **Quests** menu, under **Facts on record**, and a finished story's last line is its ending. The written story puts facts on it with its `* flag` lines, and the AI game master has two actions of its own: `end_story`, which ends a story by the number of the outcome in its notes that fits, or 0 for another way, with a line for you; and `note_fact`, a short name and a line of plain words, three a turn at most, both checked by the game. The record is in the AI's state every turn, and its instructions are to adapt a story's notes to it and never contradict it, like a game master running a campaign it didn't write. The stories' notes naming their own endings, and what they react to, is the next step.
+
 ## Leads and the wider world
 
 The **Leads** menu shows what you've heard about wherever you are: a few stories you could start, and what people are saying. Reading it costs nothing. **Look into this** starts that story, and **Ask around about this** follows up a rumor. Leads change as you travel and as time passes, and finishing one story can open another. They don't wait for you, either: see [Stories don't wait](#stories-dont-wait).

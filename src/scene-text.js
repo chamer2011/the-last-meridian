@@ -218,7 +218,9 @@ export function parseEffect(text) {
     case "flag":
     case "unflag": {
       const name = words.slice(1).join(" ");
-      return need(name, `${verb} needs a name after it`) ? { problem: `${verb} needs a name after it` } : { do: verb === "flag" ? { set: name } : { clear: name } };
+      if (!name) return { problem: `${verb} needs a name after it` };
+      // A flag with words after a colon is a fact the player can read on the record.
+      return { do: verb === "flag" ? { set: name, ...(after ? { text: after } : {}) } : { clear: name } };
     }
     case "fuel": {
       const amount = signed(words[1] ?? "");
