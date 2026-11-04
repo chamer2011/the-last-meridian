@@ -12,7 +12,7 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-board-"));
 process.env.GAME_DATA_DIR = dataDir;
 // The board writes files, so these tests work on copies of the stories and the scenes.
 const worldDir = fileURLToPath(new URL("../world/", import.meta.url));
-for (const [folder, env] of [["stories", "GAME_STORIES_DIR"], ["scenes", "GAME_SCENES_DIR"], ["characters", "GAME_PEOPLE_DIR"], ["places", "GAME_PLACES_DIR"], ["species", "GAME_SPECIES_DIR"]]) {
+for (const [folder, env] of [["stories", "GAME_STORIES_DIR"], ["scenes", "GAME_SCENES_DIR"], ["characters", "GAME_PEOPLE_DIR"], ["places", "GAME_PLACES_DIR"], ["species", "GAME_SPECIES_DIR"], ["enemies", "GAME_ENEMIES_DIR"], ["items", "GAME_ITEMS_DIR"], ["factions", "GAME_FACTIONS_DIR"]]) {
   const copy = path.join(dataDir, folder);
   fs.mkdirSync(copy);
   for (const name of fs.readdirSync(path.join(worldDir, folder))) fs.copyFileSync(path.join(worldDir, folder, name), path.join(copy, name));
@@ -140,7 +140,21 @@ test("the board lists the people, places and species, and shows each with what i
   assert.ok(people.some((one) => one.id === "ione" && one.written === false));
   assert.equal(boardWorldList("place").length, 24);
   assert.deepEqual(boardWorldList("species").map((one) => one.id), ["human", "korrun", "veshti", "ilari", "thessan", "synthetic"]);
-  assert.throws(() => boardWorldList("ship"), /stories, people, places and species/);
+  assert.throws(() => boardWorldList("ship"), /stories, people, places, species, enemies, items and factions/);
+  assert.equal(boardWorldList("enemy").length, 34);
+  assert.ok(boardWorldList("enemy").some((one) => one.id === "dock_thug" && one.kind === "paid"));
+  assert.deepEqual(boardWorldList("item").slice(0, 2).map((one) => one.id), ["sidearm", "focus_blade"]);
+  assert.ok(boardWorldList("item").some((one) => one.id === "service_rifle" && one.kind === "weapon"));
+  assert.deepEqual(boardWorldList("faction").slice(0, 4).map((one) => one.id), ["fleet", "hegemony", "drift", "ilun"]);
+  const thug = boardWorldItem("enemy", "dock_thug");
+  assert.ok(thug.links.places.some((one) => one.id === "haven"));
+  assert.ok(thug.lists.motives.includes("paid") && thug.lists.itemTypes.includes("weapon"));
+  const chip = boardWorldItem("item", "data_chip");
+  assert.ok(chip.links.sold.some((one) => one.id === "haven") && chip.links.found.some((one) => one.id === "haven"));
+  const fleet = boardWorldItem("faction", "fleet");
+  assert.ok(fleet.links.people.some((one) => one.id === "aduro"));
+  assert.ok(fleet.links.places.some((one) => one.id === "meridian"));
+  assert.ok(fleet.links.stories.length > 10);
 
   const haven = boardWorldItem("place", "haven");
   assert.equal(haven.value.name, "Haven Station");

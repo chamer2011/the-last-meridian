@@ -77,7 +77,55 @@ export const SPECIES_SPEC = {
     ] },
   ],
 };
-export const SPECS = { person: PERSON, place: PLACE, species: SPECIES_SPEC };
+// The lines an enemy or a person says in a fight, by what's happening.
+export const LINE_PHRASES = [
+  ["intro", "When the fight starts"], ["hit", "When they hit"], ["miss", "When they miss"], ["crit", "When they hit hard"], ["defeated", "When they're beaten"],
+  ["joins", "When they join the fight"], ["stunned", "When they're stunned"], ["persuade_worked", "When persuading works"], ["persuade_failed", "When persuading fails"],
+  ["pay_worked", "When paying works"], ["threaten_worked", "When a threat works"], ["lie_worked", "When a lie works"], ["calm_worked", "When calming works"], ["shutdown_worked", "When a shutdown works"],
+];
+
+export const ENEMY = {
+  kind: "enemy",
+  title: "name",
+  header: [
+    { path: "threat", key: "threat", type: "number" }, { path: "hp", key: "hp", type: "number" }, { path: "attack", key: "attack", type: "number" }, { path: "defense", key: "defense", type: "number" },
+    { path: "damage", key: "damage", type: "range" }, { path: "weapon", key: "weapon", type: "string" }, { path: "xp", key: "xp", type: "number" }, { path: "credits", key: "credits", type: "range" },
+    { path: "art", key: "art", type: "string" }, { path: "tags", key: "tags", type: "list" }, { path: "motive", key: "motive", type: "string" }, { path: "faction", key: "faction", type: "string" },
+    { path: "machine", key: "machine", type: "flag" }, { path: "boss", key: "boss", type: "flag" }, { path: "onHit", key: "on hit", type: "pairs" },
+  ],
+  sections: [
+    { path: "desc", phrase: "In a line", type: "text" },
+    ...LINE_PHRASES.map(([key, phrase]) => ({ path: `lines.${key}`, phrase, type: "items" })),
+  ],
+};
+
+export const ITEM = {
+  kind: "item",
+  title: "name",
+  header: [
+    { path: "order", key: "order", type: "number" }, { path: "type", key: "type", type: "string" }, { path: "price", key: "price", type: "number" },
+    { path: "damage", key: "damage", type: "range" }, { path: "stat", key: "stat", type: "string" }, { path: "skill", key: "skill", type: "string" },
+    { path: "defense", key: "defense", type: "number" }, { path: "restricted", key: "restricted", type: "flag" }, { path: "effect", key: "effect", type: "pairs" },
+  ],
+  sections: [
+    { path: "desc", phrase: "In a line", type: "text" },
+    { path: "fx", phrase: "Effects", type: "fields", fields: [{ path: "context", key: "in a setting", type: "pairs" }, { path: "skills", key: "skills", type: "pairs" }] },
+  ],
+};
+
+export const FACTION = {
+  kind: "faction",
+  title: "name",
+  header: [
+    { path: "order", key: "order", type: "number" }, { path: "aliases", key: "also called", type: "list" }, { path: "start", key: "starting standing", type: "number" },
+  ],
+  sections: [
+    { path: "desc", phrase: "In a line", type: "text" },
+    { path: "beliefs", phrase: "Beliefs", type: "pairs" },
+  ],
+};
+
+export const SPECS = { person: PERSON, place: PLACE, species: SPECIES_SPEC, enemy: ENEMY, item: ITEM, faction: FACTION };
 
 // ---- Reading one value ------------------------------------------------------------------------
 function readValue(type, text, problem) {

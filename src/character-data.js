@@ -259,13 +259,13 @@ export const CONVICTIONS = {
 };
 
 // What each faction believes. Sharing their beliefs improves your standing and your social checks.
-export const FACTION_BELIEFS = {
-  fleet: { loyalty: -6, violence: -1 },
-  hegemony: { authority: -8, loyalty: -3, violence: 5, belief: -3, flesh: -2 },
-  drift: { authority: 8, loyalty: 6, violence: 2 },
-  ilun: { belief: 9, violence: -4, flesh: -3 },
-  ...Object.fromEntries(Object.entries(WORLD_FACTIONS).map(([id, faction]) => [id, faction.beliefs ?? {}])),
-};
+export const FACTION_BELIEFS = {};
+// Filled in place from the factions' files, so a faction saved from the story board counts at once.
+export function refreshFactionBeliefs() {
+  for (const key of Object.keys(FACTION_BELIEFS)) delete FACTION_BELIEFS[key];
+  for (const [id, faction] of Object.entries(WORLD_FACTIONS)) FACTION_BELIEFS[id] = faction.beliefs ?? {};
+}
+refreshFactionBeliefs();
 
 // The important people in the world, whether the player has met them or not. Each has a
 // file in world/characters, with their personality, secrets and stats.

@@ -26,36 +26,9 @@ export const STAT_INFO = {
   resonance: "Sensitivity to the field the First Builders left behind. Rare and feared.",
 };
 
-export const ITEMS = {
-  // Weapons: damage is [min, max]. stat and skill both add to the attack roll.
-  sidearm: { name: "Concord Sidearm", type: "weapon", damage: [3, 7], stat: "agility", skill: "firearms", price: 120, desc: "Standard-issue pulse pistol. Reliable, unremarkable." },
-  focus_blade: { name: "Focus Blade", type: "weapon", damage: [4, 7], stat: "resonance", skill: "melee", price: 300, desc: "A crystal edge that sharpens to its wielder's will." },
-  arc_welder: { name: "Arc Welder", type: "weapon", damage: [3, 8], stat: "intellect", skill: "engineering", price: 150, desc: "A tool first, a weapon whenever necessary." },
-  heavy_carbine: { name: "Heavy Carbine", type: "weapon", damage: [6, 11], stat: "might", skill: "firearms", price: 550, desc: "Loud, heavy and very persuasive." },
-  needle_rifle: { name: "Needle Rifle", type: "weapon", damage: [5, 12], stat: "perception", skill: "firearms", price: 700, desc: "Silent long-range flechettes favoured by Drift assassins." },
-  choir_lance: { name: "Choir Lance", type: "weapon", damage: [8, 14], stat: "resonance", skill: "manifestation", price: 1600, restricted: true, desc: "A weapon stripped from a Choir Hunter. It sings when fired." },
-  // Armor: defense is added to the number enemies must beat.
-  flak_vest: { name: "Flak Vest", type: "armor", defense: 1, price: 100, desc: "Stops shrapnel, mostly." },
-  smugglers_coat: { name: "Smuggler's Coat", type: "armor", defense: 1, price: 140, desc: "Armored lining and many hidden pockets." },
-  adept_robes: { name: "Woven Robes", type: "armor", defense: 1, price: 130, desc: "Light fabric threaded with dampening filament." },
-  marine_plate: { name: "Marine Plate", type: "armor", defense: 3, price: 650, desc: "Concord boarding armor, scorched but sound." },
-  ghostweave: { name: "Ghostweave Suit", type: "armor", defense: 4, price: 1400, desc: "Bends light and targeting sensors alike." },
-  // Consumables. Medicine and Engineering skills make medkits and repair kits stronger.
-  medkit: { name: "Medkit", type: "consumable", effect: { hp: 15 }, price: 60, desc: "Restores 15 health, plus your Medicine rank." },
-  stim: { name: "Combat Stim", type: "consumable", effect: { hp: 8, energy: 3 }, price: 75, desc: "Restores 8 health and 3 energy." },
-  energy_cell: { name: "Energy Cell", type: "consumable", effect: { energy: 6 }, price: 70, desc: "Restores 6 energy." },
-  repair_kit: { name: "Hull Repair Kit", type: "consumable", effect: { hull: 20 }, price: 150, desc: "Restores 20 ship hull, plus twice your Engineering rank." },
-  fuel_cell: { name: "Fuel Cell", type: "consumable", effect: { fuel: 3 }, price: 100, desc: "Adds 3 fuel to the ship." },
-  // Gadgets work just by being carried. Story items are used by the AI in the story.
-  lockbreaker: { name: "Lockbreaker", type: "gadget", price: 200, desc: "+2 on Hacking checks while carried.", fx: { skills: { hacking: 2 } } },
-  forged_papers: { name: "Forged Transit Papers", type: "gadget", price: 180, desc: "+2 on Persuasion and Deception checks while carried.", fx: { skills: { persuasion: 2, deception: 2 } } },
-  beacon_shard: { name: "Beacon Shard", type: "story", price: 0, desc: "A warm fragment of alien crystal. It points somewhere." },
-  ilun_codex: { name: "Ilun Codex", type: "story", price: 0, desc: "A monastery's record of what the First Builders feared." },
-  choir_core: { name: "Choir Core", type: "story", price: 0, desc: "A Hunter's brain. Still humming, still listening." },
-  data_chip: { name: "Encrypted Data Chip", type: "story", price: 40, desc: "Someone would pay to read this, or pay more to destroy it." },
-  // More of them are in world/items.json.
-  ...WORLD_ITEMS,
-};
+// The items are files in world/items, read by src/world.js: weapons (damage is min to max, and stat and skill both add
+// to the attack roll), armor, consumables, gadgets and story items.
+export const ITEMS = WORLD_ITEMS;
 
 export const PERKS = {
   // Career perks come from your life history and aren't for sale.
@@ -132,19 +105,16 @@ refreshLocations();
 // The ones every captain already knows about. The rest come up as the story goes on.
 export const CORE_FACTIONS = ["fleet", "hegemony", "drift", "ilun"];
 
-export const FACTIONS = {
-  fleet: { name: "Refugee Fleet", desc: "Forty-one ships and thirty thousand survivors, all looking to the Meridian." },
-  hegemony: { name: "Hegemony", desc: "An orderly empire that offers safety in exchange for everything else." },
-  drift: { name: "Kessara Syndicate", desc: "Smugglers and raiders who respect only profit and nerve." },
-  ilun: { name: "Order of Ilun", desc: "The last monks who remember what Resonance is for." },
-  // More of them are in world/factions.json.
-  ...WORLD_FACTIONS,
-};
+// The factions are files in world/factions, read by src/world.js.
+export const FACTIONS = WORLD_FACTIONS;
 
-export const STARTING_FACTIONS = {
-  fleet: 20, hegemony: -10, drift: 0, ilun: 5,
-  ...Object.fromEntries(Object.entries(WORLD_FACTIONS).map(([id, faction]) => [id, faction.start ?? 0])),
-};
+export const STARTING_FACTIONS = {};
+// Filled in place, so a faction saved from the story board counts at once.
+export function refreshFactions() {
+  for (const key of Object.keys(STARTING_FACTIONS)) delete STARTING_FACTIONS[key];
+  for (const [id, faction] of Object.entries(WORLD_FACTIONS)) STARTING_FACTIONS[id] = faction.start ?? 0;
+}
+refreshFactions();
 
 export const STARTING_QUESTS = [
   {
