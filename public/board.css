@@ -67,6 +67,11 @@
 .board-inspector textarea { width: 100%; background: var(--bg); color: var(--story); border: 1px solid var(--line); font: 14px/1.4 var(--book-font); padding: 6px 8px; resize: vertical; }
 .board-inspector textarea#edit-part { font: 13px/1.45 var(--mono); color: var(--text); }
 .board-inspector input.name-box { width: 100%; }
+.board-inspector input.number-box { width: 7ch; background: var(--panel); border: 1px solid var(--line); color: var(--bright); font: inherit; padding: 3px 6px; }
+.board-inspector input[type="checkbox"] { accent-color: var(--text); }
+.board-inspector .choices { display: flex; flex-direction: column; gap: 4px; }
+.board-inspector .choices button { text-align: left; }
+.board-node.link { --c: var(--story); width: 210px; border-style: dotted; }
 .board-inspector .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .board-inspector label { color: var(--muted); font-size: 12px; }
 .board-inspector .danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); }

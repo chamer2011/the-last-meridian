@@ -4,14 +4,16 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { LOCATIONS } from "./data.js";
+import { AXES, CONTEXTS, SKILLS } from "./character-data.js";
+import { ENEMIES, FACTIONS, ITEMS, LOCATIONS, STATS, refreshLocations } from "./data.js";
 import { writtenThreadIds } from "./scene-files.js";
 import { parseSceneText } from "./scene-text.js";
 import { SCENES_DIR, factsLeft, loadScenes, sceneProblems } from "./scenes.js";
 import { clockProblems } from "./story-clock.js";
 import { notesProblems } from "./story-library.js";
-import { STORIES_DIR, STORY_CLOCK, STORY_FILE_PROBLEMS, WORLD_THREADS, endingsOf, reloadStories } from "./world.js";
+import { PEOPLE_DIR, PLACES_DIR, SPECIES_DIR, STORIES_DIR, STORY_CLOCK, STORY_FILE_PROBLEMS, WORLD_CHARACTERS, WORLD_FILE_PROBLEMS, WORLD_PLACES, WORLD_SPECIES, WORLD_THREADS, endingsOf, reloadStories, reloadWorld } from "./world.js";
 import { parseStoryText, writeStoryText } from "../public/story-text.js";
+import { PERSON, PLACE, SPECIES_SPEC, parseWorldText, writeWorldText } from "../public/world-text.js";
 
 const ID = /^[a-z][a-z0-9_]{1,60}$/;
 function checkId(id) {
@@ -112,30 +114,104 @@ export function sceneBoardView(text, name) {
   return { header: header.join("\n"), parts, problems: (problems ?? []).map(lineOf) };
 }
 
-const sceneFile = (id) => path.join(SCENES_DIR, `thread_${checkId(id)}.txt`);
+// A story's scene is thread_<id>.txt; a person's written lines are talk_<id>.txt.
+const sceneFile = (id, prefix) => path.join(SCENES_DIR, `${prefix}_${checkId(id)}.txt`);
+const sceneName = (id, prefix) => `${prefix}_${checkId(id)}`;
 
-export function boardScene(id) {
-  const file = sceneFile(id);
-  if (!fs.existsSync(file)) throw new Error(`${WORLD_THREADS[id]?.title ?? id} has no written scene yet.`);
+export function boardScene(id, prefix = "thread") {
+  const file = sceneFile(id, prefix);
+  if (!fs.existsSync(file)) throw new Error(prefix === "talk" ? `${WORLD_CHARACTERS[id]?.name ?? id} has no written lines yet: the AI, or the stock lines, speak for them.` : `${WORLD_THREADS[id]?.title ?? id} has no written scene yet.`);
   const text = fs.readFileSync(file, "utf8");
-  return { id, text, ...checkBoardScene(id, text) };
+  return { id, text, ...checkBoardScene(id, text, prefix) };
 }
 
 // The scene as the board would show it after a change, with the checker's problems, without saving anything.
-export function checkBoardScene(id, text) {
-  const name = `thread_${checkId(id)}`;
+export function checkBoardScene(id, text, prefix = "thread") {
+  const name = sceneName(id, prefix);
   const view = sceneBoardView(text, name);
   const parsed = parseSceneText(text, name);
-  const problems = parsed.problems?.length ? view.problems : sceneProblems(parsed.scene, name);
+  const problems = parsed.problems?.length ? view.problems : sceneProblems(parsed.scene, name, { talk: prefix === "talk" });
   return { ...view, problems };
 }
 
-export function saveBoardScene(id, text) {
-  const file = sceneFile(id);
+export function saveBoardScene(id, text, prefix = "thread") {
+  const file = sceneFile(id, prefix);
   if (typeof text !== "string" || !text.trim()) throw new Error("There's nothing to save.");
-  const name = `thread_${id}`;
+  const name = sceneName(id, prefix);
   const parsed = parseSceneText(text, name);
   if (parsed.problems?.length) return { saved: false, problems: parsed.problems.map(lineOf) };
   fs.writeFileSync(file, text.endsWith("\n") ? text : `${text}\n`);
-  return { saved: true, problems: sceneProblems(parsed.scene, name) };
+  return { saved: true, problems: sceneProblems(parsed.scene, name, { talk: prefix === "talk" }) };
+}
+
+// ---- People, places and species ------------------------------------------------------------------
+
+const WORLD_KINDS = {
+  person: { dir: () => PEOPLE_DIR, spec: PERSON, all: WORLD_CHARACTERS, folder: "characters", what: "person" },
+  place: { dir: () => PLACES_DIR, spec: PLACE, all: WORLD_PLACES, folder: "places", what: "place" },
+  species: { dir: () => SPECIES_DIR, spec: SPECIES_SPEC, all: WORLD_SPECIES, folder: "species", what: "species" },
+};
+const kindOf = (kind) => {
+  if (!WORLD_KINDS[kind]) throw new Error("The board knows stories, people, places and species.");
+  return WORLD_KINDS[kind];
+};
+const talkIds = () => new Set(fs.existsSync(SCENES_DIR) ? fs.readdirSync(SCENES_DIR).map((name) => name.match(/^talk_(.+)\.txt$/)?.[1]).filter(Boolean) : []);
+
+export function boardWorldList(kind) {
+  const { all } = kindOf(kind);
+  const written = kind === "person" ? talkIds() : new Set();
+  return Object.entries(all)
+    .map(([id, one]) => ({ id, name: [one.title, one.name].filter(Boolean).join(" ") || id, kind: kind === "person" ? one.faction ?? "none" : kind === "place" ? one.faction ?? "none" : "species", written: written.has(id) }))
+    .sort((a, b) => (kind === "species" ? (all[a.id].order ?? 99) - (all[b.id].order ?? 99) : a.name.localeCompare(b.name)));
+}
+
+// What there is to pick from on the board, by id and name.
+function boardLists() {
+  const named = (table, label = (one) => one.name) => Object.entries(table).map(([id, one]) => ({ id, name: label(one) ?? id }));
+  return {
+    people: named(WORLD_CHARACTERS, (one) => [one.title, one.name].filter(Boolean).join(" ")),
+    places: named(LOCATIONS),
+    species: named(WORLD_SPECIES),
+    factions: named(FACTIONS),
+    items: named(ITEMS),
+    enemies: named(ENEMIES),
+    skills: Object.keys(SKILLS),
+    attributes: Object.keys(STATS),
+    axes: Object.keys(AXES),
+    contexts: Object.keys(CONTEXTS),
+    arts: [...new Set(Object.values(WORLD_CHARACTERS).map((one) => one.combat?.art).filter(Boolean))].sort(),
+    kinds: ["main", "crew", "dilemma", "mystery", "exploration", "survival", "politics", "job", "faction"],
+  };
+}
+
+// One person, place or species as the board shows it: its file and what the game read, what it's linked to, what
+// there is to pick from, and the checker's problems with the file.
+export function boardWorldItem(kind, id) {
+  const { all, dir, spec, folder } = kindOf(kind);
+  checkId(id);
+  const value = all[id];
+  if (!value) throw new Error(`There's no ${kind} called ${id}.`);
+  const file = path.join(dir(), `${id}.txt`);
+  const text = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : writeWorldText(value, spec);
+  const stories = (test) => Object.entries(WORLD_THREADS).filter(([, thread]) => test(thread)).map(([storyId, thread]) => ({ id: storyId, title: thread.title }));
+  const people = (test) => Object.entries(WORLD_CHARACTERS).filter(([, one]) => test(one)).map(([personId, one]) => ({ id: personId, name: [one.title, one.name].filter(Boolean).join(" "), role: one.role ?? "" }));
+  const links = kind === "place"
+    ? { people: people((one) => one.location === id || (value.gm?.people ?? []).includes(one.id)), stories: stories((thread) => (thread.places ?? []).includes(id)) }
+    : kind === "person"
+      ? { place: value.location ? { id: value.location, name: LOCATIONS[value.location]?.name ?? value.location } : null, species: value.species ? { id: value.species, name: WORLD_SPECIES[value.species]?.name ?? value.species } : null, faction: value.faction ? { id: value.faction, name: FACTIONS[value.faction]?.name ?? value.faction } : null, stories: stories((thread) => (thread.people ?? []).includes(id)), written: talkIds().has(id) }
+      : { people: people((one) => one.species === id) };
+  return { id, kind, text, value, links, lists: boardLists(), problems: WORLD_FILE_PROBLEMS.filter((one) => one.startsWith(`${folder}/${id}.txt`)) };
+}
+
+export function saveBoardWorldItem(kind, id, text) {
+  const { dir, spec, folder } = kindOf(kind);
+  checkId(id);
+  if (typeof text !== "string" || !text.trim()) throw new Error("There's nothing to save.");
+  const { problems } = parseWorldText(text, spec, id);
+  if (problems.length) return { saved: false, problems: problems.map(lineOf) };
+  fs.mkdirSync(dir(), { recursive: true });
+  fs.writeFileSync(path.join(dir(), `${id}.txt`), text.endsWith("\n") ? text : `${text}\n`);
+  reloadWorld();
+  refreshLocations();
+  return { saved: true, problems: WORLD_FILE_PROBLEMS.filter((one) => one.startsWith(`${folder}/${id}.txt`)) };
 }

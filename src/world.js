@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { worldDir } from "./paths.js";
 import { parseStoryText } from "../public/story-text.js";
+import { PERSON, PLACE, SPECIES_SPEC, parseWorldText } from "../public/world-text.js";
 
 // A file with a mistake in it is skipped, so one typo can't stop the whole game.
 export function readFolder(folder) {
@@ -33,9 +34,38 @@ function readFile(name) {
   }
 }
 
-export const WORLD_CHARACTERS = readFolder(path.join(worldDir, "characters"));
+// The people, places and species are plain-text files too, read by public/world-text.js, and read again when the
+// story board saves one. Tests point the folders at copies.
+export const PEOPLE_DIR = process.env.GAME_PEOPLE_DIR ?? path.join(worldDir, "characters");
+export const PLACES_DIR = process.env.GAME_PLACES_DIR ?? path.join(worldDir, "places");
+export const SPECIES_DIR = process.env.GAME_SPECIES_DIR ?? path.join(worldDir, "species");
+export const WORLD_CHARACTERS = {};
+export const WORLD_PLACES = {};
+export const WORLD_SPECIES = {};
+export const WORLD_FILE_PROBLEMS = [];
+function readTextFolder(dir, spec, into, folder) {
+  for (const key of Object.keys(into)) delete into[key];
+  if (!fs.existsSync(dir)) return;
+  const read = [];
+  for (const name of fs.readdirSync(dir).sort()) {
+    if (!name.endsWith(".txt") || name.startsWith("_")) continue;
+    const id = name.slice(0, -".txt".length);
+    const { value, problems } = parseWorldText(fs.readFileSync(path.join(dir, name), "utf8"), spec, id);
+    for (const one of problems) WORLD_FILE_PROBLEMS.push(`${folder}/${name}${one.line ? ` (line ${one.line})` : ""}: ${one.message}`);
+    read.push([id, value]);
+  }
+  // The species keep the order their files give them, which is the order the character creator shows them in.
+  if (spec === SPECIES_SPEC) read.sort((a, b) => (a[1].order ?? 99) - (b[1].order ?? 99));
+  for (const [id, value] of read) into[id] = value;
+}
+export function reloadWorld() {
+  WORLD_FILE_PROBLEMS.splice(0);
+  readTextFolder(PEOPLE_DIR, PERSON, WORLD_CHARACTERS, "characters");
+  readTextFolder(PLACES_DIR, PLACE, WORLD_PLACES, "places");
+  readTextFolder(SPECIES_DIR, SPECIES_SPEC, WORLD_SPECIES, "species");
+}
+reloadWorld();
 export const WORLD_ENEMIES = readFolder(path.join(worldDir, "enemies"));
-export const WORLD_PLACES = readFolder(path.join(worldDir, "places"));
 // The stories are plain-text files in world/stories, read by public/story-text.js into the shape the game uses, and
 // read again when the story board saves one: the objects below are filled in place, so nothing needs a restart.
 // Tests point this at a copy, so they can save stories without touching the real ones.

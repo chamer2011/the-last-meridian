@@ -1,16 +1,20 @@
-// The story board: every story as boxes and arrows, to read and change, and saved to its file in world/stories.
-// Everything is done by clicking: words open in a box on the right, conditions are picked from lists, names are
-// made from the words. The board is drawn again from the story each time something changes, and the file is
-// written from the story by public/story-text.js, the same reader the game uses, so what's saved is what plays.
-// A story's written scene, when it has one, is shown the same way: its parts, and the choices between them.
+// The story board: every story, place, person and species as boxes and arrows, to read and change, and saved to
+// its file in world/. Everything is done by clicking: words open in a box on the right, conditions are picked from
+// lists, names are made from the words. The board is drawn again from the file's contents each time something
+// changes, and the file is written by the same readers the game uses (public/story-text.js and
+// public/world-text.js), so what's saved is what plays. A story's written scene, and a person's written lines,
+// are shown the same way: parts, and the choices between them.
 
 import { el } from "./dom.js";
 import { writeStoryText } from "./story-text.js";
+import { SPECS, writeWorldText } from "./world-text.js";
 
 const state = {
-  stories: [], id: null, story: null, clock: null, next: [], written: false, places: [], facts: [], all: [],
-  problems: [], tab: "notes", selected: null, expanded: null, zoom: 1, dirty: false, message: null,
-  scene: null, sceneDirty: false, positions: {},
+  kind: "story", id: null, lists: {},
+  stories: [], items: [], story: null, clock: null, next: [], written: false, places: [], facts: [], all: [],
+  item: null, links: {},
+  problems: [], tab: "notes", selected: null, expanded: null, zoom: 1, dirty: false,
+  scene: null, scenePrefix: "thread", sceneDirty: false, positions: {},
 };
 let nodes = [];
 let wires = [];
@@ -18,11 +22,20 @@ const $ = (id) => document.getElementById(id);
 const spaced = (id) => String(id ?? "").replaceAll("_", " ");
 const fill = (parent, ...children) => { for (const child of children.flat()) if (child !== null && child !== undefined && child !== false) parent.append(child); return parent; };
 const STOP = new Set("if the they she he it you someone anyone a an and or of is are that this their them its in on at for as has have then when there".split(" "));
+const KIND_WORDS = { story: "The story", place: "The place", person: "The person", species: "The species" };
 
 // A name made from words, for an ending or a fact, so nobody has to type one.
 export function nameFrom(text) {
   const words = String(text ?? "").toLowerCase().replace(/'/g, "").split(/[^a-z0-9]+/).filter((word) => word && !STOP.has(word)).slice(0, 5).join("_").slice(0, 40).replace(/_+$/, "");
   return /^[a-z]/.test(words) && words.length >= 2 ? words : "new_name";
+}
+const get = (obj, path) => path.split(".").reduce((holder, key) => (holder == null ? undefined : holder[key]), obj);
+function setPath(obj, path, value) {
+  const keys = path.split(".");
+  let holder = obj;
+  for (const key of keys.slice(0, -1)) holder = holder[key] ??= {};
+  if (value === undefined) delete holder[keys.at(-1)];
+  else holder[keys.at(-1)] = value;
 }
 
 // ---- Conditions, in words ---------------------------------------------------------
@@ -57,12 +70,12 @@ async function call(route, body) {
 }
 
 // ---- Opening and closing ---------------------------------------------------------------
-export async function openBoard(id = null) {
+export async function openBoard() {
   if ($("board")) return;
   document.body.append(boardNode());
   try {
     state.stories = (await call("/api/board/stories")).stories;
-    await loadStory(id ?? state.id ?? state.stories.find((one) => one.id === "main_two_weeks_of_fuel")?.id ?? state.stories.find((one) => one.kind === "main")?.id ?? state.stories[0]?.id);
+    await load(state.kind, state.id ?? state.stories.find((one) => one.id === "main_two_weeks_of_fuel")?.id ?? state.stories.find((one) => one.kind === "main")?.id ?? state.stories[0]?.id);
   } catch (err) {
     say(err.message, false);
   }
@@ -86,7 +99,9 @@ function boardNode() {
   return el("div", { class: "board", id: "board", role: "dialog", "aria-label": "Story board" },
     el("header", { class: "board-head" },
       el("h2", {}, "Story board"),
-      el("select", { id: "board-pick", title: "Which story", onchange: (event) => loadStory(event.target.value) }),
+      el("select", { id: "board-what", title: "Stories, places, people or species", onchange: (event) => changeKind(event.target.value) },
+        ...[["story", "Stories"], ["place", "Places"], ["person", "People"], ["species", "Species"]].map(([kind, label]) => el("option", { value: kind }, label))),
+      el("select", { id: "board-pick", title: "Which one", onchange: (event) => load(state.kind, event.target.value) }),
       el("nav", { class: "board-tabs", role: "tablist" },
         ...[["notes", "The story"], ["scene", "The written scene"], ["file", "As the file"]].map(([tab, label]) => el("button", { class: "board-tab", role: "tab", "data-tab": tab, "aria-selected": "false", onclick: () => showTab(tab) }, label))),
       el("span", { class: "board-status", id: "board-status" }),
@@ -118,27 +133,55 @@ function say(text, ok = true) {
   status.textContent = text ?? "";
   status.className = `board-status ${ok ? "ok" : "fail"}`;
 }
+const unsaved = () => {
+  if (!(state.dirty || state.sceneDirty)) return false;
+  if (state.leaving) { state.leaving = false; return false; }
+  state.leaving = true;
+  say("There are changes that aren't saved. Save them, or pick again to lose them.", false);
+  return true;
+};
 
-async function loadStory(id) {
+async function changeKind(kind) {
+  if (unsaved()) { $("board-what").value = state.kind; return; }
+  const items = kind === "story" ? state.stories : (await call(`/api/board/world/${kind}`)).items;
+  state.items = items;
+  state.itemsKind = kind;
+  await load(kind, items[0]?.id);
+}
+
+// Loads one story, place, person or species onto the board.
+async function load(kind, id) {
   if (!id) return;
-  if (state.dirty || state.sceneDirty) {
-    if (!state.leaving) {
-      state.leaving = true;
-      say("There are changes that aren't saved. Save them, or pick the story again to lose them.", false);
-      $("board-pick").value = state.id;
-      return;
+  if (unsaved()) { $("board-pick").value = state.id; return; }
+  state.leaving = false;
+  if (kind === "story") {
+    const data = await call(`/api/board/story/${id}`);
+    Object.assign(state, { kind, id, story: data.story, clock: data.clock, next: data.next, written: data.written, places: data.places, facts: data.facts, all: data.stories, problems: data.problems, item: null, links: {}, scenePrefix: "thread" });
+    state.items = state.stories;
+    state.itemsKind = "story";
+  } else {
+    const data = await call(`/api/board/world/${kind}/${id}`);
+    Object.assign(state, { kind, id, item: data.value, links: data.links, lists: data.lists, problems: data.problems, written: Boolean(data.links.written), story: null, clock: null, next: [], scenePrefix: "talk" });
+    // The list at the top is of the kind shown, which a link from another board may have changed.
+    if (state.itemsKind !== kind) {
+      state.items = (await call(`/api/board/world/${kind}`)).items;
+      state.itemsKind = kind;
     }
   }
-  state.leaving = false;
-  const data = await call(`/api/board/story/${id}`);
-  Object.assign(state, { id, story: data.story, clock: data.clock, next: data.next, written: data.written, places: data.places, facts: data.facts, all: data.stories, problems: data.problems, selected: null, expanded: null, dirty: false, sceneDirty: false, scene: null, positions: {} });
+  Object.assign(state, { selected: null, expanded: null, dirty: false, sceneDirty: false, scene: null, positions: {} });
+  $("board-what").value = kind;
   const pick = $("board-pick");
-  pick.replaceChildren(...["main", "crew", "dilemma", "mystery", "exploration", "survival", "politics", "job", "faction"].map((kind) => {
-    const group = el("optgroup", { label: kind });
-    for (const one of state.stories.filter((story) => story.kind === kind)) group.append(el("option", { value: one.id, selected: one.id === id ? "selected" : null }, `${one.title}${one.written ? " ✓" : ""}`));
-    return group;
-  }).filter((group) => group.children.length));
+  const groups = kind === "story" ? ["main", "crew", "dilemma", "mystery", "exploration", "survival", "politics", "job", "faction"] : [...new Set(state.items.map((one) => one.kind))];
+  pick.replaceChildren(...groups.map((group) => {
+    const box = el("optgroup", { label: group });
+    for (const one of state.items.filter((item) => item.kind === group)) box.append(el("option", { value: one.id, selected: one.id === id ? "selected" : null }, `${one.title ?? one.name}${one.written ? " ✓" : ""}`));
+    return box;
+  }).filter((box) => box.children.length));
   pick.value = id;
+  for (const button of document.querySelectorAll(".board-tab")) {
+    if (button.dataset.tab === "notes") button.textContent = KIND_WORDS[kind];
+    if (button.dataset.tab === "scene") { button.textContent = kind === "person" ? "The written lines" : "The written scene"; button.hidden = kind === "place" || kind === "species"; }
+  }
   showTab(state.tab === "scene" && !state.written ? "notes" : state.tab);
   say(state.problems.length ? `${state.problems.length} ${state.problems.length === 1 ? "thing" : "things"} the checker would like changed. They're marked in red.` : "");
 }
@@ -197,6 +240,68 @@ function notesGraph() {
   return { list, ws };
 }
 
+// ---- The boxes and arrows, from a place, a person or a species --------------------------------
+const linkNode = (id, kind, name, text, label) => ({ id, kind: "link", col: 4, name, text, label, link: { kind, id: id.replace(/^link_[a-z]+_/, "") }, linkKind: kind });
+function placeGraph() {
+  const P = state.item, L = state.links;
+  const list = [], ws = [];
+  const add = (node) => { list.push(node); return node.id; };
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${P.faction ? `Held by ${P.faction}. ` : ""}${P.aliases?.length ? `Also called ${P.aliases.join(", ")}. ` : ""}${[P.fleet && "the fleet is here", P.rest && "a place to rest", P.dangerous && "dangerous", P.hidden && "hidden"].filter(Boolean).join(", ")}`, label: "About this place" });
+  add({ id: "desc", kind: "lead", col: 1, name: "In a line", text: P.desc ?? "", label: "What the player sees", bind: { path: "desc" } });
+  add({ id: "feel", kind: "truth", col: 1, name: "The feel of it", text: P.gm?.feel ?? "", label: "For the game master", bind: { path: "gm.feel" } });
+  ws.push({ from: "desc", to: "feel" });
+  (P.gm?.districts ?? []).forEach((one, i) => {
+    add({ id: `district${i}`, kind: "beat", col: 2, name: one.name, text: one.desc, label: "A district", bind: { district: i } });
+    ws.push({ from: "desc", to: `district${i}` });
+  });
+  for (const [key, path, label] of [["complications", "gm.complications", "Complications"], ["secrets", "gm.secrets", "Secrets"], ["encounters", "encounters", "Encounters"], ["rumors", "rumors", "Rumors"]]) {
+    const items = get(P, path) ?? [];
+    add({ id: key, kind: "route", col: 3, name: `${label} (${items.length})`, text: items.join("\n"), label: key === "rumors" ? "What people say" : key === "encounters" ? "What can happen" : "For the game master", bind: { items: path } });
+    ws.push({ from: "feel", to: key });
+  }
+  for (const one of L.people ?? []) { add(linkNode(`link_person_${one.id}`, "person", one.name, one.role, "Someone here")); ws.push({ from: "desc", to: `link_person_${one.id}` }); }
+  for (const one of L.stories ?? []) { add(linkNode(`link_story_${one.id}`, "story", one.title, "A story set here.", "A story here")); ws.push({ from: "desc", to: `link_story_${one.id}` }); }
+  return { list, ws };
+}
+function personGraph() {
+  const P = state.item, L = state.links;
+  const list = [], ws = [];
+  const add = (node) => { list.push(node); return node.id; };
+  add({ id: "about", kind: "about", col: 0, name: [P.title, P.name].filter(Boolean).join(" "), text: `${P.role ?? ""}. ${P.pronouns ?? ""}${P.species ? `, ${P.species}` : ""}${P.age ? `, ${P.age}` : ""}. ${P.faction ? `${P.faction}. ` : ""}${P.crew ? "Crew. " : ""}`, label: "About this person" });
+  add({ id: "note", kind: "lead", col: 1, name: "In a line", text: P.note ?? "", label: "How the game sees them", bind: { path: "note" } });
+  for (const [key, label] of [["appearance", "Appearance"], ["personality", "Personality"], ["voice", "Voice"], ["goals", "Goals"], ["secrets", "Secrets"]]) {
+    add({ id: key, kind: "truth", col: 1, name: label, text: P[key] ?? "", label: key === "secrets" ? "For the game master only" : "For the game master", bind: { path: key } });
+    ws.push({ from: "note", to: key });
+  }
+  add({ id: "numbers", kind: "route", col: 2, name: "Their numbers", text: ["beliefs", "attributes", "skills"].map((key) => `${key}: ${Object.entries(P[key] ?? {}).map(([name, amount]) => `${name} ${amount}`).join(", ") || "none"}`).join("\n"), label: "Beliefs, attributes and skills", bind: { numbers: true } });
+  ws.push({ from: "note", to: "numbers" });
+  const c = P.combat ?? {};
+  add({ id: "fight", kind: "ending", col: 2, name: "In a fight", text: `threat ${c.threat ?? 0}, hp ${c.hp ?? 0}, attack ${c.attack ?? 0}, defense ${c.defense ?? 0}${c.weapon ? `, ${c.weapon}` : ""}${c.lines ? `. ${Object.values(c.lines).flat().length} lines.` : ""}`, label: "What the dice decide", bind: { fight: true } });
+  ws.push({ from: "note", to: "fight" });
+  if (L.place) { add(linkNode(`link_place_${L.place.id}`, "place", L.place.name, "Where they are.", "Their place")); ws.push({ from: "note", to: `link_place_${L.place.id}` }); }
+  if (L.species) { add(linkNode(`link_species_${L.species.id}`, "species", L.species.name, "What they are.", "Their species")); ws.push({ from: "note", to: `link_species_${L.species.id}` }); }
+  for (const one of L.stories ?? []) { add(linkNode(`link_story_${one.id}`, "story", one.title, "A story they're in.", "A story")); ws.push({ from: "note", to: `link_story_${one.id}` }); }
+  add({ id: "lines", kind: L.written ? "fact" : "stub", col: 4, name: "Written lines", text: L.written ? "What they say in a talk, written out. Open the tab to see and change it." : "Not written yet: the AI, or the stock lines, speak for them.", label: "Talking", lines: true });
+  ws.push({ from: "note", to: "lines" });
+  return { list, ws };
+}
+function speciesGraph() {
+  const P = state.item, L = state.links;
+  const list = [], ws = [];
+  const add = (node) => { list.push(node); return node.id; };
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `Shown ${P.order ?? "?"}${P.order === 1 ? "st" : P.order === 2 ? "nd" : P.order === 3 ? "rd" : "th"} in the character creator.${P.bonusAttrPoints ? ` ${P.bonusAttrPoints} extra attribute points.` : ""}${P.bonusTraitPoints ? ` ${P.bonusTraitPoints} extra trait points.` : ""}${P.agelessTerms ? ` Ages after ${P.agelessTerms} terms.` : ""}`, label: "About this species" });
+  add({ id: "desc", kind: "lead", col: 1, name: "In a line", text: P.desc ?? "", label: "What the player reads", bind: { path: "desc" } });
+  add({ id: "gm", kind: "truth", col: 1, name: "For the game master", text: P.gm ?? "", label: "How to play them", bind: { path: "gm" } });
+  ws.push({ from: "desc", to: "gm" });
+  const fx = P.fx ?? {};
+  add({ id: "numbers", kind: "route", col: 2, name: "Their numbers", text: [["attrs", "attributes"], ["attrCaps", "caps"], ["skills", "skills"]].map(([key, label]) => `${label}: ${Object.entries(P[key] ?? {}).map(([name, amount]) => `${name} ${amount}`).join(", ") || "none"}`).join("\n"), label: "Attributes and skills", bind: { speciesNumbers: true } });
+  ws.push({ from: "desc", to: "numbers" });
+  add({ id: "effects", kind: "ending", col: 2, name: "Effects", text: Object.entries(fx).map(([key, value]) => `${spaced(key)}: ${typeof value === "object" ? Object.entries(value).map(([name, amount]) => `${name} ${amount}`).join(", ") : value}`).join("\n") || "none", label: "What's different for them", bind: { effects: true } });
+  ws.push({ from: "desc", to: "effects" });
+  for (const one of L.people ?? []) { add(linkNode(`link_person_${one.id}`, "person", one.name, one.role, "One of them")); ws.push({ from: "desc", to: `link_person_${one.id}` }); }
+  return { list, ws };
+}
+
 function sceneGraph() {
   const scene = state.scene;
   const list = [], ws = [];
@@ -227,7 +332,7 @@ function sceneGraph() {
 }
 
 function build() {
-  const graph = state.tab === "scene" ? sceneGraph() : notesGraph();
+  const graph = state.tab === "scene" ? sceneGraph() : state.kind === "story" ? notesGraph() : state.kind === "place" ? placeGraph() : state.kind === "person" ? personGraph() : speciesGraph();
   nodes = graph.list;
   wires = graph.ws;
   for (const node of nodes) node.problem ??= state.problems.some((one) => problemTouches(one, node));
@@ -235,6 +340,7 @@ function build() {
 // Whether the checker's problem is about this box, so it can be marked.
 function problemTouches(problem, node) {
   const id = state.id;
+  if (state.kind !== "story") return node.kind === "about";
   if (node.kind === "ending") return problem.includes(`outcome ${node.bind.outcome + 1}`) || problem.includes(`called ${node.ending}`);
   if (node.kind === "fact") return problem.includes(`facts: ${node.fact}`) || problem.includes(`fact ${node.fact}`);
   if (node.kind === "react") return problem.includes(`reacts ${node.bind.react + 1}`);
@@ -248,7 +354,7 @@ function problemTouches(problem, node) {
 const GAP = 18, TOP = 20;
 let COL_W = 300, LEFT = 20;
 function visibleNodes() {
-  if (state.tab !== "notes") return nodes;
+  if (state.tab !== "notes" || state.kind !== "story") return nodes;
   const focus = state.expanded ?? nodes.find((node) => node.kind === "ending")?.id;
   const shown = new Set(nodes.filter((node) => !UNFOLDS.includes(node.kind)).map((node) => node.id));
   const reach = (id) => { for (const wire of wires) if (wire.from === id && !shown.has(wire.to)) { shown.add(wire.to); reach(wire.to); } };
@@ -258,7 +364,7 @@ function visibleNodes() {
 }
 function layout() {
   COL_W = state.tab === "scene" ? 390 : 300;
-  LEFT = state.tab === "scene" ? 20 : 150;
+  LEFT = state.tab === "scene" ? 20 : state.kind === "story" ? 150 : 20;
   const visible = visibleNodes();
   for (const node of nodes) node.hidden = !visible.includes(node);
   const cols = {};
@@ -291,7 +397,7 @@ function render() {
   for (const node of nodes) node.el = null;
   for (const node of nodes.filter((one) => !one.hidden)) {
     const div = el("div", { class: `board-node ${node.kind}${node.problem ? " problem" : ""}`, "data-id": node.id, tabindex: "0", role: "button" },
-      el("div", { class: "kind" }, node.label, node.kind === "ending" ? el("span", { class: "tag" }, node.ending) : null),
+      el("div", { class: "kind" }, node.label, node.kind === "ending" && node.ending ? el("span", { class: "tag" }, node.ending) : null),
       el("div", { class: "name" }, node.name),
       node.cond !== undefined && node.kind !== "react" ? el("div", { class: "when" }, conditionWords(node.cond)) : null,
       el("div", { class: "words" }, node.text));
@@ -359,20 +465,22 @@ function redraw() {
 }
 function fileText() {
   if (state.tab === "scene" || (state.scene && state.tab === "file" && state.lastBoard === "scene")) return sceneText();
-  return writeStoryText(S(), C());
+  if (state.kind === "story") return writeStoryText(S(), C());
+  return writeWorldText(state.item, SPECS[state.kind]);
 }
 const sceneText = () => (state.scene ? [state.scene.header, ...state.scene.parts.map((part) => `== ${part.name}\n${part.raw}`)].join("\n") : "");
+const sceneRoute = () => `/api/board/${state.scenePrefix === "talk" ? "talk" : "scene"}/${state.id}`;
 
 // ---- Tabs, zoom and looking around ------------------------------------------------------------
 async function showTab(tab) {
   if (tab === "scene" && !state.written) {
-    say(`${S().title} has no written scene yet. The AI runs it from these notes.`, false);
+    say(state.kind === "person" ? `${state.item.name} has no written lines yet: the AI, or the stock lines, speak for them.` : `${S().title} has no written scene yet. The AI runs it from these notes.`, false);
     tab = "notes";
   }
   if (tab !== "file") state.lastBoard = tab;
   if (tab === "scene" && !state.scene) {
     try {
-      state.scene = await call(`/api/board/scene/${state.id}`);
+      state.scene = await call(sceneRoute());
     } catch (err) {
       say(err.message, false);
       tab = "notes";
@@ -462,7 +570,7 @@ document.addEventListener("keydown", (event) => {
 function select(what) {
   state.selected = what;
   const node = what.node ? nodes.find((one) => one.id === what.node) : null;
-  if (node?.kind === "ending") { state.expanded = node.id; layout(); }
+  if (node?.kind === "ending" && state.kind === "story") { state.expanded = node.id; layout(); }
   render();
   inspect();
 }
@@ -475,6 +583,9 @@ function changed() {
 }
 function textOf(node) {
   const story = S(), b = node.bind ?? {};
+  if (b.path) return get(state.item, b.path) ?? "";
+  if (b.district !== undefined) return state.item.gm.districts[b.district].desc;
+  if (b.items) return (get(state.item, b.items) ?? []).join("\n");
   if (b.text) return story[b.text] ?? "";
   if (b.gm) return story.gm[b.gm] ?? "";
   if (b.list) return story.gm[b.list][b.i];
@@ -489,7 +600,10 @@ function textOf(node) {
 function setText(node, value) {
   const story = S(), b = node.bind ?? {};
   const text = value.trim();
-  if (b.text) story[b.text] = text;
+  if (b.path) setPath(state.item, b.path, text);
+  else if (b.district !== undefined) state.item.gm.districts[b.district].desc = text;
+  else if (b.items) setPath(state.item, b.items, value.split("\n").map((one) => one.trim()).filter(Boolean));
+  else if (b.text) story[b.text] = text;
   else if (b.gm) story.gm[b.gm] = text;
   else if (b.list) story.gm[b.list][b.i] = text;
   else if (b.lines) story.gm[b.lines] = value.split("\n").map((one) => one.trim()).filter(Boolean);
@@ -521,7 +635,8 @@ function renameFact(oldName, name) {
 }
 function remove(node) {
   const story = S(), clock = C(), b = node.bind ?? {};
-  if (b.list) story.gm[b.list].splice(b.i, 1);
+  if (b.district !== undefined) state.item.gm.districts.splice(b.district, 1);
+  else if (b.list) story.gm[b.list].splice(b.i, 1);
   else if (b.outcome !== undefined) {
     const id = story.gm.outcomes[b.outcome].id;
     story.gm.outcomes.splice(b.outcome, 1);
@@ -580,6 +695,13 @@ function addBeat(after) {
   state.selected = { node: `beat${after + 1}` };
   changed();
 }
+function addDistrict() {
+  const P = state.item;
+  (P.gm ??= {}).districts ??= [];
+  P.gm.districts.push({ name: "A new district", desc: "What it's like, and who's there." });
+  state.selected = { node: `district${P.gm.districts.length - 1}` };
+  changed();
+}
 
 // ---- The inspector: what's selected, and the ways to change it -----------------------------------
 const h2 = (text) => el("h2", {}, text);
@@ -588,50 +710,63 @@ const row = (...children) => fill(el("div", { class: "row" }), ...children);
 const button = (text, onclick, extra = {}) => el("button", { type: "button", onclick, ...extra }, text);
 const textarea = (id, value, lines = 6) => { const area = el("textarea", { id, rows: String(lines) }); area.value = value ?? ""; return area; };
 const picker = (id, options, value) => { const pick = el("select", { id }); for (const [v, label] of options) pick.append(el("option", { value: v }, label)); pick.value = value; return pick; };
+const numberBox = (id, value, step = 1) => { const box = el("input", { id, type: "number", step: String(step), class: "number-box" }); box.value = value ?? ""; return box; };
+const textBox = (id, value) => { const box = el("input", { id, type: "text", class: "name-box" }); box.value = value ?? ""; return box; };
+const checkBox = (id, value) => { const box = el("input", { id, type: "checkbox" }); box.checked = Boolean(value); return box; };
 
 function inspect() {
   const inspector = $("board-inspector");
   if (!inspector) return;
   inspector.replaceChildren();
   const sel = state.selected;
-  if (state.tab === "file") return fill(inspector, h2("The file"), hint("This is the same story, written the way its file holds it. The board is read from this, and Save writes it, so the file can still be changed by hand, on GitHub or in Notepad."));
+  if (state.tab === "file") return fill(inspector, h2("The file"), hint("This is the same thing, written the way its file holds it. The board is read from this, and Save writes it, so the file can still be changed by hand, on GitHub or in Notepad."));
   if (!sel) return inspectNothing(inspector);
   if (sel.wire !== undefined) return inspectWire(inspector, wires[sel.wire], sel.wire);
   const node = nodes.find((one) => one.id === sel.node);
   if (!node) return inspectNothing(inspector);
   if (state.tab === "scene") return inspectPart(inspector, node);
+  if (node.kind === "link") return inspectLink(inspector, node);
+  if (node.lines) return fill(inspector, h2("Written lines"), hint(node.text), state.written ? row(button("Open the written lines", () => showTab("scene"))) : hint("A file called talk_<id>.txt in world/scenes gives them written lines; the how-to there explains it."));
+  if (node.kind === "about") return state.kind === "story" ? inspectAbout(inspector) : inspectWorldAbout(inspector);
+  if (node.bind?.numbers) return inspectNumbers(inspector, node);
+  if (node.bind?.fight) return inspectFight(inspector, node);
+  if (node.bind?.speciesNumbers) return inspectSpeciesNumbers(inspector, node);
+  if (node.bind?.effects) return inspectEffects(inspector, node);
+  if (node.bind?.district !== undefined) return inspectDistrict(inspector, node);
   return inspectNode(inspector, node);
 }
 function inspectNothing(inspector) {
-  const story = S();
+  const title = state.kind === "story" ? S().title : [state.item.title, state.item.name].filter(Boolean).join(" ");
   fill(inspector,
-    h2(story.title),
-    hint(state.tab === "notes"
-      ? "The story's notes as a board: the lead and the beats, the ways through, and the endings by name. Click an ending and the facts it leaves, what follows days later, and the stories that react to it unfold beside it. Click any box to read all of it and change it."
-      : "The written scene: each box is a part, each arrow a choice, a check's two ways, or a rule that moves the player on. Click a part and the words on its arrows appear; click those to change a choice."),
-    el("div", { class: "legend" }, ...(state.tab === "notes"
-      ? [["lead", "the lead"], ["beat", "beats"], ["route", "ways through"], ["ending", "endings"], ["fact", "facts"], ["consequence", "consequences"], ["clock", "the clock"], ["next", "other stories"]]
-      : [["beat", "parts"], ["ending", "checks and fights"], ["end", "ends"], ["clock", "missing"]]).map(([kind, words]) => el("span", { class: `l-${kind}` }, words))),
-    state.tab === "notes" ? row(button("+ an ending", addEnding), button("+ a fact", () => addFact()), button("+ something days later", () => addConsequence()), button("+ a stage of the clock", addStage), button("+ what changes this story", addReaction)) : null,
-    state.problems.length ? el("div", { class: "problems" }, h2("The checker says"), ...state.problems.map((one) => el("div", {}, one))) : hint("The checker has nothing to say about this story."),
-    hint("Save writes the file in world/stories, and the game plays the new version from the next turn."));
+    h2(title),
+    hint(state.tab === "scene"
+      ? "The written parts: each box is a part, each arrow a choice, a check's two ways, or a rule that moves the player on. Click a part and the words on its arrows appear; click those to change a choice."
+      : state.kind === "story" ? "The story's notes as a board: the lead and the beats, the ways through, and the endings by name. Click an ending and the facts it leaves, what follows days later, and the stories that react to it unfold beside it. Click any box to read all of it and change it."
+        : state.kind === "place" ? "The place as a board: what the player sees, the feel of it, its districts, what can happen there, and the people and stories here. Click any box to read all of it and change it."
+          : state.kind === "person" ? "The person as a board: how the game sees them, their looks, personality, voice, goals and secrets, their numbers, how they fight, and where they belong. Click any box to read all of it and change it."
+            : "The species as a board: what the player reads, how the game master plays them, their numbers, and the people who are one. Click any box to read all of it and change it."),
+    el("div", { class: "legend" }, ...(state.tab === "scene" ? [["beat", "parts"], ["ending", "checks and fights"], ["end", "ends"], ["clock", "missing"]]
+      : state.kind === "story" ? [["lead", "the lead"], ["beat", "beats"], ["route", "ways through"], ["ending", "endings"], ["fact", "facts"], ["consequence", "consequences"], ["clock", "the clock"], ["next", "other stories"]]
+        : [["lead", "for the player"], ["beat", "for the game master"], ["route", "lists and numbers"], ["ending", "the dice"], ["next", "links to open"]]).map(([kind, words]) => el("span", { class: `l-${kind}` }, words))),
+    state.tab === "notes" && state.kind === "story" ? row(button("+ an ending", addEnding), button("+ a fact", () => addFact()), button("+ something days later", () => addConsequence()), button("+ a stage of the clock", addStage), button("+ what changes this story", addReaction)) : null,
+    state.tab === "notes" && state.kind === "place" ? row(button("+ a district", addDistrict)) : null,
+    state.problems.length ? el("div", { class: "problems" }, h2("The checker says"), ...state.problems.map((one) => el("div", {}, one))) : hint("The checker has nothing to say about this one."),
+    hint(`Save writes the file in world/${state.kind === "story" ? "stories" : state.kind === "person" ? "characters" : state.kind === "place" ? "places" : "species"}, and the game uses the new version from the next turn.`));
 }
 
 function inspectNode(inspector, node) {
   const story = S(), clock = C(), b = node.bind ?? {};
-  if (node.kind === "about") return inspectAbout(inspector);
   if (node.kind === "next") {
-    return fill(inspector, h2("Another story reacts"), el("h3", {}, node.name), hint(`When: ${conditionWords(node.cond)}.`), el("div", { class: "quote" }, node.text), row(button(`Open ${storyTitle(node.story)}`, () => loadStory(node.story))), hint("It's written in that story's file, so it's changed there."));
+    return fill(inspector, h2("Another story reacts"), el("h3", {}, node.name), hint(`When: ${conditionWords(node.cond)}.`), el("div", { class: "quote" }, node.text), row(button(`Open ${storyTitle(node.story)}`, () => load("story", node.story))), hint("It's written in that story's file, so it's changed there."));
   }
-  const nameBox = el("input", { id: "edit-name", type: "text", class: "name-box" });
-  nameBox.value = node.ending ?? node.fact ?? "";
-  const area = textarea("edit-text", textOf(node), b.lines || b.checks ? 8 : 6);
+  const nameBox = textBox("edit-name", node.ending ?? node.fact ?? "");
+  const area = textarea("edit-text", textOf(node), b.lines || b.checks || b.items ? 8 : 6);
   const checksArea = b.checks ? textarea("edit-fights", story.gm.fights.join("\n"), 4) : null;
   if (b.checks) area.value = story.gm.checks.join("\n");
   const keep = () => {
     if (b.checks) {
       story.gm.checks = area.value.split("\n").map((one) => one.trim()).filter(Boolean);
-      story.gm.fights = checksArea.value.split("\n").map((one) => one.trim()).filter(Boolean);
+      story.gm.fights = area.value && checksArea.value.split("\n").map((one) => one.trim()).filter(Boolean);
     } else setText(node, area.value);
     if (node.ending !== undefined) renameEnding(b.outcome, nameBox.value.trim() || nameFrom(area.value));
     if (node.fact !== undefined) renameFact(node.fact, nameBox.value.trim());
@@ -642,34 +777,30 @@ function inspectNode(inspector, node) {
     node.ending !== undefined || node.fact !== undefined
       ? el("div", {}, el("label", { for: "edit-name" }, node.ending !== undefined ? "Its name, which other stories use. Leave it empty and it's made from the words." : "The fact's name, which conditions use"), nameBox, node.ending !== undefined ? row(button("Name it from the words", () => { nameBox.value = nameFrom(area.value); })) : null)
       : el("h3", {}, node.name),
-    el("label", { for: "edit-text" }, b.lines ? "One way through on each line" : b.checks ? "Checks that fit, one on each line: a skill, a colon, easy, moderate or hard, and what it's for" : node.kind === "ending" ? "What's true if the story ends this way" : node.kind === "fact" ? "The line the player and the AI read" : node.kind === "consequence" || node.kind === "clock" ? "What people hear" : node.kind === "react" ? "What changes in this story" : "The words"),
+    el("label", { for: "edit-text" }, b.lines ? "One way through on each line" : b.items ? "One on each line" : b.checks ? "Checks that fit, one on each line: a skill, a colon, easy, moderate or hard, and what it's for" : node.kind === "ending" ? "What's true if the story ends this way" : node.kind === "fact" ? "The line the player and the AI read" : node.kind === "consequence" || node.kind === "clock" ? "What people hear" : node.kind === "react" ? "What changes in this story" : "The words"),
     area,
     checksArea ? el("label", { for: "edit-fights" }, "If it comes to a fight, one on each line: enemy ids, and when") : null,
     checksArea,
     row(button("Keep", keep), button("Undo", () => inspect())),
     node.kind === "ending" ? row(button("+ a fact it leaves", () => addFact(node.ending)), button("+ something days later", () => addConsequence(node.ending))) : null,
-    node.kind === "beat" ? row(button("+ a beat after this", () => addBeat(b.i))) : null,
+    node.kind === "beat" && b.list ? row(button("+ a beat after this", () => addBeat(b.i))) : null,
     node.kind === "fact" ? factAfterRow(node) : null,
     node.kind === "consequence" ? [daysRow(clock.consequences[b.cons]), conditionPicker(clock.consequences[b.cons], "of", "What has to be on the record"), placeRow(clock.consequences[b.cons]), subFacts(clock.consequences[b.cons])] : null,
     node.kind === "clock" ? [daysRow(clock.stages[b.stage]), stageLeadRow(clock.stages[b.stage]), conditionPicker(clock.stages[b.stage], "if", "Only if", true), placeRow(clock.stages[b.stage]), subFacts(clock.stages[b.stage]), stageEndingRow(clock.stages[b.stage]), otherLines(clock.stages[b.stage])] : null,
     node.kind === "react" ? conditionPicker(story.gm.reacts[b.react], "to", "When this is on the record") : null,
-    ["beat", "ending", "fact", "consequence", "clock", "react"].includes(node.kind) ? row(button("Remove", () => remove(node), { class: "danger" })) : null,
+    ["ending", "fact", "consequence", "clock", "react"].includes(node.kind) || b.list ? row(button("Remove", () => remove(node), { class: "danger" })) : null,
     node.problem ? el("div", { class: "problems" }, ...state.problems.filter((one) => problemTouches(one, node)).map((one) => el("div", {}, one))) : null,
     hint("Keep changes the box and the file together. Save writes the file."));
 }
 function inspectAbout(inspector) {
   const story = S(), clock = C();
-  const title = el("input", { id: "edit-title", type: "text", class: "name-box" });
-  title.value = story.title;
+  const title = textBox("edit-title", story.title);
   const kind = picker("edit-kind", ["main", "crew", "dilemma", "mystery", "exploration", "survival", "politics", "job", "faction"].map((one) => [one, one]), story.kind);
   const after = picker("edit-after", [["", "nothing: it can start on its own"], ...state.all.filter((one) => one.id !== state.id).map((one) => [one.id, one.title])], story.after ?? "");
   const level = picker("edit-level", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((one) => [String(one), `level ${one}`]), String(story.minLevel ?? 1));
-  const places = el("input", { id: "edit-places", type: "text", class: "name-box" });
-  places.value = story.places.join(", ");
-  const people = el("input", { id: "edit-people", type: "text", class: "name-box" });
-  people.value = story.people.join(", ");
-  const factions = el("input", { id: "edit-factions", type: "text", class: "name-box" });
-  factions.value = story.factions.join(", ");
+  const places = textBox("edit-places", story.places.join(", "));
+  const people = textBox("edit-people", story.people.join(", "));
+  const factions = textBox("edit-factions", story.factions.join(", "));
   fill(inspector,
     h2("About this story"),
     el("label", { for: "edit-title" }, "Its title"), title,
@@ -693,6 +824,125 @@ function inspectAbout(inspector) {
     }), button("Undo", () => inspect())),
     hint(`The file is world/stories/${state.id}.txt. Its name doesn't change here.`));
 }
+
+// The lines at the top of a person's, a place's or a species' file, each with the right kind of box.
+function inspectWorldAbout(inspector) {
+  const spec = SPECS[state.kind], item = state.item, lists = state.lists;
+  const boxes = [];
+  const optionsFor = (path) => (path === "species" ? lists.species : path === "location" ? lists.places : path === "faction" ? lists.factions : null);
+  const title = textBox("edit-title", item[spec.title]);
+  for (const field of spec.header) {
+    const value = get(item, field.path);
+    const id = `edit-${field.path.replaceAll(".", "-")}`;
+    let box;
+    if (field.type === "name" && optionsFor(field.path)) box = picker(id, [["", "none"], ...optionsFor(field.path).map((one) => [one.id, one.name])], value ?? "");
+    else if (field.type === "flag") box = checkBox(id, value);
+    else if (field.type === "number") box = numberBox(id, value ?? "");
+    else if (field.type === "list") box = textBox(id, (value ?? []).join(", "));
+    else box = textBox(id, value ?? "");
+    boxes.push({ field, box });
+  }
+  fill(inspector,
+    h2(`About this ${state.kind}`),
+    el("label", { for: "edit-title" }, "The name"), title,
+    ...boxes.map(({ field, box }) => (field.type === "flag" || box.tagName === "SELECT" || field.type === "number" ? row(el("label", { for: box.id }, field.key), box) : [el("label", { for: box.id }, field.type === "list" ? `${field.key}, separated by commas` : field.key), box])),
+    row(button("Keep", () => {
+      item[spec.title] = title.value.trim() || item[spec.title];
+      for (const { field, box } of boxes) {
+        let value;
+        if (field.type === "flag") value = box.checked ? true : (get(item, field.path) === undefined && !box.checked ? undefined : false);
+        else if (field.type === "number") value = box.value === "" ? (get(item, field.path) === undefined ? undefined : null) : Number(box.value);
+        else if (field.type === "list") value = box.value.split(",").map((one) => one.trim()).filter(Boolean);
+        else if (field.type === "name") value = box.value || null;
+        else value = box.value.trim() || (get(item, field.path) === undefined ? undefined : "");
+        if (field.type === "list" && !value.length && get(item, field.path) === undefined) value = undefined;
+        setPath(item, field.path, value);
+      }
+      changed();
+    }), button("Undo", () => inspect())),
+    hint(`The file is world/${state.kind === "person" ? "characters" : state.kind === "place" ? "places" : "species"}/${state.id}.txt. Its name doesn't change here.`));
+}
+function inspectDistrict(inspector, node) {
+  const district = state.item.gm.districts[node.bind.district];
+  const name = textBox("edit-name", district.name);
+  const area = textarea("edit-text", district.desc, 6);
+  fill(inspector, h2("A district"), el("label", { for: "edit-name" }, "Its name"), name, el("label", { for: "edit-text" }, "What it's like, and who's there"), area,
+    row(button("Keep", () => { district.name = name.value.trim() || district.name; district.desc = area.value.trim(); changed(); }), button("Undo", () => inspect())),
+    row(button("+ a district", addDistrict), button("Remove", () => remove(node), { class: "danger" })));
+}
+function inspectLink(inspector, node) {
+  fill(inspector, h2(node.label), el("h3", {}, node.name), hint(node.text), row(button(`Open ${node.name}`, () => load(node.link.kind, node.link.id))), hint("It has a board of its own, and it's changed there."));
+}
+
+// Numbers are picked in boxes with arrows, never typed, and a new one is chosen from a list.
+function pairsEditor(holder, key, label, names, step = 1) {
+  const box = el("div", { class: "subfacts" });
+  const draw = () => {
+    const pairs = holder[key] ?? {};
+    box.replaceChildren(el("label", {}, label));
+    for (const [name, amount] of Object.entries(pairs)) {
+      const number = numberBox(`edit-${key}-${name}`, amount, step);
+      box.append(row(el("span", { class: "fact-name" }, spaced(name)), number, button("Keep", () => { holder[key][name] = Number(number.value); changed(); }, { class: "small" }), button("Remove", () => { delete holder[key][name]; if (!Object.keys(holder[key]).length && key !== "attributes") delete holder[key]; changed(); }, { class: "danger small" })));
+    }
+    const left = names.filter((name) => !(name in pairs));
+    if (left.length) {
+      const pick = picker(`edit-${key}-new`, [["", "add one..."], ...left.map((name) => [name, spaced(name)])], "");
+      box.append(row(pick, button("+ add it", () => { if (!pick.value) return; (holder[key] ??= {})[pick.value] = 0; changed(); })));
+    }
+  };
+  draw();
+  return box;
+}
+function inspectNumbers(inspector, node) {
+  const P = state.item, lists = state.lists;
+  fill(inspector, h2("Their numbers"), hint("Beliefs run from -10 to 10, attributes from 1 to 10, skills from 0 to 10."),
+    pairsEditor(P, "beliefs", "Beliefs", lists.axes), pairsEditor(P, "attributes", "Attributes", lists.attributes), pairsEditor(P, "skills", "Skills", lists.skills));
+}
+function inspectSpeciesNumbers(inspector, node) {
+  const P = state.item, lists = state.lists;
+  fill(inspector, h2("Their numbers"), hint("What this species adds or takes from a new character's attributes and skills."),
+    pairsEditor(P, "attrs", "Attributes", lists.attributes), pairsEditor(P, "attrCaps", "Attribute caps", lists.attributes), pairsEditor(P, "skills", "Skills", lists.skills));
+}
+function inspectEffects(inspector, node) {
+  const P = state.item, lists = state.lists;
+  P.fx ??= {};
+  const fx = P.fx;
+  const numbers = [["maxHp", "max hp", 1], ["fatigueRate", "fatigue rate", 0.05], ["healRate", "heal rate", 0.05], ["stressRate", "stress rate", 0.05]].map(([key, label, step]) => {
+    const box = numberBox(`edit-fx-${key}`, fx[key] ?? "", step);
+    return row(el("label", { for: box.id }, label), box, button("Keep", () => { if (box.value === "") delete fx[key]; else fx[key] = Number(box.value); changed(); }, { class: "small" }));
+  });
+  fill(inspector, h2("Effects"), hint("Leave a number empty for none. Rates are fractions of the usual: 0.5 is half."), ...numbers,
+    pairsEditor(fx, "context", "In a setting", lists.contexts), pairsEditor(fx, "factions", "Standing with", lists.factions.map((one) => one.id)), pairsEditor(fx, "skills", "Skills", lists.skills));
+}
+function inspectFight(inspector, node) {
+  const P = state.item, lists = state.lists;
+  P.combat ??= {};
+  const c = P.combat;
+  const fields = [["threat", "threat"], ["hp", "hp"], ["attack", "attack"], ["defense", "defense"], ["xp", "xp"]].map(([key, label]) => {
+    const box = numberBox(`edit-fight-${key}`, c[key] ?? "");
+    return row(el("label", { for: box.id }, label), box, button("Keep", () => { if (box.value === "") delete c[key]; else c[key] = Number(box.value); changed(); }, { class: "small" }));
+  });
+  const range = (key, label) => {
+    const low = numberBox(`edit-fight-${key}-low`, c[key]?.[0] ?? ""), high = numberBox(`edit-fight-${key}-high`, c[key]?.[1] ?? "");
+    return row(el("label", { for: low.id }, label), low, el("span", {}, "to"), high, button("Keep", () => { if (low.value === "" && high.value === "") delete c[key]; else c[key] = [Number(low.value || 0), Number(high.value || 0)]; changed(); }, { class: "small" }));
+  };
+  const weapon = textBox("edit-fight-weapon", c.weapon ?? "");
+  const art = picker("edit-fight-art", [["", "none"], ...lists.arts.map((one) => [one, one])], c.art ?? "");
+  const tags = textBox("edit-fight-tags", (c.tags ?? []).join(", "));
+  const machine = checkBox("edit-fight-machine", c.machine), boss = checkBox("edit-fight-boss", c.boss);
+  const linesBoxes = [["intro", "When the fight starts"], ["hit", "When they hit"], ["miss", "When they miss"], ["crit", "When they hit hard"], ["defeated", "When they're beaten"]].map(([key, label]) => {
+    const area = textarea(`edit-lines-${key}`, (c.lines?.[key] ?? []).join("\n"), 3);
+    return fill(el("div", {}), el("label", { for: area.id }, `${label}, one line each`), area, row(button("Keep", () => { const items = area.value.split("\n").map((one) => one.trim()).filter(Boolean); if (items.length) (c.lines ??= {})[key] = items; else if (c.lines) { delete c.lines[key]; if (!Object.keys(c.lines).length) delete c.lines; } changed(); }, { class: "small" })));
+  });
+  fill(inspector, h2("In a fight"), ...fields, range("damage", "damage"), range("credits", "credits"),
+    el("label", { for: "edit-fight-weapon" }, "weapon"), weapon,
+    row(el("label", { for: "edit-fight-art" }, "drawn as"), art),
+    el("label", { for: "edit-fight-tags" }, "tags, separated by commas"), tags,
+    row(el("label", { for: "edit-fight-machine" }, "a machine"), machine, el("label", { for: "edit-fight-boss" }, "a boss"), boss),
+    row(button("Keep these", () => { if (weapon.value.trim()) c.weapon = weapon.value.trim(); else delete c.weapon; if (art.value) c.art = art.value; else delete c.art; c.tags = tags.value.split(",").map((one) => one.trim()).filter(Boolean); if (machine.checked) c.machine = true; else delete c.machine; if (boss.checked) c.boss = true; else delete c.boss; changed(); })),
+    pairsEditor(c, "onHit", "When they hit, the player also gets", ["stress", "energy"]),
+    ...linesBoxes);
+}
 function daysRow(holder) {
   const days = picker("edit-days", [0, 1, 2, 3, 5, 7, 10, 14, 18, 20, 25, 30, 38, 45, 60, 75, 90, 120].map((one) => [String(one), one === 0 ? "the same day" : `${one} days`]), String(holder.after));
   if (![...days.options].some((one) => one.value === String(holder.after))) days.append(el("option", { value: String(holder.after), selected: "selected" }, `${holder.after} days`));
@@ -701,8 +951,7 @@ function daysRow(holder) {
 }
 function placeRow(holder) {
   const place = picker("edit-place", [["", "the story's first place"], ...state.places.map((one) => [one.id, one.name])], holder.place ?? "");
-  const big = el("input", { id: "edit-big", type: "checkbox" });
-  big.checked = Boolean(holder.big);
+  const big = checkBox("edit-big", holder.big);
   return row(el("label", { for: "edit-place" }, "Where"), place, el("label", { for: "edit-big" }, "everyone who knows the place hears it"), big, button("Keep", () => { if (place.value) holder.place = place.value; else delete holder.place; if (big.checked) holder.big = true; else delete holder.big; changed(); }));
 }
 function stageLeadRow(stage) {
@@ -726,8 +975,7 @@ function subFacts(holder) {
   const draw = () => {
     box.replaceChildren(el("label", {}, "Facts it puts on the record"));
     for (const [name, line] of Object.entries(holder.facts ?? {})) {
-      const input = el("input", { type: "text", class: "name-box" });
-      input.value = line;
+      const input = textBox(`edit-subfact-${name}`, line);
       box.append(row(el("span", { class: "fact-name" }, spaced(name)), button("Remove", () => { delete holder.facts[name]; if (!Object.keys(holder.facts).length) delete holder.facts; changed(); }, { class: "danger small" })), input, row(button("Keep", () => { holder.facts[name] = input.value.trim(); changed(); })));
     }
     const pick = picker("edit-subfact", [["", "a fact of this story..."], ...Object.keys(S().gm.facts ?? {}).filter((name) => !holder.facts?.[name]).map((name) => [name, spaced(name)])], "");
@@ -787,7 +1035,7 @@ function inspectWire(inspector, wire, index) {
   fill(inspector, h2("An arrow"), hint(`From ${from?.name ?? "?"} to ${to?.name ?? "?"}. Click a box to change it.`));
 }
 
-// ---- The written scene ------------------------------------------------------------------------------
+// ---- The written scene, or a person's written lines --------------------------------------------------
 function inspectPart(inspector, node) {
   if (node.kind === "stub") return fill(inspector, h2("Missing"), hint(`Something leads to a part called ${node.name}, and there's no part with that name in the file. Add it in the file, or point the arrow somewhere else.`));
   const part = state.scene.parts[node.part];
@@ -802,7 +1050,7 @@ function inspectPart(inspector, node) {
     wires.some((one) => one.from === node.id) ? fill(el("div", { class: "choices" }), el("label", {}, "Where it leads"), ...wires.map((one, i) => (one.from === node.id ? button(`${one.words} → ${one.to.replace(/^p_/, "")}`, () => select({ wire: i }), { class: "small" }) : null))) : null,
     part.ai ? hint(`A note for the AI: ${part.ai}`) : null,
     node.problem ? el("div", { class: "problems" }, ...state.scene.problems.filter((one) => one.includes(`part ${part.name}`)).map((one) => el("div", {}, one))) : null,
-    hint("Keep changes the part and the file together. Save writes the file, and the scene plays the new version from the next turn."));
+    hint("Keep changes the part and the file together. Save writes the file, and it plays the new version from the next turn."));
 }
 async function keepPart(index, raw) {
   state.scene.parts[index].raw = raw;
@@ -811,7 +1059,7 @@ async function keepPart(index, raw) {
 async function refreshScene() {
   state.sceneDirty = true;
   try {
-    const view = await call(`/api/board/scene/${state.id}`, { check: true, text: sceneText() });
+    const view = await call(sceneRoute(), { check: true, text: sceneText() });
     state.scene = { ...state.scene, ...view };
     say(view.problems.length ? `${view.problems.length} ${view.problems.length === 1 ? "thing" : "things"} the checker would like changed. They're marked in red.` : "");
   } catch (err) {
@@ -828,8 +1076,7 @@ function inspectChoice(inspector, wire) {
   if (wire.choice !== undefined) at = lineIndex(part.choices[wire.choice]?.line);
   else if (wire.rule !== undefined) at = lineIndex(part.when[wire.rule]?.line);
   if (at < 0 || at >= rawLines.length) return fill(inspector, h2("An arrow"), hint(`From ${part.name} to ${to?.name ?? "?"}: ${wire.words}. This one is changed in the part's own box.`));
-  const line = el("input", { id: "edit-line", type: "text", class: "name-box" });
-  line.value = rawLines[at];
+  const line = textBox("edit-line", rawLines[at]);
   const parts = state.scene.parts.map((one) => [one.name, one.name]);
   const goes = wire.choice !== undefined && part.choices[wire.choice]?.check
     ? [picker("edit-pass", parts, part.choices[wire.choice].pass ?? ""), picker("edit-fail", parts, part.choices[wire.choice].fail ?? "")]
@@ -855,18 +1102,25 @@ function inspectChoice(inspector, wire) {
 async function save() {
   try {
     if (state.tab === "scene" || (state.sceneDirty && !state.dirty)) {
-      const result = await call(`/api/board/scene/${state.id}`, { text: sceneText() });
+      const result = await call(sceneRoute(), { text: sceneText() });
       if (!result.saved) return say(`Not saved: ${result.problems[0]}`, false);
       state.sceneDirty = false;
       state.scene.problems = result.problems;
-      say(result.problems.length ? `Saved. ${result.problems.length} ${result.problems.length === 1 ? "thing" : "things"} the checker would like changed.` : "Saved. The scene plays the new version from the next turn.");
-    } else {
+      say(result.problems.length ? `Saved. ${result.problems.length} ${result.problems.length === 1 ? "thing" : "things"} the checker would like changed.` : "Saved. It plays the new version from the next turn.");
+    } else if (state.kind === "story") {
       const result = await call(`/api/board/story/${state.id}`, { text: writeStoryText(S(), C()) });
       if (!result.saved) return say(`Not saved: ${result.problems[0]}`, false);
       state.dirty = false;
       state.problems = result.problems;
       state.stories = (await call("/api/board/stories")).stories;
+      state.items = state.stories;
       say(result.problems.length ? `Saved. ${result.problems.length} ${result.problems.length === 1 ? "thing" : "things"} the checker would like changed.` : "Saved. The game plays the new version from the next turn.");
+    } else {
+      const result = await call(`/api/board/world/${state.kind}/${state.id}`, { text: writeWorldText(state.item, SPECS[state.kind]) });
+      if (!result.saved) return say(`Not saved: ${result.problems[0]}`, false);
+      state.dirty = false;
+      state.problems = result.problems;
+      say(result.problems.length ? `Saved. ${result.problems.length} ${result.problems.length === 1 ? "thing" : "things"} the checker would like changed.` : "Saved. The game uses the new version from the next turn.");
     }
     redraw();
   } catch (err) {

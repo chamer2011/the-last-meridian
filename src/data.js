@@ -121,8 +121,13 @@ const BASE_LOCATIONS = {
   nest: { name: "The Choir Nest", desc: "A dead star wrapped in silver machinery. Nobody has come back from here. Yet.", market: [], dangerous: true },
 };
 
-export const LOCATIONS = Object.fromEntries([...new Set([...Object.keys(BASE_LOCATIONS), ...Object.keys(WORLD_PLACES)])]
-  .map((id) => [id, { market: [], ...BASE_LOCATIONS[id], ...WORLD_PLACES[id] }]));
+export const LOCATIONS = {};
+// Filled in place, so that a place saved from the story board shows at once wherever the game looks places up.
+export function refreshLocations() {
+  for (const key of Object.keys(LOCATIONS)) delete LOCATIONS[key];
+  for (const id of new Set([...Object.keys(BASE_LOCATIONS), ...Object.keys(WORLD_PLACES)])) LOCATIONS[id] = { market: [], ...BASE_LOCATIONS[id], ...WORLD_PLACES[id] };
+}
+refreshLocations();
 
 // The ones every captain already knows about. The rest come up as the story goes on.
 export const CORE_FACTIONS = ["fleet", "hegemony", "drift", "ilun"];

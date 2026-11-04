@@ -5,7 +5,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { AiError, CLAUDE_MODELS, callCost, listOllamaModels, runTurn, testClaude } from "./src/ai.js";
-import { boardScene, boardStories, boardStory, checkBoardScene, saveBoardScene, saveBoardStory } from "./src/board.js";
+import { boardScene, boardStories, boardStory, boardWorldItem, boardWorldList, checkBoardScene, saveBoardScene, saveBoardStory, saveBoardWorldItem } from "./src/board.js";
 import { ensureContactFiles, newCampaignId, saveCaptainSheet } from "./src/campaign.js";
 import { SKILLS } from "./src/character-data.js";
 import { checkCommand, startCheck, startChoiceCheck } from "./src/checks.js";
@@ -359,10 +359,18 @@ async function boardApi(req, res, route) {
     const body = await readBody(req);
     return json(res, 200, saveBoardStory(id, body.text));
   }
-  if (what === "scene" && id) {
-    if (req.method === "GET") return json(res, 200, boardScene(id));
+  if ((what === "scene" || what === "talk") && id) {
+    const prefix = what === "talk" ? "talk" : "thread";
+    if (req.method === "GET") return json(res, 200, boardScene(id, prefix));
     const body = await readBody(req);
-    return json(res, 200, body.check ? checkBoardScene(id, body.text) : saveBoardScene(id, body.text));
+    return json(res, 200, body.check ? checkBoardScene(id, body.text, prefix) : saveBoardScene(id, body.text, prefix));
+  }
+  if (what === "world" && id) {
+    const itemId = route.split("/")[5];
+    if (!itemId && req.method === "GET") return json(res, 200, { items: boardWorldList(id) });
+    if (req.method === "GET") return json(res, 200, boardWorldItem(id, itemId));
+    const body = await readBody(req);
+    return json(res, 200, saveBoardWorldItem(id, itemId, body.text));
   }
   return json(res, 404, { error: "Not found." });
 }

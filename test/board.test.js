@@ -12,17 +12,19 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-board-"));
 process.env.GAME_DATA_DIR = dataDir;
 // The board writes files, so these tests work on copies of the stories and the scenes.
 const worldDir = fileURLToPath(new URL("../world/", import.meta.url));
-for (const folder of ["stories", "scenes"]) {
+for (const [folder, env] of [["stories", "GAME_STORIES_DIR"], ["scenes", "GAME_SCENES_DIR"], ["characters", "GAME_PEOPLE_DIR"], ["places", "GAME_PLACES_DIR"], ["species", "GAME_SPECIES_DIR"]]) {
   const copy = path.join(dataDir, folder);
   fs.mkdirSync(copy);
   for (const name of fs.readdirSync(path.join(worldDir, folder))) fs.copyFileSync(path.join(worldDir, folder, name), path.join(copy, name));
-  process.env[folder === "stories" ? "GAME_STORIES_DIR" : "GAME_SCENES_DIR"] = copy;
+  process.env[env] = copy;
 }
 
-const { boardScene, boardStories, boardStory, checkBoardScene, saveBoardScene, saveBoardStory, sceneBoardView } = await import("../src/board.js");
+const { boardScene, boardStories, boardStory, boardWorldItem, boardWorldList, checkBoardScene, saveBoardScene, saveBoardStory, saveBoardWorldItem, sceneBoardView } = await import("../src/board.js");
+const { LOCATIONS } = await import("../src/data.js");
 const { SCENES_DIR } = await import("../src/scenes.js");
-const { STORIES_DIR, STORY_CLOCK, WORLD_THREADS } = await import("../src/world.js");
+const { PLACES_DIR, STORIES_DIR, STORY_CLOCK, WORLD_CHARACTERS, WORLD_PLACES, WORLD_THREADS } = await import("../src/world.js");
 const { parseStoryText, writeStoryText } = await import("../public/story-text.js");
+const { PLACE, parseWorldText, writeWorldText } = await import("../public/world-text.js");
 
 const FUEL = "main_two_weeks_of_fuel";
 
@@ -129,4 +131,68 @@ test("a changed scene is checked without saving, and saving writes it only when 
   assert.throws(() => saveBoardScene("bad id", "x"), /lowercase letters/);
   const empty = sceneBoardView("", "thread_x");
   assert.deepEqual(empty.parts, []);
+});
+
+test("the board lists the people, places and species, and shows each with what it's linked to", () => {
+  const people = boardWorldList("person");
+  assert.equal(people.length, 61);
+  assert.ok(people.some((one) => one.id === "aduro" && one.name === "Dr. Sen Aduro" && one.kind === "fleet" && one.written === true));
+  assert.ok(people.some((one) => one.id === "ione" && one.written === false));
+  assert.equal(boardWorldList("place").length, 24);
+  assert.deepEqual(boardWorldList("species").map((one) => one.id), ["human", "korrun", "veshti", "ilari", "thessan", "synthetic"]);
+  assert.throws(() => boardWorldList("ship"), /stories, people, places and species/);
+
+  const haven = boardWorldItem("place", "haven");
+  assert.equal(haven.value.name, "Haven Station");
+  assert.equal(haven.text, fs.readFileSync(path.join(PLACES_DIR, "haven.txt"), "utf8"));
+  assert.ok(haven.links.people.some((one) => one.id === "sable"));
+  assert.ok(haven.links.stories.some((one) => one.id === "main_the_old_scholar"));
+  assert.ok(haven.lists.attributes.includes("might") && haven.lists.skills.includes("medicine") && haven.lists.axes.includes("loyalty"));
+  assert.deepEqual(haven.problems, []);
+
+  const aduro = boardWorldItem("person", "aduro");
+  assert.equal(aduro.links.place.name, "CFS Meridian");
+  assert.equal(aduro.links.species.name, "Ilari");
+  assert.equal(aduro.links.faction.id, "fleet");
+  assert.ok(aduro.links.stories.some((one) => one.id === "crew_aduro_forty_one_days"));
+  assert.equal(aduro.links.written, true);
+  const ilari = boardWorldItem("species", "ilari");
+  assert.ok(ilari.links.people.some((one) => one.id === "aduro"));
+  assert.throws(() => boardWorldItem("person", "nobody"), /no person called nobody/);
+});
+
+test("saving a place writes its file, and the game's places follow at once", () => {
+  const file = path.join(PLACES_DIR, "haven.txt");
+  const original = fs.readFileSync(file, "utf8");
+  try {
+    const { value } = parseWorldText(original, PLACE, "haven");
+    value.desc = "A neutral trade hub, tested by the board.";
+    value.gm.districts.push({ name: "The Test Deck", desc: "Where the board was tried." });
+    const saved = saveBoardWorldItem("place", "haven", writeWorldText(value, PLACE));
+    assert.equal(saved.saved, true);
+    assert.deepEqual(saved.problems, []);
+    assert.ok(fs.readFileSync(file, "utf8").includes("tested by the board"));
+    assert.equal(WORLD_PLACES.haven.desc, "A neutral trade hub, tested by the board.");
+    assert.equal(LOCATIONS.haven.desc, "A neutral trade hub, tested by the board.", "the places the game looks up follow");
+    assert.equal(LOCATIONS.haven.gm.districts.at(-1).name, "The Test Deck");
+    const refused = saveBoardWorldItem("place", "haven", "# Haven\nweather: wet\n");
+    assert.equal(refused.saved, false);
+    assert.ok(refused.problems.some((one) => /line 2/.test(one)));
+    assert.ok(fs.readFileSync(file, "utf8").includes("tested by the board"), "the broken text wasn't written");
+    assert.throws(() => saveBoardWorldItem("place", "Bad Id", "x"), /lowercase letters/);
+  } finally {
+    saveBoardWorldItem("place", "haven", original);
+  }
+  assert.equal(LOCATIONS.haven.desc.slice(0, 20), "A neutral trade hub ");
+  assert.equal(WORLD_CHARACTERS.aduro.name, "Sen Aduro");
+});
+
+test("a person's written lines come as parts and choices, like a scene", () => {
+  const talk = boardScene("aduro", "talk");
+  assert.ok(talk.parts.length >= 5);
+  assert.ok(talk.parts.some((one) => one.name === "start"));
+  assert.deepEqual(talk.problems, []);
+  assert.throws(() => boardScene("ione", "talk"), /no written lines yet/);
+  const checked = checkBoardScene("aduro", talk.text.replace("== start", "== start\n> A line that goes nowhere -> no_such_part"), "talk");
+  assert.ok(checked.problems.some((one) => /no_such_part/.test(one)));
 });

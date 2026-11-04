@@ -31,9 +31,13 @@ const AXES = ["authority", "loyalty", "violence", "belief", "flesh"];
 const KINDS = ["job", "mystery", "crew", "politics", "survival", "exploration", "dilemma", "faction", "main"];
 const CONTEXTS = ["choir", "machines", "hegemony", "syndicate", "resonance", "vacuum", "confined", "crowd", "authority", "low_light", "heavy_gravity", "loved_one"];
 
-const characters = folder("characters");
+const { PERSON, PLACE, parseWorldText } = await import("../public/world-text.js");
+const textFolder = (name, spec) => Object.fromEntries(fs.readdirSync(path.join(world, name))
+  .filter((file) => file.endsWith(".txt") && !file.startsWith("_"))
+  .map((file) => [file.slice(0, -".txt".length), parseWorldText(fs.readFileSync(path.join(world, name, file), "utf8"), spec, file.slice(0, -".txt".length)).value]));
+const characters = textFolder("characters", PERSON);
 const enemies = folder("enemies");
-const places = folder("places");
+const places = textFolder("places", PLACE);
 const { parseStoryText } = await import("../public/story-text.js");
 const threads = Object.fromEntries(fs.readdirSync(path.join(world, "stories"))
   .filter((name) => name.endsWith(".txt") && !name.startsWith("_"))
