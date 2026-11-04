@@ -894,6 +894,17 @@ function inspectWorldAbout(inspector) {
     const value = get(item, field.path);
     const id = `edit-${field.path.replaceAll(".", "-")}`;
     let box;
+    if (field.type === "pairs") {
+      // Numbers with names, like on hit: stress 2, have an editor of their own, with Keep buttons of its own.
+      const names = field.path === "onHit" ? ["stress", "energy"] : field.path === "effect" ? ["hp", "energy", "hull", "fuel"] : lists.axes;
+      boxes.push({ field, box: pairsEditor(item, field.path, field.key, names), own: true });
+      continue;
+    }
+    if (field.type === "range") {
+      const low = numberBox(`${id}-low`, value?.[0] ?? ""), high = numberBox(`${id}-high`, value?.[1] ?? "");
+      boxes.push({ field, box: row(el("label", { for: low.id }, field.key), low, el("span", {}, "to"), high), low, high });
+      continue;
+    }
     if ((field.type === "name" || field.type === "string") && optionsFor(field.path)) box = picker(id, [["", "none"], ...optionsFor(field.path).map((one) => [one.id, one.name])], value ?? "");
     else if (field.type === "flag") box = checkBox(id, value);
     else if (field.type === "number") box = numberBox(id, value ?? "");
@@ -904,12 +915,14 @@ function inspectWorldAbout(inspector) {
   fill(inspector,
     h2(`About this ${state.kind}`),
     el("label", { for: "edit-title" }, "The name"), title,
-    ...boxes.map(({ field, box }) => (field.type === "flag" || box.tagName === "SELECT" || field.type === "number" ? row(el("label", { for: box.id }, field.key), box) : [el("label", { for: box.id }, field.type === "list" ? `${field.key}, separated by commas` : field.key), box])),
+    ...boxes.map(({ field, box, own, low }) => (own || low ? box : field.type === "flag" || box.tagName === "SELECT" || field.type === "number" ? row(el("label", { for: box.id }, field.key), box) : [el("label", { for: box.id }, field.type === "list" ? `${field.key}, separated by commas` : field.key), box])),
     row(button("Keep", () => {
       item[spec.title] = title.value.trim() || item[spec.title];
-      for (const { field, box } of boxes) {
+      for (const { field, box, own, low, high } of boxes) {
+        if (own) continue;
         let value;
-        if (field.type === "flag") value = box.checked ? true : (get(item, field.path) === undefined && !box.checked ? undefined : false);
+        if (field.type === "range") value = low.value === "" && high.value === "" ? undefined : [Number(low.value || 0), Number(high.value || 0)];
+        else if (field.type === "flag") value = box.checked ? true : (get(item, field.path) === undefined && !box.checked ? undefined : false);
         else if (field.type === "number") value = box.value === "" ? (get(item, field.path) === undefined ? undefined : null) : Number(box.value);
         else if (field.type === "list") value = box.value.split(",").map((one) => one.trim()).filter(Boolean);
         else if (field.type === "name") value = box.value || null;
