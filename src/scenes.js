@@ -14,6 +14,7 @@ import { worldDir } from "./paths.js";
 import { DIFFICULTY, attr, maxHp, skillRank } from "./rules.js";
 import { conditionHolds, parseCondition, parseSceneText } from "./scene-text.js";
 import { clearFact, endStory, recordFact } from "./record.js";
+import { clockFacts, clockProblems } from "./story-clock.js";
 import { noteThreadStarted, notesProblems } from "./story-library.js";
 import { newTurnLimits, runTool, toolProblem } from "./tools.js";
 import { answerDoor } from "./walk.js";
@@ -498,7 +499,7 @@ export function allSceneProblems(dir = SCENES_DIR) {
 // Every fact something in the world can leave on the record: a story's notes name it, a scene sets it with * flag,
 // or a door sets it when the player goes through.
 export function factsLeft(scenes) {
-  const names = new Set(Object.keys(FACT_LINES));
+  const names = new Set([...Object.keys(FACT_LINES), ...clockFacts()]);
   for (const scene of Object.values(scenes)) for (const part of Object.values(scene.parts ?? {})) for (const step of part.do ?? []) if (step.set) names.add(step.set);
   const walk = (node) => {
     if (!node || typeof node !== "object") return;
@@ -522,6 +523,6 @@ export function allStoryProblems(dir = SCENES_DIR) {
       for (const text of conditions) for (const flag of flagsIn(text)) if (!known.has(flag)) problems.push(`${id}, part ${name}: nothing leaves the fact ${flag}. Set it with * flag in a scene, or name it in a story's facts in world/threads`);
     }
   }
-  problems.push(...notesProblems(known));
+  problems.push(...notesProblems(known), ...clockProblems(known));
   return { count, stories: Object.keys(WORLD_THREADS).length, problems };
 }

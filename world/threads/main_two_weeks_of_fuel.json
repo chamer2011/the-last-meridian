@@ -55,7 +55,9 @@
       "cinder_settled": "The strike at Cinder Reach was settled, and the fleet buys honest fuel there.",
       "sided_with_ulla": "The fleet took Ulla Greaves's side at Cinder Reach.",
       "fuel_sorted": "The fleet's fuel is settled, one way or another.",
-      "cold_burn": "Chief Marrow is running the engines on a cold burn to stretch the fuel."
+      "cold_burn": "Chief Marrow is running the engines on a cold burn to stretch the fuel.",
+      "quill_called_a_marker": "Mother Quill has called in the first of her markers.",
+      "transponders_found": "The fleet's crews have found the Hegemony transponders on their hulls, and know they've been counted."
     }
   }
 }

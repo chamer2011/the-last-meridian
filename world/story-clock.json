@@ -5,7 +5,10 @@
     "news is what people hear. lead is what the lead says from then on. Neither should give away a story's secret: only what anyone could see. Every lead has to leave the captain something to do.",
     "places changes how things stand at a place: goods is how much there is of food, fuel, medicine and parts, and sides is who holds it. fleet changes the fleet: morale, food, medicine, parts, fuel, pursuit, ships (that many of the ships with least reason to stay walk out), picked (the Choir runs that many down), and named (one particular ship leaves or is lost).",
     "big means the news carries, and anyone who knows of the place hears it. place says where it happens, if it isn't the story's first place.",
-    "acts is the same for the main story, by act: dated events, and moves_on, which moves the story on to the next act if nobody has by then. It never moves on to the last act by itself, since the fleet has to be taken there."
+    "acts is the same for the main story, by act: dated events, and moves_on, which moves the story on to the next act if nobody has by then. It never moves on to the last act by itself, since the fleet has to be taken there.",
+    "if, on a stage, is a condition written as in a scene (flag kessara_closed, ended main_two_weeks_of_fuel raid_depot, not ..., and ...): the stage happens only if it holds when its day comes, and is skipped otherwise. Two stages with the same after and opposite ifs are a fork.",
+    "consequences is a list beside stages of what follows from the record: of is a condition, after is how many days later, once it has held, and news, place, big, places and fleet are as for a stage. Each happens once, whether or not someone has taken the story up, and if the condition stops holding before its day the count starts over.",
+    "facts, on a stage or a consequence, puts facts on the record when it happens: a name and a line of plain words each, like a story's facts in world/threads. ending, on a stage, ends the story with one of the endings named in its notes, if nobody has taken it up. npm run check-story checks all of it."
   ],
   "acts": [
     {
@@ -291,8 +294,16 @@
         },
         {
           "after": 30,
+          "if": "not ended main_two_weeks_of_fuel take_corvanes_fuel",
           "news": "The council voted to follow the Beacon without being told what it is, because the other choice was Legate Corvane's nine hundred pages. Halm abstained, which is his way of voting twice.",
           "lead": "The council has voted to follow the Beacon, without you and without knowing what it is. Halm abstained. The question's still on the table, and so is a child's drawing somebody left there.",
+          "big": true
+        },
+        {
+          "after": 30,
+          "if": "ended main_two_weeks_of_fuel take_corvanes_fuel",
+          "news": "The council voted to hear Legate Corvane out, with his fuel already in the fleet's tanks, and Speaker Halm called it prudence.",
+          "lead": "The council has voted to hear the Hegemony's terms, without you, with Corvane's fuel in the tanks and Halm calling it prudence. The question's still on the table, and so is a child's drawing somebody left there.",
           "big": true
         }
       ]
@@ -300,6 +311,10 @@
     "main_two_weeks_of_fuel": { "stages": [
       {"after":18,"news":"Mother Quill's depot at Kessara Drift has started selling to whoever asks first, and the fuel the fleet was counting on is going.","lead":"The fuel's still there, but Mother Quill's depot is selling it to anyone who asks, and her baskets of dumplings have stopped coming. Chief Marrow says that whatever you're going to do, you should do it soon.","places":[{"id":"kessara","goods":{"fuel":-15}}]},
       {"after":45,"news":"The council has taken a shipment of fuel from Legate Corvane without waiting for the captain, at a price nobody's reading out loud.","lead":"The council took Corvane's fuel without you, and Chief Marrow has found something bolted to every ship's transponder that wasn't there before. Mother Quill says her offer's still open, at a worse price.","fleet":{"fuel":3,"morale":-1},"big":true}
+    ], "consequences": [
+      {"of":"ended main_two_weeks_of_fuel raid_depot","after":7,"news":"Kessara Drift's docks are closed to the fleet's ships. The Syndicate's word has gone round, and nobody at the depot is taking the fleet's money.","place":"kessara","facts":{"kessara_closed":"Kessara Drift is closed to the fleet since the depot."}},
+      {"of":"ended main_two_weeks_of_fuel sign_with_quill","after":30,"news":"Mother Quill has called in the first of her forty-one markers: a ship's name, a job, and no price named.","place":"kessara","facts":{"quill_called_a_marker":"Mother Quill has called in the first of her markers."}},
+      {"of":"ended main_two_weeks_of_fuel take_corvanes_fuel","after":20,"news":"Chief Marrow has found a Hegemony transponder bolted to every hull in the fleet. Legate Corvane knows where every ship is.","big":true,"facts":{"transponders_found":"The fleet's crews have found the Hegemony transponders on their hulls, and know they've been counted."}}
     ] },
     "main_visiting_hours": { "stages": [
       {"after":9,"news":"A woman who knew the name of Pavel Ostrov's dog has come back to see him on Anselm's Mercy, and the whole ward's talking about her.","lead":"The woman who knew the name of Pavel Ostrov's dog keeps coming back to see him, always in visiting hours, always with his favorite tea. Dr. Adeyemi would still like you there."},
