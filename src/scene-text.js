@@ -54,7 +54,7 @@ export function parseCondition(text) {
       case "ended": {
         const [story, ending, extra] = rest;
         const names = endingsOf(WORLD_THREADS[story]).map((one) => one.id);
-        if (!WORLD_THREADS[story]) problems.push(`there's no story called ${story ?? "nothing"}. The ids are the file names in world/threads`);
+        if (!WORLD_THREADS[story]) problems.push(`there's no story called ${story ?? "nothing"}. The ids are the file names in world/stories`);
         else if (ending && !names.includes(ending)) problems.push(`${story} has no ending called ${ending}. Its endings are ${names.join(", ")}`);
         else if (extra) problems.push(`"ended" takes a story's id and, if you want, one of its endings: "${raw.trim()}"`);
         term.id = story;
@@ -232,7 +232,7 @@ export function parseEffect(text) {
       // The scene's own story ends, by one of the endings named in its notes; failed marks the quest lost.
       const name = words[1]?.toLowerCase();
       const failed = words[2]?.toLowerCase() === "failed";
-      if (!name || !after || words.length > (failed ? 3 : 2)) return { problem: "ending is written * ending its_name: How it ended, with a name from the story's notes in world/threads, and failed before the colon if the player lost it" };
+      if (!name || !after || words.length > (failed ? 3 : 2)) return { problem: "ending is written * ending its_name: How it ended, with a name from the story's file in world/stories, and failed before the colon if the player lost it" };
       return { do: { ending: name, ...(failed ? { failed: true } : {}), text: after } };
     }
     case "flag":

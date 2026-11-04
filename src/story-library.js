@@ -173,7 +173,7 @@ function endedBefore(game, thread) {
   return `Before it, ${WORLD_THREADS[thread.after].title} ended${ending.ending ? ` (${ending.ending})` : ""}: ${ending.summary}`;
 }
 
-// What's wrong in the stories' notes, world/threads, in plain words: an ending without a name, a fact without a
+// What's wrong in the stories' notes, world/stories, in plain words: an ending without a name, a fact without a
 // line, a reaction the game can't read, or one that waits on a fact nothing leaves. With the set of facts
 // something leaves, that last check runs too.
 const NOTE_NAME = /^[a-z][a-z0-9_]{1,39}$/;
@@ -183,7 +183,7 @@ export function notesProblems(known = null) {
     const seen = new Set();
     for (const [i, outcome] of (thread.gm?.outcomes ?? []).entries()) {
       const where = `${id}, outcome ${i + 1}`;
-      if (typeof outcome === "string") problems.push(`${where} needs a name: write it as {"id": "its_name", "text": "..."}`);
+      if (typeof outcome === "string") problems.push(`${where} needs a name: write it as its_name: what's true if the story ends this way`);
       else if (!NOTE_NAME.test(outcome?.id ?? "")) problems.push(`${where}: an ending's name is lowercase letters, digits and underscores, like sign_with_quill`);
       else if (seen.has(outcome.id)) problems.push(`${where}: two endings are called ${outcome.id}`);
       else if (typeof outcome.text !== "string" || !outcome.text.trim()) problems.push(`${where} (${outcome.id}) has no text`);
@@ -196,7 +196,7 @@ export function notesProblems(known = null) {
     for (const [i, one] of (thread.gm?.reacts ?? []).entries()) {
       const where = `${id}, reacts ${i + 1}`;
       if (!one || typeof one.to !== "string" || typeof one.then !== "string" || !one.then.trim()) {
-        problems.push(`${where} is written {"to": "a condition, as in a scene", "then": "what changes in this story"}`);
+        problems.push(`${where} is written ? a condition, as in a scene -> what changes in this story`);
         continue;
       }
       const { terms, problems: wrong } = parseCondition(one.to);
@@ -205,6 +205,10 @@ export function notesProblems(known = null) {
         if (["seen", "chance"].includes(term.kind)) problems.push(`${where}: a story can't react to "${term.kind}", only to the record and the game`);
         if (term.kind === "flag" && known && !known.has(term.id)) problems.push(`${where}: nothing leaves the fact ${term.id}. Set it with * flag in a scene, or name it in a story's facts`);
       }
+    }
+    for (const [name, ending] of Object.entries(thread.gm?.factAfter ?? {})) {
+      if (!(name in (thread.gm?.facts ?? {}))) problems.push(`${id}, facts: ${name} is said to come after ${ending}, but isn't one of its facts`);
+      if (!endingsOf(thread).some((one) => one.id === ending)) problems.push(`${id}, facts: ${name} comes after ${ending}, and ${id} has no ending called that`);
     }
   }
   return problems;

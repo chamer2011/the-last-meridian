@@ -69,7 +69,7 @@ test("the checker names what's wrong in the clock, in plain words", () => {
   try {
     const problems = clockProblems(new Set(["kessara_closed"]));
     const expect = (pattern) => assert.ok(problems.some((one) => pattern.test(one)), `${pattern}\n${problems.join("\n")}`);
-    expect(/story-clock\.json, main_who_paid, stage 1: the clock can't look at "seen"/);
+    expect(/^main_who_paid, stage 1: the clock can't look at "seen"/);
     expect(/stage 1: nothing leaves the fact nothing_leaves_this/);
     expect(/consequence 1: there's no story called no_such_story/);
     expect(/consequence 1 needs "after"/);

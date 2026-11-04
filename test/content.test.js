@@ -34,7 +34,10 @@ const CONTEXTS = ["choir", "machines", "hegemony", "syndicate", "resonance", "va
 const characters = folder("characters");
 const enemies = folder("enemies");
 const places = folder("places");
-const threads = folder("threads");
+const { parseStoryText } = await import("../public/story-text.js");
+const threads = Object.fromEntries(fs.readdirSync(path.join(world, "stories"))
+  .filter((name) => name.endsWith(".txt") && !name.startsWith("_"))
+  .map((name) => [name.slice(0, -".txt".length), parseStoryText(fs.readFileSync(path.join(world, "stories", name), "utf8"), name.slice(0, -".txt".length)).story]));
 const items = single("items.json");
 const perks = single("perks.json");
 const factions = single("factions.json");
@@ -148,7 +151,7 @@ test("items and perks are complete", () => {
 test("story threads are complete, and everything they mention exists", () => {
   const leads = new Map();
   for (const [id, thread] of Object.entries(threads)) {
-    const where = `threads/${id}`;
+    const where = `stories/${id}`;
     if (!text(thread.title)) report(where, "needs a title");
     if (!text(thread.lead)) report(where, "needs a lead");
     if (!KINDS.includes(thread.kind)) report(where, `unknown kind ${thread.kind}`);

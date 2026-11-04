@@ -5,6 +5,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { AiError, CLAUDE_MODELS, callCost, listOllamaModels, runTurn, testClaude } from "./src/ai.js";
+import { boardScene, boardStories, boardStory, checkBoardScene, saveBoardScene, saveBoardStory } from "./src/board.js";
 import { ensureContactFiles, newCampaignId, saveCaptainSheet } from "./src/campaign.js";
 import { SKILLS } from "./src/character-data.js";
 import { checkCommand, startCheck, startChoiceCheck } from "./src/checks.js";
@@ -313,7 +314,7 @@ async function readBody(req) {
   let size = 0;
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > 100_000) throw new Error("Request too large.");
+    if (size > 600_000) throw new Error("Request too large.");
     chunks.push(chunk);
   }
   return chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {};
@@ -349,7 +350,25 @@ function menuAction(body) {
   }
 }
 
+// The story board: the stories and scenes as files the owner can change from inside the game.
+async function boardApi(req, res, route) {
+  const [, , , what, id] = route.split("/");
+  if (what === "stories" && req.method === "GET") return json(res, 200, { stories: boardStories() });
+  if (what === "story" && id) {
+    if (req.method === "GET") return json(res, 200, boardStory(id));
+    const body = await readBody(req);
+    return json(res, 200, saveBoardStory(id, body.text));
+  }
+  if (what === "scene" && id) {
+    if (req.method === "GET") return json(res, 200, boardScene(id));
+    const body = await readBody(req);
+    return json(res, 200, body.check ? checkBoardScene(id, body.text) : saveBoardScene(id, body.text));
+  }
+  return json(res, 404, { error: "Not found." });
+}
+
 async function handleApi(req, res, route) {
+  if (route.startsWith("/api/board/")) return boardApi(req, res, route);
   if (req.method === "GET" && route === "/api/state") {
     let shown = null;
     try {

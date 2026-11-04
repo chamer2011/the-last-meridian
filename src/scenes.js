@@ -18,7 +18,7 @@ import { clockFacts, clockProblems } from "./story-clock.js";
 import { noteThreadStarted, notesProblems } from "./story-library.js";
 import { newTurnLimits, runTool, toolProblem } from "./tools.js";
 import { answerDoor } from "./walk.js";
-import { FACT_LINES, WORLD_MAPS, WORLD_THREADS, endingsOf } from "./world.js";
+import { FACT_LINES, STORY_FILE_PROBLEMS, WORLD_MAPS, WORLD_THREADS, endingsOf } from "./world.js";
 
 // Something the player did that the written story has no answer to. The turn changes nothing, and they read this.
 export class StoryError extends Error {}
@@ -27,7 +27,8 @@ const AI_HINT = "With an AI game master, chosen in Settings, you can type anythi
 const FIGHT_ENDINGS = { victory: "won", talked: "talked", defeat: "lost", fled: "fled", surrendered: "gaveUp" };
 // What conditions need from the rules. A conversation adds what's been said in it, as seen.
 export const HELPERS = { attr, skillRank, maxHp };
-export const SCENES_DIR = path.join(worldDir, "scenes");
+// Tests point this at a copy, so they can save scenes without touching the real ones.
+export const SCENES_DIR = process.env.GAME_SCENES_DIR ?? path.join(worldDir, "scenes");
 
 // ---- Loading the files ------------------------------------------------------------
 
@@ -520,9 +521,9 @@ export function allStoryProblems(dir = SCENES_DIR) {
   for (const [id, scene] of Object.entries(scenes)) {
     for (const [name, part] of Object.entries(scene.parts ?? {})) {
       const conditions = [...(part.when ?? []).map((rule) => rule.if), ...(part.choices ?? []).map((choice) => choice.if)].filter(Boolean);
-      for (const text of conditions) for (const flag of flagsIn(text)) if (!known.has(flag)) problems.push(`${id}, part ${name}: nothing leaves the fact ${flag}. Set it with * flag in a scene, or name it in a story's facts in world/threads`);
+      for (const text of conditions) for (const flag of flagsIn(text)) if (!known.has(flag)) problems.push(`${id}, part ${name}: nothing leaves the fact ${flag}. Set it with * flag in a scene, or name it in a story's facts in world/stories`);
     }
   }
-  problems.push(...notesProblems(known), ...clockProblems(known));
+  problems.push(...STORY_FILE_PROBLEMS, ...notesProblems(known), ...clockProblems(known));
   return { count, stories: Object.keys(WORLD_THREADS).length, problems };
 }

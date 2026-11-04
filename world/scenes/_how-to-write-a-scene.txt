@@ -104,8 +104,8 @@ Lines starting with * happen when the part begins, and the player sees each as a
     * flag kessara_closed: Kessara is closed to the fleet     (with words, the player reads it on the record,
                                             in the Quests menu, and so does the AI)
     * unflag told_the_fleet
-    * ending sign_with_quill: How it ended   (ends this scene's story by one of the endings named in its notes,
-                                            world/threads: the quest is done with that line, and the ending's on
+    * ending sign_with_quill: How it ended   (ends this scene's story by one of the endings named in its file,
+                                            world/stories: the quest is done with that line, and the ending's on
                                             the record. Put failed before the colon if the player lost it)
     * fuel 6: The reason                    (the fleet's fuel, which jumps use; a minus sign burns it)
     * act 2                                 (the main story moves on to that act)
@@ -129,7 +129,7 @@ and join several with "and":
                                      and belief reason >= 2.
     flag told_the_fleet              A flag set with * flag.
     ended main_two_weeks_of_fuel     That story is over, any way it went.
-    ended main_two_weeks_of_fuel raid_depot    It ended that way. The names are in its notes, world/threads.
+    ended main_two_weeks_of_fuel raid_depot    It ended that way. The names are in its file, world/stories.
     seen voss_answer                 The player has been through that part in this scene.
     quest the_beacon active          Also done, failed, or none if they haven't got it.
     met Voss                         They're in the player's contacts.

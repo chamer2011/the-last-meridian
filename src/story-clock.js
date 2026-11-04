@@ -209,11 +209,11 @@ export function clockProblems(known = null) {
   };
   for (const [id, entry] of Object.entries(THREADS)) {
     if (!WORLD_THREADS[id]) {
-      problems.push(`story-clock.json: ${id} isn't a story`);
+      problems.push(`${id} is on a clock but isn't a story`);
       continue;
     }
     (entry.stages ?? []).forEach((stage, i) => {
-      const where = `story-clock.json, ${id}, stage ${i + 1}`;
+      const where = `${id}, stage ${i + 1}`;
       if (stage.if !== undefined) {
         if (typeof stage.if !== "string") problems.push(`${where}: "if" is a condition, written as in a scene`);
         else condition(where, stage.if);
@@ -221,7 +221,7 @@ export function clockProblems(known = null) {
       leaves(where, id, stage);
     });
     (entry.consequences ?? []).forEach((one, i) => {
-      const where = `story-clock.json, ${id}, consequence ${i + 1}`;
+      const where = `${id}, consequence ${i + 1}`;
       if (typeof one?.of !== "string") problems.push(`${where} needs "of": a condition, written as in a scene, such as ended ${id} ${endingsOf(WORLD_THREADS[id])[0]?.id ?? "its_ending"}`);
       else condition(where, one.of);
       if (!Number.isFinite(one?.after) || one.after < 0) problems.push(`${where} needs "after": how many days later, 0 or more`);
