@@ -72,6 +72,9 @@
 .board-inspector .choices { display: flex; flex-direction: column; gap: 4px; }
 .board-inspector .choices button { text-align: left; }
 .board-node.link { --c: var(--story); width: 210px; border-style: dotted; }
+.board-node.dragging, .board-label.dragging { pointer-events: none; opacity: .8; }
+.board-node.target { border-color: var(--bright); box-shadow: 0 0 0 2px var(--bright); }
+.board-inspector .hit { border-top: 1px dotted var(--line); padding-top: 6px; }
 .board-inspector .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .board-inspector label { color: var(--muted); font-size: 12px; }
 .board-inspector .danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); }

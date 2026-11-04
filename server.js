@@ -5,7 +5,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { AiError, CLAUDE_MODELS, callCost, listOllamaModels, runTurn, testClaude } from "./src/ai.js";
-import { boardScene, boardStories, boardStory, boardWorldItem, boardWorldList, checkBoardScene, saveBoardScene, saveBoardStory, saveBoardWorldItem } from "./src/board.js";
+import { boardScene, boardStories, boardStory, boardWorldItem, boardWorldList, checkBoardScene, saveBoardScene, saveBoardStory, saveBoardWorldItem, saveLayout } from "./src/board.js";
 import { ensureContactFiles, newCampaignId, saveCaptainSheet } from "./src/campaign.js";
 import { SKILLS } from "./src/character-data.js";
 import { checkCommand, startCheck, startChoiceCheck } from "./src/checks.js";
@@ -354,6 +354,10 @@ function menuAction(body) {
 async function boardApi(req, res, route) {
   const [, , , what, id] = route.split("/");
   if (what === "stories" && req.method === "GET") return json(res, 200, { stories: boardStories() });
+  if (what === "layout" && req.method === "POST") {
+    const body = await readBody(req);
+    return json(res, 200, saveLayout(body.key, body.positions));
+  }
   if (what === "story" && id) {
     if (req.method === "GET") return json(res, 200, boardStory(id));
     const body = await readBody(req);

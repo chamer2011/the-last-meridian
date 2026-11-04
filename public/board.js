@@ -14,7 +14,7 @@ const state = {
   stories: [], items: [], story: null, clock: null, next: [], written: false, places: [], facts: [], all: [],
   item: null, links: {},
   problems: [], tab: "notes", selected: null, expanded: null, zoom: 1, dirty: false,
-  scene: null, scenePrefix: "thread", sceneDirty: false, positions: {},
+  scene: null, scenePrefix: "thread", sceneDirty: false, positions: {}, layoutKey: null, layoutTimer: null,
 };
 let nodes = [];
 let wires = [];
@@ -74,6 +74,8 @@ async function call(route, body) {
 export async function openBoard() {
   if ($("board")) return;
   document.body.append(boardNode());
+  // For the browser checks, which look at the board's state from outside.
+  window.__board = state;
   try {
     state.stories = (await call("/api/board/stories")).stories;
     await load(state.kind, state.id ?? state.stories.find((one) => one.id === "main_two_weeks_of_fuel")?.id ?? state.stories.find((one) => one.kind === "main")?.id ?? state.stories[0]?.id);
@@ -115,12 +117,14 @@ function boardNode() {
         el("div", { class: "board-tools", id: "board-tools" },
           el("button", { onclick: () => zoomBy(-0.1), title: "Smaller" }, "−"),
           el("button", { onclick: () => zoomBy(0.1), title: "Bigger" }, "+"),
-          el("button", { onclick: fit }, "Fit"))),
+          el("button", { onclick: fit }, "Fit"),
+          el("button", { onclick: tidy, title: "Puts every box back in its column, and forgets where they were moved" }, "Tidy up"))),
       el("aside", { class: "board-inspector", id: "board-inspector" })),
     el("footer", { class: "board-foot" },
       el("span", {}, "Click a box to read and change it."),
       el("span", {}, "Drag a box to move it."),
       el("span", {}, "Click the words on an arrow to change when it applies."),
+      el("span", {}, "Drop a box on another to link them."),
       el("span", {}, "Drag the dark background to look around.")));
 }
 function svg(tag, attrs = {}) {
@@ -157,19 +161,19 @@ async function load(kind, id) {
   state.leaving = false;
   if (kind === "story") {
     const data = await call(`/api/board/story/${id}`);
-    Object.assign(state, { kind, id, story: data.story, clock: data.clock, next: data.next, written: data.written, places: data.places, facts: data.facts, all: data.stories, problems: data.problems, item: null, links: {}, scenePrefix: "thread" });
+    Object.assign(state, { kind, id, story: data.story, clock: data.clock, next: data.next, written: data.written, places: data.places, facts: data.facts, all: data.stories, lists: data.lists, problems: data.problems, item: null, links: {}, scenePrefix: "thread", layoutKey: `story/${id}`, layout: data.layout ?? {} });
     state.items = state.stories;
     state.itemsKind = "story";
   } else {
     const data = await call(`/api/board/world/${kind}/${id}`);
-    Object.assign(state, { kind, id, item: data.value, links: data.links, lists: data.lists, problems: data.problems, written: Boolean(data.links.written), story: null, clock: null, next: [], scenePrefix: "talk" });
+    Object.assign(state, { kind, id, item: data.value, links: data.links, lists: data.lists, problems: data.problems, written: Boolean(data.links.written), story: null, clock: null, next: [], scenePrefix: "talk", layoutKey: `${kind}/${id}`, layout: data.layout ?? {} });
     // The list at the top is of the kind shown, which a link from another board may have changed.
     if (state.itemsKind !== kind) {
       state.items = (await call(`/api/board/world/${kind}`)).items;
       state.itemsKind = kind;
     }
   }
-  Object.assign(state, { selected: null, expanded: null, dirty: false, sceneDirty: false, scene: null, positions: {} });
+  Object.assign(state, { selected: null, expanded: null, dirty: false, sceneDirty: false, scene: null, positions: state.layout });
   $("board-what").value = kind;
   const pick = $("board-pick");
   const groups = kind === "story" ? ["main", "crew", "dilemma", "mystery", "exploration", "survival", "politics", "job", "faction"] : [...new Set(state.items.map((one) => one.kind))];
@@ -418,6 +422,8 @@ function visibleNodes() {
   for (const wire of wires) if (wire.from === "lead" && UNFOLDS.includes(nodes.find((node) => node.id === wire.to)?.kind)) { shown.add(wire.to); reach(wire.to); }
   return nodes.filter((node) => shown.has(node.id));
 }
+// A remembered position belongs to a board, the notes or the scene, whichever tab is showing it or was last.
+const posKey = (node) => `${state.tab === "file" ? state.lastBoard ?? "notes" : state.tab}:${node.id}`;
 function layout() {
   COL_W = state.tab === "scene" ? 390 : 300;
   LEFT = state.tab === "scene" ? 20 : state.kind === "story" ? 150 : 20;
@@ -429,7 +435,7 @@ function layout() {
   for (const [col, list] of Object.entries(cols)) {
     let y = TOP;
     for (const node of list) {
-      const saved = state.positions[`${state.tab}:${node.id}`];
+      const saved = state.positions[posKey(node)];
       node.x = saved?.x ?? LEFT + Number(col) * COL_W;
       node.y = saved?.y ?? y;
       y = Math.max(y, node.y) + (node.h ?? 110) + GAP;
@@ -438,7 +444,7 @@ function layout() {
   }
   let x = LEFT + COL_W;
   for (const node of visible.filter((one) => one.row === "clock")) {
-    const saved = state.positions[`${state.tab}:${node.id}`];
+    const saved = state.positions[posKey(node)];
     node.x = saved?.x ?? x;
     node.y = saved?.y ?? bottom + 30;
     x += COL_W;
@@ -563,17 +569,82 @@ function fit() {
   render();
   scroll.scrollTo(0, 0);
 }
+// Where boxes were moved to is kept by the game, per story or thing, so it's the same next time.
+function saveLayoutSoon() {
+  clearTimeout(state.layoutTimer);
+  state.layoutTimer = setTimeout(() => { call("/api/board/layout", { key: state.layoutKey, positions: state.positions }).catch((err) => say(err.message, false)); }, 400);
+}
+function tidy() {
+  state.positions = {};
+  saveLayoutSoon();
+  layout();
+  render();
+  fit();
+}
+
+// ---- New arrows, by dragging one box onto another ---------------------------------------------------
+// What dropping one box on another means: a fact comes after an ending, a consequence follows an ending, and in a
+// written scene a part gets a choice that leads to the other part.
+function canConnect(from, to) {
+  if (state.tab === "scene") return ["part", "check", "end"].includes(from.kind) && ["part", "check", "end"].includes(to.kind) && from !== to;
+  if (state.kind !== "story") return false;
+  return to.kind === "ending" && (from.kind === "fact" || from.kind === "consequence");
+}
+function connect(from, to) {
+  if (state.tab === "scene") {
+    const part = state.scene.parts[from.part];
+    state.selected = { node: from.id };
+    keepPart(from.part, `${part.raw.replace(/\n+$/, "")}\n> Say what the player does -> ${to.name}\n`);
+    say(`${from.name} now has a choice that leads to ${to.name}. Click its words to say what the player does.`);
+    return;
+  }
+  const story = S();
+  if (from.kind === "fact") (story.gm.factAfter ??= {})[from.fact] = to.ending;
+  else C().consequences[from.bind.cons].of = `ended ${state.id} ${to.ending}`;
+  state.expanded = to.id;
+  state.selected = { node: from.id };
+  changed();
+}
+// Dropping the words on an arrow onto a part sends the choice there instead.
+function retarget(wire, to) {
+  const part = state.scene.parts[wire.part];
+  const rawLines = part.raw.split("\n");
+  const line = wire.choice !== undefined ? part.choices[wire.choice]?.line : wire.rule !== undefined ? part.when[wire.rule]?.line : null;
+  const at = line ? line - part.line - 1 : -1;
+  if (at < 0 || at >= rawLines.length) return say("That arrow is changed in the part's own box.", false);
+  if (wire.choice !== undefined && part.choices[wire.choice]?.check) return say("A check's two ways are picked in the box on the right, passed and failed.", false);
+  rawLines[at] = rawLines[at].replace(/->\s*\S+/, `-> ${to.name}`);
+  state.selected = { node: wire.from };
+  keepPart(wire.part, rawLines.join("\n"));
+}
 
 // ---- Clicking and dragging ------------------------------------------------------------------------
 let drag = null, pan = null;
+// The box under the pointer that the dragged thing could be dropped on, lit up while it's there.
+function dropTarget(event, from) {
+  const over = document.elementFromPoint(event.clientX, event.clientY)?.closest(".board-node");
+  const target = over && over !== from.el ? nodes.find((one) => one.id === over.dataset.id) : null;
+  for (const lit of document.querySelectorAll(".board-node.target")) lit.classList.remove("target");
+  if (target && canConnect(from, target)) {
+    target.el.classList.add("target");
+    return target;
+  }
+  return null;
+}
 document.addEventListener("pointerdown", (event) => {
   const canvas = $("board-canvas");
   if (!canvas) return;
   const nodeEl = event.target.closest(".board-node");
   if (nodeEl && canvas.contains(nodeEl)) {
     const node = nodes.find((one) => one.id === nodeEl.dataset.id);
-    drag = { node, startX: event.clientX, startY: event.clientY, x: node.x, y: node.y, moved: false };
+    drag = { node, startX: event.clientX, startY: event.clientY, x: node.x, y: node.y, moved: false, target: null };
     try { nodeEl.setPointerCapture(event.pointerId); } catch { /* fine without */ }
+    return;
+  }
+  const labelEl = event.target.closest(".board-label");
+  if (labelEl && canvas.contains(labelEl) && state.tab === "scene") {
+    drag = { label: wires[Number(labelEl.dataset.wire)], el: labelEl, startX: event.clientX, startY: event.clientY, left: parseFloat(labelEl.style.left), top: parseFloat(labelEl.style.top), moved: false, target: null };
+    try { labelEl.setPointerCapture(event.pointerId); } catch { /* fine without */ }
     return;
   }
   const scroll = $("board-scroll");
@@ -583,15 +654,25 @@ document.addEventListener("pointerdown", (event) => {
   }
 });
 document.addEventListener("pointermove", (event) => {
-  if (drag) {
+  if (drag?.label) {
     const dx = (event.clientX - drag.startX) / state.zoom, dy = (event.clientY - drag.startY) / state.zoom;
     if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
     if (!drag.moved) return;
+    drag.el.classList.add("dragging");
+    drag.el.style.left = `${drag.left + dx}px`;
+    drag.el.style.top = `${drag.top + dy}px`;
+    const from = nodes.find((one) => one.id === drag.label.from);
+    drag.target = dropTarget(event, { el: drag.el, kind: from?.kind ?? "part" });
+  } else if (drag) {
+    const dx = (event.clientX - drag.startX) / state.zoom, dy = (event.clientY - drag.startY) / state.zoom;
+    if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
+    if (!drag.moved) return;
+    drag.node.el.classList.add("dragging");
     drag.node.x = Math.max(0, drag.x + dx);
     drag.node.y = Math.max(0, drag.y + dy);
-    state.positions[`${state.tab}:${drag.node.id}`] = { x: drag.node.x, y: drag.node.y };
     drag.node.el.style.left = `${drag.node.x}px`;
     drag.node.el.style.top = `${drag.node.y}px`;
+    drag.target = dropTarget(event, drag.node);
     drawWires();
   } else if (pan) {
     const scroll = $("board-scroll");
@@ -600,11 +681,29 @@ document.addEventListener("pointermove", (event) => {
   }
 });
 document.addEventListener("pointerup", () => {
-  if (drag) {
-    const { node, moved } = drag;
+  if (drag?.label) {
+    const { label, moved, target, el: labelEl } = drag;
     drag = null;
+    labelEl.classList.remove("dragging");
+    for (const lit of document.querySelectorAll(".board-node.target")) lit.classList.remove("target");
+    if (moved && target) retarget(label, target);
+    else if (moved) drawWires();
+    return;
+  }
+  if (drag) {
+    const { node, moved, target } = drag;
+    drag = null;
+    node.el?.classList.remove("dragging");
+    for (const lit of document.querySelectorAll(".board-node.target")) lit.classList.remove("target");
     if (!moved) select({ node: node.id });
-    else render();
+    else if (target) {
+      // Dropped on another box: that's a link, and the box goes back to its column when the board is drawn again.
+      connect(node, target);
+    } else {
+      state.positions[posKey(node)] = { x: node.x, y: node.y };
+      saveLayoutSoon();
+      render();
+    }
   }
   if (pan) {
     pan = null;
@@ -858,8 +957,8 @@ function inspectNode(inspector, node) {
     node.kind === "ending" ? row(button("+ a fact it leaves", () => addFact(node.ending)), button("+ something days later", () => addConsequence(node.ending))) : null,
     node.kind === "beat" && b.list ? row(button("+ a beat after this", () => addBeat(b.i))) : null,
     node.kind === "fact" ? factAfterRow(node) : null,
-    node.kind === "consequence" ? [daysRow(clock.consequences[b.cons]), conditionPicker(clock.consequences[b.cons], "of", "What has to be on the record"), placeRow(clock.consequences[b.cons]), subFacts(clock.consequences[b.cons])] : null,
-    node.kind === "clock" ? [daysRow(clock.stages[b.stage]), stageLeadRow(clock.stages[b.stage]), conditionPicker(clock.stages[b.stage], "if", "Only if", true), placeRow(clock.stages[b.stage]), subFacts(clock.stages[b.stage]), stageEndingRow(clock.stages[b.stage]), otherLines(clock.stages[b.stage])] : null,
+    node.kind === "consequence" ? [daysRow(clock.consequences[b.cons]), conditionPicker(clock.consequences[b.cons], "of", "What has to be on the record"), placeRow(clock.consequences[b.cons]), subFacts(clock.consequences[b.cons]), placeHitsEditor(clock.consequences[b.cons]), fleetEditor(clock.consequences[b.cons])] : null,
+    node.kind === "clock" ? [daysRow(clock.stages[b.stage]), stageLeadRow(clock.stages[b.stage]), conditionPicker(clock.stages[b.stage], "if", "Only if", true), placeRow(clock.stages[b.stage]), subFacts(clock.stages[b.stage]), stageEndingRow(clock.stages[b.stage]), placeHitsEditor(clock.stages[b.stage]), fleetEditor(clock.stages[b.stage])] : null,
     node.kind === "react" ? conditionPicker(story.gm.reacts[b.react], "to", "When this is on the record") : null,
     ["ending", "fact", "consequence", "clock", "react"].includes(node.kind) || b.list ? row(button("Remove", () => remove(node), { class: "danger" })) : null,
     node.problem ? el("div", { class: "problems" }, ...state.problems.filter((one) => problemTouches(one, node)).map((one) => el("div", {}, one))) : null,
@@ -964,23 +1063,69 @@ function inspectLink(inspector, node) {
   fill(inspector, h2(node.label), el("h3", {}, node.name), hint(node.text), row(button(`Open ${node.name}`, () => load(node.link.kind, node.link.id))), hint("It has a board of its own, and it's changed there."));
 }
 
-// Numbers are picked in boxes with arrows, never typed, and a new one is chosen from a list.
-function pairsEditor(holder, key, label, names, step = 1) {
+// Numbers are picked in boxes with arrows, never typed, and a new one is chosen from a list. "after" runs before
+// the board is drawn again, for an editor that works on a copy.
+function pairsEditor(holder, key, label, names, step = 1, after = null) {
   const box = el("div", { class: "subfacts" });
+  const done = () => { after?.(); changed(); };
   const draw = () => {
     const pairs = holder[key] ?? {};
     box.replaceChildren(el("label", {}, label));
     for (const [name, amount] of Object.entries(pairs)) {
       const number = numberBox(`edit-${key}-${name}`, amount, step);
-      box.append(row(el("span", { class: "fact-name" }, spaced(name)), number, button("Keep", () => { holder[key][name] = Number(number.value); changed(); }, { class: "small" }), button("Remove", () => { delete holder[key][name]; if (!Object.keys(holder[key]).length && key !== "attributes") delete holder[key]; changed(); }, { class: "danger small" })));
+      box.append(row(el("span", { class: "fact-name" }, spaced(name)), number, button("Keep", () => { holder[key][name] = Number(number.value); done(); }, { class: "small" }), button("Remove", () => { delete holder[key][name]; if (!Object.keys(holder[key]).length && key !== "attributes") delete holder[key]; done(); }, { class: "danger small" })));
     }
     const left = names.filter((name) => !(name in pairs));
     if (left.length) {
       const pick = picker(`edit-${key}-new`, [["", "add one..."], ...left.map((name) => [name, spaced(name)])], "");
-      box.append(row(pick, button("+ add it", () => { if (!pick.value) return; (holder[key] ??= {})[pick.value] = 0; changed(); })));
+      box.append(row(pick, button("+ add it", () => { if (!pick.value) return; (holder[key] ??= {})[pick.value] = 0; done(); })));
     }
   };
   draw();
+  return box;
+}
+// What a stage or a consequence changes at a place: how much there is of a good, or who holds it, picked by name.
+function placeHitsEditor(holder) {
+  const box = el("div", { class: "subfacts" });
+  box.append(el("label", {}, "What changes at a place"));
+  const goods = state.lists.goods ?? ["food", "fuel", "medicine", "parts"];
+  const sides = (state.lists.factions ?? []).map((one) => one.id);
+  (holder.places ?? []).forEach((hit, i) => {
+    const place = picker(`edit-hit-${i}`, state.places.map((one) => [one.id, one.name]), hit.id);
+    place.addEventListener("change", () => { hit.id = place.value; changed(); });
+    const view = { all: { ...(hit.goods ?? {}), ...(hit.sides ?? {}) } };
+    box.append(fill(el("div", { class: "hit" }),
+      row(place, button("Remove", () => { holder.places.splice(i, 1); if (!holder.places.length) delete holder.places; changed(); }, { class: "danger small" })),
+      pairsEditor(view, "all", "Goods there, or who holds it", [...goods, ...sides], 1, () => {
+        delete hit.goods;
+        delete hit.sides;
+        for (const [name, amount] of Object.entries(view.all ?? {})) (goods.includes(name) ? (hit.goods ??= {}) : (hit.sides ??= {}))[name] = amount;
+      })));
+  });
+  box.append(row(button("+ a place", () => { (holder.places ??= []).push({ id: state.places[0]?.id ?? "haven", goods: { fuel: -5 } }); changed(); })));
+  return box;
+}
+// What a stage or a consequence changes in the fleet: its numbers, and a ship lost or gone by name.
+function fleetEditor(holder) {
+  const box = el("div", { class: "subfacts" });
+  box.append(el("label", {}, "What changes in the fleet"));
+  const keys = state.lists.fleetKeys ?? ["morale", "food", "medicine", "parts", "fuel", "pursuit", "ships", "picked", "sat"];
+  const view = { numbers: Object.fromEntries(Object.entries(holder.fleet ?? {}).filter(([key]) => key !== "named")) };
+  const put = () => {
+    const named = holder.fleet?.named;
+    holder.fleet = { ...(view.numbers ?? {}), ...(named ? { named } : {}) };
+    if (!Object.keys(holder.fleet).length) delete holder.fleet;
+  };
+  box.append(pairsEditor(view, "numbers", "Morale, supplies, pursuit, ships leaving or picked off", keys, 1, put));
+  const named = holder.fleet?.named;
+  const ship = picker("edit-named-ship", [["", "no ship in particular"], ...(state.lists.ships ?? []).map((one) => [one.id, one.name])], named?.id ?? "");
+  const status = picker("edit-named-status", [["lost", "lost"], ["gone", "gone"]], named?.status ?? "lost");
+  const spared = numberBox("edit-named-spared", named?.spared ?? "");
+  box.append(row(el("label", { for: "edit-named-ship" }, "A ship by name"), ship, status, el("label", { for: "edit-named-spared" }, "spared"), spared, button("Keep", () => {
+    if (ship.value) (holder.fleet ??= {}).named = { id: ship.value, status: status.value, ...(spared.value !== "" ? { spared: Number(spared.value) } : {}) };
+    else if (holder.fleet) { delete holder.fleet.named; if (!Object.keys(holder.fleet).length) delete holder.fleet; }
+    changed();
+  }, { class: "small" })));
   return box;
 }
 function inspectNumbers(inspector, node) {
@@ -1055,14 +1200,7 @@ function stageEndingRow(stage) {
   const ending = picker("edit-ending", [["", "the story goes on"], ...endingIds().map((one) => [one, `it ends: ${spaced(one)}`])], stage.ending ?? "");
   return row(el("label", { for: "edit-ending" }, "And then"), ending, button("Keep", () => { if (ending.value) stage.ending = ending.value; else delete stage.ending; changed(); }));
 }
-function otherLines(holder) {
-  const lines = [];
-  for (const hit of holder.places ?? []) lines.push(`at ${hit.id}: ${[...Object.entries(hit.goods ?? {}), ...Object.entries(hit.sides ?? {})].map(([what, amount]) => `${what} ${amount >= 0 ? "+" : ""}${amount}`).join(", ")}`);
-  const fleet = Object.entries(holder.fleet ?? {}).filter(([key]) => key !== "named");
-  if (fleet.length) lines.push(`fleet: ${fleet.map(([what, amount]) => `${what} ${amount >= 0 ? "+" : ""}${amount}`).join(", ")}`);
-  if (holder.fleet?.named) lines.push(`named: ${holder.fleet.named.id} ${holder.fleet.named.status}`);
-  return lines.length ? hint(`Also, from the file: ${lines.join("; ")}. Those are changed in the file for now.`) : null;
-}
+
 function subFacts(holder) {
   const box = el("div", { class: "subfacts" });
   const draw = () => {

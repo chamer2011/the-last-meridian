@@ -19,7 +19,7 @@ for (const [folder, env] of [["stories", "GAME_STORIES_DIR"], ["scenes", "GAME_S
   process.env[env] = copy;
 }
 
-const { boardScene, boardStories, boardStory, boardWorldItem, boardWorldList, checkBoardScene, saveBoardScene, saveBoardStory, saveBoardWorldItem, sceneBoardView } = await import("../src/board.js");
+const { boardScene, boardStories, boardStory, boardWorldItem, boardWorldList, checkBoardScene, readLayout, saveBoardScene, saveBoardStory, saveBoardWorldItem, saveLayout, sceneBoardView } = await import("../src/board.js");
 const { LOCATIONS } = await import("../src/data.js");
 const { SCENES_DIR } = await import("../src/scenes.js");
 const { PLACES_DIR, STORIES_DIR, STORY_CLOCK, WORLD_CHARACTERS, WORLD_PLACES, WORLD_THREADS } = await import("../src/world.js");
@@ -207,6 +207,22 @@ test("saving a place writes its file, and the game's places follow at once", () 
   }
   assert.equal(LOCATIONS.haven.desc.slice(0, 20), "A neutral trade hub ");
   assert.equal(WORLD_CHARACTERS.aduro.name, "Sen Aduro");
+});
+
+test("the board remembers where boxes were moved, by story or thing, in the data folder", () => {
+  assert.deepEqual(readLayout(), {});
+  assert.deepEqual(boardStory(FUEL).layout, {});
+  saveLayout(`story/${FUEL}`, { "notes:lead": { x: 10, y: 20 } });
+  assert.deepEqual(boardStory(FUEL).layout, { "notes:lead": { x: 10, y: 20 } });
+  assert.deepEqual(boardWorldItem("place", "haven").layout, {});
+  saveLayout("place/haven", { "notes:desc": { x: 5, y: 5 } });
+  assert.deepEqual(boardWorldItem("place", "haven").layout, { "notes:desc": { x: 5, y: 5 } });
+  saveLayout(`story/${FUEL}`, {});
+  assert.deepEqual(boardStory(FUEL).layout, {}, "tidied up");
+  assert.ok(fs.existsSync(path.join(dataDir, "board-layout.json")));
+  assert.throws(() => saveLayout("../x", {}), /kind and the id/);
+  const lists = boardStory(FUEL).lists;
+  assert.ok(lists.ships.length > 10 && lists.goods.includes("fuel") && lists.fleetKeys.includes("morale"), "a stage's place and fleet changes have lists to pick from");
 });
 
 test("a person's written lines come as parts and choices, like a scene", () => {

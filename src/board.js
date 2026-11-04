@@ -6,12 +6,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { AXES, CONTEXTS, SKILLS, refreshFactionBeliefs } from "./character-data.js";
 import { ABILITIES, ENEMIES, FACTIONS, ITEMS, LOCATIONS, PERKS, STATS, refreshFactions, refreshLocations } from "./data.js";
+import { dataDir } from "./paths.js";
 import { writtenThreadIds } from "./scene-files.js";
 import { parseSceneText } from "./scene-text.js";
 import { SCENES_DIR, factsLeft, loadScenes, sceneProblems } from "./scenes.js";
 import { clockProblems } from "./story-clock.js";
 import { notesProblems } from "./story-library.js";
-import { ENEMIES_DIR, FACTIONS_DIR, ITEMS_DIR, PEOPLE_DIR, PERKS_DIR, PLACES_DIR, SPECIES_DIR, STORIES_DIR, STORY_CLOCK, STORY_FILE_PROBLEMS, WORLD_CHARACTERS, WORLD_ENEMIES, WORLD_FACTIONS, WORLD_FILE_PROBLEMS, WORLD_ITEMS, WORLD_PERKS, WORLD_PLACES, WORLD_SPECIES, WORLD_THREADS, endingsOf, reloadStories, reloadWorld } from "./world.js";
+import { ENEMIES_DIR, FACTIONS_DIR, FLEET_DATA, ITEMS_DIR, PEOPLE_DIR, PERKS_DIR, PLACES_DIR, SPECIES_DIR, STORIES_DIR, STORY_CLOCK, STORY_FILE_PROBLEMS, WORLD_CHARACTERS, WORLD_ENEMIES, WORLD_FACTIONS, WORLD_FILE_PROBLEMS, WORLD_ITEMS, WORLD_PERKS, WORLD_PLACES, WORLD_SPECIES, WORLD_THREADS, endingsOf, reloadStories, reloadWorld } from "./world.js";
 import { parseStoryText, writeStoryText } from "../public/story-text.js";
 import { ENEMY, FACTION, ITEM, PERK, PERSON, PLACE, SPECIES_SPEC, parseWorldText, writeWorldText } from "../public/world-text.js";
 
@@ -21,6 +22,26 @@ function checkId(id) {
   return id;
 }
 const lineOf = (one) => (typeof one === "string" ? one : `${one.line ? `line ${one.line}: ` : ""}${one.message}`);
+
+// Where the boxes were moved to, by story or thing, kept in the data folder: it's the owner's own tidying, not
+// part of the world's files.
+const layoutFile = () => path.join(dataDir(), "board-layout.json");
+export function readLayout() {
+  try {
+    return JSON.parse(fs.readFileSync(layoutFile(), "utf8"));
+  } catch {
+    return {};
+  }
+}
+export function saveLayout(key, positions) {
+  if (!/^[a-z]+\/[a-z][a-z0-9_]*$/.test(key ?? "")) throw new Error("The layout's key is the kind and the id, like story/main_two_weeks_of_fuel.");
+  const all = readLayout();
+  if (positions && typeof positions === "object" && Object.keys(positions).length) all[key] = positions;
+  else delete all[key];
+  fs.mkdirSync(dataDir(), { recursive: true });
+  fs.writeFileSync(layoutFile(), JSON.stringify(all));
+  return { saved: true };
+}
 
 // Every story, for the board's list.
 export function boardStories() {
@@ -61,6 +82,8 @@ export function boardStory(id) {
     places: Object.entries(LOCATIONS).map(([placeId, place]) => ({ id: placeId, name: place.name })),
     facts: [...factsLeft(loadScenes().scenes)].sort(),
     stories: boardStories().map((one) => ({ id: one.id, title: one.title, endings: endingsOf(WORLD_THREADS[one.id]).map((ending) => ending.id) })),
+    lists: boardLists(),
+    layout: readLayout()[`story/${id}`] ?? {},
     problems: problemsFor(id),
   };
 }
@@ -191,6 +214,9 @@ function boardLists() {
     itemTypes: ["weapon", "armor", "consumable", "gadget", "story"],
     perks: named(PERKS),
     abilities: named(ABILITIES),
+    ships: (FLEET_DATA.ships ?? []).map((one) => ({ id: one.id, name: one.name })),
+    goods: ["food", "fuel", "medicine", "parts"],
+    fleetKeys: ["morale", "food", "medicine", "parts", "fuel", "pursuit", "ships", "picked", "sat"],
   };
 }
 
@@ -221,7 +247,7 @@ export function boardWorldItem(kind, id) {
             : kind === "faction"
               ? { people: people((one) => one.faction === id), places: places((place) => place.faction === id), stories: stories((thread) => (thread.factions ?? []).includes(id)), enemies: enemies((one) => one.faction === id) }
               : { needs: value.requires ? { id: value.requires, name: PERKS[value.requires]?.name ?? value.requires } : null, neededBy: Object.entries(PERKS).filter(([, perk]) => perk.requires === id).map(([perkId, perk]) => ({ id: perkId, name: perk.name })), ability: value.ability ? { id: value.ability, name: ABILITIES[value.ability]?.name ?? value.ability } : null };
-  return { id, kind, text, value, links, lists: boardLists(), problems: WORLD_FILE_PROBLEMS.filter((one) => one.startsWith(`${folder}/${id}.txt`)) };
+  return { id, kind, text, value, links, lists: boardLists(), layout: readLayout()[`${kind}/${id}`] ?? {}, problems: WORLD_FILE_PROBLEMS.filter((one) => one.startsWith(`${folder}/${id}.txt`)) };
 }
 
 export function saveBoardWorldItem(kind, id, text) {
