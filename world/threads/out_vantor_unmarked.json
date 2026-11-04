@@ -32,10 +32,10 @@
     ],
     "fights": ["choir_drone and choir_chorister if the captain interferes at the rendezvous. Running is always possible, and the Choir doesn't pursue what it hasn't been promised.", "hegemony_trooper automated guards on the transport, which a good lie or a hacked order can stand down."],
     "outcomes": [
-      "If the proof goes public, the Hegemony shakes. Riots start at Vantor, recruitment collapses, and refugees run. It's also possible that the Choir, once the tax stops, turns toward two billion people.",
-      "If the captain frees a shipment, nine hundred people join the fleet and the Regent simply sends two ships next month. The first time the Choir comes up short, the captain will learn what it does about it.",
-      "If the captain uses it as leverage, the fleet can have almost anything it wants from the Regency, Hegemony protection included. The captain then knows about the tax and is benefiting from it, and they'll be asked to help count.",
-      "If Jaska Moor lives through it, she does the most dangerous thing anyone has ever done in the Hegemony: she files a formal complaint, through channels, addressed to the Regency, with the discs attached. It will get her killed unless someone helps, and it could shake everything. The Serene Regent's own fate stays open and is only in play if the player earns it across the whole story."
+      { "id": "proof_goes_public", "text": "If the proof goes public, the Hegemony shakes. Riots start at Vantor, recruitment collapses, and refugees run. It's also possible that the Choir, once the tax stops, turns toward two billion people." },
+      { "id": "captain_frees_shipment", "text": "If the captain frees a shipment, nine hundred people join the fleet and the Regent simply sends two ships next month. The first time the Choir comes up short, the captain will learn what it does about it." },
+      { "id": "captain_uses_leverage", "text": "If the captain uses it as leverage, the fleet can have almost anything it wants from the Regency, Hegemony protection included. The captain then knows about the tax and is benefiting from it, and they'll be asked to help count." },
+      { "id": "jaska_moor_lives_through", "text": "If Jaska Moor lives through it, she does the most dangerous thing anyone has ever done in the Hegemony: she files a formal complaint, through channels, addressed to the Regency, with the discs attached. It will get her killed unless someone helps, and it could shake everything. The Serene Regent's own fate stays open and is only in play if the player earns it across the whole story." }
     ],
     "rewards": "A small sack of silver discs and proof on a data_chip, major clues about what the Choir wants, a large swing in hegemony standing, and Jaska Moor's loyalty, which is worth a very great deal."
   }

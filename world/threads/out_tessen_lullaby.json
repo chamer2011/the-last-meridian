@@ -32,10 +32,10 @@
     ],
     "fights": ["choir_mimic, if the GM wants one to come down the well wearing a Tessen face in the last act. A clear song or a clever door keeps it from reaching the room, and the fight is never required."],
     "outcomes": [
-      "If the chamber is shut down, the children wake up, they remember little and cry a lot, the soil goes cold, and the harvest ends. Then, some weeks later, the first Choir patrol notices Tessen Colony.",
-      "If it's left on, the colony stays fed and hidden, the children keep singing, and they become something the captain has no word for. Dray never forgives it, or herself.",
-      "If adults learn the song in shifts, the children get their nights back and a small band of volunteers is changed for life. This is the first sign anyone has seen that the song can be fixed, which should matter a great deal at the end of the story.",
-      "However it ends, the captain now knows the word lullaby, and the fleet's scholars will not sleep well once they've worked out the question: who's it for?"
+      { "id": "chamber_shut_down", "text": "If the chamber is shut down, the children wake up, they remember little and cry a lot, the soil goes cold, and the harvest ends. Then, some weeks later, the first Choir patrol notices Tessen Colony." },
+      { "id": "left", "text": "If it's left on, the colony stays fed and hidden, the children keep singing, and they become something the captain has no word for. Dray never forgives it, or herself." },
+      { "id": "adults_learn_song_shifts", "text": "If adults learn the song in shifts, the children get their nights back and a small band of volunteers is changed for life. This is the first sign anyone has seen that the song can be fixed, which should matter a great deal at the end of the story." },
+      { "id": "however_ends", "text": "However it ends, the captain now knows the word lullaby, and the fleet's scholars will not sleep well once they've worked out the question: who's it for?" }
     ],
     "rewards": "A very large clue about the Choir and the Beacon, a resonance_tuner found in the chamber's dust, the trust of Dray and Sorrel, and lasting changes in the colony's food output in whichever direction the choice goes."
   }

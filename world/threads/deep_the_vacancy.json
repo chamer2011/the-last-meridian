@@ -37,10 +37,10 @@
       "ministry_blade if the Regent's people have followed the captain down"
     ],
     "outcomes": [
-      "If Sefu gets his dinner and his promise, he hands over the ninth_vault_index and lends them the Tide Tables, and he'll greet the captain like family when they come back. He'd like to be written down, so someone should write him down.",
-      "If he's brought upstairs, he's terrified and it half kills him, and for the first time in a thousand years no one is sitting by that wall. The voice goes on talking, nobody's taking it down, and this year's line doesn't get written. That should feel worse than it sounds.",
-      "If Ouma is told everything, she retires him, seals the lowest levels and closes the easy way to the Ninth Door. If she's told nothing, she notes, for the record, that the captain did not appear to be telling the truth.",
-      "If someone in the party keeps answering, they leave with a phrase stuck in their head: the first line of the old watch call. It may be useful later, and it may be the hears_the_song trait."
+      { "id": "sefu_gets_his_dinner_his_promise", "text": "If Sefu gets his dinner and his promise, he hands over the ninth_vault_index and lends them the Tide Tables, and he'll greet the captain like family when they come back. He'd like to be written down, so someone should write him down." },
+      { "id": "hes_brought_upstairs", "text": "If he's brought upstairs, he's terrified and it half kills him, and for the first time in a thousand years no one is sitting by that wall. The voice goes on talking, nobody's taking it down, and this year's line doesn't get written. That should feel worse than it sounds." },
+      { "id": "ouma_told_everything", "text": "If Ouma is told everything, she retires him, seals the lowest levels and closes the easy way to the Ninth Door. If she's told nothing, she notes, for the record, that the captain did not appear to be telling the truth." },
+      { "id": "party_keeps_answering", "text": "If someone in the party keeps answering, they leave with a phrase stuck in their head: the first line of the old watch call. It may be useful later, and it may be the hears_the_song trait." }
     ],
     "rewards": "The ninth_vault_index, the loan of Sefu's Maris Tide Tables, a field_scanner from the Keepers' stores, and access to the Navy registry in the lesser vaults if Ouma is pleased."
   }

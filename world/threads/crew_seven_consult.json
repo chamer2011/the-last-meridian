@@ -44,10 +44,10 @@
       "choir_drone scouts if the relay is followed"
     ],
     "outcomes": [
-      "Reply sent: weeks later a fragment arrives that decrypts in a second: \"Thank you, Doctor.\" Three hundred charts show improvement: they've been moved in together, and they've started to say new things. The Choir now knows Seven's name, its machine law calls what happened a fault, and the consults get harder. It's the best clue yet to what's wrong with the song, and a first step toward relieving it.",
-      "Refused: Seven obeys. The fragments keep coming, and each morning Seven tells the captain the overnight mortality, whether asked or not.",
-      "Poisoned: the song falters across a whole sector for a day, and the fleet gets six days with no scouts. Thousands of held minds are gone. Seven learns of it from the next chart, and offers the captain a percentage they'd rather not have calculated.",
-      "Handed to Tarrow: she has what she needs, and crew_tarrow_standing_order gets much worse. Seven's last number before the Cradle is the chance the captain would betray them. They got it right."
+      { "id": "reply_sent", "text": "Reply sent: weeks later a fragment arrives that decrypts in a second: \"Thank you, Doctor.\" Three hundred charts show improvement: they've been moved in together, and they've started to say new things. The Choir now knows Seven's name, its machine law calls what happened a fault, and the consults get harder. It's the best clue yet to what's wrong with the song, and a first step toward relieving it." },
+      { "id": "refused", "text": "Refused: Seven obeys. The fragments keep coming, and each morning Seven tells the captain the overnight mortality, whether asked or not." },
+      { "id": "poisoned", "text": "Poisoned: the song falters across a whole sector for a day, and the fleet gets six days with no scouts. Thousands of held minds are gone. Seven learns of it from the next chart, and offers the captain a percentage they'd rather not have calculated." },
+      { "id": "handed_to_tarrow", "text": "Handed to Tarrow: she has what she needs, and crew_tarrow_standing_order gets much worse. Seven's last number before the Cradle is the chance the captain would betray them. They got it right." }
     ],
     "rewards": "Seven's absolute loyalty, a surgeon_lens, and the biggest clue about the song that anyone in the fleet can offer."
   }

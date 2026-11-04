@@ -32,10 +32,10 @@
     ],
     "fights": ["dock_thug hired by whoever lost the ruling, in a service corridor. A witness or a word to Sable's people ends it as well as a sidearm does."],
     "outcomes": [
-      "If the pod goes to the fleet with proof, Anselm's Mercy gets real medicine, Corvane congratulates the captain warmly and remembers, and Tannis laughs and sends a bill.",
-      "If the captain keeps the tariff, the fleet earns fuel and credits on every visit, but the Neutral Ground stops being neutral: people bring guns to the bar, trade thins out, and Sable's prices double.",
-      "If the captain hands the clause to a station council, Mott and Sable both owe a favor and the fleet gets free docking for good, but the captain has no more say at Haven.",
-      "However the fleet family's case goes, everyone hears about it. Ruling against themselves costs the captain a reactor part and earns real love in the fleet. Ruling for themselves is legal, and nobody forgets it."
+      { "id": "pod_goes_to_fleet_with_proof", "text": "If the pod goes to the fleet with proof, Anselm's Mercy gets real medicine, Corvane congratulates the captain warmly and remembers, and Tannis laughs and sends a bill." },
+      { "id": "captain_keeps_tariff", "text": "If the captain keeps the tariff, the fleet earns fuel and credits on every visit, but the Neutral Ground stops being neutral: people bring guns to the bar, trade thins out, and Sable's prices double." },
+      { "id": "captain_hands_clause_to_station_council", "text": "If the captain hands the clause to a station council, Mott and Sable both owe a favor and the fleet gets free docking for good, but the captain has no more say at Haven." },
+      { "id": "however_fleet_familys_case_goes", "text": "However the fleet family's case goes, everyone hears about it. Ruling against themselves costs the captain a reactor part and earns real love in the fleet. Ruling for themselves is legal, and nobody forgets it." }
     ],
     "rewards": "Around 300 credits in fees or a ledger_of_favors from grateful traders, standing shifts with drift and hegemony, and one free answer from Sable."
   }

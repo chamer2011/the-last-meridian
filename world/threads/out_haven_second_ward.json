@@ -31,10 +31,10 @@
     ],
     "fights": ["dock_thug sent by a rival fence who wants Tessaly's supply. Tessaly's patients and a loud alarm can drive them off without a shot."],
     "outcomes": [
-      "If the second ward is closed, the doses go back and the numbers improve. Most of the sixty-three die over the next weeks, and the families know whose order it was.",
-      "If it's brought into the open, the fleet learns for the first time that there's a line and who's below it. Morale falls and the council fights, and Dr. Aduro's supply date moves closer, but nobody is deciding alone any more.",
-      "If the captain lets it run in secret, they now share Wen's crime. Wen sleeps a little, and when it comes out, as it will, the captain's name is on it.",
-      "If Wen is exposed and removed, Anselm's Mercy loses its best triage doctor at the worst moment, and whoever replaces them keeps a much shorter list."
+      { "id": "second_ward_closed", "text": "If the second ward is closed, the doses go back and the numbers improve. Most of the sixty-three die over the next weeks, and the families know whose order it was." },
+      { "id": "brought_into_open", "text": "If it's brought into the open, the fleet learns for the first time that there's a line and who's below it. Morale falls and the council fights, and Dr. Aduro's supply date moves closer, but nobody is deciding alone any more." },
+      { "id": "captain_lets_run_secret", "text": "If the captain lets it run in secret, they now share Wen's crime. Wen sleeps a little, and when it comes out, as it will, the captain's name is on it." },
+      { "id": "wen_exposed_removed", "text": "If Wen is exposed and removed, Anselm's Mercy loses its best triage doctor at the worst moment, and whoever replaces them keeps a much shorter list." }
     ],
     "rewards": "Wen's or Tessaly's lasting loyalty, a surgeon_lens from Tessaly's kit if she's left in business, and fleet standing that moves depending on who hears what."
   }

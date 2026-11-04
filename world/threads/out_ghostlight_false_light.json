@@ -32,10 +32,10 @@
     ],
     "fights": ["void_stalker near the Drift if someone comes in with their heater on, and drift_raider if the Syndicate turns up to protect its investment. Neither has to happen if the captain goes quietly."],
     "outcomes": [
-      "If she's tried and hanged, nine hundred families get justice and the Lamp Lanes go dark. Within weeks the Choir's drones start to find their way into the Ghostlight, with bad results for everyone hiding there.",
-      "If she's put to work for the fleet, she's the most hated and most useful person the captain has ever employed, and a few more Choir ships die. The families learn about it. Lt. Tarrow surprises everyone by wanting to shake her hand.",
-      "If she's left alone in return for a safe passage, the fleet crosses cleanly and she goes on as before, with the fleet's blessing, and Garrick Fenn finds out exactly what the captain agreed to.",
-      "If her method is taught to someone else, with a list of lamps and a very old book, the fleet has a way to lead the Choir astray for ever. She won't give that up for anything less than a seat at a table where someone says thank you, and she'd hate every minute of it."
+      { "id": "shes_tried_hanged", "text": "If she's tried and hanged, nine hundred families get justice and the Lamp Lanes go dark. Within weeks the Choir's drones start to find their way into the Ghostlight, with bad results for everyone hiding there." },
+      { "id": "shes_put_to_work_fleet", "text": "If she's put to work for the fleet, she's the most hated and most useful person the captain has ever employed, and a few more Choir ships die. The families learn about it. Lt. Tarrow surprises everyone by wanting to shake her hand." },
+      { "id": "shes_left_alone_return_safe_passage", "text": "If she's left alone in return for a safe passage, the fleet crosses cleanly and she goes on as before, with the fleet's blessing, and Garrick Fenn finds out exactly what the captain agreed to." },
+      { "id": "her_method_taught_to_else", "text": "If her method is taught to someone else, with a list of lamps and a very old book, the fleet has a way to lead the Choir astray for ever. She won't give that up for anything less than a seat at a table where someone says thank you, and she'd hate every minute of it." }
     ],
     "rewards": "A nav_slate with the true Lamp Lanes, survivors from the lost ships, a cache of salvage worth up to 400 credits, and a very unusual ally. Standing with drift shifts if the Syndicate's arrangement comes to light."
   }

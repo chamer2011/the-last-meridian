@@ -32,11 +32,11 @@
     ],
     "fights": ["quiet_zealot if someone tries to shut the kitchen by force. They won't strike first and they won't run, and a captain who simply walks away has lost nothing."],
     "outcomes": [
-      "If Corvane's funding is exposed publicly, the Quiet at Haven split. Some are chilled by what they saw and leave, the rest hold on harder, and Yara keeps ladling from whatever comes in, utterly unconcerned.",
-      "If the kitchen is shut down, four hundred people go hungry at Haven, and many of them drift to the Hegemony's recruiters or the Syndicate's.",
-      "If the captain quietly brings fleet food to share the line, the fleet loses rations it can't spare and wins a foothold in the argument. Teo starts coming home some nights.",
-      "If someone who knew her calls her by her old name, her glow stutters for one breath, and she looks frightened, and then grateful, and then blank again. It can be done, slowly, and now somebody knows. Mirei will owe the captain more than she can say, and she won't say it.",
-      "If Yara is treated with real respect, she gives the captain a quiet_token, which opens doors among the Quiet everywhere, and which Lt. Tarrow will be very unhappy to find."
+      { "id": "corvanes_funding_exposed_publicly", "text": "If Corvane's funding is exposed publicly, the Quiet at Haven split. Some are chilled by what they saw and leave, the rest hold on harder, and Yara keeps ladling from whatever comes in, utterly unconcerned." },
+      { "id": "kitchen_shut_down", "text": "If the kitchen is shut down, four hundred people go hungry at Haven, and many of them drift to the Hegemony's recruiters or the Syndicate's." },
+      { "id": "captain_quietly_brings_fleet_food_to", "text": "If the captain quietly brings fleet food to share the line, the fleet loses rations it can't spare and wins a foothold in the argument. Teo starts coming home some nights." },
+      { "id": "who_knew_her_calls_her_by", "text": "If someone who knew her calls her by her old name, her glow stutters for one breath, and she looks frightened, and then grateful, and then blank again. It can be done, slowly, and now somebody knows. Mirei will owe the captain more than she can say, and she won't say it." },
+      { "id": "yara_treated_with_real_respect", "text": "If Yara is treated with real respect, she gives the captain a quiet_token, which opens doors among the Quiet everywhere, and which Lt. Tarrow will be very unhappy to find." }
     ],
     "rewards": "A quiet_token, a grateful fleet mother, a little fleet morale if the line stays fed, Mirei's or Cael's gratitude, and a very pleasant note from Corvane if his money is left alone."
   }

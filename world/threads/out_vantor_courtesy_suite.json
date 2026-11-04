@@ -31,10 +31,10 @@
     ],
     "fights": ["hegemony_trooper at the docks only if the captain tries to free people by force after leaving. Nobody in the Courtesy Suite will ever raise a hand."],
     "outcomes": [
-      "If the captain stays long enough to free most of the forty-one, those people and their ships will follow the captain anywhere. Vael has also learned enough to pick out one real Resonant in the fleet, and an unmarked arrest attempt follows.",
-      "If the captain walks out early, the rest remain in custody, the fleet hears who was left, and Vael sends a courteous note saying the offer stands.",
-      "If the captain has learned what's under the glove, they hold the most dangerous secret at Vantor. It's far too early to use, and she may well have noticed them noticing.",
-      "If lies were caught, the hours count for nothing, and worse, she now knows which subjects the captain lies about."
+      { "id": "captain_stays_long_enough_to_free", "text": "If the captain stays long enough to free most of the forty-one, those people and their ships will follow the captain anywhere. Vael has also learned enough to pick out one real Resonant in the fleet, and an unmarked arrest attempt follows." },
+      { "id": "captain_walks_out_early", "text": "If the captain walks out early, the rest remain in custody, the fleet hears who was left, and Vael sends a courteous note saying the offer stands." },
+      { "id": "captain_learned_whats_under_glove", "text": "If the captain has learned what's under the glove, they hold the most dangerous secret at Vantor. It's far too early to use, and she may well have noticed them noticing." },
+      { "id": "lies_were_caught", "text": "If lies were caught, the hours count for nothing, and worse, she now knows which subjects the captain lies about." }
     ],
     "rewards": "A few grateful families and their small ships, a boost to composure through hard practice with train_skill, and a real sense of what the Hegemony is. Possibly a sealed note from Jaska Moor that says only: Hour two. Be more careful."
   }

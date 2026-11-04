@@ -50,11 +50,11 @@
       "syndicate_collector calling in a debt on market night"
     ],
     "outcomes": [
-      "Raided: a month of medicine and a hard blow to Mother Quill, who is now very worried about the captain. Rook Tannis turns up within the month. People who relied on the market are furious. The raid also finds the pods, and ten half-copied people are now the captain's problem, one of them the son of the best doctor anyone ever met.",
-      "Licensed: the forty-second ship flies openly, taxed and capped. It's legal and it's ugly, and the fleet now runs partly on Syndicate goods. Inspector Moor applies for a permit.",
-      "Driven off: no more market. Antibiotics run short, the coffee's gone, and thousands of debts are still on Mother Quill's books.",
-      "Pell is told: she's shattered, spends a week unlearning it, and either comes back flying the cleanest jump of her life or loses her nerve for a while. Either way, the fleet stops being predictable.",
-      "The trap: a Hegemony shadow ship arrives at a false point, right in front of the Meridian's cannon. It works exactly once, and now Inspector Moor knows the captain knows."
+      { "id": "raided", "text": "Raided: a month of medicine and a hard blow to Mother Quill, who is now very worried about the captain. Rook Tannis turns up within the month. People who relied on the market are furious. The raid also finds the pods, and ten half-copied people are now the captain's problem, one of them the son of the best doctor anyone ever met." },
+      { "id": "licensed", "text": "Licensed: the forty-second ship flies openly, taxed and capped. It's legal and it's ugly, and the fleet now runs partly on Syndicate goods. Inspector Moor applies for a permit." },
+      { "id": "driven_off", "text": "Driven off: no more market. Antibiotics run short, the coffee's gone, and thousands of debts are still on Mother Quill's books." },
+      { "id": "pell_told", "text": "Pell is told: she's shattered, spends a week unlearning it, and either comes back flying the cleanest jump of her life or loses her nerve for a while. Either way, the fleet stops being predictable." },
+      { "id": "trap", "text": "The trap: a Hegemony shadow ship arrives at a false point, right in front of the Meridian's cannon. It works exactly once, and now Inspector Moor knows the captain knows." }
     ],
     "rewards": "A stash of medkit and stim, a ledger_of_favors, real coffee, and perhaps a ship's mortgage won back."
   }

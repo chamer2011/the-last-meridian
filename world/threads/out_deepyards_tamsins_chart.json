@@ -32,10 +32,10 @@
     ],
     "fights": ["void_stalker lurking in the fold if the crossing goes wrong, which running cold or an abrupt burn can usually lose. Nothing on the terraces wants to fight."],
     "outcomes": [
-      "If the secret is kept and shared with a few, Old Sill feeds part of the fleet, a little more each season, and Grann Tull gets her first real orchard. Secrets like that get harder to keep as more mouths eat from it.",
-      "If the Long Families learn the truth, their faith cracks. Some Veshti come to see the table for themselves, weeping. Others swear to burn it. Ilkin wants to speak to the captain alone, and she has never been so polite.",
-      "If the blight is still there and the captain brings it back, the Sundial has a very bad season. There's a cure in the terrace people's long practice, if somebody asks.",
-      "If the captain leaves them undisturbed, Tamsin stays behind at the table, in a seat with their family's name on it, and sends the chart back with the ship."
+      { "id": "secret_kept_shared_with_few", "text": "If the secret is kept and shared with a few, Old Sill feeds part of the fleet, a little more each season, and Grann Tull gets her first real orchard. Secrets like that get harder to keep as more mouths eat from it." },
+      { "id": "long_families_learn_truth", "text": "If the Long Families learn the truth, their faith cracks. Some Veshti come to see the table for themselves, weeping. Others swear to burn it. Ilkin wants to speak to the captain alone, and she has never been so polite." },
+      { "id": "blight_still_captain_brings_back", "text": "If the blight is still there and the captain brings it back, the Sundial has a very bad season. There's a cure in the terrace people's long practice, if somebody asks." },
+      { "id": "captain_leaves_undisturbed", "text": "If the captain leaves them undisturbed, Tamsin stays behind at the table, in a seat with their family's name on it, and sends the chart back with the ship." }
     ],
     "rewards": "A nav_slate with the fold on it, a real and hopeful new source of fleet food and morale, seed and rootstock for the Sundial, and Tamsin Ao-Rel's lasting friendship. It's also proof to a very angry people that the planet-born were right."
   }

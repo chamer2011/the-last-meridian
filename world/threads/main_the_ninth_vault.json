@@ -36,11 +36,11 @@
       "ministry_blade and hegemony_trooper in the burning stacks"
     ],
     "outcomes": [
-      "If the Keepers' law is honored, the Archive survives, opened by right, and Keepers will copy the Score for anyone who asks, including the Regent. Ouma reads it at last. She either stays and says she was wrong, which no First Keeper ever has, or she asks the way to the Harbor.",
-      "If they break in, the captain has the Roster and the Keepers will hold it against them for several hundred years. Ouma seals the rest, and Sarn's doors close to the fleet.",
-      "If Sarn burns, some of the Archive is not yet recovered, and never will be. The captain may save the Roster or the Score but not everything. Thessan never forget who let it happen.",
-      "If it's published, each people learns its part. Korrun, Veshti and Ilari reactions are seismic: shame, denial, pride. Every one of them now has an opinion about whose turn it is.",
-      "Sefu is brought up into the warm, or left at his wall. Either way he'd like someone to stay for dinner, and she'd like to know if the post has been filled."
+      { "id": "keepers_law_honored", "text": "If the Keepers' law is honored, the Archive survives, opened by right, and Keepers will copy the Score for anyone who asks, including the Regent. Ouma reads it at last. She either stays and says she was wrong, which no First Keeper ever has, or she asks the way to the Harbor." },
+      { "id": "break", "text": "If they break in, the captain has the Roster and the Keepers will hold it against them for several hundred years. Ouma seals the rest, and Sarn's doors close to the fleet." },
+      { "id": "sarn_burns", "text": "If Sarn burns, some of the Archive is not yet recovered, and never will be. The captain may save the Roster or the Score but not everything. Thessan never forget who let it happen." },
+      { "id": "published", "text": "If it's published, each people learns its part. Korrun, Veshti and Ilari reactions are seismic: shame, denial, pride. Every one of them now has an opinion about whose turn it is." },
+      { "id": "sefu_brought_up_into_warm", "text": "Sefu is brought up into the warm, or left at his wall. Either way he'd like someone to stay for dinner, and she'd like to know if the post has been filled." }
     ],
     "rewards": "The ninth_vault_index, a data_chip with a copy of the Score, Navy records, standing with the archive, and Sefu's friendship. Whoever reads the accounts may earn the hears_the_song trait."
   }

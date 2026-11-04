@@ -32,10 +32,10 @@
     ],
     "fights": [],
     "outcomes": [
-      "If the captain finishes the shift, the clans will deal with them from now on, and the fleet gets the right to buy at Korrath, at hard but honest prices. Word gets around. Korrun everywhere start treating the captain differently.",
-      "If the captain stops to help Old Dorrit and loses the shift, Varr says that doesn't count. The crew says nothing. Next morning there's a pair of good gloves outside the captain's door, and someone else asks to speak to them.",
-      "If the captain collapses, they're carried out and politely told to come back when they're stronger. They can. Nobody here thinks less of someone for failing, only for not returning.",
-      "If the captain tries to stop the Hegemony contract, by outbidding it or by telling Corvane's quartermaster it's known about, the clans won't break their word but they can be persuaded not to renew it. The Hegemony gets its six hulls and nothing after that, and Varr gives the captain a very long look that might be thanks."
+      { "id": "captain_finishes_shift", "text": "If the captain finishes the shift, the clans will deal with them from now on, and the fleet gets the right to buy at Korrath, at hard but honest prices. Word gets around. Korrun everywhere start treating the captain differently." },
+      { "id": "captain_stops_to_help_old_dorrit", "text": "If the captain stops to help Old Dorrit and loses the shift, Varr says that doesn't count. The crew says nothing. Next morning there's a pair of good gloves outside the captain's door, and someone else asks to speak to them." },
+      { "id": "captain_collapses", "text": "If the captain collapses, they're carried out and politely told to come back when they're stronger. They can. Nobody here thinks less of someone for failing, only for not returning." },
+      { "id": "captain_tries_to_stop_hegemony_contract", "text": "If the captain tries to stop the Hegemony contract, by outbidding it or by telling Corvane's quartermaster it's known about, the clans won't break their word but they can be persuaded not to renew it. The Hegemony gets its six hulls and nothing after that, and Varr gives the captain a very long look that might be thanks." }
     ],
     "rewards": "The right to trade at Korrath, a korrun_harness at a fair price, a forge_hammer if Dorrit lives, a lot of practice in athletics through train_skill, and Brenna Tor's interest, which leads to Short Weight."
   }

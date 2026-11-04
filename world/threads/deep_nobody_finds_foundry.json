@@ -36,11 +36,11 @@
       "unbound_sentinel if the captain gets caught inside without Seven's word"
     ],
     "outcomes": [
-      "If the captain earns safe conduct, they get an unbound_safe_conduct and a standing that's worth more than any gun. They may come back, and somewhere far below the floor a hatch is left open.",
-      "If the fleet's Synthetics go, they're safe from Tarrow, and Aduro and Marrow are wrecked by it. Seven may or may not be among them. At the summit, the Unbound will remember who let them go.",
-      "If the list is burned to meet the Unbound's price, the captain has to face Tarrow over it (crew_tarrow_standing_order). She may comply on paper, and she may not.",
-      "If the captain promises to bring Okonkwo-Reyes before the Assembly, Six holds them to it. It can happen at the summit (main_everyone_whos_left), and it changes the Remnant forever.",
-      "If the location leaks, through carelessness or betrayal, Hunters or Ministry troops come for the Foundry. Several thousand people are on the run, and the Unbound never trust an organic again."
+      { "id": "captain_earns_safe_conduct", "text": "If the captain earns safe conduct, they get an unbound_safe_conduct and a standing that's worth more than any gun. They may come back, and somewhere far below the floor a hatch is left open." },
+      { "id": "fleets_synthetics_go", "text": "If the fleet's Synthetics go, they're safe from Tarrow, and Aduro and Marrow are wrecked by it. Seven may or may not be among them. At the summit, the Unbound will remember who let them go." },
+      { "id": "list_burned_to_meet_unbounds_price", "text": "If the list is burned to meet the Unbound's price, the captain has to face Tarrow over it (crew_tarrow_standing_order). She may comply on paper, and she may not." },
+      { "id": "captain_promises_to_bring_okonkwo_reyes", "text": "If the captain promises to bring Okonkwo-Reyes before the Assembly, Six holds them to it. It can happen at the summit (main_everyone_whos_left), and it changes the Remnant forever." },
+      { "id": "location_leaks", "text": "If the location leaks, through carelessness or betrayal, Hunters or Ministry troops come for the Foundry. Several thousand people are on the run, and the Unbound never trust an organic again." }
     ],
     "rewards": "An unbound_safe_conduct, Six's record of the Tarn order with its cover name, and a tool_roll or slicer_rig from a grateful workshop."
   }

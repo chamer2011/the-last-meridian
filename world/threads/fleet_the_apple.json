@@ -47,10 +47,10 @@
       "syndicate_collector who wants the wax apple and won't believe it's wax"
     ],
     "outcomes": [
-      "Truth told: the fleet laughs, then a lot of them cry, and then someone asks about the seeds. \"A worm in the only apple\" becomes a saying, and people find it oddly comforting.",
-      "A culprit is found: somebody who didn't do it gets blamed, and the riot stops. Grann never says a word. That somebody will remember.",
-      "The seedlings: whichever way it comes out, there are five. The Syndicate offers a thousand credits for one, and every ship claims a share. One might go to Tessen, and one might wait for the safe harbor the Beacon promises. It's a small decision that everyone will care about more than any council vote.",
-      "Left unsolved: Fenn keeps the story going for a month as a fleet-wide guessing game, and it's the best thing on the channel. Betting on the next apple starts at once."
+      { "id": "truth_told", "text": "Truth told: the fleet laughs, then a lot of them cry, and then someone asks about the seeds. \"A worm in the only apple\" becomes a saying, and people find it oddly comforting." },
+      { "id": "culprit_found", "text": "A culprit is found: somebody who didn't do it gets blamed, and the riot stops. Grann never says a word. That somebody will remember." },
+      { "id": "seedlings", "text": "The seedlings: whichever way it comes out, there are five. The Syndicate offers a thousand credits for one, and every ship claims a share. One might go to Tessen, and one might wait for the safe harbor the Beacon promises. It's a small decision that everyone will care about more than any council vote." },
+      { "id": "left_unsolved", "text": "Left unsolved: Fenn keeps the story going for a month as a fleet-wide guessing game, and it's the best thing on the channel. Betting on the next apple starts at once." }
     ],
     "rewards": "A seedling on the captain's desk, a rare favor from Grann Tull, and a crate of ration_pack from the bookmaker's settlement."
   }

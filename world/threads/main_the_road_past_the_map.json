@@ -36,11 +36,11 @@
       "gate_warden or choir_chorister, depending on the road taken"
     ],
     "outcomes": [
-      "Who made it is the outcome. Keep a count of the ships and people arriving, and name the losses. These numbers matter in the last act.",
-      "By the Gate, the way stays open behind them, and the Regent can follow. By the Thin Road, few can follow, the fleet's almost out of fuel and nobody's leaving again. By the lanes, everyone hears the song on the way, and the Harbor's pull will be much stronger. By the bearing, it's slow, the captain arrives last, and others have arrived before them.",
-      "Okonkwo, Tarrow or Tannis holds the line at the rear. A legend is made, or someone is lost, if the player's choices earn that.",
-      "If Pell brings them through, the captain can sign her certification on real paper, and she may finally say sir on time.",
-      "Reaching the Beacon settles the biggest bet in known space. Madame Oriel collects from Mother Quill, and she sends the captain a single gilded chip, with no note."
+      { "id": "who_made_outcome", "text": "Who made it is the outcome. Keep a count of the ships and people arriving, and name the losses. These numbers matter in the last act." },
+      { "id": "by_gate", "text": "By the Gate, the way stays open behind them, and the Regent can follow. By the Thin Road, few can follow, the fleet's almost out of fuel and nobody's leaving again. By the lanes, everyone hears the song on the way, and the Harbor's pull will be much stronger. By the bearing, it's slow, the captain arrives last, and others have arrived before them." },
+      { "id": "okonkwo", "text": "Okonkwo, Tarrow or Tannis holds the line at the rear. A legend is made, or someone is lost, if the player's choices earn that." },
+      { "id": "pell_brings_through", "text": "If Pell brings them through, the captain can sign her certification on real paper, and she may finally say sir on time." },
+      { "id": "reaching_beacon_settles_biggest_bet", "text": "Reaching the Beacon settles the biggest bet in known space. Madame Oriel collects from Mother Quill, and she sends the captain a single gilded chip, with no note." }
     ],
     "rewards": "refined_fuel, emergency_patch and pilot_gloves for whoever earned them. Every ship that arrives."
   }

@@ -31,10 +31,10 @@
     ],
     "fights": ["remnant_marine, only if the captain tries to walk out of a lawful arrest. Every marine there would be very sorry, and all of them would obey. Losing the verdict never needs to end in a fight."],
     "outcomes": [
-      "If the captain loses and submits, the Admiral takes command of the fleet in law. She keeps them as captain of the Meridian, because she needs them, and she gives the order for Project Harbor. It's a real change in who gives the orders, and the fleet divides.",
-      "If the captain is convicted and refuses, half the Navy officers in the fleet feel honor-bound to go over to her, and the captain is officially a mutineer to anyone who still believes in the Concord. Voss has to decide. Her fate isn't settled here unless the player earns it.",
-      "If the panel acquits on necessity, the fleet stands alone with its legitimacy confirmed, and the Remnant is a proud, starving neighbor. Okonkwo-Reyes accepts the verdict, in writing, and doesn't change anything else.",
-      "If the evidence goes public, the Remnant shakes. Sailors look at their admiral, and some weep. It's a very strong card and it can only be played once, and it destroys the only thing holding three thousand hungry people together."
+      { "id": "captain_loses_submits", "text": "If the captain loses and submits, the Admiral takes command of the fleet in law. She keeps them as captain of the Meridian, because she needs them, and she gives the order for Project Harbor. It's a real change in who gives the orders, and the fleet divides." },
+      { "id": "captain_convicted_refuses", "text": "If the captain is convicted and refuses, half the Navy officers in the fleet feel honor-bound to go over to her, and the captain is officially a mutineer to anyone who still believes in the Concord. Voss has to decide. Her fate isn't settled here unless the player earns it." },
+      { "id": "panel_acquits_necessity", "text": "If the panel acquits on necessity, the fleet stands alone with its legitimacy confirmed, and the Remnant is a proud, starving neighbor. Okonkwo-Reyes accepts the verdict, in writing, and doesn't change anything else." },
+      { "id": "evidence_goes_public", "text": "If the evidence goes public, the Remnant shakes. Sailors look at their admiral, and some weep. It's a very strong card and it can only be played once, and it destroys the only thing holding three thousand hungry people together." }
     ],
     "rewards": "A ruling that either confirms or dissolves the captain's authority, remnant_plate from a sympathetic armorer or remnant_codes if the Commodore starts to trust them, big swings in remnant and fleet standing, and a thin old Navy veteran or two in the fleet who now salute properly."
   }

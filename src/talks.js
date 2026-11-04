@@ -76,6 +76,8 @@ function enterTalkPart(game, talk, scene, id, emit, hops = 0) {
       clearFact(game, clear);
       continue;
     }
+    // Only a story's own scene ends it, and the checker says so; a conversation's * ending line does nothing.
+    if (step.ending) continue;
     const outcome = runTool(game, tool, input, turn);
     if (outcome.isError) throw new Error(`In the conversation ${talk.written.id}, part ${id}, ${tool} failed: ${outcome.result}`);
     if (outcome.narration) emit({ type: "text", text: outcome.narration });

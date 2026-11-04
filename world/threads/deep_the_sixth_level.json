@@ -37,10 +37,10 @@
       "silent_one: one of the five stands up when they're carried"
     ],
     "outcomes": [
-      "If some of the five are recovered, each wakes weeks later and says the same thing: 'I wasn't unhappy. Please understand. I wasn't anything.' They're good witnesses, they can't sleep without a light, and they prove someone can come back, at least early on.",
-      "If someone in the party sits down and isn't recovered, it's a real loss, and it can only be undone later, at a price. If nobody stops Corso, he's in the sixth seat within a month. His messages keep coming for a while, written by something that's looking after him.",
-      "If a recording of the hall reaches the fleet, Oskar Lind sees it, and it ends his faith or hardens it. Yara Solune sees it, says 'It's all right', and asks where the boat leaves from.",
-      "The captain comes back having felt it. They may earn the hears_the_song trait. They'll recognize that peace anywhere now, and they'll miss it."
+      { "id": "some_five_recovered", "text": "If some of the five are recovered, each wakes weeks later and says the same thing: 'I wasn't unhappy. Please understand. I wasn't anything.' They're good witnesses, they can't sleep without a light, and they prove someone can come back, at least early on." },
+      { "id": "party_sits_down_isnt_recovered", "text": "If someone in the party sits down and isn't recovered, it's a real loss, and it can only be undone later, at a price. If nobody stops Corso, he's in the sixth seat within a month. His messages keep coming for a while, written by something that's looking after him." },
+      { "id": "recording_hall_reaches_fleet", "text": "If a recording of the hall reaches the fleet, Oskar Lind sees it, and it ends his faith or hardens it. Yara Solune sees it, says 'It's all right', and asks where the boat leaves from." },
+      { "id": "captain_comes_back_having_felt", "text": "The captain comes back having felt it. They may earn the hears_the_song trait. They'll recognize that peace anywhere now, and they'll miss it." }
     ],
     "rewards": "A rubbing of the tablet, worth a fortune to Ouma or Quill. Nothing else you'd want."
   }

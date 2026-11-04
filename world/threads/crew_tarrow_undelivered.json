@@ -44,10 +44,10 @@
       "desperate_refugee crowd, if the log goes public and families come looking for her. She won't defend herself, so the captain may have to"
     ],
     "outcomes": [
-      "She hears it, once. She says nothing and walks out. The next morning she's on time. Within a week the standing order is quietly amended to exempt machines with a documented service record, and she never says why. She isn't healed. She has stopped saying \"every machine\".",
-      "She doesn't believe it, and shoots the Warden. The other 411 messages die with them, unless the captain thought to copy them. Marrow doesn't speak to her again. She reports herself for destroying a citizen, and nobody knows what to do with the report.",
-      "The log goes public: families on six ships learn who gave the order. Some call her a murderer, and nine thousand people owe her their lives. She offers to stand trial and means it, and the fleet gets to argue about what she is.",
-      "The captain withholds it: the Warden never stops asking, courteously, every day. She'll find out someday that the captain knew."
+      { "id": "hears", "text": "She hears it, once. She says nothing and walks out. The next morning she's on time. Within a week the standing order is quietly amended to exempt machines with a documented service record, and she never says why. She isn't healed. She has stopped saying \"every machine\"." },
+      { "id": "doesnt_believe", "text": "She doesn't believe it, and shoots the Warden. The other 411 messages die with them, unless the captain thought to copy them. Marrow doesn't speak to her again. She reports herself for destroying a citizen, and nobody knows what to do with the report." },
+      { "id": "log_goes_public", "text": "The log goes public: families on six ships learn who gave the order. Some call her a murderer, and nine thousand people owe her their lives. She offers to stand trial and means it, and the fleet gets to argue about what she is." },
+      { "id": "captain_withholds", "text": "The captain withholds it: the Warden never stops asking, courteously, every day. She'll find out someday that the captain knew." }
     ],
     "rewards": "Tarrow's real loyalty, the only kind she has left. Standing with the fleet for every delivered message. Perhaps a copy of the log, which is leverage nobody decent would use."
   }

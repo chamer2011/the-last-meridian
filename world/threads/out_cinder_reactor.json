@@ -32,10 +32,10 @@
     ],
     "fights": ["cinder_wyrm in the Tubes, which goes after heat and can be led off with a thrown flare or a shut-down suit heater. strikebreaker holdouts who've got nothing to go home to."],
     "outcomes": [
-      "If the digging restarts and the shutdown plan is agreed, the colony lives and has a future somewhere else, on a slow clock. Rennick is either cleared or dead of the strain, and the fleet gets a long fuel deal.",
-      "If the Tap is vented another way, with slag crawlers drawing off the heat as the Lost Shift discovered, the colony gets a much longer future than Rennick ever calculated, and it's very surprised.",
-      "If it fails, Shift Row must be evacuated in days, and the fleet takes on thousands of miners, along with their skills and their anger. The Stack goes dark, and fuel gets very expensive everywhere.",
-      "If the captain uses Ulla's secret against her, it works, and it's the worst thing they've done. If they keep it, and quietly offer to teach her, she's theirs for life, and she'll never mention it."
+      { "id": "digging_restarts_shutdown_plan_agreed", "text": "If the digging restarts and the shutdown plan is agreed, the colony lives and has a future somewhere else, on a slow clock. Rennick is either cleared or dead of the strain, and the fleet gets a long fuel deal." },
+      { "id": "tap_vented_another_way", "text": "If the Tap is vented another way, with slag crawlers drawing off the heat as the Lost Shift discovered, the colony gets a much longer future than Rennick ever calculated, and it's very surprised." },
+      { "id": "fails", "text": "If it fails, Shift Row must be evacuated in days, and the fleet takes on thousands of miners, along with their skills and their anger. The Stack goes dark, and fuel gets very expensive everywhere." },
+      { "id": "captain_uses_ullas_secret_against_her", "text": "If the captain uses Ulla's secret against her, it works, and it's the worst thing they've done. If they keep it, and quietly offer to teach her, she's theirs for life, and she'll never mention it." }
     ],
     "rewards": "Lasting loyalty from whichever of Ulla or Rennick survives on good terms, a steady fuel supply, a tool_roll, a field_scanner from the old survey kit, and a big gain in morale if nobody dies."
   }

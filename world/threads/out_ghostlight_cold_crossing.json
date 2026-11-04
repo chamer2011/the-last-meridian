@@ -32,10 +32,10 @@
     ],
     "fights": ["void_stalker if a ship is left burning warm and someone goes across to help. Lamps out and heaters off makes them lose interest within a few minutes, which is the whole idea."],
     "outcomes": [
-      "If the fleet crosses with Aunt, nearly everyone lives, the Meridian's coil is damaged and the crew has a legend. If she's coaxed back into the cloud, the fleet gets a strange ally in the Ghostlight: stalkers leave Meridian's ships alone on later crossings.",
-      "If she's burned off the hull, the crew never quite forgives the order, and the rest of the stalkers come in at once, for a very long night.",
-      "If the captain cuts a ship loose to save the others, the stalkers go to that ship and the rest cross safely. That's a ship knowingly left behind, and if the Long Bet is running, a card arrives.",
-      "If the stove family is saved at a cost, people will talk about it for as long as there's a fleet. The sick baby may live to hear the story, and her family would follow the captain into the Burn itself."
+      { "id": "fleet_crosses_with_aunt", "text": "If the fleet crosses with Aunt, nearly everyone lives, the Meridian's coil is damaged and the crew has a legend. If she's coaxed back into the cloud, the fleet gets a strange ally in the Ghostlight: stalkers leave Meridian's ships alone on later crossings." },
+      { "id": "shes_burned_off_hull", "text": "If she's burned off the hull, the crew never quite forgives the order, and the rest of the stalkers come in at once, for a very long night." },
+      { "id": "captain_cuts_ship_loose_to_save", "text": "If the captain cuts a ship loose to save the others, the stalkers go to that ship and the rest cross safely. That's a ship knowingly left behind, and if the Long Bet is running, a card arrives." },
+      { "id": "stove_family_saved_cost", "text": "If the stove family is saved at a cost, people will talk about it for as long as there's a fleet. The sick baby may live to hear the story, and her family would follow the captain into the Burn itself." }
     ],
     "rewards": "Safe passage through the Ghostlight later on, fleet morale if it goes well, a bit of pale shed skin that's very useful to Mercy Seven's science team, and some calm_tabs and nutrient_gel saved up by very cold quartermasters."
   }

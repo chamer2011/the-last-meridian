@@ -37,10 +37,10 @@
       "void_stalker in the Ghostlight on the way in or out"
     ],
     "outcomes": [
-      "If the captain gets an alliance on their own terms, six warships are on call, fed by the fleet, and Okonkwo is a permanent rival who'll try to take over at the first crisis. She calls them Captain, once. She'll expect Voss to come over when called.",
-      "If she takes command of the fleet's defense, order improves and the civilians revolt, and Halm and the captain find they're on the same side for once. The captain keeps the Meridian and the fleet's trust. She runs straight at the first thing she sees, and they'll need the captain again within days.",
-      "If they break, she declares the captain a mutineer. Her ships stay hidden and take food from stragglers, Dorn offers codes for safe passage, and she'll still turn up at the end, with or without an invitation.",
-      "If the annex is exposed, her crews' faith is shattered, some defect to the fleet, and she goes on out of sheer will, broken in a way the captain will have to live with. Dorn's surrender gets a lot closer."
+      { "id": "captain_gets_alliance_own_terms", "text": "If the captain gets an alliance on their own terms, six warships are on call, fed by the fleet, and Okonkwo is a permanent rival who'll try to take over at the first crisis. She calls them Captain, once. She'll expect Voss to come over when called." },
+      { "id": "takes_command_fleets_defense", "text": "If she takes command of the fleet's defense, order improves and the civilians revolt, and Halm and the captain find they're on the same side for once. The captain keeps the Meridian and the fleet's trust. She runs straight at the first thing she sees, and they'll need the captain again within days." },
+      { "id": "break", "text": "If they break, she declares the captain a mutineer. Her ships stay hidden and take food from stragglers, Dorn offers codes for safe passage, and she'll still turn up at the end, with or without an invitation." },
+      { "id": "annex_exposed", "text": "If the annex is exposed, her crews' faith is shattered, some defect to the fleet, and she goes on out of sheer will, broken in a way the captain will have to live with. Dorn's surrender gets a lot closer." }
     ],
     "rewards": "remnant_codes, an old_concord_medal from Okonkwo if the captain stands up to her and wins, a service_rifle from Remnant stores, and standing with the remnant, one way or the other."
   }

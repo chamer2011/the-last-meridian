@@ -39,7 +39,7 @@ test("a fact has a short name and a line, sets its flag, and keeps its first wor
   assert.equal(again.known, true);
   assert.equal(again.entry.text, "Kessara Drift is closed to the fleet.", "the first words are kept");
   assert.equal(recordOf(game).facts.length, 1);
-  const bare = recordFact(game, { id: "tharel_trusts" });
+  const bare = recordFact(game, { id: "nobody_declares_this" });
   assert.equal(bare.entry.text, null);
   assert.throws(() => recordFact(game, { id: "Bad Name" }), /lowercase letters/);
   assert.throws(() => recordFact(game, { id: "x" }), /lowercase letters/);
@@ -47,31 +47,34 @@ test("a fact has a short name and a line, sets its flag, and keeps its first wor
   assert.equal(game.flags.kessara_closed, undefined);
   assert.equal(recordOf(game).facts.length, 1);
   const view = recordView(game);
-  assert.deepEqual(view.facts.map((fact) => fact.text), ["tharel trusts"], "a fact without words shows its name, spaced out");
+  assert.deepEqual(view.facts.map((fact) => fact.text), ["nobody declares this"], "a fact without words shows its name, spaced out");
 });
 
-test("a story's ending goes on the record by the number of its outcome, and the page and the AI's state read it", () => {
+test("a story's ending goes on the record by its name, and the page and the AI's state read it", () => {
   const game = newGame();
   assert.throws(() => recordEnding(game, { id: "no_such_story", summary: "x" }), /no story/);
-  const ending = recordEnding(game, { id: FUEL, outcome: 1, summary: "Signed with Mother Quill: forty-one markers, to be named later." });
+  assert.throws(() => recordEnding(game, { id: FUEL, ending: "no_such_ending", summary: "x" }), /no ending called no_such_ending/);
+  const ending = recordEnding(game, { id: FUEL, ending: "sign_with_quill", summary: "Signed with Mother Quill: forty-one markers, to be named later." });
   assert.equal(ending.day, 1);
-  assert.equal(endingOf(game, FUEL).outcome, 1);
-  recordEnding(game, { id: FUEL, outcome: 2, summary: "Another." });
-  assert.equal(endingOf(game, FUEL).outcome, 1, "the first ending is the one that's kept");
+  assert.equal(endingOf(game, FUEL).ending, "sign_with_quill");
+  recordEnding(game, { id: FUEL, ending: "raid_depot", summary: "Another." });
+  assert.equal(endingOf(game, FUEL).ending, "sign_with_quill", "the first ending is the one that's kept");
   recordFact(game, { id: "signed_with_quill", text: "The fleet signed Mother Quill's page.", from: "thread_main_two_weeks_of_fuel" });
   const lines = recordLines(game);
-  assert.ok(lines.includes("Story ended, Two Weeks of Fuel (main_two_weeks_of_fuel), outcome 1: Signed with Mother Quill: forty-one markers, to be named later."), lines.join("\n"));
+  assert.ok(lines.includes("Story ended, Two Weeks of Fuel (main_two_weeks_of_fuel), sign_with_quill: Signed with Mother Quill: forty-one markers, to be named later."), lines.join("\n"));
   assert.ok(lines.includes("Fact signed_with_quill: The fleet signed Mother Quill's page."));
   const state = aiSnapshot(game);
   assert.match(state, /Story ended, Two Weeks of Fuel/);
   assert.match(state, /Fact signed_with_quill: The fleet signed Mother Quill's page\./);
   const shown = publicState(game).story.record;
   assert.equal(shown.endings[0].title, "Two Weeks of Fuel");
+  assert.equal(shown.endings[0].ending, "sign_with_quill");
+  assert.equal(shown.endings[0].failed, false);
   assert.equal(shown.endings[0].summary, "Signed with Mother Quill: forty-one markers, to be named later.");
   assert.deepEqual(shown.facts[0], { id: "signed_with_quill", text: "The fleet signed Mother Quill's page.", from: "Two Weeks of Fuel", day: 1 });
 });
 
-test("the AI's two actions are checked: names, numbers, lengths, three facts a turn, and one ending a story", () => {
+test("the AI's two actions are checked: names, lengths, three facts a turn, and one ending a story", () => {
   const game = newGame();
   assert.ok(TOOL_DEFS.some((def) => def.name === "note_fact") && TOOL_DEFS.some((def) => def.name === "end_story"));
   const turn = newTurnLimits();
@@ -92,25 +95,25 @@ test("the AI's two actions are checked: names, numbers, lengths, three facts a t
   assert.equal(game.flags.fourth_fact, undefined);
 
   tool(game, "add_quest", { id: FUEL, title: "Two Weeks of Fuel", description: "Fuel.", objective: "Find fuel." });
-  assert.equal(tool(game, "end_story", { id: "no_such_story", outcome: 1, summary: "It ended." }).isError, true);
-  const tooMany = tool(game, "end_story", { id: FUEL, outcome: 9, summary: "It ended." });
-  assert.equal(tooMany.isError, true);
-  assert.match(tooMany.result, /numbered 1 to 4/);
-  assert.equal(tool(game, "end_story", { id: FUEL, outcome: 1, summary: "No" }).isError, true);
-  const ended = tool(game, "end_story", { id: FUEL, outcome: 3, summary: "The Hegemony's fuel, free, with a transponder on every tank." });
+  assert.equal(tool(game, "end_story", { id: "no_such_story", ending: "sign_with_quill", summary: "It ended." }).isError, true);
+  const wrong = tool(game, "end_story", { id: FUEL, ending: "no_such_ending", summary: "It ended." });
+  assert.equal(wrong.isError, true);
+  assert.match(wrong.result, /sign_with_quill, raid_depot, take_corvanes_fuel, settle_cinder_reach, or other/);
+  assert.equal(tool(game, "end_story", { id: FUEL, ending: "sign_with_quill", summary: "No" }).isError, true);
+  const ended = tool(game, "end_story", { id: FUEL, ending: "Take Corvanes Fuel", summary: "The Hegemony's fuel, free, with a transponder on every tank." });
   assert.equal(ended.isError, undefined, ended.result);
   assert.match(ended.notice, /^\[STORY\] Two Weeks of Fuel has ended: The Hegemony's fuel/);
-  assert.equal(endingOf(game, FUEL).outcome, 3);
+  assert.equal(endingOf(game, FUEL).ending, "take_corvanes_fuel", "the name is read the way the AI is likely to write it");
   const quest = game.quests.find((q) => q.id === FUEL);
   assert.equal(quest.status, "completed");
   assert.equal(quest.objective, "The Hegemony's fuel, free, with a transponder on every tank.");
   assert.equal(game.story.threads[FUEL], "done", "the Leads menu and the clock know it's over");
-  const twice = tool(game, "end_story", { id: FUEL, outcome: 1, summary: "Again." });
+  const twice = tool(game, "end_story", { id: FUEL, ending: "sign_with_quill", summary: "Again." });
   assert.equal(twice.isError, true);
   assert.match(twice.result, /already ended/);
-  const other = tool(game, "end_story", { id: "main_visiting_hours", outcome: 0, summary: "It ended another way: nobody will say how." });
+  const other = tool(game, "end_story", { id: "main_visiting_hours", ending: "other", summary: "It ended another way: nobody will say how." });
   assert.equal(other.isError, undefined, other.result);
-  assert.equal(endingOf(game, "main_visiting_hours").outcome, null);
+  assert.equal(endingOf(game, "main_visiting_hours").ending, null);
 });
 
 test("a story's quest settled the old way still records its ending, and in a written part no fact can be noted", () => {
@@ -118,10 +121,13 @@ test("a story's quest settled the old way still records its ending, and in a wri
   tool(game, "add_quest", { id: FUEL, title: "Two Weeks of Fuel", description: "Fuel.", objective: "Find fuel." });
   tool(game, "update_quest", { id: FUEL, status: "completed", objective: "Signed with Mother Quill." });
   assert.equal(endingOf(game, FUEL).summary, "Signed with Mother Quill.");
-  assert.equal(endingOf(game, FUEL).outcome, null);
+  assert.equal(endingOf(game, FUEL).ending, null);
+  tool(game, "add_quest", { id: "main_visiting_hours", title: "Visiting Hours", description: "x", objective: "y" });
+  tool(game, "update_quest", { id: "main_visiting_hours", status: "failed", objective: "Lost." });
+  assert.equal(endingOf(game, "main_visiting_hours").failed, true);
   tool(game, "add_quest", { id: "the_beacon_two", title: "Not a story", description: "x", objective: "y" });
   tool(game, "update_quest", { id: "the_beacon_two", status: "failed", objective: "Over." });
-  assert.equal(Object.keys(recordOf(game).endings).length, 1, "a quest that isn't a story isn't an ending");
+  assert.equal(Object.keys(recordOf(game).endings).length, 2, "a quest that isn't a story isn't an ending");
   const fit = { ...newTurnLimits(), scene: { choices: [], followed: undefined } };
   const refused = tool(game, "note_fact", { id: "made_up", text: "Something the AI made up in a written part." }, fit);
   assert.equal(refused.isError, true);
@@ -133,7 +139,7 @@ test("the written story's flags join the record, with words when the line has th
   assert.deepEqual(parseEffect("flag kessara_closed: Kessara is closed to the fleet").do, { set: "kessara_closed", text: "Kessara is closed to the fleet" });
   assert.deepEqual(parseEffect("flag told_the_fleet").do, { set: "told_the_fleet" });
   assert.deepEqual(parseEffect("unflag told_the_fleet").do, { clear: "told_the_fleet" });
-  const { scene, problems } = parseSceneText(`== start\nThe depot's gone.\n* flag kessara_closed: Kessara is closed to the fleet\n* flag raided_the_depot\n> Go on -> after\n== after\nLater.\n* unflag raided_the_depot\nEND`);
+  const { scene, problems } = parseSceneText(`== start\nThe depot's gone.\n* flag kessara_closed: Kessara is closed to the fleet\n* flag raided_the_depot_alone\n> Go on -> after\n== after\nLater.\n* unflag raided_the_depot_alone\nEND`);
   assert.deepEqual(problems, []);
   const game = newGame();
   const scenes = { thread_test: scene };
@@ -141,10 +147,10 @@ test("the written story's flags join the record, with words when the line has th
   const log = (role, text) => game.transcript.push({ role, text });
   writtenTurn({ game, playerText: "I look into this", threadId: "test", emit, log, scenes });
   const facts = recordView(game).facts;
-  assert.deepEqual(facts.map((fact) => fact.text), ["Kessara is closed to the fleet", "raided the depot"]);
+  assert.deepEqual(facts.map((fact) => fact.text), ["Kessara is closed to the fleet", "raided the depot alone"]);
   assert.equal(game.flags.kessara_closed, true);
   writtenTurn({ game, playerText: "Go on", emit, log, scenes });
-  assert.equal(game.flags.raided_the_depot, undefined);
+  assert.equal(game.flags.raided_the_depot_alone, undefined);
   assert.deepEqual(recordView(game).facts.map((fact) => fact.id), ["kessara_closed"]);
   const bad = parseSceneText("== start\nText.\n* flag Bad Name\nEND").scene;
   assert.ok(sceneProblems(bad, "t").some((problem) => /flag's name is lowercase/.test(problem)), sceneProblems(bad, "t").join(" | "));
@@ -152,27 +158,27 @@ test("the written story's flags join the record, with words when the line has th
 
 test("an older save's flags join the record when it's read, and the record doesn't repeat them", () => {
   const game = newGame();
-  game.flags = { told_the_fleet: true, tharel_trusts: true };
+  game.flags = { old_flag_one: true, old_flag_two: true };
   delete game.story.record;
   const record = recordOf(game);
-  assert.deepEqual(record.facts.map((fact) => fact.id), ["told_the_fleet", "tharel_trusts"]);
+  assert.deepEqual(record.facts.map((fact) => fact.id), ["old_flag_one", "old_flag_two"]);
   assert.equal(record.facts[0].text, null);
   recordOf(game);
   assert.equal(recordOf(game).facts.length, 2);
-  assert.deepEqual(recordView(game).facts.map((fact) => fact.text), ["told the fleet", "tharel trusts"]);
-  assert.ok(recordLines(game).includes("Fact told_the_fleet: told the fleet"));
+  assert.deepEqual(recordView(game).facts.map((fact) => fact.text), ["old flag one", "old flag two"]);
+  assert.ok(recordLines(game).includes("Fact old_flag_one: old flag one"));
 });
 
 test("the AI is told about the record, and a story's notes say how the story before it ended", () => {
   assert.match(SYSTEM_PROMPT, /THE RECORD/);
-  assert.match(SYSTEM_PROMPT, /call end_story/);
+  assert.match(SYSTEM_PROMPT, /call end_story with the name of the ending/);
   assert.match(SYSTEM_PROMPT, /call note_fact/);
   assert.match(SYSTEM_PROMPT, /campaign you didn't write/);
   const game = newGame();
   const before = threadNotes("main_chain_of_command", game);
-  assert.match(before, /end_story when it ends/);
+  assert.match(before, /end_story, with the ending's name, when it ends/);
   assert.doesNotMatch(before, /Before it,/);
-  recordEnding(game, { id: "main_the_old_scholar", outcome: 1, summary: "Tharel showed the two layers, and trusts the captain." });
+  recordEnding(game, { id: "main_the_old_scholar", ending: "tharel_kept_safe_trusts_captain", summary: "Tharel showed the two layers, and trusts the captain." });
   const after = threadNotes("main_chain_of_command", game);
-  assert.match(after, /Before it, The Warm Room ended: Tharel showed the two layers, and trusts the captain\./);
+  assert.match(after, /Before it, The Warm Room ended \(tharel_kept_safe_trusts_captain\): Tharel showed the two layers, and trusts the captain\./);
 });

@@ -32,10 +32,10 @@
     ],
     "fights": ["desperate_refugee if word gets around that the captain's here to take away the Exemption, and customs_marine if the Line is sealed in a hurry. Neither has to happen if people are told the truth in time."],
     "outcomes": [
-      "If a safe strain goes out, the deaths stop, and the Exemption goes on working. The captain now shares in a fraud against the Hegemony, and the fleet has a new secret weapon that doesn't look like one.",
-      "If it's cured outright, thousands of healthy people go on the conscription list within the month, and the Line remembers who cured them.",
-      "If the Line is sealed, Halloran follows the rules with his jaw set. A few hundred die. The Exemption is finished, and so is any trust the Line ever had in anyone in a uniform.",
-      "If Tessaly's part comes out, she doesn't defend herself, and she doesn't run. What the Line does to her, or does for her, depends on who speaks up."
+      { "id": "safe_strain_goes_out", "text": "If a safe strain goes out, the deaths stop, and the Exemption goes on working. The captain now shares in a fraud against the Hegemony, and the fleet has a new secret weapon that doesn't look like one." },
+      { "id": "cured_outright", "text": "If it's cured outright, thousands of healthy people go on the conscription list within the month, and the Line remembers who cured them." },
+      { "id": "line_sealed", "text": "If the Line is sealed, Halloran follows the rules with his jaw set. A few hundred die. The Exemption is finished, and so is any trust the Line ever had in anyone in a uniform." },
+      { "id": "tessalys_part_comes_out", "text": "If Tessaly's part comes out, she doesn't defend herself, and she doesn't run. What the Line does to her, or does for her, depends on who speaks up." }
     ],
     "rewards": "A vial of the safe strain as a useful bargaining point, a surgeon_lens or trauma_kit from Tessaly, standing with the Line Mothers, and Commandant Halloran's lasting respect."
   }

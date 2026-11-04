@@ -36,11 +36,23 @@
       "hegemony_trooper if Corvane's custody order is refused in the corridor"
     ],
     "outcomes": [
-      "If Tharel is kept safe and trusts the captain, he stays an ally for the whole story, gives them a beacon_shard he has used as a paperweight for two centuries, and will read the lattice when the Codex comes. If he's rescued but not trusted, he helps, and holds back longer.",
-      "If Corvane gets him, he's taken to Vantor in comfort. The Regent then knows everything he knows, and getting him back, or bringing the Codex to him there, becomes a job of its own. The captain can still get the two layers from Iven, Sable or their own analysis.",
-      "If Quill's people get him, she sells the captain the two layers at a terrible price and adds it to the fleet's debt. She also now knows something's wrong with the Beacon, and she starts to worry, dear.",
-      "If the captain announces Navy survivors, the fleet's spirits soar, food riots stop for a week, and Okonkwo-Reyes learns who's been using her Navy's name. If they sit on it, Garrick breaks the story anyway and the council wants to know what else they've hidden."
+      { "id": "tharel_kept_safe_trusts_captain", "text": "If Tharel is kept safe and trusts the captain, he stays an ally for the whole story, gives them a beacon_shard he has used as a paperweight for two centuries, and will read the lattice when the Codex comes. If he's rescued but not trusted, he helps, and holds back longer." },
+      { "id": "corvane_gets_him", "text": "If Corvane gets him, he's taken to Vantor in comfort. The Regent then knows everything he knows, and getting him back, or bringing the Codex to him there, becomes a job of its own. The captain can still get the two layers from Iven, Sable or their own analysis." },
+      { "id": "quills_people_get_him", "text": "If Quill's people get him, she sells the captain the two layers at a terrible price and adds it to the fleet's debt. She also now knows something's wrong with the Beacon, and she starts to worry, dear." },
+      { "id": "captain_announces_navy_survivors", "text": "If the captain announces Navy survivors, the fleet's spirits soar, food riots stop for a week, and Okonkwo-Reyes learns who's been using her Navy's name. If they sit on it, Garrick breaks the story anyway and the council wants to know what else they've hidden." }
     ],
-    "rewards": "A data_chip with the frame analysis, a beacon_shard if Tharel trusts them, a favor from Sable, and standing with the fleet if the news lands well."
+    "rewards": "A data_chip with the frame analysis, a beacon_shard if Tharel trusts them, a favor from Sable, and standing with the fleet if the news lands well.",
+    "facts": {
+      "tharel_trusts": "Tharel trusts the captain.",
+      "saved_tharel": "The captain got Tharel out of the Warm Room ahead of the snatch team.",
+      "tharel_taken_by_quill": "Quill's people took Tharel from the Warm Room.",
+      "announced_navy_survivors": "The fleet was told that the Beacon carries a Navy recall: there are Navy survivors.",
+      "council_told_first": "The council was told about the Beacon's Navy layer before the fleet was.",
+      "kept_the_two_layers": "The captain kept the Beacon's two layers to themself, and Garrick Fenn broke the story.",
+      "two_layers_known": "The captain knows the Beacon has two layers: an old lattice, and a Navy recall on top.",
+      "heard_two_voices": "The captain heard the Beacon's two voices in the Warm Room.",
+      "sable_favor": "Sable owes the captain a favor.",
+      "paid_sable": "The captain paid Sable for the way in."
+    }
   }
 }

@@ -37,11 +37,11 @@
       "choir_chorister and choir_drone in the Long Wire if the captain goes near the trunk lines"
     ],
     "outcomes": [
-      "With the asterion_voice_recording, the captain has proof that the dead are still people, and still changing. It changes minds everywhere, it runs a little longer every time it's played, and it makes Destroy a very different decision. Played for Halm, it sits him down in a corridor.",
-      "Whatever the captain says to 'are we dead?' goes out to nine billion people, after a vote on whether to believe it, and it'll come back later.",
-      "If Garrick Fenn is told his wife is on the line, he goes silent for the first time in his career, then asks to go. If Okonkwo is told what the trunk line is, she stops talking about Asterion in public, and she doesn't stop listening.",
-      "If the silver follows the captain to the Exchange, the Echo loses a district. They say so in a very small voice, with a quorum problem. The operators could be brought out. They'll say no, unless someone relieves them.",
-      "From now on, every time they call the Asterion band, the Cantor knows what they said."
+      { "id": "with_asterion_voice_recording", "text": "With the asterion_voice_recording, the captain has proof that the dead are still people, and still changing. It changes minds everywhere, it runs a little longer every time it's played, and it makes Destroy a very different decision. Played for Halm, it sits him down in a corridor." },
+      { "id": "whatever_captain_says_to_we", "text": "Whatever the captain says to 'are we dead?' goes out to nine billion people, after a vote on whether to believe it, and it'll come back later." },
+      { "id": "garrick_fenn_told_his_wife_line", "text": "If Garrick Fenn is told his wife is on the line, he goes silent for the first time in his career, then asks to go. If Okonkwo is told what the trunk line is, she stops talking about Asterion in public, and she doesn't stop listening." },
+      { "id": "silver_follows_captain_to_exchange", "text": "If the silver follows the captain to the Exchange, the Echo loses a district. They say so in a very small voice, with a quorum problem. The operators could be brought out. They'll say no, unless someone relieves them." },
+      { "id": "from_now", "text": "From now on, every time they call the Asterion band, the Cantor knows what they said." }
     ],
     "rewards": "The asterion_voice_recording, an old_concord_medal from an operator's wall, and the Echo's support at the summit, motion pending."
   }

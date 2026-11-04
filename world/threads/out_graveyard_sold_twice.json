@@ -32,10 +32,10 @@
     ],
     "fights": ["wreck_diver from either crew if the captain picks a side too loudly. scrap_rat in the hauler's lower decks. If the Hunter is disturbed, a choir_drone could stir, and a sealed hatch is the best way to deal with it."],
     "outcomes": [
-      "If the plate comes home and the Hunter stays sealed, the fleet's hulls are in better shape, the crews have been paid and Crane owes the captain, and the captain knows what's sitting in that hold.",
-      "If the Hunter is destroyed, Lt. Tarrow is deeply satisfied, the hummers stop within a week, and some rare knowledge about the Choir is gone for good.",
-      "If the core comes back to the Meridian, the captain gets a choir_core and all the trouble that comes with it. The crew splits over this, and it's possible that something can now hear the ship.",
-      "If the Syndicate or the Hegemony learns of it, Crane's fence is suddenly very thin, and everyone in the Graveyard is about to have a very bad month."
+      { "id": "plate_comes_home_hunter_stays_sealed", "text": "If the plate comes home and the Hunter stays sealed, the fleet's hulls are in better shape, the crews have been paid and Crane owes the captain, and the captain knows what's sitting in that hold." },
+      { "id": "hunter_destroyed", "text": "If the Hunter is destroyed, Lt. Tarrow is deeply satisfied, the hummers stop within a week, and some rare knowledge about the Choir is gone for good." },
+      { "id": "core_comes_back_to_meridian", "text": "If the core comes back to the Meridian, the captain gets a choir_core and all the trouble that comes with it. The crew splits over this, and it's possible that something can now hear the ship." },
+      { "id": "syndicate_hegemony_learns", "text": "If the Syndicate or the Hegemony learns of it, Crane's fence is suddenly very thin, and everyone in the Graveyard is about to have a very bad month." }
     ],
     "rewards": "Enough plate for some hull repair, through change_ship or repair_kit, 150 credits, possibly a choir_core, and Rusk's first small nod of respect."
   }

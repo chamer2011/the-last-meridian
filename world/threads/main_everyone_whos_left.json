@@ -38,10 +38,10 @@
       "quiet_zealot or silent_one if the Quiet's delegate gets there first"
     ],
     "outcomes": [
-      "For each faction won, the captain gains a piece of the ending: Clan hulls and forged hardware, Veshti pilots and Tamsin's pardon, a Guild contract for the relief and its divers, Lumen's empaths, the Unbound if asked properly, the Keepers' Score, Syndicate fuel, Remnant warships, the Order's last adepts, and the Quiet's volunteers.",
-      "If there's an election, the captain wins, loses or refuses to stand. If they lose, Halm is Speaker of a fleet whose captain still has to go there anyway. If they win, they finally have the legitimacy Okonkwo denied them. If they won't stand, some respect it, and others don't.",
-      "If the coalition fails, the factions leave and act alone, and they'll all turn up at the end with their own plan. It's harder, and it's never impossible.",
-      "If Six reads the order and Okonkwo stands there and hears it, her Remnant may break, or she may surprise everyone. If Six is denied, the Unbound go home, and Foundry's location is the next thing to leak."
+      { "id": "each_faction_won", "text": "For each faction won, the captain gains a piece of the ending: Clan hulls and forged hardware, Veshti pilots and Tamsin's pardon, a Guild contract for the relief and its divers, Lumen's empaths, the Unbound if asked properly, the Keepers' Score, Syndicate fuel, Remnant warships, the Order's last adepts, and the Quiet's volunteers." },
+      { "id": "election", "text": "If there's an election, the captain wins, loses or refuses to stand. If they lose, Halm is Speaker of a fleet whose captain still has to go there anyway. If they win, they finally have the legitimacy Okonkwo denied them. If they won't stand, some respect it, and others don't." },
+      { "id": "coalition_fails", "text": "If the coalition fails, the factions leave and act alone, and they'll all turn up at the end with their own plan. It's harder, and it's never impossible." },
+      { "id": "six_reads_order_okonkwo_stands_hears", "text": "If Six reads the order and Okonkwo stands there and hears it, her Remnant may break, or she may surprise everyone. If Six is denied, the Unbound go home, and Foundry's location is the next thing to leak." }
     ],
     "rewards": "Allies, each of them a promise the captain can break. Hesk's hulls if anyone finds them, and an honest drink from Sable."
   }

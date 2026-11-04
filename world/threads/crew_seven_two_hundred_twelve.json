@@ -47,10 +47,10 @@
       "desperate_refugee crowd at the medbay doors after the reading, if it goes badly"
     ],
     "outcomes": [
-      "Read aloud and won: forty-one of the 212 stand up in the gallery, silently, one at a time. The seat passes. Thirty others refuse all treatment from anyone for a month, and not all of them live through it. Seven reads those names to the captain too.",
-      "Read aloud and lost: the fleet learns that machines have had their hands inside them, in the dark, with the doctor's blessing. The Safe Decks campaign gains votes. Aduro offers to step down. The list is a fact now, and can't be unread.",
-      "Kept private: the seat passes or fails on ordinary politics, and the lie goes on. Seven keeps operating. They add a name every week.",
-      "Aduro confesses: the doctor takes the blame, and the fleet's trust in medicine takes a hit that no one can afford, but Seven's name is spoken aloud in a good way for the first time."
+      { "id": "read_aloud_won", "text": "Read aloud and won: forty-one of the 212 stand up in the gallery, silently, one at a time. The seat passes. Thirty others refuse all treatment from anyone for a month, and not all of them live through it. Seven reads those names to the captain too." },
+      { "id": "read_aloud_lost", "text": "Read aloud and lost: the fleet learns that machines have had their hands inside them, in the dark, with the doctor's blessing. The Safe Decks campaign gains votes. Aduro offers to step down. The list is a fact now, and can't be unread." },
+      { "id": "kept_private", "text": "Kept private: the seat passes or fails on ordinary politics, and the lie goes on. Seven keeps operating. They add a name every week." },
+      { "id": "aduro_confesses", "text": "Aduro confesses: the doctor takes the blame, and the fleet's trust in medicine takes a hit that no one can afford, but Seven's name is spoken aloud in a good way for the first time." }
     ],
     "rewards": "Seven's loyalty, goodwill among the fleet's synthetics, and a surgeon_lens from Aduro."
   }

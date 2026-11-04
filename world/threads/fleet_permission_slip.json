@@ -46,11 +46,11 @@
       "choir_drone scouts if the channel stays open too long and something follows it"
     ],
     "outcomes": [
-      "Signed: the letters come through, thousands of words, every one of them true to the people who wrote them. Fourteen children get what no one else in the fleet has got. Within two days a Choir scout is in the next system. It may be a coincidence.",
-      "Radio destroyed: the kids stop talking to anybody for a while. Ife brings back the slip, unsigned, and puts it on the captain's desk. Every so often it's there again.",
-      "Filter built: letters come in and nothing goes out, in theory. Seven and Aduro read every word. It's the best window on the song anyone has had, and the kids aren't told that.",
-      "Used: with the kids' unknowing help, someone asks the song questions. The answers are real. The captain should have to look at Ife every time they use it.",
-      "Whatever happens, what the captain says to Ife's second question gets around. She repeats it to everyone she meets, and it's on Garrick Fenn's channel by the end of the week."
+      { "id": "signed", "text": "Signed: the letters come through, thousands of words, every one of them true to the people who wrote them. Fourteen children get what no one else in the fleet has got. Within two days a Choir scout is in the next system. It may be a coincidence." },
+      { "id": "radio_destroyed", "text": "Radio destroyed: the kids stop talking to anybody for a while. Ife brings back the slip, unsigned, and puts it on the captain's desk. Every so often it's there again." },
+      { "id": "filter_built", "text": "Filter built: letters come in and nothing goes out, in theory. Seven and Aduro read every word. It's the best window on the song anyone has had, and the kids aren't told that." },
+      { "id": "used", "text": "Used: with the kids' unknowing help, someone asks the song questions. The answers are real. The captain should have to look at Ife every time they use it." },
+      { "id": "whatever_happens", "text": "Whatever happens, what the captain says to Ife's second question gets around. She repeats it to everyone she meets, and it's on Garrick Fenn's channel by the end of the week." }
     ],
     "rewards": "A crayon drawing on the captain's wall, a clue about what the song holds and why it can't hold on, and the respect or the fury of every parent on the Wintermere."
   }

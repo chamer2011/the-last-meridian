@@ -37,10 +37,10 @@
       "void_stalker at the very edge of the lamp's light"
     ],
     "outcomes": [
-      "If the captain looks and comes back, they have a choice the others don't, if they want it: the fourth ending opens. Everybody who cares about them will try to talk them out of it. Orsolya won't.",
-      "If someone doesn't come back, Tamsin or a crew member stays out there, facing inward. It's a real loss, and a kind of marker. The line comes back slack.",
-      "Ashael's light: he's carrying something new. It might be hope, and it might be the first sign he's slipping. Lumen's people will want him home.",
-      "An older ship's log shows someone tried talking to it once, and then they all sat down, or so the log says. How do you know? Nobody's sure whether it was an attempt or just an accident, and it'll come up in the last argument."
+      { "id": "captain_looks_comes_back", "text": "If the captain looks and comes back, they have a choice the others don't, if they want it: the fourth ending opens. Everybody who cares about them will try to talk them out of it. Orsolya won't." },
+      { "id": "doesnt_come_back", "text": "If someone doesn't come back, Tamsin or a crew member stays out there, facing inward. It's a real loss, and a kind of marker. The line comes back slack." },
+      { "id": "ashaels_light", "text": "Ashael's light: he's carrying something new. It might be hope, and it might be the first sign he's slipping. Lumen's people will want him home." },
+      { "id": "older_ships_log_shows_tried", "text": "An older ship's log shows someone tried talking to it once, and then they all sat down, or so the log says. How do you know? Nobody's sure whether it was an attempt or just an accident, and it'll come up in the last argument." }
     ],
     "rewards": "Nothing. Perhaps the hears_the_song trait."
   }

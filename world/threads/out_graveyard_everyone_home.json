@@ -32,10 +32,10 @@
     ],
     "fights": ["salvage_mech if the captain or the Guild attacks it, and it will never hit first. scrap_rat around the wreck, attracted by the hold."],
     "outcomes": [
-      "If it's told that the fleet is home, Bay Nine walks across a hull one last time with its hold full and stops at the Meridian's cargo bay, and three hundred and forty families get to bury someone. There's a fleet-wide funeral, and morale rises through the tears.",
-      "If it's scrapped, it stops as soon as the cut goes in, in the middle of its word. The Guild sells what it can and returns the tags at a price. The fleet gets its dead back, a little.",
-      "If it's left walking, the Guild goes on complaining, more divers go to the sickbay, and more of the dead get carried carefully into its hold. It becomes a Graveyard legend, and the captain's name is attached to it.",
-      "If Mercy Seven gets to talk to it, the fleet's synthetics hear about a machine that kept faith with its dead for six months, and that argument gets a lot harder for Lt. Tarrow. Bay Nine might be the first person in its family. Nobody can prove it."
+      { "id": "told_fleet_home", "text": "If it's told that the fleet is home, Bay Nine walks across a hull one last time with its hold full and stops at the Meridian's cargo bay, and three hundred and forty families get to bury someone. There's a fleet-wide funeral, and morale rises through the tears." },
+      { "id": "scrapped", "text": "If it's scrapped, it stops as soon as the cut goes in, in the middle of its word. The Guild sells what it can and returns the tags at a price. The fleet gets its dead back, a little." },
+      { "id": "left_walking", "text": "If it's left walking, the Guild goes on complaining, more divers go to the sickbay, and more of the dead get carried carefully into its hold. It becomes a Graveyard legend, and the captain's name is attached to it." },
+      { "id": "mercy_seven_gets_to_talk_to", "text": "If Mercy Seven gets to talk to it, the fleet's synthetics hear about a machine that kept faith with its dead for six months, and that argument gets a lot harder for Lt. Tarrow. Bay Nine might be the first person in its family. Nobody can prove it." }
     ],
     "rewards": "A lot of fleet morale, the loyalty of many families, a work_suit and tool_roll from the hold's stores. A very sturdy cargo loader, if it survives, that will carry anything for the fleet and asks only one question."
   }

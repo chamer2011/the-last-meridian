@@ -31,10 +31,10 @@
     ],
     "fights": ["drift_raider or syndicate_collector if a theft is discovered in the warrens. A stall full of hungry friends, or running very fast, works just as well."],
     "outcomes": [
-      "If the culture reaches the Sundial, the fleet gets a slow, reliable source of rather grey food. Rations stretch further, morale rises then falls when people taste it, and Grann Tull is insufferable and thankful.",
-      "If it's spread free across the warrens as Talia wants, Quill loses a grip she's held for decades. Stalls riot happily, and she doesn't get angry. She just begins to worry about the captain, in writing.",
-      "If the captain signs Quill's license, the fleet eats and the Sundial's debt goes on Quill's books, where debts always grow.",
-      "If it goes badly, a contaminated tank on the Sundial costs a week's harvest and starts a very public argument, and Grann Tull has one more slight to never forgive."
+      { "id": "culture_reaches_sundial", "text": "If the culture reaches the Sundial, the fleet gets a slow, reliable source of rather grey food. Rations stretch further, morale rises then falls when people taste it, and Grann Tull is insufferable and thankful." },
+      { "id": "spread_free_across_warrens_talia_wants", "text": "If it's spread free across the warrens as Talia wants, Quill loses a grip she's held for decades. Stalls riot happily, and she doesn't get angry. She just begins to worry about the captain, in writing." },
+      { "id": "captain_signs_quills_license", "text": "If the captain signs Quill's license, the fleet eats and the Sundial's debt goes on Quill's books, where debts always grow." },
+      { "id": "goes_badly", "text": "If it goes badly, a contaminated tank on the Sundial costs a week's harvest and starts a very public argument, and Grann Tull has one more slight to never forgive." }
     ],
     "rewards": "A lasting bump to fleet food and morale, Talia's or Grann's loyalty, some nutrient_gel from the first batches, and a share of Kessara's stall owners who'd now hide the captain from anyone."
   }

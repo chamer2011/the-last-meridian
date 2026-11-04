@@ -32,10 +32,10 @@
     ],
     "fights": ["scrap_rat in the lower decks and wreck_diver if a crew of claim-jumpers arrives. Filing a quick claim with Factor Crane, or sharing the salvage, is as good as a gun."],
     "outcomes": [
-      "If the captain tells the fleet, the Halloway's families are cleared and honored. The fleet's belief that the Meridian can't be killed takes a hit, but some people love the real story more. Morale falls, then slowly rises.",
-      "If the captain keeps it quiet and clears the families some other way, they're helped and they never learn why, and Marrow knows the captain made that choice. It's a very heavy secret if it ever comes out.",
-      "If it's kept entirely hidden, nothing changes. Ottilie Brandvold goes on standing in that queue, and Garrick Fenn goes on digging.",
-      "If the signature is traced, the captain has something real to say to Admiral Okonkwo-Reyes when they meet: she's the one who decided which Meridian lived."
+      { "id": "captain_tells_fleet", "text": "If the captain tells the fleet, the Halloway's families are cleared and honored. The fleet's belief that the Meridian can't be killed takes a hit, but some people love the real story more. Morale falls, then slowly rises." },
+      { "id": "captain_keeps_quiet_clears_families", "text": "If the captain keeps it quiet and clears the families some other way, they're helped and they never learn why, and Marrow knows the captain made that choice. It's a very heavy secret if it ever comes out." },
+      { "id": "kept_entirely_hidden", "text": "If it's kept entirely hidden, nothing changes. Ottilie Brandvold goes on standing in that queue, and Garrick Fenn goes on digging." },
+      { "id": "signature_traced", "text": "If the signature is traced, the captain has something real to say to Admiral Okonkwo-Reyes when they meet: she's the one who decided which Meridian lived." }
     ],
     "rewards": "An old_concord_medal from Captain Eide's cabin, a data_chip with the crew's names and the sealed order, salvage from the Halloway's stores, such as an emergency_patch or two, and the lasting loyalty of a hundred and eighty families."
   }

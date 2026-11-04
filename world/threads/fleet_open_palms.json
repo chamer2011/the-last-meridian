@@ -47,10 +47,10 @@
       "desperate_refugee crowd when a counter refuses the wrong family"
     ],
     "outcomes": [
-      "Banned: the bandages vanish from view, and the knives just go indoors. Some people take it as proof the captain is one of them, and ask to see their palm.",
-      "The captain cuts: a stirring moment, on Garrick Fenn's channel within the hour, and the fleet's commander has now endorsed the test. Mercy Seven asks to see the captain, and gives them a percentage.",
-      "A better test: an honest one takes weeks to roll out. It finds nothing for a month, then finds something. It's now the fleet's identity check, and who holds the results is a new problem.",
-      "Left alone: fourteen ships becomes thirty. Synthetics and augmented people stop showing themselves on the lower decks. Tarrow's list gets a lot less necessary, and Tarrow notices."
+      { "id": "banned", "text": "Banned: the bandages vanish from view, and the knives just go indoors. Some people take it as proof the captain is one of them, and ask to see their palm." },
+      { "id": "captain_cuts", "text": "The captain cuts: a stirring moment, on Garrick Fenn's channel within the hour, and the fleet's commander has now endorsed the test. Mercy Seven asks to see the captain, and gives them a percentage." },
+      { "id": "better_test", "text": "A better test: an honest one takes weeks to roll out. It finds nothing for a month, then finds something. It's now the fleet's identity check, and who holds the results is a new problem." },
+      { "id": "left_alone", "text": "Left alone: fourteen ships becomes thirty. Synthetics and augmented people stop showing themselves on the lower decks. Tarrow's list gets a lot less necessary, and Tarrow notices." }
     ],
     "rewards": "Aduro's thanks for every hand saved. Standing with whichever part of the fleet the captain sided with. A scar, if the captain cut, that Hesper's people will salute."
   }

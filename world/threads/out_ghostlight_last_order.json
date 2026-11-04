@@ -32,10 +32,10 @@
     ],
     "fights": ["remnant_commando if her most loyal officers try to force the jump, and remnant_marine at the wardroom door. A clear verdict and a respected officer saying the words stands most of them down."],
     "outcomes": [
-      "If she's relieved, the Remnant comes under Dorn, and most likely into the fleet. Three thousand people live, and they'll never entirely forgive anyone for it. She's confined to quarters, with her comm, and whether anyone takes it from her is up to the captain.",
-      "If she goes anyway, with whoever will follow, a good part of the Remnant dies at Asterion, and what reaches the wires might come back on them in very familiar voices. deep_voices_on_the_wire may have new callers.",
-      "If the captain goes with her and turns the assault into something else, such as a raid for what's on the wires, it's the most dangerous thing the fleet has ever done, and it should cost terribly and teach a great deal.",
-      "If she's reached, and she hands over the comm herself, she gives the captain her command in the proper form. It's the first time she has ever done something without being certain, and she asks to be assigned to Anselm's Mercy, as an orderly."
+      { "id": "shes_relieved", "text": "If she's relieved, the Remnant comes under Dorn, and most likely into the fleet. Three thousand people live, and they'll never entirely forgive anyone for it. She's confined to quarters, with her comm, and whether anyone takes it from her is up to the captain." },
+      { "id": "goes_anyway", "text": "If she goes anyway, with whoever will follow, a good part of the Remnant dies at Asterion, and what reaches the wires might come back on them in very familiar voices. deep_voices_on_the_wire may have new callers." },
+      { "id": "captain_goes_with_her_turns_assault", "text": "If the captain goes with her and turns the assault into something else, such as a raid for what's on the wires, it's the most dangerous thing the fleet has ever done, and it should cost terribly and teach a great deal." },
+      { "id": "shes_reached", "text": "If she's reached, and she hands over the comm herself, she gives the captain her command in the proper form. It's the first time she has ever done something without being certain, and she asks to be assigned to Anselm's Mercy, as an orderly." }
     ],
     "rewards": "Six warships or their wreckage, Admiral's rank in law if she hands it over, remnant_plate, an asterion_voice_recording that nobody wants, and an end to the question of who commands the Concord's last ships."
   }

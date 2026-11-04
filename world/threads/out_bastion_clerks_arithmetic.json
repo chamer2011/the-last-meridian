@@ -32,11 +32,11 @@
     ],
     "fights": ["customs_marine at the gate if the forged passes fail. Handing over paperwork and walking back to the queue is always an option, and Severa will try again."],
     "outcomes": [
-      "If Severa reaches a thousand and escapes, Halloran faces the inspector alone, and the Line gets a much faster commandant unless the captain does something about it. Severa comes aboard, starts counting the fleet, and has nothing to do with her hands.",
-      "If the captain protects Halloran and Severa is taken, she won't name anyone, ever. The Line stays slow, for now, and the shorter sheet stays with the captain.",
-      "If Aran Veldt is given justice first, his contract and those of others on the short list can be bought out, and the whole fleet learns what mercy costs when the quota doesn't change. It's not a popular lesson.",
-      "If the captain abandons the matter, Severa is arrested on Thursday. The list of thirteen arrives on the Meridian the next week, by post, with a note saying she thought it should go to someone.",
-      "If Kit and Severa ever meet, it's one of the great awkward conversations of the age, and the fleet gains the only pair of forgers who've ever been ashamed in the same direction."
+      { "id": "severa_reaches_thousand_escapes", "text": "If Severa reaches a thousand and escapes, Halloran faces the inspector alone, and the Line gets a much faster commandant unless the captain does something about it. Severa comes aboard, starts counting the fleet, and has nothing to do with her hands." },
+      { "id": "captain_protects_halloran_severa_taken", "text": "If the captain protects Halloran and Severa is taken, she won't name anyone, ever. The Line stays slow, for now, and the shorter sheet stays with the captain." },
+      { "id": "aran_veldt_given_justice_first", "text": "If Aran Veldt is given justice first, his contract and those of others on the short list can be bought out, and the whole fleet learns what mercy costs when the quota doesn't change. It's not a popular lesson." },
+      { "id": "captain_abandons_matter", "text": "If the captain abandons the matter, Severa is arrested on Thursday. The list of thirteen arrives on the Meridian the next week, by post, with a note saying she thought it should go to someone." },
+      { "id": "kit_severa_ever_meet", "text": "If Kit and Severa ever meet, it's one of the great awkward conversations of the age, and the fleet gains the only pair of forgers who've ever been ashamed in the same direction." }
     ],
     "rewards": "The loyalty of Severa, Halloran or Aran Veldt, depending on what the captain does. Forged_papers from Severa's own drawer, copies of her transfers, which matter a great deal later, and fleet morale when the last thirteen walk aboard."
   }

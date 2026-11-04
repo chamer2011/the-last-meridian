@@ -32,10 +32,10 @@
     ],
     "fights": [],
     "outcomes": [
-      "If the captain buys the grain, the fleet eats well for the first time in months. Morale rises, and everyone's food now depends on whatever is under this colony.",
-      "If the captain tells Dray what they suspect about the soil, she goes white and silent, and it ends the easy trade. It also starts the next thread with her trust.",
-      "If the captain takes seed stock to the Sundial, it won't grow as well there. Grann Tull wants to know why, and she's very good at finding out, and she knows these seed lines better than anyone, because thirty-four years ago they were hers.",
-      "If the captain refuses the grain on suspicion alone, the fleet goes on starving, Dray thinks better of them and sells to someone else, and some of those someones are worse."
+      { "id": "captain_buys_grain", "text": "If the captain buys the grain, the fleet eats well for the first time in months. Morale rises, and everyone's food now depends on whatever is under this colony." },
+      { "id": "captain_tells_dray_what_suspect_about", "text": "If the captain tells Dray what they suspect about the soil, she goes white and silent, and it ends the easy trade. It also starts the next thread with her trust." },
+      { "id": "captain_takes_seed_stock_to_sundial", "text": "If the captain takes seed stock to the Sundial, it won't grow as well there. Grann Tull wants to know why, and she's very good at finding out, and she knows these seed lines better than anyone, because thirty-four years ago they were hers." },
+      { "id": "captain_refuses_grain_suspicion_alone", "text": "If the captain refuses the grain on suspicion alone, the fleet goes on starving, Dray thinks better of them and sells to someone else, and some of those someones are worse." }
     ],
     "rewards": "Enough grain to lift fleet morale and ease the food shortage for a few weeks, ration_pack and nutrient_gel in plenty, and a shape drawn by a child, which anyone who knows the Beacon's lattice would very much like to see."
   }

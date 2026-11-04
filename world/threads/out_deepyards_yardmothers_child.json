@@ -31,10 +31,10 @@
     ],
     "fights": [],
     "outcomes": [
-      "If two hundred children come to the rings, they're warm and fed and loved, with new names, and the Meridian gets a real refit: more hull, better engines and perhaps a second gun. Some of them write. Some of the letters are signed with the new names. The Children's Offer at Vantor may be pulling from the same list.",
-      "If the captain talks her down, say to volunteers, or to families who come together, or to a mixed settlement of the fleet in the empty rings, then the Long Families change for good. It's a hopeful outcome, and most of the Family will hate it.",
-      "If the captain breaks the ground rule by landing on Tessen or anywhere else, Ilkin hears about it within a day. Being disowned is a formal process, with a very cold letter, and the refit stops wherever it is.",
-      "If the captain refuses everything, the fleet goes on with its battered flagship, and Ilkin's offer stays open, with a slightly raised eyebrow, for when things get worse. Sennet, won over or not, stays a very courteous problem."
+      { "id": "two_hundred_children_come_to_rings", "text": "If two hundred children come to the rings, they're warm and fed and loved, with new names, and the Meridian gets a real refit: more hull, better engines and perhaps a second gun. Some of them write. Some of the letters are signed with the new names. The Children's Offer at Vantor may be pulling from the same list." },
+      { "id": "captain_talks_her_down", "text": "If the captain talks her down, say to volunteers, or to families who come together, or to a mixed settlement of the fleet in the empty rings, then the Long Families change for good. It's a hopeful outcome, and most of the Family will hate it." },
+      { "id": "captain_breaks_ground_rule_by_landing", "text": "If the captain breaks the ground rule by landing on Tessen or anywhere else, Ilkin hears about it within a day. Being disowned is a formal process, with a very cold letter, and the refit stops wherever it is." },
+      { "id": "captain_refuses_everything", "text": "If the captain refuses everything, the fleet goes on with its battered flagship, and Ilkin's offer stays open, with a slightly raised eyebrow, for when things get worse. Sennet, won over or not, stays a very courteous problem." }
     ],
     "rewards": "A real hull and engine refit through change_ship, veshti_skin as a family gift, standing with families, and a mother, which is not nothing, and which comes with opinions."
   }

@@ -44,10 +44,10 @@
     ],
     "fights": [],
     "outcomes": [
-      "Mostly true: fleet standing rises and stays up, and every enemy now has the numbers. People stop the captain in corridors to argue, which is new and healthy.",
-      "Mostly lies: the fleet feels better for about three weeks. Then one answer comes apart on air, and Fenn reads the whole book back, slowly.",
-      "Empty chair: he really does it. An hour of an empty chair and an open microphone, and thousands listen. It's the most damaging thing anyone has ever broadcast about the captain, and it has no words in it.",
-      "The fourth question: if the last caller was what it might be, thirty thousand people have now heard the Choir speak gently to their captain. Whatever the captain said back is the most-quoted sentence in the fleet. The Quiet and Tarrow both take it as proof."
+      { "id": "mostly_true", "text": "Mostly true: fleet standing rises and stays up, and every enemy now has the numbers. People stop the captain in corridors to argue, which is new and healthy." },
+      { "id": "mostly_lies", "text": "Mostly lies: the fleet feels better for about three weeks. Then one answer comes apart on air, and Fenn reads the whole book back, slowly." },
+      { "id": "empty_chair", "text": "Empty chair: he really does it. An hour of an empty chair and an open microphone, and thousands listen. It's the most damaging thing anyone has ever broadcast about the captain, and it has no words in it." },
+      { "id": "fourth_question", "text": "The fourth question: if the last caller was what it might be, thirty thousand people have now heard the Choir speak gently to their captain. Whatever the captain said back is the most-quoted sentence in the fleet. The Quiet and Tarrow both take it as proof." }
     ],
     "rewards": "Standing with the fleet, up or down. Fenn's respect, which he shows by asking harder questions next time."
   }

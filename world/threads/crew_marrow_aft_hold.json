@@ -47,10 +47,10 @@
       "security_drone if Tarrow's automated sweep reaches the hold first"
     ],
     "outcomes": [
-      "If the captain backs Marrow, he'd walk out of an airlock for them. Tarrow stops bringing the captain things, because she now knows which way they lean. The silver is still in the hold.",
-      "If the captain enforces the order, Marrow obeys and stops swearing, which frightens the whole engine crew. Performance drops to exactly what's required. The three go to Tarrow's custody.",
-      "If they go public under Seven's sponsorship, there's a firestorm in council and a line of people at the hold, some to shout and some to ask whether Orchard knew their children.",
-      "If the Warden is caged and studied, the fleet gets its first real data on Choir contamination, and in time the Warden gets their voice back. See crew_tarrow_undelivered."
+      { "id": "captain_backs_marrow", "text": "If the captain backs Marrow, he'd walk out of an airlock for them. Tarrow stops bringing the captain things, because she now knows which way they lean. The silver is still in the hold." },
+      { "id": "captain_enforces_order", "text": "If the captain enforces the order, Marrow obeys and stops swearing, which frightens the whole engine crew. Performance drops to exactly what's required. The three go to Tarrow's custody." },
+      { "id": "go_public_under_sevens_sponsorship", "text": "If they go public under Seven's sponsorship, there's a firestorm in council and a line of people at the hold, some to shout and some to ask whether Orchard knew their children." },
+      { "id": "warden_caged_studied", "text": "If the Warden is caged and studied, the fleet gets its first real data on Choir contamination, and in time the Warden gets their voice back. See crew_tarrow_undelivered." }
     ],
     "rewards": "Marrow's loyalty, a tool_roll he's been meaning to give someone, and Bale, who'll tidy anything you let them."
   }

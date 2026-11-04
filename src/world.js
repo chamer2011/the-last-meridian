@@ -37,6 +37,12 @@ export const WORLD_ENEMIES = readFolder(path.join(worldDir, "enemies"));
 export const WORLD_PLACES = readFolder(path.join(worldDir, "places"));
 export const WORLD_THREADS = readFolder(path.join(worldDir, "threads"));
 export const WORLD_MAPS = readFolder(path.join(worldDir, "maps"));
+
+// A story's endings by name. An outcome written as a plain string gets its number for a name.
+export const endingsOf = (thread) => (thread?.gm?.outcomes ?? []).map((outcome, i) => (typeof outcome === "string" ? { id: `ending_${i + 1}`, text: outcome } : outcome));
+
+// The plain words a story's notes give a fact, by its name: the record uses them for a fact a scene leaves without words.
+export const FACT_LINES = Object.fromEntries(Object.values(WORLD_THREADS).flatMap((thread) => Object.entries(thread.gm?.facts ?? {})));
 export const WORLD_LIFE = readFolder(path.join(worldDir, "life"));
 // The written scenes aren't here: src/scenes.js reads them whenever the story needs them, so a change shows up without a restart.
 export const WORLD_ITEMS = readFile("items.json");

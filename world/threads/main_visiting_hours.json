@@ -37,12 +37,31 @@
       "desperate_refugee if a frightened crowd comes for Pavel"
     ],
     "outcomes": [
-      "If Pavel is told the truth kindly, he's devastated, he's still the kindest man on the ship, and he gets to meet Mila. Much later he's the living proof that being copied doesn't have to kill, and his perfect pitch is exactly what Hollis-Nine has been waiting for.",
-      "If a crowd or Tarrow gets to Pavel first, he's put out of a lock or locked away. That proof is gone or hidden, the tune goes on without him, and Aduro doesn't forgive it.",
-      "If Tarrow gets a full order, her list goes live (crew_tarrow_standing_order): Synthetics are confined, medical and engineering capacity drop by a third, and Seven and Marrow stop trusting the bridge. If she gets a narrow one, she takes it with exact politeness and a note for the file.",
-      "If the Mimic is destroyed the captain gets a choir_core, which holds Navy procedure and a looping query. If it's held alive it pleads to see its family and Tarrow asks why the captain hesitated. If it escapes, it goes to the Sundial.",
-      "If Wen's transfers come out, the captain can shut them down, which leaves the dying with no mercy left and cuts off the Quiet's boats, or sign off on them and own it. Wen's only comment: 'Next.'"
+      { "id": "pavel_told_truth_kindly", "text": "If Pavel is told the truth kindly, he's devastated, he's still the kindest man on the ship, and he gets to meet Mila. Much later he's the living proof that being copied doesn't have to kill, and his perfect pitch is exactly what Hollis-Nine has been waiting for." },
+      { "id": "crowd_tarrow_gets_to_pavel_first", "text": "If a crowd or Tarrow gets to Pavel first, he's put out of a lock or locked away. That proof is gone or hidden, the tune goes on without him, and Aduro doesn't forgive it." },
+      { "id": "tarrow_gets_full_order", "text": "If Tarrow gets a full order, her list goes live (crew_tarrow_standing_order): Synthetics are confined, medical and engineering capacity drop by a third, and Seven and Marrow stop trusting the bridge. If she gets a narrow one, she takes it with exact politeness and a note for the file." },
+      { "id": "mimic_destroyed_captain_gets_choir_core", "text": "If the Mimic is destroyed the captain gets a choir_core, which holds Navy procedure and a looping query. If it's held alive it pleads to see its family and Tarrow asks why the captain hesitated. If it escapes, it goes to the Sundial." },
+      { "id": "wens_transfers_come_out", "text": "If Wen's transfers come out, the captain can shut them down, which leaves the dying with no mercy left and cuts off the Quiet's boats, or sign off on them and own it. Wen's only comment: 'Next.'" }
     ],
-    "rewards": "A choir_core if it's taken, a surgeon_lens from Wen's private stores, and Aduro's or Tarrow's respect, though probably not both."
+    "rewards": "A choir_core if it's taken, a surgeon_lens from Wen's private stores, and Aduro's or Tarrow's respect, though probably not both.",
+    "facts": {
+      "mimic_destroyed": "The Mimic that wore Ilse's face is dead, and the fleet has its core.",
+      "mimic_held": "The Mimic is locked on the Bell Stair, alive, and asking for her family.",
+      "mimic_escaped": "The Mimic got away, and the only place she ever asked about is the Sundial.",
+      "let_her_go": "The captain let the visitor go.",
+      "pavel_taken": "The Mimic took Pavel with her.",
+      "pavel_hidden": "Pavel is hidden in the Still Ward.",
+      "pavel_told": "Pavel was told what came to visit him.",
+      "pavel_untold": "Pavel was never told what came to visit him.",
+      "pavel_met_mila": "Pavel met Mila.",
+      "tarrow_list_live": "Lieutenant Tarrow's standing order is live: synthetics are to be reported.",
+      "tarrow_narrow": "Lieutenant Tarrow's order is narrow: the ward only.",
+      "tarrow_refused": "The captain refused Lieutenant Tarrow her order.",
+      "transfers_shut": "Dr. Wen's transfers were shut down.",
+      "transfers_owned": "The captain owned Dr. Wen's transfers in public.",
+      "transfers_left": "Dr. Wen's transfers were left to run.",
+      "seven_told": "Seven was told about the visitor.",
+      "knows_transfers": "The captain knows about Dr. Wen's transfers."
+    }
   }
 }

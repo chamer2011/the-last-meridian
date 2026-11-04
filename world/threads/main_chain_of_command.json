@@ -36,11 +36,23 @@
       "choir_mimic in Navy blue, if someone comes looking for the Commander"
     ],
     "outcomes": [
-      "If Voss is arrested, she stays aboard in the brig, the fleet calms and the bridge is weaker. She'll still go to the Tarn if the captain signs for it. If she's handed to Okonkwo, a rescue or a deal is the next job.",
-      "If the captain stands by her without proof, Tarrow may resign or act alone, the council calls the captain compromised, and Halm's vote gets a lot closer. But Voss would walk into fire for them for the rest of the story.",
-      "If she's allowed to leave, or goes on her own, she takes a small ship to find the Tarn by herself, which is a job and a chase, and she finally says 'Captain' as if she's finished deciding.",
-      "Whatever happens, faith in the Beacon cracks. Ships leave for Bastion and the Quiet gain. The one thing left to do is go and see the Tarn. Rusk's map matters now."
+      { "id": "voss_arrested", "text": "If Voss is arrested, she stays aboard in the brig, the fleet calms and the bridge is weaker. She'll still go to the Tarn if the captain signs for it. If she's handed to Okonkwo, a rescue or a deal is the next job." },
+      { "id": "captain_stands_by_her_without_proof", "text": "If the captain stands by her without proof, Tarrow may resign or act alone, the council calls the captain compromised, and Halm's vote gets a lot closer. But Voss would walk into fire for them for the rest of the story." },
+      { "id": "shes_allowed_to_leave", "text": "If she's allowed to leave, or goes on her own, she takes a small ship to find the Tarn by herself, which is a job and a chase, and she finally says 'Captain' as if she's finished deciding." },
+      { "id": "whatever_happens", "text": "Whatever happens, faith in the Beacon cracks. Ships leave for Bastion and the Quiet gain. The one thing left to do is go and see the Tarn. Rusk's map matters now." }
     ],
-    "rewards": "Nothing you can hold. Voss's loyalty or Tarrow's respect, and the first honest conversation anyone on this bridge has had in six months."
+    "rewards": "Nothing you can hold. Voss's loyalty or Tarrow's respect, and the first honest conversation anyone on this bridge has had in six months.",
+    "facts": {
+      "tarrow_resigned": "Lieutenant Tarrow resigned over Commander Voss.",
+      "voss_handed_to_okonkwo": "Commander Voss was handed to Okonkwo.",
+      "tarn_story_out": "The fleet knows the Navy voice is CFS Tarn, Commander Voss's old ship."
+    },
+    "reacts": [
+      { "to": "ended main_two_weeks_of_fuel take_corvanes_fuel", "then": "The fleet runs on Corvane's fuel, with his transponders aboard, so when Halm calls his vote to accept Corvane's terms, half the room thinks it's already done." },
+      { "to": "ended main_two_weeks_of_fuel raid_depot", "then": "The fleet has been at war with the Syndicate since the depot, so a trip to Sable for the Tarn's movements is a trip into enemy ground." },
+      { "to": "ended main_the_old_scholar quills_people_get_him", "then": "Tharel is in Quill's hands, so nobody aboard can read the Navy layer for the council, and Voss's case is heard without him." },
+      { "to": "flag told_the_fleet_truth", "then": "The captain told the council the whole truth about the Beacon, so the crew's first question when this gets out is why Voss didn't tell hers." },
+      { "to": "flag said_dont_know", "then": "The captain told the council they don't know what the Beacon is, so Voss's silence looks like the captain's, and Halm says so." }
+    ]
   }
 }

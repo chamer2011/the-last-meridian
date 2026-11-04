@@ -44,10 +44,10 @@
       "desperate_refugee crowd, with a mutineer or two at the front, if they storm the brig"
     ],
     "outcomes": [
-      "Acquitted by the crowd: she goes free to cheers. The next frightened person has a precedent, and within a month somebody else is dead in a bunk.",
-      "Convicted, with a sentence that fits: service on Anselm's Mercy, say, and raising the children. The fleet gets its first real judgment, and the captain has made law out of nothing.",
-      "The name comes out: a census is demanded. People living under dead names, thousands of them, start to vanish into the lower decks. Some of them are on the captain's crew, and some are very good at their jobs.",
-      "The airlock: the crowd wins. Concord law dies on the Bounty's deck, the children watch, and Aune doesn't say a word. It doesn't have to be the end of the captain, but it's the end of something."
+      { "id": "acquitted_by_crowd", "text": "Acquitted by the crowd: she goes free to cheers. The next frightened person has a precedent, and within a month somebody else is dead in a bunk." },
+      { "id": "convicted_with_sentence_fits", "text": "Convicted, with a sentence that fits: service on Anselm's Mercy, say, and raising the children. The fleet gets its first real judgment, and the captain has made law out of nothing." },
+      { "id": "name_comes_out", "text": "The name comes out: a census is demanded. People living under dead names, thousands of them, start to vanish into the lower decks. Some of them are on the captain's crew, and some are very good at their jobs." },
+      { "id": "airlock", "text": "The airlock: the crowd wins. Concord law dies on the Bounty's deck, the children watch, and Aune doesn't say a word. It doesn't have to be the end of the captain, but it's the end of something." }
     ],
     "rewards": "The fleet's respect for the law, if there is any. A precedent that shapes every later trial. Mira Hollander's drawing, which she gives to the captain without comment."
   }

@@ -47,10 +47,10 @@
       "customs_marine squad if Moor's people are fired on, or someone tries to seize her datapads"
     ],
     "outcomes": [
-      "Everyone off, nobody signed: the fleet did this by itself. It's the proudest moment since the Fall, and it burned a week of fuel. Moor thanks everyone, leaves a bag of sweets on the dock, and knows where the fleet is.",
-      "Some signed: a few hundred go with Moor, and they believe they made the right choice. They may be right. Their names are on a list at Bastion Nine, and the fleet is short a lot of people it liked.",
-      "All signed: the easy way, and nobody died. Moor thanks the captain on an open channel. Eleven hundred people are in Hegemony service by next week, and Speaker Halm would like to know what, exactly, is the argument against doing this for everyone.",
-      "The coil comes out: if Garrick Fenn gets the form, the next day's broadcast is one page long. The captain signed what they were given, and so has everyone. It's a fair question, and it doesn't stop being asked."
+      { "id": "everyone_off_nobody_signed", "text": "Everyone off, nobody signed: the fleet did this by itself. It's the proudest moment since the Fall, and it burned a week of fuel. Moor thanks everyone, leaves a bag of sweets on the dock, and knows where the fleet is." },
+      { "id": "some_signed", "text": "Some signed: a few hundred go with Moor, and they believe they made the right choice. They may be right. Their names are on a list at Bastion Nine, and the fleet is short a lot of people it liked." },
+      { "id": "all_signed", "text": "All signed: the easy way, and nobody died. Moor thanks the captain on an open channel. Eleven hundred people are in Hegemony service by next week, and Speaker Halm would like to know what, exactly, is the argument against doing this for everyone." },
+      { "id": "coil_comes_out", "text": "The coil comes out: if Garrick Fenn gets the form, the next day's broadcast is one page long. The captain signed what they were given, and so has everyone. It's a fair question, and it doesn't stop being asked." }
     ],
     "rewards": "Standing with the fleet, which may jump a long way up. Moor's card, with a single question written on the back. Deep gratitude from anyone who came off that ship."
   }

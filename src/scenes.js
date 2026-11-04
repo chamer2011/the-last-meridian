@@ -13,10 +13,11 @@ import { startChoiceCheck } from "./checks.js";
 import { worldDir } from "./paths.js";
 import { DIFFICULTY, attr, maxHp, skillRank } from "./rules.js";
 import { conditionHolds, parseCondition, parseSceneText } from "./scene-text.js";
-import { clearFact, recordFact } from "./record.js";
-import { noteThreadStarted } from "./story-library.js";
+import { clearFact, endStory, recordFact } from "./record.js";
+import { noteThreadStarted, notesProblems } from "./story-library.js";
 import { newTurnLimits, runTool, toolProblem } from "./tools.js";
 import { answerDoor } from "./walk.js";
+import { FACT_LINES, WORLD_MAPS, WORLD_THREADS, endingsOf } from "./world.js";
 
 // Something the player did that the written story has no answer to. The turn changes nothing, and they read this.
 export class StoryError extends Error {}
@@ -201,6 +202,17 @@ function enterPart(game, scene, id, { emit, turn }, hops = 0) {
     }
     if (clear) {
       clearFact(game, clear);
+      continue;
+    }
+    if (step.ending) {
+      // The story's own ending, by name: it goes on the record, and the quest is done with the same line.
+      const storyId = String(game.scene?.id ?? "").replace(/^thread_/, "");
+      try {
+        const { thread } = endStory(game, { id: storyId, ending: step.ending, summary: step.text, failed: Boolean(step.failed) });
+        emit({ type: "notice", text: `[STORY] ${thread.title} has ended: ${step.text}` });
+      } catch (err) {
+        throw new Error(`In the scene ${game.scene.id}, part ${id}, the ending failed: ${err.message}`);
+      }
       continue;
     }
     const outcome = runTool(game, tool, input, turn);
@@ -444,7 +456,14 @@ export function sceneProblems(scene, id = "the scene", { talk = false } = {}) {
     }
     if (!talk && !part.check && !part.fight && !part.end && !always && !(part.choices ?? []).length) problems.push(`${where} has no choices and doesn't end the scene`);
     for (const [i, step] of (part.do ?? []).entries()) {
-      const { tool, set, clear, line: _line, ...input } = step;
+      const { tool, set, clear, ending, failed: _failed, text: _text, line: _line, ...input } = step;
+      if (ending) {
+        const story = !talk && id.startsWith("thread_") ? WORLD_THREADS[id.slice("thread_".length)] : null;
+        const names = endingsOf(story).map((one) => one.id);
+        if (!story) problems.push(`${at(step, `${where}, effect ${i + 1}`)}: ending belongs in a story's own scene, thread_<story>.txt, and this isn't one`);
+        else if (!names.includes(ending)) problems.push(`${at(step, `${where}, effect ${i + 1}`)}: ${id.slice("thread_".length)} has no ending called ${ending}. Its endings are ${names.join(", ")}`);
+        continue;
+      }
       if (set || clear) {
         if (!/^[a-z][a-z0-9_]{1,39}$/.test(set ?? clear)) problems.push(`${at(step, `${where}, effect ${i + 1}`)}: a flag's name is lowercase letters, digits and underscores, like told_the_fleet`);
         continue;
@@ -474,4 +493,35 @@ export function allSceneProblems(dir = SCENES_DIR) {
   const found = problems.map((one) => `${one.file}${one.line ? ` (line ${one.line})` : ""}: ${one.message}`);
   for (const [id, scene] of Object.entries(scenes)) found.push(...sceneProblems(scene, id, { talk: id.startsWith("talk_") }));
   return { count: Object.keys(scenes).length, problems: found };
+}
+
+// Every fact something in the world can leave on the record: a story's notes name it, a scene sets it with * flag,
+// or a door sets it when the player goes through.
+export function factsLeft(scenes) {
+  const names = new Set(Object.keys(FACT_LINES));
+  for (const scene of Object.values(scenes)) for (const part of Object.values(scene.parts ?? {})) for (const step of part.do ?? []) if (step.set) names.add(step.set);
+  const walk = (node) => {
+    if (!node || typeof node !== "object") return;
+    if (typeof node.flag === "string") names.add(node.flag);
+    for (const child of Object.values(node)) walk(child);
+  };
+  walk(WORLD_MAPS);
+  return names;
+}
+
+// The scenes and the stories' notes together: what one file says about another is checked here, so a scene can't
+// wait on a fact nothing leaves, and a story's notes can't react to one.
+export function allStoryProblems(dir = SCENES_DIR) {
+  const { count, problems } = allSceneProblems(dir);
+  const { scenes } = loadScenes(dir);
+  const known = factsLeft(scenes);
+  const flagsIn = (text) => parseCondition(text).terms.filter((term) => term.kind === "flag").map((term) => term.id);
+  for (const [id, scene] of Object.entries(scenes)) {
+    for (const [name, part] of Object.entries(scene.parts ?? {})) {
+      const conditions = [...(part.when ?? []).map((rule) => rule.if), ...(part.choices ?? []).map((choice) => choice.if)].filter(Boolean);
+      for (const text of conditions) for (const flag of flagsIn(text)) if (!known.has(flag)) problems.push(`${id}, part ${name}: nothing leaves the fact ${flag}. Set it with * flag in a scene, or name it in a story's facts in world/threads`);
+    }
+  }
+  problems.push(...notesProblems(known));
+  return { count, stories: Object.keys(WORLD_THREADS).length, problems };
 }

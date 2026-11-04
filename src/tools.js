@@ -11,14 +11,14 @@ import { changeCommand, changeFleet, changeFleetShip, fleetRoster, markFleetHear
 import { whereNow } from "./life.js";
 import { LORE_KINDS, hasStaticLore } from "./lore.js";
 import { MYSTERY_TOPICS, beginThread, mysteryNotes, noteThreadEnded, noteThreadStarted, placeFileIfNew, updateStory } from "./story-library.js";
-import { FACTS_PER_TURN, endingOf, recordEnding, recordFact } from "./record.js";
+import { FACTS_PER_TURN, endStory, endingOf, recordEnding, recordFact } from "./record.js";
 import { NPC_ARCHETYPES, THREAT_LABELS } from "./npc.js";
 import {
   DIFFICULTY, TURN_LIMITS, addCondition, addItem, clamp, clockLabel, changeStress, grantXp, maxHp, passTime, practice,
   removeCondition, removeItem, shiftIdeology, startCombat, travel,
 } from "./rules.js";
 import { setScene } from "./walk.js";
-import { PARLEY, ROOM_KINDS, WORLD_THREADS } from "./world.js";
+import { PARLEY, ROOM_KINDS, WORLD_THREADS, endingsOf } from "./world.js";
 
 const obj = (properties, required = Object.keys(properties)) => ({
   type: "object", properties, required, additionalProperties: false,
@@ -318,13 +318,13 @@ export const TOOL_DEFS = [
   },
   {
     name: "note_fact",
-    description: "Put a lasting fact on the record, for the stories that come later: something the player did or learned that another story should know, such as a door closed to the fleet, a debt owed, or a person who now trusts or hates them. Give it a short name and one line of plain words. The record is in your state as Fact lines, so don't note what's already there, and don't note passing things.",
+    description: "Put a lasting fact on the record, for the stories that come later: something the player did or learned that another story should know, such as a door closed to the fleet, a debt owed, or a person who now trusts or hates them. Give it a short name and one line of plain words, and when the story's notes name the facts it can leave, use those names. The record is in your state as Fact lines, so don't note what's already there, and don't note passing things.",
     input_schema: obj({ id: str("A short name in lowercase letters, digits and underscores, like signed_with_quill."), text: str("One line, written for the player, saying what's true now.") }),
   },
   {
     name: "end_story",
-    description: "A story from the Leads menu has ended. Say which of the outcomes in its notes it came to, by number, or 0 if it ended another way, with one line for the player on how. The game marks its quest done and keeps the ending on the record for the stories that come later.",
-    input_schema: obj({ id: str("The story's id, from its notes."), outcome: num("The number of the outcome in the story's notes that fits best, or 0 for another way."), summary: str("One line, written for the player, on how it ended.") }),
+    description: "A story from the Leads menu has ended. Say which of the endings in its notes it came to, by name, or other if it ended another way, with one line for the player on how. The game marks its quest done and keeps the ending on the record for the stories that come later.",
+    input_schema: obj({ id: str("The story's id, from its notes."), ending: str("The name of the ending in the story's notes that fits best, or other for another way."), summary: str("One line, written for the player, on how it ended.") }),
   },
 ];
 
@@ -590,7 +590,7 @@ const handlers = {
     quest.objective = input.objective;
     if (input.status !== "active") noteThreadEnded(game, input.id);
     // A story's quest settled the old way still leaves its ending on the record, with its last line.
-    if (input.status !== "active" && WORLD_THREADS[input.id] && !endingOf(game, input.id)) recordEnding(game, { id: input.id, outcome: null, summary: input.objective });
+    if (input.status !== "active" && WORLD_THREADS[input.id] && !endingOf(game, input.id)) recordEnding(game, { id: input.id, ending: null, summary: input.objective, failed: input.status === "failed" });
     const label = input.status === "active" ? "updated" : input.status;
     return { result: `Quest ${input.id} ${label}.`, notice: `[QUEST] ${label}: ${quest.title}` };
   },
@@ -660,19 +660,14 @@ const handlers = {
     const id = input.id.trim();
     const thread = WORLD_THREADS[id];
     if (!thread) throw new Error(`There's no story called ${id}. The id is in the story's notes.`);
-    const count = thread.gm?.outcomes?.length ?? 0;
-    if (!Number.isInteger(input.outcome) || input.outcome < 0 || input.outcome > count) throw new Error(`This story's outcomes are numbered 1 to ${count}, or 0 for another way.`);
+    const names = endingsOf(thread).map((one) => one.id);
+    const ending = String(input.ending ?? "").trim().toLowerCase().replace(/\s+/g, "_");
+    if (ending !== "other" && !names.includes(ending)) throw new Error(`This story's endings are ${names.join(", ")}, or other for another way.`);
     const summary = input.summary.trim();
     if (summary.length < 3 || summary.length > 200) throw new Error("The summary is one line, from 3 to 200 characters.");
     if (endingOf(game, id)) throw new Error("That story has already ended, and the record keeps its first ending.");
-    recordEnding(game, { id, outcome: input.outcome || null, summary });
-    const quest = game.quests.find((q) => q.id === id);
-    if (quest && quest.status === "active") {
-      quest.status = "completed";
-      quest.objective = summary;
-    }
-    noteThreadEnded(game, id);
-    return { result: `${thread.title} is over, outcome ${input.outcome || "another way"}, and it's on the record.`, notice: `[STORY] ${thread.title} has ended: ${summary}` };
+    endStory(game, { id, ending: ending === "other" ? null : ending, summary });
+    return { result: `${thread.title} is over, ${ending === "other" ? "another way" : ending}, and it's on the record.`, notice: `[STORY] ${thread.title} has ended: ${summary}` };
   },
 };
 

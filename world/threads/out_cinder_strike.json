@@ -32,10 +32,10 @@
     ],
     "fights": ["strikebreaker at the Gate if the riot starts. Unpaid men don't fight long, once someone tells them nobody's going to pay them."],
     "outcomes": [
-      "If the miners take over the refinery with Rennick still alive and working, Cinder Reach becomes a free colony that sells fuel to the fleet at a fair price. It's the best fuel deal in known space, and everyone with a fleet of their own will notice.",
-      "If Rennick is thrown to the crowd, Shift Row cheers, and nobody on the moon now knows how the Tap works. That leads to the worst possible start on the next thread.",
-      "If the captain keeps the secret and takes Rennick's deal, the fleet gets fuel, the strike is broken, and eventually the miners find out. Ulla Greaves doesn't forget or forgive, and she can reach a long way.",
-      "If the Syndicate or the Hegemony learns first, Quill or Corvane turns up with a very reasonable offer to buy a refinery from nobody at all."
+      { "id": "miners_take_over_refinery_with_rennick", "text": "If the miners take over the refinery with Rennick still alive and working, Cinder Reach becomes a free colony that sells fuel to the fleet at a fair price. It's the best fuel deal in known space, and everyone with a fleet of their own will notice." },
+      { "id": "rennick_thrown_to_crowd", "text": "If Rennick is thrown to the crowd, Shift Row cheers, and nobody on the moon now knows how the Tap works. That leads to the worst possible start on the next thread." },
+      { "id": "captain_keeps_secret_takes_rennicks", "text": "If the captain keeps the secret and takes Rennick's deal, the fleet gets fuel, the strike is broken, and eventually the miners find out. Ulla Greaves doesn't forget or forgive, and she can reach a long way." },
+      { "id": "syndicate_hegemony_learns_first", "text": "If the Syndicate or the Hegemony learns first, Quill or Corvane turns up with a very reasonable offer to buy a refinery from nobody at all." }
     ],
     "rewards": "A fair fuel contract if the captain brokers peace, one or two refined_fuel up front, a work_suit, and the friendship of Ulla Greaves, who says what she thinks and keeps her word."
   }

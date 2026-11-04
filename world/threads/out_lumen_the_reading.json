@@ -32,10 +32,10 @@
     ],
     "fights": ["choir_mimic if a Reading finds one and it decides not to wait. mutineer if a ship refuses to be read and someone tries to make them. Neither has to come to that, if someone handles it well."],
     "outcomes": [
-      "If the Reading goes ahead in full, it finds a few mimics, saves a lot of lives, and breaks a hundred young Ilari. Sioba Ren comes home dark. The fleet is a little safer and much more afraid of its own secrets, and Tarrow's list is now complete.",
-      "If it goes ahead with limits, it's slower and leakier. A mimic or two slips through and costs lives, and most of the readers go home whole. Everyone argues about whether the price was right.",
-      "If the captain refuses, the fleet goes on not knowing, and the next time a face turns out to be the wrong face, the captain will be reminded. Sioba Ren goes home thinking less of them, and alive.",
-      "If the question of who read wrong on the bridge gets out, someone gets hurt. If the captain keeps it quiet, they've got a question of their own to deal with, and it isn't going away."
+      { "id": "reading_goes_ahead_full", "text": "If the Reading goes ahead in full, it finds a few mimics, saves a lot of lives, and breaks a hundred young Ilari. Sioba Ren comes home dark. The fleet is a little safer and much more afraid of its own secrets, and Tarrow's list is now complete." },
+      { "id": "goes_ahead_with_limits", "text": "If it goes ahead with limits, it's slower and leakier. A mimic or two slips through and costs lives, and most of the readers go home whole. Everyone argues about whether the price was right." },
+      { "id": "captain_refuses", "text": "If the captain refuses, the fleet goes on not knowing, and the next time a face turns out to be the wrong face, the captain will be reminded. Sioba Ren goes home thinking less of them, and alive." },
+      { "id": "question_who_read_wrong_bridge_gets", "text": "If the question of who read wrong on the bridge gets out, someone gets hurt. If the captain keeps it quiet, they've got a question of their own to deal with, and it isn't going away." }
     ],
     "rewards": "Circle standing, fleet security, a lumen_lens or surgeon_lens gift from a grateful healer, and Sioba Ren's lifelong loyalty or lifelong silence, depending on what's left of her."
   }

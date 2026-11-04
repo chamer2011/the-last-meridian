@@ -49,10 +49,10 @@
       "hegemony_trooper escort if the captain goes for the schedule at Haven"
     ],
     "outcomes": [
-      "Arrested: Halm is a martyr in a comfortable cell, where he's very kind to his guards. A third of the civilian ships stop answering the Meridian. He says \"we did warn you\", and he means it gently.",
-      "Vote held, terms refused: the captain's legitimacy is higher than it has ever been, and Bastion Nine closes to fleet ships. The fleet has chosen to starve free, and it will remember whose idea that was.",
-      "Vote held, terms accepted by enough ships: the fleet splits. Perhaps a third go to Bastion with Halm's blessing. It's not the end, and the captain may one day hear what happened to them.",
-      "Schedule exposed: Halm reads his own name on it and says nothing, for the first time in living memory. He breaks the channel. He isn't an ally, but he's a different kind of opponent now, and he owes someone the rest of his life."
+      { "id": "arrested", "text": "Arrested: Halm is a martyr in a comfortable cell, where he's very kind to his guards. A third of the civilian ships stop answering the Meridian. He says \"we did warn you\", and he means it gently." },
+      { "id": "vote_held_terms_refused", "text": "Vote held, terms refused: the captain's legitimacy is higher than it has ever been, and Bastion Nine closes to fleet ships. The fleet has chosen to starve free, and it will remember whose idea that was." },
+      { "id": "vote_held_terms_accepted_by_enough", "text": "Vote held, terms accepted by enough ships: the fleet splits. Perhaps a third go to Bastion with Halm's blessing. It's not the end, and the captain may one day hear what happened to them." },
+      { "id": "schedule_exposed", "text": "Schedule exposed: Halm reads his own name on it and says nothing, for the first time in living memory. He breaks the channel. He isn't an ally, but he's a different kind of opponent now, and he owes someone the rest of his life." }
     ],
     "rewards": "Fleet standing either way, a data_chip of the terms, and possibly Corvane's terrified debt."
   }

@@ -36,10 +36,10 @@
       "quiet_zealot or hegemony_hunter, only if the Quiet or a Ministry surveyor comes for the children"
     ],
     "outcomes": [
-      "If a child reads the lattice, it's the fastest way to learn what the Beacon says. It also brings everyone in known space to Tessen's door. Dray will never forgive it. Marshal Dey might. Tharel knows what he has done, and he stays to help guard them, on a bucket, in the cold.",
-      "If the chamber is destroyed, Dray is grateful and the fleet gets the seed vault. The kids stop sleepwalking, they're sad for a long time and can't say why, and they keep what they've learned but won't learn any more. See out_tessen_lullaby and out_tessen_marshals_count for what else is down there.",
-      "If it's left running, the kids become stranger, funnier and more competent. In the end they may be the first watch, or the interpreters at the very end, which would be the most important and the worst thing anyone could ask of them.",
-      "If the captain asks for the rest, the children sing the last stanza, and nobody on Tessen knows what it means. The captain may not either, until someone reads the Roster."
+      { "id": "child_reads_lattice", "text": "If a child reads the lattice, it's the fastest way to learn what the Beacon says. It also brings everyone in known space to Tessen's door. Dray will never forgive it. Marshal Dey might. Tharel knows what he has done, and he stays to help guard them, on a bucket, in the cold." },
+      { "id": "chamber_destroyed", "text": "If the chamber is destroyed, Dray is grateful and the fleet gets the seed vault. The kids stop sleepwalking, they're sad for a long time and can't say why, and they keep what they've learned but won't learn any more. See out_tessen_lullaby and out_tessen_marshals_count for what else is down there." },
+      { "id": "left_running", "text": "If it's left running, the kids become stranger, funnier and more competent. In the end they may be the first watch, or the interpreters at the very end, which would be the most important and the worst thing anyone could ask of them." },
+      { "id": "captain_asks_rest", "text": "If the captain asks for the rest, the children sing the last stanza, and nobody on Tessen knows what it means. The captain may not either, until someone reads the Roster." }
     ],
     "rewards": "The children's recording on a data_chip, which is worth more than anything. The tessen_seed_vault_key and grain for the fleet, if Dray comes out of this grateful. Tharel's lasting friendship."
   }

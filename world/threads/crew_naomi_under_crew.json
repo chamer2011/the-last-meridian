@@ -47,12 +47,23 @@
       "scrap_rat nest in the deep ducts. The children have been holding them off with broom handles, and would like it noted that they didn't need help"
     ],
     "outcomes": [
-      "Treaty and cadets: thirty-one new crew, and the captain's eyes and ears in every wall. Morale on the Meridian jumps. Halm demands they be moved, Garrick Fenn's story on it is the most popular he's ever aired, and if the ship takes a hit the captain will have to live with what they chose.",
-      "Sent to the Wintermere: safe on paper. Naomi stops speaking to the captain. Within a week she's back, alone, in the walls, and it isn't clear who else came with her.",
-      "Ignored: the vent goes ahead. The children get out by themselves with minutes to spare, because they've drilled for it. Nobody's dead. They redraw their map, with the captain's quarters marked as hostile.",
-      "Reunion: if Orchard has been brought out into the open, she gets to count them in front of everyone, in daylight. All present. Even Tarrow can't find anything to say.",
-      "Clause nine: if the captain tells her the truth about her father, she goes very quiet, says \"Technically that doesn't mean he's dead,\" and goes back to work. If they lie, she'll check, and she'll know. If they never answer, it stays in the treaty, and she brings it up at every renewal."
+      { "id": "treaty_cadets", "text": "Treaty and cadets: thirty-one new crew, and the captain's eyes and ears in every wall. Morale on the Meridian jumps. Halm demands they be moved, Garrick Fenn's story on it is the most popular he's ever aired, and if the ship takes a hit the captain will have to live with what they chose." },
+      { "id": "sent_to_wintermere", "text": "Sent to the Wintermere: safe on paper. Naomi stops speaking to the captain. Within a week she's back, alone, in the walls, and it isn't clear who else came with her." },
+      { "id": "ignored", "text": "Ignored: the vent goes ahead. The children get out by themselves with minutes to spare, because they've drilled for it. Nobody's dead. They redraw their map, with the captain's quarters marked as hostile." },
+      { "id": "reunion", "text": "Reunion: if Orchard has been brought out into the open, she gets to count them in front of everyone, in daylight. All present. Even Tarrow can't find anything to say." },
+      { "id": "clause_nine", "text": "Clause nine: if the captain tells her the truth about her father, she goes very quiet, says \"Technically that doesn't mean he's dead,\" and goes back to work. If they lie, she'll check, and she'll know. If they never answer, it stays in the treaty, and she brings it up at every renewal." }
     ],
-    "rewards": "Naomi's full loyalty, a hand-drawn map of the crawlspaces that helps with anything sneaky on the Meridian, and a very serious treaty."
+    "rewards": "Naomi's full loyalty, a hand-drawn map of the crawlspaces that helps with anything sneaky on the Meridian, and a very serious treaty.",
+    "facts": {
+      "downstairs_crew": "The Downstairs Crew, thirty-one children from the Ember Day, are the Meridian's cadets by their own treaty.",
+      "downstairs_hidden": "The children in Section Fourteen stay hidden in the walls, with the captain's leave.",
+      "downstairs_enemies": "The children in the walls count the captain an enemy.",
+      "downstairs_friend": "The children in the walls count the player a friend.",
+      "orchard_out": "Orchard has been brought out into the open, and counted the children in daylight.",
+      "clause_nine": "Naomi was told the truth about her father, under clause nine of the treaty.",
+      "aduro_knows": "Dr. Aduro knows about the children in the walls.",
+      "brandt_knows": "Brandt knows about the children in the walls.",
+      "marrow_knows_fourteen": "Chief Marrow knows what's in Section Fourteen."
+    }
   }
 }

@@ -44,11 +44,11 @@
       "choir_drone pair from the tender's ballast if the lock opens"
     ],
     "outcomes": [
-      "Caught alive, or talked down: it's in clamps within the hour, and it asks for one thing, the last rites of a devout man. Roe gives them, believing nothing, with half the crew watching. The fleet argues for months about what that meant. It's the first proof most of them have seen that there's someone in there.",
-      "Destroyed at the lock: clean and fast, and everyone's safe. Roe quietly asks the captain what he's supposed to do with a confession from someone who has now been shot.",
-      "The lock opens: a fight on the docking deck in front of all forty-one delegates. Nobody has to die, but nobody forgets, and the fleet's fear goes through the roof.",
-      "Tarrow breaks him by force: Roe goes to the brig without saying a word. The crew is split between those who think he's a coward and those who think he's the last honest man aboard. Attendance at his services triples.",
-      "Whatever happens, the crew learns they ate a mimic's soup for weeks, and fleet_open_palms gets worse."
+      { "id": "caught_alive_talked_down", "text": "Caught alive, or talked down: it's in clamps within the hour, and it asks for one thing, the last rites of a devout man. Roe gives them, believing nothing, with half the crew watching. The fleet argues for months about what that meant. It's the first proof most of them have seen that there's someone in there." },
+      { "id": "destroyed_lock", "text": "Destroyed at the lock: clean and fast, and everyone's safe. Roe quietly asks the captain what he's supposed to do with a confession from someone who has now been shot." },
+      { "id": "lock_opens", "text": "The lock opens: a fight on the docking deck in front of all forty-one delegates. Nobody has to die, but nobody forgets, and the fleet's fear goes through the roof." },
+      { "id": "tarrow_breaks_him_by_force", "text": "Tarrow breaks him by force: Roe goes to the brig without saying a word. The crew is split between those who think he's a coward and those who think he's the last honest man aboard. Attendance at his services triples." },
+      { "id": "whatever_happens", "text": "Whatever happens, the crew learns they ate a mimic's soup for weeks, and fleet_open_palms gets worse." }
     ],
     "rewards": "Father Roe's friendship, a choir_core if it's destroyed, and a clue that what the Choir copies may still be someone."
   }

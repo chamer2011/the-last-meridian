@@ -36,10 +36,10 @@
       "drowned_thing in the Tide Levels, wearing a station badge, drawn to warmth and light"
     ],
     "outcomes": [
-      "If Corso is brought up, he lives, he cries at the sight of a lemon and he's himself more often. The fleet gains an expert who can help with the Score or the Tuner. The gauge goes unread, and nobody knows how fast the clock is running after that.",
-      "If he's left, he keeps sending numbers and the captain can read them from the Meridian. One day a message is only numbers. One day it's only socks.",
-      "If the core is brought back, it's proof. Show it to Ouma, the Regent or Hollis-Nine. Tell the fleet, and it breaks people. Ione will ask to see it, and she'll look very calm.",
-      "If Tharel is told, he learns nobody took the last person he told, and that sending him here was his own doing. He rests easier anyway, and asks for a word with Sable."
+      { "id": "corso_brought_up", "text": "If Corso is brought up, he lives, he cries at the sight of a lemon and he's himself more often. The fleet gains an expert who can help with the Score or the Tuner. The gauge goes unread, and nobody knows how fast the clock is running after that." },
+      { "id": "hes_left", "text": "If he's left, he keeps sending numbers and the captain can read them from the Meridian. One day a message is only numbers. One day it's only socks." },
+      { "id": "core_brought_back", "text": "If the core is brought back, it's proof. Show it to Ouma, the Regent or Hollis-Nine. Tell the fleet, and it breaks people. Ione will ask to see it, and she'll look very calm." },
+      { "id": "tharel_told", "text": "If Tharel is told, he learns nobody took the last person he told, and that sending him here was his own doing. He rests easier anyway, and asks for a word with Sable." }
     ],
     "rewards": "The maris_core_sample, Corso's friendship, a field_scanner and nutrient_gel from the station's stores. Filters, if anyone thought to bring them, are their own reward."
   }

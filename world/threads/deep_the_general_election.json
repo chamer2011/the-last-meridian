@@ -36,11 +36,11 @@
       "choir_cantor_shard walking into the Exchange, with choir_drone in the corridors"
     ],
     "outcomes": [
-      "If the Verse wins, the dead consent to sing, and they'd like that written down. It makes Relief or Join morally much easier and Destroy much harder. A big minority resents it forever.",
-      "If the Door wins, the dead ask to be let go. That makes Destroy a kind of mercy and Relief a lot more complicated, because not everyone will stay. Halm weeps. The Cantor says: 'We did not know they could ask.'",
-      "If the Exchange is corrected, the Shard wins, Asterion falls quiet and billions are sorted back into perfect, separate silence. No one can ever tell if they minded. The proof survives only in the asterion_voice_recording, and in what the captain says happened.",
-      "If the captain tampers and anyone finds out, the living lose the trust of the dead forever. If no one finds out, they have to live with it. Halm would understand, and that's what makes it worse.",
-      "Halm, either way, finds out what he really believes in. He may come home a better man, or stay on the line until someone has to go and get him."
+      { "id": "verse_wins", "text": "If the Verse wins, the dead consent to sing, and they'd like that written down. It makes Relief or Join morally much easier and Destroy much harder. A big minority resents it forever." },
+      { "id": "door_wins", "text": "If the Door wins, the dead ask to be let go. That makes Destroy a kind of mercy and Relief a lot more complicated, because not everyone will stay. Halm weeps. The Cantor says: 'We did not know they could ask.'" },
+      { "id": "exchange_corrected", "text": "If the Exchange is corrected, the Shard wins, Asterion falls quiet and billions are sorted back into perfect, separate silence. No one can ever tell if they minded. The proof survives only in the asterion_voice_recording, and in what the captain says happened." },
+      { "id": "captain_tampers_finds_out", "text": "If the captain tampers and anyone finds out, the living lose the trust of the dead forever. If no one finds out, they have to live with it. Halm would understand, and that's what makes it worse." },
+      { "id": "halm", "text": "Halm, either way, finds out what he really believes in. He may come home a better man, or stay on the line until someone has to go and get him." }
     ],
     "rewards": "The Echo's lasting loyalty, a record signed by nine billion voters, and Halm's real friendship, which can go either way."
   }

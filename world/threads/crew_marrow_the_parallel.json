@@ -47,10 +47,10 @@
       "wreck_diver claim-jumpers who've noticed the warm reactor"
     ],
     "outcomes": [
-      "Coil taken, voices end: the Meridian flies. Marrow does the last part himself and speaks to each of them by name. He doesn't swear for a week. Gantry comes back with him in a crate, carrying the jar, if they're willing.",
-      "The Parallel flies again: the fleet has a second warship, at a huge cost in people and parts. She's haunted in the literal sense. Some volunteers refuse to serve on her after one shift, and some refuse to leave. It's an unbelievably useful and unsettling ship.",
-      "Part of them saved: a small core, with perhaps thirty voices that still know who they are. Marrow keeps it on a shelf in engineering. Mercy Seven asks very quietly whether they might talk to them, and gives a percentage.",
-      "Left alone: Marrow won't do it, or the captain won't make him. The Meridian has three jumps, and the fleet must find another coil fast, from the Hegemony, the Forge-Clans or the Long Families, and it will cost."
+      { "id": "coil_taken_voices_end", "text": "Coil taken, voices end: the Meridian flies. Marrow does the last part himself and speaks to each of them by name. He doesn't swear for a week. Gantry comes back with him in a crate, carrying the jar, if they're willing." },
+      { "id": "parallel_flies_again", "text": "The Parallel flies again: the fleet has a second warship, at a huge cost in people and parts. She's haunted in the literal sense. Some volunteers refuse to serve on her after one shift, and some refuse to leave. It's an unbelievably useful and unsettling ship." },
+      { "id": "part_saved", "text": "Part of them saved: a small core, with perhaps thirty voices that still know who they are. Marrow keeps it on a shelf in engineering. Mercy Seven asks very quietly whether they might talk to them, and gives a percentage." },
+      { "id": "left_alone", "text": "Left alone: Marrow won't do it, or the captain won't make him. The Meridian has three jumps, and the fleet must find another coil fast, from the Hegemony, the Forge-Clans or the Long Families, and it will cost." }
     ],
     "rewards": "The coil, a tool_roll from Gantry's bench, Marrow's devotion, and the jar, if he can stand to have it. The Parallel's battle log, which shows a squadron leaving the line an hour before it broke. A clear, small look at why something might copy the dead."
   }

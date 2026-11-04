@@ -46,10 +46,10 @@
       "desperate_refugee crowd if a hungry ship learns where the pantry is"
     ],
     "outcomes": [
-      "Kept secret: the captain signs the false books. When the next shortage hits, nine days of food can save the fleet. If it's ever found out, the captain will be explaining to thirty thousand people why their children went without.",
-      "Opened: one great day of full bellies and singing on every ship, the best morale in months. Then nothing's left. Odessa hands in her keys and waits for someone to decide what she is.",
-      "Given to the council: Halm controls the reserve by morning and thanks her warmly. It will be spent on whatever helps his majority.",
-      "Made official: a declared reserve with a public reason. Some ships riot and some don't, and for the first time the fleet has a plan that isn't a secret. Odessa can finally burn one of the books. She keeps it anyway."
+      { "id": "kept_secret", "text": "Kept secret: the captain signs the false books. When the next shortage hits, nine days of food can save the fleet. If it's ever found out, the captain will be explaining to thirty thousand people why their children went without." },
+      { "id": "opened", "text": "Opened: one great day of full bellies and singing on every ship, the best morale in months. Then nothing's left. Odessa hands in her keys and waits for someone to decide what she is." },
+      { "id": "given_to_council", "text": "Given to the council: Halm controls the reserve by morning and thanks her warmly. It will be spent on whatever helps his majority." },
+      { "id": "made_official", "text": "Made official: a declared reserve with a public reason. Some ships riot and some don't, and for the first time the fleet has a plan that isn't a secret. Odessa can finally burn one of the books. She keeps it anyway." }
     ],
     "rewards": "A ledger_of_favors from Odessa, a crate of ration_pack and nutrient_gel, and a quartermaster who will now tell the captain the truth, which is worth much more."
   }

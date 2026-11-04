@@ -36,11 +36,11 @@
       "ministry_blade and remnant_commando on the stairs, depending on who has been betrayed"
     ],
     "outcomes": [
-      "Destroy the Choir: freedom with a deadline. The song stops, everyone hears the names, and the silver falls out of the sky.",
-      "Join the Choir: the fleet goes in with open eyes, the hunting stops, and everyone is kept, unchanging, forever.",
-      "Relieve the Watch: 'We stand relieved.' The dead get to talk, and to choose. The Beacon changes for the first time since before there were people, and a town grows in the empty berths.",
-      "Say Good Morning: the thing past the lamp wakes up and tries to be careful. Nothing will ever be safe again, or lonely.",
-      "If nobody decides, the Regent or the Admiral or the Quiet decide instead, and the captain lives with what they do (see The Regent's Peace). Whatever the ending, give each person who came up those stairs their own last moment, and let Garrick Fenn sign off the way he always does: We're still here."
+      { "id": "destroy_choir", "text": "Destroy the Choir: freedom with a deadline. The song stops, everyone hears the names, and the silver falls out of the sky." },
+      { "id": "join_choir", "text": "Join the Choir: the fleet goes in with open eyes, the hunting stops, and everyone is kept, unchanging, forever." },
+      { "id": "relieve_watch", "text": "Relieve the Watch: 'We stand relieved.' The dead get to talk, and to choose. The Beacon changes for the first time since before there were people, and a town grows in the empty berths." },
+      { "id": "say_good_morning", "text": "Say Good Morning: the thing past the lamp wakes up and tries to be careful. Nothing will ever be safe again, or lonely." },
+      { "id": "nobody_decides", "text": "If nobody decides, the Regent or the Admiral or the Quiet decide instead, and the captain lives with what they do (see The Regent's Peace). Whatever the ending, give each person who came up those stairs their own last moment, and let Garrick Fenn sign off the way he always does: We're still here." }
     ],
     "rewards": "How it ends."
   }

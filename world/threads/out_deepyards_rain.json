@@ -32,10 +32,10 @@
     ],
     "fights": [],
     "outcomes": [
-      "If she stands in the rain and comes home, the captain has the spar, and Nessa Ao-Vash dies in her cabin a month later, at peace, with mud under one fingernail. Her family finds it, and nobody says a word.",
-      "If she stays and is buried in soil, the Family publicly disowns her and strikes her name from the book. Ilkin privately pays for a small marker, and the captain will be asked to look after it.",
-      "If the Family finds out, the captain has shamed them, and the Deepyards close to the fleet unless Ilkin chooses to look away. She may, or she may not, depending on how the captain behaved.",
-      "If the captain tells Nessa no, or takes the spar and doesn't deliver, she nods, she's used to it, and the captain carries that around for the rest of the story. The spar stays in the old ship, which is scrapped within the year."
+      { "id": "stands_rain_comes_home", "text": "If she stands in the rain and comes home, the captain has the spar, and Nessa Ao-Vash dies in her cabin a month later, at peace, with mud under one fingernail. Her family finds it, and nobody says a word." },
+      { "id": "stays_buried_soil", "text": "If she stays and is buried in soil, the Family publicly disowns her and strikes her name from the book. Ilkin privately pays for a small marker, and the captain will be asked to look after it." },
+      { "id": "family_finds_out", "text": "If the Family finds out, the captain has shamed them, and the Deepyards close to the fleet unless Ilkin chooses to look away. She may, or she may not, depending on how the captain behaved." },
+      { "id": "captain_tells_nessa_no", "text": "If the captain tells Nessa no, or takes the spar and doesn't deliver, she nods, she's used to it, and the captain carries that around for the rest of the story. The spar stays in the old ship, which is scrapped within the year." }
     ],
     "rewards": "The keel-spar, which is worth a real hull improvement through change_ship. A bundle of old letters, a little stress relief for a captain who needed something good to happen, and, eventually, a very stiff nod from Ilkin Ao-Vash."
   }

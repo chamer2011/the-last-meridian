@@ -37,10 +37,10 @@
       "vael herself only if the captain forces it, and she should withdraw on her own terms"
     ],
     "outcomes": [
-      "If Ilun holds, the Order survives and owes the captain, the Codex is in hand, and Vael has a new name in her careful handwriting.",
-      "If Ilun falls, monks are taken, and they'll turn up on a manifest later. Cael is captured or on the run. Ione is left in her room, untouched, because those are Vael's orders and Vael doesn't know why. The Codex can still be carried out by someone.",
-      "If the fleet is told the truth, the Quiet surge, a third of the ships demand surrender, and the captain's word counts for something from then on. If it's hidden, things hold together until Garrick Fenn or Tharel lets it out, and then nobody trusts the bridge again.",
-      "If the reading is done under fire, it may cost Tharel the last of his strength, and he'd call that a fair trade. If he reads it in safety, he asks to be taken back to Sarn, to say something to an old colleague."
+      { "id": "ilun_holds", "text": "If Ilun holds, the Order survives and owes the captain, the Codex is in hand, and Vael has a new name in her careful handwriting." },
+      { "id": "ilun_falls", "text": "If Ilun falls, monks are taken, and they'll turn up on a manifest later. Cael is captured or on the run. Ione is left in her room, untouched, because those are Vael's orders and Vael doesn't know why. The Codex can still be carried out by someone." },
+      { "id": "fleet_told_truth", "text": "If the fleet is told the truth, the Quiet surge, a third of the ships demand surrender, and the captain's word counts for something from then on. If it's hidden, things hold together until Garrick Fenn or Tharel lets it out, and then nobody trusts the bridge again." },
+      { "id": "reading_done_under_fire", "text": "If the reading is done under fire, it may cost Tharel the last of his strength, and he'd call that a fair trade. If he reads it in safety, he asks to be taken back to Sarn, to say something to an old colleague." }
     ],
     "rewards": "The ilun_codex, a resonance_tuner from Ione's own shelf for anyone who sits the vigil, adept_robes, and standing with the ilun."
   }

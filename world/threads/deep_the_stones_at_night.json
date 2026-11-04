@@ -37,11 +37,11 @@
       "hegemony_trooper and an inquisitor searching the same houses"
     ],
     "outcomes": [
-      "If the captain knows the monks walked, that's one more reason to ask Ione (main_who_paid). Telling Cael breaks his heart. Not telling him is a different thing that will also break it, later.",
-      "If Cael's secret is kept, he trusts the captain forever. If it's told to Ione, she isn't surprised. If it's told to Tarrow, he's in a cell.",
-      "If the girl in the field is brought along, she's the fleet's first Silent patient: an early warning and a hard thing to have aboard. She can be saved much later, with a Proctor's blade, and what she says then matters.",
-      "If the Under-Stair is shown to the Order's last monks, there's a quiet, terrible scene in a place where nobody raises their voice.",
-      "If anyone notices the name over the cell door, Cael gets on the next ship to Haven. Sister Yara looks at him and says: 'You are looking for me. It's all right.' He calls her by her novice name, and her glow flickers, once, the first thing that has moved it in seven months. Mirei will hear of it."
+      { "id": "captain_knows_monks_walked", "text": "If the captain knows the monks walked, that's one more reason to ask Ione (main_who_paid). Telling Cael breaks his heart. Not telling him is a different thing that will also break it, later." },
+      { "id": "caels_secret_kept", "text": "If Cael's secret is kept, he trusts the captain forever. If it's told to Ione, she isn't surprised. If it's told to Tarrow, he's in a cell." },
+      { "id": "girl_field_brought_along", "text": "If the girl in the field is brought along, she's the fleet's first Silent patient: an early warning and a hard thing to have aboard. She can be saved much later, with a Proctor's blade, and what she says then matters." },
+      { "id": "under_stair_shown_to_orders_last", "text": "If the Under-Stair is shown to the Order's last monks, there's a quiet, terrible scene in a place where nobody raises their voice." },
+      { "id": "notices_name_over_cell_door", "text": "If anyone notices the name over the cell door, Cael gets on the next ship to Haven. Sister Yara looks at him and says: 'You are looking for me. It's all right.' He calls her by her novice name, and her glow flickers, once, the first thing that has moved it in seven months. Mirei will hear of it." }
     ],
     "rewards": "adept_robes, Cael's loyalty, a focus_blade from the empty armory, and a bag of bitter herbs, which means they like you."
   }

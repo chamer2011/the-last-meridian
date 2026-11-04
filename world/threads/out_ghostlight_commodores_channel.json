@@ -32,10 +32,10 @@
     ],
     "fights": ["remnant_marine if the Admiral's loyalists catch wind of a meeting, and remnant_commando if it's the ones who'd do it quietly. An honest explanation to an honest marine goes a long way."],
     "outcomes": [
-      "If Dorn goes through with it, three thousand sailors and six warships pass into Hegemony hands, and with them the fleet's only legal rival. Within a year the first of them are on a manifest. If the captain knew and let it happen, they'll have to live with that.",
-      "If the Admiral is told, she has him shot, or she tries to. He walks there himself. Half the Remnant's officers refuse to give the order, and the squadron starts to come apart in very good discipline.",
-      "If the Remnant comes into the fleet, the fleet gets six warships, three thousand trained sailors and a huge new food problem, and Dorn gets to stop writing letters. Okonkwo-Reyes isn't dead or gone unless the player has earned that. She's still their Admiral to many of them.",
-      "If the captain shows Halm and Corvane's files to the fleet, or to Halm alone, that's a very big event. fleet_arrest_us and main_the_generous_offer can both hang on it. The fact remains that the captain now holds both surrender papers, and everyone who signed them would like them back."
+      { "id": "dorn_goes_through_with", "text": "If Dorn goes through with it, three thousand sailors and six warships pass into Hegemony hands, and with them the fleet's only legal rival. Within a year the first of them are on a manifest. If the captain knew and let it happen, they'll have to live with that." },
+      { "id": "admiral_told", "text": "If the Admiral is told, she has him shot, or she tries to. He walks there himself. Half the Remnant's officers refuse to give the order, and the squadron starts to come apart in very good discipline." },
+      { "id": "remnant_comes_into_fleet", "text": "If the Remnant comes into the fleet, the fleet gets six warships, three thousand trained sailors and a huge new food problem, and Dorn gets to stop writing letters. Okonkwo-Reyes isn't dead or gone unless the player has earned that. She's still their Admiral to many of them." },
+      { "id": "captain_shows_halm_corvanes_files_to", "text": "If the captain shows Halm and Corvane's files to the fleet, or to Halm alone, that's a very big event. fleet_arrest_us and main_the_generous_offer can both hang on it. The fact remains that the captain now holds both surrender papers, and everyone who signed them would like them back." }
     ],
     "rewards": "remnant_codes if Dorn gives them up to the captain, a data_chip of the two surrender files, Dorn's lifelong loyalty, and a big swing in remnant, hegemony and fleet standing."
   }

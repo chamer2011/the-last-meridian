@@ -32,10 +32,10 @@
     ],
     "fights": ["concord_deserter at the vault door, only if the captain arrives shooting or threatens Rudge's ledger. They'd much rather be asked."],
     "outcomes": [
-      "If the seed gets down the mountain, the colony has something to plant if the warm wells ever fail, and the Sundial gets a sample. Grann Tull is close to tears, and she'll deny it.",
-      "If the deserters come back with the captain, they face Tessen's anger and the fleet's law, and they bring six good rifles and a lot of shame. What they get is up to the captain: amnesty, a court or a hard hour with Lt. Tarrow.",
-      "If the deserters are killed or left behind, the seed comes home, a dead man's rank insignia comes home too, and Rudge won't ever speak to the captain again.",
-      "If the seed is lost, Dray still has the warm wells, and she now has no way out. She looks at the captain, says \"Well\", and goes on with the planting."
+      { "id": "seed_gets_down_mountain", "text": "If the seed gets down the mountain, the colony has something to plant if the warm wells ever fail, and the Sundial gets a sample. Grann Tull is close to tears, and she'll deny it." },
+      { "id": "deserters_come_back_with_captain", "text": "If the deserters come back with the captain, they face Tessen's anger and the fleet's law, and they bring six good rifles and a lot of shame. What they get is up to the captain: amnesty, a court or a hard hour with Lt. Tarrow." },
+      { "id": "deserters_killed_left_behind", "text": "If the deserters are killed or left behind, the seed comes home, a dead man's rank insignia comes home too, and Rudge won't ever speak to the captain again." },
+      { "id": "seed_lost", "text": "If the seed is lost, Dray still has the warm wells, and she now has no way out. She looks at the captain, says \"Well\", and goes on with the planting." }
     ],
     "rewards": "The tessen_seed_vault_key, a sack of cold-hardy seed for the Sundial, a real gain in fleet food in the long term, and six people who owe the captain everything, if it goes well."
   }

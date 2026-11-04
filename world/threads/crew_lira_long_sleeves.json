@@ -47,10 +47,10 @@
       "choir_drone scouts if a shuttle team lands on a wreck. One of them is still twitching"
     ],
     "outcomes": [
-      "The contact is logged: the bridge knows, Tarrow knows, and Voss's order is now a matter of record. It raises hard questions about Voss, and forces the issue of crew_voss_night_scans if that's still open.",
-      "It stays off the log and Lira is told she can take off her sleeves: the captain is now part of the order. She's steadier. She also isn't stupid, and she knows what that cost.",
-      "Her gift is used: her skin becomes an official early warning, with a recorder on her at all times. The fleet gets four minutes' warning of every attack. She gets no privacy at all, and one day Inspector Moor asks a polite question about it.",
-      "She goes for training: with Abbess Ione or Brother Cael, if the captain can arrange it and spare her. The fleet loses its best eyes for a while. Ione is very glad to have her, and the captain may later wish they'd asked why. Lira comes back knowing what the pale pattern is, which she may wish she didn't."
+      { "id": "contact_logged", "text": "The contact is logged: the bridge knows, Tarrow knows, and Voss's order is now a matter of record. It raises hard questions about Voss, and forces the issue of crew_voss_night_scans if that's still open." },
+      { "id": "stays_off_log_lira_told", "text": "It stays off the log and Lira is told she can take off her sleeves: the captain is now part of the order. She's steadier. She also isn't stupid, and she knows what that cost." },
+      { "id": "her_gift_used", "text": "Her gift is used: her skin becomes an official early warning, with a recorder on her at all times. The fleet gets four minutes' warning of every attack. She gets no privacy at all, and one day Inspector Moor asks a polite question about it." },
+      { "id": "goes_training", "text": "She goes for training: with Abbess Ione or Brother Cael, if the captain can arrange it and spare her. The fleet loses its best eyes for a while. Ione is very glad to have her, and the captain may later wish they'd asked why. Lira comes back knowing what the pale pattern is, which she may wish she didn't." }
     ],
     "rewards": "Lira's devotion, a field_scanner she has been tinkering with, and a warning that may save a ship."
   }

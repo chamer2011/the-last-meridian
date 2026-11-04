@@ -37,11 +37,11 @@
       "quiet_zealot at the airlock if the fleet tries to scuttle her"
     ],
     "outcomes": [
-      "If Oskar turns, there's a slow exodus from the Quiet back into the fleet, and he's the captain's most unlikely ally. He'll be the first to volunteer, at the end, for anything that might reach his daughter. Yara doesn't turn. She sits beside the frightened until someone stops her.",
-      "If the Patience is scuttled, the fleet's water is saved. Everyone aboard is lost to everything: not dead, not kept, just gone. Aduro may never speak to the captain again, and the Quiet splits.",
-      "If she's kept, it's costly, and some are woken. Each one woken is a witness and says the same thing: 'I wasn't unhappy. Please understand. I wasn't anything.'",
-      "If Vael is asked, or has turned, she comes aboard with her gloves off and uses the blade for what it was made for, for the first time in a thousand years. A seated woman gasps and starts to cry. To find her, Vael has to take off her dampener band, and everyone in the room who can feel such things learns what she is. She apologizes.",
-      "When the news gets out through Garrick Fenn, nobody's in any doubt that something besides the Choir is out there. Fear of the Quiet turns into a pogrom on three ships, unless the captain prevents it."
+      { "id": "oskar_turns", "text": "If Oskar turns, there's a slow exodus from the Quiet back into the fleet, and he's the captain's most unlikely ally. He'll be the first to volunteer, at the end, for anything that might reach his daughter. Yara doesn't turn. She sits beside the frightened until someone stops her." },
+      { "id": "patience_scuttled", "text": "If the Patience is scuttled, the fleet's water is saved. Everyone aboard is lost to everything: not dead, not kept, just gone. Aduro may never speak to the captain again, and the Quiet splits." },
+      { "id": "shes_kept", "text": "If she's kept, it's costly, and some are woken. Each one woken is a witness and says the same thing: 'I wasn't unhappy. Please understand. I wasn't anything.'" },
+      { "id": "vael_asked", "text": "If Vael is asked, or has turned, she comes aboard with her gloves off and uses the blade for what it was made for, for the first time in a thousand years. A seated woman gasps and starts to cry. To find her, Vael has to take off her dampener band, and everyone in the room who can feel such things learns what she is. She apologizes." },
+      { "id": "news_gets_out_through_garrick", "text": "When the news gets out through Garrick Fenn, nobody's in any doubt that something besides the Choir is out there. Fear of the Quiet turns into a pogrom on three ships, unless the captain prevents it." }
     ],
     "rewards": "A lumen_lens if Mirei helps, calm_tabs from Aduro, standing with the circle, and the fleet's trust if it's handled well."
   }

@@ -32,10 +32,10 @@
     ],
     "fights": ["korrun_champion as a clan hunter, only if the captain or Brenna attacks first. Korrun don't take by force what can be asked for."],
     "outcomes": [
-      "If the truth goes public, every contract on Korrath is void at a stroke. Marriages, clan lines and contracts all have to be renegotiated. It's chaos, and it's honest. The fleet may gain from the chaos, and no one on Korrath ever quite trusts the captain again.",
-      "If the stone goes back in secret, with three new grams on it paid for by the fleet in gold, the lie ends where it started. Brenna is furious, then thoughtful. Hesk works his shift that week, and he's a little lighter about it.",
-      "If the captain keeps the stone, the fleet holds Korrath by the throat: the clans will sell almost anything to get it back quietly. It works. Tobin Hask resigns, without saying why, and he leaves his pocket scale on the captain's desk.",
-      "Brenna stays with the fleet in most versions, as a brilliant, difficult junior engineer. She and Dunn Marrow either become great friends or don't, and both versions are loud."
+      { "id": "truth_goes_public", "text": "If the truth goes public, every contract on Korrath is void at a stroke. Marriages, clan lines and contracts all have to be renegotiated. It's chaos, and it's honest. The fleet may gain from the chaos, and no one on Korrath ever quite trusts the captain again." },
+      { "id": "stone_goes_back_secret", "text": "If the stone goes back in secret, with three new grams on it paid for by the fleet in gold, the lie ends where it started. Brenna is furious, then thoughtful. Hesk works his shift that week, and he's a little lighter about it." },
+      { "id": "captain_keeps_stone", "text": "If the captain keeps the stone, the fleet holds Korrath by the throat: the clans will sell almost anything to get it back quietly. It works. Tobin Hask resigns, without saying why, and he leaves his pocket scale on the captain's desk." },
+      { "id": "brenna_stays_with_fleet_most", "text": "Brenna stays with the fleet in most versions, as a brilliant, difficult junior engineer. She and Dunn Marrow either become great friends or don't, and both versions are loud." }
     ],
     "rewards": "Brenna Tor as a crew contact, a tool_roll, a big swing in clans standing, and a deep and permanent bond with Hesk Varr if he's treated with respect."
   }

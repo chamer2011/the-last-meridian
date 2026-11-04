@@ -48,10 +48,10 @@
       "desperate_refugee crowd if the bread runs out halfway through a service"
     ],
     "outcomes": [
-      "He keeps going: the fleet has a priest who doesn't believe and a faith that's growing anyway. The Quiet slow on those decks. The captain is now complicit in a miracle.",
-      "He confesses from the table: half of them walk out, many of them to Oskar. The other half stay and say it doesn't change anything. He's astonished, and for the first time in months he sleeps.",
-      "Exposed by Fenn: the fleet is angry at him, and then at Odessa when they find out where the flour came from. The Quiet gain a thousand in a week.",
-      "Official kitchen: more people fed, and fewer people in a room together. The services shrink. Bastian says it's the first honest thing anyone has done, and he looks lost."
+      { "id": "keeps_going", "text": "He keeps going: the fleet has a priest who doesn't believe and a faith that's growing anyway. The Quiet slow on those decks. The captain is now complicit in a miracle." },
+      { "id": "confesses_from_table", "text": "He confesses from the table: half of them walk out, many of them to Oskar. The other half stay and say it doesn't change anything. He's astonished, and for the first time in months he sleeps." },
+      { "id": "exposed_by_fenn", "text": "Exposed by Fenn: the fleet is angry at him, and then at Odessa when they find out where the flour came from. The Quiet gain a thousand in a week." },
+      { "id": "official_kitchen", "text": "Official kitchen: more people fed, and fewer people in a room together. The services shrink. Bastian says it's the first honest thing anyone has done, and he looks lost." }
     ],
     "rewards": "Bastian's friendship, which comes with terrible honesty. calm_tabs. Fleet morale, and a possible truce with Oskar Lind."
   }

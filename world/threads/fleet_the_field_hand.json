@@ -45,10 +45,10 @@
       "hegemony_hunter with a warrant, if word reaches the Ministry"
     ],
     "outcomes": [
-      "He stays: the fleet keeps eating, and Tam is close to the end by the year's end. He's content. Grann reads the last chapter aloud, and the next harvest comes up a third short anyway.",
-      "He stops: yields drop by a third in two months, and the state of the soil is there for anyone to see. The fleet has to find the food somewhere, and nine thousand people know someone is to blame. Tam, looking forty-five and free, doesn't know what to do with his hands.",
-      "Cael teaches him: if it's paid for in time and secrecy, the aging slows but doesn't stop, and the yield settles at fifteen percent over. It's a real compromise, and the Hegemony is now looking at the Sundial.",
-      "Exposed: some call Tam a saint, some call Grann a monster and a few call her a hero. A line of hungry people forms to thank him, and Sabine Vael would very much like to meet him."
+      { "id": "stays", "text": "He stays: the fleet keeps eating, and Tam is close to the end by the year's end. He's content. Grann reads the last chapter aloud, and the next harvest comes up a third short anyway." },
+      { "id": "stops", "text": "He stops: yields drop by a third in two months, and the state of the soil is there for anyone to see. The fleet has to find the food somewhere, and nine thousand people know someone is to blame. Tam, looking forty-five and free, doesn't know what to do with his hands." },
+      { "id": "cael_teaches_him", "text": "Cael teaches him: if it's paid for in time and secrecy, the aging slows but doesn't stop, and the yield settles at fifteen percent over. It's a real compromise, and the Hegemony is now looking at the Sundial." },
+      { "id": "exposed", "text": "Exposed: some call Tam a saint, some call Grann a monster and a few call her a hero. A line of hungry people forms to thank him, and Sabine Vael would very much like to meet him." }
     ],
     "rewards": "A resonance_tuner Tam has been using as a bookmark, Grann's respect or her hatred, and a clue about what lies under the song."
   }

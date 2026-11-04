@@ -49,10 +49,10 @@
       "desperate_refugee crowd tearing up the east field, if it goes badly"
     ],
     "outcomes": [
-      "Voluntary: some sign up and many don't, and it covers about two-thirds of what's needed. People write down a row number. Children know where their grandparents are. Over time it becomes the first custom in the fleet that belongs to nobody else.",
-      "Mandatory: the soil is saved, and the council has just told every Veshti in the fleet what will be done with their mother. The Veshti ships may not stay. Some families hide their dead or give them to the void at night, and that's a crime now.",
-      "Refused: the rites go on as they were. Grann nods, says nothing and goes back to blending the grain. In a few harvests the captain will have to explain to thirty thousand people what the jar meant.",
-      "Another way found: it's only a harvest or two, and it costs a lot. The question is put off. It will be back, and the same jar will be sitting on the same table."
+      { "id": "voluntary", "text": "Voluntary: some sign up and many don't, and it covers about two-thirds of what's needed. People write down a row number. Children know where their grandparents are. Over time it becomes the first custom in the fleet that belongs to nobody else." },
+      { "id": "mandatory", "text": "Mandatory: the soil is saved, and the council has just told every Veshti in the fleet what will be done with their mother. The Veshti ships may not stay. Some families hide their dead or give them to the void at night, and that's a crime now." },
+      { "id": "refused", "text": "Refused: the rites go on as they were. Grann nods, says nothing and goes back to blending the grain. In a few harvests the captain will have to explain to thirty thousand people what the jar meant." },
+      { "id": "another_way_found", "text": "Another way found: it's only a harvest or two, and it costs a lot. The question is put off. It will be back, and the same jar will be sitting on the same table." }
     ],
     "rewards": "Grann's respect, which is rare, nutrient_gel crates from a grateful Sundial, and standing with whichever peoples the captain stood with."
   }

@@ -36,11 +36,11 @@
       "resonant_cultist if the captain comes to take the key or a heretic"
     ],
     "outcomes": [
-      "If the captain gets the pages, the Codex is made whole and the Order's lie is proven. Cael reads it, and it goes through him like a blade.",
-      "If the gate_key is freely given, the Eleven will come to the end. If it's stolen, they'll be on the docks at the Harbor anyway, with flames.",
-      "If Cael sings, he's very good, and he burns. If there's no Tuner or Proctor's blade to pull him back, the captain might lose him, if their choices earn that. If he's pulled back, he's changed.",
-      "If the captain brings the Tuner or Proctor Kore from the Pale Gate, Orsolya weeps with rage, then asks if she can see it. The Eleven would be the first watch, and nobody would have to burn.",
-      "If Orsolya and Ione ever meet: two old women, a great deal of shouting, then one of them says something quiet. Keep them both alive for that, if the player arranges it. She'll also tell a captain she likes what she really thinks should be done about the other end, and what her one great working is for."
+      { "id": "captain_gets_pages", "text": "If the captain gets the pages, the Codex is made whole and the Order's lie is proven. Cael reads it, and it goes through him like a blade." },
+      { "id": "gate_key_freely_given", "text": "If the gate_key is freely given, the Eleven will come to the end. If it's stolen, they'll be on the docks at the Harbor anyway, with flames." },
+      { "id": "cael_sings", "text": "If Cael sings, he's very good, and he burns. If there's no Tuner or Proctor's blade to pull him back, the captain might lose him, if their choices earn that. If he's pulled back, he's changed." },
+      { "id": "captain_brings_tuner_proctor_kore_from", "text": "If the captain brings the Tuner or Proctor Kore from the Pale Gate, Orsolya weeps with rage, then asks if she can see it. The Eleven would be the first watch, and nobody would have to burn." },
+      { "id": "orsolya_ione_ever_meet", "text": "If Orsolya and Ione ever meet: two old women, a great deal of shouting, then one of them says something quiet. Keep them both alive for that, if the player arranges it. She'll also tell a captain she likes what she really thinks should be done about the other end, and what her one great working is for." }
     ],
     "rewards": "The gate_key, the cut pages, an old resonance_tuner from a dead heretic's kit, and a burn scar for anyone who took a shift. Flour is welcome here."
   }

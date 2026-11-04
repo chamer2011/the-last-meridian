@@ -37,9 +37,9 @@
       "hegemony_trooper or remnant_marine if someone else's ships have reached the docks"
     ],
     "outcomes": [
-      "If the fleet stirs, they stay awake, angry and frightened. They hate the captain a little for it. They're alive to choose.",
-      "If part of the fleet sits down, named people are among them. Some can be brought back with time, and the cost is heavy. Count them.",
-      "If the captain lets it happen, that's a kind of Join ending with no song at all, and it's the worst one: they aren't kept, they're just gone. It should only happen if the player truly abandons it. Offer one more chance, through Naomi, who wakes up long enough to ask if she's allowed to have a real bunk now."
+      { "id": "fleet_stirs", "text": "If the fleet stirs, they stay awake, angry and frightened. They hate the captain a little for it. They're alive to choose." },
+      { "id": "part_fleet_sits_down", "text": "If part of the fleet sits down, named people are among them. Some can be brought back with time, and the cost is heavy. Count them." },
+      { "id": "captain_lets_happen", "text": "If the captain lets it happen, that's a kind of Join ending with no song at all, and it's the worst one: they aren't kept, they're just gone. It should only happen if the player truly abandons it. Offer one more chance, through Naomi, who wakes up long enough to ask if she's allowed to have a real bunk now." }
     ],
     "rewards": "Everything the fleet ever needed, for free: ration_pack, medkit, fuel_cell. Nobody needs the money any more, which is what should worry them."
   }

@@ -32,11 +32,11 @@
     ],
     "fights": ["cinder_wyrm if someone comes in hot, and they usually do. Shutting down heaters and standing very still makes it lose interest."],
     "outcomes": [
-      "If the secret is kept with a small, careful harvest, the fleet gets a slow and steady private fuel supply, and twenty-nine people who'll guard it. Secrets like that have a lifespan.",
-      "If the captain tells the whole colony, Cinder Reach becomes rich, and within months every faction with a ship is at the door, hungry and armed. Crawlers start dying in large numbers.",
-      "If the captain leaves them alone and tells no one, the miners stay in the dark with their strange neighbors. The fleet stays short of fuel, and Nerys Okoro sends a lamp, with one note, which Joren wrote, and which someone has to read to Ulla.",
-      "If the fleet takes everything it can, the fuel problem eases for months, and the survivors, Ulla and the crawlers all pay for it. Later, the tubes that the crawlers kept open start to plug.",
-      "If miners and managers are brought together to open the reserve, the fleet's fuel worries end for a long time, and it takes a miracle of cooperation between people who've sworn to kill each other. Rennick knows where the old survey maps are."
+      { "id": "secret_kept_with_small", "text": "If the secret is kept with a small, careful harvest, the fleet gets a slow and steady private fuel supply, and twenty-nine people who'll guard it. Secrets like that have a lifespan." },
+      { "id": "captain_tells_whole_colony", "text": "If the captain tells the whole colony, Cinder Reach becomes rich, and within months every faction with a ship is at the door, hungry and armed. Crawlers start dying in large numbers." },
+      { "id": "captain_leaves_alone_tells_no_one", "text": "If the captain leaves them alone and tells no one, the miners stay in the dark with their strange neighbors. The fleet stays short of fuel, and Nerys Okoro sends a lamp, with one note, which Joren wrote, and which someone has to read to Ulla." },
+      { "id": "fleet_takes_everything_can", "text": "If the fleet takes everything it can, the fuel problem eases for months, and the survivors, Ulla and the crawlers all pay for it. Later, the tubes that the crawlers kept open start to plug." },
+      { "id": "miners_managers_brought_together_to", "text": "If miners and managers are brought together to open the reserve, the fleet's fuel worries end for a long time, and it takes a miracle of cooperation between people who've sworn to kill each other. Rennick knows where the old survey maps are." }
     ],
     "rewards": "A private supply of about one refined_fuel per visit if the deal is honest, a survivor's knowledge that helps in What Happens If It Stops, and Ulla's lifelong debt for finding her son."
   }

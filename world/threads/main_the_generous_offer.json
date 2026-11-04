@@ -37,11 +37,11 @@
       "inquisitor and hegemony_trooper if Vael's audit turns into an arrest on Haven's docks"
     ],
     "outcomes": [
-      "If the council accepts, ships peel off to Bastion, and the fleet loses a thousand people a week and gains food. Later this will be the worst thing the captain ever allowed (main_the_remittance). Those people can still be got back.",
-      "If it refuses, hunger gets worse, Halm takes it to a public vote and Corvane shrugs: 'An unfortunate possibility.' A customs blockade starts. Severa's copy can still reach the captain.",
-      "If they negotiate something partial (food for data, a delay), it buys medicine and satisfies no one. The clause stays in, unless someone has noticed it.",
-      "If Severa is protected, she later hands over her copies. If she's exposed, Moor has her, the trail runs through Halloran instead, and nine hundred and eighty-seven saved files start to unravel.",
-      "If the list of the fleet's Resonants is handed over, Vael comes for them one by one, each with an apology. Cael, Lira and perhaps the captain are on it."
+      { "id": "council_accepts", "text": "If the council accepts, ships peel off to Bastion, and the fleet loses a thousand people a week and gains food. Later this will be the worst thing the captain ever allowed (main_the_remittance). Those people can still be got back." },
+      { "id": "refuses", "text": "If it refuses, hunger gets worse, Halm takes it to a public vote and Corvane shrugs: 'An unfortunate possibility.' A customs blockade starts. Severa's copy can still reach the captain." },
+      { "id": "negotiate_something_partial_food_data", "text": "If they negotiate something partial (food for data, a delay), it buys medicine and satisfies no one. The clause stays in, unless someone has noticed it." },
+      { "id": "severa_protected", "text": "If Severa is protected, she later hands over her copies. If she's exposed, Moor has her, the trail runs through Halloran instead, and nine hundred and eighty-seven saved files start to unravel." },
+      { "id": "list_fleets_resonants_handed_over", "text": "If the list of the fleet's Resonants is handed over, Vael comes for them one by one, each with an apology. Cael, Lira and perhaps the captain are on it." }
     ],
     "rewards": "forged_papers from Severa, medicine and food for the fleet if a deal is struck, and Corvane's private promise, for what it's worth."
   }

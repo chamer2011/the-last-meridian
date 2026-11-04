@@ -32,10 +32,10 @@
     ],
     "fights": ["hegemony_trooper or ministry_blade if the seventy-two hours run out and the captain still has Pilar. Up to that moment, nobody will lay a hand on anyone, and that's the whole point."],
     "outcomes": [
-      "If she's approved, it's the first time in the Hegemony's history. Pilar goes free, the clerk who stamped the last box is quietly reassigned, and the captain now has the ledgers that lead to Unmarked.",
-      "If she's brought out illegally, the fleet gets the ledgers and the Hegemony gets a legal complaint and a real grievance, with hegemony standing dropping and Vael taking a personal interest.",
-      "If the fleet family's accusation is heard, the captain has to decide if a woman who signed thousands of warrants gets protection, a trial or a push out of the door, while her ledgers are the best evidence anyone has.",
-      "If she fails, she goes with a grateful nod to the grey coats and a look back at the captain. The ledgers may still reach the captain later, by a slow and very careful route through Inspector Moor."
+      { "id": "shes_approved", "text": "If she's approved, it's the first time in the Hegemony's history. Pilar goes free, the clerk who stamped the last box is quietly reassigned, and the captain now has the ledgers that lead to Unmarked." },
+      { "id": "shes_brought_out_illegally", "text": "If she's brought out illegally, the fleet gets the ledgers and the Hegemony gets a legal complaint and a real grievance, with hegemony standing dropping and Vael taking a personal interest." },
+      { "id": "fleet_familys_accusation_heard", "text": "If the fleet family's accusation is heard, the captain has to decide if a woman who signed thousands of warrants gets protection, a trial or a push out of the door, while her ledgers are the best evidence anyone has." },
+      { "id": "fails", "text": "If she fails, she goes with a grateful nod to the grey coats and a look back at the captain. The ledgers may still reach the captain later, by a slow and very careful route through Inspector Moor." }
     ],
     "rewards": "A data_chip of the ledgers, which is the key to the next thread. Pilar Oyelowo, a superb and hated accountant. A signal_scrambler from a sympathetic clerk, and Jaska Moor owing the captain a question she'll never quite ask."
   }

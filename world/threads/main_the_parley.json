@@ -35,10 +35,10 @@
       "choir_cantor_shard if the truce is broken"
     ],
     "outcomes": [
-      "If the truce holds and the question is answered, the player knows. The Cantor will take the captain's hail for the rest of the game, and it won't lie. The Hunters don't stop, but it will warn them once, as a courtesy.",
-      "If the captain's own people break the truce, the Cantor doesn't retaliate, which terrifies everyone. The trust is gone, the next answer costs far more, and if it happened at Haven, Sable bars the captain.",
-      "If the captain lets Voss speak to it, she says nothing for a long time, then asks for a status report. For a moment it sounds like one young woman. That can be used, much later, at the board.",
-      "If Cael is there, the Cantor greets him by name, as an old friend, and everyone hears. Ione will know. Tarrow wants him locked up, and he laughs at the wrong moment."
+      { "id": "truce_holds_question_answered", "text": "If the truce holds and the question is answered, the player knows. The Cantor will take the captain's hail for the rest of the game, and it won't lie. The Hunters don't stop, but it will warn them once, as a courtesy." },
+      { "id": "captains_own_people_break_truce", "text": "If the captain's own people break the truce, the Cantor doesn't retaliate, which terrifies everyone. The trust is gone, the next answer costs far more, and if it happened at Haven, Sable bars the captain." },
+      { "id": "captain_lets_voss_speak_to", "text": "If the captain lets Voss speak to it, she says nothing for a long time, then asks for a status report. For a moment it sounds like one young woman. That can be used, much later, at the board." },
+      { "id": "cael", "text": "If Cael is there, the Cantor greets him by name, as an old friend, and everyone hears. Ione will know. Tarrow wants him locked up, and he laughs at the wrong moment." }
     ],
     "rewards": "Nothing you can hold. A choir_core, if the Shard is beaten or if the Cantor is simply asked for one. Standing shifts wildly with everyone who was watching."
   }

@@ -44,10 +44,10 @@
       "concord_deserter pair, hard men who joined the mutiny for reasons of their own"
     ],
     "outcomes": [
-      "Varga gets what she asked for: the ship heals around her sentence. A good officer goes to the Sundial's labor decks on the captain's signature, and only the captain knows about the forty seconds.",
-      "Cleared publicly: the forty seconds come out, against her wishes. The crew is ashamed and Reth surrenders. Varga gets her ship back and can't bear to look at it.",
-      "Reth confirmed: crews on other ships start asking for votes. Within a month there are three elected captains in the fleet, and the chain of command has changed for good. Some of those captains are good.",
-      "Retaken by force: the Ashgrove is in line by morning, with dead on both sides. Nobody in the fleet sends the captain a polite message again."
+      { "id": "varga_gets_what_asked", "text": "Varga gets what she asked for: the ship heals around her sentence. A good officer goes to the Sundial's labor decks on the captain's signature, and only the captain knows about the forty seconds." },
+      { "id": "cleared_publicly", "text": "Cleared publicly: the forty seconds come out, against her wishes. The crew is ashamed and Reth surrenders. Varga gets her ship back and can't bear to look at it." },
+      { "id": "reth_confirmed", "text": "Reth confirmed: crews on other ships start asking for votes. Within a month there are three elected captains in the fleet, and the chain of command has changed for good. Some of those captains are good." },
+      { "id": "retaken_by_force", "text": "Retaken by force: the Ashgrove is in line by morning, with dead on both sides. Nobody in the fleet sends the captain a polite message again." }
     ],
     "rewards": "The Ashgrove's marines and a service_rifle or two, or a fleet that has now seen what the captain does with force."
   }

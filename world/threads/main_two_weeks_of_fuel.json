@@ -37,11 +37,25 @@
       "strikebreaker if the captain gets between the company and the picket line at Cinder Reach"
     ],
     "outcomes": [
-      "If they sign with Quill, the fleet has fuel, parcels of food keep arriving, and people start calling her Grandmother. She'll call in the markers one at a time, at the worst possible moments, and much later she'll want silence about her ledger.",
-      "If they raid the depot, the fleet is fueled and at war with the Syndicate. Tannis owes them or has framed them. Kessara is closed unless they fix it, and later her ledger is harder to reach by talk and easier by force.",
-      "If they take Corvane's fuel, it's free, and every ship in the fleet carries a Hegemony transponder until someone finds them. Halm's position is stronger, and Inspector Moor starts turning up wherever the fleet goes.",
-      "If they settle Cinder Reach, the supply is steady and honest, and either Rennick Vale or Ulla Greaves, whichever lost, will never forgive it. Fuel arrives late, and a ship or two is lost waiting for it."
+      { "id": "sign_with_quill", "text": "If they sign with Quill, the fleet has fuel, parcels of food keep arriving, and people start calling her Grandmother. She'll call in the markers one at a time, at the worst possible moments, and much later she'll want silence about her ledger." },
+      { "id": "raid_depot", "text": "If they raid the depot, the fleet is fueled and at war with the Syndicate. Tannis owes them or has framed them. Kessara is closed unless they fix it, and later her ledger is harder to reach by talk and easier by force." },
+      { "id": "take_corvanes_fuel", "text": "If they take Corvane's fuel, it's free, and every ship in the fleet carries a Hegemony transponder until someone finds them. Halm's position is stronger, and Inspector Moor starts turning up wherever the fleet goes." },
+      { "id": "settle_cinder_reach", "text": "If they settle Cinder Reach, the supply is steady and honest, and either Rennick Vale or Ulla Greaves, whichever lost, will never forgive it. Fuel arrives late, and a ship or two is lost waiting for it." }
     ],
-    "rewards": "Fuel for the fleet (fuel_cell or refined_fuel in quantity), Marrow's respect, and a place on Quill's list of people she worries about. Nothing that makes them rich."
+    "rewards": "Fuel for the fleet (fuel_cell or refined_fuel in quantity), Marrow's respect, and a place on Quill's list of people she worries about. Nothing that makes them rich.",
+    "facts": {
+      "signed_with_quill": "The fleet signed Mother Quill's page: fuel for forty-one markers, to be called in one at a time.",
+      "markers_limited": "Mother Quill's markers have a limit, in writing.",
+      "raided_the_depot": "The fleet raided Quill's depot for its fuel.",
+      "kessara_closed": "Kessara Drift is closed to the fleet since the depot.",
+      "tannis_owes": "Tannis is owed for the depot.",
+      "framed_by_tannis": "Tannis framed the fleet for the depot.",
+      "hegemony_transponders": "Every ship in the fleet carries a Hegemony transponder, from Corvane's free fuel.",
+      "halm_stronger": "Speaker Halm's position is stronger since Corvane's fuel.",
+      "cinder_settled": "The strike at Cinder Reach was settled, and the fleet buys honest fuel there.",
+      "sided_with_ulla": "The fleet took Ulla Greaves's side at Cinder Reach.",
+      "fuel_sorted": "The fleet's fuel is settled, one way or another.",
+      "cold_burn": "Chief Marrow is running the engines on a cold burn to stretch the fuel."
+    }
   }
 }

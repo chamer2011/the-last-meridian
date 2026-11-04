@@ -32,10 +32,10 @@
     ],
     "fights": ["choir_mimic, only if someone attacks her. She won't know how she's doing what she's doing, and she'll stop as soon as anyone says her name. Nothing about this has to end in a fight."],
     "outcomes": [
-      "If she's brought home to Corin, they're happy, and it's the most frightening thing on the Sundial. Lt. Tarrow finds out sooner or later. Word spreads, and other families start asking whether their dead might be writing to them. The fleet has to have this argument out loud.",
-      "If she's told and left at Lumen, she goes on tending the sick. She stops writing. Corin Ferro is told she has died, or he's told the truth, and neither one helps much. Mirei's reports get a little longer.",
-      "If she's handed over to Tarrow or Tessaly, or destroyed, the threat is gone and so is the closest thing anyone has to a witness from inside the Choir. Corin Ferro never speaks to the captain again, and he still has the letters.",
-      "If she chooses for herself, she may walk out toward the Choir, or ask to be studied, or ask to be switched off, and each is a huge clue about what's in the song. She tells the captain what it's like in there, if she's asked, as best she can, and it isn't what anyone expected."
+      { "id": "shes_brought_home_to_corin", "text": "If she's brought home to Corin, they're happy, and it's the most frightening thing on the Sundial. Lt. Tarrow finds out sooner or later. Word spreads, and other families start asking whether their dead might be writing to them. The fleet has to have this argument out loud." },
+      { "id": "shes_told_left_lumen", "text": "If she's told and left at Lumen, she goes on tending the sick. She stops writing. Corin Ferro is told she has died, or he's told the truth, and neither one helps much. Mirei's reports get a little longer." },
+      { "id": "shes_handed_over_to_tarrow_tessaly", "text": "If she's handed over to Tarrow or Tessaly, or destroyed, the threat is gone and so is the closest thing anyone has to a witness from inside the Choir. Corin Ferro never speaks to the captain again, and he still has the letters." },
+      { "id": "chooses_herself", "text": "If she chooses for herself, she may walk out toward the Choir, or ask to be studied, or ask to be switched off, and each is a huge clue about what's in the song. She tells the captain what it's like in there, if she's asked, as best she can, and it isn't what anyone expected." }
     ],
     "rewards": "A real clue to what the Choir keeps and why, the trust or fury of Corin Ferro, a shift in fleet opinion on the Choir and the dead, and a letter from Imara to the captain, in her own handwriting, thanking them for asking."
   }

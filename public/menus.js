@@ -293,11 +293,11 @@ function questsMenu() {
   const record = g.story.record ?? { endings: [], facts: [] };
   // A story that ended on the record without a quest of its own is finished too.
   const done = [
-    ...g.quests.filter((q) => q.status !== "active"),
-    ...record.endings.filter((ending) => !g.quests.some((q) => q.id === ending.id)).map((ending) => ({ id: ending.id, title: ending.title, main: false, status: "completed", desc: "", objective: ending.summary })),
+    ...g.quests.filter((q) => q.status !== "active").map((q) => ({ ...q, ending: record.endings.find((ending) => ending.id === q.id)?.ending ?? null })),
+    ...record.endings.filter((ending) => !g.quests.some((q) => q.id === ending.id)).map((ending) => ({ id: ending.id, title: ending.title, main: false, status: ending.failed ? "failed" : "completed", ending: ending.ending, desc: "", objective: ending.summary })),
   ];
   const card = (q) => el("div", { class: "card stack gap-small" },
-    el("div", { class: "spread" }, el("strong", {}, q.title), q.main ? el("span", { class: "tag on" }, "main") : q.status !== "active" && el("span", { class: `tag ${q.status === "failed" ? "bad" : "on"}` }, q.status)),
+    el("div", { class: "spread" }, el("strong", {}, q.title), q.main ? el("span", { class: "tag on" }, "main") : q.status !== "active" && el("span", { class: `tag ${q.status === "failed" ? "bad" : "on"}` }, q.ending ? q.ending.replaceAll("_", " ") : q.status)),
     q.desc && muted(q.desc),
     el("div", { class: "small" }, q.status === "active" ? `Next: ${q.objective}` : q.objective));
   return columns(

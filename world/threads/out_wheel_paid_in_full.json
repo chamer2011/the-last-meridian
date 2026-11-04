@@ -32,10 +32,10 @@
     ],
     "fights": ["syndicate_collector or a wheel_enforcer at a fleet family's door if talking fails. Emeric can usually send them somewhere else for an afternoon, for a price he pays himself."],
     "outcomes": [
-      "If the captain buys the paper and forgives it, thousands of refugees wake up with no debts, and morale leaps. The captain now knows exactly how much everyone owed, and the fleet's accounts are empty.",
-      "If the captain renounces the Concord's debts in public, it works, and Admiral Okonkwo-Reyes and every die-hard in the fleet now have a sworn statement that this captain doesn't speak for the Concord.",
-      "If the families hold out together, the House gives up after a season. Oriel sends a note of real admiration, and Emeric Dole loses his job and turns up asking for work.",
-      "If it's all ignored, the lien comes due. Repossession agents don't board by force. They just start turning up at every port with paperwork, and every dockmaster reads it."
+      { "id": "captain_buys_paper_forgives", "text": "If the captain buys the paper and forgives it, thousands of refugees wake up with no debts, and morale leaps. The captain now knows exactly how much everyone owed, and the fleet's accounts are empty." },
+      { "id": "captain_renounces_concords_debts_public", "text": "If the captain renounces the Concord's debts in public, it works, and Admiral Okonkwo-Reyes and every die-hard in the fleet now have a sworn statement that this captain doesn't speak for the Concord." },
+      { "id": "families_hold_out_together", "text": "If the families hold out together, the House gives up after a season. Oriel sends a note of real admiration, and Emeric Dole loses his job and turns up asking for work." },
+      { "id": "all_ignored", "text": "If it's all ignored, the lien comes due. Repossession agents don't board by force. They just start turning up at every port with paperwork, and every dockmaster reads it." }
     ],
     "rewards": "A ledger_of_favors from Emeric if he's helped, the Meridian's lien paper, a jump in fleet morale if the debts go away, and Emeric Dole himself as an honest bookkeeper, which is rare."
   }

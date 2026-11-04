@@ -45,11 +45,11 @@
       "desperate_refugee crowd storming a grain barge if it goes on too long"
     ],
     "outcomes": [
-      "Force: the grain flows. She never forgives it, and she has never forgiven anything. From now on the Sundial delivers exactly what's owed, to the gram, and not a potato more.",
-      "A deal: she restores shipments for a concession in council. Food is now an accepted weapon, and the next person to use it may not be as careful.",
-      "A quiet reconciliation: the captain keeps the secret and gets them talking. The council's deadlock loosens. Both owe the captain, and together they're far more dangerous than they were apart.",
-      "It goes public: Fenn reads the marriage certificate on air, and the whole fleet laughs for the first time in six months. It's good for morale. They both remember who started it, and for the first time in thirty-one years they're on the same side.",
-      "She's told about Corvane: she goes white, says thank you and gives the captain a potato. Next morning Halm has lost four votes, and she has stopped going to the catwalk. See fleet_arrest_us."
+      { "id": "force", "text": "Force: the grain flows. She never forgives it, and she has never forgiven anything. From now on the Sundial delivers exactly what's owed, to the gram, and not a potato more." },
+      { "id": "deal", "text": "A deal: she restores shipments for a concession in council. Food is now an accepted weapon, and the next person to use it may not be as careful." },
+      { "id": "quiet_reconciliation", "text": "A quiet reconciliation: the captain keeps the secret and gets them talking. The council's deadlock loosens. Both owe the captain, and together they're far more dangerous than they were apart." },
+      { "id": "goes_public", "text": "It goes public: Fenn reads the marriage certificate on air, and the whole fleet laughs for the first time in six months. It's good for morale. They both remember who started it, and for the first time in thirty-one years they're on the same side." },
+      { "id": "shes_told_about_corvane", "text": "She's told about Corvane: she goes white, says thank you and gives the captain a potato. Next morning Halm has lost four votes, and she has stopped going to the catwalk. See fleet_arrest_us." }
     ],
     "rewards": "Crates of nutrient_gel and real vegetables, a favor from a woman who never forgets, or her permanent enmity."
   }

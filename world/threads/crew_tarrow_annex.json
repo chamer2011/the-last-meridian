@@ -43,10 +43,10 @@
       "choir_mimic when the clamp fails, or if someone tries clumsily to destroy it. It's wearing her sister's face, and Tarrow is in the room"
     ],
     "outcomes": [
-      "She keeps it, on the captain's terms: intelligence flows and a secret binds them. When it comes out, and it will, they go down together. She'll never say thank you. She'll say \"sir\".",
-      "She does it herself: if the captain makes her, she does it correctly, with her sidearm, and reports for duty on time. She stops eating in company, and her list gets longer.",
-      "The captain does it: she never forgives them and thanks them anyway, with exact politeness. The intelligence stops.",
-      "Exposed: Seven and every synthetic in the fleet learn that the officer with 612 names has a Choir machine to dinner. Her authority is gone and her marines split. The fear she's been holding in place has to go somewhere."
+      { "id": "keeps_captains_terms", "text": "She keeps it, on the captain's terms: intelligence flows and a secret binds them. When it comes out, and it will, they go down together. She'll never say thank you. She'll say \"sir\"." },
+      { "id": "does_herself", "text": "She does it herself: if the captain makes her, she does it correctly, with her sidearm, and reports for duty on time. She stops eating in company, and her list gets longer." },
+      { "id": "captain_does", "text": "The captain does it: she never forgives them and thanks them anyway, with exact politeness. The intelligence stops." },
+      { "id": "exposed", "text": "Exposed: Seven and every synthetic in the fleet learn that the officer with 612 names has a Choir machine to dinner. Her authority is gone and her marines split. The fear she's been holding in place has to go somewhere." }
     ],
     "rewards": "Real intelligence on Choir sweeps that can save a ship. A choir_core if it's destroyed. Tarrow's loyalty or her lasting hatred, both of which she expresses identically."
   }

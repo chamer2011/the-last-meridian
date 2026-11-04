@@ -41,10 +41,10 @@
     ],
     "fights": [],
     "outcomes": [
-      "Tarrow lets Seven operate: she walks out of there, and has no words for it. A week later one name has been taken off the list, and she'll never say which.",
-      "Seven runs the scrubber: they go dark at hour six. When the hatch opens, Tarrow carries the chassis out herself and won't let anyone else touch it until Marrow has it on a bench. Play the sixty-four percent honestly. If they don't wake at first, Marrow won't stop trying.",
-      "Tarrow refuses: she's carried out alive with no feeling in her legs, and Aduro needs weeks to fix it. She runs security from a chair, more polite than ever, owing nobody anything.",
-      "The captain uses Resonance in front of her: if this is news to her, she now has to decide whether the captain goes on a list. She tells them so, once they've all stopped coughing."
+      { "id": "tarrow_lets_seven_operate", "text": "Tarrow lets Seven operate: she walks out of there, and has no words for it. A week later one name has been taken off the list, and she'll never say which." },
+      { "id": "seven_runs_scrubber", "text": "Seven runs the scrubber: they go dark at hour six. When the hatch opens, Tarrow carries the chassis out herself and won't let anyone else touch it until Marrow has it on a bench. Play the sixty-four percent honestly. If they don't wake at first, Marrow won't stop trying." },
+      { "id": "tarrow_refuses", "text": "Tarrow refuses: she's carried out alive with no feeling in her legs, and Aduro needs weeks to fix it. She runs security from a chair, more polite than ever, owing nobody anything." },
+      { "id": "captain_uses_resonance_front_her", "text": "The captain uses Resonance in front of her: if this is news to her, she now has to decide whether the captain goes on a list. She tells them so, once they've all stopped coughing." }
     ],
     "rewards": "A private truce between Tarrow and Seven that doesn't look like one, and trust from both, which neither would ever call that."
   }

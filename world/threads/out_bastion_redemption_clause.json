@@ -32,10 +32,10 @@
     ],
     "fights": [],
     "outcomes": [
-      "If the fleet becomes sovereign, thousands can be redeemed in batches, and the fleet is now a nation with enemies, a flag and a treaty obligation or two. Elections are coming, which Halm has wanted all along.",
-      "If the captain signs as head of state, they hold real legal power, and they're the one who can be held to any treaty, or to any surrender someone negotiated in their name.",
-      "If Halm signs, he's gained the legal standing he's always wanted, and the captain answers to him in law. The channel to Corvane is now a real threat that only the player can uncover in time.",
-      "If the idea fails or is dropped, a few hundred contracts might still be bought quietly by Severa's method, and the idea stays alive in the fleet, as a thing people argue about at dinner."
+      { "id": "fleet_becomes_sovereign", "text": "If the fleet becomes sovereign, thousands can be redeemed in batches, and the fleet is now a nation with enemies, a flag and a treaty obligation or two. Elections are coming, which Halm has wanted all along." },
+      { "id": "captain_signs_head_state", "text": "If the captain signs as head of state, they hold real legal power, and they're the one who can be held to any treaty, or to any surrender someone negotiated in their name." },
+      { "id": "halm_signs", "text": "If Halm signs, he's gained the legal standing he's always wanted, and the captain answers to him in law. The channel to Corvane is now a real threat that only the player can uncover in time." },
+      { "id": "idea_fails_dropped", "text": "If the idea fails or is dropped, a few hundred contracts might still be bought quietly by Severa's method, and the idea stays alive in the fleet, as a thing people argue about at dinner." }
     ],
     "rewards": "A few hundred to several thousand redeemed refugees, depending on money and skill, fleet morale, some fleet and hegemony standing shifts, and a permanent change in what the fleet legally is."
   }

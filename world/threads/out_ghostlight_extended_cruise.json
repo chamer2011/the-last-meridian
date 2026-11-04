@@ -32,10 +32,10 @@
     ],
     "fights": ["desperate_refugee if a third-class deck panics at the news, and drift_raider if Tessaly's smuggler contacts decide to come and take the lot. An orderly lifeboat drill solves more than a pistol can."],
     "outcomes": [
-      "If the liner joins the fleet with the lie intact, the fleet gains doctors, engineers and fine wine, and there's now a ship full of people who think they're on holiday. It's very funny, then it isn't. When they find out, the captain's name is on the brochure.",
-      "If the truth is told well, there's a terrible week, three thousand people mourn all at once, and then they become one of the fleet's strongest ships. Lucien Sarr sleeps for two days.",
-      "If it's told badly, the ship tears itself apart, fast, and the fleet takes on whoever's left, and takes the blame.",
-      "If the captain leaves them undisturbed, Sarr's twelve weeks run out somewhere out of sight, and the fleet hears a quartet on a dead channel in about three months. It's a ship knowingly left behind, if anyone's keeping score."
+      { "id": "liner_joins_fleet_with_lie_intact", "text": "If the liner joins the fleet with the lie intact, the fleet gains doctors, engineers and fine wine, and there's now a ship full of people who think they're on holiday. It's very funny, then it isn't. When they find out, the captain's name is on the brochure." },
+      { "id": "truth_told_well", "text": "If the truth is told well, there's a terrible week, three thousand people mourn all at once, and then they become one of the fleet's strongest ships. Lucien Sarr sleeps for two days." },
+      { "id": "told_badly", "text": "If it's told badly, the ship tears itself apart, fast, and the fleet takes on whoever's left, and takes the blame." },
+      { "id": "captain_leaves_undisturbed", "text": "If the captain leaves them undisturbed, Sarr's twelve weeks run out somewhere out of sight, and the fleet hears a quartet on a dead channel in about three months. It's a ship knowingly left behind, if anyone's keeping score." }
     ],
     "rewards": "A hospital ship's worth of doctors, or just a surgeon_lens and some trauma_kit from the liner's stores. Lucien Sarr as a very capable friend, a bottle of something extraordinary, and Tessaly's reluctant respect."
   }

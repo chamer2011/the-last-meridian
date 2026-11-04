@@ -43,10 +43,10 @@
     ],
     "fights": [],
     "outcomes": [
-      "If the captain keeps her secret and keeps her on, Voss starts telling the captain the truth about everything else, in very few words. The captain now holds a secret that could end them both.",
-      "If the captain relieves or reports her, she hands over her sidearm without argument and goes to the brig. The fleet loses its best tactical mind for as long as this lasts, Tarrow has a prisoner she'd very much like to open up, and the crew wants to know why.",
-      "If the captain orders a proper test, Aduro and Seven spend a week designing one. It comes back clean, and it makes no difference to her. Seven's reaction on hearing Voss's name is odd, and worth remembering (see crew_seven_consult).",
-      "If the captain brings Voss and Tarrow together over that table, the two most frightening officers on the ship learn each other's worst fear. Nothing is said. From then on, each leaves the scanner warm for the other."
+      { "id": "captain_keeps_her_secret_keeps_her", "text": "If the captain keeps her secret and keeps her on, Voss starts telling the captain the truth about everything else, in very few words. The captain now holds a secret that could end them both." },
+      { "id": "captain_relieves_reports_her", "text": "If the captain relieves or reports her, she hands over her sidearm without argument and goes to the brig. The fleet loses its best tactical mind for as long as this lasts, Tarrow has a prisoner she'd very much like to open up, and the crew wants to know why." },
+      { "id": "captain_orders_proper_test", "text": "If the captain orders a proper test, Aduro and Seven spend a week designing one. It comes back clean, and it makes no difference to her. Seven's reaction on hearing Voss's name is odd, and worth remembering (see crew_seven_consult)." },
+      { "id": "captain_brings_voss_tarrow_together", "text": "If the captain brings Voss and Tarrow together over that table, the two most frightening officers on the ship learn each other's worst fear. Nothing is said. From then on, each leaves the scanner warm for the other." }
     ],
     "rewards": "Voss's loyalty, which is worth more than anything in stores. Aduro's trust if it's handled gently, and a surgeon_lens from the medbay's back shelf."
   }

@@ -42,10 +42,10 @@
     ],
     "fights": [],
     "outcomes": [
-      "She passes Beck's exam: Beck signs, hands her his old gloves, and tells her she's still reckless and still takes the third-best lane. She's a real pilot on paper now, and something in her shoulders comes down an inch.",
-      "She's exempted on the captain's word: the Act is broken on its first day. Every bad doctor in the fleet has a precedent. Amadi stops speaking to the captain and starts speaking to Halm.",
-      "She's grounded: she obeys. The fleet's next jumps go to a fifty-year-old ferry pilot with shaky hands until someone fixes this, and that costs fuel and maybe lives.",
-      "Voss's part comes out: she offers her resignation in writing, with the date left blank for the captain to fill in."
+      { "id": "passes_becks_exam", "text": "She passes Beck's exam: Beck signs, hands her his old gloves, and tells her she's still reckless and still takes the third-best lane. She's a real pilot on paper now, and something in her shoulders comes down an inch." },
+      { "id": "shes_exempted_captains_word", "text": "She's exempted on the captain's word: the Act is broken on its first day. Every bad doctor in the fleet has a precedent. Amadi stops speaking to the captain and starts speaking to Halm." },
+      { "id": "shes_grounded", "text": "She's grounded: she obeys. The fleet's next jumps go to a fifty-year-old ferry pilot with shaky hands until someone fixes this, and that costs fuel and maybe lives." },
+      { "id": "vosss_part_comes_out", "text": "Voss's part comes out: she offers her resignation in writing, with the date left blank for the captain to fill in." }
     ],
     "rewards": "pilot_gloves from Beck, Pell's devotion, and perhaps a credentials law that lets people earn what they lost."
   }

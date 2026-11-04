@@ -37,11 +37,11 @@
       "gate_colossus if the captain forces the inner door or strikes the ring without answering"
     ],
     "outcomes": [
-      "If they pass lawfully, the Gate stands open for the captain's fleet and only for them. At the end, it's a fast and safe road.",
-      "If they force it, the way is open for anyone, including the Regent's squadron and anything else that wants to come through. The Wardens don't ask any more, and that should bother people.",
-      "If the bell is rung, everyone in the song hears it. Every Hunter stops for one second. Every Resonant in known space wakes at the same moment. The Cantor wants to know what the captain meant by it.",
-      "If the Colossus is told he can stand down, by someone who means it, he does, and that's the first relief anyone has given in 1,006 years. Word of it runs down the Walk, one Warden at a time.",
-      "If Tamsin charts it, their maps prove the Gate isn't a way out. They might finally be believed, and that might be worse."
+      { "id": "pass_lawfully", "text": "If they pass lawfully, the Gate stands open for the captain's fleet and only for them. At the end, it's a fast and safe road." },
+      { "id": "force", "text": "If they force it, the way is open for anyone, including the Regent's squadron and anything else that wants to come through. The Wardens don't ask any more, and that should bother people." },
+      { "id": "bell_rung", "text": "If the bell is rung, everyone in the song hears it. Every Hunter stops for one second. Every Resonant in known space wakes at the same moment. The Cantor wants to know what the captain meant by it." },
+      { "id": "colossus_told_can_stand_down", "text": "If the Colossus is told he can stand down, by someone who means it, he does, and that's the first relief anyone has given in 1,006 years. Word of it runs down the Walk, one Warden at a time." },
+      { "id": "tamsin_charts", "text": "If Tamsin charts it, their maps prove the Gate isn't a way out. They might finally be believed, and that might be worse." }
     ],
     "rewards": "A gate_key from a dead expedition's effects, if they don't have one. A nav_slate or veshti_skin from the wrecks, and a chart worth a great deal to the Long Families."
   }

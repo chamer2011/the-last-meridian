@@ -32,10 +32,10 @@
     ],
     "fights": ["wreck_diver hired by the losing buyer, out on the hull, and customs_marine if the Hegemony decides not to wait for the court. Guild law comes down hard on anyone who shoots during a hearing."],
     "outcomes": [
-      "If the lights come on, the Guild laughs for a week and Crane has never been happier, though you'd never know. The fleet gets a claim on a damaged warship and a hundred and ninety trained sailors.",
-      "If the captain wins in court, the principle that people can't be salvaged becomes Guild law. A lot of old contracts stop working, and the Guild's divers split over whether this is justice or the end of the Guild.",
-      "If the captain buys them, Amadi and her sailors are fleet property on paper, a bitter joke that goes around for months, and the fleet's accounts are empty.",
-      "If the captain walks away, they go to the highest bidder, and in a month Renata Amadi turns up commanding a Hegemony gunboat, furious, excellent, and asking questions about who left them there."
+      { "id": "lights_come", "text": "If the lights come on, the Guild laughs for a week and Crane has never been happier, though you'd never know. The fleet gets a claim on a damaged warship and a hundred and ninety trained sailors." },
+      { "id": "captain_wins_court", "text": "If the captain wins in court, the principle that people can't be salvaged becomes Guild law. A lot of old contracts stop working, and the Guild's divers split over whether this is justice or the end of the Guild." },
+      { "id": "captain_buys", "text": "If the captain buys them, Amadi and her sailors are fleet property on paper, a bitter joke that goes around for months, and the fleet's accounts are empty." },
+      { "id": "captain_walks_away", "text": "If the captain walks away, they go to the highest bidder, and in a month Renata Amadi turns up commanding a Hegemony gunboat, furious, excellent, and asking questions about who left them there." }
     ],
     "rewards": "A boarding_axe or service_rifle from the Vow's arms locker, Crane's guarded respect and better rates at the Graveyard, Chief Amadi's loyalty if she's earned, and a damaged warship that could be repaired, with enough time and enough parts."
   }

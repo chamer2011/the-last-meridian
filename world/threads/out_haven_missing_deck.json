@@ -32,10 +32,10 @@
     ],
     "fights": ["security_drone units from the old post if the captain forces the wrong door. They're slow and thirty years out of date, and Quist can call them off with one polite word."],
     "outcomes": [
-      "If the line is cut, whoever was reading goes silent, and the fleet is harder to find for a while. Quist grieves for a boss he's already lost once.",
-      "If it's fed lies, the fleet gains a real weapon: a false report can move Choir hunters. Every lie has to be believable, though, and sooner or later the replies ask something that only one person on the Meridian would know.",
-      "If the archive is used, the captain knows everyone's secrets at Haven, and Sable knows it. If the archive is destroyed, Sable owes the captain the only debt they've ever admitted to.",
-      "If the captain answers honestly, the GM may let something answer back: a short, gentle message in the section head's voice, and an asterion_voice_recording the crew won't want to play twice."
+      { "id": "line_cut", "text": "If the line is cut, whoever was reading goes silent, and the fleet is harder to find for a while. Quist grieves for a boss he's already lost once." },
+      { "id": "fed_lies_fleet_gains_real_weapon", "text": "If it's fed lies, the fleet gains a real weapon: a false report can move Choir hunters. Every lie has to be believable, though, and sooner or later the replies ask something that only one person on the Meridian would know." },
+      { "id": "archive_used", "text": "If the archive is used, the captain knows everyone's secrets at Haven, and Sable knows it. If the archive is destroyed, Sable owes the captain the only debt they've ever admitted to." },
+      { "id": "captain_answers_honestly", "text": "If the captain answers honestly, the GM may let something answer back: a short, gentle message in the section head's voice, and an asterion_voice_recording the crew won't want to play twice." }
     ],
     "rewards": "An asterion_voice_recording or a data_chip of useful secrets, a favor from Sable, and a lonely old analyst who'd make a very strange and useful addition to the Meridian's comms team."
   }

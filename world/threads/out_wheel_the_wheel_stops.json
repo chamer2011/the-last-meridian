@@ -32,10 +32,10 @@
     ],
     "fights": ["wheel_enforcer guarding the boats, and desperate_refugee who've stopped listening. A clear order, the right list or an open door takes the fight out of most of them."],
     "outcomes": [
-      "If the Cellars are opened first, thousands of debtors live, and they owe nothing, because the ledgers are gone. The fleet takes on far more people than it can feed, and powerful families across known space have new reasons to hate the captain.",
-      "If Oriel's list is followed, the House survives, its wealth is intact, and the fleet gets a huge payment and a very heavy silence from the survivors. Morale falls hard.",
-      "If the station is saved, by some miracle of Marrow's, the Gilded Wheel limps on, under new management or the same management. Nobody there can ever again look at the captain and see a mark.",
-      "If the captain goes back for Oriel, she keeps her word about any bet she's made, and her marker on the captain, if there's one, gets very much lighter. Her fate and whether she'll accept rescue are hers to decide in the moment."
+      { "id": "cellars_opened_first", "text": "If the Cellars are opened first, thousands of debtors live, and they owe nothing, because the ledgers are gone. The fleet takes on far more people than it can feed, and powerful families across known space have new reasons to hate the captain." },
+      { "id": "oriels_list_followed", "text": "If Oriel's list is followed, the House survives, its wealth is intact, and the fleet gets a huge payment and a very heavy silence from the survivors. Morale falls hard." },
+      { "id": "station_saved", "text": "If the station is saved, by some miracle of Marrow's, the Gilded Wheel limps on, under new management or the same management. Nobody there can ever again look at the captain and see a mark." },
+      { "id": "captain_goes_back_oriel", "text": "If the captain goes back for Oriel, she keeps her word about any bet she's made, and her marker on the captain, if there's one, gets very much lighter. Her fate and whether she'll accept rescue are hers to decide in the moment." }
     ],
     "rewards": "Whatever survivors press on the captain: a surgeon_lens, 500 credits, two refined_fuel from the station's stores. Fleet standing that swings hard, and an enormous, mixed reputation."
   }

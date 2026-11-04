@@ -37,11 +37,11 @@
       "choir_hunter and choir_drone if anyone sets off what they carried in"
     ],
     "outcomes": [
-      "If they return, they're the first people ever to come back. That alone changes the fleet's view of everything. The Quiet rush to hear about it, and Tarrow doesn't speak for a week.",
-      "If Tarrow's bomb goes off, a few thousand kept minds are lost, for real, and it makes no difference to the song. Tarrow has to live with having killed the dead. The Cantor asks why. It isn't angry.",
-      "If someone asks to stay with the person they found, can the captain stop them? Should they? Whoever it is wakes every morning in that room, glad. If it's a main character, only if the player's choices earn it.",
-      "A map of the Nest is what's needed for the strike in the Destroy ending, or for opening the wire in the Relief ending. Whoever holds it will be asked for it.",
-      "If the captain tells the Cantor what they saw in the Failing Choir, it says: 'We know. We have asked for a doctor. Nobody has come.'"
+      { "id": "return", "text": "If they return, they're the first people ever to come back. That alone changes the fleet's view of everything. The Quiet rush to hear about it, and Tarrow doesn't speak for a week." },
+      { "id": "tarrows_bomb_goes_off", "text": "If Tarrow's bomb goes off, a few thousand kept minds are lost, for real, and it makes no difference to the song. Tarrow has to live with having killed the dead. The Cantor asks why. It isn't angry." },
+      { "id": "asks_to_stay_with_person_found", "text": "If someone asks to stay with the person they found, can the captain stop them? Should they? Whoever it is wakes every morning in that room, glad. If it's a main character, only if the player's choices earn it." },
+      { "id": "map_nest_whats_needed_strike", "text": "A map of the Nest is what's needed for the strike in the Destroy ending, or for opening the wire in the Relief ending. Whoever holds it will be asked for it." },
+      { "id": "captain_tells_cantor_what_saw_failing", "text": "If the captain tells the Cantor what they saw in the Failing Choir, it says: 'We know. We have asked for a doctor. Nobody has come.'" }
     ],
     "rewards": "A map on a data_chip. A choir_core, given freely if the Cantor is asked: 'Yes, you may study us. Nobody has ever asked.' Nothing else should leave this place."
   }

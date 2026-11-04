@@ -37,10 +37,10 @@
       "drift_raider who have also been looking for those charts"
     ],
     "outcomes": [
-      "If Tamsin is brought home in the open, the Families convulse. Ilkin steps down or hardens, and the refit is delayed or becomes a gift. Tamsin joins the crew, and the Thin Road is open.",
-      "If they're handed over quietly, the Meridian gets a refit and a stronger hull. Tamsin is confined and their charts are sealed unless someone gets them back. The captain has sold out the first person who got it right.",
-      "If the truth is out, Veshti reactions range from denial to an ancient grief. Some of the Families will bring ships to the Harbor because it's their turn to make it right. Others will never speak to anyone again.",
-      "If the captain goes to Sel Arrah, the trip costs stress, and they'll know exactly what the Quiet leads to, long before the rest of the fleet does."
+      { "id": "tamsin_brought_home_open", "text": "If Tamsin is brought home in the open, the Families convulse. Ilkin steps down or hardens, and the refit is delayed or becomes a gift. Tamsin joins the crew, and the Thin Road is open." },
+      { "id": "handed_over_quietly", "text": "If they're handed over quietly, the Meridian gets a refit and a stronger hull. Tamsin is confined and their charts are sealed unless someone gets them back. The captain has sold out the first person who got it right." },
+      { "id": "truth_out", "text": "If the truth is out, Veshti reactions range from denial to an ancient grief. Some of the Families will bring ships to the Harbor because it's their turn to make it right. Others will never speak to anyone again." },
+      { "id": "captain_goes_to_sel_arrah", "text": "If the captain goes to Sel Arrah, the trip costs stress, and they'll know exactly what the Quiet leads to, long before the rest of the fleet does." }
     ],
     "rewards": "A nav_slate, Tamsin's charts, a hull refit for the Meridian on good terms, and veshti_skin from a family that's grateful or ashamed."
   }

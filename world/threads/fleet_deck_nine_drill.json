@@ -46,10 +46,10 @@
       "silent_one at the center of it"
     ],
     "outcomes": [
-      "Left alone: Deck Nine stays and spreads, to three more decks by month's end. Crime falls, and so does the number of people who'll fight when it counts.",
-      "Removed by force: the Quiet are moved and scattered across the fleet, which spreads them. Oskar forgives the captain publicly and sincerely, and it's devastating.",
-      "Spine rerouted, and a truce: they stay, and the evacuations work. The Quiet get an official role as sitters and fire crew, the only ones who run toward it. It's working, and the captain should keep watching it.",
-      "Inner circle exposed: Oskar is horrified and hands them over himself, the first time anyone has seen him upset. It wins the captain his trust. He'll still be at peace when the Choir arrives."
+      { "id": "left_alone", "text": "Left alone: Deck Nine stays and spreads, to three more decks by month's end. Crime falls, and so does the number of people who'll fight when it counts." },
+      { "id": "removed_by_force", "text": "Removed by force: the Quiet are moved and scattered across the fleet, which spreads them. Oskar forgives the captain publicly and sincerely, and it's devastating." },
+      { "id": "spine_rerouted_truce", "text": "Spine rerouted, and a truce: they stay, and the evacuations work. The Quiet get an official role as sitters and fire crew, the only ones who run toward it. It's working, and the captain should keep watching it." },
+      { "id": "inner_circle_exposed", "text": "Inner circle exposed: Oskar is horrified and hands them over himself, the first time anyone has seen him upset. It wins the captain his trust. He'll still be at peace when the Choir arrives." }
     ],
     "rewards": "A quiet_token, which opens some doors and closes others. calm_tabs. Oskar's honest respect, and Father Roe's gratitude if he's spared the stage."
   }

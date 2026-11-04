@@ -42,10 +42,10 @@
     ],
     "fights": [],
     "outcomes": [
-      "Both confess: a day of fury on the deck. Then the crew builds a new scale together from scrap, and everyone weighs it. It's the most trusted object in the fleet, and the deck is closer than it has been since the Fall. The reserve is no longer quite secret.",
-      "The wedding goes smoothly with both secrets kept: it's a lovely day. The captain now holds both secrets. Tobin starts bringing every order to the captain to be weighed twice, and can't explain why.",
-      "Odessa calls it off at the pan: she walks out. Tobin weighs the ring, tells the room what it came to, and goes back to work. It can be repaired, but not quickly.",
-      "The man who lost his rank: if the scale is exposed, Petty Officer Wynn wants his case reweighed, and he's right. So does everyone who ever lost an argument on Deck Four."
+      { "id": "both_confess", "text": "Both confess: a day of fury on the deck. Then the crew builds a new scale together from scrap, and everyone weighs it. It's the most trusted object in the fleet, and the deck is closer than it has been since the Fall. The reserve is no longer quite secret." },
+      { "id": "wedding_goes_smoothly_with_both_secrets", "text": "The wedding goes smoothly with both secrets kept: it's a lovely day. The captain now holds both secrets. Tobin starts bringing every order to the captain to be weighed twice, and can't explain why." },
+      { "id": "odessa_calls_off_pan", "text": "Odessa calls it off at the pan: she walks out. Tobin weighs the ring, tells the room what it came to, and goes back to work. It can be repaired, but not quickly." },
+      { "id": "man_who_lost_his_rank", "text": "The man who lost his rank: if the scale is exposed, Petty Officer Wynn wants his case reweighed, and he's right. So does everyone who ever lost an argument on Deck Four." }
     ],
     "rewards": "A deck crew that would follow the captain anywhere, a tool_roll as a wedding favor, and the first good party anyone has had in six months."
   }

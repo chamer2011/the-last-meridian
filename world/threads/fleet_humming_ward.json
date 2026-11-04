@@ -50,11 +50,11 @@
       "choir_mimic, the silver visitor, if anyone opens fire on the ward. It wears a face from Dr. Adeyemi's list, and it would rather not"
     ],
     "outcomes": [
-      "Expanded: Wen saves two hundred more, and the hum can be heard through the hull. Scouts keep shifting course, and someday the captain will have to move the whole ward or defend it. The lives saved are real, and they all hum.",
-      "Stopped: Pavel is moved and sedated. The patients begin to die again, at a death a day, and the nurses remember who signed for it.",
-      "Cleaned up: if the science route works, there's a version with no thread. Wen saves a third as many. The fleet gains a real medical tool, and the first evidence of what the song is for.",
-      "Tarrow gets Pavel: she doesn't hurt him. She just asks him questions, in a room with no windows, and he hums. The ward starts dying, and the fleet finds out why.",
-      "The visitor stays: the dying on Ward Six are held by silver hands, and when they go, they're kept. Half the fleet calls it an invasion and half asks where to sign up. The Quiet treble, and nobody can say it didn't help."
+      { "id": "expanded", "text": "Expanded: Wen saves two hundred more, and the hum can be heard through the hull. Scouts keep shifting course, and someday the captain will have to move the whole ward or defend it. The lives saved are real, and they all hum." },
+      { "id": "stopped", "text": "Stopped: Pavel is moved and sedated. The patients begin to die again, at a death a day, and the nurses remember who signed for it." },
+      { "id": "cleaned_up", "text": "Cleaned up: if the science route works, there's a version with no thread. Wen saves a third as many. The fleet gains a real medical tool, and the first evidence of what the song is for." },
+      { "id": "tarrow_gets_pavel", "text": "Tarrow gets Pavel: she doesn't hurt him. She just asks him questions, in a room with no windows, and he hums. The ward starts dying, and the fleet finds out why." },
+      { "id": "visitor_stays", "text": "The visitor stays: the dying on Ward Six are held by silver hands, and when they go, they're kept. Half the fleet calls it an invasion and half asks where to sign up. The Quiet treble, and nobody can say it didn't help." }
     ],
     "rewards": "A surgeon_lens, Wen's gratitude, and a major clue that the song is meant to hold minds together."
   }

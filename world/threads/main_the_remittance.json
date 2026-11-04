@@ -37,11 +37,11 @@
       "ministry_blade if they get close to the manifests at the Outer Yards"
     ],
     "outcomes": [
-      "If a hull is stopped, hundreds are saved, there's a firefight with the Hegemony, and one payment is missed. Everyone watches the border for what happens next, and refugees flood back to a fleet that can't feed them.",
-      "If it's published through Garrick Fenn, the fleet and the Hegemony convulse and signing stops. Bastion riots. Halloran is arrested or escapes. The Regent is unmoved, and now moves against the fleet openly.",
-      "If Vael turns, she walks out of the Ministry and she's the most dangerous ally anyone could have. She won't take off her dampeners, not yet. If she doesn't turn, she goes to the Regent to ask, and comes back believing it's necessary, which is far worse.",
-      "If Moor is shown it, she files her complaint, in triplicate. What happens next depends on who is protecting her. It's the first legal challenge to the Regency in a thousand years, and it's about twelve tons of fuel.",
-      "If it's kept quiet as leverage, the captain can use it on Corvane or the Regent, and they've just become part of the system. Severa's fate is on them."
+      { "id": "hull_stopped", "text": "If a hull is stopped, hundreds are saved, there's a firefight with the Hegemony, and one payment is missed. Everyone watches the border for what happens next, and refugees flood back to a fleet that can't feed them." },
+      { "id": "published_through_garrick_fenn", "text": "If it's published through Garrick Fenn, the fleet and the Hegemony convulse and signing stops. Bastion riots. Halloran is arrested or escapes. The Regent is unmoved, and now moves against the fleet openly." },
+      { "id": "vael_turns", "text": "If Vael turns, she walks out of the Ministry and she's the most dangerous ally anyone could have. She won't take off her dampeners, not yet. If she doesn't turn, she goes to the Regent to ask, and comes back believing it's necessary, which is far worse." },
+      { "id": "moor_shown", "text": "If Moor is shown it, she files her complaint, in triplicate. What happens next depends on who is protecting her. It's the first legal challenge to the Regency in a thousand years, and it's about twelve tons of fuel." },
+      { "id": "kept_quiet_leverage", "text": "If it's kept quiet as leverage, the captain can use it on Corvane or the Regent, and they've just become part of the system. Severa's fate is on them." }
     ],
     "rewards": "The manifests, forged_papers from Severa, a signal_scrambler from Mott, the fleet's trust, and the end of any standing with the hegemony."
   }

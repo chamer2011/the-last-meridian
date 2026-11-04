@@ -38,10 +38,10 @@
       "choir_mimic once the congregation's visitor is found out"
     ],
     "outcomes": [
-      "If they ban and arrest, the walk-outs slow, the Quiet go underground, and Oskar's a martyr in a cell, preaching through the vent. Grann Tull is pleased. Half the night nurses stop coming to work.",
-      "If they tolerate it with rules (no lantern, no children, a doctor must sign), the walk-outs become a legal and terrible part of the fleet's life. Wen and Aduro split over it, and Tarrow asks whether the captain has lost their mind.",
-      "If they use it, letting the walkers carry a message or a tracker to the Choir, it works. Oskar finds out, and something between him and the captain breaks. The Cantor later quotes the message.",
-      "If the captain or a friend gets drawn in, they may earn the hears_the_song trait or simply start sleeping very well. Later that makes it much easier, and more frightening, to recognize what's happening on the ship that stops answering."
+      { "id": "ban_arrest", "text": "If they ban and arrest, the walk-outs slow, the Quiet go underground, and Oskar's a martyr in a cell, preaching through the vent. Grann Tull is pleased. Half the night nurses stop coming to work." },
+      { "id": "tolerate_with_rules_no_lantern", "text": "If they tolerate it with rules (no lantern, no children, a doctor must sign), the walk-outs become a legal and terrible part of the fleet's life. Wen and Aduro split over it, and Tarrow asks whether the captain has lost their mind." },
+      { "id": "use", "text": "If they use it, letting the walkers carry a message or a tracker to the Choir, it works. Oskar finds out, and something between him and the captain breaks. The Cantor later quotes the message." },
+      { "id": "captain_friend_gets_drawn", "text": "If the captain or a friend gets drawn in, they may earn the hears_the_song trait or simply start sleeping very well. Later that makes it much easier, and more frightening, to recognize what's happening on the ship that stops answering." }
     ],
     "rewards": "A quiet_token, calm_tabs from Wen, and an ally in Grann or Oskar, though not both."
   }

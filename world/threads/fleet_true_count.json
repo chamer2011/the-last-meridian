@@ -47,10 +47,10 @@
       "desperate_refugee crowd around the ballot store if the story breaks"
     ],
     "outcomes": [
-      "Buried: Safe Decks stays dead. The captain holds a fraud that protects hundreds of lives and ends them politically if it ever surfaces. Tally asks to be dismantled, and the captain can refuse.",
-      "Exposed: \"The machines rigged the vote.\" Whatever else is said, that's what's heard. Safe Decks passes by a landslide on a second vote. Tarrow gets her order and doesn't even have to ask.",
-      "Both frauds exposed: the ward bosses are jailed, Tally is tried, and the fleet's first election is declared void. There's a long, ugly, healthy argument about how to do it properly, the first politics in the fleet not run by a handful of people.",
-      "New vote: it's close. Whatever the result, nobody believes it, and the next election is going to be much harder to hold."
+      { "id": "buried", "text": "Buried: Safe Decks stays dead. The captain holds a fraud that protects hundreds of lives and ends them politically if it ever surfaces. Tally asks to be dismantled, and the captain can refuse." },
+      { "id": "exposed", "text": "Exposed: \"The machines rigged the vote.\" Whatever else is said, that's what's heard. Safe Decks passes by a landslide on a second vote. Tarrow gets her order and doesn't even have to ask." },
+      { "id": "both_frauds_exposed", "text": "Both frauds exposed: the ward bosses are jailed, Tally is tried, and the fleet's first election is declared void. There's a long, ugly, healthy argument about how to do it properly, the first politics in the fleet not run by a handful of people." },
+      { "id": "new_vote", "text": "New vote: it's close. Whatever the result, nobody believes it, and the next election is going to be much harder to hold." }
     ],
     "rewards": "Tally's absolute accuracy for the rest of the campaign: the fleet's numbers, as they truly are. Seven's thanks, which hurts."
   }

@@ -31,10 +31,10 @@
     ],
     "fights": ["strikebreaker or drift_raider only if the argument spills over at Cinder Reach or a depot. There's no fight in this that the captain has to win."],
     "outcomes": [
-      "If the captain signs Quill's markers, the fleet has fuel and owes it to a woman who collects. The GM should cash one in every so often, and one should turn up in very strange hands.",
-      "If the captain gives Corvane the census, fuel flows. Within weeks, polite people are visiting the ships on the list of unusual medical sensitivities, and Vael has a very good month.",
-      "If the captain backs the strike, the fleet makes real friends on Cinder Reach and real enemies in the Syndicate, and leads straight into the fight over the reactor.",
-      "If the price is broken by exposing the game, Quill sends a card and raises her price on something else, and Ulla Greaves learns who's been paying for her strike. That starts another kind of fight."
+      { "id": "captain_signs_quills_markers", "text": "If the captain signs Quill's markers, the fleet has fuel and owes it to a woman who collects. The GM should cash one in every so often, and one should turn up in very strange hands." },
+      { "id": "captain_gives_corvane_census", "text": "If the captain gives Corvane the census, fuel flows. Within weeks, polite people are visiting the ships on the list of unusual medical sensitivities, and Vael has a very good month." },
+      { "id": "captain_backs_strike", "text": "If the captain backs the strike, the fleet makes real friends on Cinder Reach and real enemies in the Syndicate, and leads straight into the fight over the reactor." },
+      { "id": "price_broken_by_exposing_game", "text": "If the price is broken by exposing the game, Quill sends a card and raises her price on something else, and Ulla Greaves learns who's been paying for her strike. That starts another kind of fight." }
     ],
     "rewards": "Fuel, through fuel_cell or refined_fuel items, in the amount the deal allows, and completion of the fleet's fuel quest. Standing changes with drift, hegemony and the strikers, depending on who the captain chose."
   }

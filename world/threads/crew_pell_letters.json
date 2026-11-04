@@ -42,11 +42,11 @@
     ],
     "fights": [],
     "outcomes": [
-      "She's told before the jump: she flies it anyway, shaking and white, then goes below and doesn't come back for two days. Then she does. She asks to keep the letters.",
-      "She's told after the jump: the fleet is safe. She asks how long the captain knew, to the hour, and it's a long time before she says \"Captain\" again, a beat late or otherwise.",
-      "Naomi tells her: Pell doesn't shout. A week later she asks Naomi to teach her the crawlspaces, and nobody asks why. It becomes one of the best things on the ship.",
-      "Bed forty is him: he's kept on support at the expense of whoever was next, and that person has a name and a family. If he wakes, it's the best day anyone on the bridge has had since the Fall, and he may wake up humming.",
-      "Nobody ever tells her: the letters go on, and Naomi gets better at them. The captain should feel this get heavier in every scene."
+      { "id": "shes_told_before_jump", "text": "She's told before the jump: she flies it anyway, shaking and white, then goes below and doesn't come back for two days. Then she does. She asks to keep the letters." },
+      { "id": "shes_told_after_jump", "text": "She's told after the jump: the fleet is safe. She asks how long the captain knew, to the hour, and it's a long time before she says \"Captain\" again, a beat late or otherwise." },
+      { "id": "naomi_tells_her", "text": "Naomi tells her: Pell doesn't shout. A week later she asks Naomi to teach her the crawlspaces, and nobody asks why. It becomes one of the best things on the ship." },
+      { "id": "bed_forty_him", "text": "Bed forty is him: he's kept on support at the expense of whoever was next, and that person has a name and a family. If he wakes, it's the best day anyone on the bridge has had since the Fall, and he may wake up humming." },
+      { "id": "nobody_ever_tells_her", "text": "Nobody ever tells her: the letters go on, and Naomi gets better at them. The captain should feel this get heavier in every scene." }
     ],
     "rewards": "Pell's devotion or her lasting hurt, Naomi's trust, and perhaps a boy back from the dead."
   }

@@ -37,13 +37,13 @@
       "choir_chorister as officer of the watch if the ship is attacked or scuttled"
     ],
     "outcomes": [
-      "Voss is cleared with anyone who'll read the log, and her whole life changes: she knows why she lived, who did it, and what it cost. Tarrow has to decide whether she believes it. Voss asks the captain not to make her speak about it.",
-      "If Anja is told to stop, or taken off the air, the fleet hears the Beacon go back to nothing but the lattice, and there's panic. If she's left, the captain goes on letting that message go out, knowingly.",
-      "If the Tarn is scuttled, her crew aren't ended, since they're in the song, but the Cantor is hurt and changed, later parleys are colder, and the wake of the fleet fills up with scouts. Elsbeth sues.",
-      "If she's left on station, the captain can come back to her. Ibarra will answer a hail, and at the end she can lead the fleet down the song's own lanes.",
-      "Iven may try to stay aboard. If Voss or the captain orders him not to, or Anja does, he comes home and sleeps for three days. If he stays, the fleet has a link to the Tarn, and the captain has lost a friend.",
-      "Rusk finds Ansa, on the watch bill, with her helmet off. She tells him Dell says hello, which she has no way of knowing. Whatever he does next, he finishes a sentence about the map.",
-      "Everyone aboard now knows the Choir obeys a watch bill. A Hunter told in proper Navy form, by a very calm voice, that someone is off watch will hesitate, and it may even acknowledge. It works a few times before it stops working, and it's a terrifying thing to try."
+      { "id": "voss_cleared_with_wholl_read", "text": "Voss is cleared with anyone who'll read the log, and her whole life changes: she knows why she lived, who did it, and what it cost. Tarrow has to decide whether she believes it. Voss asks the captain not to make her speak about it." },
+      { "id": "anja_told_to_stop", "text": "If Anja is told to stop, or taken off the air, the fleet hears the Beacon go back to nothing but the lattice, and there's panic. If she's left, the captain goes on letting that message go out, knowingly." },
+      { "id": "tarn_scuttled", "text": "If the Tarn is scuttled, her crew aren't ended, since they're in the song, but the Cantor is hurt and changed, later parleys are colder, and the wake of the fleet fills up with scouts. Elsbeth sues." },
+      { "id": "shes_left_station", "text": "If she's left on station, the captain can come back to her. Ibarra will answer a hail, and at the end she can lead the fleet down the song's own lanes." },
+      { "id": "iven_may_try_to_stay", "text": "Iven may try to stay aboard. If Voss or the captain orders him not to, or Anja does, he comes home and sleeps for three days. If he stays, the fleet has a link to the Tarn, and the captain has lost a friend." },
+      { "id": "rusk_finds_ansa", "text": "Rusk finds Ansa, on the watch bill, with her helmet off. She tells him Dell says hello, which she has no way of knowing. Whatever he does next, he finishes a sentence about the map." },
+      { "id": "everyone_aboard_now_knows_choir", "text": "Everyone aboard now knows the Choir obeys a watch bill. A Hunter told in proper Navy form, by a very calm voice, that someone is off watch will hesitate, and it may even acknowledge. It works a few times before it stops working, and it's a terrifying thing to try." }
     ],
     "rewards": "The Tarn's logs on a data_chip, worth more than any salvage. Voss's absolute loyalty. Rusk's map and his friendship. Guild standing, if Elsbeth gets something out of it."
   }

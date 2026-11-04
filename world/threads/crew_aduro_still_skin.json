@@ -43,10 +43,10 @@
     ],
     "fights": [],
     "outcomes": [
-      "Off the drug: it comes back like blood into a numb hand. For a week they weep in corridors. Some patients lose hope on seeing it, and some are comforted for the first time in months. The first sign they're back is that they use the captain's first name, and the captain should notice.",
-      "Stays on: the fleet's medical numbers improve, measurably. On day thirty it becomes permanent, and Aduro reports this in a calm voice, as a finding. Their beliefs don't change. Their reasons do.",
-      "Exposed: Tarrow has them tested in public, and they pass. The rumor doesn't die. Patients start refusing treatment, and the ship's conscience is now a suspect.",
-      "If someone thinks to ask, Lira offers to stand beside Aduro at the bedside and show on her skin what they can't. It's the strangest and kindest arrangement on the ship, and it can't last."
+      { "id": "off_drug", "text": "Off the drug: it comes back like blood into a numb hand. For a week they weep in corridors. Some patients lose hope on seeing it, and some are comforted for the first time in months. The first sign they're back is that they use the captain's first name, and the captain should notice." },
+      { "id": "stays", "text": "Stays on: the fleet's medical numbers improve, measurably. On day thirty it becomes permanent, and Aduro reports this in a calm voice, as a finding. Their beliefs don't change. Their reasons do." },
+      { "id": "exposed", "text": "Exposed: Tarrow has them tested in public, and they pass. The rumor doesn't die. Patients start refusing treatment, and the ship's conscience is now a suspect." },
+      { "id": "thinks_to_ask", "text": "If someone thinks to ask, Lira offers to stand beside Aduro at the bedside and show on her skin what they can't. It's the strangest and kindest arrangement on the ship, and it can't last." }
     ],
     "rewards": "Aduro's friendship for life if it's done kindly, calm_tabs from the drawer, and Lira's trust."
   }

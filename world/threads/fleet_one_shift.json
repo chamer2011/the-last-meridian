@@ -43,10 +43,10 @@
       "desperate_refugee at the ward door: Tomasz's father, who has done nothing wrong in his life until now"
     ],
     "outcomes": [
-      "Wen chosen: if the captain spends a course on them, Wen wakes up angry and lives. It was someone else's course, and Wen adds that name to their list in their own hand. They go on being what the fleet needs, and they don't forgive it for a long while.",
-      "Wen passed over: they nod, as if it's what they'd have done. They have a month or two, and they start to train someone. The obvious successor is Aduro, and Wen took this job so that Aduro would never have to. If the captain finds a real supply in time, that can change.",
-      "Duval's offer taken: forty more people live. Word gets around within a week, and now there's a rate. A man turns up at the ward with a receipt. The list has a price, and the captain set it.",
-      "The ration cut: whatever the captain chose, they now have to decide whether to sign the next cut. If they soften it, the numbers get worse. If they sign it, they know exactly who pays, by name."
+      { "id": "wen_chosen", "text": "Wen chosen: if the captain spends a course on them, Wen wakes up angry and lives. It was someone else's course, and Wen adds that name to their list in their own hand. They go on being what the fleet needs, and they don't forgive it for a long while." },
+      { "id": "wen_passed_over", "text": "Wen passed over: they nod, as if it's what they'd have done. They have a month or two, and they start to train someone. The obvious successor is Aduro, and Wen took this job so that Aduro would never have to. If the captain finds a real supply in time, that can change." },
+      { "id": "duvals_offer_taken", "text": "Duval's offer taken: forty more people live. Word gets around within a week, and now there's a rate. A man turns up at the ward with a receipt. The list has a price, and the captain set it." },
+      { "id": "ration_cut", "text": "The ration cut: whatever the captain chose, they now have to decide whether to sign the next cut. If they soften it, the numbers get worse. If they sign it, they know exactly who pays, by name." }
     ],
     "rewards": "Wen's respect, which has never been given to anyone in command. A trauma_kit, and a slip of paper with seven names on it, in the captain's own handwriting."
   }

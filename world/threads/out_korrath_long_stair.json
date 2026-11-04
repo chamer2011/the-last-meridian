@@ -32,10 +32,10 @@
     ],
     "fights": [],
     "outcomes": [
-      "If the old meaning wins, the whole four hundred climb in chains of hands, slowly, all through the night, and Hesk Varr has a very brief, formal word with the captain. The clans gain four hundred Korrun, and the fleet loses some of its best workers and makes a lifelong friend of a world.",
-      "If only the strong make it, about half stay and half go back to the fleet, families broken. The Light who were left behind are bitter, and those who stayed send food when they can.",
-      "If the captain orders the fleet's Korrun not to climb, they stay with the fleet, angry, and Marrow says nothing for several days. Some of them go anyway, at night.",
-      "If Mabby Kesh dies on the Stair, the crowd stops, and what happens next is up to the captain's words. If she makes it, she spits over the top of the cliff and demands to know what's for dinner."
+      { "id": "old_meaning_wins", "text": "If the old meaning wins, the whole four hundred climb in chains of hands, slowly, all through the night, and Hesk Varr has a very brief, formal word with the captain. The clans gain four hundred Korrun, and the fleet loses some of its best workers and makes a lifelong friend of a world." },
+      { "id": "only_strong_make", "text": "If only the strong make it, about half stay and half go back to the fleet, families broken. The Light who were left behind are bitter, and those who stayed send food when they can." },
+      { "id": "captain_orders_fleets_korrun_not_to", "text": "If the captain orders the fleet's Korrun not to climb, they stay with the fleet, angry, and Marrow says nothing for several days. Some of them go anyway, at night." },
+      { "id": "mabby_kesh_dies_stair", "text": "If Mabby Kesh dies on the Stair, the crowd stops, and what happens next is up to the captain's words. If she makes it, she spits over the top of the cliff and demands to know what's for dinner." }
     ],
     "rewards": "Clans standing, some fleet morale, food and hull plate sent back from the Korrun who stayed, and a korrun_harness from Mabby Kesh's family, who have no one left who can wear it."
   }

@@ -47,10 +47,10 @@
       "silent_one: a comms rating who has been taking Iven's second watch, and has listened far longer than Iven knew. He's at the door when the captain comes for the notebooks"
     ],
     "outcomes": [
-      "Iven sleeps for three days and the Roll stops. Eight thousand people lie awake at 0300 with nothing to listen to, and some of them blame the captain. He comes back on duty and never mentions it. The notebooks go in the captain's safe.",
-      "The Roll goes official: Fenn reads it nightly as a memorial. The fleet's grief has somewhere to go, petitions start to arrive about getting the dead back, and the Quiet doubles.",
-      "The notebooks are published: everyone checks. Someone finds Voss's name, and someone finds the captain's. It's the fleet's worst and most hopeful week.",
-      "They're burned: Iven rewrites them from memory. He never needed the notebooks to remember. He needed somewhere to put the names."
+      { "id": "iven_sleeps_three_days_roll", "text": "Iven sleeps for three days and the Roll stops. Eight thousand people lie awake at 0300 with nothing to listen to, and some of them blame the captain. He comes back on duty and never mentions it. The notebooks go in the captain's safe." },
+      { "id": "roll_goes_official", "text": "The Roll goes official: Fenn reads it nightly as a memorial. The fleet's grief has somewhere to go, petitions start to arrive about getting the dead back, and the Quiet doubles." },
+      { "id": "notebooks_published", "text": "The notebooks are published: everyone checks. Someone finds Voss's name, and someone finds the captain's. It's the fleet's worst and most hopeful week." },
+      { "id": "burned", "text": "They're burned: Iven rewrites them from memory. He never needed the notebooks to remember. He needed somewhere to put the names." }
     ],
     "rewards": "A signal_scrambler from Iven's private kit, Fenn's grudging favor, and the knowledge that the captain's name is on the Roll, which can't be unknown again."
   }

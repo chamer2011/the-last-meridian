@@ -32,10 +32,10 @@
     ],
     "fights": ["ministry_blade, sent quietly if the captain starts tracing the list back to Vantor. A public place or a word to Mirei makes the blade withdraw, with apologies."],
     "outcomes": [
-      "If the captain names Ilen openly, Ilen is relieved beyond words, and the first rule of Lumen is broken. For a while people start saying things out loud. It's a dreadful season, some of it is healthy, and the Shade Houses overflow.",
-      "If the captain lies and clears everyone with a story about a Hegemony assassin, the city glows with gratitude and shame. The captain has now used a power nobody else here has, and the Circle knows exactly what it's looking at.",
-      "If Prisca Hale takes the blame, she's expelled and so is every human refugee in Lumen, about nine hundred people. The city doesn't enjoy it. Nobody looks at each other for a very long time.",
-      "If the captain uncovers Mirei's part, they hold a secret that could wreck the Circle and put the Inquisitors in Lumen's streets. She doesn't plead. She asks what they'd have done, and how many names they'd have spent to keep this city safe."
+      { "id": "captain_names_ilen_openly", "text": "If the captain names Ilen openly, Ilen is relieved beyond words, and the first rule of Lumen is broken. For a while people start saying things out loud. It's a dreadful season, some of it is healthy, and the Shade Houses overflow." },
+      { "id": "captain_lies_clears_everyone_with_story", "text": "If the captain lies and clears everyone with a story about a Hegemony assassin, the city glows with gratitude and shame. The captain has now used a power nobody else here has, and the Circle knows exactly what it's looking at." },
+      { "id": "prisca_hale_takes_blame", "text": "If Prisca Hale takes the blame, she's expelled and so is every human refugee in Lumen, about nine hundred people. The city doesn't enjoy it. Nobody looks at each other for a very long time." },
+      { "id": "captain_uncovers_mireis_part", "text": "If the captain uncovers Mirei's part, they hold a secret that could wreck the Circle and put the Inquisitors in Lumen's streets. She doesn't plead. She asks what they'd have done, and how many names they'd have spent to keep this city safe." }
     ],
     "rewards": "A lumen_lens from the Circle, for someone who's earned the right to read a little of what's on a person's skin. Circle standing, nine hundred grateful refugees, and Mirei's closely held regard, or her closely held attention."
   }

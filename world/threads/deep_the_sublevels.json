@@ -37,11 +37,11 @@
       "choir_chorister drawn by the first test"
     ],
     "outcomes": [
-      "If it's finished and free, the Tuner goes where the captain goes, carried on a ship and a lot of patience, and Hollis-Nine comes too. The Relief ending costs far less, and it can also kill or command. The Assembly may exile her. She won't notice for a while.",
-      "If it's scrapped, the Assembly burns it down, by law. Hollis-Nine keeps the plans in her head and goes back to work on something smaller. The Clans could rebuild it, at a great price, or not.",
-      "If another faction steals it (the Regent, Okonkwo, Quill), it turns up at the end, used for their plan. Tessaly Marsh would pay anything to use it on the boy in her cold-sleep pod, and it might even work.",
-      "If the test answered the query, the Choir knows someone out there can answer. Hunters hesitate near Foundry for a while, the Cantor asks about it at the next parley, and Foundry's location is much less secret.",
-      "If Six learns what the master pattern means for the Unbound's story, and says so in public, the Unbound stop believing the Beacon is a flag. Some of them would like to free the Choir. Some want to stay as far from it as they can."
+      { "id": "finished_free", "text": "If it's finished and free, the Tuner goes where the captain goes, carried on a ship and a lot of patience, and Hollis-Nine comes too. The Relief ending costs far less, and it can also kill or command. The Assembly may exile her. She won't notice for a while." },
+      { "id": "scrapped", "text": "If it's scrapped, the Assembly burns it down, by law. Hollis-Nine keeps the plans in her head and goes back to work on something smaller. The Clans could rebuild it, at a great price, or not." },
+      { "id": "another_faction_steals_regent", "text": "If another faction steals it (the Regent, Okonkwo, Quill), it turns up at the end, used for their plan. Tessaly Marsh would pay anything to use it on the boy in her cold-sleep pod, and it might even work." },
+      { "id": "test_answered_query", "text": "If the test answered the query, the Choir knows someone out there can answer. Hunters hesitate near Foundry for a while, the Cantor asks about it at the next parley, and Foundry's location is much less secret." },
+      { "id": "six_learns_what_master_pattern_means", "text": "If Six learns what the master pattern means for the Unbound's story, and says so in public, the Unbound stop believing the Beacon is a flag. Some of them would like to free the Choir. Some want to stay as far from it as they can." }
     ],
     "rewards": "Hollis-Nine's friendship, a slicer_rig and tool_roll with her opinions scratched into them, and the word for what's at the far end."
   }

@@ -48,10 +48,10 @@
       "security_drone pair she has posted on Cargo Three, if the captain goes in by force"
     ],
     "outcomes": [
-      "Stand-down obeyed: she salutes, and stops telling the captain things. The clamps stay, oiled, and she keeps the list in a sealed envelope with a date on it.",
-      "Word given: 612 people in custody by morning with hardly a shot fired. The fleet loses a third of its surgeons and engine hands overnight, Marrow walks off the job, Seven is next in line for the Cradle unless the captain stops it, and the fleet is calm in a way that frightens anyone paying attention.",
-      "She moves without orders: one long night of corridors and locked doors, with marines on both sides. The captain ends it, and has to decide what to do with an officer who told them exactly what she'd do.",
-      "Registry without confinement: everyone on the list is known and tagged and free. Nobody's happy. The list is now public, and some people use it as a shopping list. Tarrow stays, and for now that's a win."
+      { "id": "stand_down_obeyed", "text": "Stand-down obeyed: she salutes, and stops telling the captain things. The clamps stay, oiled, and she keeps the list in a sealed envelope with a date on it." },
+      { "id": "word_given", "text": "Word given: 612 people in custody by morning with hardly a shot fired. The fleet loses a third of its surgeons and engine hands overnight, Marrow walks off the job, Seven is next in line for the Cradle unless the captain stops it, and the fleet is calm in a way that frightens anyone paying attention." },
+      { "id": "moves_without_orders", "text": "She moves without orders: one long night of corridors and locked doors, with marines on both sides. The captain ends it, and has to decide what to do with an officer who told them exactly what she'd do." },
+      { "id": "registry_without_confinement", "text": "Registry without confinement: everyone on the list is known and tagged and free. Nobody's happy. The list is now public, and some people use it as a shopping list. Tarrow stays, and for now that's a win." }
     ],
     "rewards": "Either Tarrow's respect or Seven's gratitude, rarely both. A service_rifle from Tarrow's armory if she thinks the captain earned it."
   }

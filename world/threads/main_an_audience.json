@@ -35,11 +35,11 @@
       "ministry_blade and hegemony_trooper once the safe conduct expires, or sooner if the captain reaches for a weapon"
     ],
     "outcomes": [
-      "If the Regent is shaken, the shipments go on while they do new sums. They may join a last-ditch alliance, or send a squadron to the Harbor anyway, either with total calm. They'll speak to the captain again, which almost no one has managed.",
-      "If the Regent is killed, there's a successor by morning, and the Hegemony fractures. Vael, Halloran and others are freed or purged. Vantor becomes a real moral problem: two billion people who've just found out what they've been paying for.",
-      "If the captain accepts the succession, it's the game's darkest road (see The Regent's Peace). It stays possible to turn on it later, for a while.",
-      "If they walk out, the Hegemony moves openly: blockade, Blades at Sarn, and a squadron mustering to reach the Harbor first.",
-      "If the captain learns the chimes, they've learned a very dangerous trick: anyone could ring that pattern, and the silver would pass by. What happens to the song, if everyone goes off watch?"
+      { "id": "regent_shaken", "text": "If the Regent is shaken, the shipments go on while they do new sums. They may join a last-ditch alliance, or send a squadron to the Harbor anyway, either with total calm. They'll speak to the captain again, which almost no one has managed." },
+      { "id": "regent_killed", "text": "If the Regent is killed, there's a successor by morning, and the Hegemony fractures. Vael, Halloran and others are freed or purged. Vantor becomes a real moral problem: two billion people who've just found out what they've been paying for." },
+      { "id": "captain_accepts_succession", "text": "If the captain accepts the succession, it's the game's darkest road (see The Regent's Peace). It stays possible to turn on it later, for a while." },
+      { "id": "walk_out_hegemony_moves_openly", "text": "If they walk out, the Hegemony moves openly: blockade, Blades at Sarn, and a squadron mustering to reach the Harbor first." },
+      { "id": "captain_learns_chimes", "text": "If the captain learns the chimes, they've learned a very dangerous trick: anyone could ring that pattern, and the silver would pass by. What happens to the song, if everyone goes off watch?" }
     ],
     "rewards": "A copy of the founding letter on a data_chip, the Regent's respect, and the plans for a Stillness Engine if anyone reached the archive. A ministry_saber only by taking it."
   }

@@ -31,10 +31,10 @@
     ],
     "fights": ["syndicate_collector and dock_thug shaking down the ticket holders. Talia's friends, a loud public announcement or a small payment all make them go away."],
     "outcomes": [
-      "If the captain honors the tickets, six hundred more mouths shorten the food supply and raise morale, because the captain kept a promise they never made. Word spreads, and more ticket holders start arriving.",
-      "If the captain refuses, the six hundred are stranded in a lawless warren with nothing. Some come to harm, some join the raiders, and Garrick Fenn gets a very good broadcast.",
-      "If Pryce is exposed publicly, the fleet learns where its fuel came from, and people who already boarded start asking who paid for what. If he's kept quiet, Odessa adds another line to the second book, and the captain owns it now.",
-      "If the captain takes over the press, the money continues and the captain becomes a person who sells passage to the desperate. It helps. That's the problem."
+      { "id": "captain_honors_tickets", "text": "If the captain honors the tickets, six hundred more mouths shorten the food supply and raise morale, because the captain kept a promise they never made. Word spreads, and more ticket holders start arriving." },
+      { "id": "captain_refuses", "text": "If the captain refuses, the six hundred are stranded in a lawless warren with nothing. Some come to harm, some join the raiders, and Garrick Fenn gets a very good broadcast." },
+      { "id": "pryce_exposed_publicly", "text": "If Pryce is exposed publicly, the fleet learns where its fuel came from, and people who already boarded start asking who paid for what. If he's kept quiet, Odessa adds another line to the second book, and the captain owns it now." },
+      { "id": "captain_takes_over_press", "text": "If the captain takes over the press, the money continues and the captain becomes a person who sells passage to the desperate. It helps. That's the problem." }
     ],
     "rewards": "Enough ticket money to fill a fuel_cell or two if the con goes on, Talia's friendship, a lot of fleet morale or a lot of guilt, and forged_papers from Pryce, who does very good work."
   }

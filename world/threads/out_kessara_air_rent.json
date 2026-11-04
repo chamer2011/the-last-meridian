@@ -32,10 +32,10 @@
     ],
     "fights": ["desperate_refugee if a panicking crowd rushes Block Eighteen's valve, and dock_thug if the landlord sends help. A calm voice or an open tank stops most of it."],
     "outcomes": [
-      "If the block is saved without cutting anyone else off, the warren's small people start to tell stories about the captain. Fitch Dunmore privately thanks them for not making him do it.",
-      "If the captain cross-feeds from Block Eighteen, Nineteen lives and Eighteen has a terrible night, and there are now two blocks with a very clear idea of what fleet protection means.",
-      "If the captain pays the arrears, the money's gone, the landlord's other tenants stop paying, and the Syndicate sends a bill for the trouble.",
-      "If Bettany's secret comes out badly, she loses the block and possibly more. If it's handled kindly, she becomes fiercely loyal, and she knows exactly who sold her those tickets."
+      { "id": "block_saved_without_cutting_else_off", "text": "If the block is saved without cutting anyone else off, the warren's small people start to tell stories about the captain. Fitch Dunmore privately thanks them for not making him do it." },
+      { "id": "captain_cross_feeds_from_block_eighteen", "text": "If the captain cross-feeds from Block Eighteen, Nineteen lives and Eighteen has a terrible night, and there are now two blocks with a very clear idea of what fleet protection means." },
+      { "id": "captain_pays_arrears", "text": "If the captain pays the arrears, the money's gone, the landlord's other tenants stop paying, and the Syndicate sends a bill for the trouble." },
+      { "id": "bettanys_secret_comes_out_badly", "text": "If Bettany's secret comes out badly, she loses the block and possibly more. If it's handled kindly, she becomes fiercely loyal, and she knows exactly who sold her those tickets." }
     ],
     "rewards": "A tool_roll or some emergency_patch kits from grateful tenants, a little fleet morale, 100 credits at most, and useful friends in Kessara's lower blocks."
   }

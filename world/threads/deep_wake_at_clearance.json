@@ -37,10 +37,10 @@
       "wreck_diver if claim-jumpers get there first"
     ],
     "outcomes": [
-      "If Kore wakes and joins, the captain gets a living expert on the rite and the means to pull people back from going Silent. She takes one look at an Inquisitor's blade and asks who's been using it as a weapon.",
-      "If everyone who wakes breaks or dies, there's still the checklist, the robes and the rota they carried. It isn't nothing, and the captain has to live with it.",
-      "If word reaches Ione, she comes, or she asks the captain what they've done. She knows their names: they're carved at Ilun as the Order's martyrs. Nobody told them they were dead.",
-      "If word reaches the Regent, they'd very much like the Proctor, and they'd treat her with every courtesy. She was their founder's colleague. Vael would give a great deal for a quiet word, and Kore might even give her one."
+      { "id": "kore_wakes_joins", "text": "If Kore wakes and joins, the captain gets a living expert on the rite and the means to pull people back from going Silent. She takes one look at an Inquisitor's blade and asks who's been using it as a weapon." },
+      { "id": "everyone_who_wakes_breaks_dies", "text": "If everyone who wakes breaks or dies, there's still the checklist, the robes and the rota they carried. It isn't nothing, and the captain has to live with it." },
+      { "id": "word_reaches_ione", "text": "If word reaches Ione, she comes, or she asks the captain what they've done. She knows their names: they're carved at Ilun as the Order's martyrs. Nobody told them they were dead." },
+      { "id": "word_reaches_regent", "text": "If word reaches the Regent, they'd very much like the Proctor, and they'd treat her with every courtesy. She was their founder's colleague. Vael would give a great deal for a quiet word, and Kore might even give her one." }
     ],
     "rewards": "A gate_key from the Proctor's robes if she trusts the captain. The blade stays with her, and she'll use it where they ask. Fresh hands who know what the Harbor is."
   }

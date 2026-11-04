@@ -31,10 +31,10 @@
     ],
     "fights": ["customs_marine on the docks if the evacuation turns ugly, and hegemony_trooper with Major Crow if she decides to come in person. Halloran's orders, once given, stand most of them down."],
     "outcomes": [
-      "If it works, six thousand people walk aboard the fleet's ships, and food becomes a crisis overnight. The fleet is overwhelmed and proud, and everyone tells the story of the painted guns. Very few people ever hear the other half of the joke.",
-      "If Crow is talked around, she joins the evacuation, or holds her fire and takes the blame herself. Either way, the Hegemony has lost a very good officer. If the captain lets slip that they know about the shells, she'll want that kept quiet as much as they will.",
-      "Halloran stays at his post to take responsibility. If the captain goes back for him, he comes, grumbling, and the Hegemony has a defector with everything in his head, and his daughter is suddenly in danger. If not, he faces a court, and his last letter arrives on the Meridian.",
-      "If the bluff fails, there's real damage to some fleet ships and a lot of people to carry home, but the fortress is shaken, and Halloran has one more idea. Hegemony standing falls hard no matter how this ends. If word gets out that Bastion Nine has no shells, the whole border changes."
+      { "id": "works", "text": "If it works, six thousand people walk aboard the fleet's ships, and food becomes a crisis overnight. The fleet is overwhelmed and proud, and everyone tells the story of the painted guns. Very few people ever hear the other half of the joke." },
+      { "id": "crow_talked_around", "text": "If Crow is talked around, she joins the evacuation, or holds her fire and takes the blame herself. Either way, the Hegemony has lost a very good officer. If the captain lets slip that they know about the shells, she'll want that kept quiet as much as they will." },
+      { "id": "halloran_stays_his_post_to", "text": "Halloran stays at his post to take responsibility. If the captain goes back for him, he comes, grumbling, and the Hegemony has a defector with everything in his head, and his daughter is suddenly in danger. If not, he faces a court, and his last letter arrives on the Meridian." },
+      { "id": "bluff_fails", "text": "If the bluff fails, there's real damage to some fleet ships and a lot of people to carry home, but the fortress is shaken, and Halloran has one more idea. Hegemony standing falls hard no matter how this ends. If word gets out that Bastion Nine has no shells, the whole border changes." }
     ],
     "rewards": "Six thousand grateful people, a huge swing in fleet morale, some of Bastion's military stores such as a service_rifle or old_concord_medal, and Halloran's written watch schedules for the rest of the border."
   }

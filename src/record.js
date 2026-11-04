@@ -3,8 +3,8 @@
 // on it through two checked tools, the Quests menu shows it, and the AI reads it in its state every turn. It's the
 // game's memory of consequences, which the journal, being prose, isn't.
 
-import { storyOf } from "./story-library.js";
-import { WORLD_THREADS } from "./world.js";
+import { noteThreadEnded, storyOf } from "./story-library.js";
+import { FACT_LINES, WORLD_THREADS, endingsOf } from "./world.js";
 
 export const FACT_ID = /^[a-z][a-z0-9_]{1,39}$/;
 export const MAX_FACTS = 300;
@@ -59,19 +59,42 @@ export function clearFact(game, id) {
   record.facts = record.facts.filter((fact) => fact.id !== id);
 }
 
-// How a story ended: the number of the outcome in its notes that fits, or null for another way, and a line for the
-// player. The first ending is the one that's kept.
-export function recordEnding(game, { id, outcome = null, summary }) {
+// How a story ended: the name of the ending in its notes that fits, or null for another way, a line for the player,
+// and whether the player lost it. The first ending is the one that's kept.
+export function recordEnding(game, { id, ending = null, summary, failed = false }) {
   if (!WORLD_THREADS[id]) throw new Error(`There's no story called ${id}.`);
+  if (ending && !endingsOf(WORLD_THREADS[id]).some((one) => one.id === ending)) throw new Error(`${id} has no ending called ${ending}.`);
   const record = recordOf(game);
-  record.endings[id] ??= { outcome, summary, day: dayOf(game) };
+  record.endings[id] ??= { ending, summary, day: dayOf(game), ...(failed ? { failed: true } : {}) };
   return record.endings[id];
 }
 
 export const endingOf = (game, id) => readRecord(game).endings[id] ?? null;
 
-// Plain words for a fact: its line, or its name spaced out when it has none.
-export const factWords = (fact) => fact.text ?? fact.id.replaceAll("_", " ");
+// Whether a story is over, or over in one named way. A story the clock ran out on is over, any way it went.
+export function endedWith(game, id, ending = null) {
+  const got = readRecord(game).endings[id];
+  if (ending) return got?.ending === ending;
+  return Boolean(got) || game.story?.threads?.[id] === "done";
+}
+
+// A story ends: its ending goes on the record, its quest is settled with the same line, and the Leads menu and the
+// clock learn it's over. The written story's * ending lines and the AI's end_story both come through here.
+export function endStory(game, { id, ending = null, summary, failed = false }) {
+  const thread = WORLD_THREADS[id];
+  if (!thread) throw new Error(`There's no story called ${id}.`);
+  const got = recordEnding(game, { id, ending, summary, failed });
+  const quest = game.quests?.find((one) => one.id === id);
+  if (quest && quest.status === "active") {
+    quest.status = failed ? "failed" : "completed";
+    quest.objective = summary;
+  }
+  noteThreadEnded(game, id);
+  return { thread, ending: got };
+}
+
+// Plain words for a fact: its own line, the line a story's notes give that name, or the name spaced out.
+export const factWords = (fact) => fact.text ?? FACT_LINES[fact.id] ?? fact.id.replaceAll("_", " ");
 
 const titleOf = (id) => WORLD_THREADS[id]?.title ?? id;
 
@@ -79,7 +102,7 @@ const titleOf = (id) => WORLD_THREADS[id]?.title ?? id;
 // again. A very long record keeps its latest facts.
 export function recordLines(game) {
   const record = readRecord(game);
-  const endings = Object.entries(record.endings).map(([id, ending]) => `Story ended, ${titleOf(id)} (${id})${ending.outcome ? `, outcome ${ending.outcome}` : ""}: ${ending.summary}`);
+  const endings = Object.entries(record.endings).map(([id, ending]) => `Story ended, ${titleOf(id)} (${id})${ending.ending ? `, ${ending.ending}` : ""}: ${ending.summary}`);
   const facts = record.facts.slice(-80).map((fact) => `Fact ${fact.id}: ${factWords(fact)}`);
   return [...endings, ...facts];
 }
@@ -88,11 +111,11 @@ export function recordLines(game) {
 // story it came from when a written scene left it.
 export function recordView(game) {
   const record = readRecord(game);
-  const storyOf = (from) => (from && WORLD_THREADS[from.replace(/^thread_/, "")] ? titleOf(from.replace(/^thread_/, "")) : null);
+  const storyOfScene = (from) => (from && WORLD_THREADS[from.replace(/^thread_/, "")] ? titleOf(from.replace(/^thread_/, "")) : null);
   return {
     endings: Object.entries(record.endings)
-      .map(([id, ending]) => ({ id, title: titleOf(id), outcome: ending.outcome, summary: ending.summary, day: ending.day }))
+      .map(([id, ending]) => ({ id, title: titleOf(id), ending: ending.ending ?? null, failed: Boolean(ending.failed), summary: ending.summary, day: ending.day }))
       .sort((a, b) => (b.day ?? 0) - (a.day ?? 0)),
-    facts: record.facts.map((fact) => ({ id: fact.id, text: factWords(fact), from: storyOf(fact.from), day: fact.day })),
+    facts: record.facts.map((fact) => ({ id: fact.id, text: factWords(fact), from: storyOfScene(fact.from), day: fact.day })),
   };
 }

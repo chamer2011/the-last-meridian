@@ -32,10 +32,10 @@
     ],
     "fights": ["korrun_champion in the ring, if the captain or their champion chooses to fight. There's always the option of speaking, or of yielding with honor."],
     "outcomes": [
-      "If the captain wins and pays, Odo Tarn goes free, the fleet loses whatever it staked, and every Korrun in known space learns what the captain will give up for a man who broke his word. The clans will now deal with the fleet as with kin.",
-      "If the captain yields early, Tarn goes to the furnace, the fleet loses nothing and his children stay on the fleet. The clans think no less of the captain. The children do.",
-      "If the captain finds a stake that truly fits, such as the fleet's Korrun offering shifts or Tarn's own lifetime in a shorter form, both sides walk out able to look at each other. It's rare, and they'll sing about it, badly.",
-      "If the captain cheats, by loading a false token or staking something that isn't theirs, the scale is the one thing on this world nobody forgives, and Korrath closes to the fleet for a generation."
+      { "id": "captain_wins_pays", "text": "If the captain wins and pays, Odo Tarn goes free, the fleet loses whatever it staked, and every Korrun in known space learns what the captain will give up for a man who broke his word. The clans will now deal with the fleet as with kin." },
+      { "id": "captain_yields_early", "text": "If the captain yields early, Tarn goes to the furnace, the fleet loses nothing and his children stay on the fleet. The clans think no less of the captain. The children do." },
+      { "id": "captain_finds_stake_truly_fits", "text": "If the captain finds a stake that truly fits, such as the fleet's Korrun offering shifts or Tarn's own lifetime in a shorter form, both sides walk out able to look at each other. It's rare, and they'll sing about it, badly." },
+      { "id": "captain_cheats", "text": "If the captain cheats, by loading a false token or staking something that isn't theirs, the scale is the one thing on this world nobody forgives, and Korrath closes to the fleet for a generation." }
     ],
     "rewards": "Very little in goods, by design: it's a thread about what's given up. Lasting standing with clans, Tobin Hask's deep respect, and at most a forge_hammer pressed into the captain's hands by a clan elder after the last token."
   }

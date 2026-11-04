@@ -36,10 +36,10 @@
       "quiet_zealot if Mirei's cover among the Quiet is blown"
     ],
     "outcomes": [
-      "If Ashael shares the load, the Circle takes it in shifts. The whole city dims and steadies, and Ilari all over known space feel something lift. It's the first time anyone has relieved anyone of anything in a very long while, and nobody notices the pattern yet. Lumen becomes the captain's ally.",
-      "If he keeps it secret, he goes on, thinner. The captain now knows there's something under the song, and has to decide what to do with that.",
-      "If the city is told, half of Lumen wants to run and the other half wants to go and see. The panic is as bad as he feared, for a day, and fights between people who can't hide what they feel are very hard to watch.",
-      "Mirei: if the captain earns it, she shows one flicker of light on her wrist, once, and hides it. She's the best friend the fleet will ever have in the spy trade, and she has a question about her sister that someone will eventually have to answer."
+      { "id": "ashael_shares_load", "text": "If Ashael shares the load, the Circle takes it in shifts. The whole city dims and steadies, and Ilari all over known space feel something lift. It's the first time anyone has relieved anyone of anything in a very long while, and nobody notices the pattern yet. Lumen becomes the captain's ally." },
+      { "id": "keeps_secret", "text": "If he keeps it secret, he goes on, thinner. The captain now knows there's something under the song, and has to decide what to do with that." },
+      { "id": "city_told", "text": "If the city is told, half of Lumen wants to run and the other half wants to go and see. The panic is as bad as he feared, for a day, and fights between people who can't hide what they feel are very hard to watch." },
+      { "id": "mirei", "text": "Mirei: if the captain earns it, she shows one flicker of light on her wrist, once, and hides it. She's the best friend the fleet will ever have in the spy trade, and she has a question about her sister that someone will eventually have to answer." }
     ],
     "rewards": "A lumen_lens, standing with the circle, and Mirei's files on the Quiet."
   }

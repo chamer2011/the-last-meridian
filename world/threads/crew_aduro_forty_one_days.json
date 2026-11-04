@@ -44,10 +44,10 @@
     ],
     "fights": [],
     "outcomes": [
-      "Told to the fleet: clinics are mobbed and some ships hoard, but private stocks also start arriving on Aduro's desk in paper bags with no names on them. Trust in the captain goes up, and the days go down.",
-      "Told to the council only: Halm uses it exactly as Aduro feared, gently and in public, as the reason to read the Hegemony's offer of medical aid. See fleet_arrest_us.",
-      "Kept secret: it holds at thirty-one until Fenn gets it, and then the question is who knew, and for how long.",
-      "Rationing by law: a formal order of who stops being treated first. It buys eleven days. Wen will write it if the captain signs it. Aduro won't sign, and may resign, which they have never threatened before."
+      { "id": "told_to_fleet", "text": "Told to the fleet: clinics are mobbed and some ships hoard, but private stocks also start arriving on Aduro's desk in paper bags with no names on them. Trust in the captain goes up, and the days go down." },
+      { "id": "told_to_council_only", "text": "Told to the council only: Halm uses it exactly as Aduro feared, gently and in public, as the reason to read the Hegemony's offer of medical aid. See fleet_arrest_us." },
+      { "id": "kept_secret", "text": "Kept secret: it holds at thirty-one until Fenn gets it, and then the question is who knew, and for how long." },
+      { "id": "rationing_by_law", "text": "Rationing by law: a formal order of who stops being treated first. It buys eleven days. Wen will write it if the captain signs it. Aduro won't sign, and may resign, which they have never threatened before." }
     ],
     "rewards": "Aduro's trust, a trauma_kit or two from the reconciled stores, and a true number, which is rarer."
   }

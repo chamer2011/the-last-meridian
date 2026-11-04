@@ -37,11 +37,11 @@
       "desperate_refugee and mutineer if a mob from the fleet reaches Ilun"
     ],
     "outcomes": [
-      "If it's published, the fleet hates the Order forever. Ilun is attacked by the fleet's own people unless the captain stops it, and the last teachers of Resonance may die with it. Ione doesn't run. Quill's life is worth nothing. The truth is out, and the captain's word is good.",
-      "If it's kept secret, everyone the captain is working with stays useful, and they now hold the biggest secret in history. Sable, Quill and Ione all know they do. It will come out at the summit, unless someone stops it.",
-      "If Cael is told gently, he stays. If he finds out on his own, he leaves the Order and answers the song out loud. Either way he's the next person to sing, it may not be safe, and he isn't laughing.",
-      "If Mirei learns who sent Yara, she shows nothing, as always, and goes to Ilun alone. What she does there depends on whether the captain gets there first.",
-      "Quill is toppled by Tannis, or bought, or protected by the captain in return for everything she knows. Whoever runs the Syndicate now holds the fleet's debt. Ione offers to be judged, or to be the first to go at the end. She's eighty-one, and she isn't afraid of either."
+      { "id": "published", "text": "If it's published, the fleet hates the Order forever. Ilun is attacked by the fleet's own people unless the captain stops it, and the last teachers of Resonance may die with it. Ione doesn't run. Quill's life is worth nothing. The truth is out, and the captain's word is good." },
+      { "id": "kept_secret", "text": "If it's kept secret, everyone the captain is working with stays useful, and they now hold the biggest secret in history. Sable, Quill and Ione all know they do. It will come out at the summit, unless someone stops it." },
+      { "id": "cael_told_gently", "text": "If Cael is told gently, he stays. If he finds out on his own, he leaves the Order and answers the song out loud. Either way he's the next person to sing, it may not be safe, and he isn't laughing." },
+      { "id": "mirei_learns_who_sent_yara", "text": "If Mirei learns who sent Yara, she shows nothing, as always, and goes to Ilun alone. What she does there depends on whether the captain gets there first." },
+      { "id": "quill_toppled_by_tannis", "text": "Quill is toppled by Tannis, or bought, or protected by the captain in return for everything she knows. Whoever runs the Syndicate now holds the fleet's debt. Ione offers to be judged, or to be the first to go at the end. She's eighty-one, and she isn't afraid of either." }
     ],
     "rewards": "The truth. Quill's marker erased or paid, a ledger_of_favors from her desk if it's taken, and a glass on the house at the Neutral Ground, which has never happened before."
   }

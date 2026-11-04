@@ -31,10 +31,10 @@
     ],
     "fights": ["dock_thug hired by the saboteur if the captain gets close, in the Wheel's service levels. Calling in Kit's debts sends them home without a blow."],
     "outcomes": [
-      "If the captain takes the bet, the fleet gets several jumps' worth of fuel at once, and every ship left behind later, by anyone's hand, comes with a card from Madame Oriel.",
-      "If the bet is lost, she calls the marker at the worst possible moment, and her order should be something the captain can obey and hate, never a dead end.",
-      "If the captain makes it to the end without abandoning a ship, she pays in full and, for the first time anyone has seen, stands up.",
-      "If the captain refuses the wager, Oriel respects it and the fleet goes on looking for fuel. She keeps the offer open, and she has an excellent memory for moments of need."
+      { "id": "captain_takes_bet", "text": "If the captain takes the bet, the fleet gets several jumps' worth of fuel at once, and every ship left behind later, by anyone's hand, comes with a card from Madame Oriel." },
+      { "id": "bet_lost", "text": "If the bet is lost, she calls the marker at the worst possible moment, and her order should be something the captain can obey and hate, never a dead end." },
+      { "id": "captain_makes_to_end_without_abandoning", "text": "If the captain makes it to the end without abandoning a ship, she pays in full and, for the first time anyone has seen, stands up." },
+      { "id": "captain_refuses_wager", "text": "If the captain refuses the wager, Oriel respects it and the fleet goes on looking for fuel. She keeps the offer open, and she has an excellent memory for moments of need." }
     ],
     "rewards": "Up to two refined_fuel at once on accepting, plus a wheel_marker. Kit's friendship, for what that's worth. Saving the Widow's Lantern is worth fleet morale and the deep loyalty of the fleet's smallest ships."
   }

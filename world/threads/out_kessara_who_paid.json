@@ -31,10 +31,10 @@
     ],
     "fights": ["drift_raider sent by Tannis, who'd love a copy of Quill's confession. Passing them something false, or leaving by the noodle kitchen, avoids them."],
     "outcomes": [
-      "If the truth is made public, the fleet and every faction learn that the Choir was among them long before the Fall. Fear spreads, suspicion of everyone old enough to have a past grows, and Lt. Tarrow is proved right about something.",
-      "If Quill's confession reaches Tannis, Quill's grip weakens and the coup moves up. If it stays private, Quill owes the captain the largest debt she's ever admitted to, and she hates owing.",
-      "If Ines fires, whether she hits is up to the dice and the captain. Mother Quill's fate is only in play if the captain lets it be. Whatever happens, Ines goes on living with it, and the captain decides what the fleet does with her.",
-      "If Ines hears the whole truth and lives with it, she becomes the captain's fiercest investigator of who else came back from a routine patrol."
+      { "id": "truth_made_public", "text": "If the truth is made public, the fleet and every faction learn that the Choir was among them long before the Fall. Fear spreads, suspicion of everyone old enough to have a past grows, and Lt. Tarrow is proved right about something." },
+      { "id": "quills_confession_reaches_tannis", "text": "If Quill's confession reaches Tannis, Quill's grip weakens and the coup moves up. If it stays private, Quill owes the captain the largest debt she's ever admitted to, and she hates owing." },
+      { "id": "ines_fires", "text": "If Ines fires, whether she hits is up to the dice and the captain. Mother Quill's fate is only in play if the captain lets it be. Whatever happens, Ines goes on living with it, and the captain decides what the fleet does with her." },
+      { "id": "ines_hears_whole_truth_lives_with", "text": "If Ines hears the whole truth and lives with it, she becomes the captain's fiercest investigator of who else came back from a routine patrol." }
     ],
     "rewards": "A data_chip holding Renn's record, a solid clue toward how long the Choir has been among people, Quill's reluctant fuel discount, and Ines Karras as a contact who never stops looking."
   }

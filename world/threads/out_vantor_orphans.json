@@ -32,11 +32,11 @@
     ],
     "fights": [],
     "outcomes": [
-      "If all of them go, nine hundred and twelve children are safe and well fed, and the fleet's morale splits down the middle. The Hegemony now has the fleet's hostages in everything but name, and in a few years they'll be soldiers.",
-      "If only those who voted to go are sent, the children themselves split, friends and siblings are separated, and the captain has made a twelve-year-old's election into fleet law.",
-      "If the captain refuses, the fleet keeps its children, and over the next months Dr. Aduro brings the captain a short list of names. Halm uses this. So does Corvane, gently, every time they meet.",
-      "If the captain wins an exit clause, some graduates will come home at sixteen, in Hegemony uniform, for reasons the captain won't be able to tell at the time.",
-      "Whatever happens to the children, the captain now knows what's on line four hundred and six. If they tell Naomi, she doesn't speak to anyone for two days, and then she goes back to work. If they don't, she finds out anyway, and that's when they lose her."
+      { "id": "all_go", "text": "If all of them go, nine hundred and twelve children are safe and well fed, and the fleet's morale splits down the middle. The Hegemony now has the fleet's hostages in everything but name, and in a few years they'll be soldiers." },
+      { "id": "only_those_who_voted_to_go", "text": "If only those who voted to go are sent, the children themselves split, friends and siblings are separated, and the captain has made a twelve-year-old's election into fleet law." },
+      { "id": "captain_refuses", "text": "If the captain refuses, the fleet keeps its children, and over the next months Dr. Aduro brings the captain a short list of names. Halm uses this. So does Corvane, gently, every time they meet." },
+      { "id": "captain_wins_exit_clause", "text": "If the captain wins an exit clause, some graduates will come home at sixteen, in Hegemony uniform, for reasons the captain won't be able to tell at the time." },
+      { "id": "whatever_happens_to_children", "text": "Whatever happens to the children, the captain now knows what's on line four hundred and six. If they tell Naomi, she doesn't speak to anyone for two days, and then she goes back to work. If they don't, she finds out anyway, and that's when they lose her." }
     ],
     "rewards": "Rations freed up across the fleet if the children go, and Naomi's trust if she's taken seriously. A warm note in Corvane's own hand and a modest rise in hegemony standing if the deal is signed."
   }

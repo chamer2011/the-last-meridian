@@ -46,10 +46,10 @@
       "dock_thug pair hired to show Mr. Quince what landlords get. He's unexpectedly good with a serving tray"
     ],
     "outcomes": [
-      "A magistrate: the fleet has its first civil judge, and everyone's first question is who appointed them. Quince is free to sign the deed over. Deck Three holds a party, and he caters it.",
-      "The co-op: Quince stays on as hired steward, at his own request and a salary of one credit a year. Families start bringing him their disputes. Within a month it's the best-run deck on the ship, and Duval has to explain why his march is over.",
-      "Will voided: the law now says synthetics can't inherit. Every synthetic in the fleet stops being a citizen the same day. Mercy Seven comes to see the captain, and gives a percentage.",
-      "Pip Ansley found: Quince sets down his tray, says nothing for a long moment, and asks if Miss Ansley has eaten. The deck's legal owner is nine, and she'd like a word with the tenants about their ducts."
+      { "id": "magistrate", "text": "A magistrate: the fleet has its first civil judge, and everyone's first question is who appointed them. Quince is free to sign the deed over. Deck Three holds a party, and he caters it." },
+      { "id": "co_op", "text": "The co-op: Quince stays on as hired steward, at his own request and a salary of one credit a year. Families start bringing him their disputes. Within a month it's the best-run deck on the ship, and Duval has to explain why his march is over." },
+      { "id": "will_voided", "text": "Will voided: the law now says synthetics can't inherit. Every synthetic in the fleet stops being a citizen the same day. Mercy Seven comes to see the captain, and gives a percentage." },
+      { "id": "pip_ansley_found", "text": "Pip Ansley found: Quince sets down his tray, says nothing for a long moment, and asks if Miss Ansley has eaten. The deck's legal owner is nine, and she'd like a word with the tenants about their ducts." }
     ],
     "rewards": "forged_papers of flawless quality that aren't quite forged, goodwill among the fleet's synthetics, and a butler who'll now turn up at crucial moments with exactly the right document."
   }
