@@ -549,7 +549,7 @@ export function setDifficulty(game, id) {
 // ---- Skill checks -------------------------------------------------------
 
 export const DIFFICULTY = { easy: 8, moderate: 12, hard: 16, very_hard: 20, nearly_impossible: 24 };
-const DIFFICULTY_LEARNING = { easy: 0.5, moderate: 1, hard: 1.5, very_hard: 2, nearly_impossible: 2 };
+export const DIFFICULTY_LEARNING = { easy: 0.5, moderate: 1, hard: 1.5, very_hard: 2, nearly_impossible: 2 };
 const SKILLS_WITH_AUDIENCE = ["persuasion", "deception", "leadership", "commerce"];
 const UNTRAINED_PENALTY = -2;
 // However many traits, perks and gadgets apply, they can only add this much to a skill.

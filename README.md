@@ -107,11 +107,11 @@ To try a fight without the AI at all, use **Run in simulator** in **Enemies met*
 
 ## Skill checks
 
-When a choice has a check on it, or the game master asks for one, a window opens over the story, and each skill has its own. Hacking is a console session against a server, where you hunt for the password in a memory dump before the trace finds you. Medicine is a patient monitor. Piloting is a run through debris on a proximity radar. Persuasion is a conversation where you read the other person and pick your approach.
+When a choice has a check on it, or the game master asks for one, a window opens over the story, and each skill has its own. Hacking is a console session against a server, where you hunt for the password in a memory dump before the trace finds you, and what you do there is the result. Medicine is a patient monitor. Piloting is a run through debris on a proximity radar. Persuasion is a conversation where you read the other person and pick your approach.
 
 | Skills | What the window is |
 |---|---|
-| Hacking | Find the password in a memory dump before the trace completes |
+| Hacking | Find every password in the memory dump before the trace completes. No roll: getting in is the result |
 | Science, Lore | Work out a hidden sequence, from how close each attempt gets |
 | Engineering | Flip relays to get a whole panel live, when each one also flips its neighbors |
 | Medicine, Survival, Composure | Keep three readings in the safe zone while events push them around |
@@ -127,12 +127,13 @@ When a choice has a check on it, or the game master asks for one, a window opens
 | Awareness | Spot what's out of place in the picture |
 | Attunement | Find where on the dial something comes through |
 
-- **Your odds:** the bar at the bottom shows your chance of success, and it moves as you play. Your character's skill sets where it starts, and playing well can add up to 30%. When you're ready, the button beside the command line makes the final roll, at the odds showing. You can press it at any time.
+- **Your odds:** the bar at the bottom shows your chance of success, and it moves as you play. Your character's skill sets where it starts, and playing well can add up to 30%. When you're ready, the button beside the command line makes the final roll, at the odds showing. You can press it at any time. Hacking is the exception: see below.
 - **Your training matters:** a better-trained character gets better tools in the window. A trained hacker's tools rule out wrong passwords, a good pilot can see further ahead, and a seasoned talker can tell what will land. Some perks and gear make the tools better still.
+- **Hacking decides itself.** There's no odds bar and no button: find the password and you're in, let the trace complete and you're caught, or **Disconnect** to give up quietly. What you're breaking into sets the whole session, and the title bar names it: a *door panel* (easy), a *crew terminal* (moderate), a *ship's main system* (hard), a *Ministry or Navy server* (very hard), or *the Beacon or the Choir* (nearly impossible). The class sets how long the password is, how big the dump is, how many wrong tries the trace allows, how many words look nearly right, and how many passwords stand between you and the inside: a ship's main system has two, the account and then root, and the worst have three. Your training adds tries and tools. An **advisor** slides in from the right with hints that grow with your training, from how likeness works to which word to try next and how many tries are left; its tab slides it away and back. If the trace completes on a ship's main system or worse, a fact goes on the record that the stories can read. All the numbers and the hints' words are in `world/checks.json`.
 - **It's never a race:** nothing moves until you do, and everything can be clicked as well as typed. If you do type, part of a word is enough, and a typo won't cost you anything. Number keys pick commands, and the arrow keys work wherever there's a direction to choose.
 - **It costs nothing:** the window runs entirely on this computer. The AI only hears the result, so a check from a choice takes one call to the AI rather than two.
-- **To try them:** every skill in the **Skills** menu has a **Practice** button, and nothing in practice counts.
-- **To skip them:** in **Settings**, set **Skill checks** to **Just a roll**, and checks go straight to the roll at your character's own odds.
+- **To try them:** every skill in the **Skills** menu has a **Practice** button, and nothing in practice counts. For Hacking it's a row of buttons, one for each class of computer.
+- **To skip them:** in **Settings**, set **Skill checks** to **Just a roll**, and checks go straight to the roll at your character's own odds, hacking included.
 
 ## Who you are
 
@@ -310,7 +311,7 @@ The world is kept in files you can open with any text editor. Be warned that mos
 - `world/looks.json` has what each place and room is made of, and how it's lit, in the Isometric view. Instructions are at the top.
 - `world/rooms.json` has the kinds of room the game can draw for anywhere that isn't on a map, such as ducts, a brig or a chapel, with the things you'd usually find in each. It also has what anyone can be asked in a talk, and how people look when you come over.
 - `world/items/`, `world/factions/` and `world/perks/` have one plain-text file for each item, each faction and each perk, with a how-to in each folder.
-- `world/checks.json` has everything said in the skill check windows, and which game each skill uses.
+- `world/checks.json` has everything said in the skill check windows, and which game each skill uses. For hacking it also has the classes of computer with their numbers, what training adds, and the advisor's hints by level. It's read when the game starts, so a change there needs a restart.
 - `world/combat-text.json` has everything that gets said in a fight.
 - `world/parley.json` has everything about talking in a fight: every reason to fight and how much harder each makes each option, the options themselves, and what gets said. Instructions are at the top.
 - `app/` has the app that the game runs in. See [The app](#the-app).

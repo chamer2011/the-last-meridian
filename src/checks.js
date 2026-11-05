@@ -1,12 +1,15 @@
 // Skill checks that play out in their own window. Each skill has its own little game, which runs
-// entirely on this computer. Playing it well improves the odds of the final roll, and the
-// result goes to the game master along with what happened, so the AI isn't called until it's over.
+// entirely on this computer. In most of them, playing well improves the odds of the final roll;
+// in a decided one, like hacking, what happens in the window is the result, with no roll on top.
+// Either way the result goes to the game master along with what happened, so the AI isn't called
+// until it's over.
 
 import { findCharacter } from "./campaign.js";
 import { CONTEXTS, FACTION_BELIEFS, POLES, SKILLS } from "./character-data.js";
 import { STATS } from "./data.js";
 import { CHECK_TEXT } from "./world.js";
-import { DIFFICULTY, attrMod, audienceBonus, checkParts, clamp, fxOf, oddsFor, skillCheck, skillRank } from "./rules.js";
+import { recordFact } from "./record.js";
+import { DIFFICULTY, DIFFICULTY_LEARNING, attrMod, audienceBonus, checkParts, clamp, fxOf, oddsFor, practice, skillCheck, skillRank } from "./rules.js";
 import { isCaptain, startOf } from "./role.js";
 import { buildVocab, parseOption } from "../public/story.js";
 import { closest, say } from "./check-games/kit.js";
@@ -14,7 +17,7 @@ import appeal from "./check-games/appeal.js";
 import balance from "./check-games/balance.js";
 import codebreak from "./check-games/codebreak.js";
 import cover from "./check-games/cover.js";
-import crack from "./check-games/crack.js";
+import crack, { allClasses } from "./check-games/crack.js";
 import duel from "./check-games/duel.js";
 import haggle from "./check-games/haggle.js";
 import plain from "./check-games/plain.js";
@@ -61,6 +64,7 @@ function contextFor(game, check) {
   const person = check.audience ? findCharacter(game.campaign, check.audience) : null;
   return {
     level: LEVELS[check.difficulty],
+    difficulty: check.difficulty,
     tier: check.tier,
     text,
     check,
@@ -106,16 +110,22 @@ export function startCheck(game, { skill = null, attribute = null, difficulty, c
     edge: 0,
     log: [],
     state: null,
+    decided: Boolean(CHECK_GAMES[text.game]?.decided),
+    played: false,
   };
   const ctx = contextFor(game, check);
   const engine = gameFor(check);
   check.state = engine.start(ctx);
   check.log.push(...engine.intro(check.state, ctx));
-  check.log.push(say(`The better you do here, the better your odds. "${text.runLabel ?? "Commit"}" makes the final roll, whenever you're ready.`, "dim"));
+  if (check.decided) check.log.push(say("What you do here decides it. Get in and you've succeeded; let the trace complete and you're caught. Disconnect gives up.", "dim"));
+  else check.log.push(say(`The better you do here, the better your odds. "${text.runLabel ?? "Commit"}" makes the final roll, whenever you're ready.`, "dim"));
   refreshEdge(check, ctx);
   game.check = check;
   return check;
 }
+
+// The classes of computer a hack can be up against, for the practice picker.
+export const hackingClasses = () => allClasses(CHECK_TEXT.skills?.hacking).map(({ difficulty, name }) => ({ difficulty, name }));
 
 // The player clicked a choice that's tagged with a check. Whatever they clicked has to be on offer
 // right now, and its tags come from what the game master wrote, not from the browser.
@@ -140,23 +150,51 @@ const breakdown = (parts) => parts.map((p) => `${p.value < 0 ? "-" : "+"} ${p.la
 
 const resultLabel = (r) => (r.success ? (r.die === 20 ? "CRITICAL SUCCESS" : "SUCCESS") : r.die === 1 ? "CRITICAL FAILURE" : "FAILURE");
 
-// Makes the final roll, closes the window's game, and records what happened.
+// A short name for a fact on the record, from a class of computer: "Ship's main system" becomes ships_main_system.
+const slug = (words) => String(words).toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 30);
+
+// The result of a decided game, read from how it ended: no die, and the skill still learns from it.
+function decidedResult(game, check, practiceOnly) {
+  const { state } = check;
+  const success = Boolean(state.cracked);
+  const { parts, total: bonus } = checkParts(game, { skill: check.skill, attribute: check.attribute, context: check.context, audience: check.audience });
+  const notes = [];
+  if (!practiceOnly && check.skill) notes.push(...practice(game, check.skill, (success ? 3 : 2) * DIFFICULTY_LEARNING[check.difficulty]));
+  const pct = Math.round((state.trace / Math.max(1, state.maxTrace)) * 100);
+  const label = success ? "ACCESS GRANTED" : state.quit ? "DISCONNECTED" : "TRACED";
+  return { die: null, parts, bonus, total: null, dc: DIFFICULTY[check.difficulty], success, margin: 0, critical: false, notes, label, math: `trace ${pct}%` };
+}
+
+// Closes the window's game and records what happened: a decided game by how it ended, any other by
+// the final roll.
 function finishCheck(game) {
   const check = game.check;
   const ctx = contextFor(game, check);
   refreshEdge(check, ctx);
   const practiceOnly = check.source === "practice";
-  const r = skillCheck(game, {
+  const decided = Boolean(check.decided && check.state.done);
+  const r = decided ? decidedResult(game, check, practiceOnly) : skillCheck(game, {
     skill: check.skill, attribute: check.attribute, difficulty: check.difficulty, context: check.context, audience: check.audience, edge: check.edge, practiceOnly,
   });
-  const label = resultLabel(r);
-  const math = `${r.die} ${breakdown(r.parts)} = ${r.total} vs ${r.dc}`;
+  const label = decided ? r.label : resultLabel(r);
+  const math = decided ? r.math : `${r.die} ${breakdown(r.parts)} = ${r.total} vs ${r.dc}`;
   const story = gameFor(check).story(check.state, ctx);
   const titles = ctx.text.results ?? {};
+  // A completed trace on an important computer leaves a mark that the stories can read.
+  if (decided && !r.success && !check.state.quit && check.state.mark && !practiceOnly) {
+    const id = `traced_on_${slug(check.state.className)}`;
+    try {
+      recordFact(game, { id, text: `The trace on a ${String(check.state.className).toLowerCase()} has your name on it.`, from: "hacking" });
+      r.notes.push(`[RECORD] The trace has your name: ${id.replaceAll("_", " ")}.`);
+    } catch {
+      // A full record keeps its facts; the check still ended the same way.
+    }
+  }
   const outcome = {
     id: check.id,
     success: r.success,
     critical: r.critical,
+    decided,
     die: r.die,
     total: r.total,
     dc: r.dc,
@@ -164,12 +202,13 @@ function finishCheck(game) {
     label,
     math,
     title: r.success ? titles.success ?? "SUCCESS" : titles.failure ?? "FAILURE",
-    line: r.success ? titles.successLine ?? "" : titles.failureLine ?? "",
+    line: r.success ? titles.successLine ?? "" : decided && check.state.quit ? titles.quitLine ?? titles.failureLine ?? "" : titles.failureLine ?? "",
     story,
     reason: check.reason,
     training: practiceOnly,
     skill: check.skill,
     difficulty: check.difficulty,
+    classLabel: check.state?.className ?? null,
     log: check.log,
     theme: ctx.text.theme,
     window: ctx.text.window,
@@ -179,9 +218,14 @@ function finishCheck(game) {
   if (practiceOnly) return { over: true, outcome };
   // The written story reads this to decide where it goes next. The AI reads the event below instead.
   game.lastCheck = { id: check.id, skill: check.skill, difficulty: check.difficulty, success: r.success, reason: check.reason, source: check.source, used: false };
+  const taken = check.choice ? `The player took this choice from your last message: ${check.choice}\nThe game ran the check in its own window, so don't call roll_check for it.` : `The check you asked for is done: ${check.reason}.`;
+  if (decided) {
+    game.transcript.push({ role: "notice", text: [`[HACK] ${check.reason}: ${label}, ${math}`, ...r.notes].join("\n") });
+    game.pendingEvents.push(`${taken} Result: ${r.success ? "SUCCESS" : "FAILURE"} (${label.toLowerCase()}). How it went: ${story} Narrate this outcome faithfully.`);
+    return { over: true, outcome };
+  }
   game.transcript.push({ role: "notice", text: [`[ROLL] ${check.reason}: ${math}: ${label}`, ...r.notes].join("\n") });
   const margin = `by ${Math.abs(r.margin)}`;
-  const taken = check.choice ? `The player took this choice from your last message: ${check.choice}\nThe game ran the check in its own window, so don't call roll_check for it.` : `The check you asked for is done: ${check.reason}.`;
   game.pendingEvents.push(`${taken} Result: ${label} ${margin}. Rolled ${math}. How it went: ${story} Narrate this outcome faithfully, and let a large margin make it more dramatic.`);
   return { over: true, outcome };
 }
@@ -196,11 +240,20 @@ export function checkCommand(game, raw) {
   const engine = gameFor(check);
   const words = text.toLowerCase().split(/\s+/);
   check.log.push({ you: text });
-  if (RUN_WORDS.has(words[0])) return finishCheck(game);
+  if (RUN_WORDS.has(words[0])) {
+    // A decided game has no roll once it's under way. Before anything's been done, "roll" is the
+    // player's choice of a plain roll instead of the game, which Settings offers.
+    if (check.decided && !check.state.done && check.played) {
+      check.log.push(say("There's no roll here. Find the password, or type disconnect to give up.", "dim"));
+      return { over: false };
+    }
+    return finishCheck(game);
+  }
   if (words[0] === "help" || words[0] === "?") {
     const { commands } = engine.view(check.state, ctx);
     const names = commands.map((entry) => entry.label).join(", ");
-    check.log.push(say(ctx.text.help ?? "Click what you want to do, or type it.", "info"), say(`${names ? `Commands: ${names}. ` : ""}Type run, or press the button at the bottom, when you're ready to make the final roll.`, "dim"));
+    const ending = check.decided ? "Get in and it's done. Type disconnect to give up." : "Type run, or press the button at the bottom, when you're ready to make the final roll.";
+    check.log.push(say(ctx.text.help ?? "Click what you want to do, or type it.", "info"), say(`${names ? `Commands: ${names}. ` : ""}${ending}`, "dim"));
     return { over: false };
   }
   if (words[0] === "clear" || words[0] === "cls") {
@@ -222,6 +275,7 @@ export function checkCommand(game, raw) {
   }
   check.log.push(...lines);
   if (check.log.length > MAX_LOG) check.log.splice(0, check.log.length - MAX_LOG);
+  check.played = true;
   refreshEdge(check, ctx);
   if (check.state.forced) return finishCheck(game);
   return { over: false };
@@ -247,6 +301,8 @@ export function checkView(game) {
     reason: check.reason,
     scene: check.scene,
     difficulty: check.difficulty,
+    classLabel: check.state?.className ?? null,
+    decided: Boolean(check.decided),
     training: check.source === "practice",
     tier: check.tier,
     tierName: (CHECK_TEXT.tierNames ?? ["untrained", "novice", "trained", "expert", "master"])[check.tier],
@@ -262,5 +318,6 @@ export function checkView(game) {
     commands: shown.commands,
     typedNumbers: Boolean(shown.typedNumbers),
     meters: shown.meters,
+    hints: shown.hints ?? [],
   };
 }

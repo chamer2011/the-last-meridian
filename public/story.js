@@ -224,6 +224,7 @@ function toneFor(tag, body) {
       if (/Pursuit -\d|is back with the fleet/.test(body)) return "good";
       return /\+\d/.test(body) && !/-\d/.test(body) ? "good" : "bad";
     case "TIME": return "dim";
+    case "HACK": return /GRANTED/.test(body) ? "good" : "bad";
     default: return "info";
   }
 }

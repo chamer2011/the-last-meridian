@@ -72,6 +72,14 @@ Things in square brackets before the words are tags, which the player sees:
                                  second colon when they're the one being persuaded, deceived or led,
                                  and how they feel about the player changes the odds. A choice with
                                  a check leads two ways: the part if it passes | the part if it fails.
+                                 For hacking, the difficulty says what kind of computer it is, and
+                                 the window shows it: easy is a door panel, moderate a crew terminal,
+                                 hard a ship's main system (two passwords), very_hard a Ministry or
+                                 Navy server, nearly_impossible the Beacon or the Choir (three).
+                                 A hack has no roll: getting in is the pass, the trace completing
+                                 or disconnecting is the fail. A completed trace on a ship's main
+                                 system or worse leaves a fact on the record, traced_on_<class>,
+                                 which a condition can ask about: ? flag traced_on_ships_main_system.
     [+Voss] or [-Tarrow]         Someone who would clearly approve or disapprove.
     [reason]                     The belief the choice expresses: order, freedom, community, self,
                                  mercy, iron, reason, faith, purity or ascension.

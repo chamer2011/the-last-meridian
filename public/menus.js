@@ -130,7 +130,9 @@ function skillsMenu() {
             el("strong", { title: "Your total bonus on checks with this skill" }, signed(s.bonus)),
             s.raiseCost && g.skillPoints >= s.raiseCost && el("button", { "aria-label": `Raise ${s.name}`, title: `Costs ${s.raiseCost} skill point${s.raiseCost === 1 ? "" : "s"}`, onclick: act({ action: "skill", id: s.id }) }, "+"))),
         muted(s.desc),
-        el("div", {}, el("button", { class: "small", disabled: Boolean(g.combat || g.check), title: "Try this skill's check window. Nothing that happens in practice counts.", onclick: () => app.startPractice(s.id) }, "Practice")),
+        s.id === "hacking" && ui.setup.hackingClasses?.length
+          ? el("div", { class: "row small practice-classes" }, el("span", { class: "muted" }, "Practice on:"), ui.setup.hackingClasses.map((one) => el("button", { class: "small", disabled: Boolean(g.combat || g.check), title: `A ${one.difficulty.replace("_", " ")} hack. Nothing that happens in practice counts.`, onclick: () => app.startPractice(s.id, one.difficulty) }, one.name)))
+          : el("div", {}, el("button", { class: "small", disabled: Boolean(g.combat || g.check), title: "Try this skill's check window. Nothing that happens in practice counts.", onclick: () => app.startPractice(s.id) }, "Practice")),
         el("div", { class: "small" }, `Moderate ${oddsFor(s.bonus, difficulty.moderate)}%, hard ${oddsFor(s.bonus, difficulty.hard)}%, very hard ${oddsFor(s.bonus, difficulty.very_hard)}%`),
         s.raiseCost && el("div", { class: "muted small" }, `Practice ${asciiBar(s.xp, s.xpNext)} ${s.xp}/${s.xpNext}. Next rank costs ${s.raiseCost} point${s.raiseCost === 1 ? "" : "s"}.`)))))),
   ];

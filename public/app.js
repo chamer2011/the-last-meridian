@@ -662,7 +662,7 @@ initMenus({
   toTitle,
   openMenu,
   startSim: (enemy, followers) => runAction(() => startSim(enemy, followers))(),
-  startPractice: (skill) => runAction(() => startPractice(skill))(),
+  startPractice: (skill, difficulty) => runAction(() => startPractice(skill, difficulty))(),
   followLead: (lead) => {
     closeMenu();
     sendChat({ text: `I look into this: ${lead.title}`, thread: lead.id });
