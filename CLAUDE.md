@@ -40,7 +40,7 @@ On 2026-11-02 the owner set the next direction: the game should play with or wit
 
 `chamer2011/last-meridian` is the copy of the game anyone can see, public since 2026-11-02. This repository stays private, because this file and `docs/notes/` talk about the owner.
 
-- **Publish only when the owner asks.** `tools/publish.mjs` says how. It copies a fixed list of the game's folders into a clone of the public repository, remakes its `GUIDE.md` from this repository's README, and stops if anything private turns up. Anything new here stays private until it's added to that list.
+- **Publish only when the owner asks.** `tools/publish.mjs` says how. It copies a fixed list of the game's folders into a clone of the public repository, remakes its `GUIDE.md` from this repository's README, and stops if anything private turns up. Anything new here stays private until it's added to that list. The public copy is current to this repository's 22809a2 (the pane by the head) as of 2026-11-05 UTC, at their "That's perfect could you upload it to the Github?"; the public release and installer are still v0.2.0, because they haven't asked for a new one.
 - **What's only there:** `README.md` (its front page), `.github/` (its feedback form) and `pictures/`, so edit those in a clone of it, and pull first, because the owner edits it on the website too. Take its pictures from an empty test game with a stand-in AI, never from a copy of the owner's saves.
 - **The owner chose two licences:** the code is GPL-3.0 (`LICENSE`), and the story and world stay theirs (`STORY-AND-WORLD.md`, which lists the files). If a new file is mostly story or world, add it to that list.
 - **Its commits** use GitHub's private address and UTC dates, so they show no email or time zone.
