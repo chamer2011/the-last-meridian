@@ -507,5 +507,5 @@ Anyone can download the game and leave feedback at [chamer2011/last-meridian](ht
 - **It doesn't change by itself.** Whatever you change here stays here until you ask for a new version to be published. `tools/publish.mjs` says how that's done.
 - **Feedback** arrives under **Issues** on that page, and GitHub normally emails you about each one. Claude can read it for you, too.
 - **What's only on that page:** its front page, pictures, feedback form and installer.
-- **Who can do what:** the code is open source under GPL-3.0 (`LICENSE`), so people can use, change and share it, as long as what they release stays open too. The story and world stay yours (`STORY-AND-WORLD.md`).
+- **Who can do what:** the game is yours, code included (`LICENSE`): people can download it, play it and change their own copy, and nothing may be shared, sold or used in another project. The versions up to 0.3.0 went out with the code under GPL-3.0, and those stay under it for anyone who has them. `STORY-AND-WORLD.md` lists which files are the story and the world.
 - **To take it down,** go to **Settings** on that page, then **Danger Zone**, then **Change visibility**. Copies people have already made stay where they are.
