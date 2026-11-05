@@ -22,6 +22,7 @@ import { recordLines, recordView } from "./record.js";
 import { advanceStories, clockOf } from "./story-clock.js";
 import { emptyStory, storyView } from "./story-library.js";
 import { startInRoom, talkView, walkLine, walkView } from "./walk.js";
+import { computerView } from "./computers.js";
 import { buildLoreIndex, findLoreIds } from "../public/story.js";
 
 export { combatAction, startCombat } from "./combat.js";
@@ -1001,6 +1002,7 @@ export function publicState(game) {
     check: checkView(game),
     walk: walkView(game),
     talk: talkView(game),
+    computer: computerView(game),
     difficulty: game.difficulty ?? "normal",
     transcript: game.transcript,
   };

@@ -12,7 +12,7 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-board-"));
 process.env.GAME_DATA_DIR = dataDir;
 // The board writes files, so these tests work on copies of the stories and the scenes.
 const worldDir = fileURLToPath(new URL("../world/", import.meta.url));
-for (const [folder, env] of [["stories", "GAME_STORIES_DIR"], ["scenes", "GAME_SCENES_DIR"], ["characters", "GAME_PEOPLE_DIR"], ["places", "GAME_PLACES_DIR"], ["species", "GAME_SPECIES_DIR"], ["enemies", "GAME_ENEMIES_DIR"], ["items", "GAME_ITEMS_DIR"], ["factions", "GAME_FACTIONS_DIR"], ["perks", "GAME_PERKS_DIR"]]) {
+for (const [folder, env] of [["stories", "GAME_STORIES_DIR"], ["scenes", "GAME_SCENES_DIR"], ["characters", "GAME_PEOPLE_DIR"], ["places", "GAME_PLACES_DIR"], ["species", "GAME_SPECIES_DIR"], ["enemies", "GAME_ENEMIES_DIR"], ["items", "GAME_ITEMS_DIR"], ["factions", "GAME_FACTIONS_DIR"], ["perks", "GAME_PERKS_DIR"], ["computers", "GAME_COMPUTERS_DIR"]]) {
   const copy = path.join(dataDir, folder);
   fs.mkdirSync(copy);
   for (const name of fs.readdirSync(path.join(worldDir, folder))) fs.copyFileSync(path.join(worldDir, folder, name), path.join(copy, name));
@@ -22,9 +22,9 @@ for (const [folder, env] of [["stories", "GAME_STORIES_DIR"], ["scenes", "GAME_S
 const { boardScene, boardStories, boardStory, boardWorldItem, boardWorldList, checkBoardScene, readLayout, saveBoardScene, saveBoardStory, saveBoardWorldItem, saveLayout, sceneBoardView } = await import("../src/board.js");
 const { LOCATIONS } = await import("../src/data.js");
 const { SCENES_DIR } = await import("../src/scenes.js");
-const { PLACES_DIR, STORIES_DIR, STORY_CLOCK, WORLD_CHARACTERS, WORLD_PLACES, WORLD_THREADS } = await import("../src/world.js");
+const { COMPUTERS_DIR, PLACES_DIR, STORIES_DIR, STORY_CLOCK, WORLD_CHARACTERS, WORLD_COMPUTERS, WORLD_PLACES, WORLD_THREADS } = await import("../src/world.js");
 const { parseStoryText, writeStoryText } = await import("../public/story-text.js");
-const { PLACE, parseWorldText, writeWorldText } = await import("../public/world-text.js");
+const { PLACE, parseComputerText, parseWorldText, writeComputerText, writeWorldText } = await import("../public/world-text.js");
 
 const FUEL = "main_two_weeks_of_fuel";
 
@@ -140,7 +140,7 @@ test("the board lists the people, places and species, and shows each with what i
   assert.ok(people.some((one) => one.id === "ione" && one.written === false));
   assert.equal(boardWorldList("place").length, 24);
   assert.deepEqual(boardWorldList("species").map((one) => one.id), ["human", "korrun", "veshti", "ilari", "thessan", "synthetic"]);
-  assert.throws(() => boardWorldList("ship"), /stories, people, places, species, enemies, items, factions and perks/);
+  assert.throws(() => boardWorldList("ship"), /stories, people, places, species, enemies, items, factions, perks and computers/);
   assert.equal(boardWorldList("perk").length, 53);
   assert.equal(boardWorldList("perk")[0].id, "chain_of_command");
   const perk = boardWorldItem("perk", "dead_ship_passwords");
@@ -233,4 +233,44 @@ test("a person's written lines come as parts and choices, like a scene", () => {
   assert.throws(() => boardScene("ione", "talk"), /no written lines yet/);
   const checked = checkBoardScene("aduro", talk.text.replace("== start", "== start\n> A line that goes nowhere -> no_such_part"), "talk");
   assert.ok(checked.problems.some((one) => /no_such_part/.test(one)));
+});
+
+test("the board shows a computer with its files, programs and network, and saves it back through the checker", () => {
+  const list = boardWorldList("computer");
+  assert.ok(list.length >= 6, list.map((one) => one.id).join(", "));
+  assert.ok(list.some((one) => one.id === "haven_berth_board" && one.kind === "Haven Station"), "grouped by place");
+  const board = boardWorldItem("computer", "haven_berth_board");
+  assert.equal(board.value.name, "The berth board");
+  assert.equal(board.text, fs.readFileSync(path.join(COMPUTERS_DIR, "haven_berth_board.txt"), "utf8"));
+  assert.equal(board.links.place.id, "haven");
+  assert.equal(board.links.className, "Crew terminal");
+  assert.deepEqual(board.links.network.map((one) => one.id), ["haven_harbor_office"]);
+  assert.equal(board.links.network[0].className, "Ship's main system");
+  assert.ok(boardWorldItem("computer", "haven_harbor_office").links.reachedFrom.some((one) => one.id === "haven_berth_board"), "the other end knows what reaches it");
+  assert.equal(board.links.programs.length, 2);
+  assert.equal(board.links.programs[0].effects, 2);
+  assert.equal(board.links.programs[0].condition, "not flag sundial_fees_cleared");
+  assert.ok(board.lists.classes.some((one) => one.id === "hard" && one.name === "Ship's main system"));
+  assert.ok(board.lists.computers.some((one) => one.id === "meridian_plot_table"));
+  assert.ok(board.lists.flavors.includes("yours"));
+  assert.deepEqual(board.problems, []);
+  const file = path.join(COMPUTERS_DIR, "haven_berth_board.txt");
+  const original = fs.readFileSync(file, "utf8");
+  try {
+    const { value } = parseComputerText(original, "haven_berth_board");
+    value.programs.push({ name: "Break it", desc: "Nothing -> * nonsense" });
+    const saved = saveBoardWorldItem("computer", "haven_berth_board", writeComputerText(value));
+    assert.equal(saved.saved, true);
+    assert.ok(saved.problems.some((one) => /Break it/.test(one) && /nonsense/.test(one)), saved.problems.join("\n"));
+    assert.equal(WORLD_COMPUTERS.haven_berth_board.programs.length, 3, "the game reads the saved file at once");
+    assert.ok(boardWorldItem("computer", "haven_berth_board").problems.length >= 1, "and the board shows the problem");
+    const refused = saveBoardWorldItem("computer", "haven_berth_board", "# Nothing\nclass: moderate\nweather: wet\n");
+    assert.equal(refused.saved, false);
+    assert.ok(refused.problems.length >= 1);
+    assert.equal(WORLD_COMPUTERS.haven_berth_board.programs.length, 3, "a refused save changes nothing");
+  } finally {
+    saveBoardWorldItem("computer", "haven_berth_board", original);
+  }
+  assert.deepEqual(boardWorldItem("computer", "haven_berth_board").problems, []);
+  assert.equal(WORLD_COMPUTERS.haven_berth_board.programs.length, 2);
 });

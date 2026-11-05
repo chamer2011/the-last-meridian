@@ -313,6 +313,12 @@ async function send(command) {
     app.ui.game = reply.game;
     check.sending = false;
     if (reply.over) {
+      // A hack that got in goes straight to the computer: the screen becomes the system's own.
+      if (reply.game.computer) {
+        closeCheck();
+        app.render();
+        return;
+      }
       showResult(reply.outcome);
       return;
     }

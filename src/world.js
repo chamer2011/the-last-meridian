@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { worldDir } from "./paths.js";
 import { parseStoryText } from "../public/story-text.js";
-import { ENEMY, FACTION, ITEM, PERK, PERSON, PLACE, SPECIES_SPEC, parseWorldText } from "../public/world-text.js";
+import { COMPUTER, ENEMY, FACTION, ITEM, PERK, PERSON, PLACE, SPECIES_SPEC, parseWorldText } from "../public/world-text.js";
 
 // A file with a mistake in it is skipped, so one typo can't stop the whole game.
 export function readFolder(folder) {
@@ -43,6 +43,10 @@ export const ENEMIES_DIR = process.env.GAME_ENEMIES_DIR ?? path.join(worldDir, "
 export const ITEMS_DIR = process.env.GAME_ITEMS_DIR ?? path.join(worldDir, "items");
 export const FACTIONS_DIR = process.env.GAME_FACTIONS_DIR ?? path.join(worldDir, "factions");
 export const PERKS_DIR = process.env.GAME_PERKS_DIR ?? path.join(worldDir, "perks");
+export const COMPUTERS_DIR = process.env.GAME_COMPUTERS_DIR ?? path.join(worldDir, "computers");
+export const WORLD_COMPUTERS = {};
+// What computers say when nobody has written them a file, and the advisor's hints inside one.
+export const COMPUTER_FLAVOR = readFile("computers/_flavor.json");
 export const WORLD_CHARACTERS = {};
 export const WORLD_PLACES = {};
 export const WORLD_SPECIES = {};
@@ -75,6 +79,7 @@ export function reloadWorld() {
   readTextFolder(ITEMS_DIR, ITEM, WORLD_ITEMS, "items");
   readTextFolder(FACTIONS_DIR, FACTION, WORLD_FACTIONS, "factions");
   readTextFolder(PERKS_DIR, PERK, WORLD_PERKS, "perks");
+  readTextFolder(COMPUTERS_DIR, COMPUTER, WORLD_COMPUTERS, "computers");
 }
 reloadWorld();
 // The stories are plain-text files in world/stories, read by public/story-text.js into the shape the game uses, and

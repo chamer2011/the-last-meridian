@@ -50,7 +50,7 @@ export function resetWalk() {
 
 const anotherWindow = () => {
   const g = app.ui.game;
-  return Boolean(g.combat || g.check || g.talk || g.fleet.raid || walk.thing || walk.plan);
+  return Boolean(g.combat || g.check || g.talk || g.computer || g.fleet.raid || walk.thing || walk.plan);
 };
 
 // While the AI is writing or another window is up, the captain stays where they are.
@@ -560,8 +560,8 @@ async function useThing() {
   try {
     const reply = await api("/api/walk", { action: thing.door ? "ask" : "use", key: thing.door ? thing.key : thing.id });
     app.ui.game = reply.game;
-    if (reply.check) {
-      // The door's check has its own window, and the answer comes with Continue the story.
+    if (reply.check || reply.computer) {
+      // The door's check has its own window, and the answer comes with Continue the story. A computer has its own too.
       walk.thing = null;
       walk.looked = false;
     } else {

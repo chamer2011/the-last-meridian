@@ -250,6 +250,21 @@ export function parseEffect(text) {
       const act = Number(words[1]);
       return Number.isInteger(act) && act >= 1 && words.length === 2 && !after ? { do: { tool: "update_story", act } } : { problem: "act needs the act's number and nothing else: * act 2" };
     }
+    case "door": {
+      // Opens a door in this place: the one a computer controls, or the door to a room by its id.
+      const to = words[1] ?? "here";
+      return words.length <= 2 && !after ? { do: { door: to } } : { problem: "door is written * door here, or * door with the id of the room the door leads to" };
+    }
+    case "password": {
+      // The player learns a computer's password, and gets in without a hack from then on.
+      const [, computer, ...rest] = words;
+      const word = rest.join(" ");
+      return computer && word && !after ? { do: { password: computer, word } } : { problem: "password is written * password <the computer's id> <the word>" };
+    }
+    case "computer": {
+      // Sits the player down at a computer, as if they'd used it.
+      return words[1] && words.length === 2 && !after ? { do: { computer: words[1] } } : { problem: "computer is written * computer <the computer's id>" };
+    }
     case "raw": {
       const tool = words[1];
       try {

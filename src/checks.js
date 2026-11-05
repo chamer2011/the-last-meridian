@@ -87,9 +87,15 @@ function refreshEdge(check, ctx) {
 
 // Opens the window for a check. source says where it came from: a tagged choice the player
 // clicked, the game master asking for one, or practice, which doesn't count for anything.
-export function startCheck(game, { skill = null, attribute = null, difficulty, context = [], audience = null, reason, scene = null, choice = null, source = "tool" }) {
+export function startCheck(game, { skill = null, attribute = null, difficulty, context = [], audience = null, reason, scene = null, choice = null, source = "tool", computer = null }) {
   if (game.check) throw new Error("Finish the check you're in the middle of first.");
   if (game.combat) throw new Error("Finish the fight first.");
+  if (game.computer) throw new Error("Log off the computer first.");
+  // A hack has no audience: a third word on its tag names the computer it's for, so getting in opens that one.
+  if (skill === "hacking" && audience) {
+    computer ??= audience;
+    audience = null;
+  }
   if (!(difficulty in DIFFICULTY)) throw new Error(`Unknown difficulty: ${difficulty}`);
   if (skill && !SKILLS[skill]) throw new Error(`Unknown skill: ${skill}`);
   if (!skill && !STATS[attribute]) throw new Error("A check needs a skill or an attribute.");
@@ -112,6 +118,7 @@ export function startCheck(game, { skill = null, attribute = null, difficulty, c
     state: null,
     decided: Boolean(CHECK_GAMES[text.game]?.decided),
     played: false,
+    computer,
   };
   const ctx = contextFor(game, check);
   const engine = gameFor(check);
@@ -213,6 +220,8 @@ function finishCheck(game) {
     theme: ctx.text.theme,
     window: ctx.text.window,
     notes: r.notes,
+    // A hack that got in opens the computer: which one, and how much of the trace is left for inside.
+    hack: decided && check.skill === "hacking" ? { computer: check.computer ?? null, source: check.source, classKey: check.difficulty, trace: check.state.trace, maxTrace: check.state.maxTrace } : null,
   };
   game.check = null;
   if (practiceOnly) return { over: true, outcome };

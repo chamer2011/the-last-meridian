@@ -7,11 +7,11 @@
 import { allStoryProblems, SCENES_DIR } from "./scenes.js";
 
 const dir = process.argv[2] ?? SCENES_DIR;
-const { count, stories, problems } = allStoryProblems(dir);
+const { count, stories, computers, problems } = allStoryProblems(dir);
 if (!problems.length) {
-  console.log(`All ${count} ${count === 1 ? "scene is" : "scenes are"} sound, and so are the notes of ${stories} stories.`);
+  console.log(`All ${count} ${count === 1 ? "scene is" : "scenes are"} sound, and so are the notes of ${stories} stories and the ${computers} computers.`);
 } else {
-  console.log(`${problems.length} ${problems.length === 1 ? "problem" : "problems"} in ${dir} and world\\stories:\n`);
+  console.log(`${problems.length} ${problems.length === 1 ? "problem" : "problems"} in ${dir}, world\\stories and world\\computers:\n`);
   for (const problem of problems) console.log(`- ${problem}`);
   console.log("\nFix these and run it again. The how-tos are world\\scenes\\_how-to-write-a-scene.txt and world\\stories\\_how-to-write-a-story.txt.");
   process.exit(1);

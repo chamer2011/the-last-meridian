@@ -10,6 +10,7 @@
 
 import { allCharacters, campaignRooms, findCampaignRoom, findCharacter, fullName, saveCampaignRoom } from "./campaign.js";
 import { startCheck, startChoiceCheck } from "./checks.js";
+import { useComputer } from "./computers.js";
 import { ITEMS, LOCATIONS } from "./data.js";
 import { hasADay, livesHere, peopleAboard } from "./life.js";
 import { isCaptain, toOutsider } from "./role.js";
@@ -214,7 +215,11 @@ export function useThing(game, key) {
     return { said: `[ITEM] Received: ${ITEMS[thing.item]?.name ?? thing.item}. ${thing.used ?? ""}`.trim() };
   }
   if (thing.item) return { said: "You've already got one." };
+  // A thing with a computer file of its own is a computer: the player sits down at it, or hacks it. A console or
+  // a panel nobody has written is one too, unless the map file already says what using it does.
   const written = (!isCaptain(game) && thing.usedOther) || thing.used;
+  const inside = useComputer(game, { place: game.location, levelId: walk.level, thing, look: thing.look ?? null, generic: !written });
+  if (inside) return inside;
   return { said: written ?? "Nothing more comes of it, for now." };
 }
 

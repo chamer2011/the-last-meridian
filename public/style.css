@@ -540,6 +540,30 @@ button.fighter:hover:not(:disabled), button.fighter:focus-visible { background: 
 .check-advisor-tab::before, .check-advisor-tab::after { content: none !important; }
 .check-window .check-advisor-tab:hover:not(:disabled), .check-advisor-tab:focus-visible { background: var(--c); color: var(--c-bg); }
 .practice-classes { flex-wrap: wrap; gap: 2px 6px; }
+/* The computer window: what's on it down the left, the screen in the middle, the advisor on the right, a console at the bottom. */
+.computer-window { width: min(100%, 132ch); }
+.computer-body { flex: 1 1 auto; min-height: 0; display: flex; align-items: stretch; }
+.computer-side { flex: none; width: 26ch; min-height: 0; overflow-y: auto; border-right: 1px solid var(--c-line); display: flex; flex-direction: column; }
+.computer-section { display: flex; flex-direction: column; }
+.computer-list { display: flex; flex-direction: column; padding: 3px 4px; }
+.computer-item { text-align: left; padding: 1px 4px; white-space: normal; overflow-wrap: anywhere; }
+.computer-item.done { color: var(--c-dim); }
+.computer-item.open { background: color-mix(in srgb, var(--c) 18%, transparent); }
+.computer-mark { display: inline-block; width: 1.2ch; color: var(--c-dim); }
+.computer-main { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.computer-screen { flex: 1 1 auto; min-height: 7em; overflow-y: auto; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.computer-screen-title { color: var(--c-bright); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.computer-screen .check-line { white-space: pre-wrap; }
+.computer-console { flex: none; height: 7em; min-height: 0; max-height: none; border-top: 1px solid var(--c-line); overflow-y: auto; padding: 4px 8px; background: var(--c-panel); }
+@media (max-width: 860px) {
+  .computer-body { flex-direction: column; }
+  .computer-side { width: 100%; max-height: 9em; border-right: 0; border-bottom: 1px solid var(--c-line); }
+  .computer-console { height: 5em; }
+  .computer-body .check-advisor { width: 100%; height: 0; border-left: 0; border-top: 0 solid var(--c-line); transition: height .25s ease-out, border-top-width .25s; }
+  .computer-body .check-advisor.in { width: 100%; height: 7.5em; border-top-width: 1px; }
+  .computer-body .check-advisor-body { width: 100%; }
+  .computer-body .check-advisor-tab { left: auto; right: 10px; top: -15px; transform: none; width: 44px; height: 15px; border: 1px solid var(--c-line); border-bottom: 0; }
+}
 .check-result { width: min(100%, 76ch); cursor: default; }
 .check-verdict { padding: 18px 16px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
 .check-verdict-title { font-size: 26px; line-height: 1.2; font-weight: 700; letter-spacing: .12em; text-align: center; padding: 10px 0; border: 1px solid currentColor; }

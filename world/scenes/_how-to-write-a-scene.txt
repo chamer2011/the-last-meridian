@@ -80,6 +80,10 @@ Things in square brackets before the words are tags, which the player sees:
                                  or disconnecting is the fail. A completed trace on a ship's main
                                  system or worse leaves a fact on the record, traced_on_<class>,
                                  which a condition can ask about: ? flag traced_on_ships_main_system.
+                                 A third word names the computer the hack gets into when it passes,
+                                 by its file in world/computers: [hacking:moderate:haven_berth_board].
+                                 Without one, it lands on this place's computer of that class, or one
+                                 the game makes up. Getting in opens the computer's own system.
     [+Voss] or [-Tarrow]         Someone who would clearly approve or disapprove.
     [reason]                     The belief the choice expresses: order, freedom, community, self,
                                  mercy, iron, reason, faith, purity or ascension.
@@ -117,6 +121,11 @@ Lines starting with * happen when the part begins, and the player sees each as a
                                             the record. Put failed before the colon if the player lost it)
     * fuel 6: The reason                    (the fleet's fuel, which jumps use; a minus sign burns it)
     * act 2                                 (the main story moves on to that act)
+    * door sublevels                        (opens the door to that room, by the room's id in the map file,
+                                            in the place the player is at)
+    * password haven_berth_board ORBIT      (the player learns that computer's password, and gets in with
+                                            no hack; the computers are files in world/computers)
+    * computer haven_berth_board            (sits the player down at that computer, as if they'd got in)
     * raw add_lore {"term": "The Rim", "kind": "place", "text": "What the player would know."}
 
 The last one does anything the AI can do, with the fields from src/tools.js. The rules are the
