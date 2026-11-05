@@ -1023,9 +1023,15 @@ button.fighter:hover:not(:disabled), button.fighter:focus-visible { background: 
 .walk-things { position: absolute; inset: 0; z-index: 24; pointer-events: none; container: things / size; }
 .walk-things .pop-balloon { pointer-events: auto; }
 .walk-thing-pane { --c: #f5d76e; --c-dim: #a3904b; --c-line: #6c5f2e; --c-bg: #100d03; --c-bright: #fff7d6; width: clamp(26ch, 30cqw, 36ch); font: 13px/1.4 var(--mono); }
-.walk-thing-pane[data-theme="teal"] { --c: #76ecd2; --c-dim: #479985; --c-line: #27695a; --c-bg: #03110e; --c-bright: #e3fff8; }
-.walk-thing-pane[data-theme="amber"] { --c: #ffc466; --c-dim: #a57f3e; --c-line: #6e5426; --c-bg: #120c03; --c-bright: #fff0d4; }
-.walk-thing-pane[data-theme="red"] { --c: #ff8f7f; --c-dim: #ad5a4e; --c-line: #753a31; --c-bg: #140504; --c-bright: #ffe9e4; }
+:is(.walk-thing-pane, .walk-menu)[data-theme="gold"] { --c: #f5d76e; --c-dim: #a3904b; --c-line: #6c5f2e; --c-bg: #100d03; --c-bright: #fff7d6; }
+:is(.walk-thing-pane, .walk-menu)[data-theme="teal"] { --c: #76ecd2; --c-dim: #479985; --c-line: #27695a; --c-bg: #03110e; --c-bright: #e3fff8; }
+:is(.walk-thing-pane, .walk-menu)[data-theme="amber"] { --c: #ffc466; --c-dim: #a57f3e; --c-line: #6e5426; --c-bg: #120c03; --c-bright: #fff0d4; }
+:is(.walk-thing-pane, .walk-menu)[data-theme="red"] { --c: #ff8f7f; --c-dim: #ad5a4e; --c-line: #753a31; --c-bg: #140504; --c-bright: #ffe9e4; }
+/* Someone's own window and menu are in their own colour, the way their speech is. */
+:is(.walk-thing-pane, .walk-menu)[data-theme="person"] {
+  --c: var(--speaker); --c-dim: color-mix(in srgb, var(--speaker) 62%, #000); --c-line: color-mix(in srgb, var(--speaker) 40%, #000);
+  --c-bg: color-mix(in srgb, var(--speaker) 7%, #030403); --c-bright: color-mix(in srgb, var(--speaker) 25%, #fff);
+}
 .walk-thing-pane .pop-pane.pop-console, .walk-thing-choices {
   background: var(--c-bg); color: var(--c); border: 1px solid var(--c); overflow: hidden;
   box-shadow: 0 0 22px color-mix(in srgb, var(--c) 28%, transparent), 0 16px 48px rgba(0, 0, 0, .7);
@@ -1055,4 +1061,34 @@ button.fighter:hover:not(:disabled), button.fighter:focus-visible { background: 
 .walk-thing-choices .options button:hover:not(:disabled), .walk-thing-choices .options button:focus-visible { background: var(--c); }
 @media (prefers-reduced-motion: reduce) {
   .walk-thing-choices { transition: none; }
+}
+
+/* ---- The right-click menu ------------------------------------------------------- */
+/* The console's window where the click was, sliding open down from it, or up when it opens upward, in the colour of
+   what it's for. */
+.walk-menus { position: absolute; inset: 0; z-index: 26; pointer-events: none; }
+.walk-menu {
+  --c: #8df5ac; --c-dim: #4f9a68; --c-line: #2a6a43; --c-bg: #03110a; --c-bright: #e6ffef;
+  position: absolute; left: 0; top: 0; min-width: 20ch; max-width: 36ch; display: flex; flex-direction: column; overflow: hidden;
+  visibility: hidden; pointer-events: auto; cursor: default;
+  background: var(--c-bg); color: var(--c); border: 1px solid var(--c); font: 13px/1.4 var(--mono);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--c) 28%, transparent), 0 16px 48px rgba(0, 0, 0, .7);
+}
+.walk-menu.placed { visibility: visible; }
+.walk-menu::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, .16) 2px 4px); }
+.walk-menu .check-title { flex: none; }
+.walk-menu-ask { padding: 6px 10px 0; color: var(--c-bright); }
+.walk-menu .options { gap: 1px; padding: 4px 6px 6px; }
+.walk-menu .options button { display: block; font-size: 14px; padding: 2px 4px; }
+.walk-menu .options button > * { margin-right: 1ch; }
+.walk-menu .option-number, .walk-menu .option-detail { color: var(--c-dim); }
+.walk-menu .option-label { color: var(--c-bright); }
+.walk-menu .options button:hover:not(:disabled), .walk-menu .options button:focus-visible { background: var(--c); }
+.walk-menu .options button:disabled .option-label { color: var(--c-dim); }
+.walk-menu.opening { animation: walk-menu-down .18s ease-out both; }
+.walk-menu.opening.up { animation-name: walk-menu-up; }
+@keyframes walk-menu-down { from { clip-path: inset(0 0 100% 0); transform: translateY(-8px); } to { clip-path: inset(0 0 0 0); transform: none; } }
+@keyframes walk-menu-up { from { clip-path: inset(100% 0 0 0); transform: translateY(8px); } to { clip-path: inset(0 0 0 0); transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .walk-menu.opening { animation: none; }
 }

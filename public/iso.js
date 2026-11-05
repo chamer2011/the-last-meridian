@@ -2329,10 +2329,10 @@ function underPointer() {
 }
 
 function titleFor(hit) {
-  if (hit?.kind === "person") return `${hit.person.name}${hit.person.doing ? `, ${hit.person.doing}` : ""}. Click to walk over and talk.`;
-  if (hit?.kind === "thing" && hit.thing.part) return `${hit.thing.name}, ${hit.thing.part.word}. Click to walk over and work it.`;
-  if (hit?.kind === "thing") return `${hit.thing.name}. Click to walk over and take a look.`;
-  if (hit?.kind === "exit") return hit.exit.closed ? `${hit.exit.label}. It's closed. Click to walk over and ask.` : `${hit.exit.label}. Click to go through.`;
+  if (hit?.kind === "person") return `${hit.person.name}${hit.person.doing ? `, ${hit.person.doing}` : ""}. Click to walk over and talk, or right-click for more.`;
+  if (hit?.kind === "thing" && hit.thing.part) return `${hit.thing.name}, ${hit.thing.part.word}. Click to walk over and work it, or right-click for more.`;
+  if (hit?.kind === "thing") return `${hit.thing.name}. Click to walk over and take a look, or right-click for more.`;
+  if (hit?.kind === "exit") return hit.exit.closed ? `${hit.exit.label}. It's closed. Click to walk over and ask, or right-click for more.` : `${hit.exit.label}. Click to go through.`;
   return "";
 }
 
@@ -2371,6 +2371,14 @@ function onClick(event) {
   else iso.hooks.go({ action: "go", to: hit.key });
 }
 
+// A right-click opens the menu of what can be done with whatever's under the pointer, or with the floor there.
+function onContext(event) {
+  event.preventDefault();
+  iso.pointer = { x: event.clientX, y: event.clientY };
+  const hit = underPointer();
+  if (hit) iso.hooks.menu?.(hit.key, { x: event.clientX, y: event.clientY });
+}
+
 function onWheel(event) {
   event.preventDefault();
   iso.zoom = Math.min(ZOOMS.largest, Math.max(ZOOMS.smallest, iso.zoom * (event.deltaY < 0 ? 1.1 : 0.9)));
@@ -2386,6 +2394,7 @@ export function isoFrameNode(hooks) {
     role: "img",
     "aria-label": "The room you're in, drawn from an angle. The list beside it has everyone and everything in it.",
     onclick: onClick,
+    oncontextmenu: onContext,
     onpointermove: onMove,
     onpointerleave: onLeave,
     onwheel: onWheel,

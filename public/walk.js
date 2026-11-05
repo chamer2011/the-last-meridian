@@ -30,6 +30,9 @@ let app;
 export function initWalk(hooks) {
   app = hooks;
   document.addEventListener("keydown", onKey);
+  document.addEventListener("pointerdown", (event) => {
+    if (walk.menu && !event.target.closest?.("#walk-menu")) closeMenu();
+  }, true);
   for (const event of ["keydown", "pointerdown", "pointermove"]) {
     document.addEventListener(event, () => {
       walk.lastInput = Date.now();
@@ -109,9 +112,12 @@ function walkAlong(path, done) {
   if (!isoShown() && next < path.length) walk.timer = setInterval(step, STEP_TIME);
 }
 
-// Asks the server for the way, walks it, and then does whatever walking there was for.
-async function go(body) {
-  if (cannotWalk() || walk.sending) return;
+// Asks the server for the way, walks it, and then does whatever walking there was for: after, when the right-click menu
+// gave one, or else a talk, a thing's window or a door's.
+async function go(body, after = null) {
+  // A click that only put the menu away doesn't walk anywhere.
+  if (cannotWalk() || walk.sending || menuJustShut()) return;
+  if (walk.menu) closeMenu(true);
   // Walking anywhere puts a thing's pane away.
   if (walk.thing) {
     walk.thing = null;
@@ -144,7 +150,8 @@ async function go(body) {
       drawHere();
     } else renderWalk();
     if (reply.arrived && reply.arrived.kind !== "exit") walk.steps = [];
-    if (reply.arrived?.kind === "person") app.startTalk(reply.arrived.key);
+    if (after && reply.arrived && reply.arrived.kind !== "exit") after(reply.arrived);
+    else if (reply.arrived?.kind === "person") app.startTalk(reply.arrived.key);
     else if (reply.arrived?.kind === "thing") openThing(reply.arrived.key);
     else if (reply.arrived?.kind === "door") openDoor(reply.arrived.key);
     else if (!document.activeElement?.matches?.("input")) document.getElementById("composer")?.focus({ preventScroll: true });
@@ -196,6 +203,7 @@ function personMark(person) {
   const name = el("span", { class: "walk-person-name" }, person.side === "left" ? `${person.short} ` : ` ${person.short}`);
   const node = el("button", {
     class: "walk-mark walk-person",
+    "data-mark": `person:${person.key}`,
     style: `--speaker:${person.color}`,
     "data-side": person.side,
     "aria-label": `Walk over and talk to ${person.name}`,
@@ -286,7 +294,7 @@ function frameNode() {
   if (isoShown()) {
     walk.shownLevel = view.here.id;
     walk.marks = new Map();
-    return el("div", { class: "walk-frame", id: "walk-frame" }, isoFrameNode({ view: () => app.ui.game?.walk ?? null, spot: shownSpot, blocked: cannotWalk, go, pressed: () => popupsShown() && popupPressed(), reading: () => popupsShown() && popupReading(), drawn: () => {
+    return el("div", { class: "walk-frame", id: "walk-frame" }, isoFrameNode({ view: () => app.ui.game?.walk ?? null, spot: shownSpot, blocked: cannotWalk, go, menu: (key, point) => openMenu(key, point), pressed: () => menuJustShut() || (popupsShown() && popupPressed()), reading: () => popupsShown() && popupReading(), drawn: () => {
       popupDrawn();
       placeThingPane();
     } }));
@@ -303,6 +311,12 @@ function frameNode() {
       onclick: (event) => {
         const { x, y } = squareAt(event);
         go({ action: "go", x, y });
+      },
+      oncontextmenu: (event) => {
+        event.preventDefault();
+        const mark = event.target.closest?.("[data-mark]");
+        const { x, y } = squareAt(event);
+        openMenu(mark?.dataset.mark ?? `floor:${x},${y}`, { x: event.clientX, y: event.clientY });
       },
       onmousemove: showCursor,
       onmouseleave: hideCursor,
@@ -348,7 +362,15 @@ function peopleList(view, button) {
 function hereNode() {
   const view = app.ui.game.walk;
   walk.listed = listOf(view);
-  const button = (text, to, props = {}) => el("button", { disabled: cannotWalk(), onclick: () => go({ action: "go", to }), ...props }, text);
+  const button = (text, to, props = {}) => el("button", {
+    disabled: cannotWalk(),
+    onclick: () => go({ action: "go", to }),
+    oncontextmenu: (event) => {
+      event.preventDefault();
+      openMenu(to, { x: event.clientX, y: event.clientY });
+    },
+    ...props,
+  }, text);
   return el("div", { class: "walk-here", id: "walk-here" },
     el("div", { class: "walk-here-name" }, view.here.name),
     view.here.desc && el("div", { class: "muted small" }, view.here.desc),
@@ -395,14 +417,15 @@ export function walkViewNode(logNode, composerNode) {
   if (walk.fullStory) return el("div", { class: "walk-full" }, storyBar(), logNode());
   const popped = popupsShown();
   const legend = el("div", { class: "muted walk-legend" }, isoShown()
-    ? `${app.ui.game.walk.things.length ? "? something to look at   " : ""}Click the floor to walk, or click anyone or anything   The mouse wheel zooms`
-    : `@ you   ${app.ui.game.walk.things.length ? "? something to look at   " : ""}Click the floor or use the arrow keys to walk`);
+    ? `${app.ui.game.walk.things.length ? "? something to look at   " : ""}Click the floor to walk, or click anyone or anything   Right-click for more   The mouse wheel zooms`
+    : `@ you   ${app.ui.game.walk.things.length ? "? something to look at   " : ""}Click the floor or use the arrow keys to walk   Right-click for more`);
   return el("div", { class: `walk-view${isoShown() ? " iso" : ""}${popped ? " pops-on" : ""}`, id: "walk-view" },
     el("div", { class: "walk-map" },
       frameNode(),
       !popped && clockBar(),
       popped ? popsNode(composerNode, legend, clockBar()) : legend,
-      thingLayer()),
+      thingLayer(),
+      menuLayer()),
     hereNode(),
     !popped && el("div", { class: "walk-story" }, storyBar(), logNode({ latest: true })));
 }
@@ -439,8 +462,9 @@ function clockHeld() {
 }
 
 // Checks that come from the room itself, on its parts, things, doors and computers, let the clock run on, the same as
-// ROOM_CHECKS in src/walk.js. Talks, fights, computers, raids, the deck plan and the story's own checks stop it.
-const ROOM_CHECKS = ["part", "thing", "door", "computer"];
+// ROOM_CHECKS in src/walk.js, picking a pocket among them. Talks, fights, computers, raids, the deck plan and the story's
+// own checks stop it.
+const ROOM_CHECKS = ["part", "thing", "door", "computer", "person"];
 function clockWaits() {
   const { ui } = app;
   const g = ui.game;
@@ -646,17 +670,19 @@ async function workOn(thing, how) {
 // window, with its name and state in the bar, and what can be done in a second window glued to its far side, under an
 // Actions bar. Nothing behind it is dimmed, the room and its clock go on, and walking anywhere puts it away. It can be
 // pulled aside to see what's under it, and it slides back when it's let go.
-const markKey = (thing) => (thing.door ? `exit:${thing.key}` : `thing:${thing.id}`);
+const markKey = (thing) => (thing.person ? `person:${thing.key}` : thing.door ? `exit:${thing.key}` : `thing:${thing.id}`);
 // The console's colours by kind: gold for things, teal for the ship's parts, amber when a part's off or dead or a door's
 // only shut, and red when a door's locked or the alarm's ringing.
 const THEME_COLORS = { gold: "#f5d76e", teal: "#76ecd2", amber: "#ffc466", red: "#ff8f7f" };
-const paneTheme = (thing) => (thing.door ? (thing.locked ? "red" : "amber") : thing.part ? (thing.part.ringing ? "red" : thing.part.works ? "teal" : "amber") : "gold");
+// Someone looked at is in their own colour.
+const paneTheme = (thing) => (thing.person ? "person" : thing.door ? (thing.locked ? "red" : "amber") : thing.part ? (thing.part.ringing ? "red" : thing.part.works ? "teal" : "amber") : "gold");
 // The Actions window overlaps the thing's window by a pixel, so the two share one edge.
 const GLUE = -1;
 // What the game says comes with a tag in front, like [SYSTEMS] or [ITEM]; the window shows the words alone.
 const plainLines = (text) => String(text).split("\n").map((line) => line.replace(/^\[[A-Z]+\]\s*/, "")).filter(Boolean);
 
 function thingChoices(thing) {
+  if (thing.person) return personChoices(thing);
   if (thing.actions || thing.part) return [...(thing.actions ?? []).map((action) => [action.label, action.detail, () => workOn(thing, action.id)]), ["Close", "", closeWindow]];
   const written = app.ui.game.mode === "written" || Boolean(thing.written);
   return [
@@ -673,7 +699,7 @@ function thingPane(thing) {
   const node = paneNode({
     id: "walk-window",
     key,
-    color: THEME_COLORS[theme],
+    color: theme === "person" ? thing.color : THEME_COLORS[theme],
     opening,
     className: "walk-thing-pane",
     place: placeThingPane,
@@ -716,6 +742,29 @@ function thingLayer() {
   return el("div", { class: "walk-things", id: "walk-thing" }, thingPane(walk.thing));
 }
 
+// What can be done with someone from their window: the same as their menu, with Attack asking first.
+function personChoices(thing) {
+  const person = app.ui.game.walk.people.find((one) => one.key === thing.key);
+  if (!person) return [["Close", "", closeWindow]];
+  const to = `person:${person.key}`;
+  const asking = (confirm) => () => {
+    walk.thing = { ...thing, confirm };
+    drawThingPane();
+  };
+  if (thing.confirm) {
+    return [
+      [`Attack ${person.short}`, "it starts a fight, and everyone here sees it", () => go({ action: "go", to }, () => deed("attack", person.key))],
+      ["Never mind", "", asking(false)],
+    ];
+  }
+  return [
+    ["Talk", "", () => go({ action: "go", to })],
+    ["Pickpocket", person.wary ? "they're watching their pockets" : person.pocket, () => go({ action: "go", to }, () => deed("pickpocket", person.key)), person.wary],
+    ["Attack", "starts a fight", asking(true)],
+    ["Close", "", closeWindow],
+  ];
+}
+
 // The pane drawn again, or put away, without drawing anything else.
 function drawThingPane() {
   const old = document.getElementById("walk-thing");
@@ -727,6 +776,238 @@ function drawThingPane() {
 }
 
 const zoom = () => Number(document.documentElement.style.zoom) || 1;
+
+// ---- The right-click menu ------------------------------------------------
+
+// A right-click on someone, something, a door or the floor opens what can be done with it, sliding open where the click
+// was: the console's window in the colour of what it's for, its choices numbered. What has to be done up close walks
+// over first, and Look looks from where the player stands. A click anywhere else, Escape, or walking puts it away.
+const menuJustShut = () => Date.now() - (walk.menuShut ?? 0) < 400;
+const sentence = (words) => (words ? `${words.charAt(0).toUpperCase()}${words.slice(1)}.` : "");
+const usedBy = (thing) => (app.ui.game.mode === "written" || thing.written ? "free" : "this goes to the story, as your next action");
+
+function openMenu(key, point) {
+  if (cannotWalk() || !app.ui.game?.walk || !targetOf(key)) return;
+  walk.menuShut = 0;
+  walk.menu = { key, x: point.x, y: point.y, confirm: null, opening: !window.matchMedia("(prefers-reduced-motion: reduce)").matches };
+  drawMenu();
+}
+
+// A choice closes it quietly, so whatever it does can walk; anything else closes it and keeps the click from walking.
+function closeMenu(chosen = false) {
+  if (!walk.menu) return;
+  walk.menu = null;
+  if (!chosen) walk.menuShut = Date.now();
+  drawMenu();
+}
+
+// What a key from the room, the plan or the list stands for, as it is now.
+function targetOf(key) {
+  const view = app.ui.game?.walk;
+  if (!view || !key) return null;
+  const [kind, ...rest] = String(key).split(":");
+  const id = rest.join(":");
+  if (kind === "person") {
+    const person = view.people.find((one) => one.key === id);
+    return person ? { kind, person } : null;
+  }
+  if (kind === "thing") {
+    const thing = view.things.find((one) => one.id === id);
+    return thing ? { kind, thing } : null;
+  }
+  if (kind === "exit") {
+    const exit = view.exits.find((one) => one.key === id);
+    return exit ? { kind, exit } : null;
+  }
+  const [x, y] = id.split(",").map(Number);
+  return kind === "floor" && Number.isInteger(x) && Number.isInteger(y) ? { kind, x, y } : null;
+}
+
+// The menu for each kind of target: its title, its state, its colour and its choices.
+function menuFor(target) {
+  if (target.kind === "person") {
+    const person = target.person;
+    const to = `person:${person.key}`;
+    return {
+      title: person.short,
+      word: person.asleep ? "asleep" : null,
+      theme: "person",
+      color: person.color,
+      items: [
+        { label: "Talk", run: () => go({ action: "go", to }) },
+        { label: "Look", run: () => lookAtPerson(person) },
+        { label: "Pickpocket", detail: person.wary ? "they're watching their pockets" : person.pocket, disabled: Boolean(person.wary), run: () => go({ action: "go", to }, () => deed("pickpocket", person.key)) },
+        { label: "Attack", detail: "starts a fight", ask: `Attack ${person.short}? It starts a fight, and everyone here sees it.`, run: () => go({ action: "go", to }, () => deed("attack", person.key)) },
+      ],
+    };
+  }
+  if (target.kind === "thing") {
+    const thing = target.thing;
+    const there = (then) => () => go({ action: "go", to: `thing:${thing.id}` }, () => {
+      openThing(thing.id);
+      then();
+    });
+    if (thing.part) {
+      return {
+        title: thing.name,
+        word: thing.part.word,
+        theme: paneTheme(thing),
+        items: [
+          { label: "Look", run: () => openThing(thing.id) },
+          ...(thing.actions ?? []).map((action) => ({ label: action.label, detail: action.detail, run: there(() => workOn(walk.thing, action.id)) })),
+        ],
+      };
+    }
+    return {
+      title: thing.name,
+      theme: "gold",
+      items: [
+        { label: "Look", run: () => openThing(thing.id) },
+        { label: "Use", detail: thing.have ? "you're already carrying one" : usedBy(thing), disabled: Boolean(thing.have), run: there(() => useThing()) },
+      ],
+    };
+  }
+  if (target.kind === "exit") {
+    const exit = target.exit;
+    const to = `exit:${exit.key}`;
+    const there = (then) => () => go({ action: "go", to }, () => {
+      openDoor(exit.key);
+      then();
+    });
+    if (exit.locked) {
+      return {
+        title: exit.label,
+        word: "locked",
+        theme: "red",
+        items: [
+          { label: "Look", run: () => openDoor(exit.key) },
+          ...(exit.actions ?? []).map((action) => ({ label: action.label, detail: action.detail, run: there(() => workOn(walk.thing, action.id)) })),
+        ],
+      };
+    }
+    if (exit.closed) {
+      return {
+        title: exit.label,
+        word: "closed",
+        theme: "amber",
+        items: [
+          { label: "Look", run: () => openDoor(exit.key) },
+          { label: "Ask to go through", detail: usedBy(exit), run: there(() => useThing()) },
+        ],
+      };
+    }
+    return { title: exit.label, theme: "green", items: [{ label: "Go through", run: () => go({ action: "go", to }) }] };
+  }
+  return { title: "The floor", theme: "green", items: [{ label: "Walk here", run: () => go({ action: "go", x: target.x, y: target.y }) }] };
+}
+
+// Someone looked at: their window beside them, with how they look and what they're doing.
+function lookAtPerson(person) {
+  const now = person.asleep ? "Asleep." : sentence(person.doing);
+  walk.thing = { person: true, key: person.key, name: person.short, color: person.color, look: [person.look, now].filter(Boolean).join("\n") || person.name, confirm: false };
+  walk.looked = true;
+  app.render();
+}
+
+// Picking a pocket or starting a fight, once the player's next to them. Each opens its own window, or says why not.
+async function deed(action, key) {
+  if (walk.working) return;
+  walk.working = true;
+  walk.message = null;
+  try {
+    const reply = await api("/api/walk", { action, key });
+    app.ui.game = reply.game;
+  } catch (err) {
+    walk.message = err.message;
+  }
+  walk.working = false;
+  app.render();
+}
+
+function menuNode() {
+  const menu = walk.menu;
+  const target = menu && targetOf(menu.key);
+  if (!target) return null;
+  const spec = menuFor(target);
+  const opening = menu.opening;
+  menu.opening = false;
+  const choose = (item) => {
+    if (item.ask && !walk.menu.confirm) {
+      walk.menu = { ...walk.menu, confirm: item };
+      drawMenu();
+      return;
+    }
+    closeMenu(true);
+    item.run();
+  };
+  const items = menu.confirm
+    ? [{ ...menu.confirm, label: menu.confirm.label === "Attack" ? `Attack ${spec.title}` : menu.confirm.label, detail: "" }, { label: "Never mind", run: () => {
+      walk.menu = { ...walk.menu, confirm: null };
+      drawMenu();
+    }, keep: true }]
+    : spec.items;
+  return el("div", {
+    class: `walk-menu${opening ? " opening" : ""}`,
+    id: "walk-menu",
+    "data-theme": spec.theme,
+    style: spec.color ? `--speaker:${spec.color}` : "",
+    role: "menu",
+    "aria-label": spec.title,
+    oncontextmenu: (event) => event.preventDefault(),
+  },
+  el("header", { class: "check-title" }, el("span", { class: "check-name" }, spec.title), spec.word && el("span", { class: "check-skill" }, spec.word)),
+  menu.confirm && el("div", { class: "walk-menu-ask" }, menu.confirm.ask),
+  el("div", { class: "options" }, items.map((item, i) => el("button", {
+    role: "menuitem",
+    "data-choice": String(i + 1),
+    disabled: Boolean(item.disabled) || Boolean(walk.working),
+    onclick: (event) => {
+      event.stopPropagation();
+      if (item.keep) item.run();
+      else choose(item);
+    },
+  }, el("span", { class: "option-number" }, `${i + 1})`), el("span", { class: "option-label" }, item.label), item.detail && el("span", { class: "option-detail" }, item.detail)))));
+}
+
+// The layer the menu goes on, over the room and any thing's window.
+function menuLayer() {
+  if (walk.menu && (cannotWalk() || !targetOf(walk.menu.key))) walk.menu = null;
+  if (!walk.menu) return null;
+  requestAnimationFrame(placeMenu);
+  return el("div", { class: "walk-menus", id: "walk-menus" }, menuNode());
+}
+
+function drawMenu() {
+  const old = document.getElementById("walk-menus");
+  const fresh = menuLayer();
+  if (old && fresh) old.replaceWith(fresh);
+  else if (old) old.remove();
+  else if (fresh) document.querySelector(".walk-map")?.append(fresh);
+}
+
+// Where the click was, opening down and to the right, or up or to the left where there isn't the room.
+function placeMenu() {
+  const node = document.getElementById("walk-menu");
+  const layer = document.getElementById("walk-menus");
+  if (!node || !layer || !walk.menu) return;
+  const z = zoom();
+  const base = layer.getBoundingClientRect();
+  const x = (walk.menu.x - base.left) / z;
+  const y = (walk.menu.y - base.top) / z;
+  const wide = node.offsetWidth;
+  const tall = node.offsetHeight;
+  const width = layer.clientWidth;
+  const height = layer.clientHeight;
+  let left = x + 2;
+  if (left + wide > width - 4) left = x - 2 - wide;
+  left = Math.max(4, Math.min(width - wide - 4, left));
+  const up = y + 2 + tall > height - 4 && y - 2 - tall >= 4;
+  const top = Math.max(4, Math.min(height - tall - 4, up ? y - 2 - tall : y + 2));
+  node.style.left = `${Math.round(left)}px`;
+  node.style.top = `${Math.round(top)}px`;
+  node.classList.toggle("up", up);
+  node.classList.add("placed");
+}
 
 // Where the thing is, in the layer's own measure: where the isometric view drew it, or its mark on the plan.
 function thingSpot(layer, thing) {
@@ -866,6 +1147,19 @@ export function focusThing() {
 
 function onKey(event) {
   if (app.ui.screen !== "game" || !app.ui.game || app.ui.sideOpen || event.ctrlKey || event.metaKey || event.altKey) return;
+  if (walk.menu && !event.target.matches?.("input, textarea")) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeMenu();
+      return;
+    }
+    const pick = /^[1-9]$/.test(event.key) ? document.querySelector(`#walk-menu [data-choice="${event.key}"]`) : null;
+    if (pick) {
+      event.preventDefault();
+      pick.click();
+      return;
+    }
+  }
   if (walk.plan) {
     if (event.key === "Escape") closeWindow();
     return;

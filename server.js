@@ -25,6 +25,7 @@ import { closeTalk, talkBrief, talkCommand, talkHeard, talkLineOver, talkSaid, w
 import { enterAfterHack, enterDoorPanel } from "./src/computers.js";
 import { airBadHere, controlSystem, settlePart, systemsOf } from "./src/systems.js";
 import { computerCommand } from "./src/computer-use.js";
+import { afterDeedFight, settleDeed } from "./src/deeds.js";
 
 const savesDir = path.join(dataDir(), "saves");
 const settingsFile = path.join(dataDir(), "settings.json");
@@ -497,6 +498,9 @@ async function handleApi(req, res, route) {
     if (outcome.over && !outcome.training) {
       game.transcript.push({ role: "combat", tag: "COMBAT", text: outcome.summary, tone: outcome.tone, ...(outcome.math ? { math: outcome.math } : {}) });
       for (const note of outcome.notes) log("notice", note);
+      // A fight the player started from the right-click menu: whoever was beaten goes off to get patched up.
+      const after = afterDeedFight(game, outcome);
+      if (after.length) log("notice", after.join("\n"));
     }
     autosave();
     return json(res, 200, { game: publicState(game), outcome });
@@ -522,6 +526,9 @@ async function handleApi(req, res, route) {
     // Work on a part or a door by hand is settled by the place's systems; a door panel that was hacked opens as a computer.
     const worked = reply.over ? settlePart(game, reply.outcome, (place, to, hack) => enterDoorPanel(game, place, to, hack)) : null;
     if (worked) reply.outcome.notes.push(...worked);
+    // A pocket picked from the right-click menu: credits, or what being caught costs.
+    const deed = reply.over ? settleDeed(game, reply.outcome) : null;
+    if (deed) reply.outcome.notes.push(...deed);
     // A hack that got in doesn't end at the result: the screen becomes the computer's own system.
     if (worked === null && reply.over && reply.outcome?.hack && reply.outcome.success && !reply.outcome.training) {
       try {
@@ -588,10 +595,10 @@ async function handleApi(req, res, route) {
     if (game.computer) throw new Error(COMPUTER_WAITING);
     const reply = walkCommand(game, body);
     // Using a thing or asking at a door changes more than where the player stands, and the story keeps a line about it.
-    if (body.action === "use" || body.action === "ask" || body.action === "work") {
+    if (["use", "ask", "work", "pickpocket", "attack"].includes(body.action)) {
       if (reply.said) log("notice", reply.said);
       autosave();
-      return json(res, 200, { game: publicState(game), said: reply.said ?? null, check: Boolean(game.check), computer: Boolean(game.computer) });
+      return json(res, 200, { game: publicState(game), said: reply.said ?? null, check: Boolean(game.check), computer: Boolean(game.computer), combat: Boolean(game.combat) });
     }
     saveAfterWalking();
     return json(res, 200, reply);

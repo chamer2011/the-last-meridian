@@ -18,6 +18,7 @@ import { isCaptain, toOutsider } from "./role.js";
 import { addItem, audienceBonus, clockRuns } from "./rules.js";
 import { conditionHolds } from "./scene-text.js";
 import { recordFact } from "./record.js";
+import { attackPerson, isHurt, isWary, pickPocket, pocketDetail } from "./deeds.js";
 import { rumorsFrom } from "./story-library.js";
 import { colorForName, parseNarration } from "../public/story.js";
 import { COMBAT_ART, LOOKS, ROOM_KINDS, ROOM_TALK, WORLD_MAPS } from "./world.js";
@@ -396,7 +397,8 @@ function peopleOnLevel(game, walk, level) {
   const moved = new Set([...walk.with, ...(game.walk?.room?.people ?? [])].map(keyOf));
   const posted = level.homes.filter((home) => !moved.has(home.id) && atPost(game, home.id) && !hasADay(walk.place, home.id));
   const living = livesHere(walk.place) ? peopleAboard(game, walk.place, level.id).filter((one) => !moved.has(keyOf(one))) : [];
-  return [...posted, ...living, ...(walk.withLevel === level.id ? walk.with : [])];
+  // Someone the player has beaten in a fight is off getting patched up for a while.
+  return [...posted, ...living, ...(walk.withLevel === level.id ? walk.with : [])].filter((one) => !isHurt(game, walk.place, keyOf(one)));
 }
 
 const keyOf = (entry) => entry.id ?? entry.name;
@@ -586,6 +588,17 @@ export function walkCommand(game, body) {
       const exit = level.exits.find((one) => one.key === key);
       if (!exit) throw new Error("That isn't here.");
       return workOnDoor(game, level.id, exit, String(body.how ?? ""));
+    }
+    // The right-click menu's two deeds against someone in the room: a pocket picked, in the check window, or a fight.
+    case "pickpocket":
+    case "attack": {
+      const key = String(body.key ?? "").replace(/^person:/, "");
+      const entry = people.find((one) => keyOf(one) === key);
+      if (!entry) throw new Error("They aren't there any more.");
+      const shown = personView(game, entry);
+      const who = { key, id: entry.id ?? null, name: shown.name, short: shown.short, asleep: Boolean(entry.asleep), doing: entry.doing ?? null };
+      const where = { place: game.location, room: walk.room ? null : level.id };
+      return body.action === "pickpocket" ? pickPocket(game, who, where) : attackPerson(game, who, where);
     }
     default:
       throw new Error("Unknown order.");
@@ -811,8 +824,9 @@ export function walkFromOnePlan(game) {
 function personView(game, entry) {
   const person = entry.id ? findCharacter(game.campaign, entry.id) : null;
   const name = person ? fullName(person) : entry.name;
+  const key = keyOf(entry);
   return {
-    key: keyOf(entry),
+    key,
     name,
     short: shortName(game, entry),
     color: person?.color ?? colorForName(name),
@@ -823,6 +837,10 @@ function personView(game, entry) {
     ...(entry.walking ? { walking: true } : {}),
     ...(entry.asleep ? { asleep: true } : {}),
     ...(entry.crowd ? { crowd: true } : {}),
+    // What the right-click menu needs: how they look, how hard their pocket is, and whether they're wary of it now.
+    ...(person?.appearance ? { look: person.appearance } : {}),
+    pocket: pocketDetail(game, { id: entry.id ?? null, name, asleep: Boolean(entry.asleep) }),
+    ...(isWary(game, game.location, key) ? { wary: true } : {}),
   };
 }
 
@@ -920,7 +938,7 @@ function peopleNow(game) {
 // for anything with its own window, because time stands still for those, and everywhere else it stays still.
 // Checks that come from the room itself, on its parts, things, doors and computers, let the clock run on. The story's own
 // checks, talks, fights, computers and raids hold it.
-export const ROOM_CHECKS = ["part", "thing", "door", "computer"];
+export const ROOM_CHECKS = ["part", "thing", "door", "computer", "person"];
 export function walkTick(game, body) {
   if (game.combat || game.talk || game.computer || game.fleet?.raid || (game.check && !ROOM_CHECKS.includes(game.check.source))) return { held: true };
   if (!walkAt(game) || !livesHere(game.location)) return { still: true };
