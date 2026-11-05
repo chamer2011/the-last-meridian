@@ -22,7 +22,9 @@ function leaderNode() {
 // id and key say which pane this is and whose head it belongs over. tag is what goes on the tag,
 // body what goes on the pane, and extras anything that hangs off it, like a talk's choices. onTap
 // is what a plain click does, and opening makes it slide out from the head when it first appears.
-export function paneNode({ id, key, color, tag, body, extras = [], more = false, opening = false, onTap = null, className = "", place = null }) {
+// A console frame is the game's old console window instead of the corners and the tag: body brings
+// its own bar.
+export function paneNode({ id, key, color, tag, body, extras = [], more = false, opening = false, onTap = null, className = "", place = null, frame = "corners" }) {
   const node = el("div", {
     class: `pop-balloon${more ? " more" : ""}${opening ? " opening" : ""}${className ? ` ${className}` : ""}`,
     id,
@@ -34,7 +36,7 @@ export function paneNode({ id, key, color, tag, body, extras = [], more = false,
     onpointercancel: released,
   },
   leaderNode(),
-  el("div", { class: "pop-pane pop-speaker" }, cornerNodes(), el("div", { class: "pop-tag" }, tag), body),
+  frame === "console" ? el("div", { class: "pop-pane pop-console" }, body) : el("div", { class: "pop-pane pop-speaker" }, cornerNodes(), el("div", { class: "pop-tag" }, tag), body),
   extras);
   node.onTap = onTap;
   // A pane that isn't one of the story's places itself, while it's pulled and while it slides back.

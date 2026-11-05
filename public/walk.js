@@ -640,13 +640,21 @@ async function workOn(thing, how) {
   app.render();
 }
 
-// ---- A thing's pane, beside it ------------------------------------------
+// ---- A thing's window, beside it ------------------------------------------
 
-// A thing, a part or a door answers in a pane beside it, like the people's speech, with what can be done hanging off its
-// side. Nothing behind it is dimmed, the room and its clock go on, and walking anywhere puts it away. It can be pulled
-// aside to see what's under it, and it slides back when it's let go.
+// A thing, a part or a door answers in a window beside it, on a line, like the people's speech: the game's console
+// window, with its name and state in the bar, and what can be done in a second window glued to its far side, under an
+// Actions bar. Nothing behind it is dimmed, the room and its clock go on, and walking anywhere puts it away. It can be
+// pulled aside to see what's under it, and it slides back when it's let go.
 const markKey = (thing) => (thing.door ? `exit:${thing.key}` : `thing:${thing.id}`);
-const paneColor = (thing) => (thing.door ? (thing.locked ? "#e07a68" : "#c88a70") : thing.part ? (thing.part.ringing ? "#ff6050" : thing.part.works ? "#7fd8e0" : "#e0a050") : "#e8c060");
+// The console's colours by kind: gold for things, teal for the ship's parts, amber when a part's off or dead or a door's
+// only shut, and red when a door's locked or the alarm's ringing.
+const THEME_COLORS = { gold: "#f5d76e", teal: "#76ecd2", amber: "#ffc466", red: "#ff8f7f" };
+const paneTheme = (thing) => (thing.door ? (thing.locked ? "red" : "amber") : thing.part ? (thing.part.ringing ? "red" : thing.part.works ? "teal" : "amber") : "gold");
+// The Actions window overlaps the thing's window by a pixel, so the two share one edge.
+const GLUE = -1;
+// What the game says comes with a tag in front, like [SYSTEMS] or [ITEM]; the window shows the words alone.
+const plainLines = (text) => String(text).split("\n").map((line) => line.replace(/^\[[A-Z]+\]\s*/, "")).filter(Boolean);
 
 function thingChoices(thing) {
   if (thing.actions || thing.part) return [...(thing.actions ?? []).map((action) => [action.label, action.detail, () => workOn(thing, action.id)]), ["Close", "", closeWindow]];
@@ -660,18 +668,25 @@ function thingChoices(thing) {
 function thingPane(thing) {
   const key = markKey(thing);
   const word = thing.part?.word ?? (thing.locked ? "locked" : thing.door ? "closed" : null);
+  const theme = paneTheme(thing);
+  const opening = walk.paneFor !== key && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const node = paneNode({
     id: "walk-window",
     key,
-    color: paneColor(thing),
-    opening: walk.paneFor !== key && !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    color: THEME_COLORS[theme],
+    opening,
     className: "walk-thing-pane",
     place: placeThingPane,
-    tag: [el("span", { class: "pop-tag-name" }, thing.name), word && el("span", { class: "pop-tag-note" }, word)],
-    body: el("div", { class: "pop-words walk-thing-words" },
-      thing.said && el("div", { class: "walk-thing-said" }, thing.said.split("\n").map((line) => el("div", {}, line.replace(/^\[[A-Z]+\]\s*/, "")))),
-      thing.look && el("div", { class: "walk-thing-look" }, thing.look)),
-    extras: el("div", { class: "pop-choices walk-thing-choices in", id: "walk-thing-choices" },
+    frame: "console",
+    body: [
+      el("header", { class: "check-title walk-thing-title" }, el("span", { class: "check-name" }, thing.name), word && el("span", { class: "check-skill" }, word)),
+      (thing.said || thing.look) && el("div", { class: "walk-thing-words" },
+        thing.said && el("div", { class: "walk-thing-said" }, plainLines(thing.said).map((line) => el("div", {}, line))),
+        thing.look && el("div", { class: "walk-thing-look" }, plainLines(thing.look).map((line) => el("div", {}, line)))),
+    ],
+    // The Actions window slides out from behind the first time, and is simply there when the window's drawn again.
+    extras: el("div", { class: `walk-thing-choices${opening ? "" : " in"}`, id: "walk-thing-choices" },
+      el("header", { class: "check-title" }, "Actions"),
       el("div", { class: "options walk-thing-options" }, thingChoices(thing).map(([label, detail, run, disabled], i) => el("button", {
         "data-choice": String(i + 1),
         disabled: Boolean(disabled) || Boolean(walk.working),
@@ -682,15 +697,21 @@ function thingPane(thing) {
       }, el("span", { class: "option-number" }, `${i + 1})`), el("span", { class: "option-label" }, label), detail && el("span", { class: "option-detail" }, detail))))),
   });
   walk.paneFor = key;
+  node.dataset.theme = theme;
   node.setAttribute("role", "dialog");
   node.setAttribute("aria-label", thing.name);
   node.tabIndex = -1;
+  if (opening) setTimeout(() => node.querySelector(".walk-thing-choices")?.classList.add("in"), 340);
   return node;
 }
 
 // The layer the pane goes on, over the room: every click but the pane's own goes through to the room.
 function thingLayer() {
-  if (!walk.thing || walk.plan) return null;
+  // Put away, the next window opens afresh, sliding out from its thing.
+  if (!walk.thing || walk.plan) {
+    walk.paneFor = null;
+    return null;
+  }
   requestAnimationFrame(placeThingPane);
   return el("div", { class: "walk-things", id: "walk-thing" }, thingPane(walk.thing));
 }
@@ -724,9 +745,11 @@ function thingSpot(layer, thing) {
   return { x: (box.left - base.left) / z, y: (box.top - base.top) / z, w: box.width / z, h: box.height / z };
 }
 
-// Beside the thing: up and to its right, a hand from it, or to its left when the right has no room, always inside the
-// room, out from under the clock, and above the line along the bottom. It runs each time the room's drawn, so it stays
-// with the thing as the view moves, and again while it's being pulled aside or sliding back.
+// Beside the thing: up and to its right, a hand from it, with its Actions glued on beyond it, or both to its left when
+// the right hasn't room for the two. When neither side has room for both, the window goes where it fits and its
+// Actions under it or over it, so they never sit on the thing. Always inside the room, out from under the clock, and
+// above the line along the bottom. It runs each time the room's drawn, so it stays with the thing as the view moves,
+// and again while it's being pulled aside or sliding back.
 function placeThingPane() {
   const layer = document.getElementById("walk-thing");
   const node = document.getElementById("walk-window");
@@ -736,34 +759,52 @@ function placeThingPane() {
   const spot = thingSpot(layer, walk.thing);
   const pane = node.querySelector(".pop-pane");
   if (pane) pane.style.maxHeight = "";
+  const panel = node.querySelector(".walk-thing-choices");
+  if (panel) panel.style.maxHeight = "";
   const width = layer.clientWidth;
   const frame = document.getElementById("walk-frame")?.getBoundingClientRect();
   const row = document.getElementById("pop-row")?.getBoundingClientRect();
   const floor = Math.min(frame ? (frame.bottom - base.top) / z : layer.clientHeight, row?.height ? (row.top - base.top) / z : Infinity) - 8;
   const wide = node.offsetWidth;
+  const panelWide = panel?.offsetWidth ?? 0;
   const mark = spot ? { x: spot.x + spot.w / 2, y: spot.y + spot.h / 2 } : { x: width / 2, y: floor / 2 };
+  const pair = panel ? wide + GLUE + panelWide : wide;
   let side = "right";
   let left = mark.x + 26;
-  if (left + wide > width - 6) {
-    side = "left";
-    left = mark.x - 26 - wide;
-  }
-  if (left < 6) {
-    side = "right";
-    left = mark.x + 26;
+  let beside = Boolean(panel);
+  if (left + pair > width - 6) {
+    if (mark.x - 26 - pair >= 6) {
+      side = "left";
+      left = mark.x - 26 - wide;
+    } else {
+      beside = false;
+      if (left + wide > width - 6) {
+        side = "left";
+        left = mark.x - 26 - wide;
+      }
+      if (left < 6) {
+        side = "right";
+        left = mark.x + 26;
+      }
+    }
   }
   left = Math.max(6, Math.min(width - wide - 6, left));
   // The clock sits at the top of the room when the story's over it.
   const clock = document.getElementById("walk-clock")?.getBoundingClientRect();
   const clockBottom = clock?.height ? (clock.bottom - base.top) / z : 0;
-  const underClock = clock?.height && clockBottom < floor / 2 && left + wide > (clock.left - base.left) / z;
+  const reach = left + wide + (beside && side === "right" ? GLUE + panelWide : 0);
+  const underClock = clock?.height && clockBottom < floor / 2 && reach > (clock.left - base.left) / z;
   const roof = underClock ? clockBottom + 6 : 6;
-  let tall = node.offsetHeight;
+  // Heights to the fraction of a pixel, so the Actions glued under or over share the window's edge exactly.
+  const tallOf = (one) => one.getBoundingClientRect().height / z;
+  let tall = tallOf(node);
   if (floor - roof < tall && pane) {
     pane.style.maxHeight = `${Math.max(60, floor - roof)}px`;
-    tall = node.offsetHeight;
+    tall = tallOf(node);
   }
-  const top = Math.max(roof, Math.min(floor - tall, mark.y - 14 - tall));
+  // Side by side, the taller of the two keeps them both above the bottom, with their bars level.
+  const pairTall = beside ? Math.max(tall, tallOf(panel)) : tall;
+  const top = Math.max(roof, Math.min(floor - pairTall, mark.y - 14 - tall));
   node.placedAt = { left, top, wide, tall };
   const pulled = paneOffset(node);
   node.style.transform = `translate(${Math.round(left + pulled.x)}px, ${Math.round(top + pulled.y)}px)`;
@@ -775,7 +816,7 @@ function placeThingPane() {
   }
   if (spot) drawLeader(node, { ...at, wide, tall, side }, mark);
   node.classList.toggle("no-head", !spot);
-  placeThingChoices(node, { left, top, wide, tall, width, floor, roof, side });
+  placeThingChoices(node, { top, tall, floor, roof, side, beside });
   node.classList.add("placed");
   // The notes at the top step aside while the pane or its choices would cover them, and come back once they wouldn't.
   const notes = document.getElementById("pop-notes");
@@ -796,20 +837,19 @@ function uncoverNotes() {
   delete notes.dataset.thing;
 }
 
-// What can be done hangs off the pane's far side from the thing, or the other side, or under it or over it.
-function placeThingChoices(node, { left, top, wide, tall, width, floor, roof, side }) {
+// The Actions window is glued to the window's far side from the thing, with their bars level, or under it or over it
+// when placeThingPane found no room beside it; their edges share one line.
+function placeThingChoices(node, { top, tall, floor, roof, side, beside }) {
   const panel = node.querySelector(".walk-thing-choices");
   if (!panel) return;
-  panel.style.maxHeight = `${Math.max(80, floor - roof - 12)}px`;
-  const panelWide = panel.offsetWidth;
-  const panelTall = panel.offsetHeight;
-  const right = left + wide + 12 + panelWide <= width - 6;
-  const leftward = left - 12 - panelWide >= 6;
-  let where = side === "left" ? (leftward ? "at-left" : right ? "at-right" : "below") : right ? "at-right" : leftward ? "at-left" : "below";
-  if (where === "below" && top + tall + 12 + panelTall > floor && top - panelTall - 12 >= roof) where = "above";
+  panel.style.maxHeight = `${Math.max(80, beside ? floor - top : floor - roof)}px`;
+  const panelTall = panel.getBoundingClientRect().height / zoom();
+  let where = beside ? (side === "left" ? "at-left" : "at-right") : "below";
+  if (where === "below" && top + tall + GLUE + panelTall > floor && top - panelTall - GLUE >= roof) where = "above";
   for (const one of ["at-right", "at-left", "below", "above"]) panel.classList.toggle(one, one === where);
-  const start = where === "below" ? tall + 12 : where === "above" ? -panelTall - 12 : 0;
-  panel.style.top = `${Math.round(Math.max(roof - top, Math.min(start, floor - top - panelTall)))}px`;
+  const start = where === "below" ? tall + GLUE : where === "above" ? -panelTall - GLUE : 0;
+  // Not rounded, so a window glued under or over shares its edge exactly.
+  panel.style.top = `${Math.max(roof - top, Math.min(start, floor - top - panelTall))}px`;
 }
 
 // The deck plan still opens in a window of its own. A thing's pane is drawn with the room, by thingLayer.

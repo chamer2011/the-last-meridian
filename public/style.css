@@ -1016,12 +1016,43 @@ button.fighter:hover:not(:disabled), button.fighter:focus-visible { background: 
 .ship-system-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .ship-system-name { flex: 1 1 14ch; min-width: 0; }
 
-/* ---- A thing's pane, beside it in the room ------------------------------------ */
+/* ---- A thing's window, beside it in the room ------------------------------------ */
+/* The game's console window on a line to its thing, in the console's colour for its kind, and its actions in a second
+   one glued to its far side under an Actions bar, sliding out from behind it the first time. */
 .walk-map { position: relative; }
 .walk-things { position: absolute; inset: 0; z-index: 24; pointer-events: none; container: things / size; }
 .walk-things .pop-balloon { pointer-events: auto; }
-.walk-thing-pane { width: clamp(24ch, 30cqw, 32ch); }
-.walk-thing-pane .walk-thing-words { display: flex; flex-direction: column; gap: 6px; padding: 12px 12px 8px; }
+.walk-thing-pane { --c: #f5d76e; --c-dim: #a3904b; --c-line: #6c5f2e; --c-bg: #100d03; --c-bright: #fff7d6; width: clamp(26ch, 30cqw, 36ch); font: 13px/1.4 var(--mono); }
+.walk-thing-pane[data-theme="teal"] { --c: #76ecd2; --c-dim: #479985; --c-line: #27695a; --c-bg: #03110e; --c-bright: #e3fff8; }
+.walk-thing-pane[data-theme="amber"] { --c: #ffc466; --c-dim: #a57f3e; --c-line: #6e5426; --c-bg: #120c03; --c-bright: #fff0d4; }
+.walk-thing-pane[data-theme="red"] { --c: #ff8f7f; --c-dim: #ad5a4e; --c-line: #753a31; --c-bg: #140504; --c-bright: #ffe9e4; }
+.walk-thing-pane .pop-pane.pop-console, .walk-thing-choices {
+  background: var(--c-bg); color: var(--c); border: 1px solid var(--c); overflow: hidden;
+  box-shadow: 0 0 22px color-mix(in srgb, var(--c) 28%, transparent), 0 16px 48px rgba(0, 0, 0, .7);
+}
+.walk-thing-pane .pop-pane.pop-console { z-index: 1; }
+.pop-console::after, .walk-thing-choices::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, .16) 2px 4px); }
+.walk-thing-pane .check-title { flex: none; }
+.walk-thing-pane .walk-thing-words { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; color: var(--c-bright); overflow-wrap: anywhere; }
 .walk-thing-pane .walk-thing-said { margin: 0; gap: 2px; color: var(--c-bright); }
-.walk-thing-pane .walk-thing-look { color: var(--c); }
-.walk-thing-choices { width: clamp(22ch, 26cqw, 30ch); }
+.walk-thing-pane .walk-thing-look { padding: 0; border: 0; color: var(--c-bright); }
+.walk-thing-pane .walk-thing-said + .walk-thing-look { color: var(--c); }
+.walk-thing-choices {
+  position: absolute; top: 0; z-index: 0; width: clamp(22ch, 26cqw, 30ch); display: flex; flex-direction: column; min-height: 0; cursor: default;
+  opacity: 0; pointer-events: none; transition: transform .22s ease-out, opacity .18s ease-out;
+}
+.walk-thing-choices.at-right { left: calc(100% - 1px); transform: translateX(-28px); }
+.walk-thing-choices.at-left { right: calc(100% - 1px); transform: translateX(28px); }
+.walk-thing-choices.below { left: 0; transform: translateY(-14px); }
+.walk-thing-choices.above { left: 0; transform: translateY(14px); }
+.walk-thing-choices.in { opacity: 1; pointer-events: auto; transform: none; }
+.walk-thing-choices .options { flex: 1 1 auto; min-height: 0; overflow-y: auto; gap: 2px; padding: 6px 8px 8px; }
+/* The number, the action and what it costs run on as one line of text, so a narrow window wraps the words, not the number. */
+.walk-thing-choices .options button { display: block; font-size: 14px; padding: 2px 4px; }
+.walk-thing-choices .options button > * { margin-right: 1ch; }
+.walk-thing-choices .option-number, .walk-thing-choices .option-detail { color: var(--c-dim); }
+.walk-thing-choices .option-label { color: var(--c-bright); }
+.walk-thing-choices .options button:hover:not(:disabled), .walk-thing-choices .options button:focus-visible { background: var(--c); }
+@media (prefers-reduced-motion: reduce) {
+  .walk-thing-choices { transition: none; }
+}

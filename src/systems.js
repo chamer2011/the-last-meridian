@@ -975,12 +975,15 @@ export function partActions(game, place, part) {
   return out;
 }
 
+// An alarm's part that works says it's ringing while the alarm rings, instead of saying it's quiet.
+const ringingNow = (game, place, part) => part.system === "alarm" && Boolean(alarmRinging(game, place));
+
 export function lookAt(game, place, part) {
   const spec = kindSpec(part.kind);
   const s = partState(game, place, part.id);
-  const state = s.damage ? spec.damaged ?? "It's broken." : s.on === false ? spec.off ?? "It's off." : partWorks(game, place, part) ? spec.on ?? "It's working." : "It's dead. There's no power in here.";
-  const ringing = part.system === "alarm" && alarmRinging(game, place) ? " It's ringing." : "";
-  return `${part.look ?? spec.look ?? `The ${part.name}.`} ${state}${ringing}`;
+  const works = partWorks(game, place, part);
+  const state = s.damage ? spec.damaged ?? "It's broken." : s.on === false ? spec.off ?? "It's off." : !works ? "It's dead. There's no power in here." : ringingNow(game, place, part) ? "It's ringing." : spec.on ?? "It's working.";
+  return `${part.look ?? spec.look ?? `The ${part.name}.`} ${state}`;
 }
 
 function stateWord(game, place, part) {
@@ -988,6 +991,7 @@ function stateWord(game, place, part) {
   if (s.damage) return s.damage;
   if (s.on === false) return wordFor(part.kind, "off");
   if (!partWorks(game, place, part)) return "no power";
+  if (ringingNow(game, place, part)) return "ringing";
   return wordFor(part.kind, "on");
 }
 
@@ -1026,11 +1030,13 @@ export function doorActions(game, place, levelId, exit) {
   return out.map((one) => ({ ...one, room, detail: detailOf(one) }));
 }
 
+// The locked door can be the one into the next room or the one into this room, and either way the player sees the way
+// out, so it's named by where it goes.
 export function doorLook(game, place, levelId, exit) {
   const doors = D().doors ?? {};
   const room = doorLocked(game, place, exit.to) ? exit.to : levelId;
   const door = systemsOf(place)?.doors[room];
-  return `${door?.look ?? String(doors.look ?? "The door to {room}.").replaceAll("{room}", roomNameOf(place, room))} ${doors.locked ?? "It's locked."}`;
+  return `${door?.look ?? String(doors.look ?? "The door to {room}.").replaceAll("{room}", roomNameOf(place, exit.to))} ${doors.locked ?? "It's locked."}`;
 }
 
 // The player works a part in the room they're in. Something free happens at once; anything else opens a check, and

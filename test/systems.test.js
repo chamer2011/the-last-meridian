@@ -197,6 +197,36 @@ test("tampering where a camera sees it rings the alarm, costs standing, goes on 
   assert.equal(sys.doorLocked(game, "haven", "row"), false);
 });
 
+test("a ringing alarm's speaker says it's ringing, and a door locked from inside is named by where it goes", () => {
+  const game = newGame();
+  standIn(game, "meridian", "bridge");
+  const speakerNow = () => walkView(game).things.find((thing) => thing.part?.kind === "speaker");
+  assert.equal(speakerNow().part.word, "on");
+  assert.match(speakerNow().look, /It's quiet, and it's working\.$/);
+  sys.soundAlarm(game, "meridian", "bridge", { by: "story" });
+  const speaker = speakerNow();
+  assert.equal(speaker.part.word, "ringing");
+  assert.equal(speaker.part.ringing, true);
+  assert.match(speaker.look, /a red lamp in the middle\. It's ringing\.$/);
+  assert.doesNotMatch(speaker.look, /quiet/);
+  // The alarm locks the bridge's own door, and from inside, each way out is named by where it goes, not "the door to
+  // The Bridge".
+  const locked = walkView(game).exits.filter((exit) => exit.locked);
+  assert.ok(locked.length > 0, "the alarm locks the bridge");
+  for (const exit of locked) {
+    assert.ok(exit.look.startsWith(`The door to ${exit.label}. It's locked`), exit.look);
+    assert.doesNotMatch(exit.look, /The Bridge/);
+  }
+  // With the power cut, a speaker is dead, and says so instead of ringing.
+  const box = partNamed("meridian", "junction box", "bridge");
+  walkCommand(game, { action: "work", key: `part:${box.id}`, how: "off" });
+  assert.equal(speakerNow().part.word, "no power");
+  assert.doesNotMatch(speakerNow().look, /ringing/);
+  walkCommand(game, { action: "work", key: `part:${box.id}`, how: "on" });
+  sys.silenceAlarm(game, "meridian");
+  assert.equal(speakerNow().part.word, "on");
+});
+
 test("the captain's own ship doesn't call the captain a tamperer, and covering a camera unseen works", () => {
   const game = newGame();
   standIn(game, "meridian", "bridge");
