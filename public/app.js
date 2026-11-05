@@ -693,7 +693,7 @@ initPopups({
     openMenu("settings");
   },
 });
-initTalk({ ui, reading, render, openMenu });
+initTalk({ ui, reading, render, openMenu, popupsShown });
 
 initCreator({
   render,

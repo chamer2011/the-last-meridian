@@ -210,14 +210,15 @@ In Isometric and Walk-around, the main window shows the room you're in, with you
 In Isometric, the room gets the whole window and the story comes up over it, in the same console windows as the rest of the game.
 
 - **A scene comes up a piece at a time.** Click anywhere, on the room or on the story, or press Space or Enter, to go on to the next piece. **Back** goes back. Nothing makes you read it all: you can pick a choice at any point.
-- **What someone says** goes in a window over their head, in their color, and it writes itself out a letter at a time. A click finishes the line at once, and the next click goes on. If they're far away, the camera moves to keep them in view, and a long speech is cut into pieces that fit.
+- **What someone says** comes up on a pane by their head, in their color: four corners, a tag with their name, and a thin line down to their head. It slides out from the head, and the words write themselves out a letter at a time. A click finishes the line at once, and the next click goes on. If they're far away, the camera moves to keep them in view, and a long speech is cut into pieces that fit.
+- **Pull the pane aside** with the mouse to see what's under it. It slides back when you let go.
 - **Narration** goes in the window along the bottom. So does anyone with no head in the room to put it over, such as a voice over comms or someone who isn't on the map.
 - **Your choices** are in **What do you do?**, the same as ever: click one, or type its number, or type whatever you like. Typing is only there if you want it.
 - **What's happening:** news, supplies and what your choices did come up as short lines at the top left and go away by themselves. Click one to dismiss it. They all stay in the whole story. A line waits for the piece of the story it goes with, so it doesn't give anything away, and time stops while a scene waits to be read, so the world's news comes while you're walking.
 - **Walking puts the story away,** and the **Story** button brings it back, saying how many choices are waiting. **Close** or Esc does the same, and a new scene brings it back by itself. Until you've read to the end of a scene, a click on the room goes on with the story and doesn't walk anywhere, so to walk off in the middle of one, press **Close** or an arrow key.
 - **Whole story** shows everything so far, in place of the room.
 - **With less room,** such as in the smallest window, it's one thing at a time: narration goes away while someone's talking, and the choices wait until you've read to the end.
-- **In a talk,** what people say writes itself out too. Click on it to finish it at once.
+- **In a talk,** what the person says comes up on a pane by their head the same way, and the things you can say hang off it once their words are all there. See below.
 
 Under **Reading** in the Settings menu:
 
@@ -227,9 +228,9 @@ Under **Reading** in the Settings menu:
 - **What each place is made of** and how it's lit is in `world/looks.json`: a cold blue Bridge, an orange furnace, red carpet at the Wheel. Change a word or a color there, and restart the game. It can also put one big thing in a room in place of what's on its plan, which is how the Great Wheel gets to be round.
 - **It doesn't use the AI or change your save,** and the choice is kept with your other reading settings.
 
-**The talk window** shows the person, how they feel about you, what's been said, and things you can click to say. You can type your own words instead if you'd like.
+**Talking to someone.** In Isometric, with the story over the room, a talk comes up by the person's head: what they say on a pane in their color, with how they feel about you on its tag, and **What do you say?** beside it, on whichever side has the room, once their words are all there. It has the things you can click to say, a line to type your own words if you'd like, and **What was said** folded under them. Your own line comes up over your own head while they answer. Click their pane to finish a line at once, and pull it aside to see what's under it. In Walk-around and Classic, and with the story under the room, the talk has its own window instead, showing the person, how they feel about you, what's been said, and the same things to say.
 
-- **What it costs:** each thing you say is one call to the AI, and the window shows what the talk has cost so far. Opening a talk, closing it, and **Ask what they've heard** are free, and so are the written lines of someone with a written conversation, which are marked.
+- **What it costs:** each thing you say is one call to the AI, and the talk shows what it has cost so far. Opening a talk, closing it, and **Ask what they've heard** are free, and so are the written lines of someone with a written conversation, which are marked.
 - **Time:** the clock stops during a talk, so talking can never use up a day in the fleet. The game refuses if the AI tries to pass time or move you, and sleeping and the Fleet menu's orders wait until you've closed the window.
 - **Checks and fights:** if something you say leads to a skill check or a fight, its own window takes over, and the talk ends there.
 - **Afterwards:** the story keeps one line about the talk, with **What was said** folded under it.
@@ -438,7 +439,7 @@ The download is several GB. Local models make more mistakes with game actions th
 - `src/rules.js` holds the rules: dice, leveling, stress and beliefs.
 - `src/combat.js` holds the rules for fights, including talking in them, and `public/fight.js` draws the fight window.
 - `src/fleet.js` runs the fleet day by day, and `public/fleet.js` draws the Fleet menu, the star map and the raid window.
-- `src/walk.js` runs walking around, the levels, where you are, and talks. `public/walk.js` draws the levels, the clock's buttons and the map of each place, `public/iso.js` draws the isometric view, `public/popups.js` draws the story over the room, with `public/scene.js` cutting each scene into pieces and `public/writer.js` writing people's words out, and `public/talk.js` draws the talk window.
+- `src/walk.js` runs walking around, the levels, where you are, and talks. `public/walk.js` draws the levels, the clock's buttons and the map of each place, `public/iso.js` draws the isometric view, `public/popups.js` draws the story over the room, with `public/scene.js` cutting each scene into pieces, `public/writer.js` writing people's words out and `public/pane.js` drawing the pane by someone's head, its line and the pulling aside, and `public/talk.js` draws a talk, on a pane by the person's head or in its own window.
 - `src/life.js` runs everyone's days, and how they get around. `src/daily.js` runs each place's supplies, prices and factions, day by day. `src/story-clock.js` moves the stories on when nobody has stepped in. None of them has any screens, and none of them uses the AI.
 - `src/checks.js` runs the skill check windows, `src/check-games/` has the game behind each one, and `public/check.js` draws them.
 - `src/story-library.js` decides which leads, rumors and notes the player and the game master get.

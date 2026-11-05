@@ -1043,6 +1043,7 @@ export function talkView(game) {
     written,
     typed: game.mode !== "written",
     id: talk.id,
+    key: talk.key,
     name: talk.name,
     short: talk.short,
     where: talk.where,
