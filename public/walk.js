@@ -4,7 +4,8 @@
 // asks the server twice a second where everyone has got to.
 
 import { api, el } from "./dom.js";
-import { isoFrameNode } from "./iso.js";
+import { isoFrameNode, isoMark } from "./iso.js";
+import { drawLeader, paneNode, paneOffset, paneSpringing } from "./pane.js";
 import { closePopups, popsNode, popupDrawn, popupNext, popupPressed, popupReading, resetPopups } from "./popups.js";
 
 const STEP_TIME = 28;
@@ -50,7 +51,7 @@ export function resetWalk() {
 
 const anotherWindow = () => {
   const g = app.ui.game;
-  return Boolean(g.combat || g.check || g.talk || g.computer || g.fleet.raid || walk.thing || walk.plan);
+  return Boolean(g.combat || g.check || g.talk || g.computer || g.fleet.raid || walk.plan);
 };
 
 // While the AI is writing or another window is up, the captain stays where they are.
@@ -111,6 +112,11 @@ function walkAlong(path, done) {
 // Asks the server for the way, walks it, and then does whatever walking there was for.
 async function go(body) {
   if (cannotWalk() || walk.sending) return;
+  // Walking anywhere puts a thing's pane away.
+  if (walk.thing) {
+    walk.thing = null;
+    drawThingPane();
+  }
   stopWalking();
   walk.sending = true;
   walk.message = null;
@@ -237,6 +243,7 @@ function thingMark(thing) {
   const part = thing.part;
   return el("button", {
     class: `walk-mark walk-thing${part ? ` walk-part${part.works ? "" : " down"}${part.ringing ? " ringing" : ""}` : ""}`,
+    "data-mark": `thing:${thing.id}`,
     style: spotStyle(thing.x, thing.y),
     title: part ? `${thing.name}, ${part.word}. Click to walk over and work it.` : `${thing.name}. Click to walk over and take a look.`,
     "aria-label": `Walk over to ${thing.name}`,
@@ -252,6 +259,7 @@ function exitMark(exit) {
   const glyph = el("span", { class: "walk-exit-glyph" }, exit.glyph);
   return el("button", {
     class: `walk-mark walk-exit${exit.closed ? " closed" : ""}`,
+    "data-mark": `exit:${exit.key}`,
     style: markStyle(exit, exit.label.length),
     title: exit.closed ? `${exit.label}. It's closed. Click to walk over and ask.` : `${exit.label}. Click to go through.`,
     "aria-label": exit.closed ? `Walk over to the closed way to ${exit.label}` : `Go through to ${exit.label}`,
@@ -278,7 +286,10 @@ function frameNode() {
   if (isoShown()) {
     walk.shownLevel = view.here.id;
     walk.marks = new Map();
-    return el("div", { class: "walk-frame", id: "walk-frame" }, isoFrameNode({ view: () => app.ui.game?.walk ?? null, spot: shownSpot, blocked: cannotWalk, go, pressed: () => popupsShown() && popupPressed(), reading: () => popupsShown() && popupReading(), drawn: popupDrawn }));
+    return el("div", { class: "walk-frame", id: "walk-frame" }, isoFrameNode({ view: () => app.ui.game?.walk ?? null, spot: shownSpot, blocked: cannotWalk, go, pressed: () => popupsShown() && popupPressed(), reading: () => popupsShown() && popupReading(), drawn: () => {
+      popupDrawn();
+      placeThingPane();
+    } }));
   }
   const spot = shownSpot();
   // A level the captain has just walked into fades up.
@@ -390,7 +401,8 @@ export function walkViewNode(logNode, composerNode) {
     el("div", { class: "walk-map" },
       frameNode(),
       !popped && clockBar(),
-      popped ? popsNode(composerNode, legend, clockBar()) : legend),
+      popped ? popsNode(composerNode, legend, clockBar()) : legend,
+      thingLayer()),
     hereNode(),
     !popped && el("div", { class: "walk-story" }, storyBar(), logNode({ latest: true })));
 }
@@ -410,6 +422,7 @@ export function renderWalk() {
   document.getElementById("walk-frame")?.replaceWith(frameNode());
   drawHere();
   drawClock();
+  requestAnimationFrame(placeThingPane);
 }
 
 // ---- The clock ----------------------------------------------------------
@@ -425,8 +438,17 @@ function clockHeld() {
   return null;
 }
 
-// Time stands still for anything with its own window, and when nobody's looking.
-const clockCanRun = () => !clockHeld() && !cannotWalk() && !app.ui.sideOpen && document.visibilityState === "visible";
+// Checks that come from the room itself, on its parts, things, doors and computers, let the clock run on, the same as
+// ROOM_CHECKS in src/walk.js. Talks, fights, computers, raids, the deck plan and the story's own checks stop it.
+const ROOM_CHECKS = ["part", "thing", "door", "computer"];
+function clockWaits() {
+  const { ui } = app;
+  const g = ui.game;
+  return ui.streaming || ui.waiting || Boolean(g.combat || g.talk || g.computer || g.fleet.raid || walk.plan || (g.check && !ROOM_CHECKS.includes(g.check.source)));
+}
+
+// Time stands still for anything that stops the clock, and when nobody's looking.
+const clockCanRun = () => !clockHeld() && !clockWaits() && !app.ui.sideOpen && document.visibilityState === "visible";
 
 function setSpeed(name) {
   if (name) {
@@ -618,51 +640,182 @@ async function workOn(thing, how) {
   app.render();
 }
 
-function partWindow(thing) {
-  const choices = [
-    ...(walk.looked ? [] : [["Look", "free", () => {
-      walk.looked = true;
-      app.render();
-    }]]),
-    ...(thing.actions ?? []).map((action) => [action.label, action.detail, () => workOn(thing, action.id)]),
-    ["Close", "", closeWindow],
-  ];
-  const word = thing.part?.word ?? (thing.locked ? "locked" : "");
-  return el("div", { class: "check-window walk-thing-window", "data-theme": thing.part?.ringing || thing.locked ? "red" : "green", role: "dialog", "aria-label": thing.name, tabindex: "-1", id: "walk-window" },
-    el("header", { class: "check-title" }, el("span", { class: "check-name" }, thing.name), word && el("span", { class: `check-skill walk-part-word${thing.part?.works === false || thing.locked ? " down" : ""}` }, word)),
-    thing.said && el("div", { class: "walk-thing-said" }, thing.said.split("\n").map((line) => el("div", {}, line.replace(/^\[[A-Z]+\]\s*/, "")))),
-    walk.looked && el("div", { class: "walk-thing-look" }, thing.look),
-    el("div", { class: "options walk-thing-options" }, choices.map(([label, detail, run], i) => el("button", {
-      "data-choice": String(i + 1),
-      disabled: walk.working,
-      onclick: run,
-    }, el("span", { class: "option-number" }, `${i + 1})`), el("span", { class: "option-label" }, label), detail && el("span", { class: "option-detail" }, detail)))));
-}
+// ---- A thing's pane, beside it ------------------------------------------
 
-function thingWindow(thing) {
-  if (thing.actions || thing.part) return partWindow(thing);
+// A thing, a part or a door answers in a pane beside it, like the people's speech, with what can be done hanging off its
+// side. Nothing behind it is dimmed, the room and its clock go on, and walking anywhere puts it away. It can be pulled
+// aside to see what's under it, and it slides back when it's let go.
+const markKey = (thing) => (thing.door ? `exit:${thing.key}` : `thing:${thing.id}`);
+const paneColor = (thing) => (thing.door ? (thing.locked ? "#e07a68" : "#c88a70") : thing.part ? (thing.part.ringing ? "#ff6050" : thing.part.works ? "#7fd8e0" : "#e0a050") : "#e8c060");
+
+function thingChoices(thing) {
+  if (thing.actions || thing.part) return [...(thing.actions ?? []).map((action) => [action.label, action.detail, () => workOn(thing, action.id)]), ["Close", "", closeWindow]];
   const written = app.ui.game.mode === "written" || Boolean(thing.written);
-  const choices = [
-    ...(thing.door || thing.done ? [] : [["Look", "free", () => {
-      walk.looked = true;
-      app.render();
-    }]]),
+  return [
     ...(thing.done ? [] : [[thing.door ? "Ask to go through" : "Use", thing.have ? "you're already carrying one" : written ? "free" : "this goes to the story, as your next action", useThing, thing.have]]),
     ["Close", "", closeWindow],
   ];
-  return el("div", { class: "check-window walk-thing-window", "data-theme": "green", role: "dialog", "aria-label": thing.name, tabindex: "-1", id: "walk-window" },
-    el("header", { class: "check-title" }, el("span", { class: "check-name" }, thing.name)),
-    walk.looked && el("div", { class: "walk-thing-look" }, thing.look),
-    el("div", { class: "options walk-thing-options" }, choices.map(([label, detail, run, disabled], i) => el("button", {
-      "data-choice": String(i + 1),
-      disabled,
-      onclick: run,
-    }, el("span", { class: "option-number" }, `${i + 1})`), el("span", { class: "option-label" }, label), detail && el("span", { class: "option-detail" }, detail)))));
 }
 
+function thingPane(thing) {
+  const key = markKey(thing);
+  const word = thing.part?.word ?? (thing.locked ? "locked" : thing.door ? "closed" : null);
+  const node = paneNode({
+    id: "walk-window",
+    key,
+    color: paneColor(thing),
+    opening: walk.paneFor !== key && !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    className: "walk-thing-pane",
+    place: placeThingPane,
+    tag: [el("span", { class: "pop-tag-name" }, thing.name), word && el("span", { class: "pop-tag-note" }, word)],
+    body: el("div", { class: "pop-words walk-thing-words" },
+      thing.said && el("div", { class: "walk-thing-said" }, thing.said.split("\n").map((line) => el("div", {}, line.replace(/^\[[A-Z]+\]\s*/, "")))),
+      thing.look && el("div", { class: "walk-thing-look" }, thing.look)),
+    extras: el("div", { class: "pop-choices walk-thing-choices in", id: "walk-thing-choices" },
+      el("div", { class: "options walk-thing-options" }, thingChoices(thing).map(([label, detail, run, disabled], i) => el("button", {
+        "data-choice": String(i + 1),
+        disabled: Boolean(disabled) || Boolean(walk.working),
+        onclick: (event) => {
+          event.stopPropagation();
+          run();
+        },
+      }, el("span", { class: "option-number" }, `${i + 1})`), el("span", { class: "option-label" }, label), detail && el("span", { class: "option-detail" }, detail))))),
+  });
+  walk.paneFor = key;
+  node.setAttribute("role", "dialog");
+  node.setAttribute("aria-label", thing.name);
+  node.tabIndex = -1;
+  return node;
+}
+
+// The layer the pane goes on, over the room: every click but the pane's own goes through to the room.
+function thingLayer() {
+  if (!walk.thing || walk.plan) return null;
+  requestAnimationFrame(placeThingPane);
+  return el("div", { class: "walk-things", id: "walk-thing" }, thingPane(walk.thing));
+}
+
+// The pane drawn again, or put away, without drawing anything else.
+function drawThingPane() {
+  const old = document.getElementById("walk-thing");
+  const fresh = thingLayer();
+  if (old && fresh) old.replaceWith(fresh);
+  else if (old) old.remove();
+  else if (fresh) document.querySelector(".walk-map")?.append(fresh);
+  if (!fresh) uncoverNotes();
+}
+
+const zoom = () => Number(document.documentElement.style.zoom) || 1;
+
+// Where the thing is, in the layer's own measure: where the isometric view drew it, or its mark on the plan.
+function thingSpot(layer, thing) {
+  const base = layer.getBoundingClientRect();
+  const z = zoom();
+  if (isoShown()) {
+    const hit = isoMark(markKey(thing));
+    const canvas = document.querySelector("#walk-frame canvas");
+    if (!hit || !canvas) return null;
+    const box = canvas.getBoundingClientRect();
+    return { x: hit.x + (box.left - base.left) / z, y: hit.y + (box.top - base.top) / z, w: hit.w, h: hit.h };
+  }
+  const mark = document.querySelector(`#walk-frame [data-mark="${CSS.escape(markKey(thing))}"]`);
+  if (!mark) return null;
+  const box = mark.getBoundingClientRect();
+  return { x: (box.left - base.left) / z, y: (box.top - base.top) / z, w: box.width / z, h: box.height / z };
+}
+
+// Beside the thing: up and to its right, a hand from it, or to its left when the right has no room, always inside the
+// room, out from under the clock, and above the line along the bottom. It runs each time the room's drawn, so it stays
+// with the thing as the view moves, and again while it's being pulled aside or sliding back.
+function placeThingPane() {
+  const layer = document.getElementById("walk-thing");
+  const node = document.getElementById("walk-window");
+  if (!layer || !node?.classList.contains("pop-balloon") || !walk.thing) return;
+  const z = zoom();
+  const base = layer.getBoundingClientRect();
+  const spot = thingSpot(layer, walk.thing);
+  const pane = node.querySelector(".pop-pane");
+  if (pane) pane.style.maxHeight = "";
+  const width = layer.clientWidth;
+  const frame = document.getElementById("walk-frame")?.getBoundingClientRect();
+  const row = document.getElementById("pop-row")?.getBoundingClientRect();
+  const floor = Math.min(frame ? (frame.bottom - base.top) / z : layer.clientHeight, row?.height ? (row.top - base.top) / z : Infinity) - 8;
+  const wide = node.offsetWidth;
+  const mark = spot ? { x: spot.x + spot.w / 2, y: spot.y + spot.h / 2 } : { x: width / 2, y: floor / 2 };
+  let side = "right";
+  let left = mark.x + 26;
+  if (left + wide > width - 6) {
+    side = "left";
+    left = mark.x - 26 - wide;
+  }
+  if (left < 6) {
+    side = "right";
+    left = mark.x + 26;
+  }
+  left = Math.max(6, Math.min(width - wide - 6, left));
+  // The clock sits at the top of the room when the story's over it.
+  const clock = document.getElementById("walk-clock")?.getBoundingClientRect();
+  const clockBottom = clock?.height ? (clock.bottom - base.top) / z : 0;
+  const underClock = clock?.height && clockBottom < floor / 2 && left + wide > (clock.left - base.left) / z;
+  const roof = underClock ? clockBottom + 6 : 6;
+  let tall = node.offsetHeight;
+  if (floor - roof < tall && pane) {
+    pane.style.maxHeight = `${Math.max(60, floor - roof)}px`;
+    tall = node.offsetHeight;
+  }
+  const top = Math.max(roof, Math.min(floor - tall, mark.y - 14 - tall));
+  node.placedAt = { left, top, wide, tall };
+  const pulled = paneOffset(node);
+  node.style.transform = `translate(${Math.round(left + pulled.x)}px, ${Math.round(top + pulled.y)}px)`;
+  // While it slides back, the line is drawn from wherever it is on the way.
+  let at = { left: left + pulled.x, top: top + pulled.y };
+  if (paneSpringing(node)) {
+    const here = node.getBoundingClientRect();
+    at = { left: (here.left - base.left) / z, top: (here.top - base.top) / z };
+  }
+  if (spot) drawLeader(node, { ...at, wide, tall, side }, mark);
+  node.classList.toggle("no-head", !spot);
+  placeThingChoices(node, { left, top, wide, tall, width, floor, roof, side });
+  node.classList.add("placed");
+  // The notes at the top step aside while the pane or its choices would cover them, and come back once they wouldn't.
+  const notes = document.getElementById("pop-notes");
+  if (notes) {
+    const room = notes.getBoundingClientRect();
+    const crosses = (r) => Boolean(r && room.height && r.left < room.right && room.left < r.right && r.top < room.bottom && room.top < r.bottom);
+    if (crosses(pane?.getBoundingClientRect()) || crosses(node.querySelector(".walk-thing-choices")?.getBoundingClientRect())) {
+      notes.classList.add("covered");
+      notes.dataset.thing = "1";
+    } else uncoverNotes();
+  }
+}
+
+function uncoverNotes() {
+  const notes = document.getElementById("pop-notes");
+  if (!notes?.dataset.thing) return;
+  notes.classList.remove("covered");
+  delete notes.dataset.thing;
+}
+
+// What can be done hangs off the pane's far side from the thing, or the other side, or under it or over it.
+function placeThingChoices(node, { left, top, wide, tall, width, floor, roof, side }) {
+  const panel = node.querySelector(".walk-thing-choices");
+  if (!panel) return;
+  panel.style.maxHeight = `${Math.max(80, floor - roof - 12)}px`;
+  const panelWide = panel.offsetWidth;
+  const panelTall = panel.offsetHeight;
+  const right = left + wide + 12 + panelWide <= width - 6;
+  const leftward = left - 12 - panelWide >= 6;
+  let where = side === "left" ? (leftward ? "at-left" : right ? "at-right" : "below") : right ? "at-right" : leftward ? "at-left" : "below";
+  if (where === "below" && top + tall + 12 + panelTall > floor && top - panelTall - 12 >= roof) where = "above";
+  for (const one of ["at-right", "at-left", "below", "above"]) panel.classList.toggle(one, one === where);
+  const start = where === "below" ? tall + 12 : where === "above" ? -panelTall - 12 : 0;
+  panel.style.top = `${Math.round(Math.max(roof - top, Math.min(start, floor - top - panelTall)))}px`;
+}
+
+// The deck plan still opens in a window of its own. A thing's pane is drawn with the room, by thingLayer.
 export function thingNode() {
-  if (!thingOpen() || !app.ui.game?.walk) return null;
-  return el("div", { class: "check-overlay", id: "walk-thing" }, walk.plan ? planWindow(app.ui.game.walk) : thingWindow(walk.thing));
+  if (!walk.plan || !app.ui.game?.walk) return null;
+  return el("div", { class: "check-overlay", id: "walk-plan-window" }, planWindow(app.ui.game.walk));
 }
 
 export function focusThing() {
@@ -673,13 +826,22 @@ export function focusThing() {
 
 function onKey(event) {
   if (app.ui.screen !== "game" || !app.ui.game || app.ui.sideOpen || event.ctrlKey || event.metaKey || event.altKey) return;
-  if (thingOpen()) {
+  if (walk.plan) {
     if (event.key === "Escape") closeWindow();
-    else if (walk.thing && /^[1-3]$/.test(event.key)) {
-      event.preventDefault();
-      document.querySelector(`#walk-thing [data-choice="${event.key}"]`)?.click();
-    }
     return;
+  }
+  if (walk.thing && !event.target.matches?.("input, textarea")) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeWindow();
+      return;
+    }
+    const choice = /^[1-9]$/.test(event.key) ? document.querySelector(`#walk-thing [data-choice="${event.key}"]`) : null;
+    if (choice) {
+      event.preventDefault();
+      choice.click();
+      return;
+    }
   }
   if (popupsShown() && !anotherWindow()) {
     if (event.key === "Escape" && !event.defaultPrevented) closePopups();

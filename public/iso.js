@@ -2275,6 +2275,9 @@ export function isoLook({ person = null, bottom = 0 } = {}) {
   iso.redraw = true;
 }
 
+// Where a thing, a part or a door was drawn, by its key (thing:<id> or exit:<key>), for putting a pane beside it.
+export const isoMark = (key) => iso.hits.find((hit) => hit.key === key) ?? null;
+
 // Where someone is in the view, for putting something over their head.
 export function isoSpot(key) {
   return iso.hits.find((hit) => hit.key === `person:${key}`) ?? null;

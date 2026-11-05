@@ -319,6 +319,7 @@ export function checkView(game) {
     classLabel: check.state?.className ?? null,
     decided: Boolean(check.decided),
     training: check.source === "practice",
+    source: check.source,
     tier: check.tier,
     tierName: (CHECK_TEXT.tierNames ?? ["untrained", "novice", "trained", "expert", "master"])[check.tier],
     dc,

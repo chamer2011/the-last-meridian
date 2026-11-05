@@ -1015,3 +1015,13 @@ button.fighter:hover:not(:disabled), button.fighter:focus-visible { background: 
 .computer-row-actions { display: flex; flex-wrap: wrap; gap: 4px 10px; }
 .ship-system-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .ship-system-name { flex: 1 1 14ch; min-width: 0; }
+
+/* ---- A thing's pane, beside it in the room ------------------------------------ */
+.walk-map { position: relative; }
+.walk-things { position: absolute; inset: 0; z-index: 24; pointer-events: none; container: things / size; }
+.walk-things .pop-balloon { pointer-events: auto; }
+.walk-thing-pane { width: clamp(24ch, 30cqw, 32ch); }
+.walk-thing-pane .walk-thing-words { display: flex; flex-direction: column; gap: 6px; padding: 12px 12px 8px; }
+.walk-thing-pane .walk-thing-said { margin: 0; gap: 2px; color: var(--c-bright); }
+.walk-thing-pane .walk-thing-look { color: var(--c); }
+.walk-thing-choices { width: clamp(22ch, 26cqw, 30ch); }
