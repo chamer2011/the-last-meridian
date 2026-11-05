@@ -229,18 +229,23 @@ function updatePeople() {
   if (listOf(view) !== walk.listed) drawHere();
 }
 
+// What each kind of part looks like on the plan, as one character.
+const PART_GLYPHS = { "junction box": "%", "air plant": "&", vent: "=", "light switch": "'", camera: "o", speaker: ")", relay: "^", console: "]", engines: "&", "nav core": "+", "docking clamps": "H", machine: "*" };
+const PART_WORDS = { "junction box": "power", "air plant": "air plant", vent: "vent", "light switch": "lights", camera: "camera", speaker: "alarm", relay: "comms", console: "console", engines: "engines", "nav core": "nav", "docking clamps": "clamps", machine: "machine" };
+
 function thingMark(thing) {
+  const part = thing.part;
   return el("button", {
-    class: "walk-mark walk-thing",
+    class: `walk-mark walk-thing${part ? ` walk-part${part.works ? "" : " down"}${part.ringing ? " ringing" : ""}` : ""}`,
     style: spotStyle(thing.x, thing.y),
-    title: `${thing.name}. Click to walk over and take a look.`,
+    title: part ? `${thing.name}, ${part.word}. Click to walk over and work it.` : `${thing.name}. Click to walk over and take a look.`,
     "aria-label": `Walk over to ${thing.name}`,
     disabled: cannotWalk(),
     onclick: (event) => {
       event.stopPropagation();
       go({ action: "go", to: `thing:${thing.id}` });
     },
-  }, "?");
+  }, part ? PART_GLYPHS[part.kind] ?? "*" : "?");
 }
 
 function exitMark(exit) {
@@ -282,7 +287,7 @@ function frameNode() {
   walk.marks = new Map();
   return el("div", { class: "walk-frame", id: "walk-frame" },
     el("div", {
-      class: `walk-plan${cannotWalk() ? " waiting" : ""}${arriving ? " arriving" : ""}`,
+      class: `walk-plan${cannotWalk() ? " waiting" : ""}${arriving ? " arriving" : ""}${view.room?.dark ? " dark" : ""}${view.room?.thin ? " thin" : ""}${view.room?.alarm ? " alarm" : ""}`,
       style: `--walk-cols:${view.cols};--walk-lines:${view.lines};${colorsOf(view.colors)}`,
       onclick: (event) => {
         const { x, y } = squareAt(event);
@@ -302,6 +307,18 @@ function frameNode() {
 
 function hereList(label, entries) {
   return entries.length > 0 && el("div", { class: "walk-here-list small" }, el("span", { class: "muted" }, label), entries);
+}
+
+// The room's systems, in a line, when something's wrong with them.
+function roomNote(room) {
+  if (!room) return null;
+  const notes = [
+    room.alarm && `The alarm's ringing${room.alarm.room ? ` in ${room.alarm.room}` : ""}.`,
+    room.dark && "The lights are out in here.",
+    room.thin && `The air in here is ${room.air < 30 ? "bad" : "thin"} (${room.air}%).`,
+    room.watched && "A camera's watching this room.",
+  ].filter(Boolean);
+  return notes.length ? el("div", { class: `walk-room-note small${room.alarm || room.air < 30 ? " bad" : ""}` }, notes.join(" ")) : null;
 }
 
 // Who's listed beside the level, and what they're doing. It's only redrawn when this changes.
@@ -332,7 +349,9 @@ function hereNode() {
       },
     }, view.overview.title)),
     hereList("People:", peopleList(view, button)),
-    hereList("Things:", view.things.map((thing) => button(thing.name, `thing:${thing.id}`))),
+    hereList("Things:", view.things.filter((thing) => !thing.part).map((thing) => button(thing.name, `thing:${thing.id}`))),
+    hereList("Systems:", view.things.filter((thing) => thing.part).map((thing) => button(`${PART_WORDS[thing.part.kind] ?? "part"}${["on", "open", "watching", "released"].includes(thing.part.word) ? "" : ` (${thing.part.word})`}`, `thing:${thing.id}`, { class: `walk-here-part${thing.part.works ? "" : " down"}`, title: `${thing.name}, ${thing.part.word}` }))),
+    roomNote(view.room),
     hereList("Ways out:", view.exits.map((exit) => button(exit.closed ? `${exit.label} (closed)` : exit.label, `exit:${exit.key}`))),
     !app.ui.game.role.captain && hereList("You can:", [
       app.ui.game.role.job && el("button", { disabled: cannotWalk(), onclick: app.act({ action: "work" }) }, app.ui.game.role.job.name),
@@ -535,7 +554,7 @@ function openThing(id) {
 // A closed door says why it's closed, straight away, and asking at it goes to the story.
 function openDoor(key) {
   const door = app.ui.game.walk.exits.find((exit) => exit.key === key);
-  walk.thing = door ? { key, name: door.label, look: door.look, use: door.use, door: true } : null;
+  walk.thing = door ? { key, name: door.label, look: door.look, use: door.use, door: true, locked: Boolean(door.locked), actions: door.actions ?? null } : null;
   walk.looked = true;
   app.render();
 }
@@ -575,7 +594,53 @@ async function useThing() {
   app.render();
 }
 
+// Working a part or a locked door by hand: something free happens here and now, and anything that takes a check opens
+// its window, with the result in the story when it's over.
+async function workOn(thing, how) {
+  if (walk.working) return;
+  walk.working = true;
+  try {
+    const reply = await api("/api/walk", { action: "work", key: thing.door ? thing.key : thing.id, how });
+    app.ui.game = reply.game;
+    if (reply.check || reply.computer) {
+      walk.thing = null;
+      walk.looked = false;
+    } else {
+      const fresh = thing.door ? null : reply.game.walk?.things.find((one) => one.id === thing.id);
+      walk.thing = { ...(fresh ?? thing), said: reply.said ?? null };
+      walk.looked = true;
+    }
+  } catch (err) {
+    walk.thing = { ...thing, said: err.message };
+    walk.looked = true;
+  }
+  walk.working = false;
+  app.render();
+}
+
+function partWindow(thing) {
+  const choices = [
+    ...(walk.looked ? [] : [["Look", "free", () => {
+      walk.looked = true;
+      app.render();
+    }]]),
+    ...(thing.actions ?? []).map((action) => [action.label, action.detail, () => workOn(thing, action.id)]),
+    ["Close", "", closeWindow],
+  ];
+  const word = thing.part?.word ?? (thing.locked ? "locked" : "");
+  return el("div", { class: "check-window walk-thing-window", "data-theme": thing.part?.ringing || thing.locked ? "red" : "green", role: "dialog", "aria-label": thing.name, tabindex: "-1", id: "walk-window" },
+    el("header", { class: "check-title" }, el("span", { class: "check-name" }, thing.name), word && el("span", { class: `check-skill walk-part-word${thing.part?.works === false || thing.locked ? " down" : ""}` }, word)),
+    thing.said && el("div", { class: "walk-thing-said" }, thing.said.split("\n").map((line) => el("div", {}, line.replace(/^\[[A-Z]+\]\s*/, "")))),
+    walk.looked && el("div", { class: "walk-thing-look" }, thing.look),
+    el("div", { class: "options walk-thing-options" }, choices.map(([label, detail, run], i) => el("button", {
+      "data-choice": String(i + 1),
+      disabled: walk.working,
+      onclick: run,
+    }, el("span", { class: "option-number" }, `${i + 1})`), el("span", { class: "option-label" }, label), detail && el("span", { class: "option-detail" }, detail)))));
+}
+
 function thingWindow(thing) {
+  if (thing.actions || thing.part) return partWindow(thing);
   const written = app.ui.game.mode === "written" || Boolean(thing.written);
   const choices = [
     ...(thing.door || thing.done ? [] : [["Look", "free", () => {

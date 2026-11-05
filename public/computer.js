@@ -95,6 +95,49 @@ function sectionNode(title, items, kind) {
     }, el("span", { class: "computer-mark", "aria-hidden": "true" }, item.ran ? "x" : item.read ? "-" : item.known === false ? "?" : ">"), ` ${item.name}`, item.className && el("span", { class: "check-hint" }, ` ${item.className.toLowerCase()}${item.known ? ", open to you" : ""}`)))));
 }
 
+// The place's systems this computer runs, down the left with the rest.
+function systemsSection(view) {
+  if (!view.systems?.length) return null;
+  const { screen } = view;
+  return el("section", { class: "computer-section" },
+    el("header", { class: "check-panel-title" }, el("span", {}, "Systems"), el("span", { class: "check-panel-marks", "aria-hidden": "true" }, String(view.systems.length))),
+    el("div", { class: "computer-list" }, view.systems.map((system) => {
+      const down = system.rows.filter((row) => !row.works).length;
+      return el("button", {
+        class: `check-link computer-item${screen.kind === "system" && screen.id === system.id ? " open" : ""}`,
+        title: `${system.rows.length} ${system.rows.length === 1 ? "part" : "parts"}${down ? `, ${down} not working` : ""}`,
+        disabled: comp.sending,
+        onclick: (event) => {
+          event.stopPropagation();
+          send({ action: "show", id: system.id });
+        },
+      }, el("span", { class: "computer-mark", "aria-hidden": "true" }, down ? "!" : "#"), ` ${system.title}`, down ? el("span", { class: "check-hint" }, ` ${down} down`) : null);
+    })));
+}
+
+// One system: each part's state, what a camera sees, and the buttons that switch things from here.
+function systemScreen(view, screen) {
+  const system = view.systems?.find((one) => one.id === screen.id);
+  if (!system) return [el("div", { class: "computer-screen-title" }, screen.title ?? "Systems"), el("div", { class: "tone-dim" }, "This computer doesn't run that any more.")];
+  return [
+    el("div", { class: "computer-screen-title" }, system.title),
+    el("div", { class: "computer-rows" }, system.rows.map((row) => el("div", { class: `computer-row${row.works ? "" : " down"}` },
+      el("div", { class: "computer-row-head" },
+        el("span", { class: "computer-row-name tone-bright" }, row.name),
+        el("span", { class: `computer-row-word tone-${row.word === "ringing" ? "bad" : row.works ? "good" : "warn"}` }, row.word.toUpperCase())),
+      row.detail && el("div", { class: "tone-dim" }, row.detail),
+      row.feed && el("div", { class: "computer-row-feed tone-dim" }, row.feed.length ? `On camera: ${row.feed.join(", ")}` : "On camera: nobody"),
+      row.actions.length > 0 && el("div", { class: "computer-row-actions" }, row.actions.map((action) => el("button", {
+        class: "check-link tone-link",
+        disabled: comp.sending,
+        onclick: (event) => {
+          event.stopPropagation();
+          send({ action: "system", system: system.id, row: row.id, to: action.to });
+        },
+      }, `[ ${action.label} ]`)))))),
+  ];
+}
+
 function listScreen(title, items, kind, empty) {
   return [
     el("div", { class: "computer-screen-title" }, title),
@@ -112,10 +155,12 @@ function screenNode(view) {
         el("div", { class: "computer-screen-title" }, view.name),
         el("div", { class: "tone-bright" }, view.desc),
         el("div", { class: "tone-dim" }, `${view.files.length} files, ${view.mail.length} letters, ${view.logs.length} logs, ${view.programs.length} programs${view.network.length ? `, ${view.network.length} on the network` : ""}. Click one on the left.`),
+        view.systems?.length > 0 && el("div", { class: "tone-dim" }, `It runs ${view.systems.map((one) => one.title.toLowerCase()).join(", ")} here.`),
       ];
     case "mail": return listScreen("Mail", view.mail, "mail", "No letters.");
     case "logs": return listScreen("Logs", view.logs, "log", "No logs.");
     case "network": return listScreen("Network", view.network, "connect", "Nothing reachable from here.");
+    case "system": return systemScreen(view, screen);
     default:
       return [
         el("div", { class: "computer-screen-title" }, screen.title ?? ""),
@@ -168,6 +213,7 @@ function windowNode() {
       el("button", { class: "mobile-toggle", onclick: (event) => { event.stopPropagation(); app.openMenu(app.ui.tab); } }, "Menu")),
     el("div", { class: "computer-body" },
       el("div", { class: "computer-side" },
+        systemsSection(view),
         sectionNode("Files", view.files, "file"),
         sectionNode("Mail", view.mail, "mail"),
         sectionNode("Logs", view.logs, "log"),

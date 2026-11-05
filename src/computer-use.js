@@ -12,6 +12,7 @@ import { newTurnLimits, runTool } from "./tools.js";
 import { startCheck } from "./checks.js";
 import { closest } from "./check-games/kit.js";
 import { WORLD_COMPUTERS, WORLD_PLACES } from "./world.js";
+import { applySystemsEffect, controlSystem, controlsView, roomPowered } from "./systems.js";
 import { MAX_LOG, MINUTES_PER_ACTION, classKeys, contentOf, knowsPassword, levelNamed, line, memoryOf, openSession, peopleAt, programOffered, sameName, slug, writtenContent } from "./computers.js";
 
 // What a completed trace inside leaves on the record, the same mark a failed hack leaves.
@@ -178,6 +179,10 @@ function runProgram(game, session, content, id) {
       continue;
     }
     if (step.computer) continue;
+    if (step.systems) {
+      notes.push(...applySystemsEffect(game, step.systems, { by: session.yours ? "owner" : "player" }));
+      continue;
+    }
     const { tool, ...input } = step;
     const outcome = runTool(game, tool, input, turn);
     if (outcome.isError) throw new Error(`The program ${program.name} failed: ${outcome.result}`);
@@ -295,6 +300,24 @@ function typed(game, session, content, text) {
   }
 }
 
+// Switching one of the place's systems from here. On a hacked computer the trace notices it, like a program, and a
+// computer that's just cut its own room's power goes dark with everything else.
+function runSystem(game, session, content, body) {
+  const by = session.yours ? "owner" : "player";
+  const notes = controlSystem(game, session.place, content.controls ?? [], String(body.row ?? ""), String(body.to ?? ""), { by, room: session.roomId });
+  const system = String(body.system ?? "");
+  session.screen = { kind: "system", id: system, title: session.screen?.title ?? system };
+  for (const note of notes) session.log.push(line(note.replace(/^\[[A-Z]+\]\s*/, ""), /ALARM/.test(note) ? "bad" : "good"));
+  if (session.log.length > MAX_LOG) session.log.splice(0, session.log.length - MAX_LOG);
+  const done = notes[0]?.replace(/^\[[A-Z]+\]\s*/, "").replace(/\.$/, "") ?? "a system";
+  if (!session.ran.includes(done)) session.ran.push(done);
+  if (notes.length) game.transcript?.push({ role: "notice", text: notes.join("\n") });
+  const out = act(game, session, session.hacked ? 1 : 0);
+  if (out) return out;
+  if (session.roomId && !roomPowered(game, session.place, session.roomId)) return finish(game, session, ["[COMPUTER] The screen goes dark: you've cut its own power."]);
+  return { over: false };
+}
+
 export function computerCommand(game, body) {
   const session = game.computer;
   if (!session) throw new Error("You're not on a computer.");
@@ -313,6 +336,13 @@ export function computerCommand(game, body) {
     case "connect": return connectTo(game, session, content, String(body.id ?? ""));
     case "logoff": return finish(game, session);
     case "type": return typed(game, session, content, String(body.text ?? ""));
+    case "show": {
+      const system = controlsView(game, session.place, content.controls ?? [], { room: session.roomId }).find((one) => one.id === String(body.id ?? ""));
+      if (!system) return { over: false, said: "This computer doesn't run that." };
+      session.screen = { kind: "system", id: system.id, title: system.title };
+      return { over: false };
+    }
+    case "system": return runSystem(game, session, content, body);
     default: throw new Error("Unknown order.");
   }
 }

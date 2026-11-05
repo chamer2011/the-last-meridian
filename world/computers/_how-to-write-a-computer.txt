@@ -96,6 +96,10 @@ The parts, each under its heading with a colon:
                             to one is a hack of its own class, unless it's yours or you know its
                             password.
 
+A computer can also run a place's systems: its power, lights, cameras, doors and the rest. That's
+written in the place's file in world/systems, under Computers, and the computer's screen gets a
+Systems list with a switch for each part.
+
 What reaches the player: the window never shows a password or a program's effects, only what each
 program says it does. A completed trace inside a ship's main system or worse leaves the same mark
 on the record as a failed hack: traced_on_<class>.

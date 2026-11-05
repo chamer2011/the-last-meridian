@@ -225,6 +225,10 @@ function toneFor(tag, body) {
       return /\+\d/.test(body) && !/-\d/.test(body) ? "good" : "bad";
     case "TIME": return "dim";
     case "HACK": return /GRANTED/.test(body) ? "good" : "bad";
+    case "ALARM": return /stops|armed\.$|is armed/.test(body) && !/disarmed/.test(body) ? "info" : "bad";
+    case "AIR": return /good again/.test(body) ? "good" : /bad/.test(body) ? "bad" : "warn";
+    case "SYSTEMS": return /fixed|working again|back on/.test(body) ? "good" : "info";
+    case "DOOR": return /locked|locks|forced|won't lock/.test(body) && !/unlocked/.test(body) ? "warn" : "info";
     default: return "info";
   }
 }

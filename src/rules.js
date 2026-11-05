@@ -23,6 +23,7 @@ import { advanceStories, clockOf } from "./story-clock.js";
 import { emptyStory, storyView } from "./story-library.js";
 import { startInRoom, talkView, walkLine, walkView } from "./walk.js";
 import { computerView } from "./computers.js";
+import { advanceSystems, jumpBlocked, roomEdge, shipSystemsView, systemsLine } from "./systems.js";
 import { buildLoreIndex, findLoreIds } from "../public/story.js";
 
 export { combatAction, startCombat } from "./combat.js";
@@ -246,8 +247,10 @@ export function passTime(game, hours, activity = "active") {
   game.clock.hours += hours;
   // Whoever the story has put beside the captain is still there once the time has passed.
   if (game.walk) game.walk.withUntil = null;
+  // The place's systems go first, so that people know where the alarm is, and where the air's gone bad.
+  const systems = advanceSystems(game);
   advanceLife(game);
-  return hoursPass(game, hours, activity);
+  return [...systems, ...hoursPass(game, hours, activity)];
 }
 
 // The clock running by itself while the player explores. It moves in moments, and every two hours
@@ -256,8 +259,8 @@ export function clockRuns(game, minutes) {
   lifeOf(game);
   const before = Math.floor(game.clock.hours + 1e-6);
   game.clock.hours = Math.round((game.clock.hours + minutes / 60) * 3600) / 3600;
+  const notes = advanceSystems(game);
   advanceLife(game);
-  const notes = [];
   for (let hour = before + 1; hour <= Math.floor(game.clock.hours + 1e-6); hour += 1) {
     if (hour % 2 === 0) notes.push(...hoursPass(game, 2, "active"));
   }
@@ -569,6 +572,8 @@ export function checkParts(game, { skill = null, attribute = null, context = [],
   }
   const situation = context.reduce((sum, id) => sum + fxOf(game, "context", id), 0);
   if (situation) parts.push({ label: "situation", value: situation });
+  // The room the player's in: the dark helps a sneak and hurts a lookout, and a camera on them makes sneaking harder.
+  if (skill) parts.push(...roomEdge(game, skill));
   if (audience && SKILLS_WITH_AUDIENCE.includes(skill)) {
     const standing = audienceBonus(game, audience);
     if (standing) parts.push({ label: "relationship", value: standing });
@@ -628,6 +633,8 @@ export function travel(game, destination) {
     game.walk = null;
     return { message: destination === "meridian" ? `Returned aboard the ${place.name}.` : `Crossed over to ${place.name}.`, notes: passTime(game, cost.hours) };
   }
+  const blocked = jumpBlocked(game);
+  if (blocked) throw new Error(blocked);
   if (game.ship.fuel < 1) throw new Error("The ship is out of fuel and can't jump.");
   if (game.ship.fuel < cost.fuel) throw new Error(`A jump to ${place.name} takes ${cost.fuel} fuel, and the fleet has ${game.ship.fuel}.`);
   // A good navigator gets there sooner, and sometimes saves some of the fuel.
@@ -1003,6 +1010,7 @@ export function publicState(game) {
     walk: walkView(game),
     talk: talkView(game),
     computer: computerView(game),
+    shipSystems: shipSystemsView(game),
     difficulty: game.difficulty ?? "normal",
     transcript: game.transcript,
   };
@@ -1050,6 +1058,7 @@ export function aiSnapshot(game) {
   const addedEnemies = Object.entries(campaignEnemies(game.campaign)).map(([id, enemy]) => `${id} (${enemy.name})`).join(", ") || "none";
   const deckPlan = walkLine(game);
   const placeToday = placeLine(game);
+  const systemsNow = systemsLine(game);
   const who = isCaptain(game) ? `Captain ${game.name}` : `${game.name}, ${roleView(game).short}, not in command`;
   return [
     `${clockLabel(game)}. ${who} (${game.character.pronouns}), level ${game.level}.`,
@@ -1063,6 +1072,7 @@ export function aiSnapshot(game) {
     `Location: ${LOCATIONS[game.location].name} (${game.location}).`,
     ...(deckPlan ? [deckPlan] : []),
     ...(placeToday ? [placeToday] : []),
+    ...(systemsNow ? [systemsNow] : []),
     `${isCaptain(game) ? "Ship" : "The Meridian"}: hull ${game.ship.hull}/${game.ship.maxHull}, fuel ${game.ship.fuel}/${game.ship.maxFuel}, fleet morale ${game.ship.morale}/100.`,
     fleetLine(game),
     `Faction standing: ${factions}.`,

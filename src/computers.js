@@ -13,6 +13,7 @@ import { startCheck, tierFor } from "./checks.js";
 import { classOf } from "./check-games/crack.js";
 import { fill } from "./check-games/kit.js";
 import { CHECK_TEXT, COMPUTER_FLAVOR, WORLD_COMPUTERS, WORLD_MAPS, WORLD_PLACES } from "./world.js";
+import { controlsFor, controlsView, partWorks, roomPowered, runsSystems, systemsOf } from "./systems.js";
 
 
 export const slug = (words) => String(words).toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40);
@@ -94,7 +95,15 @@ export function writtenContent(id) {
     logs: (c.logs ?? []).map(logOf),
     programs: (c.programs ?? []).map(programOf),
     network: (c.network ?? []).map((entry) => ({ id: String(entry.name).trim(), desc: String(entry.desc ?? "").trim() })),
+    roomId: c.place && c.room ? roomIdNamed(c.place, c.room) : null,
+    controls: c.place ? controlsFor(c.place, { written: id }) : [],
   };
+}
+
+// A room's id from its name, at a place.
+function roomIdNamed(place, name) {
+  const found = Object.entries(WORLD_MAPS[place]?.levels ?? {}).find(([, level]) => String(level.name).toLowerCase() === String(name).toLowerCase());
+  return found?.[0] ?? null;
 }
 
 // ---- Computers nobody has written -----------------------------------------------------------
@@ -125,7 +134,7 @@ function seeded(key) {
 const levelsOf = (place) => Object.entries(WORLD_MAPS[place]?.levels ?? {}).map(([id, level]) => ({ id, ...level }));
 export const peopleAt = (place) => [...new Set(levelsOf(place).flatMap((level) => Object.values(level.people ?? {}).map((home) => home.label).filter(Boolean)))];
 
-function genericContent(game, { key, name, kind, place, room = null, door = null, classKey = null }) {
+function genericContent(game, { key, name, kind, place, room = null, roomId = null, door = null, classKey = null, ref = null }) {
   const flavor = COMPUTER_FLAVOR ?? {};
   const spec = flavor.kinds?.[kind] ?? flavor.kinds?.console ?? {};
   const roll = seeded(key);
@@ -149,6 +158,7 @@ function genericContent(game, { key, name, kind, place, room = null, door = null
   return {
     id: key, name, classKey: classKey ?? classKeyOf(spec.class), yours, owner: null, place, room, thing: null, door, user, password: null, flavor: yours ? "yours" : "default",
     desc: spec.desc ?? "A terminal.", files, mail, logs, programs, network: [],
+    roomId, controls: ref ? controlsFor(place, ref) : [],
   };
 }
 
@@ -173,13 +183,14 @@ export function computerAtThing(game, place, levelId, thing, { generic = true } 
   if (!thing) return null;
   const written = thing.computer ?? writtenAtThing(place, levelId, thing);
   if (written && WORLD_COMPUTERS[written]) return { id: written };
-  const kind = genericKindOf(thing);
-  if (!kind || !generic) return null;
-  const hack = typeof thing.check === "string" ? thing.check.split(":") : null;
-  const classKey = hack?.[0] === "hacking" && hack[1] ? classKeyOf(hack[1]) : null;
   // The walk names a thing level:id and the map file just id; the same thing gets the same computer either way.
   const shortId = String(thing.id ?? "").split(":").pop();
-  return { generic: genericContent(game, { key: `${place}:${levelId}:${shortId}`, name: thing.name, kind, place, room: roomOf(place, levelId), classKey }) };
+  const runs = runsSystems(place, `${levelId}:${shortId}`);
+  const kind = genericKindOf(thing) ?? (runs ? "console" : null);
+  if (!kind || (!generic && !runs)) return null;
+  const hack = typeof thing.check === "string" ? thing.check.split(":") : null;
+  const classKey = hack?.[0] === "hacking" && hack[1] ? classKeyOf(hack[1]) : null;
+  return { generic: genericContent(game, { key: `${place}:${levelId}:${shortId}`, name: thing.name, kind, place, room: roomOf(place, levelId), roomId: levelId, classKey, ref: { thing: `${levelId}:${shortId}` } }) };
 }
 
 // The computer a door answers to: a written one, or a generic panel for that door.
@@ -187,7 +198,33 @@ export function computerAtDoor(game, place, to, classKey = "easy") {
   const written = writtenAtDoor(place, to);
   if (written) return { id: written };
   const room = levelNamed(place, to)?.name ?? to;
-  return { generic: genericContent(game, { key: `${place}:door:${to}`, name: `${room} door panel`, kind: "panel", place, room: roomOf(place, game.walk?.level), door: to, classKey }) };
+  return { generic: genericContent(game, { key: `${place}:door:${to}`, name: `${room} door panel`, kind: "panel", place, room: roomOf(place, game.walk?.level), roomId: to, door: to, classKey, ref: { door: to } }) };
+}
+
+// A console the place's systems file puts in a room: it runs what the file says, at the class it gives.
+export function consoleContent(game, place, part) {
+  const name = part.name.charAt(0).toUpperCase() + part.name.slice(1);
+  return genericContent(game, { key: `${place}:part:${part.id}`, name, kind: "console", place, room: roomOf(place, part.room), roomId: part.room, classKey: classKeyOf(part.classKey ?? "moderate"), ref: { console: part.id } });
+}
+
+// Using one of those consoles: straight in when it's the player's own, else a hack of its class. No power, no screen.
+export function useConsolePart(game, place, part) {
+  if (!partWorks(game, place, part)) return { said: "Its screen is dark. There's no power to it." };
+  const content = consoleContent(game, place, part);
+  if (content.yours) {
+    openSession(game, content, { how: "sat down" });
+    return { said: `You sit down at ${content.name}.`, computer: true };
+  }
+  startCheck(game, { skill: "hacking", difficulty: content.classKey, reason: `Get into ${content.name}`, scene: null, source: "thing" });
+  game.computerAsked = { place, console: part.id };
+  return { check: true };
+}
+
+// A door's panel that was hacked from the door itself: it opens as a computer that runs that door.
+export function enterDoorPanel(game, place, to, hack) {
+  const target = computerAtDoor(game, place, to, hack?.classKey ?? "easy");
+  const content = target.id ? writtenContent(target.id) : target.generic;
+  return openSession(game, content, { hacked: true, trace: hack?.trace ?? 0, maxTrace: hack?.maxTrace ?? 0, how: "hacked" });
 }
 
 // The computer a hack at this place lands on when nothing says which: a written one of that class here,
@@ -230,6 +267,7 @@ export function openSession(game, content, { hacked = false, trace = 0, maxTrace
     read: [],
     ran: [],
     startedAt: game.clock?.hours ?? 0,
+    roomId: content.roomId ?? null,
   };
   const session = game.computer;
   const flavor = COMPUTER_FLAVOR?.motd?.[content.flavor] ?? COMPUTER_FLAVOR?.motd?.default ?? [];
@@ -252,6 +290,7 @@ export function useComputer(game, { place, levelId, thing, look = null, generic 
   const target = computerAtThing(game, place, levelId, thing, { generic });
   if (!target) return null;
   const content = target.id ? writtenContent(target.id) : target.generic;
+  if (!roomPowered(game, place, levelId)) return { said: "The screen's dead. There's no power in here." };
   if (content.yours || knowsPassword(game, target.id)) {
     openSession(game, content, { how: content.yours ? "sat down" : "the password" });
     return { said: `You sit down at ${content.name}.`, computer: true };
@@ -268,6 +307,7 @@ export function enterAfterHack(game, hack) {
   let target = null;
   if (hack.computer && WORLD_COMPUTERS[hack.computer]) target = { id: hack.computer };
   else if (hack.source === "door" && game.doorAsked) target = computerAtDoor(game, game.doorAsked.place, game.doorAsked.to, hack.classKey);
+  else if (asked?.console && systemsOf(asked.place)?.parts[asked.console]) target = { generic: consoleContent(game, asked.place, systemsOf(asked.place).parts[asked.console]) };
   else if (asked) {
     const level = levelNamed(asked.place, asked.levelId);
     const thing = level ? Object.entries(level.things ?? {}).map(([id, one]) => ({ id, ...one })).find((one) => one.id === asked.thing || `${asked.levelId}:${one.id}` === asked.thing || sameName(one.name, asked.name)) : null;
@@ -344,6 +384,8 @@ export function computerView(game) {
     actions: session.actions,
     tier: tierFor(game, "hacking"),
     tierName: (CHECK_TEXT.tierNames ?? ["untrained", "novice", "trained", "expert", "master"])[tierFor(game, "hacking")],
+    // The place's systems this computer runs, each with what can be done about it from here.
+    systems: controlsView(game, session.place, content.controls ?? [], { room: session.roomId }),
   };
   view.hints = hintsFor(game, session, content, view);
   return view;

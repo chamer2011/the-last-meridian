@@ -12,7 +12,7 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-board-"));
 process.env.GAME_DATA_DIR = dataDir;
 // The board writes files, so these tests work on copies of the stories and the scenes.
 const worldDir = fileURLToPath(new URL("../world/", import.meta.url));
-for (const [folder, env] of [["stories", "GAME_STORIES_DIR"], ["scenes", "GAME_SCENES_DIR"], ["characters", "GAME_PEOPLE_DIR"], ["places", "GAME_PLACES_DIR"], ["species", "GAME_SPECIES_DIR"], ["enemies", "GAME_ENEMIES_DIR"], ["items", "GAME_ITEMS_DIR"], ["factions", "GAME_FACTIONS_DIR"], ["perks", "GAME_PERKS_DIR"], ["computers", "GAME_COMPUTERS_DIR"]]) {
+for (const [folder, env] of [["stories", "GAME_STORIES_DIR"], ["scenes", "GAME_SCENES_DIR"], ["characters", "GAME_PEOPLE_DIR"], ["places", "GAME_PLACES_DIR"], ["species", "GAME_SPECIES_DIR"], ["enemies", "GAME_ENEMIES_DIR"], ["items", "GAME_ITEMS_DIR"], ["factions", "GAME_FACTIONS_DIR"], ["perks", "GAME_PERKS_DIR"], ["computers", "GAME_COMPUTERS_DIR"], ["systems", "GAME_SYSTEMS_DIR"]]) {
   const copy = path.join(dataDir, folder);
   fs.mkdirSync(copy);
   for (const name of fs.readdirSync(path.join(worldDir, folder))) fs.copyFileSync(path.join(worldDir, folder, name), path.join(copy, name));
@@ -140,7 +140,7 @@ test("the board lists the people, places and species, and shows each with what i
   assert.ok(people.some((one) => one.id === "ione" && one.written === false));
   assert.equal(boardWorldList("place").length, 24);
   assert.deepEqual(boardWorldList("species").map((one) => one.id), ["human", "korrun", "veshti", "ilari", "thessan", "synthetic"]);
-  assert.throws(() => boardWorldList("ship"), /stories, people, places, species, enemies, items, factions, perks and computers/);
+  assert.throws(() => boardWorldList("ship"), /stories, people, places, species, enemies, items, factions, perks, computers and systems/);
   assert.equal(boardWorldList("perk").length, 53);
   assert.equal(boardWorldList("perk")[0].id, "chain_of_command");
   const perk = boardWorldItem("perk", "dead_ship_passwords");
@@ -273,4 +273,45 @@ test("the board shows a computer with its files, programs and network, and saves
   }
   assert.deepEqual(boardWorldItem("computer", "haven_berth_board").problems, []);
   assert.equal(WORLD_COMPUTERS.haven_berth_board.programs.length, 2);
+});
+
+test("the board shows a place's systems, its own file or what it gets by default, and saving one places its parts again", async () => {
+  const { SYSTEMS_DIR } = await import("../src/world.js");
+  const { systemsOf } = await import("../src/systems.js");
+  const { parseSystemsText, writeSystemsText } = await import("../public/systems-text.js");
+  const list = boardWorldList("systems");
+  assert.ok(list.length >= 20);
+  assert.ok(list.some((one) => one.id === "haven" && one.kind === "its own file" && one.written));
+  assert.ok(list.some((one) => one.id === "kessara" && one.kind === "by default" && !one.written));
+  const haven = boardWorldItem("systems", "haven");
+  assert.equal(haven.text, fs.readFileSync(path.join(SYSTEMS_DIR, "haven.txt"), "utf8"));
+  assert.equal(haven.links.own, true);
+  assert.ok(haven.links.rooms.some((room) => room.name === "The Manifest Docks" && room.parts.includes("camera")));
+  assert.ok(haven.links.people.some((one) => one.key === "mott"));
+  assert.ok(haven.lists.partKinds.includes("junction box") && haven.lists.rooms.includes("The Hook"));
+  assert.deepEqual(haven.problems, []);
+  // A place with no file shows its defaults, and saving them makes them its own.
+  const kessara = boardWorldItem("systems", "kessara");
+  assert.equal(kessara.links.own, false);
+  assert.match(kessara.text, /^# Kessara Drift\n/);
+  const file = path.join(SYSTEMS_DIR, "kessara.txt");
+  try {
+    const { value } = parseSystemsText(kessara.text, "kessara");
+    value.systems.push({ name: "Water", id: "water", lines: [{ text: "pump in The Sump" }] });
+    const saved = saveBoardWorldItem("systems", "kessara", writeSystemsText(value));
+    assert.equal(saved.saved, true);
+    assert.deepEqual(saved.problems, []);
+    assert.ok(fs.existsSync(file));
+    assert.ok(systemsOf("kessara").written);
+    assert.ok(Object.values(systemsOf("kessara").parts).some((part) => part.system === "water" && part.room === "sump" && Number.isInteger(part.x)), "the pump has its place at once");
+    const wrong = saveBoardWorldItem("systems", "kessara", writeSystemsText(value).replace("pump in The Sump", "pump in The Moon"));
+    assert.equal(wrong.saved, true, "a room the place hasn't got is the checker's to mark, not a reason to refuse");
+    assert.ok(wrong.problems.some((one) => /no room called The Moon/.test(one)), wrong.problems.join(" | "));
+    const refused = saveBoardWorldItem("systems", "kessara", "# Kessara Drift\nweather: wet\n");
+    assert.equal(refused.saved, false);
+  } finally {
+    fs.rmSync(file, { force: true });
+    saveBoardWorldItem("systems", "haven", fs.readFileSync(path.join(SYSTEMS_DIR, "haven.txt"), "utf8"));
+  }
+  assert.equal(systemsOf("kessara").written, false, "with its file gone, it's back to its defaults");
 });

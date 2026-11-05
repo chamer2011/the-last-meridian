@@ -19,6 +19,7 @@ import { noteThreadStarted, notesProblems } from "./story-library.js";
 import { newTurnLimits, runTool, toolProblem } from "./tools.js";
 import { answerDoor } from "./walk.js";
 import { computerProblems, enterComputer } from "./computers.js";
+import { applySystemsEffect, placesWithSystems, systemsProblems } from "./systems.js";
 import { FACT_LINES, STORY_FILE_PROBLEMS, WORLD_COMPUTERS, WORLD_FILE_PROBLEMS, WORLD_MAPS, WORLD_THREADS, endingsOf } from "./world.js";
 
 // Something the player did that the written story has no answer to. The turn changes nothing, and they read this.
@@ -216,6 +217,10 @@ function enterPart(game, scene, id, { emit, turn }, hops = 0) {
         if (!game.opened[game.location].includes(to)) game.opened[game.location].push(to);
         emit({ type: "notice", text: `[DOOR] The way to ${WORLD_MAPS[game.location]?.levels?.[to]?.name ?? to} is open.` });
       }
+      continue;
+    }
+    if (step.systems) {
+      for (const text of applySystemsEffect(game, step.systems, { by: "story" })) emit({ type: "notice", text });
       continue;
     }
     if (step.password) {
@@ -550,6 +555,6 @@ export function allStoryProblems(dir = SCENES_DIR) {
       for (const text of conditions) for (const flag of flagsIn(text)) if (!known.has(flag)) problems.push(`${id}, part ${name}: nothing leaves the fact ${flag}. Set it with * flag in a scene, or name it in a story's facts in world/stories`);
     }
   }
-  problems.push(...STORY_FILE_PROBLEMS, ...WORLD_FILE_PROBLEMS, ...notesProblems(known), ...clockProblems(known), ...computerProblems());
-  return { count, stories: Object.keys(WORLD_THREADS).length, computers: Object.keys(WORLD_COMPUTERS).length, problems };
+  problems.push(...STORY_FILE_PROBLEMS, ...WORLD_FILE_PROBLEMS, ...notesProblems(known), ...clockProblems(known), ...computerProblems(), ...systemsProblems());
+  return { count, stories: Object.keys(WORLD_THREADS).length, computers: Object.keys(WORLD_COMPUTERS).length, systems: placesWithSystems(), problems };
 }

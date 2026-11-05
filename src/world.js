@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { worldDir } from "./paths.js";
 import { parseStoryText } from "../public/story-text.js";
+import { parseSystemsText } from "../public/systems-text.js";
 import { COMPUTER, ENEMY, FACTION, ITEM, PERK, PERSON, PLACE, SPECIES_SPEC, parseWorldText } from "../public/world-text.js";
 
 // A file with a mistake in it is skipped, so one typo can't stop the whole game.
@@ -55,6 +56,24 @@ export const WORLD_ITEMS = {};
 export const WORLD_FACTIONS = {};
 export const WORLD_PERKS = {};
 export const WORLD_FILE_PROBLEMS = [];
+// Each place's systems, as plain text in world/systems, read by public/systems-text.js and read again when the story
+// board saves one. A place without a file gets what _defaults.json says. Tests point the folder at a copy.
+export const SYSTEMS_DIR = process.env.GAME_SYSTEMS_DIR ?? path.join(worldDir, "systems");
+export const WORLD_SYSTEMS = {};
+export const SYSTEMS_FILE_PROBLEMS = [];
+export const SYSTEMS_DEFAULTS = readFile("systems/_defaults.json");
+export function reloadSystems() {
+  for (const key of Object.keys(WORLD_SYSTEMS)) delete WORLD_SYSTEMS[key];
+  SYSTEMS_FILE_PROBLEMS.splice(0);
+  if (!fs.existsSync(SYSTEMS_DIR)) return;
+  for (const name of fs.readdirSync(SYSTEMS_DIR).sort()) {
+    if (!name.endsWith(".txt") || name.startsWith("_")) continue;
+    const { value, problems } = parseSystemsText(fs.readFileSync(path.join(SYSTEMS_DIR, name), "utf8"), name.slice(0, -".txt".length));
+    for (const one of problems) SYSTEMS_FILE_PROBLEMS.push(`systems/${name}${one.line ? ` (line ${one.line})` : ""}: ${one.message}`);
+    WORLD_SYSTEMS[name.slice(0, -".txt".length)] = value;
+  }
+}
+reloadSystems();
 function readTextFolder(dir, spec, into, folder) {
   for (const key of Object.keys(into)) delete into[key];
   if (!fs.existsSync(dir)) return;

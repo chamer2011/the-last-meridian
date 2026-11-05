@@ -22,7 +22,8 @@ import {
   buy, buyPerk, captainSheet, clockFor, combatAction, equip, notePeopleSeen, publicState, raiseSkill, raiseStat, rest, sell, setDifficulty, startCombat, useItem, workShift,
 } from "./src/rules.js";
 import { closeTalk, talkBrief, talkCommand, talkHeard, talkLineOver, talkSaid, walkCommand, walkTick } from "./src/walk.js";
-import { enterAfterHack } from "./src/computers.js";
+import { enterAfterHack, enterDoorPanel } from "./src/computers.js";
+import { airBadHere, controlSystem, settlePart, systemsOf } from "./src/systems.js";
 import { computerCommand } from "./src/computer-use.js";
 
 const savesDir = path.join(dataDir(), "saves");
@@ -340,6 +341,7 @@ function menuAction(body) {
   if (g.fleet?.raid && (body.action === "rest" || body.action === "work")) throw new Error(RAID_WAITING);
   if (g.talk && (body.action === "rest" || body.action === "work")) throw new Error(TALK_WAITING);
   if (g.computer && (body.action === "rest" || body.action === "work")) throw new Error(COMPUTER_WAITING);
+  if (body.action === "rest" && airBadHere(g)) throw new Error("You can't rest here: the air's bad. Get somewhere it's moving first.");
   switch (body.action) {
     case "equip": equip(g, body.id); return null;
     case "use": return useItem(g, body.id);
@@ -517,8 +519,11 @@ async function handleApi(req, res, route) {
   }
   if (route === "/api/check") {
     const reply = checkCommand(requireGame(), body.command);
+    // Work on a part or a door by hand is settled by the place's systems; a door panel that was hacked opens as a computer.
+    const worked = reply.over ? settlePart(game, reply.outcome, (place, to, hack) => enterDoorPanel(game, place, to, hack)) : null;
+    if (worked) reply.outcome.notes.push(...worked);
     // A hack that got in doesn't end at the result: the screen becomes the computer's own system.
-    if (reply.over && reply.outcome?.hack && reply.outcome.success && !reply.outcome.training) {
+    if (worked === null && reply.over && reply.outcome?.hack && reply.outcome.success && !reply.outcome.training) {
       try {
         enterAfterHack(game, reply.outcome.hack);
       } catch (err) {
@@ -527,6 +532,19 @@ async function handleApi(req, res, route) {
     }
     if (reply.over) autosave();
     return json(res, 200, { game: publicState(game), ...reply });
+  }
+  // The captain runs the Meridian's systems from the Ship menu: no hack, and nobody switches back what they do.
+  if (route === "/api/systems") {
+    if (requireGame().combat) throw new Error("Finish the fight first.");
+    if (game.check) throw new Error("Finish the check first.");
+    if (game.fleet?.raid) throw new Error(RAID_WAITING);
+    if (!systemsOf("meridian")) throw new Error("The Meridian has no systems to run.");
+    if (game.role?.captain === false) throw new Error("The Meridian isn't yours to run.");
+    const all = [{ systems: systemsOf("meridian").systems.map((one) => one.id), rooms: null }];
+    const notes = controlSystem(game, "meridian", all, String(body.row ?? ""), String(body.to ?? ""), { by: "owner" });
+    if (notes.length) log("notice", notes.join("\n"));
+    autosave();
+    return json(res, 200, { game: publicState(game), notes });
   }
   // A computer the player is on: reading, running and logging off happen here, and the AI hears one line at the end.
   if (route === "/api/computer") {
@@ -570,7 +588,7 @@ async function handleApi(req, res, route) {
     if (game.computer) throw new Error(COMPUTER_WAITING);
     const reply = walkCommand(game, body);
     // Using a thing or asking at a door changes more than where the player stands, and the story keeps a line about it.
-    if (body.action === "use" || body.action === "ask") {
+    if (body.action === "use" || body.action === "ask" || body.action === "work") {
       if (reply.said) log("notice", reply.said);
       autosave();
       return json(res, 200, { game: publicState(game), said: reply.said ?? null, check: Boolean(game.check), computer: Boolean(game.computer) });
