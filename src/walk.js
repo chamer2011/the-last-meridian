@@ -550,6 +550,26 @@ export function walkCommand(game, body) {
       const path = route(level, people, from, (here) => here.x === target.x && here.y === target.y);
       return path ? stand(path) : stand([], null, "You can't find a way there.");
     }
+    // Walking freely, with the keys: the page says which square the player has walked onto, and the server keeps them
+    // there, if it can be walked to from where they were. A way out walked into is taken, or stops them at its door.
+    // Only the square goes back, unless the room has changed, because this is every square of every walk.
+    case "move": {
+      const x = Number(body.x);
+      const y = Number(body.y);
+      if (!Number.isInteger(x) || !Number.isInteger(y)) throw new Error("Choose somewhere to walk to.");
+      const at = { x: spot.x, y: spot.y };
+      const refused = { moved: false, captain: at };
+      const mark = markAt(game, walk, level, x, y);
+      if (mark?.kind === "exit") {
+        const path = route(level, [], at, (here) => nextTo(here, mark));
+        return path ? goToMark(mark, path) : refused;
+      }
+      if (!canStand(level, x, y)) return refused;
+      if ((x !== at.x || y !== at.y) && !route(level, [], at, (here) => here.x === x && here.y === y)) return refused;
+      spot.x = x;
+      spot.y = y;
+      return { moved: true, captain: { x, y } };
+    }
     case "step": {
       const dx = Math.sign(Number(body.dx) || 0);
       const dy = dx ? 0 : Math.sign(Number(body.dy) || 0);
@@ -902,6 +922,8 @@ export function lookOf(place, levelName) {
   return { ...LOOKS.default, ...general, ...levels[levelName] };
 }
 
+const floorOf = (level) => Array.from({ length: level.height }, (_, y) => Array.from({ length: level.width }, (_, x) => (canStand(level, x, y) ? "." : " ")).join(""));
+
 export function walkView(game) {
   const walk = walkAt(game);
   if (!walk) return null;
@@ -917,6 +939,9 @@ export function walkView(game) {
     colors: level.colors,
     look: lookOf(game.location, level.name),
     captain: { x: spot.x, y: spot.y },
+    // Where the player can walk, a row of the room to a line: "." for floor, a space for anything else. Ways out are
+    // under exits, and people under people, since they move.
+    floor: floorOf(level),
     here: { id: walk.room ? walk.room.name : level.id, name: level.name, desc: level.desc },
     people: peopleOnLevel(game, walk, level).map((entry) => personView(game, entry)),
     things: [...level.things.map((thing) => thingView(game, thing)), ...(walk.room ? [] : partThings(game, game.location, level.id))],

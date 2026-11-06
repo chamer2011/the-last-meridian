@@ -12,7 +12,7 @@ import { focusTalk, initTalk, resetTalk, startTalk, talkNode, talkOpen } from ".
 import { computerNode, computerOpen, focusComputer, initComputer, resetComputer } from "./computer.js";
 import { beginScene, initPopups, openPopups, popupNext, popupsAttached, popupsOpen, updatePopups } from "./popups.js";
 import { INTERFACE_SIZES, interfaceZoom } from "./scene.js";
-import { focusThing, initWalk, keepClear, markPoint, popupsShown, renderWalk, resetWalk, showWholeStory, thingNode, thingOpen, walkShown, walkViewNode } from "./walk.js";
+import { focusThing, initWalk, keepClear, markPoint, newsBehindMenu, popupsShown, renderWalk, resetWalk, showWholeStory, thingNode, thingOpen, toggleClock, walkShown, walkViewNode } from "./walk.js";
 import { aimWith } from "./float.js";
 import { WRITING_SPEEDS } from "./writer.js";
 
@@ -373,8 +373,17 @@ function composerNode() {
               e.preventDefault();
               submitPrompt();
             }
-            // With nothing typed, these go on to the next piece of the story.
-            if (popupsShown() && (e.key === " " || e.key === "Enter") && !e.target.value.trim() && popupNext()) e.preventDefault();
+            // With nothing typed, Enter goes on to the next piece of the story.
+            if (popupsShown() && e.key === "Enter" && !e.target.value.trim() && popupNext()) e.preventDefault();
+            if (!walkShown()) return;
+            // In a room, Esc gives the keys back to walking, and Space with nothing typed pauses the clock.
+            if (e.key === "Escape") {
+              e.preventDefault();
+              e.target.blur();
+            } else if (e.key === " " && !e.target.value.trim()) {
+              e.preventDefault();
+              toggleClock();
+            }
           },
         })),
   ));
@@ -561,7 +570,21 @@ function closeMenu() {
   else if (talkOpen()) focusTalk();
   else if (computerOpen()) focusComputer();
   else if (thingOpen()) focusThing();
-  else document.getElementById("composer")?.focus({ preventScroll: true });
+  else focusComposer();
+  // What the clock brought while the menu was open.
+  if (newsBehindMenu()) render();
+}
+
+// The typing line has the keys, unless there's a room to walk around in: there the keys walk, and the typing line is
+// clicked, or Enter brings it up. Something half typed keeps it.
+function focusComposer() {
+  const composer = document.getElementById("composer");
+  if (!composer) return;
+  if (walkShown() && !ui.draft.trim()) {
+    if (document.activeElement === composer) composer.blur();
+    return;
+  }
+  composer.focus({ preventScroll: true });
 }
 
 function toggleMenu(id) {
@@ -623,7 +646,7 @@ function render() {
   } else if (thingOpen()) {
     focusThing();
   } else if (!fightOpen() && !checkOpen() && !ui.streaming) {
-    document.getElementById("composer")?.focus({ preventScroll: true });
+    focusComposer();
   }
 }
 
@@ -685,7 +708,22 @@ initFight({ ui, render, sendChat, openMenu, closeMenu });
 initCheck({ ui, render, sendChat, openMenu, closeMenu });
 // A raid waits for a fight, a check or a computer to be done with, and then has the whole screen.
 initFleet({ ui, render, runAction, renderMenus, openMenu, closeMenu, raidWaits: () => fightOpen() || checkOpen() || computerOpen() });
-initWalk({ ui, reading, render, renderStatus, sendChat, startTalk, act });
+initWalk({
+  ui,
+  reading,
+  render,
+  renderStatus,
+  sendChat,
+  startTalk,
+  act,
+  // A number key picks one of the story's choices, when there's nothing to type it into.
+  pickOption: (n) => {
+    const option = currentOptions()[n - 1];
+    if (!option || option.disabled) return false;
+    option.run();
+    return true;
+  },
+});
 initPopups({
   ui,
   reading,

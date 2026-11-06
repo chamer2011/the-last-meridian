@@ -1917,11 +1917,27 @@ function moveOne(shown, goal, dt, time) {
   return went > 0;
 }
 
+// The player is drawn right where they are, since their own walking is smooth already. A jump, such as the server
+// putting them somewhere, isn't a walk.
+function placeYou(you, spot) {
+  const dx = spot.x - you.x;
+  const dy = spot.y - you.y;
+  you.x = spot.x;
+  you.y = spot.y;
+  const went = Math.abs(dx) * CELL_WIDTH + Math.abs(dy);
+  you.walking = went > 0 && went < 2;
+  if (!you.walking) return went > 0;
+  you.step += went * 5;
+  faceAlong(you, dx, dy);
+  return true;
+}
+
 function moveEveryone(view, dt) {
   let moving = false;
   const spot = iso.hooks.spot();
   if (!iso.you || iso.calm) iso.you = { x: spot.x, y: spot.y, step: 0, back: false, flip: false };
-  if (moveOne(iso.you, spot, dt, 70)) moving = true;
+  iso.youMoving = placeYou(iso.you, spot);
+  if (iso.youMoving) moving = true;
   const here = new Set();
   for (const person of view.people) {
     here.add(person.key);
@@ -2353,7 +2369,8 @@ function loop(now) {
   const cameraMoving = iso.camera && iso.lastGoal !== `${Math.round(iso.camera.u * 50)},${Math.round(iso.camera.v * 50)}`;
   iso.lastGoal = iso.camera ? `${Math.round(iso.camera.u * 50)},${Math.round(iso.camera.v * 50)}` : "";
   // Nothing going on: just enough to keep the lights and the water moving.
-  const every = moving || cameraMoving || iso.redraw || now - iso.fadeFrom < 320 ? 1000 / 30 : 1000 / 8;
+  // Walking, every frame there is; anything else moving, thirty a second; nothing going on, eight.
+  const every = iso.youMoving ? 0 : moving || cameraMoving || iso.redraw || now - iso.fadeFrom < 320 ? 1000 / 30 : 1000 / 8;
   if (now - iso.lastDraw < every) return;
   const since = now - iso.lastDraw;
   iso.lastDraw = now;
@@ -2377,8 +2394,12 @@ function underPointer() {
     if (px >= hit.x && px <= hit.x + hit.w && py >= hit.y && py <= hit.y + hit.h) return hit;
   }
   if (!iso.lastOrigin) return null;
-  const { x, y } = cellAt((px - iso.lastOrigin.ox) / iso.unit, (py - iso.lastOrigin.oy) / iso.unit);
-  return x >= 0 && y >= 0 && x < iso.scene.cols && y < iso.scene.lines ? { kind: "floor", x, y, key: `floor:${x},${y}` } : null;
+  const u = (px - iso.lastOrigin.ox) / iso.unit;
+  const v = (py - iso.lastOrigin.oy) / iso.unit;
+  const { x, y } = cellAt(u, v);
+  // The very spot, as a position: its square's corner plus how far into it, less the half that puts a position at a middle.
+  const point = { x: (2 * v + u) / CELL_WIDTH - 0.5, y: 2 * v - u - 0.5 };
+  return x >= 0 && y >= 0 && x < iso.scene.cols && y < iso.scene.lines ? { kind: "floor", x, y, point, key: `floor:${x},${y}` } : null;
 }
 
 function titleFor(hit) {
@@ -2420,7 +2441,7 @@ function onClick(event) {
   if (iso.hooks.pressed?.()) return;
   const hit = underPointer();
   if (!hit || iso.hooks.blocked()) return;
-  if (hit.kind === "floor") iso.hooks.go({ action: "go", x: hit.x, y: hit.y });
+  if (hit.kind === "floor") iso.hooks.go({ action: "go", x: hit.x, y: hit.y }, null, hit.point);
   else iso.hooks.go({ action: "go", to: hit.key });
 }
 

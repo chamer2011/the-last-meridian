@@ -1,21 +1,17 @@
 // The walk-around view: each room is its own level, drawn in console art, with the story under it.
 // The server keeps the levels and the captain's place in them. All of this is free: it never uses
-// the AI. Where people live their own days, the clock runs while the player explores, and this page
-// asks the server twice a second where everyone has got to.
+// the AI. The player walks freely, with the keys or a click (public/move.js). Where people live their
+// own days, the clock runs until Space pauses it, and this page asks the server twice a second where
+// everyone has got to.
 
 import { api, el, zoom } from "./dom.js";
 import { isoFrameNode, isoKeepClear, isoMark } from "./iso.js";
 import { paneNode, putPane } from "./pane.js";
 import { untagged } from "./story.js";
 import { closePopups, popsNode, popupDrawn, popupNext, popupPressed, popupReading, resetPopups } from "./popups.js";
+import { adopt, currentSquare, follow, leavingRoom, positionNow, resetMoving, startMoving } from "./move.js";
 
-const STEP_TIME = 28;
-// Seen from an angle, you can see someone walk, so it's closer to a walking pace.
-const ISO_STEP_TIME = { across: 55, along: 110 };
 const TICK_TIME = 500;
-// Nobody's watching after this long without a key or the mouse moving, so the clock waits for them.
-const AWAY_AFTER = 120000;
-const ARROWS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 // How fast the clock can run, in minutes of the game to each real minute.
 const SPEEDS = {
   Normal: { rate: 10, title: "A day in the game takes about two and a half hours" },
@@ -23,7 +19,7 @@ const SPEEDS = {
   Faster: { rate: 300, title: "A day in the game takes about 5 minutes" },
 };
 
-const walk = { held: null, timer: null, sending: false, steps: [], message: null, thing: null, looked: false, plan: false, fullStory: false, shownLevel: null, marks: new Map(), listed: "", speed: "Normal", stopped: "start", ticking: false, lastInput: Date.now(), shownClock: "" };
+const walk = { sending: false, message: null, thing: null, looked: false, plan: false, fullStory: false, shownLevel: null, marks: new Map(), listed: "", speed: "Normal", stopped: null, ticking: false, shownClock: "", behindMenu: false };
 
 // What the view needs from the main screen. Set once, when the page loads.
 let app;
@@ -31,14 +27,30 @@ let app;
 export function initWalk(hooks) {
   app = hooks;
   document.addEventListener("keydown", onKey);
+  // Space on a button that was clicked last only pauses: it doesn't press the button again.
+  document.addEventListener("keyup", (event) => {
+    if (event.key === " " && walk.spaceTaken) {
+      walk.spaceTaken = false;
+      event.preventDefault();
+    }
+  });
   document.addEventListener("pointerdown", (event) => {
     if (walk.menu && !event.target.closest?.("#walk-menu")) closeMenu();
   }, true);
-  for (const event of ["keydown", "pointerdown", "pointermove"]) {
-    document.addEventListener(event, () => {
-      walk.lastInput = Date.now();
-    }, { passive: true });
-  }
+  startMoving({
+    view: () => (app.ui.screen === "game" && app.ui.game?.walk && walkShown() && !walk.fullStory ? app.ui.game.walk : null),
+    canMove: () => !cannotWalk() && !walk.sending && !app.ui.sideOpen && !walk.fullStory && !document.getElementById("board"),
+    angled: isoShown,
+    setOff,
+    send: (body) => api("/api/walk", body),
+    arrived: (reply) => {
+      takeWalk(reply);
+      if (reply.arrived?.kind === "door") openDoor(reply.arrived.key);
+    },
+    placed: (pos) => {
+      if (!isoShown()) placeCaptain(pos);
+    },
+  });
   setInterval(tick, TICK_TIME);
 }
 
@@ -48,8 +60,8 @@ export const walkShown = () => (app.reading.view === "walk" || isoShown()) && Bo
 export const popupsShown = () => walkShown() && isoShown() && app.reading.story !== "panel" && !walk.fullStory;
 
 export function resetWalk() {
-  stopWalking();
-  Object.assign(walk, { held: null, sending: false, steps: [], message: null, thing: null, looked: false, plan: false, fullStory: false, shownLevel: null, stopped: "start" });
+  resetMoving();
+  Object.assign(walk, { sending: false, message: null, thing: null, looked: false, plan: false, fullStory: false, shownLevel: null, stopped: null, behindMenu: false });
   resetPopups();
 }
 
@@ -64,7 +76,11 @@ function cannotWalk() {
   return ui.streaming || ui.waiting || anotherWindow();
 }
 
-const shownSpot = () => walk.held ?? app.ui.game.walk.captain;
+// Where the player is now: walking, between squares.
+const shownSpot = () => {
+  adopt(app.ui.game.walk);
+  return positionNow() ?? app.ui.game.walk.captain;
+};
 const spotStyle = (x, y) => `left:${x}ch;top:calc(${y} * var(--walk-row))`;
 // A name goes on whichever side of its mark has room, and the mark stays on its own square.
 const markSpot = (mark, length) => ({ x: mark.side === "left" ? mark.x - length - 1 : mark.x, y: mark.y });
@@ -83,55 +99,43 @@ function placeCaptain({ x, y }) {
   }
 }
 
-function stopWalking() {
-  clearInterval(walk.timer);
-  walk.timer = null;
-}
-
-function walkAlong(path, done) {
-  stopWalking();
-  const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (calm || path.length < 2) {
-    if (path.length) {
-      walk.held = path.at(-1);
-      placeCaptain(walk.held);
-    }
-    done();
-    return;
-  }
-  let next = 0;
-  const step = () => {
-    walk.held = path[next];
-    placeCaptain(walk.held);
-    next += 1;
-    if (next >= path.length) {
-      stopWalking();
-      done();
-    } else if (isoShown()) walk.timer = setTimeout(step, path[next].y !== path[next - 1].y ? ISO_STEP_TIME.along : ISO_STEP_TIME.across);
-  };
-  step();
-  if (!isoShown() && next < path.length) walk.timer = setInterval(step, STEP_TIME);
-}
-
-// Asks the server for the way, walks it, and then does whatever walking there was for: after, when the right-click menu
-// gave one, or else a talk, a thing's window or a door's.
-async function go(body, after = null) {
-  // A click that only put the menu away doesn't walk anywhere.
-  if (cannotWalk() || walk.sending || menuJustShut()) return;
+// What walking puts away, by the keys or a click: the right-click menu, a thing's window, a message about the last
+// walk, and the story over the room.
+function setOff() {
   if (walk.menu) closeMenu(true);
-  // Walking anywhere puts a thing's pane away.
   if (walk.thing) {
     walk.thing = null;
     drawThingPane();
   }
-  stopWalking();
-  walk.sending = true;
-  walk.message = null;
-  if (walk.stopped === "start") walk.stopped = null;
+  if (walk.message) {
+    walk.message = null;
+    drawHere();
+  }
   if (popupsShown()) closePopups();
+}
+
+// The room as the server has it after a walk. In the same room, the people carry on from wherever they've got to since
+// the reply was sent.
+function takeWalk(reply) {
+  const sameRoom = walk.shownLevel === reply.walk.here.id;
+  const { people } = sameRoom && app.ui.game.walk.here.id === reply.walk.here.id ? app.ui.game.walk : reply.walk;
+  app.ui.game.walk = { ...reply.walk, people };
+  walk.message = reply.message ?? null;
+  if (sameRoom && document.getElementById("walk-frame")) drawHere();
+  else renderWalk();
+}
+
+// Asks the server for the way, walks it, and then does whatever walking there was for: after, when the right-click menu
+// gave one, or else a talk, a thing's window or a door's. point is a spot on the floor to end on exactly, such as the
+// one clicked. Keys pressed on the way take over from the click, unless the way leads out of the room.
+async function go(body, after = null, point = null) {
+  // A click that only put the menu away doesn't walk anywhere, and nor does one on the way out of the room.
+  if (cannotWalk() || walk.sending || menuJustShut() || leavingRoom()) return;
+  setOff();
+  walk.sending = true;
   let reply;
   try {
-    reply = await api("/api/walk", { ...body, from: shownSpot() });
+    reply = await api("/api/walk", { ...body, from: currentSquare() ?? app.ui.game.walk.captain });
   } catch (err) {
     walk.sending = false;
     walk.message = err.message;
@@ -139,34 +143,28 @@ async function go(body, after = null) {
     return;
   }
   walk.sending = false;
-  walkAlong(reply.path, () => {
-    walk.held = null;
-    // In the same room, the people carry on from wherever they've got to since this reply was sent.
-    const sameRoom = walk.shownLevel === reply.walk.here.id;
-    const { people } = sameRoom && app.ui.game.walk.here.id === reply.walk.here.id ? app.ui.game.walk : reply.walk;
-    app.ui.game.walk = { ...reply.walk, people };
-    walk.message = reply.message;
-    if (sameRoom && document.getElementById("walk-frame")) {
-      placeCaptain(reply.walk.captain);
-      drawHere();
-    } else renderWalk();
-    if (reply.arrived && reply.arrived.kind !== "exit") walk.steps = [];
-    if (after && reply.arrived && reply.arrived.kind !== "exit") after(reply.arrived);
-    else if (reply.arrived?.kind === "person") app.startTalk(reply.arrived.key);
-    else if (reply.arrived?.kind === "thing") openThing(reply.arrived.key);
-    else if (reply.arrived?.kind === "door") openDoor(reply.arrived.key);
-    else if (!document.activeElement?.matches?.("input")) document.getElementById("composer")?.focus({ preventScroll: true });
-    const next = walk.steps.shift();
-    if (next) go({ action: "step", dx: next[0], dy: next[1] });
+  const leaving = reply.walk.here.id !== app.ui.game.walk.here.id;
+  follow(reply.path, {
+    serverAt: reply.walk.captain,
+    point: leaving ? null : point,
+    firm: leaving,
+    turned: () => takeWalk(reply),
+    done: () => {
+      takeWalk(reply);
+      if (after && reply.arrived && reply.arrived.kind !== "exit") after(reply.arrived);
+      else if (reply.arrived?.kind === "person") app.startTalk(reply.arrived.key);
+      else if (reply.arrived?.kind === "thing") openThing(reply.arrived.key);
+      else if (reply.arrived?.kind === "door") openDoor(reply.arrived.key);
+    },
   });
 }
 
+// The square of the plan under the pointer, and the very spot, as a position on it.
 function squareAt(event, view = app.ui.game.walk) {
   const box = event.currentTarget.getBoundingClientRect();
-  return {
-    x: Math.floor(((event.clientX - box.left) / box.width) * view.cols),
-    y: Math.floor(((event.clientY - box.top) / box.height) * view.lines),
-  };
+  const fx = ((event.clientX - box.left) / box.width) * view.cols;
+  const fy = ((event.clientY - box.top) / box.height) * view.lines;
+  return { x: Math.floor(fx), y: Math.floor(fy), point: { x: fx - 0.5, y: fy - 0.5 } };
 }
 
 function showCursor(event) {
@@ -310,8 +308,8 @@ function frameNode() {
       class: `walk-plan${cannotWalk() ? " waiting" : ""}${arriving ? " arriving" : ""}${view.room?.dark ? " dark" : ""}${view.room?.thin ? " thin" : ""}${view.room?.alarm ? " alarm" : ""}`,
       style: `--walk-cols:${view.cols};--walk-lines:${view.lines};${colorsOf(view.colors)}`,
       onclick: (event) => {
-        const { x, y } = squareAt(event);
-        go({ action: "go", x, y });
+        const { x, y, point } = squareAt(event);
+        go({ action: "go", x, y }, null, point);
       },
       oncontextmenu: (event) => {
         event.preventDefault();
@@ -418,8 +416,8 @@ export function walkViewNode(logNode, composerNode) {
   if (walk.fullStory) return el("div", { class: "walk-full" }, storyBar(), logNode());
   const popped = popupsShown();
   const legend = el("div", { class: "muted walk-legend" }, isoShown()
-    ? `${app.ui.game.walk.things.length ? "? something to look at   " : ""}Click the floor to walk, or click anyone or anything   Right-click for more   The mouse wheel zooms`
-    : `@ you   ${app.ui.game.walk.things.length ? "? something to look at   " : ""}Click the floor or use the arrow keys to walk   Right-click for more`);
+    ? `${app.ui.game.walk.things.length ? "? something to look at   " : ""}Walk with WASD or a click   Click anyone or anything   Right-click for more   Space pauses   The wheel zooms`
+    : `@ you   ${app.ui.game.walk.things.length ? "? something to look at   " : ""}Walk with WASD or a click   Right-click for more   Space pauses`);
   return el("div", { class: `walk-view${isoShown() ? " iso" : ""}${popped ? " pops-on" : ""}`, id: "walk-view" },
     el("div", { class: "walk-map" },
       frameNode(),
@@ -455,23 +453,22 @@ export function renderWalk() {
 function clockHeld() {
   const { ui } = app;
   if (ui.streaming || ui.waiting) return "The story's being written";
-  if (walk.stopped === "paused") return "Paused";
-  if (walk.stopped === "start") return "Walking starts the clock";
-  if (Date.now() - walk.lastInput > AWAY_AFTER) return "Stopped until you're back";
+  if (walk.stopped === "paused") return "Paused: Space goes on";
   if (ui.draft.trim()) return "Stopped while you're typing";
   return null;
 }
 
-// Every skill check lets the clock run on, the story's own as well as the room's, and so does a computer in use, the same
-// as walkTick in src/walk.js. Talks, fights, raids and the deck plan stop it.
+// The clock runs all the time, through menus, the deck plan, a thing's window, every skill check and a computer in use,
+// until Space pauses it. Talks, fights and raids stop it, the same as walkTick in src/walk.js, and so does the Story
+// board, which is for writing.
 function clockWaits() {
   const { ui } = app;
   const g = ui.game;
-  return ui.streaming || ui.waiting || Boolean(g.combat || g.talk || g.fleet.raid || walk.plan);
+  return ui.streaming || ui.waiting || Boolean(g.combat || g.talk || g.fleet.raid) || Boolean(document.getElementById("board"));
 }
 
-// Time stands still for anything that stops the clock, and when nobody's looking.
-const clockCanRun = () => !clockHeld() && !clockWaits() && !app.ui.sideOpen && document.visibilityState === "visible";
+// Time stands still for anything that stops the clock, and while the game's window is put away.
+const clockCanRun = () => !clockHeld() && !clockWaits() && document.visibilityState === "visible";
 
 function setSpeed(name) {
   if (name) {
@@ -481,6 +478,11 @@ function setSpeed(name) {
   drawClock();
 }
 
+// Space: paused, or going on at the speed it had.
+export function toggleClock() {
+  setSpeed(walk.stopped === "paused" ? walk.speed : null);
+}
+
 function clockBar() {
   if (!app.ui.game.walk.life) return null;
   const why = clockHeld();
@@ -488,7 +490,7 @@ function clockBar() {
   const pick = (label, on, run, title = null) => el("button", { class: on ? "primary" : "", "aria-pressed": String(on), onclick: run, ...(title ? { title } : {}) }, label);
   return el("div", { class: "walk-clock small", id: "walk-clock" },
     el("span", { class: "walk-clock-time" }, app.ui.game.clock.label),
-    pick("Pause", walk.stopped === "paused", () => setSpeed(null)),
+    pick("Pause", walk.stopped === "paused", () => setSpeed(null), "Or press Space, and Space again to go on"),
     Object.entries(SPEEDS).map(([name, { title }]) => pick(name, !walk.stopped && walk.speed === name, () => setSpeed(name), title)),
     why && el("span", { class: "muted walk-clock-why" }, why));
 }
@@ -505,8 +507,14 @@ function applyTick(reply) {
   if (reply.game) {
     ui.game = reply.game;
     if (reply.news) {
-      app.render();
-      return;
+      // A raid needs the whole screen. Anything else waits behind an open menu, so nothing being done in it is lost.
+      if (ui.game.fleet.raid) ui.sideOpen = false;
+      if (!ui.sideOpen) {
+        app.render();
+        return;
+      }
+      walk.behindMenu = true;
+      renderWalk();
     }
     app.renderStatus();
   }
@@ -520,11 +528,16 @@ function applyTick(reply) {
   drawClock();
 }
 
+// Whether news came while a menu was open, so the story needs drawing again once it's shut.
+export function newsBehindMenu() {
+  const was = walk.behindMenu;
+  walk.behindMenu = false;
+  return was;
+}
+
 async function tick() {
   const { ui } = app;
-  if (ui.screen !== "game" || !ui.game || !walkShown() || walk.fullStory || !ui.game.walk.life) return;
-  // A new scene waits to be read, so it takes a step or a speed button to get the clock going again.
-  if ((ui.streaming || ui.waiting) && !walk.stopped) walk.stopped = "start";
+  if (ui.screen !== "game" || !ui.game || !walkShown() || !ui.game.walk.life) return;
   drawClock();
   if (walk.ticking || !clockCanRun()) return;
   walk.ticking = true;
@@ -1159,8 +1172,9 @@ export function focusThing() {
 // ---- The keyboard -------------------------------------------------------
 
 function onKey(event) {
-  if (app.ui.screen !== "game" || !app.ui.game || app.ui.sideOpen || event.ctrlKey || event.metaKey || event.altKey) return;
-  if (walk.menu && !event.target.matches?.("input, textarea")) {
+  if (app.ui.screen !== "game" || !app.ui.game || app.ui.sideOpen || event.ctrlKey || event.metaKey || event.altKey || document.getElementById("board")) return;
+  const typing = Boolean(event.target.closest?.("input, textarea, select"));
+  if (walk.menu && !typing) {
     if (event.key === "Escape") {
       event.preventDefault();
       closeMenu();
@@ -1175,9 +1189,10 @@ function onKey(event) {
   }
   if (walk.plan) {
     if (event.key === "Escape") closeWindow();
+    else if (event.key === " " && !typing) pauseKey(event);
     return;
   }
-  if (walk.thing && !event.target.matches?.("input, textarea")) {
+  if (walk.thing && !typing) {
     if (event.key === "Escape") {
       event.preventDefault();
       closeWindow();
@@ -1190,20 +1205,33 @@ function onKey(event) {
       return;
     }
   }
-  if (popupsShown() && !anotherWindow()) {
-    if (event.key === "Escape" && !event.defaultPrevented) closePopups();
-    // With nothing to type into, these go on to the next piece of the story.
-    if ((event.key === " " || event.key === "Enter") && !event.target.matches?.("input, textarea, button, a, summary") && popupNext()) event.preventDefault();
-  }
-  const arrow = ARROWS[event.key];
-  if (!arrow || !walkShown() || walk.fullStory || cannotWalk()) return;
-  // In the middle of typing, the arrow keys belong to the typing.
-  if (event.target.matches?.("input, textarea") && event.target.value) return;
-  event.preventDefault();
-  // A key pressed before the last step has finished still counts, up to a few.
-  if (walk.sending || walk.timer) {
-    if (walk.steps.length < 4) walk.steps.push(arrow);
+  if (event.key === " " && !typing) {
+    pauseKey(event);
     return;
   }
-  go({ action: "step", dx: arrow[0], dy: arrow[1] });
+  const pressable = event.target.closest?.("button, a, summary");
+  if (popupsShown() && !anotherWindow()) {
+    if (event.key === "Escape" && !event.defaultPrevented) closePopups();
+    // With nothing to type into, Enter goes on to the next piece of the story.
+    if (event.key === "Enter" && !typing && !pressable && popupNext()) {
+      event.preventDefault();
+      return;
+    }
+  }
+  // The keys walk (public/move.js). With nothing else for them, Enter brings up the typing line, and a number picks
+  // one of the story's choices.
+  if (typing || !walkShown() || walk.fullStory || cannotWalk()) return;
+  if (event.key === "Enter" && !pressable) {
+    event.preventDefault();
+    document.getElementById("composer")?.focus({ preventScroll: true });
+  } else if (/^[1-9]$/.test(event.key) && app.pickOption(Number(event.key))) event.preventDefault();
+}
+
+// Space pauses the clock, and goes on again, unless a fight, a check, a raid or a talk is open, which use it themselves.
+function pauseKey(event) {
+  const g = app.ui.game;
+  if (!walkShown() || !g.walk?.life || g.combat || g.check || g.fleet.raid || g.talk) return;
+  event.preventDefault();
+  walk.spaceTaken = true;
+  toggleClock();
 }
