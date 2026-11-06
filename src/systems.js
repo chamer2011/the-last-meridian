@@ -1052,7 +1052,7 @@ export function workOnPart(game, key, how) {
   if (!action) throw new Error("That can't be done to it now.");
   if (action.check) {
     const [skill, difficulty] = action.check.split(":");
-    startCheck(game, { skill, difficulty, reason: `${action.label}: the ${part.name} in ${roomNameOf(place, room)}`, scene: lookAt(game, place, part), source: "part" });
+    startCheck(game, { skill, difficulty, reason: `${action.label}: the ${part.name} in ${roomNameOf(place, room)}`, scene: lookAt(game, place, part), source: "part", target: `thing:part:${part.id}` });
     game.partAsked = { place, part: part.id, how };
     return { check: true };
   }
@@ -1066,7 +1066,7 @@ export function workOnDoor(game, levelId, exit, how) {
   const action = doorActions(game, spot.place, levelId, exit).find((one) => one.id === how);
   if (!action) throw new Error("That door isn't locked.");
   const [skill, difficulty] = action.check.split(":");
-  startCheck(game, { skill, difficulty, reason: `${action.label}: the door to ${roomNameOf(spot.place, action.room)}`, scene: doorLook(game, spot.place, levelId, exit), source: "part" });
+  startCheck(game, { skill, difficulty, reason: `${action.label}: the door to ${roomNameOf(spot.place, action.room)}`, scene: doorLook(game, spot.place, levelId, exit), source: "part", target: `exit:${exit.key}` });
   game.partAsked = { place: spot.place, door: action.room, how, from: spot.room };
   return { check: true };
 }

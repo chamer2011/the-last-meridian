@@ -194,7 +194,7 @@ export function askAtDoor(game, key) {
   }
   if (rule.check) {
     const [skill, difficulty, audience] = rule.check.split(":");
-    startCheck(game, { skill, difficulty, audience: audience ?? null, reason: rule.reason ?? `Get through: ${exit.label}`, scene: exit.closed.look, source: "door" });
+    startCheck(game, { skill, difficulty, audience: audience ?? null, reason: rule.reason ?? `Get through: ${exit.label}`, scene: exit.closed.look, source: "door", target: `exit:${exit.key}` });
     game.doorAsked = { place: game.location, to: exit.to, pass: rule.pass ?? "The way is open.", fail: rule.fail ?? "The way stays closed.", flag: rule.flag ?? null };
     return { check: true };
   }
@@ -935,15 +935,41 @@ function peopleNow(game) {
 }
 
 // The clock running by itself, while the player explores somewhere people live their days. It waits
-// for talks, fights, computers and raids, because time stands still for those, and everywhere else it stays still.
-// Every skill check lets it run on, the story's own as well as those on the room's parts, things, doors and people.
+// for talks, fights and raids, because time stands still for those, and everywhere else it stays still.
+// Every skill check lets it run on, the story's own as well as those on the room's parts, things, doors and people, and so
+// does a computer in use.
 export function walkTick(game, body) {
-  if (game.combat || game.talk || game.computer || game.fleet?.raid) return { held: true };
+  if (game.combat || game.talk || game.fleet?.raid) return { held: true };
   if (!walkAt(game) || !livesHere(game.location)) return { still: true };
   if (!CLOCK_RATES.includes(body.rate)) throw new Error("That isn't one of the clock's speeds.");
   const ms = Math.max(0, Math.min(Number(body.ms) || 0, LONGEST_TICK));
   const notes = clockRuns(game, (ms / 60000) * body.rate);
   return { notes, ...peopleNow(game) };
+}
+
+// What a check from the story is about, when it can be told from the room: the person it's aimed at, or the first person
+// in the room it names, or a thing whose whole name is in it. A check from the room says for itself, and practice is about
+// nothing here.
+const escapedForRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, (ch) => `\\${ch}`);
+const sayingName = (name, words) => Boolean(name) && new RegExp(`(^|[^\\p{L}])${escapedForRegExp(name)}($|[^\\p{L}])`, "u").test(words);
+export function checkTarget(game) {
+  const check = game.check;
+  if (!check || check.target || check.source === "practice") return check?.target ?? null;
+  const view = walkView(game);
+  if (!view) return null;
+  if (check.audience) {
+    const aimed = view.people.find((one) => one.key === check.audience || sayingName(check.audience, one.name));
+    if (aimed) return `person:${aimed.key}`;
+  }
+  const words = `${check.reason ?? ""}\n${check.scene ?? ""}`;
+  const named = view.people.find((one) => sayingName(one.short, words) || sayingName(one.name, words));
+  if (named) return `person:${named.key}`;
+  const lower = words.toLowerCase();
+  const thing = view.things.find((one) => {
+    const name = one.name.replace(/^the /i, "").toLowerCase();
+    return name.length > 3 && lower.includes(name);
+  });
+  return thing ? `thing:${thing.id}` : null;
 }
 
 // ---- Talking ------------------------------------------------------------

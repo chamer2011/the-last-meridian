@@ -12,7 +12,8 @@ import { focusTalk, initTalk, resetTalk, startTalk, talkNode, talkOpen } from ".
 import { computerNode, computerOpen, focusComputer, initComputer, resetComputer } from "./computer.js";
 import { beginScene, initPopups, openPopups, popupNext, popupsAttached, popupsOpen, updatePopups } from "./popups.js";
 import { INTERFACE_SIZES, interfaceZoom } from "./scene.js";
-import { focusThing, initWalk, popupsShown, renderWalk, resetWalk, showWholeStory, thingNode, thingOpen, walkShown, walkViewNode } from "./walk.js";
+import { focusThing, initWalk, keepClear, markPoint, popupsShown, renderWalk, resetWalk, showWholeStory, thingNode, thingOpen, walkShown, walkViewNode } from "./walk.js";
+import { aimWith } from "./float.js";
 import { WRITING_SPEEDS } from "./writer.js";
 
 const app = document.getElementById("app");
@@ -702,6 +703,7 @@ initPopups({
 });
 initTalk({ ui, reading, render, openMenu, popupsShown });
 initComputer({ ui, render, openMenu });
+aimWith(markPoint, keepClear);
 
 initCreator({
   render,

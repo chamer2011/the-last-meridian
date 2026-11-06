@@ -61,6 +61,7 @@ export function pickPocket(game, who, where) {
     reason: `Pick ${who.short}'s pocket`,
     scene: `${who.name}${who.doing ? `, ${who.doing}` : ""}.`,
     source: "person",
+    target: `person:${who.key}`,
   });
   game.personAsked = { how: "pickpocket", place: where.place, room: where.room, key: who.key, id: who.id ?? null, name: who.name, short: who.short };
   return { check: true };

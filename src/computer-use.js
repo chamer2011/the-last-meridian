@@ -206,10 +206,10 @@ function connectTo(game, session, content, id) {
   const next = writtenContent(id);
   const summary = finish(game, session, [`[COMPUTER] From ${session.name} you reached for ${next.name}.`]);
   if (next.yours || knowsPassword(game, id)) {
-    openSession(game, next, { how: "connected" });
+    openSession(game, next, { how: "connected", at: session.at ?? null });
     return { over: true, summary, computer: true };
   }
-  startCheck(game, { skill: "hacking", difficulty: next.classKey, reason: `Reach ${next.name} from ${session.name}`, scene: entry.desc || null, source: "computer", computer: id });
+  startCheck(game, { skill: "hacking", difficulty: next.classKey, reason: `Reach ${next.name} from ${session.name}`, scene: entry.desc || null, source: "computer", computer: id, target: session.at ?? null });
   return { over: true, summary, check: true };
 }
 

@@ -4,7 +4,7 @@
 // asks the server twice a second where everyone has got to.
 
 import { api, el } from "./dom.js";
-import { isoFrameNode, isoMark } from "./iso.js";
+import { isoFrameNode, isoKeepClear, isoMark } from "./iso.js";
 import { drawLeader, paneNode, paneOffset, paneSpringing } from "./pane.js";
 import { closePopups, popsNode, popupDrawn, popupNext, popupPressed, popupReading, resetPopups } from "./popups.js";
 
@@ -461,12 +461,12 @@ function clockHeld() {
   return null;
 }
 
-// Every skill check lets the clock run on, the story's own as well as the room's, the same as walkTick in src/walk.js.
-// Talks, fights, computers, raids and the deck plan stop it.
+// Every skill check lets the clock run on, the story's own as well as the room's, and so does a computer in use, the same
+// as walkTick in src/walk.js. Talks, fights, raids and the deck plan stop it.
 function clockWaits() {
   const { ui } = app;
   const g = ui.game;
-  return ui.streaming || ui.waiting || Boolean(g.combat || g.talk || g.computer || g.fleet.raid || walk.plan);
+  return ui.streaming || ui.waiting || Boolean(g.combat || g.talk || g.fleet.raid || walk.plan);
 }
 
 // Time stands still for anything that stops the clock, and when nobody's looking.
@@ -774,6 +774,37 @@ function drawThingPane() {
 }
 
 const zoom = () => Number(document.documentElement.style.zoom) || 1;
+
+// A floating window that's about something in the room, with the window's box on the screen where it rests: in the
+// isometric view, the room slides aside to keep that thing clear of the window. Nothing, and it slides back.
+export function keepClear(key = null, box = null) {
+  const canvas = key && box && walkShown() && isoShown() ? document.querySelector("#walk-frame canvas") : null;
+  if (!canvas?.clientWidth) {
+    isoKeepClear(null);
+    return;
+  }
+  const at = canvas.getBoundingClientRect();
+  const scale = at.width / canvas.clientWidth;
+  isoKeepClear(key, { left: (box.left - at.left) / scale, top: (box.top - at.top) / scale, right: (box.right - at.left) / scale, bottom: (box.bottom - at.top) / scale });
+}
+
+// Where a mark is on the screen right now, for a floating window's line to point at: in the isometric view where it
+// was drawn, on the classic plan its mark, or nothing when it isn't in view.
+export function markPoint(key) {
+  if (!key || !app?.ui.game?.walk || !walkShown() || walk.fullStory) return null;
+  if (isoShown()) {
+    const hit = isoMark(key);
+    const canvas = document.querySelector("#walk-frame canvas");
+    if (!hit || !canvas?.clientWidth) return null;
+    const box = canvas.getBoundingClientRect();
+    const scale = box.width / canvas.clientWidth;
+    return { x: box.left + (hit.x + hit.w / 2) * scale, y: box.top + (hit.y + hit.h / 2) * scale };
+  }
+  const mark = document.querySelector(`#walk-frame [data-mark="${CSS.escape(key)}"]`);
+  if (!mark) return null;
+  const box = mark.getBoundingClientRect();
+  return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+}
 
 // ---- The right-click menu ------------------------------------------------
 

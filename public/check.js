@@ -2,9 +2,11 @@
 // used. The game on the server decides everything, and this draws what it says. Everything
 // can be clicked as well as typed, and nothing here is ever a race against the clock. It floats
 // over the room like the game's other windows, with nothing dimmed behind it and the room's clock
-// running on, and it can be pulled aside with the mouse and slides back when it's let go.
+// running on, it can be pulled aside with the mouse and slides back when it's let go, and a line
+// runs from it to what the check is about (float.js).
 
 import { api, el } from "./dom.js";
+import { leaderNode, pullable } from "./float.js";
 
 const check = {
   id: null,
@@ -406,80 +408,9 @@ function rainFor(seed) {
 export function checkNode() {
   sync();
   if (!checkOpen()) return null;
-  return el("div", { class: "check-float", id: "check" }, pullable(check.outcome ? resultNode() : windowNode()));
-}
-
-// ---- Pulling the window aside ---------------------------------------------
-
-// It moves with the mouse while it's held, and slides back when it's let go, the way the panes in the room do. The pull is
-// kept here and not on the window, so a redraw in the middle of it carries on.
-const pull = { on: null, dx: 0, dy: 0 };
-const zoom = () => Number(document.documentElement.style.zoom) || 1;
-const PULL_SKIPS = "button, a, input, textarea, select, label, summary, details, [data-lore]";
-
-function pullable(node) {
-  node.addEventListener("pointerdown", pressed);
-  // A pull ends with a click the browser sends anyway, and that click mustn't press anything.
-  node.addEventListener("click", (event) => {
-    if (!node.dataset.swallow) return;
-    delete node.dataset.swallow;
-    event.stopPropagation();
-    event.preventDefault();
-  }, true);
-  if (pull.on?.moved) {
-    node.classList.add("dragging");
-    node.style.transform = `translate(${pull.dx}px, ${pull.dy}px)`;
-  }
-  return node;
-}
-
-function pressed(event) {
-  if (event.button !== 0 || pull.on || event.target.closest(PULL_SKIPS)) return;
-  // No text gets selected by a pull, and the keyboard stays on the console.
-  event.preventDefault();
-  pull.on = { x: event.clientX, y: event.clientY, id: event.pointerId, moved: false };
-  document.addEventListener("pointermove", moved);
-  document.addEventListener("pointerup", released);
-  document.addEventListener("pointercancel", released);
-}
-
-function moved(event) {
-  const on = pull.on;
-  if (!on || event.pointerId !== on.id) return;
-  const dx = (event.clientX - on.x) / zoom();
-  const dy = (event.clientY - on.y) / zoom();
-  // A hand that wobbles while clicking isn't pulling.
-  if (!on.moved) {
-    if (Math.hypot(dx, dy) < 4) return;
-    on.moved = true;
-  }
-  pull.dx = dx;
-  pull.dy = dy;
-  const node = document.getElementById("check-window");
-  if (!node) return;
-  node.classList.remove("springing");
-  node.classList.add("dragging");
-  node.style.transform = `translate(${dx}px, ${dy}px)`;
-}
-
-function released(event) {
-  const on = pull.on;
-  if (!on || event.pointerId !== on.id) return;
-  pull.on = null;
-  document.removeEventListener("pointermove", moved);
-  document.removeEventListener("pointerup", released);
-  document.removeEventListener("pointercancel", released);
-  if (!on.moved) return;
-  pull.dx = 0;
-  pull.dy = 0;
-  const node = document.getElementById("check-window");
-  if (!node) return;
-  node.dataset.swallow = "1";
-  setTimeout(() => delete node.dataset.swallow, 60);
-  node.classList.remove("dragging");
-  node.classList.add("springing");
-  node.style.transform = "";
-  setTimeout(() => node.classList.remove("springing"), 360);
+  // The line points at what the check is about, through to its result.
+  const target = check.outcome ? check.outcome.target : check.view?.target;
+  return el("div", { class: "check-float", id: "check" }, leaderNode(target), pullable(check.outcome ? resultNode() : windowNode()));
 }
 
 function draw() {

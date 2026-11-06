@@ -21,7 +21,7 @@ import { START_LIST, inTheFleet, isCaptain, jobHere, roleBrief, startOf, toOutsi
 import { recordLines, recordView } from "./record.js";
 import { advanceStories, clockOf } from "./story-clock.js";
 import { emptyStory, storyView } from "./story-library.js";
-import { startInRoom, talkView, walkLine, walkView } from "./walk.js";
+import { checkTarget, startInRoom, talkView, walkLine, walkView } from "./walk.js";
 import { computerView } from "./computers.js";
 import { advanceSystems, jumpBlocked, roomEdge, shipSystemsView, systemsLine } from "./systems.js";
 import { buildLoreIndex, findLoreIds } from "../public/story.js";
@@ -1006,7 +1006,7 @@ export function publicState(game) {
       holds: holdingsOf(game, id),
     })),
     combat: combatView(game),
-    check: checkView(game),
+    check: game.check ? { ...checkView(game), target: checkTarget(game) } : null,
     walk: walkView(game),
     talk: talkView(game),
     computer: computerView(game),

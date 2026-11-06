@@ -1874,6 +1874,10 @@ const iso = {
   calm: false,
   focus: null,
   covered: 0,
+  // A floating window that's about something in the room, and how far the room has slid to keep it clear of the window.
+  clear: null,
+  nudge: { x: 0, y: 0 },
+  drawnNudge: { x: 0, y: 0 },
 };
 
 function useScene(view) {
@@ -1975,8 +1979,40 @@ function aim(width, height, dt) {
   const by = 1 - Math.exp(-dt / 160);
   iso.camera.u += (goal.u - iso.camera.u) * by;
   iso.camera.v += (goal.v - iso.camera.v) * by;
+  // The room slides aside for a floating window, and back once it's gone, at the same pace.
+  const slide = clearNudge(width, seen);
+  if (iso.calm) iso.nudge = { ...slide };
+  iso.nudge.x += (slide.x - iso.nudge.x) * by;
+  iso.nudge.y += (slide.y - iso.nudge.y) * by;
+  if (Math.abs(slide.x - iso.nudge.x) < 0.5 && Math.abs(slide.y - iso.nudge.y) < 0.5) iso.nudge = { ...slide };
+  else iso.redraw = true;
+  iso.drawnNudge = { x: Math.round(iso.nudge.x), y: Math.round(iso.nudge.y) };
   // Whole pixels, so that the texture on the floor stays crisp while the camera moves.
-  return { ox: Math.round(width / 2 - iso.camera.u * unit), oy: Math.round(seen / 2 - iso.camera.v * unit) };
+  return { ox: Math.round(width / 2 - iso.camera.u * unit) + iso.drawnNudge.x, oy: Math.round(seen / 2 - iso.camera.v * unit) + iso.drawnNudge.y };
+}
+
+// How far to slide the room so that what a floating window is about shows beside it, not under it: the least of down,
+// up, left or right that puts it clear of the window and still in view, or nothing when it's already clear or can't be.
+// The strip along the top, where the clock and the notes sit, doesn't count as in view. Where it was last drawn says
+// where it is, less the slide it was drawn with.
+const CLEAR_MARGIN = 30;
+const CLEAR_EDGE = 24;
+const CLEAR_TOP = 110;
+function clearNudge(width, seen) {
+  const clear = iso.clear;
+  if (!clear) return { x: 0, y: 0 };
+  const hit = iso.hits.find((one) => one.key === clear.key);
+  if (!hit) return clear.last ?? { x: 0, y: 0 };
+  const p = { x: hit.x + hit.w / 2 - iso.drawnNudge.x, y: hit.y + hit.h / 2 - iso.drawnNudge.y };
+  const box = { left: clear.left - CLEAR_MARGIN, top: clear.top - CLEAR_MARGIN, right: clear.right + CLEAR_MARGIN, bottom: clear.bottom + CLEAR_MARGIN };
+  let slide = { x: 0, y: 0 };
+  if (p.x > box.left && p.x < box.right && p.y > box.top && p.y < box.bottom) {
+    const fits = (t) => p.x + t.x >= CLEAR_EDGE && p.x + t.x <= width - CLEAR_EDGE && p.y + t.y >= CLEAR_TOP && p.y + t.y <= seen - CLEAR_EDGE;
+    const options = [{ x: 0, y: box.bottom - p.y }, { x: 0, y: box.top - p.y }, { x: box.left - p.x, y: 0 }, { x: box.right - p.x, y: 0 }].filter(fits);
+    if (options.length) slide = options.reduce((best, t) => (Math.hypot(t.x, t.y) < Math.hypot(best.x, best.y) ? t : best));
+  }
+  clear.last = slide;
+  return slide;
 }
 
 function drawWater(painter, now) {
@@ -2272,6 +2308,23 @@ export function isoLook({ person = null, bottom = 0 } = {}) {
   if (iso.focus === person && iso.covered === bottom) return;
   iso.focus = person;
   iso.covered = bottom;
+  iso.redraw = true;
+}
+
+// A window floating over the room that's about something in it, by its key, with the window's box in the canvas's own
+// measure: the room slides aside to keep that thing clear of it. Nothing, and the room slides back.
+export function isoKeepClear(key = null, box = null) {
+  const was = iso.clear;
+  if (!key || !box) {
+    if (was) {
+      iso.clear = null;
+      iso.redraw = true;
+    }
+    return;
+  }
+  const same = was && was.key === key && ["left", "top", "right", "bottom"].every((side) => Math.abs(was[side] - box[side]) < 1);
+  if (same) return;
+  iso.clear = { key, left: box.left, top: box.top, right: box.right, bottom: box.bottom, last: was?.key === key ? was.last : null };
   iso.redraw = true;
 }
 
