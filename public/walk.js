@@ -294,7 +294,7 @@ function frameNode() {
   if (isoShown()) {
     walk.shownLevel = view.here.id;
     walk.marks = new Map();
-    return el("div", { class: "walk-frame", id: "walk-frame" }, isoFrameNode({ view: () => app.ui.game?.walk ?? null, spot: shownSpot, blocked: cannotWalk, go, menu: (key, point) => openMenu(key, point), pressed: () => menuJustShut() || (popupsShown() && popupPressed()), reading: () => popupsShown() && popupReading(), drawn: () => {
+    return el("div", { class: "walk-frame", id: "walk-frame" }, isoFrameNode({ view: () => app.ui.game?.walk ?? null, spot: shownSpot, blocked: cannotWalk, go, menu: (key, point) => openMenu(key, point), pressed: () => menuJustShut() || (popupsShown() && !anotherWindow() && popupPressed()), reading: () => popupsShown() && !anotherWindow() && popupReading(), drawn: () => {
       popupDrawn();
       placeThingPane();
     } }));
@@ -461,14 +461,12 @@ function clockHeld() {
   return null;
 }
 
-// Checks that come from the room itself, on its parts, things, doors and computers, let the clock run on, the same as
-// ROOM_CHECKS in src/walk.js, picking a pocket among them. Talks, fights, computers, raids, the deck plan and the story's
-// own checks stop it.
-const ROOM_CHECKS = ["part", "thing", "door", "computer", "person"];
+// Every skill check lets the clock run on, the story's own as well as the room's, the same as walkTick in src/walk.js.
+// Talks, fights, computers, raids and the deck plan stop it.
 function clockWaits() {
   const { ui } = app;
   const g = ui.game;
-  return ui.streaming || ui.waiting || Boolean(g.combat || g.talk || g.computer || g.fleet.raid || walk.plan || (g.check && !ROOM_CHECKS.includes(g.check.source)));
+  return ui.streaming || ui.waiting || Boolean(g.combat || g.talk || g.computer || g.fleet.raid || walk.plan);
 }
 
 // Time stands still for anything that stops the clock, and when nobody's looking.

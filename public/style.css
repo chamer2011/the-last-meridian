@@ -565,6 +565,22 @@ button.fighter:hover:not(:disabled), button.fighter:focus-visible { background: 
   .computer-body .check-advisor-tab { left: auto; right: 10px; top: -15px; transform: none; width: 44px; height: 15px; border: 1px solid var(--c-line); border-bottom: 0; }
 }
 .check-result { width: min(100%, 76ch); cursor: default; }
+/* The check window floats over the room the way the game's other windows do: nothing behind it is dimmed, the room's
+   clock runs on, everything around it can still be seen, and it can be pulled aside and slides back when it's let go.
+   It's a little smaller than the desk it used to be, and it starts below the room's clock, so the time can be seen
+   going by. */
+.check-float {
+  position: absolute; top: 0; bottom: 0; left: 0; right: var(--rail-width); z-index: 28;
+  display: flex; align-items: flex-start; justify-content: center; padding: calc(max(10px, 3vh) + 5em) 16px 16px;
+  pointer-events: none;
+}
+.check-float > .check-window { width: min(100%, 112ch); pointer-events: auto; cursor: grab; }
+.check-float > .check-result { width: min(100%, 66ch); }
+.check-float > .check-window.dragging { cursor: grabbing; user-select: none; }
+.check-float > .check-window.springing { transition: transform .32s cubic-bezier(.2, .9, .3, 1.08); }
+.check-float .check-log { height: 12em; min-height: 7em; max-height: 30vh; }
+.check-float .check-verdict { padding: 14px 14px; }
+.check-float .check-verdict-title { font-size: 22px; padding: 8px 0; }
 .check-verdict { padding: 18px 16px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
 .check-verdict-title { font-size: 26px; line-height: 1.2; font-weight: 700; letter-spacing: .12em; text-align: center; padding: 10px 0; border: 1px solid currentColor; }
 .check-verdict-line { color: var(--c-bright); }
@@ -589,8 +605,22 @@ button.fighter:hover:not(:disabled), button.fighter:focus-visible { background: 
   .check-tab, .check-start, .check-spacer { display: none; }
   .check-taskbar { flex-wrap: wrap; justify-content: space-between; }
 }
+/* Floating, the check window keeps its consoles side by side while there's the room for them, so it doesn't cover the
+   whole room in a smaller window. */
+@media (max-width: 860px) and (min-width: 641px) {
+  .check-float .check-desk { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .check-float .check-desk[data-count="1"] { grid-template-columns: minmax(0, 1fr); }
+  .check-float .check-desk:not([data-count="2"]) .check-panel.terminal { grid-row: span 2; }
+}
+@media (max-width: 860px) {
+  .check-float .check-log { height: 9em; min-height: 6em; max-height: 24vh; }
+}
+/* On a short screen the window needs the height more than the clock needs to be seen. */
+@media (max-height: 700px) {
+  .check-float { padding-top: max(10px, 3vh); }
+}
 @media (max-width: 560px) {
-  .check-overlay { padding: 0; }
+  .check-overlay, .check-float { padding: 0; }
   .check-window { border-width: 0 0 1px; box-shadow: none; }
 }
 

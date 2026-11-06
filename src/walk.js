@@ -935,12 +935,10 @@ function peopleNow(game) {
 }
 
 // The clock running by itself, while the player explores somewhere people live their days. It waits
-// for anything with its own window, because time stands still for those, and everywhere else it stays still.
-// Checks that come from the room itself, on its parts, things, doors and computers, let the clock run on. The story's own
-// checks, talks, fights, computers and raids hold it.
-export const ROOM_CHECKS = ["part", "thing", "door", "computer", "person"];
+// for talks, fights, computers and raids, because time stands still for those, and everywhere else it stays still.
+// Every skill check lets it run on, the story's own as well as those on the room's parts, things, doors and people.
 export function walkTick(game, body) {
-  if (game.combat || game.talk || game.computer || game.fleet?.raid || (game.check && !ROOM_CHECKS.includes(game.check.source))) return { held: true };
+  if (game.combat || game.talk || game.computer || game.fleet?.raid) return { held: true };
   if (!walkAt(game) || !livesHere(game.location)) return { still: true };
   if (!CLOCK_RATES.includes(body.rate)) throw new Error("That isn't one of the clock's speeds.");
   const ms = Math.max(0, Math.min(Number(body.ms) || 0, LONGEST_TICK));
