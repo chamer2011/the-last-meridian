@@ -7,33 +7,33 @@ import { findCharacter, findEnemy } from "./campaign.js";
 import { SKILLS } from "./character-data.js";
 import { startCheck } from "./checks.js";
 import { startCombat } from "./combat.js";
-import { FACTIONS, LOCATIONS } from "./data.js";
+import { LOCATIONS } from "./data.js";
+import { holderOf } from "./daily.js";
 import { recordFact } from "./record.js";
+import { changeStanding, findContact, hoursNow } from "./rules.js";
 import { ownedBy, soundAlarm, watched } from "./systems.js";
 import { DEEDS } from "./world.js";
 
 const LADDER = ["easy", "moderate", "hard", "very_hard", "nearly_impossible"];
 const ATTITUDES = ["hostile", "wary", "neutral", "friendly", "ally"];
-const now = (game) => game.clock?.hours ?? 0;
 const between = (low, high) => low + Math.floor(Math.random() * (high - low + 1));
 const placeName = (place) => LOCATIONS[place]?.name ?? place;
 const spotOf = (place, key) => `${place}:${key}`;
-const holderOf = (game, place) => game.world?.places?.[place]?.holder ?? LOCATIONS[place]?.faction ?? null;
 // Someone without a file whose name says they watch for a living, like a Station Guard or a Hunter.
 const watchful = (name) => (DEEDS.watchful ?? []).some((word) => new RegExp(`\\b${word}\\b`, "i").test(String(name)));
 
 // ---- Who's wary, and who's been beaten ------------------------------------------------------------------
 
 // Reading these never writes to the save: showing the game changes nothing.
-export const isWary = (game, place, key) => (game.deeds?.wary?.[spotOf(place, key)] ?? -Infinity) > now(game);
-export const isHurt = (game, place, key) => (game.deeds?.hurt?.[spotOf(place, key)] ?? -Infinity) > now(game);
+export const isWary = (game, place, key) => (game.deeds?.wary?.[spotOf(place, key)] ?? -Infinity) > hoursNow(game);
+export const isHurt = (game, place, key) => (game.deeds?.hurt?.[spotOf(place, key)] ?? -Infinity) > hoursNow(game);
 
 function markFor(game, list, place, key, hours) {
   game.deeds ??= {};
   game.deeds[list] ??= {};
   // Marks that have run out go, so the save doesn't grow.
-  for (const [spot, until] of Object.entries(game.deeds[list])) if (until <= now(game)) delete game.deeds[list][spot];
-  game.deeds[list][spotOf(place, key)] = now(game) + hours;
+  for (const [spot, until] of Object.entries(game.deeds[list])) if (until <= hoursNow(game)) delete game.deeds[list][spot];
+  game.deeds[list][spotOf(place, key)] = hoursNow(game) + hours;
 }
 
 // ---- Picking a pocket ------------------------------------------------------------------------------------
@@ -139,10 +139,8 @@ function costs(game, place, { standing = 0, morale = 0 }, why) {
     game.ship.morale = Math.max(0, Math.min(100, game.ship.morale + morale));
     return [`[SHIP] Morale ${morale}: ${why}`];
   }
-  const holder = holderOf(game, place);
-  if (!standing || !holder || !FACTIONS[holder] || game.factions?.[holder] === undefined) return [];
-  game.factions[holder] = Math.max(-100, Math.min(100, game.factions[holder] + standing));
-  return [`[FACTION] ${FACTIONS[holder].name} ${standing}: ${why}`];
+  const line = changeStanding(game, holderOf(game, place), standing, why);
+  return line ? [line] : [];
 }
 
 // Someone with a file thinks less of the player: a step down, or straight to hostile.
@@ -150,7 +148,7 @@ function worsen(game, id, { to = null, note }) {
   const person = findCharacter(game.campaign, id);
   if (!person) return [];
   game.contacts ??= [];
-  const contact = game.contacts.find((one) => one.name.toLowerCase() === person.name.toLowerCase());
+  const contact = findContact(game, person.name);
   const before = contact?.attitude ?? "neutral";
   const at = ATTITUDES.indexOf(before);
   const after = to ?? (at < 0 ? "wary" : ATTITUDES[Math.max(0, at - 1)]);

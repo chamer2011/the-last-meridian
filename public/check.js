@@ -7,6 +7,7 @@
 
 import { api, el } from "./dom.js";
 import { leaderNode, pullable } from "./float.js";
+import { untagged } from "./story.js";
 
 const check = {
   id: null,
@@ -246,7 +247,7 @@ function resultNode() {
       settled && [
         outcome.line && el("div", { class: "check-verdict-line" }, outcome.line),
         el("div", { class: "check-verdict-math" }, `${outcome.label}: ${outcome.math}`),
-        outcome.notes?.map((note) => el("div", { class: "tone-good" }, note.replace(/^\[[A-Z]+\]\s*/, ""))),
+        outcome.notes?.map((note) => el("div", { class: "tone-good" }, untagged(note))),
         el("div", { class: "options" }, choices.map(([label, run, detail], i) => el("button", {
           "data-choice": String(i + 1),
           onclick: (event) => {

@@ -557,7 +557,7 @@ function closeMenu() {
   renderRail();
   if (fightOpen()) focusFight();
   else if (checkOpen()) focusCheck();
-  else if (raidOpen()) focusRaid();
+  else if (raidOpen() && !computerOpen()) focusRaid();
   else if (talkOpen()) focusTalk();
   else if (computerOpen()) focusComputer();
   else if (thingOpen()) focusThing();
@@ -614,7 +614,7 @@ function render() {
   if (ui.sideOpen) {
     const body = document.querySelector("#side .menu-body");
     if (body) body.scrollTop = menuTop;
-  } else if (raidOpen() && !fightOpen() && !checkOpen()) {
+  } else if (raidOpen() && !fightOpen() && !checkOpen() && !computerOpen()) {
     focusRaid();
   } else if (talkOpen() && !fightOpen() && !checkOpen()) {
     focusTalk();
@@ -683,7 +683,8 @@ initMenus({
 
 initFight({ ui, render, sendChat, openMenu, closeMenu });
 initCheck({ ui, render, sendChat, openMenu, closeMenu });
-initFleet({ ui, render, runAction, renderMenus, openMenu, closeMenu, fightOrCheckOpen: () => fightOpen() || checkOpen() });
+// A raid waits for a fight, a check or a computer to be done with, and then has the whole screen.
+initFleet({ ui, render, runAction, renderMenus, openMenu, closeMenu, raidWaits: () => fightOpen() || checkOpen() || computerOpen() });
 initWalk({ ui, reading, render, renderStatus, sendChat, startTalk, act });
 initPopups({
   ui,

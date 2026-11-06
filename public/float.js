@@ -2,10 +2,8 @@
 // it, and let go they slide back, the way the panes in the room do; and a thin line runs from each to whatever it's
 // about in the room, a part, a door, a person or a console, the way the panes point at their people and things.
 
-const NS = "http://www.w3.org/2000/svg";
-const zoom = () => Number(document.documentElement.style.zoom) || 1;
-// Taking hold of a window anywhere but these, which are for clicking.
-const SKIPS = "button, a, input, textarea, select, label, summary, details, [data-lore]";
+import { lineAndDot, zoom } from "./dom.js";
+import { SPRING_MS, makePullable, pulledBy } from "./pull.js";
 
 // Where something is on the screen, and how to keep it clear of a window, from the walk view, which knows the room. Set
 // once, when the page loads.
@@ -18,71 +16,22 @@ export function aimWith(finder, clearer = () => {}) {
 
 // ---- Pulling a window aside -----------------------------------------------------------------
 
-// The pull is kept here by the window's id, not on the window, so a redraw in the middle of it carries on.
-let active = null;
-
+// The window moves by a transform while it's pulled, and slides back by the transform going. A redraw in the middle of
+// a pull carries on from where it was.
 export function pullable(node) {
-  const id = node.id;
-  node.addEventListener("pointerdown", (event) => pressed(event, id));
-  // A pull ends with a click the browser sends anyway, and that click mustn't press anything.
-  node.addEventListener("click", (event) => {
-    if (!node.dataset.swallow) return;
-    delete node.dataset.swallow;
-    event.stopPropagation();
-    event.preventDefault();
-  }, true);
-  if (active?.id === id && active.moved) {
-    node.classList.add("dragging");
-    node.style.transform = `translate(${active.dx}px, ${active.dy}px)`;
-  }
+  makePullable(node, {
+    follow: (win, dx, dy) => {
+      win.style.transform = `translate(${dx}px, ${dy}px)`;
+      aimLeaders();
+    },
+    back: (win) => {
+      win.style.transform = "";
+      setTimeout(() => win.classList.remove("springing"), SPRING_MS);
+    },
+  });
+  const pulled = pulledBy(node.id);
+  if (pulled) node.style.transform = `translate(${pulled.x}px, ${pulled.y}px)`;
   return node;
-}
-
-function pressed(event, id) {
-  if (event.button !== 0 || active || event.target.closest(SKIPS)) return;
-  // No text gets selected by a pull, and the keyboard stays where it was.
-  event.preventDefault();
-  active = { id, x: event.clientX, y: event.clientY, pointer: event.pointerId, moved: false, dx: 0, dy: 0 };
-  document.addEventListener("pointermove", moved);
-  document.addEventListener("pointerup", released);
-  document.addEventListener("pointercancel", released);
-}
-
-function moved(event) {
-  if (!active || event.pointerId !== active.pointer) return;
-  const dx = (event.clientX - active.x) / zoom();
-  const dy = (event.clientY - active.y) / zoom();
-  // A hand that wobbles while clicking isn't pulling.
-  if (!active.moved) {
-    if (Math.hypot(dx, dy) < 4) return;
-    active.moved = true;
-  }
-  active.dx = dx;
-  active.dy = dy;
-  const node = document.getElementById(active.id);
-  if (!node) return;
-  node.classList.remove("springing");
-  node.classList.add("dragging");
-  node.style.transform = `translate(${dx}px, ${dy}px)`;
-  aimLeaders();
-}
-
-function released(event) {
-  if (!active || event.pointerId !== active.pointer) return;
-  const was = active;
-  active = null;
-  document.removeEventListener("pointermove", moved);
-  document.removeEventListener("pointerup", released);
-  document.removeEventListener("pointercancel", released);
-  if (!was.moved) return;
-  const node = document.getElementById(was.id);
-  if (!node) return;
-  node.dataset.swallow = "1";
-  setTimeout(() => delete node.dataset.swallow, 60);
-  node.classList.remove("dragging");
-  node.classList.add("springing");
-  node.style.transform = "";
-  setTimeout(() => node.classList.remove("springing"), 360);
 }
 
 // ---- The line to what it's about ----------------------------------------------------------------
@@ -92,13 +41,8 @@ function released(event) {
 // it's pulled aside and slides back. Nothing's drawn when the thing isn't in view, or is under the window.
 export function leaderNode(target) {
   if (!target) return null;
-  const svg = document.createElementNS(NS, "svg");
-  svg.setAttribute("class", "float-leader");
-  svg.setAttribute("aria-hidden", "true");
+  const svg = lineAndDot("float-leader");
   svg.dataset.target = target;
-  const dot = document.createElementNS(NS, "circle");
-  dot.setAttribute("r", "2.5");
-  svg.append(document.createElementNS(NS, "line"), dot);
   startAiming();
   return svg;
 }

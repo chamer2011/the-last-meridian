@@ -7,10 +7,10 @@
 
 import { findCharacter, findEnemy } from "./campaign.js";
 import { ATTITUDE_VALUES, CONDITIONS, FACTION_BELIEFS, NOTABLES, SKILLS } from "./character-data.js";
-import { ABILITIES, ENEMIES, FACTIONS, ITEMS, STATS } from "./data.js";
+import { ABILITIES, ENEMIES, ITEMS, STATS } from "./data.js";
 import { THREAT_LABELS } from "./npc.js";
 import {
-  addCondition, addFatigue, attrMod, beliefAffinity, changeStress, checkParts, clamp, defense, fxSum, grantXp, maxEnergy, maxHp, oddsFor, practice, roll, skillRank,
+  addCondition, addFatigue, attrMod, beliefAffinity, changeStanding, changeStress, checkParts, clamp, defense, fxSum, grantXp, maxEnergy, maxHp, oddsFor, practice, roll, skillRank,
   unlockedAbilities, useItem,
 } from "./rules.js";
 import { COMBAT_ART, COMBAT_TEXT, PARLEY } from "./world.js";
@@ -499,10 +499,8 @@ function tryParley(game, c, target, id, log) {
     }
     target.out = id;
     log.push({ by: YOU, on: target.key, out: approach.out, text: parleyLine(target, id, "worked"), tone: "good", math: `${total} vs ${found.dc}${found.price !== null ? `, -${found.price} credits` : ""}` });
-    if (approach.standing && target.faction && FACTIONS[target.faction] && !c.training) {
-      game.factions[target.faction] = clamp((game.factions[target.faction] ?? 0) + approach.standing, -100, 100);
-      addNotes(c, log, [`[FACTION] ${FACTIONS[target.faction].name} ${withSign(approach.standing)}: you ${approach.standing > 0 ? "talked your way out of a fight with one of theirs" : "frightened off one of theirs"}`]);
-    }
+    const standing = c.training ? null : changeStanding(game, target.faction, approach.standing, `you ${approach.standing > 0 ? "talked your way out of a fight with one of theirs" : "frightened off one of theirs"}`);
+    if (standing) addNotes(c, log, [standing]);
   }
   addNotes(c, log, practice(game, approach.skill, worked ? 3 : 2));
 }

@@ -3,9 +3,10 @@
 // the AI. Where people live their own days, the clock runs while the player explores, and this page
 // asks the server twice a second where everyone has got to.
 
-import { api, el } from "./dom.js";
+import { api, el, zoom } from "./dom.js";
 import { isoFrameNode, isoKeepClear, isoMark } from "./iso.js";
-import { drawLeader, paneNode, paneOffset, paneSpringing } from "./pane.js";
+import { paneNode, putPane } from "./pane.js";
+import { untagged } from "./story.js";
 import { closePopups, popsNode, popupDrawn, popupNext, popupPressed, popupReading, resetPopups } from "./popups.js";
 
 const STEP_TIME = 28;
@@ -671,13 +672,12 @@ async function workOn(thing, how) {
 const markKey = (thing) => (thing.person ? `person:${thing.key}` : thing.door ? `exit:${thing.key}` : `thing:${thing.id}`);
 // The console's colours by kind: gold for things, teal for the ship's parts, amber when a part's off or dead or a door's
 // only shut, and red when a door's locked or the alarm's ringing.
-const THEME_COLORS = { gold: "#f5d76e", teal: "#76ecd2", amber: "#ffc466", red: "#ff8f7f" };
 // Someone looked at is in their own colour.
 const paneTheme = (thing) => (thing.person ? "person" : thing.door ? (thing.locked ? "red" : "amber") : thing.part ? (thing.part.ringing ? "red" : thing.part.works ? "teal" : "amber") : "gold");
 // The Actions window overlaps the thing's window by a pixel, so the two share one edge.
 const GLUE = -1;
 // What the game says comes with a tag in front, like [SYSTEMS] or [ITEM]; the window shows the words alone.
-const plainLines = (text) => String(text).split("\n").map((line) => line.replace(/^\[[A-Z]+\]\s*/, "")).filter(Boolean);
+const plainLines = (text) => String(text).split("\n").map(untagged).filter(Boolean);
 
 function thingChoices(thing) {
   if (thing.person) return personChoices(thing);
@@ -697,7 +697,7 @@ function thingPane(thing) {
   const node = paneNode({
     id: "walk-window",
     key,
-    color: theme === "person" ? thing.color : THEME_COLORS[theme],
+    color: theme === "person" ? thing.color : null,
     opening,
     className: "walk-thing-pane",
     place: placeThingPane,
@@ -773,7 +773,6 @@ function drawThingPane() {
   if (!fresh) uncoverNotes();
 }
 
-const zoom = () => Number(document.documentElement.style.zoom) || 1;
 
 // A floating window that's about something in the room, with the window's box on the screen where it rests: in the
 // isometric view, the room slides aside to keep that thing clear of the window. Nothing, and it slides back.
@@ -792,18 +791,21 @@ export function keepClear(key = null, box = null) {
 // was drawn, on the classic plan its mark, or nothing when it isn't in view.
 export function markPoint(key) {
   if (!key || !app?.ui.game?.walk || !walkShown() || walk.fullStory) return null;
+  const box = markBox(key);
+  return box ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : null;
+}
+
+// Where a mark is on the screen, as a box in the screen's pixels: its hit on the isometric room, or its place on the plan.
+function markBox(key) {
   if (isoShown()) {
     const hit = isoMark(key);
     const canvas = document.querySelector("#walk-frame canvas");
     if (!hit || !canvas?.clientWidth) return null;
     const box = canvas.getBoundingClientRect();
     const scale = box.width / canvas.clientWidth;
-    return { x: box.left + (hit.x + hit.w / 2) * scale, y: box.top + (hit.y + hit.h / 2) * scale };
+    return { left: box.left + hit.x * scale, top: box.top + hit.y * scale, width: hit.w * scale, height: hit.h * scale };
   }
-  const mark = document.querySelector(`#walk-frame [data-mark="${CSS.escape(key)}"]`);
-  if (!mark) return null;
-  const box = mark.getBoundingClientRect();
-  return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  return document.querySelector(`#walk-frame [data-mark="${CSS.escape(key)}"]`)?.getBoundingClientRect() ?? null;
 }
 
 // ---- The right-click menu ------------------------------------------------
@@ -1040,18 +1042,10 @@ function placeMenu() {
 
 // Where the thing is, in the layer's own measure: where the isometric view drew it, or its mark on the plan.
 function thingSpot(layer, thing) {
+  const box = markBox(markKey(thing));
+  if (!box) return null;
   const base = layer.getBoundingClientRect();
   const z = zoom();
-  if (isoShown()) {
-    const hit = isoMark(markKey(thing));
-    const canvas = document.querySelector("#walk-frame canvas");
-    if (!hit || !canvas) return null;
-    const box = canvas.getBoundingClientRect();
-    return { x: hit.x + (box.left - base.left) / z, y: hit.y + (box.top - base.top) / z, w: hit.w, h: hit.h };
-  }
-  const mark = document.querySelector(`#walk-frame [data-mark="${CSS.escape(markKey(thing))}"]`);
-  if (!mark) return null;
-  const box = mark.getBoundingClientRect();
   return { x: (box.left - base.left) / z, y: (box.top - base.top) / z, w: box.width / z, h: box.height / z };
 }
 
@@ -1115,17 +1109,7 @@ function placeThingPane() {
   // Side by side, the taller of the two keeps them both above the bottom, with their bars level.
   const pairTall = beside ? Math.max(tall, tallOf(panel)) : tall;
   const top = Math.max(roof, Math.min(floor - pairTall, mark.y - 14 - tall));
-  node.placedAt = { left, top, wide, tall };
-  const pulled = paneOffset(node);
-  node.style.transform = `translate(${Math.round(left + pulled.x)}px, ${Math.round(top + pulled.y)}px)`;
-  // While it slides back, the line is drawn from wherever it is on the way.
-  let at = { left: left + pulled.x, top: top + pulled.y };
-  if (paneSpringing(node)) {
-    const here = node.getBoundingClientRect();
-    at = { left: (here.left - base.left) / z, top: (here.top - base.top) / z };
-  }
-  if (spot) drawLeader(node, { ...at, wide, tall, side }, mark);
-  node.classList.toggle("no-head", !spot);
+  putPane(node, layer, { left, top, wide, tall, side }, spot ? mark : null);
   placeThingChoices(node, { top, tall, floor, roof, side, beside });
   node.classList.add("placed");
   // The notes at the top step aside while the pane or its choices would cover them, and come back once they wouldn't.
