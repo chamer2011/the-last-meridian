@@ -26,6 +26,7 @@ import { computerView } from "./computers.js";
 import { advanceSystems, jumpBlocked, roomEdge, shipSystemsView, systemsLine } from "./systems.js";
 import { buildLoreIndex, findLoreIds } from "../public/story.js";
 import { bagView, roomFor, tiring } from "./bag.js";
+import { heldUp, questsView } from "./quests.js";
 
 export { combatAction, startCombat } from "./combat.js";
 
@@ -956,7 +957,8 @@ export function publicState(game) {
     locations: locationList(game),
     pendingEvents: game.pendingEvents.length,
     mode: game.mode ?? "ai",
-    scene: game.scene ? { id: game.scene.id, part: game.scene.part } : null,
+    // held: the scene's part waits for someone the player isn't with, so its choices aren't on offer.
+    scene: game.scene ? { id: game.scene.id, part: game.scene.part, quest: game.scene.quest ?? null, with: game.scene.with ?? null, told: game.scene.told !== false, held: heldUp(game) } : null,
     files: {
       world: "world",
       campaign: game.campaign ? campaignFolderName(game.campaign) : null,
@@ -1009,6 +1011,7 @@ export function publicState(game) {
       .map(([id, p]) => ({ id, name: p.name, desc: p.desc, owned: game.perks.includes(id), career: Boolean(p.starting), ...perkAvailability(game, id) })),
     abilities: unlockedAbilities(game),
     quests: game.quests,
+    questLog: questsView(game),
     contacts: contactList(game),
     journal: game.journal,
     lore: game.lore,

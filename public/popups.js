@@ -1,13 +1,14 @@
 // The story over the room, in the isometric view. A scene comes up a piece at a time, with what
-// someone says on a pane by their head and the rest in a window along the bottom. Clicking
-// anywhere goes on to the next piece, and the choices are there the whole time. A talk comes up
-// the same way, with the choices beside the pane.
+// someone says on a pane by their head, and what happens over the top of the room for as long as
+// it's being read. Clicking anywhere goes on to the next piece. Nothing stays along the bottom: once
+// it's all been read, what the player can say hangs off the pane of whoever the story is waiting on,
+// as in a talk, and the typing line only comes up when Enter is pressed. A talk comes up the same way.
 
 import { el } from "./dom.js";
 import { isoLook, isoSpot } from "./iso.js";
 import { paneNode, panesPlacedBy, putPane } from "./pane.js";
 import { latestSceneStart, personSpeaking, sceneOf } from "./scene.js";
-import { blockNode, sceneBlocks, speakerOf, storyEntryNode, thinkingNode, wordNodes } from "./story-view.js";
+import { blockNode, optionContent, sceneBlocks, speakerOf, storyEntryNode, thinkingNode, wordNodes } from "./story-view.js";
 import { talkPanesNode } from "./talk.js";
 import { WRITING_SPEEDS, holdBack, newPen } from "./writer.js";
 
@@ -15,7 +16,10 @@ import { WRITING_SPEEDS, holdBack, newPen } from "./writer.js";
 const NOTE_TIME = 12000;
 const MOST_NOTES = 4;
 
-const pop = { open: false, start: null, at: 0, seen: -1, beats: [], notes: [], posted: 0, said: null, limit: 340, words: null, wordsOn: null, shownNotes: [], paneFor: null };
+// How long the last of what happens stays over the room once it's been read, when nothing else is to come.
+const CAPTION_STAYS = 7000;
+
+const pop = { open: false, start: null, at: 0, seen: -1, beats: [], notes: [], posted: 0, said: null, limit: 340, words: null, wordsOn: null, shownNotes: [], paneFor: null, faded: false, fadeTimer: null, fadeFor: null };
 
 // What the popups need from the main screen. Set once, when the page loads.
 let app;
@@ -34,7 +38,8 @@ export function initPopups(hooks) {
 export function resetPopups() {
   pen.stop();
   for (const note of pop.shownNotes) clearTimeout(note.timer);
-  Object.assign(pop, { open: false, start: null, at: 0, seen: -1, beats: [], notes: [], posted: 0, said: null, words: null, wordsOn: null, shownNotes: [], paneFor: null });
+  clearTimeout(pop.fadeTimer);
+  Object.assign(pop, { open: false, start: null, at: 0, seen: -1, beats: [], notes: [], posted: 0, said: null, words: null, wordsOn: null, shownNotes: [], paneFor: null, faded: false, fadeTimer: null, fadeFor: null });
 }
 
 const living = () => app.ui.streaming && !app.ui.game?.talk;
@@ -92,7 +97,8 @@ function sync() {
 // The player's done something, so the next thing the game master writes is a new scene.
 export function beginScene() {
   pen.stop();
-  Object.assign(pop, { open: true, start: app.ui.game?.transcript.length ?? 0, at: 0, seen: -1, beats: [], notes: [], posted: 0, said: null, limit: limitNow(), words: null, wordsOn: null });
+  clearTimeout(pop.fadeTimer);
+  Object.assign(pop, { open: true, start: app.ui.game?.transcript.length ?? 0, at: 0, seen: -1, beats: [], notes: [], posted: 0, said: null, limit: limitNow(), words: null, wordsOn: null, faded: false, fadeTimer: null, fadeFor: null });
   pen.start();
 }
 
@@ -179,6 +185,8 @@ export function popupNext() {
 
 function popupBack() {
   if (pop.at <= 0) return;
+  pop.faded = false;
+  pop.fadeFor = null;
   pen.finish();
   pop.at -= 1;
   moved();
@@ -215,7 +223,8 @@ const clickedWords = (event) => {
 // it's theirs, and only then, since the pane is drawn again for every piece.
 function balloonNode() {
   const beat = current();
-  const person = pop.open ? speakerHere(beat) : null;
+  // Once there's something to answer, the pane it hangs off says the last words instead.
+  const person = pop.open && !choicesNow().length ? speakerHere(beat) : null;
   if (!person) {
     pop.paneFor = null;
     return null;
@@ -254,41 +263,110 @@ function storyWords(beat, overHead) {
   return node;
 }
 
-function storyWindow() {
+// What happens, over the top of the room: the piece being read when it isn't on a pane by someone's head, words from
+// someone who isn't here to have one, and what the game has to say. It goes once it's been read: as soon as the reader
+// goes on, and a little after the last piece, so nothing of the story stays in the way.
+function captionNode() {
   const { ui } = app;
   const beat = current();
   const overHead = Boolean(speakerHere(beat));
   const waiting = living() && (!beat || (pop.at === pop.beats.length - 1 && overHead));
-  const nothing = !beat && !waiting && !ui.error && !ui.consoleLines.length;
-  if (!pop.open || nothing) return null;
-  const { walk, clock } = ui.game;
+  const said = ui.error || ui.consoleLines.length;
+  const words = pop.open && beat && !overHead && !(pop.faded && atEnd()) ? storyWords(beat, false) : null;
+  if (!said && !words && !(pop.open && waiting)) return null;
   const count = pop.beats.length;
-  return el("section", { class: `check-window pop-window pop-story${overHead ? " overhead" : ""}${pop.at < count - 1 ? " more" : ""}`, "data-theme": "green", id: "pop-story", onclick: clickedWords },
-    el("header", { class: "check-title" },
-      el("span", { class: "check-name" }, walk.here.name),
-      el("span", { class: "check-skill" }, clock.label),
-      el("button", { class: "pop-close", title: "Or press Esc, or just start walking", onclick: closePopups }, "Close")),
+  return el("section", { class: `pop-caption${pop.at < count - 1 ? " more" : ""}`, id: "pop-story", onclick: clickedWords },
     el("div", { class: "pop-words", "data-scrolls": "1" },
       ui.consoleLines.map((entry) => storyEntryNode(entry)),
       ui.error && el("div", { class: "entry error" }, ui.error.message,
         el("div", { class: "row", style: "margin-top:8px" },
           el("button", { onclick: app.retry }, "Try again"),
           el("button", { onclick: app.openSettings }, "Open Settings"))),
-      pop.said && pop.at === 0 && el("div", { class: "pop-said" }, `> ${pop.said}`),
-      storyWords(beat, overHead),
-      waiting && thinkingNode()),
-    count > 0 && el("footer", { class: "check-taskbar" },
-      el("span", { class: "check-hint" }, `${pop.at + 1} of ${count}`),
-      el("button", { class: "check-command", disabled: pop.at === 0, onclick: popupBack }, "Back"),
-      el("button", { class: "check-command pop-next", disabled: pop.at >= count - 1, onclick: popupNext }, "Next"),
-      el("span", { class: "check-spacer" }),
-      el("button", { class: "check-command", onclick: app.showWholeStory }, "Whole story")));
+      pop.said && pop.at === 0 && words && el("div", { class: "pop-said" }, `> ${pop.said}`),
+      words,
+      pop.open && waiting && thinkingNode()),
+    words && count > 1 && el("div", { class: "pop-hint" },
+      el("span", {}, `${pop.at + 1} of ${count}`),
+      pop.at > 0 && el("button", { class: "pop-back", onclick: (event) => { event.stopPropagation(); popupBack(); } }, "Back"),
+      pop.at < count - 1 && el("span", {}, "click to go on")));
 }
 
-function commandWindow(composer) {
-  const reading = pop.open && pop.at < pop.beats.length - 1;
-  return el("section", { class: `check-window pop-window pop-command${reading ? " reading" : ""}`, "data-theme": "green", id: "pop-command" },
-    pop.open && el("header", { class: "check-title" }, el("span", { class: "check-name" }, "What do you do?")),
+// Whether the whole scene has been read, words and all.
+const atEnd = () => !living() && !pen.busy && pop.at >= pop.beats.length - 1;
+
+// The last of what happens goes a little after it's been read, unless the reader goes back to it.
+function fadeLater() {
+  const key = `${pop.start}:${pop.beats.length}`;
+  if (!pop.open || !atEnd() || pop.fadeFor === key) return;
+  pop.fadeFor = key;
+  clearTimeout(pop.fadeTimer);
+  pop.fadeTimer = setTimeout(() => {
+    pop.faded = true;
+    drawScene();
+  }, CAPTION_STAYS);
+}
+
+// ---- What the player can say, hanging off a pane ---------------------------------------------------------
+
+// What the player can say or do, once the scene's all been read: off the pane of whoever the story is waiting on, or of
+// the last of the people here who spoke, or of the player when nobody did.
+const choicesNow = () => (pop.open && atEnd() ? app.options?.() ?? [] : []);
+
+function answerFor() {
+  const { game } = app.ui;
+  const people = game.walk?.people ?? [];
+  if (game.scene?.with && !game.scene.held) {
+    const person = people.find((one) => one.key === game.scene.with);
+    if (person) return { key: person.key, name: person.name, color: person.color };
+  }
+  for (let i = pop.beats.length - 1; i >= 0; i -= 1) {
+    const beat = pop.beats[i];
+    if (beat.type !== "speech" || beat.voice) continue;
+    const person = personSpeaking(beat.speaker, people);
+    if (person) return { key: person.key, name: person.name, color: person.color };
+  }
+  return { key: "you", name: game.name, color: "var(--text)" };
+}
+
+// What they last said in the scene, to answer.
+function lastWordsOf(key) {
+  const people = app.ui.game.walk?.people ?? [];
+  for (let i = pop.beats.length - 1; i >= 0; i -= 1) {
+    const beat = pop.beats[i];
+    if (beat.type === "speech" && !beat.voice && personSpeaking(beat.speaker, people)?.key === key) return beat;
+  }
+  return null;
+}
+
+const cornerNodes = () => ["tl", "tr", "bl", "br"].map((corner) => el("span", { class: `pop-corner ${corner}`, "aria-hidden": "true" }));
+
+function answerNode() {
+  const options = choicesNow();
+  if (!options.length) return null;
+  const anchor = answerFor();
+  const said = anchor.key === "you" ? null : lastWordsOf(anchor.key);
+  const yours = anchor.key === "you";
+  return paneNode({
+    id: "pop-answer",
+    key: anchor.key,
+    color: anchor.color,
+    className: "pop-talk",
+    tag: el("span", { class: "pop-tag-name" }, yours ? "You" : anchor.name),
+    body: el("div", { class: "pop-words" }, said ? wordNodes(said.parts) : el("div", { class: "pop-before" }, yours ? "What do you do?" : "")),
+    extras: el("div", { class: "pop-choices in", id: "story-choices" },
+      cornerNodes(),
+      el("div", { class: "pop-tag" }, yours ? "What do you do?" : "What do you say?"),
+      el("div", { class: "options" }, options.map((option, i) => el("button", { "data-choice": String(i + 1), disabled: option.disabled, onclick: option.run },
+        el("span", { class: "option-number" }, `${i + 1})`), optionContent(option)))),
+      el("div", { class: "pop-choices-foot" }, el("span", {}, app.ui.game.mode === "written" ? "Click one, or press its number." : "Click one, or press Enter to type your own."))),
+  });
+}
+
+// The typing line comes up when Enter is pressed, or when there's a story to start, and goes again once it's used.
+function typingWindow(composer) {
+  if (!app.typing?.()) return null;
+  return el("section", { class: "check-window pop-window pop-command", "data-theme": "green", id: "pop-command" },
+    el("header", { class: "check-title" }, el("span", { class: "check-name" }, "What do you do?")),
     composer);
 }
 
@@ -308,6 +386,8 @@ function placePane(node, key, { choices = false, anywhere = false } = {}) {
   const row = document.getElementById("pop-row");
   const notes = document.getElementById("pop-notes");
   const clock = document.getElementById("walk-clock");
+  // The quest tracker in the corner is in the way too, when it's small: open, it's a window of its own over the room.
+  const tracker = document.querySelector(".walk-map > #quest-tracker:not([hidden]):not(.open)");
   const pane = node.querySelector(".pop-pane");
   if (pane) pane.style.maxHeight = "";
   const width = box.clientWidth;
@@ -329,7 +409,7 @@ function placePane(node, key, { choices = false, anywhere = false } = {}) {
   // It stays out from under the clock and the notes, which are at the top.
   const under = (other) => (other && other.offsetHeight && left + wide > other.offsetLeft && left < other.offsetLeft + other.offsetWidth ? other.offsetTop + other.offsetHeight + 5 : 6);
   let tall = node.offsetHeight;
-  let roof = Math.max(under(clock), under(notes));
+  let roof = Math.max(under(clock), under(notes), under(tracker));
   // The words come first. When the room's too short for them under the notes, the notes step aside until the words
   // have gone, and when it's too short even for that, the pane shrinks and its words scroll, so it never runs into
   // the story below.
@@ -350,7 +430,7 @@ function placePane(node, key, { choices = false, anywhere = false } = {}) {
     if (crosses(top) && !crosses(below) && below + tall <= floor) top = below;
   }
   putPane(node, box, { left, top, wide, tall, side }, spot ? { x: head.x, y: top > head.y ? spot.y + spot.h + 3 : head.y - 5 } : null);
-  if (choices) placeChoices(node, { left, top, wide, tall, width, floor, roof: Math.max(under(clock), under(notes)) });
+  if (choices) placeChoices(node, { left, top, wide, tall, width, floor, roof: Math.max(under(clock), under(notes), under(tracker)) });
   node.classList.add("placed");
 }
 
@@ -379,6 +459,7 @@ const paneCalled = (id) => {
 function placeAll() {
   const { game } = app.ui;
   placePane(paneCalled("pop-balloon"), speakerHere(current())?.key ?? null);
+  placePane(paneCalled("pop-answer"), document.getElementById("pop-answer")?.dataset.key ?? null, { choices: true, anywhere: true });
   placePane(paneCalled("talk"), game?.talk?.key ?? null, { choices: true, anywhere: true });
   placePane(paneCalled("pop-you"), "you");
 }
@@ -396,10 +477,13 @@ function settle() {
   if (pop.words) pen.aim(pop.words.total);
   const beat = current();
   const row = document.getElementById("pop-row");
-  // The camera keeps whoever's talking in view: the person in a talk, or whoever the story has speaking.
+  // The camera keeps whoever's talking in view: the person in a talk, whoever the story has speaking, or whoever the
+  // player has to answer.
   const talking = app.ui.game?.talk?.key ?? null;
-  isoLook({ person: talking ?? (pop.open ? speakerHere(beat)?.key ?? null : null), bottom: row ? row.offsetHeight + 12 : 0 });
+  const answering = document.getElementById("pop-answer")?.dataset.key ?? null;
+  isoLook({ person: talking ?? (pop.open ? speakerHere(beat)?.key ?? (answering !== "you" ? answering : null) : null), bottom: row?.offsetHeight ? row.offsetHeight + 12 : 0 });
   placeAll();
+  fadeLater();
 }
 
 function drawScene() {
@@ -409,12 +493,22 @@ function drawScene() {
   document.getElementById("pop-balloon")?.remove();
   const balloon = balloonNode();
   if (balloon) root.prepend(balloon);
-  const row = document.getElementById("pop-row");
+  document.getElementById("pop-answer")?.remove();
+  const answer = answerNode();
+  if (answer) root.prepend(answer);
   document.getElementById("pop-story")?.remove();
-  const story = storyWindow();
-  if (story) row?.append(story);
-  document.getElementById("pop-command")?.classList.toggle("reading", pop.open && pop.at < pop.beats.length - 1);
+  const caption = captionNode();
+  if (caption) root.append(caption);
+  document.getElementById("pop-waiting")?.remove();
+  const waiting = waitingChip();
+  if (waiting) root.append(waiting);
   settle();
+}
+
+// With the story put away and something waiting to be answered, one small line at the top brings it back.
+function waitingChip() {
+  if (pop.open || app.ui.streaming || !app.options?.().length) return null;
+  return el("button", { class: "pop-waiting", id: "pop-waiting", onclick: openPopups, title: "Or click whoever it's waiting on" }, "The story is waiting for you");
 }
 
 // As the game master's words arrive.
@@ -434,10 +528,13 @@ export function popsNode(composerNode, legend, clock) {
   // This comes first, because what's on the typing line depends on whether the story's open.
   sync();
   return el("div", { class: `pops${pop.open ? " pop-open" : ""}`, id: "pops" },
+    answerNode(),
     balloonNode(),
     talkPanesNode(),
     notesNode(),
+    captionNode(),
+    waitingChip(),
     legend,
     clock,
-    el("div", { class: "pop-row", id: "pop-row" }, commandWindow(composerNode()), storyWindow()));
+    el("div", { class: "pop-row", id: "pop-row" }, app.typing?.() ? typingWindow(composerNode()) : null));
 }

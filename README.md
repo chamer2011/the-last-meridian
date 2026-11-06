@@ -53,7 +53,7 @@ Each menu also has a command you can type:
 | `/beliefs` | Beliefs | Where you stand on each axis, and your standing with each faction |
 | `/dossier` | Your past | Your personal record, career and life history |
 | `/people` | People | Everyone you've met or heard of |
-| `/quests` | Quests | Active and finished quests, and the journal |
+| `/quests` | Quests | Your quests, what each needs next, what happened in them, and the journal. It's the tracker in the room's corner, grown: **J** opens it too |
 | `/leads` | Leads | Stories you could start here, what people are saying, and the stories you're following |
 | `/codex` | What you know | Places, factions, ships and ideas you've come across, with a search box |
 | `/inv` | Inventory | What you're carrying and wearing, on a grid, in a window over the room. **I** opens it too |
@@ -80,6 +80,19 @@ Press **I**, or **Inventory** under **Gear**, and your inventory opens over the 
 - **Opening something:** a pile on the floor, or something in a room that holds things, has **Open** in its window and in its right-click menu. What's in it opens in your inventory beside your pack, on a grid of its own, and you drag things between the two, or press **Take everything**. Leaving the room shuts it, and it keeps whatever you left in it.
 - **What the people you beat leave:** after a fight you win, what they had on them is left on the floor where you stand, in a pile called **What they left**: now and then a ration pack, a medkit, an energy cell or a stim, and sometimes the weapon they fought with. A machine leaves only what its file says. Walk over and open it.
 - **Only rearranging stays out of the story.** Putting something on, taking it off, using it, taking it and putting it down each leave a line in the story, the same as before. Moving things around the bag, splitting a stack or moving supplies to the belt leaves nothing. None of it uses the AI.
+
+## Quests
+
+The quest you're following is in the top left corner of the room: its name, the last thing you did for it, and what it needs now, with where. **J**, **Quests** under **The story**, or a click on it opens the quest log: the same box slides wider and taller, with the quest's steps staying on the left, and your other quests and what happened in them unfolding on the right. **J**, Esc or **Close** slides it back.
+
+- **The story goes on with the person it needs.** When a quest needs you to talk to someone, the tracker says who and where, such as **Talk to Commander Ilya Voss** and **She's at the Bridge.** Walk over and click them, in the room or in the list beside it: the scene plays there, with their words on the pane by their head and your answers hanging off it. While whoever the next part needs is in the same room, it goes straight on. When it needs someone elsewhere, it waits for you there.
+- **Doing what it asks:** when a quest needs you somewhere, such as at Kessara, or needs the Star map, its step says so, and the story goes on when you do it.
+- **On hold:** walk out of the room in the middle of a scene and that quest is on hold, in amber, with where they are. Nothing in it moves on until you're back with them. Talk to them again, and they say their last words again, with your answers there as before. The clock and the world go on meanwhile.
+- **Failed:** if someone a quest is waiting on dies, the quest fails, in red, and can't go on. That will make some stories too easy to lose, and it's to be balanced later. Someone missing or captured holds the quest up instead, until they're back.
+- **Several at once:** each quest keeps its place. Taking up a new story leaves the one you were in waiting, and talking to whoever a quest is waiting on picks it up again, whichever quest you're following.
+- **The log** groups your quests as **Following**, **Going on**, **On hold**, **Failed** and **Finished**. Clicking one only changes which one's shown. **Follow this one** makes it the quest the tracker follows; until you pick one, it's the main quest. **What happened** has what that quest's scenes said and what you did in them, latest first, with the journal and the **Facts on record** folded under it.
+- **Nothing of the story stays along the bottom,** and the typing line only comes up when you press Enter: see [The story over the room](#the-story-over-the-room).
+- **In a scene file,** a part waits for whoever speaks last in it. A `WITH:` line says someone else, or `WITH: nobody` for a part that plays wherever you are, and `world/scenes/_how-to-write-a-scene.txt` explains it. A story's first part brings its people over, and so does a part for someone who lives at another place or is behind a door the story hasn't opened, since they can't be walked to.
 
 ## Fights
 
@@ -267,17 +280,18 @@ In Isometric, the room gets the whole window and the story comes up over it, in 
 - **A scene comes up a piece at a time.** Click anywhere, on the room or on the story, or press Enter, to go on to the next piece. **Back** goes back. Nothing makes you read it all: you can pick a choice at any point.
 - **What someone says** comes up on a pane by their head, in their color: four corners, a tag with their name, and a thin line down to their head. It slides out from the head, and the words write themselves out a letter at a time. A click finishes the line at once, and the next click goes on. If they're far away, the camera moves to keep them in view, and a long speech is cut into pieces that fit.
 - **Pull the pane aside** with the mouse to see what's under it. It slides back when you let go.
-- **Narration** goes in the window along the bottom. So does anyone with no head in the room to put it over, such as a voice over comms or someone who isn't on the map.
-- **Your choices** are in **What do you do?**, the same as ever: click one, or press its number, or click the typing line and type whatever you like. Typing is only there if you want it.
+- **What happens** comes up over the top of the room while you read it, and goes once you've gone on. The last of it goes by itself a few seconds after you've read it, since it's all kept in the quest log. So does anyone with no head in the room to put it over, such as a voice over comms or someone who isn't on the map. Nothing of the story stays along the bottom.
+- **What you can say** hangs off the pane of whoever the story is waiting on, once a scene has been read, the way it does in a talk: click one, or press its number. When nobody's being answered, it hangs off your own head. While a quest is on hold there's nothing to answer, and the tracker says who to go back to.
+- **Typing:** press Enter and the typing line comes up at the bottom left, to type whatever you like, and Esc puts it away. With the written story, typing part of a choice picks it.
 - **What's happening:** news, supplies and what your choices did come up as short lines at the top left and go away by themselves. Click one to dismiss it. They all stay in the whole story. A line waits for the piece of the story it goes with, so it doesn't give anything away. The clock runs on while you read, so press **Space** if you'd like the world to wait.
-- **Walking puts the story away,** and the **Story** button brings it back, saying how many choices are waiting. **Close** or Esc does the same, and a new scene brings it back by itself. Until you've read to the end of a scene, a click on the room goes on with the story and doesn't walk anywhere, so to walk off in the middle of one, press **Close**, or walk with the keys.
-- **Whole story** shows everything so far, in place of the room.
-- **With less room,** such as in the smallest window, it's one thing at a time: narration goes away while someone's talking, and the choices wait until you've read to the end.
+- **Esc puts the story away,** and **The story is waiting for you**, at the top of the room, brings it back, and so does clicking whoever it's waiting on. A new scene brings it back by itself. Until you've read to the end of a scene, a click on the room goes on with the story and doesn't walk anywhere, so to walk off in the middle of one, press Esc, or walk with the keys.
+- **The whole story** is in the quest log, quest by quest, under **What happened**, and all of it together is in Classic, under **Reading** in the Settings menu.
+- **With less room,** such as in the smallest window, it all goes under the tracker: what happens comes up below it, and the panes keep out of its way. It's one thing at a time: narration goes away while someone's talking, and the choices wait until you've read to the end.
 - **In a talk,** what the person says comes up on a pane by their head the same way, and the things you can say hang off it once their words are all there. See below.
 
 Under **Reading** in the Settings menu:
 
-- **Story over the room:** **Popups** is all of the above. **One box** keeps everything in the window along the bottom, with nothing over anyone's head. **Under the room** puts the story back in a panel under the room, the way it is in Walk-around.
+- **Story over the room:** **Popups** is all of the above. **One box** keeps everything in the one window at the top of the room, with nothing over anyone's head. **Under the room** puts the story back in a panel under the room, the way it is in Walk-around.
 - **People's words:** how fast they write out: **Slow**, **Normal**, **Fast** or **All at once**.
 - **Popup font:** **Terminal** matches the rest of the game, and **Book** is the one the story uses in Classic.
 - **What each place is made of** and how it's lit is in `world/looks.json`: a cold blue Bridge, an orange furnace, red carpet at the Wheel. Change a word or a color there, and restart the game. It can also put one big thing in a room in place of what's on its plan, which is how the Great Wheel gets to be round.
@@ -505,6 +519,7 @@ The download is several GB. Local models make more mistakes with game actions th
 - `src/systems.js` runs each place's systems: where their parts go, what's working, the alarm, the air, repairs, and what they do to walking, checks, people's days and jumps. `public/systems-text.js` reads and writes the files.
 - `src/story-library.js` decides which leads, rumors and notes the player and the game master get.
 - `src/deeds.js` picks pockets and starts fights from the right-click menu, and settles what each costs.
+- `src/quests.js` works out what each quest needs next and how that stands, for the tracker, and `public/quests.js` draws the tracker in the corner and the quest log it grows into. `src/scenes.js` decides who each part of a scene waits for, and keeps the scenes that are waiting their turn.
 - `src/bag.js` keeps where everything you carry is: the gear, the belt, the pockets and the pack, the load, the belt and the sidearm in a fight, piles on the floor, things that hold something, and what the people you beat leave. `public/bag.js` draws the inventory window, and `public/item-art.js` has the little drawing of each item in it.
 - `src/scenes.js` plays the written story from `world/scenes/`, through the same tools, checks and fights as the AI, and checks the scene files. `src/scene-text.js` reads the text format, its conditions and its effects, `src/talks.js` plays written conversations and makes stock ones, and `src/check-scenes.js` is the `npm run check-story` command.
 - `src/npc.js` generates the stats of anyone the AI adds, and `src/campaign.js` saves them to their files.

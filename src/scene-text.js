@@ -531,6 +531,14 @@ export function parseSceneText(text, name = "the scene") {
       part.note = trimmed.replace(/^NOTE:\s*/i, "");
       return;
     }
+    // Who the part waits for, when it isn't whoever speaks last in it: a name, or nobody for a part that plays anywhere.
+    if (/^WITH:/i.test(trimmed)) {
+      flush();
+      const who = trimmed.replace(/^WITH:\s*/i, "").trim();
+      if (!who) problem(line, "WITH: needs the name of who this part waits for, or nobody, like WITH: Commander Ilya Voss");
+      else part.with = /^nobody$/i.test(who) ? "nobody" : who;
+      return;
+    }
     // A note for the AI game master alone, when there is one, about what the people here would and wouldn't do. The player never sees it.
     if (/^AI:/i.test(trimmed)) {
       flush();

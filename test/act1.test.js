@@ -17,7 +17,7 @@ const { loadScenes, writtenTurn } = await import("../src/scenes.js");
 const { leadsHere } = await import("../src/story-library.js");
 const { openWrittenTalk, writtenTalkTurn } = await import("../src/talks.js");
 const { newTurnLimits, runTool } = await import("../src/tools.js");
-const { talkCommand, talkHeard, talkSaid, talkView } = await import("../src/walk.js");
+const { personWhere, talkCommand, talkHeard, talkSaid, talkView, walkCommand } = await import("../src/walk.js");
 const { WORLD_THREADS, STORY_CLOCK } = await import("../src/world.js");
 
 const HELPERS = { attr, skillRank, maxHp };
@@ -43,8 +43,18 @@ function play(game, args, scenes) {
     else pieces.push({ role: e.type === "text" ? "narrator" : "notice", text: e.text });
   };
   writtenTurn({ game, emit, log: (role, text) => game.transcript.push({ role, text }), scenes, ...args });
+  goOver(game, (more) => writtenTurn({ game, emit, log: () => {}, scenes, ...more }));
   for (const piece of pieces) game.transcript.push(piece);
   return pieces.filter((piece) => piece.role === "narrator").map((piece) => piece.text).join("\n");
+}
+// A part of the story waits until the player is with whoever it needs, so the tests play it the way a player would:
+// they walk to that person's room by the map of the place, and talk to them.
+function goOver(game, turn) {
+  for (let i = 0; i < 6 && game.scene?.told === false && game.scene.with; i += 1) {
+    const where = personWhere(game, game.scene.with);
+    if (where?.level) walkCommand(game, { action: "room", to: where.level });
+    turn({ event: "meet", person: game.scene.with });
+  }
 }
 const take = (game, id) => play(game, { playerText: "I look into this", threadId: id });
 

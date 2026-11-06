@@ -57,6 +57,25 @@ That's how the words go in a window over that person's head when they're in the 
 knows the people in world/characters by their names and the names people call them.
 
 
+WHO A PART WAITS FOR
+--------------------
+
+A part waits for whoever speaks last in it, since that's who the player is answering. The story
+goes on only when the player is in the same room as them: until then, the quest tracker in the
+corner of the room says who to talk to and where they are, and the part plays when the player
+walks over and clicks them. While whoever the next part needs is in the room, the scene goes
+straight on. If the player walks out in the middle, the quest is on hold until they're back.
+
+    WITH: Commander Ilya Voss     (this part waits for her, whoever speaks last)
+    WITH: nobody                  (this part plays wherever the player is)
+
+A story's first part plays at once, and whoever speaks in it comes over. So does someone who
+lives at another place, or is behind a door the story hasn't opened yet, since they can't be
+walked to. A voice over the comms isn't waited for, and nor is anyone with no file in
+world/characters. A part with a CHECK or a FIGHT plays wherever the player is. If someone a part
+is waiting for has died, the quest fails, and the story can't go on.
+
+
 CHOICES
 -------
 

@@ -22,7 +22,7 @@ const { publicState } = await import("../src/rules.js");
 const { conditionHolds, parseCondition, parseEffect, parseSceneText } = await import("../src/scene-text.js");
 const { StoryError, allSceneProblems, choiceLine, loadScenes, matchChoice, openingSceneId, partText, sceneProblems, writtenTurn } = await import("../src/scenes.js");
 const { attr, maxHp, skillRank } = await import("../src/rules.js");
-const { talkCommand, talkView } = await import("../src/walk.js");
+const { personWhere, talkCommand, talkView, walkCommand: walkTo } = await import("../src/walk.js");
 
 const WORLD_SCENES = loadScenes().scenes;
 const HELPERS = { attr, skillRank, maxHp };
@@ -48,8 +48,18 @@ function play(game, args, scenes) {
     else pieces.push({ role: e.type === "text" ? "narrator" : "notice", text: e.text });
   };
   writtenTurn({ game, emit, log: (role, text) => game.transcript.push({ role, text }), scenes, ...args });
+  goOver(game, (more) => writtenTurn({ game, emit, log: () => {}, scenes, ...more }));
   for (const piece of pieces) game.transcript.push(piece);
   return pieces;
+}
+// A part of the story waits until the player is with whoever it needs, so the tests play it the way a player would:
+// they walk to that person's room by the map of the place, and talk to them.
+function goOver(game, turn) {
+  for (let i = 0; i < 6 && game.scene?.told === false && game.scene.with; i += 1) {
+    const where = personWhere(game, game.scene.with);
+    if (where?.level) walkTo(game, { action: "room", to: where.level });
+    turn({ event: "meet", person: game.scene.with });
+  }
 }
 const lastNarration = (game) => [...game.transcript].reverse().find((entry) => entry.role === "narrator")?.text ?? "";
 
@@ -327,7 +337,7 @@ test("the captain's opening plays through with no AI: speech, a choice, conseque
   const opening = play(game, { event: "start" });
   assert.equal(opening[0].role, "narrator");
   assert.match(opening[0].text, /@Commander Ilya Voss: "Captain\."/);
-  assert.deepEqual(game.scene, { id: "opening_captain", part: "bridge", pending: null, seen: ["bridge"] });
+  assert.deepEqual(game.scene, { id: "opening_captain", part: "bridge", pending: null, seen: ["bridge"], quest: "the_beacon", told: true, with: "voss", at: null });
   assert.equal(game.transcript.filter((entry) => entry.role === "player").length, 0, "nothing's logged as the player's until they choose");
 
   const heard = play(game, { playerText: "say nothing" });

@@ -418,6 +418,54 @@ function peopleOnLevel(game, walk, level) {
 const keyOf = (entry) => entry.id ?? entry.name;
 const shortName = (game, entry) => entry.label ?? (entry.id ? findCharacter(game.campaign, entry.id)?.name : null) ?? entry.name;
 
+// ---- Where someone is, for the story waiting on them ------------------------
+
+// Where someone with a file is now: here, in the room the player's in; in another room of this place, by its name; at
+// another place; gone, when they're dead, missing or captured; or null when the player couldn't find them anywhere.
+// Reading this changes nothing in the save.
+export function personWhere(game, id) {
+  const person = findCharacter(game.campaign, id);
+  if (!person) return null;
+  const status = contactOf(game, person.name)?.status;
+  if (status && status !== "alive") return { gone: status };
+  const walk = walkAt(game);
+  const map = walk ? mapFor(game.location) : null;
+  if (walk && map) {
+    const here = levelOf(game, walk, map);
+    const there = (level) => peopleOnLevel(game, walk, level).some((one) => keyOf(one) === person.id);
+    if (there(here)) return { here: true, room: here.name };
+    if (!walk.room) {
+      for (const level of Object.values(map.levels)) {
+        // Behind a door only the story opens, they can't be walked to yet.
+        if (level.id !== here.id && there(level)) return { here: false, room: level.name, level: level.id, reachable: roomsInReach(game, walk, map).has(level.id) };
+      }
+    }
+  }
+  const home = person.location;
+  if (home && home !== game.location && LOCATIONS[home]) return { here: false, place: home, placeName: LOCATIONS[home].name };
+  return null;
+}
+
+// The story brings people to the player: they come and stand beside them, in the room they're in, and stay while the
+// story needs them. Anyone already here stays where they are.
+export function bringOver(game, ids) {
+  const walk = walkOf(game);
+  const map = walk ? mapFor(game.location) : null;
+  if (!walk || !map) return;
+  const level = levelOf(game, walk, map);
+  const here = new Set(peopleOnLevel(game, walk, level).map(keyOf));
+  const coming = peopleNamed(game, ids).filter((one) => !here.has(keyOf(one)));
+  if (!coming.length) return;
+  if (walk.room) {
+    walk.room.people.push(...coming);
+    return;
+  }
+  const staying = walk.withLevel === level.id ? walk.with : [];
+  walk.with = standNear(game, level, { x: walk.x, y: walk.y }, [...staying, ...coming]);
+  walk.withLevel = level.id;
+  walk.withUntil = null;
+}
+
 // ---- Finding the way ----------------------------------------------------
 
 // The shortest way from one square to any square that counts as there, not counting the start.

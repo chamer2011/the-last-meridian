@@ -11,7 +11,8 @@ import { choicesFor, dropStaleTooltip, initStory, loreCatalog, optionContent, se
 import { focusTalk, initTalk, resetTalk, startTalk, talkNode, talkOpen } from "./talk.js";
 import { computerNode, computerOpen, focusComputer, initComputer, resetComputer } from "./computer.js";
 import { bagNode, bagOpen, initBag, openBag, resetBag, toggleBag } from "./bag.js";
-import { beginScene, initPopups, openPopups, popupNext, popupsAttached, popupsOpen, updatePopups } from "./popups.js";
+import { drawQuests, initQuests, questTrackerNode, questsOpen, resetQuests, toggleQuests } from "./quests.js";
+import { beginScene, initPopups, openPopups, popupDrawn, popupNext, popupsAttached, updatePopups } from "./popups.js";
 import { INTERFACE_SIZES, interfaceZoom } from "./scene.js";
 import { focusThing, initWalk, keepClear, markPoint, newsBehindMenu, popupsShown, putAwayRoomWindows, renderWalk, resetWalk, showWholeStory, thingNode, thingOpen, toggleClock, walkShown, walkViewNode } from "./walk.js";
 import { aimWith } from "./float.js";
@@ -29,6 +30,8 @@ const ui = {
   sideOpen: false,
   streaming: false,
   waiting: false,
+  // Over the room, the typing line only comes up when Enter is pressed.
+  typing: false,
   liveEntries: [],
   followStream: true,
   renderedCount: 0,
@@ -220,6 +223,8 @@ async function loadGame(slot) {
   resetTalk();
   resetComputer();
   resetBag();
+  resetQuests();
+  ui.typing = false;
   ui.game = game;
   ui.saves = saves;
   ui.screen = "game";
@@ -237,6 +242,8 @@ async function startNewGame(draft) {
   resetTalk();
   resetComputer();
   resetBag();
+  resetQuests();
+  ui.typing = false;
   ui.game = game;
   ui.saves = saves;
   ui.screen = "game";
@@ -286,12 +293,43 @@ function currentOptions() {
   const written = g.mode === "written";
   const carryOn = [{ label: "Continue the story", detail: written || g.scene ? "the story picks it up from here" : "the game master picks it up from here", run: () => sendChat({ event: "continue" }) }];
   if (g.pendingEvents > 0) return carryOn;
+  // A written part waiting on someone the player isn't with has nothing to answer yet: the tracker says who to go to.
+  if (g.scene?.held) return [];
+  // The written story with no scene being played has nothing to choose, whatever its last words were.
+  if (written && !g.scene) return [];
   // In a written part of a game with an AI, clicking a choice costs nothing: only typing goes to the AI.
   const choices = choicesFor(g.transcript).map((choice) => ({ ...choice, ...(g.scene && !written ? { detail: "free" } : {}), run: () => takeChoice(choice) }));
-  // Walking and talking can leave the story with nothing on offer, and there should always be something to click,
-  // unless the written story has nothing more to say yet.
-  if (written && !g.scene) return choices;
+  // Over the room, nothing waits there when there's nothing to answer: Enter brings up the typing line instead. In the
+  // other views, there should always be something to click.
+  if (popupsShown()) return choices;
   return !choices.length && walkShown() && g.transcript.length ? carryOn : choices;
+}
+
+// The typing line over the room, brought up by Enter, and put away by Esc or once it's been used.
+function startTyping() {
+  ui.typing = true;
+  render();
+  document.getElementById("composer")?.focus({ preventScroll: true });
+  return true;
+}
+function stopTyping() {
+  if (!ui.typing) return;
+  ui.typing = false;
+  render();
+}
+
+// Talking to someone: a quest whose scene is waiting on them goes on with it, and anyone else has a talk. With their
+// choices already on screen, it's shown again rather than told again.
+function talkTo(key) {
+  const g = ui.game;
+  const waiting = g.questLog?.quests.some((quest) => quest.status === "active" && quest.step?.person === key && quest.step.state === "here");
+  if (!waiting) return startTalk(key);
+  const last = [...g.transcript].reverse().find((entry) => entry.role === "narrator");
+  if (g.scene?.with === key && g.scene.told && !g.scene.held && last?.scene === g.scene.id && popupsShown()) {
+    openPopups();
+    return;
+  }
+  return sendChat({ event: "meet", person: key });
 }
 
 // A choice with a check on it opens the check's window, and the AI hears how it went afterward.
@@ -331,6 +369,7 @@ function submitPrompt() {
   const text = ui.draft.trim();
   if (!text) return;
   ui.draft = "";
+  ui.typing = false;
   ui.consoleLines = [];
   if (text.startsWith("/")) return runCommand(text);
 
@@ -349,18 +388,17 @@ function composerNode() {
   const g = ui.game;
   const options = currentOptions();
   const needsStart = g.transcript.length === 0 && !ui.streaming && !ui.waiting && !ui.error;
-  // With the story over the room and put away, all that's left of it is the way to bring it back.
-  const putAway = popupsShown() && !popupsOpen() && g.transcript.length > 0;
+  // Over the room, the choices hang off the pane of whoever's being answered, so the typing line is all this has.
+  const over = popupsShown();
   const hint = ui.streaming || ui.waiting ? "processing..."
     : g.pendingEvents > 0 ? "press 1 to carry on, or type what you do next"
       : g.scene && g.mode !== "written" ? "a choice is free; your own words are one call to the AI"
-        : popupsShown() ? "type an action" : "type an action, a number, or /help";
+        : over ? "type an action, then Enter; Esc puts this away" : "type an action, a number, or /help";
   return el("div", { class: "composer" }, el("div", { class: "composer-inner" },
-    options.length > 0 && !putAway && el("div", { class: "options" }, options.map((o, i) => el("button", { disabled: o.disabled, onclick: o.run }, el("span", { class: "option-number" }, `${i + 1})`), optionContent(o)))),
+    !over && options.length > 0 && el("div", { class: "options" }, options.map((o, i) => el("button", { disabled: o.disabled, onclick: o.run }, el("span", { class: "option-number" }, `${i + 1})`), optionContent(o)))),
     needsStart
       ? el("div", {}, el("button", { class: "primary", onclick: () => sendChat({ event: "start" }) }, "Start the story"))
       : el("div", { class: "prompt-line" },
-        putAway && el("button", { class: "pop-reopen", onclick: openPopups }, options.length ? `Story: ${options.length === 1 ? "1 choice" : `${options.length} choices`} waiting` : "Story"),
         el("label", { class: "prompt", for: "composer" }, g.role.captain ? "captain@meridian:~$" : `${g.role.short.replaceAll(" ", "-")}@${g.location.id.replaceAll("_", "-")}:~$`),
         el("input", {
           id: "composer",
@@ -379,10 +417,12 @@ function composerNode() {
             // With nothing typed, Enter goes on to the next piece of the story.
             if (popupsShown() && e.key === "Enter" && !e.target.value.trim() && popupNext()) e.preventDefault();
             if (!walkShown()) return;
-            // In a room, Esc gives the keys back to walking, and Space with nothing typed pauses the clock.
+            // In a room, Esc gives the keys back to walking and puts the typing line away, and Space with nothing
+            // typed pauses the clock.
             if (e.key === "Escape") {
               e.preventDefault();
               e.target.blur();
+              stopTyping();
             } else if (e.key === " " && !e.target.value.trim()) {
               e.preventDefault();
               toggleClock();
@@ -550,7 +590,12 @@ function openMenu(id, focus = null) {
     openBoard();
     return;
   }
-  // The inventory is a window over the room, not a drawer.
+  // The inventory is a window over the room, and the quest log is the tracker in its corner, grown: neither is a drawer.
+  if (MENUS[id]?.window === "quests") {
+    closeMenu();
+    toggleQuests();
+    return;
+  }
   if (MENUS[id]?.window) {
     closeMenu();
     toggleBag();
@@ -589,7 +634,7 @@ function closeMenu() {
 function focusComposer() {
   const composer = document.getElementById("composer");
   if (!composer) return;
-  if (walkShown() && !ui.draft.trim()) {
+  if (walkShown() && !ui.draft.trim() && !ui.typing) {
     if (document.activeElement === composer) composer.blur();
     return;
   }
@@ -626,7 +671,7 @@ function render() {
   const isNew = !previous || count !== ui.renderedCount;
   ui.renderedCount = count;
   app.replaceChildren(el("div", { class: "game" },
-    el("main", { class: "story" }, statusNode(), walkShown() ? walkViewNode(logNode, composerNode) : logNode(), !popupsShown() && composerNode()),
+    el("main", { class: "story" }, statusNode(), walkShown() ? walkViewNode(logNode, composerNode) : logNode(), !popupsShown() && composerNode(), !walkShown() && questTrackerNode()),
     fightNode(),
     checkNode(),
     raidNode(),
@@ -639,6 +684,8 @@ function render() {
     drawerNode(),
   ));
   if (!popupsShown()) updateLive();
+  // The tracker first, since the story's panes keep out of its way.
+  drawQuests();
   popupsAttached();
   dropStaleTooltip();
   if (!ui.streaming) placeLog(previousTop, isNew);
@@ -728,6 +775,10 @@ initWalk({
   act,
   openBag,
   bagOpen,
+  talkTo,
+  startTyping,
+  questTracker: questTrackerNode,
+  questsOpen,
   // A number key picks one of the story's choices, when there's nothing to type it into.
   pickOption: (n) => {
     const option = currentOptions()[n - 1];
@@ -741,6 +792,9 @@ initPopups({
   reading,
   render,
   showWholeStory,
+  // What can be said or done once a scene's been read, and whether the typing line is up.
+  options: currentOptions,
+  typing: () => ui.typing || (ui.game?.transcript.length === 0 && !ui.streaming && !ui.waiting && !ui.error),
   retry: () => {
     const { retry } = ui.error;
     ui.error = null;
@@ -755,6 +809,7 @@ initPopups({
 initTalk({ ui, reading, render, openMenu, popupsShown });
 initComputer({ ui, render, openMenu });
 initBag({ ui, render, renderStatus, renderWalk, putAway: putAwayRoomWindows });
+initQuests({ ui, render, placed: popupDrawn });
 aimWith(markPoint, keepClear);
 
 initCreator({

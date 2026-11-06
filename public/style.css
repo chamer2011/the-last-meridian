@@ -1090,6 +1090,101 @@ body:has(#bag) .pop-notes { visibility: hidden; }
   .axis-bar { font-size: 12px; letter-spacing: 0; }
 }
 
+/* ---- The quest tracker, and the log it grows into ------------------------------
+   In the room's top left corner: the followed quest's last step done and what it needs now, amber on hold, red failed.
+   Open, the same box slides wider and taller: the steps stay on the left, and the quests and what happened unfold on
+   the right. Closing slides it back. */
+.qt {
+  position: absolute; z-index: 26; left: 8px; top: 8px; overflow: hidden; pointer-events: auto;
+  --c: #8df5ac; --c-dim: #4f9a68; --c-line: #2a6a43; --c-bright: #e6ffef;
+  background: rgba(3, 13, 8, .93); border: 1px solid var(--c-line); box-shadow: 0 10px 30px rgba(0, 0, 0, .6);
+  color: var(--c); font: 13px/1.4 var(--mono);
+  transition: width .32s cubic-bezier(.2, .8, .3, 1), height .32s cubic-bezier(.2, .8, .3, 1), border-color .2s;
+}
+.qt::after { content: ""; position: absolute; inset: 3px; border: 1px dashed color-mix(in srgb, var(--c) 30%, transparent); pointer-events: none; }
+.qt[data-tone="hold"] { --c: #f2c14e; --c-dim: #a8862f; --c-line: #6c5f2e; --c-bright: #fff3c9; }
+.qt[data-tone="failed"] { --c: #ff8f7f; --c-dim: #b0584c; --c-line: #6e2f28; --c-bright: #ffe1dc; }
+.qt[data-tone="done"] { --c: #6fbf86; --c-dim: #4f7f5e; --c-bright: #cfe9d6; }
+.qt-head { position: relative; z-index: 1; display: flex; align-items: center; gap: 10px; height: 26px; padding: 6px 12px 0; color: var(--c-bright); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+.qt-title { overflow: hidden; text-overflow: ellipsis; }
+.qt-key { margin-left: auto; font-weight: 400; color: var(--c-dim); font-size: 11px; letter-spacing: 0; text-transform: none; }
+.qt-key kbd { font: inherit; border: 1px solid var(--c-line); padding: 0 3px; color: var(--c); }
+.qt-close { margin-left: auto; color: var(--c-bright); font-size: 12px; letter-spacing: 0; text-transform: none; font-weight: 400; }
+.qt button:hover:not(:disabled), .qt button:focus-visible { background: var(--c); color: #03110a; outline: 0; }
+.qt-left { position: absolute; z-index: 1; left: 0; top: 26px; width: 300px; bottom: 0; overflow-y: auto; cursor: pointer; }
+.qt.open .qt-left { cursor: default; }
+.qt-left-inner { padding: 4px 12px 8px; display: flex; flex-direction: column; gap: 8px; }
+.qt-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.qt-steps li { display: grid; grid-template-columns: 4ch minmax(0, 1fr); gap: 0 4px; }
+.qt-box { color: var(--c-dim); }
+.qt-steps li.done .qt-what { color: var(--c-dim); }
+.qt-steps li.here .qt-box, .qt-steps li.go .qt-box, .qt-steps li.here .qt-what, .qt-steps li.go .qt-what { color: var(--c-bright); }
+.qt-steps li.hold .qt-box, .qt-steps li.hold .qt-what { color: #f2c14e; }
+.qt-steps li.failed .qt-box, .qt-steps li.failed .qt-what { color: #ff8f7f; }
+.qt-where { grid-column: 2; color: var(--c-dim); font-size: 12px; }
+.qt-steps li.hold .qt-where { color: #c9a24a; }
+.qt:not(.open) .qt-steps li.done .qt-what { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qt:not(.open) .qt-steps li:not(.done) .qt-what { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.qt-about { margin: 0; font: 14px/1.5 var(--book-font); color: var(--story); }
+.qt-follow { align-self: flex-start; color: var(--c-bright); }
+.qt-chip { align-self: flex-start; padding: 0 5px; font-size: 10.5px; line-height: 15px; text-transform: uppercase; letter-spacing: .06em; border: 1px solid currentColor; color: #8df5ac; }
+.qt-message { color: #ff8f7f; font-size: 12px; }
+.qt-none { margin: 0; color: var(--c-dim); font-size: 12px; }
+.qt-right {
+  position: absolute; z-index: 1; left: 301px; top: 0; right: 0; bottom: 0; padding: 10px 14px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 10px; border-left: 3px double var(--c-line);
+  opacity: 0; pointer-events: none; transition: opacity .18s;
+}
+.qt.open .qt-right { opacity: 1; pointer-events: auto; transition: opacity .2s .1s; }
+.qt.open.narrow .qt-left { right: 0; width: auto; bottom: auto; max-height: 42%; }
+.qt.open.narrow .qt-right { left: 0; top: calc(26px + 42%); border-left: 0; border-top: 3px double var(--c-line); }
+.qt-list { display: flex; flex-direction: column; gap: 2px; flex: none; }
+.qt-group { margin-top: 6px; font-size: 10.5px; color: var(--c-dim); text-transform: uppercase; letter-spacing: .08em; }
+.qt-group:first-child { margin-top: 0; }
+.qt-item { display: block; width: 100%; text-align: left; padding: 3px 6px; border-left: 2px solid transparent; }
+.qt .qt-item::before, .qt .qt-item::after { content: none; }
+.qt.open { background: #030d08; }
+.qt-item-name { display: block; color: var(--c-bright); font-weight: 700; }
+.qt-item-step { display: block; color: var(--c-dim); font-size: 12px; }
+.qt-item[data-tone="hold"] .qt-item-step { color: #f2c14e; }
+.qt-item[data-tone="failed"] .qt-item-name, .qt-item[data-tone="failed"] .qt-item-step { color: #ff8f7f; }
+.qt-item.picked { border-left-color: var(--c-bright); background: color-mix(in srgb, var(--c) 14%, transparent); }
+.qt-item.ended { cursor: default; }
+.qt-story { display: flex; flex-direction: column; gap: 6px; }
+.qt-passage, .qt-said, .qt-ending { padding-left: 10px; border-left: 1px solid var(--c-line); }
+.qt-passage .entry { margin: 0; font-size: 14px; }
+.qt-said { color: var(--c-bright); font-size: 12.5px; }
+.qt-ending { color: #f7e7b0; font-size: 12.5px; }
+.qt-fold summary { cursor: pointer; color: var(--c-dim); font-size: 12px; }
+.qt-entry { padding: 2px 0 2px 10px; font-size: 12.5px; color: var(--story); }
+/* The room's notes of what's happening start under it. */
+.walk-map:has(> .qt:not([hidden])) .pop-notes { top: calc(var(--qt-bottom, 34px) + 6px); }
+body:has(.qt.open) .pop-notes { visibility: hidden; }
+/* In the view where the story has the whole window, it sits at the top of the story, under the status line. */
+.story { position: relative; }
+.story > .qt { top: 44px; }
+
+/* What happens, over the top of the room, for as long as it's being read: out of the tracker's way, under the clock. */
+.pop-caption {
+  position: absolute; z-index: 4; top: 38px; left: 318px; right: 10px; margin: 0 auto; max-width: 64ch; pointer-events: auto; cursor: pointer;
+  padding: 8px 14px 6px; background: rgba(4, 8, 6, .88); border: 1px solid #2a3d31; box-shadow: 0 8px 26px rgba(0, 0, 0, .5);
+  animation: pop-caption-in .25s ease-out;
+}
+@keyframes pop-caption-in { from { opacity: 0; transform: translateY(-6px); } }
+.pop-caption .pop-words { max-height: 34cqh; padding: 0; font: var(--pop-size)/1.5 var(--story-font); color: var(--story); }
+.pop-caption .pop-hint { display: flex; gap: 12px; justify-content: flex-end; padding: 4px 0 0; color: var(--muted); font: 12px/1.4 var(--mono); }
+.pop-caption .pop-back { color: var(--muted); font-size: 12px; }
+.pop-waiting {
+  position: absolute; z-index: 4; top: 38px; left: 318px; right: 10px; margin: 0 auto; width: max-content; max-width: 40ch; pointer-events: auto;
+  padding: 3px 10px; background: rgba(3, 17, 10, .92); border: 1px solid #2a6a43; color: #8df5ac; font: 13px/1.4 var(--mono);
+}
+.pop-waiting:hover, .pop-waiting:focus-visible { background: #8df5ac; color: #03110a; outline: 0; }
+/* A small room: it all goes under the tracker instead of beside it. */
+@container (max-width: 620px) {
+  .pop-caption, .pop-waiting { left: 8px; right: 8px; top: calc(var(--qt-bottom, 34px) + 8px); }
+}
+@media (prefers-reduced-motion: reduce) { .qt, .qt-right { transition: none !important; } }
+
 /* ---- The place's systems -------------------------------------------------- */
 .walk-part { color: #7fd8e0; font-size: .9em; }
 .walk-part.down { color: #e0a050; }

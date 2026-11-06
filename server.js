@@ -15,7 +15,8 @@ import { fleetCommand } from "./src/fleet.js";
 import { noteLoreSeen } from "./src/lore.js";
 import { openingFor } from "./src/role.js";
 import { migrateGame } from "./src/migrate.js";
-import { StoryError, choiceLine, followChoice, keepForAi, sceneBrief, storyTurnKind, switchStory, withoutChoices, writtenTurn } from "./src/scenes.js";
+import { StoryError, choiceLine, followChoice, keepForAi, parkCurrentScene, sceneBrief, storyTurnKind, switchStory, withoutChoices, writtenTurn } from "./src/scenes.js";
+import { followQuest } from "./src/quests.js";
 import { followTalkChoice, openWrittenTalk, talkSceneBrief, talkTurnKind, writtenTalkTurn } from "./src/talks.js";
 import { dataDir, projectDir } from "./src/paths.js";
 import {
@@ -158,7 +159,8 @@ try {
 
 let busy = false;
 
-const log = (role, text) => game.transcript.push({ role, text });
+// What the story said, and what the player did, with the scene and quest it was part of when it was the written story's.
+const log = (role, text, tag = null) => game.transcript.push({ role, text, ...(tag?.scene ? { scene: tag.scene, quest: tag.quest ?? null } : {}) });
 
 function autosave() {
   writeSave("autosave", game);
@@ -207,7 +209,7 @@ const eventFor = (event) => (event === "start" ? openingFor(game) : event === "c
 
 // One turn, from the written story, from the AI game master, or from both: with an AI, the written parts still play
 // themselves, for free, and the AI reads the player's own words in them. Nothing goes to the AI unless it has to.
-async function streamTurn(res, { playerText, event, threadId, talking = false }) {
+async function streamTurn(res, { playerText, event, threadId, person = null, talking = false }) {
   res.writeHead(200, { "content-type": "application/x-ndjson", "cache-control": "no-store" });
   const send = (obj) => res.write(`${JSON.stringify(obj)}\n`);
   const before = structuredClone(game);
@@ -225,8 +227,8 @@ async function streamTurn(res, { playerText, event, threadId, talking = false })
     const emit = (e) => {
       if (e.type === "text") {
         const last = pieces.at(-1);
-        if (last?.role === "narrator") last.text += e.text;
-        else pieces.push({ role: "narrator", text: e.text });
+        if (last?.role === "narrator" && last.scene === (e.scene ?? null)) last.text += e.text;
+        else pieces.push({ role: "narrator", text: e.text, scene: e.scene ?? null, quest: e.quest ?? null });
         send({ type: "text", text: e.text });
       }
       if (e.type === "notice") {
@@ -237,12 +239,13 @@ async function streamTurn(res, { playerText, event, threadId, talking = false })
       if (e.type === "usage") spending.lastTurn += recordUsage(e);
     };
     if (kind === "written" && talking) writtenTalkTurn({ game, playerText, emit });
-    else if (kind === "written") writtenTurn({ game, playerText, event, threadId, emit, log });
+    else if (kind === "written") writtenTurn({ game, playerText, event, threadId, person, emit, log });
     else if (kind === "fit") await fitTurn({ playerText, talk, emit });
     else {
-      // Whatever arrival there was, the AI tells it now, and a story it takes up leaves any written one that was under way.
+      // Whatever arrival there was, the AI tells it now, and a story it takes up sets aside any written one that was
+      // under way, which waits its turn.
       game.arrived = null;
-      if (threadId) game.scene = null;
+      if (threadId) parkCurrentScene(game);
       await runTurn({ game, settings, playerText, gameEvent: eventFor(event), threadId, talk, emit });
     }
     for (const piece of pieces) {
@@ -250,7 +253,7 @@ async function streamTurn(res, { playerText, event, threadId, talking = false })
       if (!text) continue;
       // What's said in a talk stays in its window. What it changes in the game goes in the story too.
       if (talking) talkHeard(game, text, piece.role);
-      if (!talking || piece.role !== "narrator") log(piece.role, text);
+      if (!talking || piece.role !== "narrator") log(piece.role, text, piece);
       if (piece.role === "narrator") {
         noteLoreSeen(game, text);
         notePeopleSeen(game, text);
@@ -574,6 +577,12 @@ async function handleApi(req, res, route) {
     autosave();
     return json(res, 200, { game: publicState(game), notes });
   }
+  // The quest log: which quest the tracker in the corner follows.
+  if (route === "/api/quests") {
+    followQuest(requireGame(), String(body.follow ?? ""));
+    autosave();
+    return json(res, 200, { game: publicState(game) });
+  }
   // The inventory window: moving things about, gear on and off, using, dropping, and what's in a thing that's open.
   if (route === "/api/bag") {
     const { said, quiet } = bagCommand(requireGame(), body);
@@ -662,6 +671,8 @@ async function handleApi(req, res, route) {
     const text = typeof body.text === "string" ? body.text.trim().slice(0, 2000) : "";
     if (body.event === "start" && !game.transcript.length) return streamTurn(res, { event: "start" });
     if (body.event === "start" || body.event === "continue") return streamTurn(res, { event: "continue" });
+    // The player has gone over to someone the story is waiting on.
+    if (body.event === "meet") return streamTurn(res, { event: "meet", person: typeof body.person === "string" ? body.person : null });
     if (!text) throw new Error("Type what you want to do.");
     // A lead picked from the menu comes with its story thread.
     return streamTurn(res, { playerText: text, threadId: typeof body.thread === "string" ? body.thread : null });

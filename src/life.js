@@ -374,8 +374,11 @@ function companyMovesOn(game, hours) {
   if (!walk?.with?.length || !livesHere(walk.place)) return;
   walk.withUntil ??= hours + COMPANY_STAYS / 60;
   if (walk.level === walk.withLevel && !walk.room && hours < walk.withUntil) return;
+  // Whoever a scene is waiting on stays while the player does, however long they take.
+  const needed = walk.level === walk.withLevel && !walk.room ? game.scene?.with ?? null : null;
   const people = game.life.places[walk.place] ?? {};
   walk.with = walk.with.filter((entry) => {
+    if (needed && (entry.id ?? entry.name) === needed) return true;
     const state = people[entry.id ?? entry.name];
     if (state) Object.assign(state, { level: walk.withLevel, x: entry.x, y: entry.y, path: null });
     return !state;

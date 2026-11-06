@@ -287,32 +287,7 @@ function peopleMenu() {
 }
 
 // ---- Quests -------------------------------------------------------------
-
-function questsMenu() {
-  const g = app.ui.game;
-  const active = [...g.quests.filter((q) => q.status === "active")].sort((a, b) => Number(b.main) - Number(a.main));
-  // The record may be missing while a page from after it talks to a game from before it.
-  const record = g.story.record ?? { endings: [], facts: [] };
-  // A story that ended on the record without a quest of its own is finished too.
-  const done = [
-    ...g.quests.filter((q) => q.status !== "active").map((q) => ({ ...q, ending: record.endings.find((ending) => ending.id === q.id)?.ending ?? null })),
-    ...record.endings.filter((ending) => !g.quests.some((q) => q.id === ending.id)).map((ending) => ({ id: ending.id, title: ending.title, main: false, status: ending.failed ? "failed" : "completed", ending: ending.ending, desc: "", objective: ending.summary })),
-  ];
-  const card = (q) => el("div", { class: "card stack gap-small" },
-    el("div", { class: "spread" }, el("strong", {}, q.title), q.main ? el("span", { class: "tag on" }, "main") : q.status !== "active" && el("span", { class: `tag ${q.status === "failed" ? "bad" : "on"}` }, q.ending ? q.ending.replaceAll("_", " ") : q.status)),
-    q.desc && muted(q.desc),
-    el("div", { class: "small" }, q.status === "active" ? `Next: ${q.objective}` : q.objective));
-  return columns(
-    section(`Active (${active.length})`, active.length ? active.map(card) : empty("No active quests.")),
-    folded("quests-finished", `Finished (${done.length})`, done.length ? done.map(card) : muted("Nothing finished yet.")),
-    folded("quests-journal", `Journal (${g.journal.length})`, g.journal.length
-      ? [...g.journal].reverse().map((j) => el("div", { class: "menu-entry small" }, j.entry))
-      : muted("Important events will be recorded here.")),
-    folded("quests-facts", `Facts on record (${record.facts.length})`, record.facts.length
-      ? [...record.facts].reverse().map((fact) => el("div", { class: "menu-entry small" }, el("span", {}, fact.text), fact.from && el("span", { class: "muted" }, ` ${fact.from}`)))
-      : muted("What the stories leave behind is kept here, for the stories that come after.")),
-  );
-}
+// The quests are the tracker in the room's top left corner, which grows into the quest log: public/quests.js.
 
 // ---- Leads --------------------------------------------------------------
 
@@ -660,11 +635,11 @@ export const MENUS = {
   beliefs: { label: "Beliefs", command: "beliefs", about: "Where you stand, and your standing with each faction", view: beliefsMenu },
   dossier: { label: "Your past", command: "dossier", about: "Your record, career and life history", view: dossierMenu },
   people: { label: "People", command: "people", about: "Everyone you've met or heard of", view: peopleMenu },
-  quests: { label: "Quests", command: "quests", about: "What you've taken on, and the journal", view: questsMenu },
+  quests: { label: "Quests", command: "quests", about: "What you've taken on, what each needs next, and the journal, or press J", window: "quests" },
   board: { label: "Story board", command: "board", about: "Every story as boxes and arrows, to read and change, saved to its file", board: true, view: () => el("div") },
   leads: { label: "Leads", command: "leads", about: "Stories you could start here, and what people are saying", view: leadsMenu },
   codex: { label: "What you know", command: "codex", about: "Places, factions, ships and ideas you've come across", view: codexMenu },
-  inventory: { label: "Inventory", command: "inv", about: "What you're carrying and wearing, on a grid, or press I", window: true },
+  inventory: { label: "Inventory", command: "inv", about: "What you're carrying and wearing, on a grid, or press I", window: "bag" },
   ship: { label: "Ship", command: "ship", about: "The Meridian and her crew", view: shipMenu, captainOnly: true },
   fleet: { label: "Fleet", command: "fleet", about: "All 41 ships: supplies, rations, work crews and orders", view: fleetMenu },
   map: { label: "Star map", command: "map", about: "The chart of known space, and setting course", view: mapMenu },

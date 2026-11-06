@@ -67,7 +67,7 @@ export function resetWalk() {
 
 const anotherWindow = () => {
   const g = app.ui.game;
-  return Boolean(g.combat || g.check || g.talk || g.computer || g.fleet.raid || walk.plan || app.bagOpen?.());
+  return Boolean(g.combat || g.check || g.talk || g.computer || g.fleet.raid || walk.plan || app.bagOpen?.() || app.questsOpen?.());
 };
 
 // While the AI is writing or another window is up, the captain stays where they are.
@@ -152,7 +152,8 @@ async function go(body, after = null, point = null) {
     done: () => {
       takeWalk(reply);
       if (after && reply.arrived && reply.arrived.kind !== "exit") after(reply.arrived);
-      else if (reply.arrived?.kind === "person") app.startTalk(reply.arrived.key);
+      // Someone a quest is waiting on goes on with its scene; anyone else has a talk.
+      else if (reply.arrived?.kind === "person") app.talkTo(reply.arrived.key);
       else if (reply.arrived?.kind === "thing") openThing(reply.arrived.key);
       else if (reply.arrived?.kind === "door") openDoor(reply.arrived.key);
     },
@@ -424,7 +425,8 @@ export function walkViewNode(logNode, composerNode) {
       !popped && clockBar(),
       popped ? popsNode(composerNode, legend, clockBar()) : legend,
       thingLayer(),
-      menuLayer()),
+      menuLayer(),
+      app.questTracker?.()),
     hereNode(),
     !popped && el("div", { class: "walk-story" }, storyBar(), logNode({ latest: true })));
 }
@@ -1254,7 +1256,8 @@ function onKey(event) {
   if (typing || !walkShown() || walk.fullStory || cannotWalk()) return;
   if (event.key === "Enter" && !pressable) {
     event.preventDefault();
-    document.getElementById("composer")?.focus({ preventScroll: true });
+    // Over the room, the typing line comes up for it; in the other views, it's always there.
+    if (!popupsShown() || !app.startTyping?.()) document.getElementById("composer")?.focus({ preventScroll: true });
   } else if (/^[1-9]$/.test(event.key) && app.pickOption(Number(event.key))) event.preventDefault();
 }
 

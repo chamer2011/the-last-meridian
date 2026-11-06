@@ -189,8 +189,12 @@ test("the popups are in the game's own windows, in its own font, and what's said
   const popups = fs.readFileSync(new URL("../public/popups.js", import.meta.url), "utf8");
   const pane = fs.readFileSync(new URL("../public/pane.js", import.meta.url), "utf8");
   const talk = fs.readFileSync(new URL("../public/talk.js", import.meta.url), "utf8");
-  assert.ok(popups.includes('check-window pop-window pop-story'));
-  assert.ok(popups.includes('check-window pop-window pop-command'));
+  // Nothing of the story stays along the bottom: what happens is over the top of the room while it's read, and what
+  // can be said hangs off the pane of whoever's waiting for an answer. The typing line comes up only on Enter.
+  assert.ok(popups.includes("class: `pop-caption"));
+  assert.ok(!popups.includes("check-window pop-window pop-story"));
+  assert.ok(popups.includes('id: "story-choices"'));
+  assert.ok(popups.includes("check-window pop-window pop-command"));
   // The speech, and a talk, go on the same pane: four corners, a tag, a line to the head, in the speaker's color.
   assert.ok(pane.includes('class: "pop-pane pop-speaker"'));
   assert.ok(popups.includes("paneNode({") && talk.includes("paneNode({"));
@@ -205,4 +209,6 @@ test("the popups are in the game's own windows, in its own font, and what's said
   assert.ok(zOf(".pops") < zOf(".check-overlay"));
   assert.ok(zOf(".pops") < zOf(".fight-overlay"));
   assert.ok(zOf(".pops") < zOf(".drawer"));
+  // The quest tracker is over the story, and under the windows and menus.
+  assert.ok(zOf(".pops") < zOf(".qt") && zOf(".qt") < zOf(".check-float") && zOf(".qt") < zOf(".check-overlay") && zOf(".qt") < zOf(".drawer"));
 });

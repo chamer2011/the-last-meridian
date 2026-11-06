@@ -342,6 +342,21 @@ function timeResult(game, text) {
 
 // ---- Handlers. Each returns { result, notice }: result goes to the AI, notice to the player. ----
 
+// A story waiting on someone who has just died can't go on, so its quest fails with them, and its scene is over. That's
+// the rule for now, and it will make some stories too easy to lose; it's to be balanced later. Returns the notices.
+function failStoriesWaitingOn(game, name) {
+  const person = findCharacter(game.campaign, name);
+  if (!person) return [];
+  const notices = [];
+  for (const scene of [game.scene, ...Object.values(game.parked ?? {})].filter((one) => one?.with === person.id)) {
+    if (game.scene === scene) game.scene = null;
+    else delete game.parked[scene.id];
+    const quest = game.quests.find((one) => one.id === scene.quest && one.status === "active");
+    if (quest) notices.push(handlers.update_quest(game, { id: quest.id, status: "failed", objective: `${person.title ? `${person.title} ` : ""}${person.name} is dead, so this can't go on.` }).notice);
+  }
+  return notices;
+}
+
 const handlers = {
   roll_check(game, input) {
     if (input.skill === "none" && !input.attribute) throw new Error('When skill is "none", you must set an attribute.');
@@ -585,6 +600,8 @@ const handlers = {
   update_quest(game, input) {
     const quest = game.quests.find((q) => q.id === input.id);
     if (!quest) throw new Error(`No quest with the id ${input.id}.`);
+    // What it asked before is ticked off in the quest's steps.
+    if (quest.objective && quest.objective !== input.objective) quest.done = [...(quest.done ?? []), quest.objective].slice(-20);
     quest.status = input.status;
     quest.objective = input.objective;
     if (input.status !== "active") noteThreadEnded(game, input.id);
@@ -607,12 +624,14 @@ const handlers = {
       const changes = [
         before !== input.attitude ? `[RELATION] ${existing.name}: ${before} -> ${input.attitude}` : null,
         input.status && input.status !== statusBefore ? `[RELATION] ${existing.name} is now ${input.status}.` : null,
+        ...(input.status === "dead" && statusBefore !== "dead" ? failStoriesWaitingOn(game, name) : []),
       ].filter(Boolean);
       return { result: `Contact ${name} updated.`, ...(changes.length ? { notice: changes.join("\n") } : {}) };
     }
     game.contacts.push({ name, attitude: input.attitude, note: input.note, ...(input.status ? { status: input.status } : {}) });
     ensureContactFiles(game);
-    return { result: `Contact ${name} added.`, notice: `[CONTACT] New: ${name}` };
+    const failed = input.status === "dead" ? failStoriesWaitingOn(game, name) : [];
+    return { result: `Contact ${name} added.`, notice: [`[CONTACT] New: ${name}`, ...failed].join("\n") };
   },
   add_journal(game, input) {
     game.journal.push({ turn: game.turn, entry: input.entry });
