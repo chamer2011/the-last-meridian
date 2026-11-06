@@ -2,6 +2,9 @@
 order: 36
 type: consumable
 price: 15
+size: 1x1
+weight: 0.4
+stack: 10
 effect: hp 4
 
 In a line:

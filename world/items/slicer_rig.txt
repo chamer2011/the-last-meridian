@@ -2,6 +2,8 @@
 order: 42
 type: gadget
 price: 500
+size: 2x1
+weight: 1.5
 
 In a line:
 A Kessara-built cracking deck, illegal everywhere that still has laws: +3 on Hacking checks while carried, and one spoof to shake off a trace in the Intrusion Console.

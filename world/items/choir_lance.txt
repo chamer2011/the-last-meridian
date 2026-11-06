@@ -2,6 +2,8 @@
 order: 6
 type: weapon
 price: 1600
+size: 5x1
+weight: 6
 damage: 8 to 14
 stat: resonance
 skill: manifestation

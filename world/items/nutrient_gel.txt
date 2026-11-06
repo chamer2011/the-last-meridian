@@ -2,6 +2,9 @@
 order: 38
 type: consumable
 price: 30
+size: 1x1
+weight: 0.3
+stack: 10
 effect: hp 6, energy 1
 
 In a line:

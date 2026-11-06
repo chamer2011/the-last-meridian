@@ -99,6 +99,27 @@ export function reloadWorld() {
   readTextFolder(FACTIONS_DIR, FACTION, WORLD_FACTIONS, "factions");
   readTextFolder(PERKS_DIR, PERK, WORLD_PERKS, "perks");
   readTextFolder(COMPUTERS_DIR, COMPUTER, WORLD_COMPUTERS, "computers");
+  WORLD_FILE_PROBLEMS.push(...bagProblems(WORLD_ITEMS, WORLD_CHARACTERS, WORLD_ENEMIES, readFile("inventory.json").pack));
+}
+// What the inventory needs of the files: an item's size is squares across by down, no bigger than the pack, and what
+// people and enemies leave when they're beaten is the game's items, each with a chance from 0 to 100.
+export function bagProblems(items, characters, enemies, pack = { cols: 8, rows: 5 }) {
+  const problems = [];
+  for (const [id, item] of Object.entries(items)) {
+    if (item.size === undefined) continue;
+    const size = /^(\d+)x(\d+)$/.exec(String(item.size).trim().toLowerCase());
+    if (!size || Number(size[1]) < 1 || Number(size[2]) < 1) problems.push(`items/${id}.txt: its size should be squares across by down, like 2x1, not ${item.size}.`);
+    else if (Number(size[1]) > pack.cols || Number(size[2]) > pack.rows) problems.push(`items/${id}.txt: at ${item.size} it's bigger than the pack, which is ${pack.cols} by ${pack.rows}.`);
+  }
+  for (const [folder, all, lootOf] of [["characters", characters, (one) => one.combat?.loot], ["enemies", enemies, (one) => one.loot]]) {
+    for (const [id, one] of Object.entries(all)) {
+      for (const [item, chance] of Object.entries(lootOf(one) ?? {})) {
+        if (!items[item]) problems.push(`${folder}/${id}.txt: its loot names ${item}, which isn't one of the items in world/items.`);
+        else if (!(chance >= 0 && chance <= 100)) problems.push(`${folder}/${id}.txt: the chance of ${item} in its loot is ${chance}, and it should be from 0 to 100.`);
+      }
+    }
+  }
+  return problems;
 }
 reloadWorld();
 // The stories are plain-text files in world/stories, read by public/story-text.js into the shape the game uses, and
@@ -126,6 +147,7 @@ export const STORY_CLOCK = { ...readFile("story-clock.json"), threads: {} };
 export const STARTS = readFile("starts.json");
 export const CHECK_TEXT = readFile("checks.json");
 export const DEEDS = readFile("deeds.json");
+export const INVENTORY = readFile("inventory.json");
 export const ROOM_KINDS = readFile("rooms.json").kinds ?? {};
 export const ROOM_TALK = readFile("rooms.json").talk ?? {};
 // The game can't run without these, so a mistake in one gets a plain explanation.

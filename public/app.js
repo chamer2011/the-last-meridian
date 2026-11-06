@@ -10,9 +10,10 @@ import { MENUS, MENU_GROUPS, initMenus } from "./menus.js";
 import { choicesFor, dropStaleTooltip, initStory, loreCatalog, optionContent, setStoryContext, storyEntryNode, thinkingNode } from "./story-view.js";
 import { focusTalk, initTalk, resetTalk, startTalk, talkNode, talkOpen } from "./talk.js";
 import { computerNode, computerOpen, focusComputer, initComputer, resetComputer } from "./computer.js";
+import { bagNode, bagOpen, initBag, openBag, resetBag, toggleBag } from "./bag.js";
 import { beginScene, initPopups, openPopups, popupNext, popupsAttached, popupsOpen, updatePopups } from "./popups.js";
 import { INTERFACE_SIZES, interfaceZoom } from "./scene.js";
-import { focusThing, initWalk, keepClear, markPoint, newsBehindMenu, popupsShown, renderWalk, resetWalk, showWholeStory, thingNode, thingOpen, toggleClock, walkShown, walkViewNode } from "./walk.js";
+import { focusThing, initWalk, keepClear, markPoint, newsBehindMenu, popupsShown, putAwayRoomWindows, renderWalk, resetWalk, showWholeStory, thingNode, thingOpen, toggleClock, walkShown, walkViewNode } from "./walk.js";
 import { aimWith } from "./float.js";
 import { WRITING_SPEEDS } from "./writer.js";
 
@@ -218,6 +219,7 @@ async function loadGame(slot) {
   resetWalk();
   resetTalk();
   resetComputer();
+  resetBag();
   ui.game = game;
   ui.saves = saves;
   ui.screen = "game";
@@ -234,6 +236,7 @@ async function startNewGame(draft) {
   resetWalk();
   resetTalk();
   resetComputer();
+  resetBag();
   ui.game = game;
   ui.saves = saves;
   ui.screen = "game";
@@ -547,6 +550,12 @@ function openMenu(id, focus = null) {
     openBoard();
     return;
   }
+  // The inventory is a window over the room, not a drawer.
+  if (MENUS[id]?.window) {
+    closeMenu();
+    toggleBag();
+    return;
+  }
   const wasOpen = ui.sideOpen;
   ui.tab = id;
   ui.menuFocus = focus;
@@ -623,6 +632,7 @@ function render() {
     raidNode(),
     talkNode(),
     computerNode(),
+    bagNode(),
     thingNode(),
     railNode(),
     backdropNode(),
@@ -716,6 +726,8 @@ initWalk({
   sendChat,
   startTalk,
   act,
+  openBag,
+  bagOpen,
   // A number key picks one of the story's choices, when there's nothing to type it into.
   pickOption: (n) => {
     const option = currentOptions()[n - 1];
@@ -742,6 +754,7 @@ initPopups({
 });
 initTalk({ ui, reading, render, openMenu, popupsShown });
 initComputer({ ui, render, openMenu });
+initBag({ ui, render, renderStatus, renderWalk, putAway: putAwayRoomWindows });
 aimWith(markPoint, keepClear);
 
 initCreator({

@@ -1,0 +1,22 @@
+{
+  "_about": "How the grid inventory works: the squares you carry things in, how much you can carry before you tire, and what turns up in things and on the people you beat. Each item's own size, weight and stack are in its file under world/items; the ones under kinds are for an item whose file doesn't say. A size is wide x tall, in squares.",
+  "pockets": { "cols": 4, "rows": 2, "_about": "Only things one square big fit in a pocket." },
+  "pack": { "cols": 8, "rows": 5 },
+  "belt": { "slots": 4, "_about": "Supplies on the belt are the ones you can use in a fight." },
+  "sidearm": { "squares": 2, "_about": "A weapon this many squares or smaller can go on the hip, and be drawn in a fight." },
+  "load": { "base": 12, "perMight": 3, "tiring": 2, "_about": "You carry base kg, plus perMight kg for each point of Might. Over that, you tire this many times as fast." },
+  "kinds": {
+    "weapon": { "size": "2x1", "weight": 2, "stack": 1 },
+    "armor": { "size": "2x2", "weight": 4, "stack": 1 },
+    "consumable": { "size": "1x1", "weight": 0.5, "stack": 5 },
+    "gadget": { "size": "1x1", "weight": 0.5, "stack": 1 },
+    "story": { "size": "1x1", "weight": 0.1, "stack": 1 }
+  },
+  "containers": { "cols": 6, "rows": 5, "_about": "A thing in a room with a holds line in its map file can be opened, and holds this many squares." },
+  "piles": { "cols": 6, "rows": 4, "_about": "What you drop, and what the people you beat leave, lies on the floor in a pile this big." },
+  "loot": {
+    "chances": { "ration_pack": 40, "medkit": 20, "energy_cell": 20, "stim": 10 },
+    "weapon": 25,
+    "_about": "The chance in a hundred that each of the chances is on someone you beat, unless their file has its own loot line, and the chance they drop their weapon when it's one of the game's items. Machines only leave what their own loot line says."
+  }
+}

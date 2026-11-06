@@ -2,6 +2,8 @@
 order: 41
 type: gadget
 price: 250
+size: 1x1
+weight: 0.6
 
 In a line:
 A pocket jammer that smears your trace on anyone's sensors: +2 on Stealth checks while carried.

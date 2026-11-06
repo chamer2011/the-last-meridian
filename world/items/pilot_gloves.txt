@@ -2,6 +2,8 @@
 order: 50
 type: gadget
 price: 280
+size: 1x1
+weight: 0.3
 
 In a line:
 Worn flight gloves with the fingertips rewired for feel: +2 on Piloting checks while carried.

@@ -2,6 +2,8 @@
 order: 23
 type: weapon
 price: 250
+size: 4x1
+weight: 4.5
 damage: 5 to 9
 stat: perception
 skill: firearms

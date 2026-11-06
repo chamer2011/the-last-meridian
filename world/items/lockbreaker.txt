@@ -2,6 +2,8 @@
 order: 17
 type: gadget
 price: 200
+size: 1x1
+weight: 0.3
 
 In a line:
 +2 on Hacking checks while carried.

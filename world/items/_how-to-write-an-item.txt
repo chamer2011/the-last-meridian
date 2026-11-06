@@ -10,6 +10,9 @@ with the file and the line.
     order: 23                           (where it comes in lists; leave it out to come after the rest, by name)
     type: weapon                        (weapon, armor, consumable, gadget or story)
     price: 250
+    size: 4x1                           (squares it takes in the inventory, across by down; leave it out for its kind's)
+    weight: 4.5                         (in kg; leave it out for its kind's)
+    stack: 10                           (how many go on one square; leave it out for its kind's, 1 for most)
     damage: 5 to 9                      (weapons)
     stat: perception                    (weapons: the attribute that adds to the attack)
     skill: firearms                     (weapons: the skill that adds to the attack)
@@ -25,3 +28,7 @@ with the file and the line.
     skills: hacking 1                   (a bonus or penalty to a skill)
 
 In a line is what the player reads in the inventory and the market. A part that has nothing in it can be left out.
+
+Size, weight and stack are for the inventory. A thing one square big goes in a pocket; anything bigger goes in the
+pack, which is 8 squares by 5, so nothing can be bigger than that, and a weapon of 2 squares or fewer can go on the hip.
+Each kind's usual size, weight and stack, and how much the player can carry, are in world/inventory.json.

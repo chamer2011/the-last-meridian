@@ -2,6 +2,8 @@
 order: 59
 type: story
 price: 0
+size: 1x1
+weight: 1
 
 In a line:
 A sealed tube of material drilled out of the drowned structure at Maris Deep, and it won't cool down.

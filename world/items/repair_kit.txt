@@ -2,6 +2,9 @@
 order: 15
 type: consumable
 price: 150
+size: 2x1
+weight: 3
+stack: 2
 effect: hull 20
 
 In a line:

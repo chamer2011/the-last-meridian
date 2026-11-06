@@ -2,6 +2,8 @@
 order: 4
 type: weapon
 price: 550
+size: 4x2
+weight: 7
 damage: 6 to 11
 stat: might
 skill: firearms

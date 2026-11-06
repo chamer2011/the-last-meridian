@@ -20,6 +20,7 @@ import { conditionHolds } from "./scene-text.js";
 import { recordFact } from "./record.js";
 import { attackPerson, isHurt, isWary, pickPocket, pocketDetail } from "./deeds.js";
 import { rumorsFrom } from "./story-library.js";
+import { pilesIn } from "./bag.js";
 import { colorForName, parseNarration } from "../public/story.js";
 import { COMBAT_ART, LOOKS, ROOM_KINDS, ROOM_TALK, WORLD_MAPS } from "./world.js";
 
@@ -363,6 +364,19 @@ function walkAt(game) {
   return game.walk?.place === game.location ? game.walk : newWalk(game.location, map);
 }
 
+// Where the player stands, for what's on the floor and what can be opened: the place, the room, the square and the
+// room's things. Null where there's no map.
+export function standingAt(game) {
+  const walk = walkAt(game);
+  if (!walk) return null;
+  const map = mapFor(game.location);
+  const level = levelOf(game, walk, map);
+  const spot = walk.room ?? walk;
+  return { place: game.location, levelId: roomId(walk, level), x: spot.x, y: spot.y, things: level.things };
+}
+// What a level is called in the save: its id, or a made-up room's name.
+const roomId = (walk, level) => (walk.room ? walk.room.name : level.id);
+
 // Someone who starts out at their job starts in the room they work in.
 export function startInRoom(game, room) {
   const map = mapFor(game.location);
@@ -452,7 +466,7 @@ function nearestFloor(level, people, x, y) {
 function markAt(game, walk, level, x, y) {
   const person = peopleOnLevel(game, walk, level).find((one) => one.x === x && one.y === y);
   if (person) return { kind: "person", key: keyOf(person), x, y, passing: person.walking };
-  const thing = level.things.find((one) => one.x === x && one.y === y);
+  const thing = level.things.find((one) => one.x === x && one.y === y) ?? pilesIn(game, game.location, roomId(walk, level)).find((one) => one.x === x && one.y === y);
   if (thing) return { kind: "thing", key: thing.id, x, y };
   const part = partsOn(game, walk, level).find((one) => one.x === x && one.y === y);
   if (part) return { kind: "thing", key: `part:${part.id}`, x, y };
@@ -471,7 +485,7 @@ function findMark(game, walk, level, target) {
     const exit = level.exits.find((one) => one.key === key);
     return exit ? { kind, key, x: exit.x, y: exit.y, exit } : null;
   }
-  const thing = kind === "thing" ? level.things.find((one) => one.id === key) ?? partsOn(game, walk, level).find((one) => `part:${one.id}` === key) : null;
+  const thing = kind === "thing" ? level.things.find((one) => one.id === key) ?? partsOn(game, walk, level).find((one) => `part:${one.id}` === key) ?? pilesIn(game, game.location, roomId(walk, level)).find((one) => one.id === key) : null;
   return thing ? { kind, key, x: thing.x, y: thing.y } : null;
 }
 
@@ -492,6 +506,8 @@ function enterLevel(game, walk, map, id, viaKey = null) {
   const taken = new Set(people.map((person) => spotKey(person.x, person.y)));
   const beside = door && STEPS.map(([dx, dy]) => ({ x: door.x + dx, y: door.y + dy })).find((spot) => canStand(next, spot.x, spot.y) && !taken.has(spotKey(spot.x, spot.y)));
   const spot = beside ?? next.start;
+  // Whatever was open in the room being left is shut.
+  if (game.looting) game.looting = null;
   walk.room = null;
   walk.level = id;
   walk.x = spot.x;
@@ -873,7 +889,9 @@ const thingView = (game, thing) => ({
   y: thing.y,
   have: Boolean(thing.item && game.inventory?.[thing.item]),
   // Something to pick up or a written result answers from the file, even with an AI, so the page knows it's free.
-  written: Boolean(thing.item || thing.used || (!isCaptain(game) && thing.usedOther)),
+  written: Boolean(thing.item || thing.used || thing.holds || (!isCaptain(game) && thing.usedOther)),
+  // A thing with a holds line can be opened, and this is what the inventory calls it.
+  ...(thing.holds ? { holds: true, store: `thing:${game.location}:${thing.id}` } : {}),
 });
 
 function exitView(game, exit, levelId) {
@@ -944,7 +962,7 @@ export function walkView(game) {
     floor: floorOf(level),
     here: { id: walk.room ? walk.room.name : level.id, name: level.name, desc: level.desc },
     people: peopleOnLevel(game, walk, level).map((entry) => personView(game, entry)),
-    things: [...level.things.map((thing) => thingView(game, thing)), ...(walk.room ? [] : partThings(game, game.location, level.id))],
+    things: [...level.things.map((thing) => thingView(game, thing)), ...(walk.room ? [] : partThings(game, game.location, level.id)), ...pilesIn(game, game.location, roomId(walk, level)).map((pile) => ({ ...pile, store: pile.id }))],
     exits: level.exits.map((exit) => exitView(game, exit, level.id)),
     ...(walk.room ? {} : { room: roomView(game, game.location, level.id) }),
     overview: overviewView(game, walk, map),

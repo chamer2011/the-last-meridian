@@ -2,6 +2,8 @@
 order: 18
 type: gadget
 price: 180
+size: 1x1
+weight: 0.1
 
 In a line:
 +2 on Persuasion and Deception checks while carried.

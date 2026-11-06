@@ -2,6 +2,9 @@
 order: 35
 type: consumable
 price: 140
+size: 1x1
+weight: 1
+stack: 3
 effect: hp 30
 
 In a line:

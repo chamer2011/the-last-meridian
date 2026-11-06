@@ -397,42 +397,6 @@ function codexMenu() {
   ];
 }
 
-// ---- Inventory ----------------------------------------------------------
-
-const ITEM_GROUPS = { weapon: "Weapons", armor: "Armor", consumable: "Supplies", gadget: "Gadgets", story: "Story items" };
-
-function itemCard(i) {
-  const { ui, act } = app;
-  const g = ui.game;
-  const stats = [
-    i.damage && `Damage ${i.damage[0]}-${i.damage[1]}. Uses ${ui.setup.stats[i.stat]} and ${ui.setup.skills[i.skill].name}, for ${signed(i.attackBonus)} to hit.`,
-    i.defense && `Defense +${i.defense}.`,
-  ].filter(Boolean);
-  return el("div", { class: "card stack gap-small" },
-    el("div", { class: "spread" }, el("strong", {}, `${i.name}${i.count > 1 ? ` x${i.count}` : ""}`), i.equipped && el("span", { class: "tag on" }, "equipped")),
-    muted(i.desc),
-    stats.length > 0 && small(stats.join(" ")),
-    i.price > 0 && muted(`Worth ${i.price} cr. Sells for ${i.sellPrice} cr.`),
-    (i.type === "weapon" || i.type === "armor") && el("div", {}, el("button", { disabled: Boolean(g.combat), onclick: act({ action: "equip", id: i.id }) }, i.equipped ? "Unequip" : "Equip")),
-    i.type === "consumable" && el("div", {}, el("button", { disabled: Boolean(g.combat), onclick: act({ action: "use", id: i.id }) }, "Use")));
-}
-
-function inventoryMenu() {
-  const g = app.ui.game;
-  const p = g.combatProfile;
-  return columns(
-    section("Carrying",
-      row("Credits", g.credits),
-      row("Weapon", p.weapon, `${p.damage[0]}-${p.damage[1]} damage`),
-      row("Armor", p.armor, `defense ${p.defense}`)),
-    Object.entries(ITEM_GROUPS).map(([type, label]) => {
-      const items = g.inventory.filter((i) => i.type === type);
-      return items.length > 0 && section(label, items.map(itemCard));
-    }),
-    !g.inventory.length && empty("Your pockets are empty."),
-  );
-}
-
 // ---- Ship ---------------------------------------------------------------
 
 // The Meridian's own systems, which the captain runs from here with no hacking: each one folded, with what isn't
@@ -700,7 +664,7 @@ export const MENUS = {
   board: { label: "Story board", command: "board", about: "Every story as boxes and arrows, to read and change, saved to its file", board: true, view: () => el("div") },
   leads: { label: "Leads", command: "leads", about: "Stories you could start here, and what people are saying", view: leadsMenu },
   codex: { label: "What you know", command: "codex", about: "Places, factions, ships and ideas you've come across", view: codexMenu },
-  inventory: { label: "Inventory", command: "inv", about: "What you're carrying and wearing", view: inventoryMenu },
+  inventory: { label: "Inventory", command: "inv", about: "What you're carrying and wearing, on a grid, or press I", window: true },
   ship: { label: "Ship", command: "ship", about: "The Meridian and her crew", view: shipMenu, captainOnly: true },
   fleet: { label: "Fleet", command: "fleet", about: "All 41 ships: supplies, rations, work crews and orders", view: fleetMenu },
   map: { label: "Star map", command: "map", about: "The chart of known space, and setting course", view: mapMenu },

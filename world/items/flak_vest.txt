@@ -2,6 +2,8 @@
 order: 7
 type: armor
 price: 100
+size: 2x2
+weight: 4
 defense: 1
 
 In a line:

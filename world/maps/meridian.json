@@ -6,6 +6,7 @@
     "exits say which level each one goes to, and which exit there you come out of (via). They should match up in both directions.",
     "An exit with closed in it can't be walked through until the story has taken the captain through it. closed.look says why it's closed, and closed.use goes to the story when the player asks at it.",
     "A person's asks are what the player can click to say to them first, and greeting, if there is one, is how they look when you come over. A thing's look is what the player reads for free, and its use goes to the story as the player's action. A thing with an item in it can't be used again while you're carrying one.",
+    "A thing with holds, such as \"holds\": { \"medkit\": 2, \"ration_pack\": 5 }, can be opened, and what's in it opens in the inventory beside the player's pack. It's filled from holds the first time it's opened, and from then on keeps what's taken out and put in.",
     "desc is what the player reads about the room, so keep the place file's secrets out of it. writing is words painted or chalked on the level, labels are the room names on it, and colors are the level's colors. writing and labels use column and row numbers, counted from 0 at the top left of the plan.",
     "aliases are the other names the game master might use for a room, so that the map follows the story.",
     "overview is the map of the whole place, which opens from the button beside the level. title is what that button says.",

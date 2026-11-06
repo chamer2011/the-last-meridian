@@ -67,7 +67,7 @@ export function resetWalk() {
 
 const anotherWindow = () => {
   const g = app.ui.game;
-  return Boolean(g.combat || g.check || g.talk || g.computer || g.fleet.raid || walk.plan);
+  return Boolean(g.combat || g.check || g.talk || g.computer || g.fleet.raid || walk.plan || app.bagOpen?.());
 };
 
 // While the AI is writing or another window is up, the captain stays where they are.
@@ -326,7 +326,7 @@ function frameNode() {
     view.exits.map(exitMark),
     view.people.map(personMark),
     el("div", { class: "walk-cursor", id: "walk-cursor", hidden: true }),
-    el("div", { class: "walk-captain", id: "walk-captain", style: spotStyle(spot.x, spot.y), title: "You" }, "@")));
+    el("div", { class: "walk-captain", id: "walk-captain", "data-mark": "person:you", style: spotStyle(spot.x, spot.y), title: "You" }, "@")));
 }
 
 function hereList(label, entries) {
@@ -602,6 +602,12 @@ function planWindow(view) {
 // ---- Looking at things --------------------------------------------------
 
 export const thingOpen = () => Boolean(walk.thing || walk.plan);
+// The inventory opening puts away a thing's window and the right-click menu, so they aren't left under it.
+export function putAwayRoomWindows() {
+  if (walk.menu) closeMenu(true);
+  walk.thing = null;
+  walk.looked = false;
+}
 
 function openThing(id) {
   walk.thing = app.ui.game.walk.things.find((thing) => thing.id === id) ?? null;
@@ -692,8 +698,23 @@ const GLUE = -1;
 // What the game says comes with a tag in front, like [SYSTEMS] or [ITEM]; the window shows the words alone.
 const plainLines = (text) => String(text).split("\n").map(untagged).filter(Boolean);
 
+// Something that holds things, or a pile on the floor, opens in the inventory, beside what the player carries.
+async function openStore(thing) {
+  try {
+    const reply = await api("/api/bag", { action: "open", key: thing.store });
+    app.ui.game = reply.game;
+  } catch (err) {
+    walk.message = err.message;
+    drawHere();
+    return;
+  }
+  closeWindow();
+  app.openBag();
+}
+
 function thingChoices(thing) {
   if (thing.person) return personChoices(thing);
+  if (thing.holds) return [["Open", "look through it, beside your pack", () => openStore(thing)], ["Close", "", closeWindow]];
   if (thing.actions || thing.part) return [...(thing.actions ?? []).map((action) => [action.label, action.detail, () => workOn(thing, action.id)]), ["Close", "", closeWindow]];
   const written = app.ui.game.mode === "written" || Boolean(thing.written);
   return [
@@ -899,6 +920,16 @@ function menuFor(target) {
         items: [
           { label: "Look", run: () => openThing(thing.id) },
           ...(thing.actions ?? []).map((action) => ({ label: action.label, detail: action.detail, run: there(() => workOn(walk.thing, action.id)) })),
+        ],
+      };
+    }
+    if (thing.holds) {
+      return {
+        title: thing.name,
+        theme: "gold",
+        items: [
+          { label: "Look", run: () => openThing(thing.id) },
+          { label: "Open", detail: "beside your pack", run: () => go({ action: "go", to: `thing:${thing.id}` }, () => openStore(thing)) },
         ],
       };
     }

@@ -2,6 +2,8 @@
 order: 33
 type: armor
 price: 500
+size: 2x2
+weight: 2
 defense: 2
 
 In a line:

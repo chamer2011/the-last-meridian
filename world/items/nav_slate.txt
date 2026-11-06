@@ -2,6 +2,8 @@
 order: 46
 type: gadget
 price: 300
+size: 1x1
+weight: 0.4
 
 In a line:
 A scratched slate of jump tables, with corrections in four different hands: +2 on Navigation checks while carried.

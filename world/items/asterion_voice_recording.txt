@@ -2,6 +2,8 @@
 order: 55
 type: story
 price: 0
+size: 1x1
+weight: 0.1
 
 In a line:
 Eleven minutes of voices pulled off the dead wires of Asterion, and every time you play it, it runs a little longer.

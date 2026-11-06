@@ -2,6 +2,8 @@
 order: 29
 type: weapon
 price: 1100
+size: 3x1
+weight: 1.8
 damage: 7 to 13
 stat: agility
 skill: melee

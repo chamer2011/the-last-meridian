@@ -324,7 +324,7 @@ function itemGraph() {
   const P = state.item, L = state.links;
   const list = [], ws = [];
   const add = (node) => { list.push(node); return node.id; };
-  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${P.type ?? "an item"}, ${P.price ?? 0} credits.${P.damage ? ` ${P.damage[0]} to ${P.damage[1]} damage, ${P.stat ?? ""} and ${P.skill ?? ""}.` : ""}${P.defense ? ` Defense ${P.defense}.` : ""}${P.effect ? ` ${Object.entries(P.effect).map(([k, v]) => `${k} ${v}`).join(", ")}.` : ""}${P.restricted ? " Restricted." : ""}`, label: "About this item" });
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${P.type ?? "an item"}, ${P.price ?? 0} credits.${P.size ? ` ${P.size} squares in the inventory, ${P.weight ?? 0} kg${P.stack > 1 ? `, ${P.stack} to a square` : ""}.` : ""}${P.damage ? ` ${P.damage[0]} to ${P.damage[1]} damage, ${P.stat ?? ""} and ${P.skill ?? ""}.` : ""}${P.defense ? ` Defense ${P.defense}.` : ""}${P.effect ? ` ${Object.entries(P.effect).map(([k, v]) => `${k} ${v}`).join(", ")}.` : ""}${P.restricted ? " Restricted." : ""}`, label: "About this item" });
   add({ id: "desc", kind: "lead", col: 1, name: "In a line", text: P.desc ?? "", label: "What the player reads", bind: { path: "desc" } });
   add({ id: "effects", kind: "ending", col: 2, name: "Effects", text: Object.entries(P.fx ?? {}).map(([key, value]) => `${spaced(key)}: ${Object.entries(value).map(([name, amount]) => `${name} ${amount}`).join(", ")}`).join("\n") || "none", label: "While it's worn or carried", bind: { effects: true } });
   ws.push({ from: "desc", to: "effects" });
@@ -1099,7 +1099,7 @@ function inspectWorldAbout(inspector) {
     let box;
     if (field.type === "pairs") {
       // Numbers with names, like on hit: stress 2, have an editor of their own, with Keep buttons of its own.
-      const names = field.path === "onHit" ? ["stress", "energy"] : field.path === "effect" ? ["hp", "energy", "hull", "fuel"] : field.path === "requiresSkill" ? lists.skills : field.path === "requiresStat" ? lists.attributes : lists.axes;
+      const names = field.path === "onHit" ? ["stress", "energy"] : field.path === "loot" ? lists.items.map((one) => one.id) : field.path === "effect" ? ["hp", "energy", "hull", "fuel"] : field.path === "requiresSkill" ? lists.skills : field.path === "requiresStat" ? lists.attributes : lists.axes;
       boxes.push({ field, box: pairsEditor(item, field.path, field.key, names), own: true });
       continue;
     }
@@ -1360,6 +1360,7 @@ function inspectFight(inspector, node) {
     row(el("label", { for: "edit-fight-machine" }, "a machine"), machine, el("label", { for: "edit-fight-boss" }, "a boss"), boss),
     row(button("Keep these", () => { if (weapon.value.trim()) c.weapon = weapon.value.trim(); else delete c.weapon; if (art.value) c.art = art.value; else delete c.art; c.tags = tags.value.split(",").map((one) => one.trim()).filter(Boolean); if (machine.checked) c.machine = true; else delete c.machine; if (boss.checked) c.boss = true; else delete c.boss; changed(); })),
     pairsEditor(c, "onHit", "When they hit, the player also gets", ["stress", "energy"]),
+    pairsEditor(c, "loot", "What they leave on the floor when they're beaten, each with its chance in 100", lists.items.map((one) => one.id)),
     ...linesBoxes);
 }
 function daysRow(holder) {

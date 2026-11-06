@@ -23,6 +23,7 @@ the file and the line. People with a file of their own in world/characters fight
     machine: yes                        (leave it out if not)
     boss: yes                           (leave it out if not)
     on hit: stress 2                    (what a hit also does to the player: stress or energy; leave it out if nothing)
+    loot: energy_cell 50, repair_kit 20 (what it leaves on the floor when it's beaten: items, each with its chance in 100)
 
     In a line:
     Hired muscle with a stun baton.
@@ -46,3 +47,7 @@ the file and the line. People with a file of their own in world/characters fight
 
 The lines are read out in a fight, one picked at random each time; a kind of line that's left out gets a plain
 one. A part that has nothing in it can be left out.
+
+Without a loot line, someone beaten leaves what world/inventory.json says anyone might (a ration pack, a medkit, an
+energy cell or a stim, each now and then), and now and then the weapon they fought with, if it's one of the game's
+items. A machine without a loot line leaves nothing.

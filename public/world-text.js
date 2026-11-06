@@ -22,6 +22,7 @@ const FIGHT_FIELDS = [
   { path: "threat", key: "threat", type: "number" }, { path: "hp", key: "hp", type: "number" }, { path: "attack", key: "attack", type: "number" }, { path: "defense", key: "defense", type: "number" },
   { path: "damage", key: "damage", type: "range" }, { path: "weapon", key: "weapon", type: "string" }, { path: "xp", key: "xp", type: "number" }, { path: "credits", key: "credits", type: "range" },
   { path: "art", key: "art", type: "string" }, { path: "tags", key: "tags", type: "list" }, { path: "motive", key: "motive", type: "string" }, { path: "machine", key: "machine", type: "flag" }, { path: "boss", key: "boss", type: "flag" }, { path: "onHit", key: "on hit", type: "pairs" },
+  { path: "loot", key: "loot", type: "pairs" },
 ];
 
 export const PERSON = {
@@ -92,6 +93,7 @@ export const ENEMY = {
     { path: "damage", key: "damage", type: "range" }, { path: "weapon", key: "weapon", type: "string" }, { path: "xp", key: "xp", type: "number" }, { path: "credits", key: "credits", type: "range" },
     { path: "art", key: "art", type: "string" }, { path: "tags", key: "tags", type: "list" }, { path: "motive", key: "motive", type: "string" }, { path: "faction", key: "faction", type: "string" },
     { path: "machine", key: "machine", type: "flag" }, { path: "boss", key: "boss", type: "flag" }, { path: "onHit", key: "on hit", type: "pairs" },
+    { path: "loot", key: "loot", type: "pairs" },
   ],
   sections: [
     { path: "desc", phrase: "In a line", type: "text" },
@@ -104,6 +106,7 @@ export const ITEM = {
   title: "name",
   header: [
     { path: "order", key: "order", type: "number" }, { path: "type", key: "type", type: "string" }, { path: "price", key: "price", type: "number" },
+    { path: "size", key: "size", type: "string" }, { path: "weight", key: "weight", type: "number" }, { path: "stack", key: "stack", type: "number" },
     { path: "damage", key: "damage", type: "range" }, { path: "stat", key: "stat", type: "string" }, { path: "skill", key: "skill", type: "string" },
     { path: "defense", key: "defense", type: "number" }, { path: "restricted", key: "restricted", type: "flag" }, { path: "effect", key: "effect", type: "pairs" },
   ],

@@ -2,6 +2,8 @@
 order: 3
 type: weapon
 price: 150
+size: 2x2
+weight: 3
 damage: 3 to 8
 stat: intellect
 skill: engineering

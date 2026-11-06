@@ -2,6 +2,8 @@
 order: 43
 type: gadget
 price: 300
+size: 1x1
+weight: 0.2
 
 In a line:
 A jeweler's eyepiece rebuilt for field surgery: +2 on Medicine checks while carried.

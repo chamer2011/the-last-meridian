@@ -26,6 +26,7 @@ import { enterAfterHack, enterDoorPanel } from "./src/computers.js";
 import { airBadHere, controlSystem, settlePart, systemsOf } from "./src/systems.js";
 import { computerCommand, screenGoesDark } from "./src/computer-use.js";
 import { afterDeedFight, settleDeed } from "./src/deeds.js";
+import { bagCommand } from "./src/bag.js";
 
 const savesDir = path.join(dataDir(), "saves");
 const settingsFile = path.join(dataDir(), "settings.json");
@@ -572,6 +573,13 @@ async function handleApi(req, res, route) {
     screenGoesDark(game, "the power's off in here");
     autosave();
     return json(res, 200, { game: publicState(game), notes });
+  }
+  // The inventory window: moving things about, gear on and off, using, dropping, and what's in a thing that's open.
+  if (route === "/api/bag") {
+    const { said, quiet } = bagCommand(requireGame(), body);
+    if (said && !quiet) log("notice", said.startsWith("[") ? said : `[ITEM] ${said}`);
+    autosave();
+    return json(res, 200, { game: publicState(game), said });
   }
   // A computer the player is on: reading, running and logging off happen here, and the AI hears one line at the end.
   if (route === "/api/computer") {

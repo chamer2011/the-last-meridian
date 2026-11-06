@@ -25,6 +25,7 @@ import { checkTarget, startInRoom, talkView, walkLine, walkView } from "./walk.j
 import { computerView } from "./computers.js";
 import { advanceSystems, jumpBlocked, roomEdge, shipSystemsView, systemsLine } from "./systems.js";
 import { buildLoreIndex, findLoreIds } from "../public/story.js";
+import { bagView, roomFor, tiring } from "./bag.js";
 
 export { combatAction, startCombat } from "./combat.js";
 
@@ -289,7 +290,8 @@ function hoursPass(game, hours, activity) {
   } else if (activity === "routine") {
     game.energy = Math.min(maxEnergy(game), game.energy + Math.floor(hours / 2));
   } else {
-    addFatigue(game, (activity === "work" ? 3 : 1.5) * hours);
+    // Carrying more than they can makes them tire faster.
+    addFatigue(game, (activity === "work" ? 3 : 1.5) * hours * tiring(game));
     game.energy = Math.min(maxEnergy(game), game.energy + Math.floor(hours / 2));
   }
   // With no medicine in the fleet, wounds take twice as long to heal.
@@ -328,11 +330,10 @@ export function addItem(game, id, count = 1) {
 export function removeItem(game, id, count = 1) {
   if ((game.inventory[id] ?? 0) < count) throw new Error(`You don't have ${ITEMS[id]?.name ?? id}.`);
   game.inventory[id] -= count;
-  if (game.inventory[id] === 0) {
-    delete game.inventory[id];
-    if (game.equipped.weapon === id) game.equipped.weapon = null;
-    if (game.equipped.armor === id) game.equipped.armor = null;
-  }
+  if (game.inventory[id] === 0) delete game.inventory[id];
+  // Gear that's gone isn't in hand, worn or on the hip any more: the hip first, when one of two is left.
+  const held = ["sidearm", "armor", "weapon"].filter((slot) => game.equipped?.[slot] === id);
+  while (held.length > (game.inventory[id] ?? 0)) game.equipped[held.shift()] = null;
 }
 
 export function equip(game, id) {
@@ -404,6 +405,7 @@ export function buy(game, id) {
   const item = ITEMS[id];
   const price = buyPrice(game, item);
   if (game.credits < price) throw new Error("You can't afford that.");
+  if (!roomFor(game, id)) throw new Error(`There's no room in your pack for the ${item.name}. Make some first.`);
   game.credits -= price;
   addItem(game, id);
   return `Bought ${item.name} for ${price} credits.`;
@@ -992,6 +994,7 @@ export function publicState(game) {
     location: { id: game.location, ...place },
     story: { ...storyView(game), record: recordView(game) },
     equipped: game.equipped,
+    bag: bagView(game),
     inventory: Object.entries(game.inventory).filter(([id]) => ITEMS[id]).map(([id, count]) => ({
       id,
       count,

@@ -2,6 +2,8 @@
 order: 22
 type: story
 price: 40
+size: 1x1
+weight: 0
 
 In a line:
 Someone would pay to read this, or pay more to destroy it.

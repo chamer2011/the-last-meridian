@@ -2,6 +2,9 @@
 order: 39
 type: consumable
 price: 60
+size: 1x1
+weight: 1
+stack: 5
 effect: hull 8
 
 In a line:

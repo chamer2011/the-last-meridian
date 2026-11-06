@@ -583,6 +583,64 @@ button.fighter:hover:not(:disabled), button.fighter:focus-visible { background: 
 .check-float .check-verdict-title { font-size: 22px; padding: 8px 0; }
 /* The computer window floats the same way; its console keeps its own height. */
 .check-float .computer-console { height: 7em; min-height: 0; max-height: none; }
+/* The inventory: the game's console window, as big as what's in it, with gear round a figure, pockets, a pack, and what's
+   open beside them, each square 26px. */
+.check-float > .check-window.bag-window { width: auto; max-width: 100%; }
+.bag-window { font-size: 12px; }
+.bag-close { margin-left: 4px; color: var(--c-bg); font-weight: 700; }
+.bag-close:hover:not(:disabled), .bag-close:focus-visible { background: var(--c-bg) !important; color: var(--c) !important; }
+.bag-body { display: flex; gap: 8px; padding: 6px; align-items: flex-start; overflow: auto; min-height: 0; }
+.bag-column { display: flex; flex-direction: column; gap: 6px; }
+.bag-panel { flex: none; }
+.bag-panel-body { padding: 5px; display: flex; flex-direction: column; gap: 4px; }
+.bag-figure { position: relative; width: 214px; height: 204px; }
+.bag-figure-art { position: absolute; left: 108px; top: 54px; margin: 0; font: 12px/1 var(--mono); color: var(--c-dim); pointer-events: none; }
+.bag-tag { position: absolute; font-size: 10px; line-height: 12px; color: var(--c-dim); white-space: nowrap; }
+.bag-slot { position: absolute; border: 1px dashed var(--c-line); background: rgba(0, 0, 0, .3); }
+.bag-slot.ok { border: 1px solid var(--c-bright); background: color-mix(in srgb, var(--c) 22%, transparent); }
+.bag-slot.bad { border: 1px solid #ff8f7f; background: rgba(255, 143, 127, .16); }
+.bag-slot-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 9px; line-height: 1.1; color: var(--c-dim); padding: 1px; }
+.bag-grid {
+  position: relative; background-color: rgba(0, 0, 0, .25);
+  background-image: linear-gradient(to right, color-mix(in srgb, var(--c) 14%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--c) 14%, transparent) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+.bag-item {
+  position: absolute; display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: grab;
+  border: 1px solid var(--c-line); background: color-mix(in srgb, var(--c) 9%, rgba(0, 0, 0, .55)); color: var(--c);
+}
+.bag-item:hover { background: color-mix(in srgb, var(--c) 18%, rgba(0, 0, 0, .55)); border-color: var(--c-dim); }
+.bag-item.story { color: #f5d76e; border-color: #6c5f2e; }
+.bag-item.lifted { opacity: .25; }
+.bag-item.fitted { inset: 2px; }
+.bag-item pre { margin: 0; font: 9px/1.05 var(--mono); white-space: pre; pointer-events: none; }
+.bag-item.fitted pre { font-size: 8px; }
+.bag-item-name { position: absolute; left: 2px; bottom: 0; font-size: 8px; line-height: 1.2; color: var(--c-dim); white-space: nowrap; max-width: calc(100% - 16px); overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.bag-item-count { position: absolute; right: 1px; bottom: 0; font-size: 8.5px; line-height: 1.2; color: var(--c-bright); pointer-events: none; }
+.bag-ghost { position: absolute; z-index: 5; pointer-events: none; opacity: .92; box-shadow: 0 6px 18px rgba(0, 0, 0, .6); }
+.bag-float .bag-ghost { --c: #8df5ac; --c-dim: #4f9a68; --c-line: #2a6a43; --c-bright: #e6ffef; }
+.bag-drop { position: absolute; z-index: 2; pointer-events: none; border: 1px dashed var(--c-bright); background: color-mix(in srgb, var(--c) 22%, transparent); }
+.bag-drop.bad { border-color: #ff8f7f; background: rgba(255, 143, 127, .2); }
+.bag-load { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bag-load-fill { color: var(--c); }
+.bag-load-rest { color: var(--c-line); }
+.bag-load.heavy .bag-load-fill, .bag-heavy { color: #ffc466; }
+.bag-loose { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 4px 8px; border-top: 1px solid var(--c-line); }
+.bag-loose-item { position: relative; display: inline-block; width: 54px; height: 28px; }
+.bag-take-all { align-self: flex-start; }
+.bag-said { color: var(--c-bright); }
+.bag-window > .bag-tip { position: absolute; z-index: 4; padding: 5px 7px; border: 1px solid var(--c); background: var(--c-bg); box-shadow: 0 8px 24px rgba(0, 0, 0, .6); pointer-events: none; display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.bag-tip-name { color: var(--c-bright); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.bag-tip-facts { color: var(--c-bright); }
+.bag-tip-line { color: var(--c); }
+.bag-menu { z-index: 6; }
+/* The room's notes of what was just done would be under it, and it says the same in its own bottom line. */
+body:has(#bag) .pop-notes { visibility: hidden; }
+/* It isn't tall, so even on a short screen it starts below the status line and the room's clock. */
+@media (max-height: 700px) {
+  .check-float.bag-float { padding-top: calc(max(10px, 3vh) + 5em); }
+}
+
 /* The line from a floating window to what it's about in the room, in the window's own colour. It shows once there's
    somewhere to draw it. */
 .float-leader { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; opacity: 0; transition: opacity .2s; }

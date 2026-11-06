@@ -2,6 +2,8 @@
 order: 27
 type: weapon
 price: 450
+size: 3x2
+weight: 6
 damage: 6 to 10
 stat: might
 skill: melee

@@ -2,6 +2,8 @@
 order: 11
 type: armor
 price: 1400
+size: 2x3
+weight: 3
 defense: 4
 
 In a line:

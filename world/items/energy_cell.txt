@@ -2,6 +2,9 @@
 order: 14
 type: consumable
 price: 70
+size: 1x1
+weight: 0.3
+stack: 5
 effect: energy 6
 
 In a line:

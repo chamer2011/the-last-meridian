@@ -2,6 +2,9 @@
 order: 13
 type: consumable
 price: 75
+size: 1x1
+weight: 0.1
+stack: 5
 effect: hp 8, energy 3
 
 In a line:

@@ -2,6 +2,8 @@
 order: 10
 type: armor
 price: 650
+size: 3x3
+weight: 12
 defense: 3
 
 In a line:

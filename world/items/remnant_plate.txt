@@ -2,6 +2,8 @@
 order: 34
 type: armor
 price: 1600
+size: 3x3
+weight: 11
 defense: 4
 restricted: yes
 

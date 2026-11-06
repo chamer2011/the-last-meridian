@@ -66,6 +66,7 @@ A file starts with the name, then a few lines about them, then parts under headi
     machine: yes                        (leave it out if not)
     boss: yes                           (leave it out if not)
     on hit: stress 3                    (what a hit also does to the player: stress or energy; leave it out if nothing)
+    loot: medkit 60                     (what they leave on the floor when they're beaten: items, each with its chance in 100)
 
     When the fight starts:
     - The doctor sighs, and picks up the laser.
@@ -83,3 +84,7 @@ game master, and the AI plays them from these. The numbers are the same ones the
 read out in a fight, one picked at random each time; a person with no lines gets plain ones.
 
 A part that has nothing in it can be left out.
+
+Without a loot line, someone beaten leaves what world/inventory.json says anyone might (a ration pack, a medkit, an
+energy cell or a stim, each now and then), and now and then the weapon they fought with, if it's one of the game's
+items. A machine without a loot line leaves nothing.

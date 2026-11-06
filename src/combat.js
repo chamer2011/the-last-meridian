@@ -14,6 +14,7 @@ import {
   unlockedAbilities, useItem,
 } from "./rules.js";
 import { COMBAT_ART, COMBAT_TEXT, PARLEY } from "./world.js";
+import { beltSupplies, drawnWeapon, leaveLoot, spendFromBelt } from "./bag.js";
 
 // The most fighters a side can have, counting the player. More wouldn't fit in the window.
 const MAX_PER_SIDE = 4;
@@ -125,6 +126,7 @@ function newFighter(c, side, { source, called, asName = false }) {
     threat: source.threat ?? 1,
     xp: source.xp ?? 0,
     credits: source.credits ?? [0, 0],
+    loot: source.loot ?? null,
     machine: Boolean(source.machine),
     boss: Boolean(source.boss),
     art: source.art ?? null,
@@ -196,8 +198,9 @@ export function attackBonus(game, target, stat, skill) {
   return checkParts(game, { skill, attribute: stat, context: target?.tags ?? [] }).total + fxSum(game, "attack");
 }
 
+// The weapon in hand, or the sidearm once it's been drawn in this fight.
 function currentWeapon(game) {
-  const weapon = ITEMS[game.equipped.weapon];
+  const weapon = ITEMS[drawnWeapon(game)];
   if (!weapon) return { name: "your bare hands", stat: "might", skill: "melee", damage: [1, 3], text: "unarmed" };
   return { name: weapon.name, stat: weapon.stat, skill: weapon.skill, damage: weapon.damage, text: weapon.skill };
 }
@@ -544,7 +547,11 @@ function checkAllowed(game, c, action, target) {
     if (found.disabled) throw new Error(`${capitalized(found.why)}.`);
   } else if (action.type === "surrender") {
     if (!someoneTakesPrisoners(c)) throw new Error("There's nobody here to give up to.");
-  } else if (!["attack", "cover", "item", "flee"].includes(action.type)) {
+  } else if (action.type === "item") {
+    if (!beltSupplies(game).some((one) => one.id === action.id)) throw new Error("Only what's on your belt can be used in a fight. Put it there between fights.");
+  } else if (action.type === "draw") {
+    if (!game.equipped.sidearm) throw new Error("There's nothing on your hip to draw.");
+  } else if (!["attack", "cover", "flee"].includes(action.type)) {
     throw new Error("Unknown combat action.");
   }
 }
@@ -565,8 +572,14 @@ export function combatAction(game, action) {
     c.guard = 3;
     log.push({ by: YOU, text: pickFrom(COMBAT_TEXT.player.cover), tone: "info", math: "+3 defense this round" });
   } else if (action.type === "item") {
+    spendFromBelt(game, action.id);
     const text = useItem(game, action.id);
     log.push({ by: YOU, on: YOU, gained: 1, hp: { [YOU]: game.hp }, text, tone: "good" });
+  } else if (action.type === "draw") {
+    // The sidearm comes out, or goes back for the weapon in hand, and that takes the turn.
+    c.drawn = !c.drawn;
+    const now = ITEMS[drawnWeapon(game)];
+    log.push({ by: YOU, text: c.drawn ? `You draw your ${now.name}.` : `You put the sidearm away and go back to your ${now?.name ?? "bare hands"}.`, tone: "info" });
   } else if (action.type === "flee") {
     const die = roll(1, 20);
     const total = die + fleeBonus(game);
@@ -652,6 +665,9 @@ function endCombat(game, ended, log) {
     addNotes(c, log, grantXp(game, xp));
     addNotes(c, log, practice(game, "tactics", 2));
     addNotes(c, log, changeStress(game, fxSum(game, "stressOnKill")));
+    // What they had on them is left on the floor, for the player to look through.
+    const left = leaveLoot(game, beaten);
+    if (left.length) log.push({ text: `They left something on the floor: ${listOf(left)}.`, tone: "good" });
     const named = beaten.filter((enemy) => enemy.named).map((enemy) => enemy.name);
     story = `The player won the fight against ${beatenNames} in ${rounds}, and took ${credits} credits.${named.length ? ` The game hasn't decided what becomes of ${listOf(named)}. They're beaten and at the player's mercy, so the story decides.` : ""}${stillOut}`;
     summary = `${side} beat ${beatenProse} in ${rounds}.${done ? ` ${done}` : ""}`;
@@ -725,7 +741,7 @@ function playerArt(game) {
   if (game.character?.species === "synthetic") return COMBAT_ART.synthetic;
   const { skill } = currentWeapon(game);
   if (skill === "manifestation") return COMBAT_ART.adept;
-  if (skill === "melee") return COMBAT_ART[game.equipped.weapon ? "blade" : "brawler"];
+  if (skill === "melee") return COMBAT_ART[drawnWeapon(game) ? "blade" : "brawler"];
   if (skill === "engineering") return COMBAT_ART.engineer;
   return COMBAT_ART.soldier;
 }
@@ -804,11 +820,20 @@ function combatActions(game) {
   for (const id of Object.keys(APPROACHES).filter((one) => foes.some((foe) => couldWork(foe, one)))) {
     actions.push({ group: "talk", action: { type: "parley", id }, label: APPROACHES[id].name, oddsLabel: "WORKS", targets: against((foe) => parleyTarget(game, c, foe, id)) });
   }
-  for (const [id, count] of Object.entries(game.inventory)) {
+  // What's on the belt can be used; what's in the pack would take too long to find. The same supply in two places on
+  // the belt is one button, with them both counted.
+  const onBelt = {};
+  for (const { id, n } of beltSupplies(game)) onBelt[id] = (onBelt[id] ?? 0) + n;
+  for (const [id, n] of Object.entries(onBelt)) {
     const item = ITEMS[id];
-    if (item?.type === "consumable" && (item.effect.hp || item.effect.energy)) {
-      actions.push({ group: "other", action: { type: "item", id }, label: `${item.name} x${count}`, detail: item.desc });
-    }
+    actions.push({ group: "other", action: { type: "item", id }, label: `${item.name} x${n}`, detail: `${item.desc} From your belt.` });
+  }
+  const sidearm = ITEMS[game.equipped.sidearm];
+  if (sidearm) {
+    const back = ITEMS[game.equipped.weapon];
+    actions.push(c.drawn
+      ? { group: "other", action: { type: "draw" }, label: `Back to your ${back?.name ?? "bare hands"}`, detail: back?.damage ? `${back.damage[0]} to ${back.damage[1]} damage. It takes your turn.` : "It takes your turn." }
+      : { group: "other", action: { type: "draw" }, label: `Draw your ${sidearm.name}`, detail: `${sidearm.damage[0]} to ${sidearm.damage[1]} damage. It takes your turn.` });
   }
   actions.push(someoneTakesPrisoners(c)
     ? { group: "other", action: { type: "surrender" }, label: "Give up", detail: "the story decides what they do with you" }

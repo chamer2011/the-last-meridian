@@ -2,6 +2,9 @@
 order: 37
 type: consumable
 price: 40
+size: 1x1
+weight: 0.1
+stack: 10
 effect: energy 2
 
 In a line:

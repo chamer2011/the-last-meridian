@@ -2,6 +2,8 @@
 order: 28
 type: weapon
 price: 900
+size: 5x1
+weight: 5
 damage: 7 to 12
 stat: perception
 skill: firearms
