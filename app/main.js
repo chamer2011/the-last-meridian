@@ -121,6 +121,8 @@ function chooseRoot() {
 // The app was called The Last Meridian until version 0.5.0, and kept its files under that name. The first time it
 // runs under this one with nothing of its own yet, it takes them over, so nobody's saves or key are left behind.
 function takeOverOldFiles() {
+  // A folder given by hand, as a test run gives one, is a home of its own and takes nothing over.
+  if (app.commandLine.hasSwitch("user-data-dir")) return;
   const mine = app.getPath("userData");
   const old = path.join(app.getPath("appData"), OLD_NAME);
   if (!oldFilesToTakeOver({ mine, old, exists: fs.existsSync })) return;
