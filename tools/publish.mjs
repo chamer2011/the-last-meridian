@@ -20,7 +20,8 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const target = process.argv[2];
-const GAME = ["app", "public", "src", "test", "world", "server.js", "package.json", "package-lock.json", "start-game.bat", ".gitattributes", "LICENSE", "STORY-AND-WORLD.md"];
+// Of tools/, only the two the README tells people to run go across: this script stays here.
+const GAME = ["app", "public", "src", "test", "world", "server.js", "package.json", "package-lock.json", "start-game.bat", ".gitattributes", "LICENSE", "STORY-AND-WORLD.md", "tools/to-tiled.mjs", "tools/stand-in-art.mjs"];
 
 function stop(message) {
   console.error(message);
