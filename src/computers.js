@@ -100,10 +100,13 @@ export function writtenContent(id) {
   };
 }
 
+// The rooms of a place, from its files: the levels that are rooms, and the rooms drawn on a deck, each with the
+// deck's things, since those are the deck's.
+export const roomsOfPlace = (place) => Object.entries(WORLD_MAPS[place]?.levels ?? {}).flatMap(([id, level]) => (level.areas?.length ? level.areas.map((area) => ({ ...area, things: level.things ?? {}, people: level.people ?? {} })) : [{ id, ...level }]));
+
 // A room's id from its name, at a place.
 function roomIdNamed(place, name) {
-  const found = Object.entries(WORLD_MAPS[place]?.levels ?? {}).find(([, level]) => String(level.name).toLowerCase() === String(name).toLowerCase());
-  return found?.[0] ?? null;
+  return roomsOfPlace(place).find((room) => String(room.name).toLowerCase() === String(name).toLowerCase())?.id ?? null;
 }
 
 // ---- Computers nobody has written -----------------------------------------------------------
@@ -165,7 +168,7 @@ function genericContent(game, { key, name, kind, place, room = null, roomId = nu
 // ---- Where computers are: things, doors and places -------------------------------------------
 
 export const sameName = (a, b) => String(a ?? "").trim().toLowerCase() === String(b ?? "").trim().toLowerCase();
-export const levelNamed = (place, id) => WORLD_MAPS[place]?.levels?.[id] ?? null;
+export const levelNamed = (place, id) => roomsOfPlace(place).find((room) => room.id === id) ?? null;
 const roomOf = (place, levelId) => levelNamed(place, levelId)?.name ?? null;
 
 // A written computer attached to a thing in a room, by the names in its file.
@@ -402,12 +405,12 @@ export function computerProblems() {
     const at = (message) => problems.push(`computers/${id}.txt: ${message}`);
     if (c.class && !classKeys().includes(String(c.class).trim().toLowerCase().replace(/s+/g, "_"))) at(`the class "${c.class}" isn't one of ${classKeys().join(", ")}`);
     if (c.place && !LOCATIONS[c.place] && !WORLD_MAPS[c.place]) at(`there's no place with the id ${c.place}`);
-    const levels = c.place ? levelsOf(c.place) : [];
+    const levels = c.place ? roomsOfPlace(c.place) : [];
     const level = c.room ? levels.find((one) => sameName(one.name, c.room)) : null;
     if (c.room && c.place && WORLD_MAPS[c.place] && !level) at(`${LOCATIONS[c.place]?.name ?? c.place} has no room called ${c.room}`);
     if (c.thing && !c.room) at("a thing needs its room: add a room line");
     if (c.thing && level && !Object.values(level.things ?? {}).some((one) => sameName(one.name, c.thing))) at(`${c.room} has nothing called ${c.thing}`);
-    if (c.door && c.place && WORLD_MAPS[c.place] && !WORLD_MAPS[c.place].levels?.[c.door]) at(`${c.place} has no room with the id ${c.door} for the door to lead to`);
+    if (c.door && c.place && WORLD_MAPS[c.place] && !levels.some((one) => one.id === c.door)) at(`${c.place} has no room with the id ${c.door} for the door to lead to`);
     for (const program of (c.programs ?? []).map(programOf)) for (const message of program.problems) at(message);
     for (const entry of c.network ?? []) if (!WORLD_COMPUTERS[String(entry.name).trim()]) at(`the network names ${String(entry.name).trim()}, and there's no computer with that id`);
   }

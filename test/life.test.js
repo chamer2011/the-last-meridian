@@ -33,20 +33,28 @@ const newGame = (seed = 21) => {
 };
 const FILE = WORLD_LIFE.meridian;
 const MAP = mapFor("meridian");
+// The ship's levels are its decks, with the rooms drawn on them: the file names rooms, and someone's room is read off
+// where they stand.
 const LEVELS = Object.keys(MAP.levels);
+const levelOf = (id) => MAP.rooms[id]?.level ?? MAP.levels[id] ?? null;
+const roomAt = (level, x, y) => MAP.levels[level]?.roomAt(x, y) ?? level;
+const plannedRooms = (view) => view.overview.decks?.flatMap((deck) => deck.rooms) ?? view.overview.rooms;
 const CREW = Object.keys(FILE.people).filter(forAnyGame);
 const at = (hours) => {
   const game = newGame();
   game.clock.hours = hours;
   return game;
 };
-const everyone = (game) => LEVELS.flatMap((level) => peopleAboard(game, "meridian", level).map((one) => ({ ...one, level, key: one.id ?? one.name })));
+const everyone = (game) => LEVELS.flatMap((level) => peopleAboard(game, "meridian", level).map((one) => ({ ...one, level, room: roomAt(level, one.x, one.y), key: one.id ?? one.name })));
 const find = (game, id) => everyone(game).find((one) => one.key === id);
-const standsAt = (game, level, id) => peopleAboard(game, "meridian", level).find((one) => one.id === id);
+const standsAt = (game, room, id) => {
+  const where = MAP.rooms[room];
+  return where ? peopleAboard(game, "meridian", where.levelId).find((one) => one.id === id && roomAt(where.levelId, one.x, one.y) === room) : undefined;
+};
 const homeOf = (id) => {
   for (const level of Object.values(MAP.levels)) {
     const home = level.homes.find((one) => one.id === id);
-    if (home) return { level: level.id, x: home.x, y: home.y };
+    if (home) return { level: level.id, room: roomAt(level.id, home.x, home.y), x: home.x, y: home.y };
   }
   return null;
 };
@@ -69,9 +77,9 @@ test("everyone in the Meridian's crew has a day, and every day makes sense", () 
 });
 
 test("every spot and seat is on a real level, and can be walked up to", () => {
-  const near = (level, x, y) => [[0, -1], [-1, 0], [1, 0], [0, 1]].some(([dx, dy]) => canStand(MAP.levels[level], x + dx, y + dy));
+  const near = (level, x, y) => [[0, -1], [-1, 0], [1, 0], [0, 1]].some(([dx, dy]) => canStand(levelOf(level), x + dx, y + dy));
   for (const [name, [level, x, y]] of Object.entries(FILE.spots)) {
-    assert.ok(MAP.levels[level], `${name}: no level ${level}`);
+    assert.ok(levelOf(level), `${name}: no room ${level}`);
     assert.ok(near(level, x, y), `${name} is cut off, at ${level} ${x},${y}`);
   }
   for (const [name, seats] of Object.entries(FILE.groups)) {
@@ -86,7 +94,7 @@ test("nobody in the crowd has the same name as anyone else, or as anyone on the 
   const names = FILE.crowd.flatMap((group) => group.names.map(([name]) => name));
   assert.equal(new Set(names).size, names.length);
   assert.ok(names.length >= 20, "a ship with thirty thousand survivors in its fleet should feel busy");
-  const dead = MAP.levels.names.layers.writing.join(" ");
+  const dead = levelOf("names").layers.writing.join(" ");
   for (const name of names) assert.ok(!dead.includes(name.split(" ").at(-1).toUpperCase()), `${name} is on the wall of the dead`);
 });
 
@@ -151,8 +159,8 @@ test("at eight in the morning everyone's at their post, any day, so the story st
     const game = at(day * 24 + 8);
     for (const id of CREW) {
       const home = homeOf(id);
-      const person = standsAt(game, home.level, id);
-      assert.ok(person, `${id} isn't in ${home.level} on day ${day}`);
+      const person = standsAt(game, home.room, id);
+      assert.ok(person, `${id} isn't in ${home.room} on day ${day}`);
       assert.deepEqual([person.x, person.y], [home.x, home.y], `${id} on day ${day}`);
     }
   }
@@ -173,10 +181,12 @@ test("a few days a minute at a time: everyone eats, sleeps, walks, and always ge
       if (!one) continue;
       if (person.asleep) one.slept = true;
       if (/\beat|cadging/.test(person.doing)) one.ate = true;
-      one.rooms.add(person.level);
+      one.rooms.add(person.room);
       one.walking = person.walking ? one.walking + 1 : 0;
       one.longest = Math.max(one.longest, one.walking);
     }
+    // Someone out of sight, gone to bed behind a door, isn't on the way anywhere.
+    for (const [id, one] of Object.entries(seen)) if (!now.some((person) => person.key === id)) one.walking = 0;
     last = now;
   }
   for (const [id, one] of Object.entries(seen)) {
@@ -194,11 +204,11 @@ test("the crew keep their own habits", () => {
   assert.match(find(scan, "voss").doing, /scan bed/);
   const smallHours = at(3);
   assert.match(find(smallHours, "iven").doing, /small hours/);
-  assert.deepEqual([find(smallHours, "iven").level, find(smallHours, "iven").x], ["bridge", homeOf("iven").x]);
+  assert.deepEqual([find(smallHours, "iven").room, find(smallHours, "iven").x], ["bridge", homeOf("iven").x]);
   assert.equal(find(at(19.75), "tarrow"), undefined, "Tarrow goes out of sight in the evening");
   assert.equal(find(at(23.75), "bastian"), undefined, "and Father Roe, late at night");
   assert.match(find(at(21.75), "marrow").doing, /aft holds/);
-  assert.equal(find(at(4), "seven").level, "medbay");
+  assert.equal(find(at(4), "seven").room, "medbay");
   assert.equal(find(at(10 * 24 + 19.5), "bastian").doing, "leading the service", "every tenth day");
   assert.notEqual(find(at(11 * 24 + 19.5), "bastian").doing, "leading the service", "but not the day after");
 });
@@ -239,9 +249,9 @@ test("going straight from one thing to the next in the same place doesn't move a
   for (let minute = 0; minute < 8 * 60; minute += 1) clockRuns(game, 1);
   assert.equal(clockLabel(game), "Day 2, 04:00");
   for (const [id, spot] of Object.entries({ voss: "cabin-voss", halm: "cabin-halm", odessa: "cabin-brandt", tarrow: "cabin-tarrow", pell: "rack-pell", lira: "rack-vey", tobin: "rack-hask", marrow: "marrow-cot", bastian: "cabin-roe", aduro: "aduro-cot" })) {
-    const [level, x, y] = FILE.spots[spot];
+    const [room, x, y] = FILE.spots[spot];
     const person = find(game, id);
-    assert.deepEqual([person.level, person.x, person.y, person.asleep], [level, x, y, true], id);
+    assert.deepEqual([person.room, person.x, person.y, person.asleep], [room, x, y, true], id);
   }
 });
 
@@ -295,7 +305,7 @@ test("the dead and the gone aren't seen again", () => {
   assert.equal(find(game, "voss"), undefined);
   clockRuns(game, 600);
   assert.equal(find(game, "voss"), undefined);
-  assert.ok(!walkView(game).overview.rooms.some((room) => room.people.includes("Voss")));
+  assert.ok(!plannedRooms(walkView(game)).some((room) => room.people.includes("Voss")));
 });
 
 // ---- Only showing it ----------------------------------------------------------
@@ -335,13 +345,15 @@ test("the room lists who's there and what they're doing, and the deck plan count
   assert.equal(voss.short, "Voss");
   assert.ok(view.people.some((one) => one.crowd), "and there's a crowd at lunchtime");
   assert.equal(view.life, true);
-  const mess = view.overview.rooms.find((room) => room.id === "mess");
+  const mess = plannedRooms(view).find((room) => room.id === "mess");
   assert.ok(mess.people.includes("Voss"));
   assert.ok(mess.others > 0);
   assert.ok(!mess.people.some((name) => /Deckhand|Cook|Tech/.test(name)), "only people with a name of their own are listed");
   const empty = at(3);
   setScene(empty, "The Long Mess");
-  assert.ok(walkView(empty).people.length < view.people.length, "the mess empties out at night");
+  // The whole deck's people are shown, and the bunks fill up at night, so it's the mess's own that are counted.
+  const inMess = (shown) => shown.people.filter((one) => one.room === "mess").length;
+  assert.ok(inMess(walkView(empty)) < inMess(view), "the mess empties out at night");
 });
 
 // ---- Every place ---------------------------------------------------------------
@@ -575,7 +587,8 @@ test("a typing mistake in someone's day can't stop the game", () => {
 
 test("someone asleep has to be woken, and someone working is doing something", () => {
   const game = at(4);
-  walkCommand(game, { action: "room", to: "bunks" });
+  // Voss sleeps in her cabin, so that's where to find her at four in the morning.
+  walkCommand(game, { action: "room", to: FILE.spots["cabin-voss"][0] });
   talkCommand(game, { action: "open", person: "voss" });
   assert.match(game.talk.log[0].text, /Voss is asleep/);
   assert.equal(talkView(game).doing, "asleep");
@@ -604,15 +617,15 @@ test("bumping into someone walking past doesn't start a talk, but bumping into s
   let walker = null;
   for (let i = 0; i < 400 && !walker; i += 1) {
     clockRuns(game, 1 / 6);
-    walker = walkView(game).people.find((one) => one.walking && [[-1, 0], [1, 0], [0, -1], [0, 1]].some(([dx, dy]) => canStand(MAP.levels.mess, one.x + dx, one.y + dy)));
+    walker = walkView(game).people.find((one) => one.walking && one.room === "mess" && [[-1, 0], [1, 0], [0, -1], [0, 1]].some(([dx, dy]) => canStand(levelOf("mess"), one.x + dx, one.y + dy)));
   }
   assert.ok(walker, "someone should cross the mess around lunchtime");
-  const [dx, dy] = [[-1, 0], [1, 0], [0, -1], [0, 1]].find(([x, y]) => canStand(MAP.levels.mess, walker.x + x, walker.y + y));
+  const [dx, dy] = [[-1, 0], [1, 0], [0, -1], [0, 1]].find(([x, y]) => canStand(levelOf("mess"), walker.x + x, walker.y + y));
   Object.assign(walkOf(game), { x: walker.x + dx, y: walker.y + dy });
   const passing = walkCommand(structuredClone(game), { action: "step", dx: -dx, dy: -dy });
   assert.notEqual(passing.arrived?.kind, "person");
-  const still = walkView(game).people.find((one) => !one.walking && !one.crowd);
-  const [ax, ay] = [[-1, 0], [1, 0], [0, -1], [0, 1]].find(([x, y]) => canStand(MAP.levels.mess, still.x + x, still.y + y));
+  const still = walkView(game).people.find((one) => !one.walking && !one.crowd && one.room === "mess");
+  const [ax, ay] = [[-1, 0], [1, 0], [0, -1], [0, 1]].find(([x, y]) => canStand(levelOf("mess"), still.x + x, still.y + y));
   Object.assign(walkOf(game), { x: still.x + ax, y: still.y + ay });
   assert.equal(walkCommand(game, { action: "step", dx: -ax, dy: -ay }).arrived?.kind, "person");
 });
@@ -646,7 +659,7 @@ test("people the story brings to the captain stay a while, then go back to their
   tool(game, "set_scene", { area: "The Long Mess", people: ["voss"] });
   const stood = walkView(game).people.find((one) => one.key === "voss");
   assert.equal(stood.doing, undefined, "she's with the captain, whatever her day says");
-  assert.deepEqual(walkView(game).overview.rooms.filter((room) => room.people.includes("Voss")).map((room) => room.id), ["mess"], "and she isn't in two places");
+  assert.deepEqual(plannedRooms(walkView(game)).filter((room) => room.people.includes("Voss")).map((room) => room.id), ["mess"], "and she isn't in two places");
   clockRuns(game, 1);
   clockRuns(game, 18);
   assert.deepEqual([walkOf(game).with[0].x, walkOf(game).with[0].y], [stood.x, stood.y]);
@@ -702,7 +715,7 @@ test("someone in a room off the map with the captain isn't anywhere else as well
   const game = newGame();
   tool(game, "set_scene", { area: "Section Fourteen", people: ["voss"] });
   assert.ok(walkView(game).people.some((one) => one.key === "voss"));
-  const rooms = walkView(game).overview.rooms;
+  const rooms = plannedRooms(walkView(game));
   assert.ok(!rooms.some((room) => room.people.includes("Voss")));
   clockRuns(game, 60);
   assert.ok(walkView(game).people.some((one) => one.key === "voss"), "she stays until the story or the captain moves on");
@@ -715,7 +728,7 @@ test("a tick moves the clock and everyone in it, and nothing else", () => {
   const ai = JSON.stringify(game.ai);
   const story = game.transcript.length;
   const reply = walkTick(game, { ms: 500, rate: 10 });
-  assert.equal(reply.here, "bridge");
+  assert.equal(reply.here, "deck1", "the people are the whole deck's");
   assert.ok(reply.people.some((one) => one.key === "voss"));
   assert.ok(Math.abs(game.clock.hours - (8 + 5 / 3600)) < 1e-9, `${game.clock.hours}`);
   for (let i = 0; i < 200; i += 1) walkTick(game, { ms: 500, rate: 60 });
@@ -809,7 +822,7 @@ test("over the real server: the clock ticks small, gets the whole game when the 
   assert.equal(first.status, 200);
   assert.ok(first.clock.hours > 23.97);
   assert.equal(first.clock.label, "Day 1, 23:58");
-  assert.equal(first.here, "bridge");
+  assert.equal(first.here, "deck1");
   assert.equal(first.game, undefined, "this is twice a second, so it stays small");
   assert.ok(JSON.stringify(first).length < 5000);
 

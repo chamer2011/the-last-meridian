@@ -36,9 +36,9 @@ function standIn(game, place, room) {
   game.walk = null;
   const map = mapFor(place);
   walkCommand(game, { action: "room", to: map.start });
-  game.walk.level = room;
-  const level = map.levels[room];
-  Object.assign(game.walk, { x: level.start.x, y: level.start.y });
+  // A room drawn on a deck is on the deck's level, at its own start.
+  const { level, start } = map.rooms[room];
+  Object.assign(game.walk, { level: level.id, x: start.x, y: start.y });
   return game.walk;
 }
 const partNamed = (place, kind, room) => Object.values(sys.systemsOf(place).parts).find((part) => part.kind === kind && (!room || part.room === room));
@@ -103,7 +103,7 @@ test("every part is on a wall facing its room, or standing on the floor where it
     const map = mapFor(place);
     for (const part of Object.values(model.parts)) {
       assert.ok(!part.unplaced, `${place}: the ${part.name} in ${part.room} has a place`);
-      const level = map.levels[part.room];
+      const { level } = map.rooms[part.room];
       const open = (x, y) => Boolean(level.open[y]?.[x]);
       if (part.mount === "wall") {
         assert.equal(level.layers.walls[part.y][part.x], "#", `${place}/${part.room}: the ${part.name} is on a wall`);

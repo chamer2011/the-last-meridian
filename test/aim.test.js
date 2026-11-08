@@ -22,9 +22,9 @@ function standIn(game, place, room) {
   game.walk = null;
   const map = mapFor(place);
   walkCommand(game, { action: "room", to: map.start });
-  game.walk.level = room;
-  const level = map.levels[room];
-  Object.assign(game.walk, { x: level.start.x, y: level.start.y });
+  // A room drawn on a deck is on the deck's level, at its own start.
+  const { level, start } = map.rooms[room];
+  Object.assign(game.walk, { level: level.id, x: start.x, y: start.y });
 }
 const marks = (game) => {
   const view = walkView(game);

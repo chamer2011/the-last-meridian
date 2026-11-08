@@ -1,10 +1,15 @@
-HOW TO DRAW A ROOM IN TILED
-===========================
+HOW TO DRAW THE SHIP IN TILED
+=============================
 
-The ship's rooms are drawn in Tiled, a free map editor, and the game reads them from there: one file to a room,
-in world/maps/meridian/, named after the room, such as bridge.tmj. You lay a room out with tiles, put its people,
-things and ways out in it, and save. The game draws the room its own way. The blocks you see in Tiled are only
-stand-ins, so you can see what's where.
+The Meridian is drawn in Tiled, a free map editor, and the game reads it from there: one file to a deck, in
+world/maps/meridian/, deck1.tmj (the command deck), deck2.tmj (the civilian deck) and deck3.tmj (engineering). Each
+deck is one continuous map, with its rooms drawn on it as rectangles, so you walk from room to room with no loading
+and nothing jumping, and the stairs take you from one deck to the next. You lay a deck out with tiles, draw its
+rooms round the parts of it, put its people, things and stairs in it, and save. The game draws the deck its own way.
+The blocks you see in Tiled are only stand-ins, so you can see what's where.
+
+The three decks here are a starting point, laid out after the Anvil Carrack's arrangement: command on top, the
+civilian deck under it, and engineering along the keel. Redraw them as you like.
 
 
 GETTING TILED
@@ -18,11 +23,11 @@ OPENING THE SHIP
 ----------------
 
 In Tiled, choose File > Open File or Project, and open almagest-explorers.tiled-project, here in world/maps. The
-Project panel lists the ship's rooms under meridian. Double-click one to open it. Opening the project, rather than
-a room on its own, also gives each kind of object the right boxes to fill in.
+Project panel lists the ship's decks under meridian. Double-click one to open it. Opening the project, rather than
+a deck on its own, also gives each kind of object the right boxes to fill in.
 
-A room looks the way the game's isometric view sees it, from the same angle, built of plain blocks: grey walls,
-floors, amber doors, teal consoles and machines, brown crates, and the stars outside a viewport.
+A deck looks the way the game's isometric view sees it, from the same angle, built of plain blocks: grey walls,
+floors, amber doors, teal consoles and machines, brown crates, and the stars outside the hull.
 
 
 ONE TILE, TWO OF THE GAME'S SQUARES
@@ -30,26 +35,29 @@ ONE TILE, TWO OF THE GAME'S SQUARES
 
 A tile is one square of floor the way the isometric view draws it. The game's own squares started as letters on a
 screen, so they're half as wide as they are deep, and a tile covers two of them side by side. That's why some tiles
-have something on one half only: a thin wall, a narrow door, the end of a console. Those keep the ship exactly the
-way it was. Use them, or whole tiles, as you like.
+have something on one half only: a thin wall, a narrow door, the end of a console. Use them, or whole tiles, as you
+like.
 
 People, things and ways out stand on one of the game's squares, so they can be on either half of a tile.
 
-A room can be 39 tiles across and 18 down at most.
+The decks are 72 tiles across and 32 down. A map can be 100 tiles across and 60 down at most.
 
 
 THE LAYERS
 ----------
 
-The Layers panel has four, from the bottom up:
+The Layers panel has five, from the bottom up:
 
     Floor               the floor.
     Walls and things    walls, doors, consoles, crates, bunks, and anything else in the way. A tile here counts
-                        instead of the floor under it, which only matters if you take the tile away.
-    People and things   the people who stand here, the things you can look at and use (gold diamonds), the ways
-                        out to other rooms (teal arrows), and where you stand when the story puts you here (the
-                        flag).
-    Words               words painted on the walls, and the names of parts of the room.
+                        instead of the floor under it, which only matters if you take the tile away. An amber door
+                        tile is a doorway between two rooms of the deck: you walk through it, and the ship's
+                        systems can lock a room by locking the doors in its walls.
+    People and things   the people who stand here, the things you can look at and use (gold diamonds), the stairs
+                        to the other decks (teal arrows), and the flags that say where you stand when the story
+                        puts you in a room.
+    Words               words painted on the walls, and the names of parts of the deck.
+    Rooms               a rectangle round each room, which is how the game knows the bridge from the passage.
 
 A layer you hide in Tiled, with its eye, is left out of the game too.
 
@@ -58,16 +66,43 @@ DRAWING
 -------
 
 Click the layer first, in the Layers panel. Then pick a tile in the Tilesets panel, from Stand-ins, choose the
-Stamp Brush, and click or drag on the room. The Eraser takes tiles away, and Bucket Fill and Shape Fill fill an
+Stamp Brush, and click or drag on the deck. The Eraser takes tiles away, and Bucket Fill and Shape Fill fill an
 area.
 
 To see what a tile is, click it in the Tilesets panel: its "what" says, such as "wall (#)", or "wall (#) at the
-back, floor (.) at the front" for a thin wall. Its mark is what it puts in the game's plan of the room, the same
+back, floor (.) at the front" for a thin wall. Its mark is what it puts in the game's plan of the deck, the same
 characters the other places' rooms are drawn in, and its floor says which of those are floor. Leave both alone.
 
+Every square of floor should be reachable from every other, through doorways: a room with no door is a room nobody
+can get into, and npm run check-story says so.
 
-PEOPLE, THINGS AND WAYS OUT
----------------------------
+
+THE ROOMS
+---------
+
+On the Rooms layer, each room is a rectangle with its Class set to Room. Choose Select Objects to move one or pull
+its corners, and Insert Rectangle to draw a new one, then set Class to Room in the Properties panel. Draw it round
+the room, walls included: a wall between two rooms can be in either. Where two rectangles overlap, the smaller one
+wins. The squares inside no rectangle at all belong to the deck itself, which is fine for a passage.
+
+A room's properties:
+
+    Name        what the room's called, such as The Bridge. Each room on the ship needs a name of its own, because
+                the story finds rooms by name.
+    id          what the game's files call it, in small letters, such as bridge. The stories, the people's days
+                (world/life/meridian.json), the ship's systems (world/systems/meridian.txt) and the computers all
+                name rooms by this, so changing one means changing it there too. Leave it empty on a new room, and
+                it's made from the name: the_long_mess.
+    desc        what you read about the room.
+    aliases     the other names the story might use for it, one to a line.
+    district    the part of the ship it belongs to, for its look, when it has one.
+
+Who's in a room, what's in it, what the story is waiting on there, which lights are on and whether the air's good
+are all worked out from these rectangles, so a person dragged into another rectangle has moved rooms.
+
+
+PEOPLE, THINGS, STAIRS AND FLAGS
+--------------------------------
 
 These are on the People and things layer.
 
@@ -76,7 +111,7 @@ To move one, choose Select Objects and drag it. It stands on the square under it
 To add one, pick its marker in the Stand-ins tileset (the person, the gold diamond, the teal arrow or the flag),
 choose Insert Tile, and click where it stands. Then fill in its properties, in the Properties panel:
 
-    A person    Name is what the room calls them, such as Voss. person is who they are: the name of their file
+    A person    Name is what the deck calls them, such as Voss. person is who they are: the name of their file
                 in world/characters, such as voss, or their full name. asks are what you can click to say to them
                 first, one to a line, and asksOther the same for someone who isn't the captain. greeting is how
                 they look when you come over, and side, left or right, is the side their name goes in the
@@ -84,13 +119,14 @@ choose Insert Tile, and click where it stands. Then fill in its properties, in t
     A thing     Name is what it's called. look is what you read when you look at it, and use is what you do when
                 you use it, which goes to the story. used is what happens, written out, with no AI, and
                 usedOther the same for someone who isn't the captain. item is something you pick up from it.
-    A way out   to is the room it leads to, by the name of its file, such as mess. Its Name is what it says on
-                it, if that isn't the room's own name, and a way out named after the room it leads to needs no to
-                at all. Put it in the room's outer wall. You come into the other room by its way back here. When
+    A way out   the stairs: to is the deck it leads to, by the name of its file, such as deck2. Its Name is what
+                it says on it. Put it in a wall. You come out on the other deck beside its way back here, and when
                 there's more than one way back, via says which, by its mark.
-    The flag    where you stand when the story puts you in this room. One to a room.
+    The flag    where you stand when the story puts you in the room the flag is in. One to a room; a room with no
+                flag gets its middle. The flag outside every room is where you stand when the story puts you on
+                the deck itself.
 
-mark is the letter or number the game knows each of them by in its plan of the room. Leave it alone, or leave it
+mark is the letter or number the game knows each of them by in its plan of the deck. Leave it alone, or leave it
 empty on a new one, and the game picks one.
 
 Delete takes one away.
@@ -101,50 +137,57 @@ WORDS
 
 On the Words layer, choose Insert Text, click where the words start, and type them. In the Properties panel, set
 Class to Writing for words painted on the walls, which cover what's under them so they can be read, or Label for
-the name of a part of the room.
+the name of a room or a part of one, painted on the floor.
 
 
-THE ROOM ITSELF
+THE DECK ITSELF
 ---------------
 
 Map > Map Properties has:
 
-    name                what the room's called.
-    aliases             the other names the story might use for it, one to a line.
-    desc                what you read about the room.
+    name                what the deck's called, such as Deck 1: Command.
+    desc                what you read about the deck, for anywhere on it that isn't a room.
     floor               the marks that are floor. Leave it alone.
     floor color, walls color, scenery color, writing color
-                        the room's colours in the game.
+                        the deck's colours in the game.
 
 
-A NEW ROOM
-----------
+A NEW DECK OR A NEW ROOM
+------------------------
 
-The easiest way is to start from one that's there: open it, choose File > Save As, and save it in the same folder
-with the new room's name, in small letters with no spaces, such as cargo_bay.tmj. Change it, and give another room
-a way out to it.
+A new room is a rectangle on a deck: carve its walls and floor, put a door in, draw the rectangle round it on the
+Rooms layer, and give it a name.
+
+For a new deck, the easiest way is to start from one that's there: open it, choose File > Save As, and save it in
+the same folder with the new deck's name, in small letters with no spaces, such as deck4.tmj. Change it, and give
+another deck a way out to it.
 
 If you'd rather start from nothing, choose File > New > New Map: Isometric, a tile width of 128 and a height of
-64. Add the stand-ins with Map > Add External Tileset, choosing tiles/stand-ins.tsj here, and add the four layers.
+64. Add the stand-ins with Map > Add External Tileset, choosing tiles/stand-ins.tsj here, and add the five layers.
 Save it in world/maps/meridian. Tiled's own kind of file, .tmx, is fine as well as .tmj.
+
+A file with no Rooms layer is one room on its own, the way the other places' rooms are, and that still works.
 
 
 SAVING
 ------
 
-Ctrl+S, or File > Save. The game notices within a second or two, even while you're playing, and draws the room
+Ctrl+S, or File > Save. The game notices within a second or two, even while you're playing, and draws the deck
 again the next time the clock moves or you take a step. If a wall lands where you're standing, you're moved to the
 nearest floor.
 
-If something in a room is wrong, such as a person with no person, or a way out to a room that isn't there, the game
-leaves that one thing out and draws the rest. npm run check-story lists what's wrong in plain words.
+If something on a deck is wrong, such as a person with no person, a way out to a deck that isn't there, or two
+rooms with the same name, the game leaves that one thing out and draws the rest. npm run check-story lists what's
+wrong in plain words.
 
 
 WHAT STAYS IN meridian.json
 ---------------------------
 
-The ship's name, the room it starts in, and the deck plan: the map of the whole ship that opens from the button
-beside the room. The deck plan is still drawn in characters, so it doesn't change when you redraw a room.
+The ship's name and the room it starts in. The deck plan, from the button beside the room, is made from the decks,
+one tab to a deck. The old drawing of the whole ship is kept at the bottom of the file only so that a save from
+when the ship was one plan still finds its room.
 
-The other places still have their rooms in their own files here, drawn in characters. Any of them can be moved into
-Tiled the same way, exactly as they are: node tools/to-tiled.mjs and the place's name, such as haven.
+The other places still have their rooms in their own files here, drawn in characters, one room to a level. Any of
+them can be moved into Tiled the same way, exactly as they are: node tools/to-tiled.mjs and the place's name, such
+as haven. Their rooms come over one to a file, and you can join them into decks the way the ship's are.

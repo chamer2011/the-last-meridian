@@ -8,7 +8,7 @@
 // world/life/ has one file for each place whose people live their days, named after the place.
 
 import { LOCATIONS } from "./data.js";
-import { atPost, canStand, findPath, mapFor, seedFrom } from "./walk.js";
+import { atPost, canStand, findPath, mapFor, roomOf, seedFrom } from "./walk.js";
 import { detourFor, partSquares } from "./systems.js";
 import { WORLD_LIFE } from "./world.js";
 
@@ -41,9 +41,11 @@ function expandGroup(entries) {
   });
 }
 
-function readLifeFile(file) {
-  const spots = Object.fromEntries(Object.entries(file.spots ?? {}).map(([name, [level, x, y, side]]) => [name, { level, x, y, ...(side ? { side } : {}) }]));
-  const groups = Object.fromEntries(Object.entries(file.groups ?? {}).map(([name, entries]) => [name, expandGroup(entries)]));
+function readLifeFile(file, map) {
+  // A spot names a room, which can be one drawn on a deck: it's kept by the level the room is on, whose squares it's in.
+  const levelOf = (id) => roomOf(map, id)?.levelId ?? id;
+  const spots = Object.fromEntries(Object.entries(file.spots ?? {}).map(([name, [level, x, y, side]]) => [name, { level: levelOf(level), x, y, ...(side ? { side } : {}) }]));
+  const groups = Object.fromEntries(Object.entries(file.groups ?? {}).map(([name, entries]) => [name, expandGroup(entries).map((spot) => ({ ...spot, level: levelOf(spot.level) }))]));
   const roster = [
     ...Object.entries(file.people ?? {}).map(([id, day]) => ({ key: id, id, day, shift: 0 })),
     ...(file.crowd ?? []).flatMap((group) => group.names.map(([name, shift]) => ({ key: name, id: null, name, crowd: true, day: group.day, shift }))),
@@ -58,7 +60,7 @@ function lifeFileFor(place) {
   if (!lifeFiles.has(place)) {
     let file = null;
     try {
-      if (WORLD_LIFE[place]) file = readLifeFile(WORLD_LIFE[place]);
+      if (WORLD_LIFE[place]) file = readLifeFile(WORLD_LIFE[place], mapFor(place));
     } catch (err) {
       console.error(`The days of the people at ${place} can't be used: ${err.message}`);
     }
@@ -129,7 +131,7 @@ function planFor(map, file, entry, hours, detour) {
   const plan = planAt(entry, hours);
   if (!detour) return plan;
   const turn = detour(entry.key, levelOfPlan(map, file, entry, plan), Boolean(plan.block.asleep));
-  return turn && map.levels[turn.where.slice(1)] ? { key: `systems:${turn.where}:${turn.doing}`, block: { doing: turn.doing, go: turn.where }, where: turn.where } : plan;
+  return turn && roomOf(map, turn.where.slice(1)) ? { key: `systems:${turn.where}:${turn.doing}`, block: { doing: turn.doing, go: turn.where }, where: turn.where } : plan;
 }
 
 const homeOf = (map, id) => Object.values(map.levels).flatMap((level) => level.homes).find((home) => home.id === id);
@@ -180,26 +182,32 @@ function fits(map, entry, spot, taken) {
 
 const standingRoom = new WeakMap();
 
-// The squares of a level where anyone might stop: not in a doorway, and not right in front of a way out.
-function squaresToStand(level) {
-  if (!standingRoom.has(level)) {
+// The squares of a room where anyone might stop: not in a doorway, and not right in front of a way out. On a deck,
+// a room is the one drawn there, and only its squares count.
+function squaresToStand(room) {
+  const { level } = room;
+  if (!standingRoom.has(level)) standingRoom.set(level, new Map());
+  const byRoom = standingRoom.get(level);
+  if (!byRoom.has(room.id)) {
     const squares = [];
     level.open.forEach((row, y) => row.forEach((open, x) => {
-      if (open && canStand(level, x, y) && !level.doors.has(`${x},${y}`) && !level.exits.some((exit) => beside({ x, y }, exit))) squares.push({ x, y });
+      if (open && canStand(level, x, y) && !level.doors.has(`${x},${y}`) && !level.exits.some((exit) => beside({ x, y }, exit)) && (!room.area || level.areaAt(x, y) === room.id)) squares.push({ x, y });
     }));
-    standingRoom.set(level, squares);
+    byRoom.set(room.id, squares);
   }
-  return standingRoom.get(level);
+  return byRoom.get(room.id);
 }
 
-// A free place somewhere on a level, different each time, with open floor for their name if it can be had.
-function somewhereOn(map, entry, plan, levelId, taken) {
-  const level = map.levels[levelId];
-  const squares = squaresToStand(level);
+// A free place somewhere in a room, different each time, with open floor for their name if it can be had.
+function somewhereOn(map, entry, plan, roomId, taken) {
+  const room = roomOf(map, roomId);
+  const { level } = room;
+  const squares = squaresToStand(room);
+  if (!squares.length) return null;
   // Their own bed, or their own place at the benches, is the same one every day.
   const same = plan.block.stays || plan.block.asleep;
-  const first = seedFrom(same ? `${entry.key}/${levelId}` : `${entry.key}/${plan.key}/${levelId}`) % squares.length;
-  const inTurn = Array.from({ length: squares.length }, (_, i) => ({ level: levelId, ...squares[(first + i) % squares.length] }));
+  const first = seedFrom(same ? `${entry.key}/${roomId}` : `${entry.key}/${plan.key}/${roomId}`) % squares.length;
+  const inTurn = Array.from({ length: squares.length }, (_, i) => ({ level: level.id, ...squares[(first + i) % squares.length] }));
   const onFloor = (spot) => squaresOf(map, entry, spot).every((key) => {
     const [x, y] = key.split(":")[1].split(",").map(Number);
     return level.open[y]?.[x];
@@ -207,12 +215,17 @@ function somewhereOn(map, entry, plan, levelId, taken) {
   return inTurn.find((spot) => fits(map, entry, spot, taken) && onFloor(spot)) ?? inTurn.find((spot) => fits(map, entry, spot, taken)) ?? inTurn[0];
 }
 
-// Beside the way out of a level that this person always uses, so they can go out of sight through it.
-function byTheDoor(map, entry, levelId) {
-  const level = map.levels[levelId];
-  const door = level.exits[seedFrom(`${entry.key}/${levelId}`) % level.exits.length];
+// Beside the way out of a room that this person always uses, so they can go out of sight through it. A room drawn
+// on a deck with no way out of its own uses the deck's.
+function byTheDoor(map, entry, roomId) {
+  const room = roomOf(map, roomId);
+  const { level } = room;
+  const own = room.area ? level.exits.filter((exit) => room.area.exits.includes(exit.key)) : level.exits;
+  const exits = own.length ? own : level.exits;
+  if (!exits.length) return null;
+  const door = exits[seedFrom(`${entry.key}/${roomId}`) % exits.length];
   const spot = STEPS.map(([dx, dy]) => ({ x: door.x + dx, y: door.y + dy })).find((one) => canStand(level, one.x, one.y));
-  return { level: levelId, ...spot, out: true };
+  return spot ? { level: level.id, ...spot, out: true } : null;
 }
 
 // Two people can't stop in one place, so the second stops as close as they can get.
@@ -230,8 +243,8 @@ function closeTo(map, entry, spot, taken) {
 // Where this person goes for what they're doing now. In a group, they take the next place that's free.
 function spotFor(file, map, entry, plan, taken) {
   if (plan.where === "post") return postOf(map, entry.id);
-  // A level that isn't on the map leaves them where they are, so a typing mistake in the file can't stop the game.
-  if (/^[@>]/.test(plan.where) && !map.levels[plan.where.slice(1)]) return null;
+  // A room that isn't on the map leaves them where they are, so a typing mistake in the file can't stop the game.
+  if (/^[@>]/.test(plan.where) && !roomOf(map, plan.where.slice(1))) return null;
   if (plan.where.startsWith("@")) return somewhereOn(map, entry, plan, plan.where.slice(1), taken);
   if (plan.where.startsWith(">")) return byTheDoor(map, entry, plan.where.slice(1));
   if (file.spots[plan.where]) return closeTo(map, entry, file.spots[plan.where], taken);
@@ -280,12 +293,23 @@ function settledPlace(place, hours) {
   return settledAt.get(key);
 }
 
-// Only looking at this changes nothing, so showing the game can't change the save.
-const peopleOf = (game, place) => game.life?.places[place] ?? settledPlace(place, game.clock.hours);
+// Only looking at this changes nothing, so showing the game can't change the save. A save with people on levels that
+// are gone, from before a place's map was redrawn, shows them settled afresh until the clock moves.
+function peopleOf(game, place) {
+  const saved = game.life?.places[place];
+  const map = mapFor(place);
+  if (saved && !Object.values(saved).some((state) => !map?.levels[state.level])) return saved;
+  return settledPlace(place, game.clock.hours);
+}
 
 // The same, for something that's about to move the clock. The save only ever holds the captain's place.
 export function lifeOf(game) {
   game.life ??= { at: game.clock.hours, carry: 0, places: {} };
+  // A save from before a place's map was redrawn has everyone on levels that are gone: they're settled afresh.
+  for (const [place, people] of Object.entries(game.life.places)) {
+    const map = mapFor(place);
+    if (map && Object.values(people).some((state) => !map.levels[state.level] || !map.levels[state.goal?.level])) delete game.life.places[place];
+  }
   if (livesHere(game.location)) game.life.places[game.location] ??= structuredClone(peopleOf(game, game.location));
   return game.life;
 }
@@ -411,7 +435,7 @@ function seenAs(game, map, entry, state, detour = null) {
   // Someone going out of sight can still be seen on their way there.
   if (settled && plan.block.hidden) return null;
   const home = entry.id ? homeOf(map, entry.id) : null;
-  const heading = map.levels[state.goal.level]?.name.replace(/^The /, "the ");
+  const heading = roomNameAt(map, state.goal).replace(/^The /, "the ");
   return {
     id: entry.id,
     name: entry.name ?? entry.id,
@@ -425,6 +449,13 @@ function seenAs(game, map, entry, state, detour = null) {
     ...(entry.crowd ? { crowd: true } : {}),
     ...(settled && state.goal.side ? { side: state.goal.side } : {}),
   };
+}
+
+// The name of the room at a spot: the one drawn there on a deck, or the level's.
+function roomNameAt(map, spot) {
+  const level = map.levels[spot?.level];
+  if (!level) return String(spot?.level ?? "");
+  return roomOf(map, level.roomAt(spot.x, spot.y))?.name ?? level.name;
 }
 
 // Everyone on one level of a place right now, in the order of the place's file.
@@ -451,7 +482,7 @@ export function whereNow(game, id) {
     const map = mapFor(place);
     const seen = seenAs(game, map, entry, state);
     const away = place === game.location ? "" : `, on ${LOCATIONS[place].name}`;
-    return seen ? `${seen.doing}, at ${map.levels[state.level].name.replace(/^The /, "the ")}${away}` : `somewhere out of sight${away}`;
+    return seen ? `${seen.doing}, at ${roomNameAt(map, state).replace(/^The /, "the ")}${away}` : `somewhere out of sight${away}`;
   }
   return null;
 }

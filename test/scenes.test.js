@@ -735,7 +735,9 @@ test("anyone without a conversation of their own gets stock lines, put together 
   const game = newGame();
   play(game, { event: "start" });
   walkCommand(game, { action: "room", to: "mess" });
-  const local = publicState(game).walk.people.find((one) => one.crowd || !/Halm|Brandt|Seven|Roe/.test(one.name));
+  // The deck's people are all shown; the one to talk to is in the mess itself, and has no conversation written.
+  const inMess = publicState(game).walk.people.filter((one) => one.room === "mess");
+  const local = inMess.find((one) => one.crowd) ?? inMess.find((one) => !/Halm|Brandt|Seven|Roe|Aduro/.test(one.name));
   assert.ok(local, "someone ordinary is in the mess");
   talkCommand(game, { action: "open", person: local.key });
   openWrittenTalk(game);
@@ -763,15 +765,17 @@ test("a conversation can't open a check or a fight, and the checker says so", ()
 test("using a thing with no AI: something to pick up is picked up, and a thing with a written result gives it", () => {
   const game = newGame();
   play(game, { event: "start" });
-  const chip = useThing(game, "bridge:d");
+  // The bridge's things, by name: on a deck, a thing's key is the deck's and its own letter.
+  const onBridge = (name) => publicState(game).walk.things.find((thing) => thing.room === "bridge" && name.test(thing.name)).id;
+  const chip = useThing(game, onBridge(/data chip/i));
   assert.match(chip.said, /^\[ITEM\] Received: .*Data Chip/i);
   assert.equal(game.inventory.data_chip, 1);
-  assert.match(useThing(game, "bridge:d").said, /already got one/);
-  assert.match(useThing(game, "bridge:c").said, /The chair takes your weight/);
-  assert.throws(() => useThing(game, "bridge:zzz"), /isn't here/);
+  assert.match(useThing(game, onBridge(/data chip/i)).said, /already got one/);
+  assert.match(useThing(game, onBridge(/chair/i)).said, /The chair takes your weight/);
+  assert.throws(() => useThing(game, "deck1:zzz"), /isn't here/);
   // Over the walk command, which is what the page calls. The plot table has a computer file of its own, so Use sits
   // the captain down at it instead of reading the map's line.
-  const reply = walkCommand(game, { action: "use", key: "bridge:a" });
+  const reply = walkCommand(game, { action: "use", key: onBridge(/plot table/i) });
   assert.equal(reply.computer, true);
   assert.equal(game.computer?.name, "The plot table");
   computerCommand(game, { action: "logoff" });

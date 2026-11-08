@@ -7,7 +7,7 @@ import { test } from "node:test";
 import { CELL_WIDTH, FLOOR_COLORS, WALL_COLORS, buildScene, cellAt, cellCentre, project } from "../public/iso.js";
 import { createGameFromDraft, randomDraft } from "../src/creator.js";
 import { runTool, newTurnLimits } from "../src/tools.js";
-import { lookOf, mapFor, walkView } from "../src/walk.js";
+import { lookOf, mapFor, roomsOf, walkView } from "../src/walk.js";
 import { LOOKS, WORLD_MAPS } from "../src/world.js";
 
 const viewOf = (level) => ({ cols: level.width, lines: level.height, layers: level.layers, labels: level.labels, colors: level.colors, things: level.things, exits: level.exits, people: [], here: { id: level.id } });
@@ -17,7 +17,8 @@ const firstLevel = (place, name) => Object.values(mapFor(place).levels).find((le
 
 test("there's a level for every room, and every one of them can be worked out", () => {
   const levels = everyLevel();
-  assert.ok(levels.length >= 121, `${levels.length} levels`);
+  // The ship's rooms are drawn on three decks, and every other room is a level of its own.
+  assert.ok(levels.length >= 116, `${levels.length} levels`);
   for (const { place, level } of levels) {
     const where = `${place}/${level.id}`;
     const scene = buildScene(viewOf(level));
@@ -144,7 +145,8 @@ test("every place says what it's made of, in words the view knows, and only abou
   assert.deepEqual(Object.keys(LOOKS.places).sort(), Object.keys(WORLD_MAPS).sort());
   for (const [place, look] of Object.entries(LOOKS.places)) {
     check(look, place);
-    const names = Object.values(mapFor(place).levels).map((level) => level.name);
+    // A look can be a level's or a room's drawn on a deck.
+    const names = [...Object.values(mapFor(place).levels).map((level) => level.name), ...roomsOf(mapFor(place)).map((room) => room.name)];
     for (const [name, room] of Object.entries(look.levels ?? {})) {
       assert.ok(names.includes(name), `${place} has no room called ${name}`);
       check(room, `${place}/${name}`);
@@ -205,7 +207,8 @@ test("a row of stars is something burning, and a star on its own is a star", () 
   assert.equal(sky.glows.length, 0);
   assert.ok(sky.sparks.length > 5);
   // The reactor's core burns, inside what's built around it.
-  const engine = buildScene({ ...viewOf(firstLevel("meridian", "Engineering")), look: lookOf("meridian", "Engineering") });
+  // Engineering is a room drawn on the ship's lowest deck, so the scene is the whole deck's.
+  const engine = buildScene({ ...viewOf(mapFor("meridian").rooms.engineering.level), look: lookOf("meridian", "Engineering") });
   assert.ok(engine.glows.length >= 20);
   for (const cell of engine.glows) assert.equal(engine.heights[cell.y][cell.x], 0);
 });

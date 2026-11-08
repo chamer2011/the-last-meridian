@@ -23,7 +23,7 @@ const { projectDir } = await import("../src/paths.js");
 const { aiSnapshot, publicState, rest, travel } = await import("../src/rules.js");
 const { rumorsFrom } = await import("../src/story-library.js");
 const { TOOL_DEFS, newTurnLimits, runTool } = await import("../src/tools.js");
-const { closeTalk, setScene, talkBrief, talkCommand, talkHeard, talkLineOver, talkSaid, walkCommand, walkFromStory, walkLine, walkOf, walkView } = await import("../src/walk.js");
+const { closeTalk, mapFor, roomHere, roomsOf, setScene, talkBrief, talkCommand, talkHeard, talkLineOver, talkSaid, walkCommand, walkFromStory, walkLine, walkOf, walkView } = await import("../src/walk.js");
 const { ROOM_KINDS, WORLD_MAPS } = await import("../src/world.js");
 const { NOTABLES } = await import("../src/character-data.js");
 // Whoever could have the chair is only there in a game where the player isn't the captain.
@@ -35,7 +35,11 @@ const newGame = (seed = 21) => {
   return game;
 };
 const FILE = WORLD_MAPS.meridian;
+// The ship is decks, each with its rooms drawn on it: the levels are the decks, and the rooms are known by their ids.
 const LEVEL_IDS = Object.keys(FILE.levels);
+const MAP = mapFor("meridian");
+const ROOM_IDS = roomsOf(MAP).map((room) => room.id);
+const deckOf = (view) => view.here.deck?.id ?? view.here.id;
 const tool = (game, name, input) => runTool(game, name, input, newTurnLimits());
 const spot = (game) => walkView(game).captain;
 const person = (game, key) => walkView(game).people.find((one) => one.key === key);
@@ -110,29 +114,27 @@ test("every item the place's file mentions is in a room, and each room has thing
   }
 });
 
-test("all the levels are different, and each one looks like its room", () => {
+test("the decks are different from each other, and the rooms on them are the ship's own", () => {
   const levels = LEVEL_IDS.map((id) => FILE.levels[id]);
-  assert.ok(levels.length >= 7, "the Bridge, the Mess, Engineering, the Aft Holds, the Bulkhead, the Medbay and the Crawlways");
-  assert.equal(new Set(levels.map((one) => `${one.plan[0].length}x${one.plan.length}`)).size, levels.length, "every room has its own size");
-  assert.equal(new Set(levels.map((one) => JSON.stringify(one.colors))).size, levels.length, "every room has its own colors");
+  assert.ok(levels.length >= 3, "the command deck, the civilian deck and engineering");
+  assert.equal(new Set(levels.map((one) => JSON.stringify(one.colors))).size, levels.length, "every deck has its own colors");
   for (const one of levels) assert.ok(one.colors.floor && one.colors.walls && one.colors.scenery && one.colors.writing, one.name);
-  // Laid over each other, no two rooms have the same walls in the same places.
-  const walls = (one) => new Set(one.plan.flatMap((row, y) => [...row].map((ch, x) => (ch === "#" ? `${x},${y}` : null)).filter(Boolean)));
-  for (let i = 0; i < levels.length; i += 1) {
-    for (let j = i + 1; j < levels.length; j += 1) {
-      const [a, b] = [walls(levels[i]), walls(levels[j])];
-      const shared = [...a].filter((key) => b.has(key)).length;
-      assert.ok(shared / Math.max(a.size, b.size) < 0.6, `${levels[i].name} and ${levels[j].name} have nearly the same walls`);
-    }
-  }
+  const names = roomsOf(MAP).map((room) => room.name);
+  assert.ok(names.length >= 7, "the Bridge, the Mess, Engineering, the Aft Holds, the Bulkhead, the Medbay and the Crawlways");
+  assert.equal(new Set(names).size, names.length, "every room has its own name");
+  for (const id of ["bridge", "mess", "engineering", "aft", "names", "medbay", "crawlways", "bunks"]) assert.ok(MAP.rooms[id]?.area, `${id} is a room drawn on a deck`);
   // The things each room's known for are drawn into it.
-  const art = (id) => FILE.levels[id].plan.join("\n");
+  const art = (id) => {
+    const { level, area } = MAP.rooms[id];
+    return FILE.levels[level.id].plan.slice(area.y, area.y + area.h).map((row) => row.slice(area.x, area.x + area.w)).join("\n");
+  };
   assert.match(art("engineering"), /\*\*\*\*\*/, "the reactor");
-  assert.match(art("mess"), /=======================/, "the long tables");
-  assert.match(art("bridge"), /\*[^\n]*'/, "stars through the viewport");
+  assert.match(art("mess"), /======/, "the long tables");
+  const deck1 = FILE.levels.deck1.plan.join("\n");
+  assert.ok(deck1.includes("*") && deck1.includes("'"), "stars outside the bridge");
   assert.match(art("aft"), /\[\]\[\]\[\]/, "the crates");
-  assert.ok(FILE.levels.names.writing.flat().join(" ").includes("OLD PETE"), "names in chalk");
-  assert.ok(FILE.levels.crawlways.plan.filter((row) => row.includes("~")).length >= 10, "ducts");
+  assert.ok(Object.values(FILE.levels).flatMap((level) => level.writing ?? []).flat().join(" ").includes("OLD PETE"), "names in chalk");
+  assert.ok(art("crawlways").split("\n").filter((row) => row.includes("~")).length >= 10, "ducts");
 });
 
 test("every letter and every square of a level means something, and its rows line up", () => {
@@ -154,7 +156,8 @@ test("every square of every level can be walked to, and everyone and everything 
     const view = enter(game, id);
     const cells = standable(view);
     assert.ok(cells.length > 40, id);
-    for (const target of cells) {
+    // A whole deck has thousands of squares, so one in five is walked to.
+    for (const target of cells.length > 400 ? cells.filter((_, i) => i % 5 === 0) : cells) {
       const fresh = structuredClone(game);
       const reply = walkCommand(fresh, { action: "go", ...target });
       assert.deepEqual(reply.walk.captain, target, `${id}: can't reach ${target.x},${target.y}`);
@@ -172,27 +175,33 @@ test("in every level, people's names, room names and the ways out don't cover ea
 
 test("words on a wall can be read, because nothing else is drawn under them", () => {
   const view = enter(newGame(), "mess");
-  const row = view.layers.writing[0];
+  const y = view.layers.writing.findIndex((line) => line.includes("SITTINGS"));
+  assert.ok(y >= 0, "the mess's sitting rota is on a wall");
+  const row = view.layers.writing[y];
   const at = row.indexOf("SITTINGS");
   assert.ok(at > 0);
-  assert.equal(view.layers.walls[0][at], " ");
-  assert.equal(view.layers.walls[0][at - 3], "#");
+  assert.equal(view.layers.walls[y][at], " ");
+  assert.equal(view.layers.walls[y][at - 2], "#");
   const gap = at + "SITTINGS:".length;
   assert.equal(row[gap], " ");
-  assert.equal(view.layers.walls[0][gap], " ", "and that goes for the gaps between words");
+  assert.equal(view.layers.walls[y][gap], " ", "and that goes for the gaps between words");
 });
 
-test("the deck plan has every room on it, and clicking one goes there", () => {
+test("the deck plan has every room on it, deck by deck, and clicking one goes there", () => {
   const game = newGame();
   const { overview } = walkView(game);
-  assert.deepEqual(overview.rooms.map((room) => room.id).sort(), [...LEVEL_IDS].sort());
-  assert.equal(overview.rooms.find((room) => room.here).id, "bridge");
-  assert.ok(overview.rooms.find((room) => room.id === "bridge").people.includes("Voss"));
-  for (const room of overview.rooms) {
-    assert.ok(Object.values(overview.floors).includes(room.id), `no floor on the plan is ${room.id}`);
-    const view = enter(game, room.id);
-    assert.equal(view.here.id, room.id);
-    assert.deepEqual(view.captain, walkOf(game).level === room.id ? { x: walkOf(game).x, y: walkOf(game).y } : null);
+  assert.equal(overview.decks.length, LEVEL_IDS.length);
+  const rooms = overview.decks.flatMap((deck) => deck.rooms);
+  assert.deepEqual(rooms.map((room) => room.id).sort(), [...ROOM_IDS].sort());
+  assert.equal(rooms.find((room) => room.here).id, "bridge");
+  assert.ok(rooms.find((room) => room.id === "bridge").people.includes("Voss"));
+  for (const deck of overview.decks) {
+    for (const room of deck.rooms) {
+      assert.ok(Object.values(deck.floors).includes(room.id), `no floor on the plan is ${room.id}`);
+      const view = enter(game, room.id);
+      assert.equal(view.here.id, room.id);
+      assert.deepEqual(view.captain, roomHere(game).id === room.id ? { x: walkOf(game).x, y: walkOf(game).y } : null);
+    }
   }
   assert.throws(() => walkCommand(game, { action: "room", to: "the moon" }), /isn't on the map/);
   assert.throws(() => walkCommand(game, { action: "room", to: "elsewhere:the moon" }), /don't know the way/);
@@ -228,10 +237,12 @@ const at = (place, seed = 21) => {
   game.location = place;
   return game;
 };
-// Puts the captain in any level at all, whether its door is closed or not.
-const inLevel = ({ place, file }) => {
+// Puts the captain in any level at all, whether its door is closed or not. A deck is entered by its id, since its
+// name isn't a room's.
+const inLevel = ({ place, id, file }) => {
   const game = at(place);
-  setScene(game, file.name);
+  if (file.areas?.length) walkCommand(game, { action: "room", to: id });
+  else setScene(game, file.name);
   return game;
 };
 const plainName = (text) => text.toLowerCase().replace(/\s+/g, " ").replace(/^\s*the /, "").trim();
@@ -278,7 +289,8 @@ test("in every level in the game, the rows line up, every letter means something
   assert.ok(LEVELS.length > 100);
   for (const { where, file } of LEVELS) {
     assert.equal(new Set(file.plan.map((row) => row.length)).size, 1, where + ": the rows should all be the same length");
-    assert.ok(file.plan[0].length <= 78 && file.plan.length <= 18, where + " is too big to read");
+    // A room drawn in characters fits the text view; a deck with its rooms drawn on it scrolls.
+    if (!file.areas?.length) assert.ok(file.plan[0].length <= 78 && file.plan.length <= 18, where + " is too big to read");
     const text = file.plan.join("");
     for (const letter of new Set(text.match(/\p{L}/gu))) assert.ok(file.people?.[letter] || file.things?.[letter], where + ": " + letter + " isn't listed");
     for (const mark of [...Object.keys(file.people ?? {}), ...Object.keys(file.things ?? {}), ...Object.keys(file.exits ?? {})]) {
@@ -324,10 +336,12 @@ test("in every level in the game, a crowd the story brings along fits in without
   for (const level of LEVELS) {
     const game = at(level.place);
     const posted = Object.values(level.file.people ?? {}).map((one) => one.id);
-    const reply = tool(game, "set_scene", { area: level.file.name, people: crew.filter((one) => !posted.includes(one)) });
+    // On a deck, the story names one of the rooms drawn on it.
+    const room = level.file.areas?.[0] ?? { id: level.id, name: level.file.name };
+    const reply = tool(game, "set_scene", { area: room.name, people: crew.filter((one) => !posted.includes(one)) });
     assert.ok(!reply.isError, level.where);
     const view = walkView(game);
-    assert.equal(view.here.id, level.id, level.where);
+    assert.equal(view.here.id, room.id, level.where);
     assertNothingOverlaps(view, level.where + " with a crowd");
     for (const one of view.people) assert.equal(walkCommand(structuredClone(game), { action: "go", to: "person:" + one.key }).arrived?.kind, "person", level.where + ": " + one.key);
   }
@@ -348,9 +362,9 @@ test("every way out in the game leads where it says, and comes back to the door 
       const reply = walkCommand(game, { action: "go", to: "exit:" + key });
       if (exit.closed && !game.opened[place]?.includes(exit.to)) {
         assert.equal(reply.arrived.kind, "door", where);
-        assert.equal(reply.walk.here.id, id, where + ": a closed door doesn't let you through");
+        assert.equal(deckOf(reply.walk), id, where + ": a closed door doesn't let you through");
       } else {
-        assert.equal(reply.walk.here.id, exit.to, where + ": exit " + key);
+        assert.equal(deckOf(reply.walk), exit.to, where + ": exit " + key);
         const door = reply.walk.exits.find((one) => one.key === exit.via);
         assert.equal(Math.abs(door.x - reply.walk.captain.x) + Math.abs(door.y - reply.walk.captain.y), 1, exit.to + ": you should come out beside the door");
       }
@@ -359,7 +373,8 @@ test("every way out in the game leads where it says, and comes back to the door 
   // The way in never needs the story's help to leave by, wherever the story has put the captain.
   for (const place of PLACE_IDS) {
     const { levels, start } = WORLD_MAPS[place];
-    const reach = new Set([start]);
+    // The way in is a room, which on the ship is drawn on a deck: the levels reached are counted from its deck.
+    const reach = new Set([mapFor(place).rooms[start].levelId]);
     for (const id of reach) for (const exit of Object.values(levels[id].exits)) reach.add(exit.to);
     assert.equal(reach.size, Object.keys(levels).length, place + ": some rooms can't be reached at all");
   }
@@ -368,9 +383,11 @@ test("every way out in the game leads where it says, and comes back to the door 
 test("no two rooms in the game are the same, and each place's rooms all look different from each other", () => {
   assert.equal(new Set(LEVELS.map(({ file }) => file.plan.join("\n"))).size, LEVELS.length, "every drawing is its own");
   for (const place of PLACE_IDS) {
-    const levels = Object.values(WORLD_MAPS[place].levels);
+    const all = Object.values(WORLD_MAPS[place].levels);
+    assert.equal(new Set(all.map((one) => JSON.stringify(one.colors))).size, all.length, place + ": every room has its own colors");
+    // Decks share the ship's hull, so this is for rooms drawn one to a level.
+    const levels = all.filter((one) => !one.areas?.length);
     assert.equal(new Set(levels.map((one) => one.plan[0].length + "x" + one.plan.length)).size, levels.length, place + ": every room has its own size");
-    assert.equal(new Set(levels.map((one) => JSON.stringify(one.colors))).size, levels.length, place + ": every room has its own colors");
     // Laid over each other, no two rooms have what's solid in the same places.
     const solid = (one) => new Set(one.plan.flatMap((row, y) => [...row].map((ch, x) => (ch !== " " && !(one.floor ?? ".").includes(ch) ? x + "," + y : null)).filter(Boolean)));
     for (let i = 0; i < levels.length; i += 1) {
@@ -387,13 +404,17 @@ test("the game master can use a room's name or anything else it's called, and no
   for (const place of PLACE_IDS) {
     const names = new Map();
     const game = at(place);
-    for (const [id, level] of Object.entries(WORLD_MAPS[place].levels)) {
-      for (const name of [level.name, ...(level.aliases ?? [])]) {
-        assert.ok(!names.has(plainName(name)) || names.get(plainName(name)) === id, place + ": " + name + " could mean " + id + " or " + names.get(plainName(name)));
-        names.set(plainName(name), id);
-        setScene(game, name);
-        assert.equal(walkView(game).here.id, id, place + ": " + name);
-        assert.equal(walkView(game).offPlan, false, place + ": " + name);
+    for (const [levelId, level] of Object.entries(WORLD_MAPS[place].levels)) {
+      // The rooms are the ones drawn on a deck, or the level itself.
+      const rooms = level.areas?.length ? level.areas : [{ id: levelId, name: level.name, aliases: level.aliases }];
+      for (const room of rooms) {
+        for (const name of [room.name, ...(room.aliases ?? [])]) {
+          assert.ok(!names.has(plainName(name)) || names.get(plainName(name)) === room.id, place + ": " + name + " could mean " + room.id + " or " + names.get(plainName(name)));
+          names.set(plainName(name), room.id);
+          setScene(game, name);
+          assert.equal(walkView(game).here.id, room.id, place + ": " + name);
+          assert.equal(walkView(game).offPlan, false, place + ": " + name);
+        }
       }
     }
   }
@@ -403,11 +424,16 @@ test("every place's map has all of its rooms on it, and clicking one goes there"
   for (const place of PLACE_IDS) {
     const { levels } = WORLD_MAPS[place];
     const { overview } = walkView(at(place));
-    assert.deepEqual(overview.rooms.map((room) => room.id).sort(), Object.keys(levels).sort(), place);
-    for (const room of overview.rooms) {
-      assert.ok(Object.values(overview.floors).includes(room.id), place + ": no floor on the map is " + room.id);
-      assert.ok(room.x + room.text.length <= overview.cols && room.y < overview.lines, place + ": " + room.text + " runs off the map");
-      assert.ok(overview.layers.floor.join("").includes(Object.keys(overview.floors).find((ch) => overview.floors[ch] === room.id)), place + ": " + room.id + "'s floor isn't drawn");
+    // A ship of decks has a plan to a deck; anywhere else has one plan of the whole place.
+    const plans = overview.decks ?? [overview];
+    const rooms = plans.flatMap((plan) => plan.rooms);
+    const expected = Object.entries(levels).flatMap(([id, level]) => (level.areas?.length ? level.areas.map((area) => area.id) : [id]));
+    assert.deepEqual(rooms.map((room) => room.id).sort(), expected.sort(), place);
+    for (const room of rooms) {
+      const plan = plans.find((one) => one.rooms.includes(room));
+      assert.ok(Object.values(plan.floors).includes(room.id), place + ": no floor on the map is " + room.id);
+      assert.ok(room.x + room.text.length <= plan.cols && room.y < plan.lines, place + ": " + room.text + " runs off the map");
+      assert.ok(plan.layers.floor.join("").includes(Object.keys(plan.floors).find((ch) => plan.floors[ch] === room.id)), place + ": " + room.id + "'s floor isn't drawn");
       if (room.closed) {
         assert.throws(() => walkCommand(at(place), { action: "room", to: room.id }), /closed door/, place + ": " + room.id);
         assert.deepEqual(room.people, [], place + ": nobody can see who's behind a closed door");
@@ -611,13 +637,26 @@ test("the arrow keys move one square, stop at walls, and walking into someone me
   assert.deepEqual(bump.path, []);
   assert.deepEqual(bump.arrived, { kind: "person", key: "voss" });
   assert.deepEqual(spot(game), start, "bumping into someone doesn't move you");
-  standOn(game, 2, 9);
+  // A square of the bridge's floor with a wall on its left.
+  const { floor, people: crowd } = walkView(game);
+  let edge = null;
+  for (let y = 0; y < floor.length && !edge; y += 1) {
+    for (let x = 1; x < floor[y].length; x += 1) {
+      if (floor[y][x] === "." && floor[y][x - 1] === " " && MAP.levels.deck1.roomAt(x, y) === "bridge" && MAP.levels.deck1.layers.walls[y][x - 1] === "#" && !crowd.some((one) => one.x === x && one.y === y)) {
+        edge = { x, y };
+        break;
+      }
+    }
+  }
+  standOn(game, edge.x, edge.y);
   const wall = walkCommand(game, { action: "step", dx: -1, dy: 0 });
   assert.deepEqual(wall.path, []);
-  assert.deepEqual(wall.walk.captain, { x: 2, y: 9 });
+  assert.deepEqual(wall.walk.captain, edge);
+  // From whichever side of the chair is floor, a step into it is a step up to it.
   const chair = thing(game, "The captain's chair");
-  standOn(game, chair.x, chair.y + 1);
-  assert.equal(walkCommand(game, { action: "step", dx: 0, dy: -1 }).arrived.kind, "thing");
+  const beside = [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dx, dy]) => ({ x: chair.x + dx, y: chair.y + dy, dx: -dx, dy: -dy })).find((one) => floor[one.y]?.[one.x] === "." && !crowd.some((person) => person.x === one.x && person.y === one.y));
+  standOn(game, beside.x, beside.y);
+  assert.equal(walkCommand(game, { action: "step", dx: beside.dx, dy: beside.dy }).arrived.kind, "thing");
 });
 
 test("the room says where the player can walk, square by square, the same as the server decides it", () => {
@@ -654,8 +693,8 @@ test("walking freely: a square at a time it's kept, through a wall or out of rea
   standOn(game, door.x, door.y - 1);
   const through = walkCommand(game, { action: "move", x: door.x, y: door.y });
   assert.equal(through.arrived.kind, "exit");
-  assert.equal(through.walk.here.id, "names");
-  assert.match(walkLine(game), /walked to The Names Bulkhead/);
+  assert.equal(deckOf(through.walk), "deck2");
+  assert.match(walkLine(game), /walked to The Lower Forward Stair/);
 });
 
 test("walking freely into a door only the story opens stops beside it, the same as clicking it", () => {
@@ -706,14 +745,14 @@ test("every way out leads where it says, and comes back to the door it left by",
       const spec = FILE.levels[id].exits[exit.key];
       const out = walkCommand(game, { action: "go", to: `exit:${exit.key}` });
       assert.equal(out.arrived.kind, "exit");
-      assert.equal(out.walk.here.id, spec.to, `${id} exit ${exit.key}`);
+      assert.equal(deckOf(out.walk), spec.to, `${id} exit ${exit.key}`);
       const door = out.walk.exits.find((one) => one.key === spec.via);
       assert.ok(door, `${spec.to} has no exit ${spec.via}`);
       assert.equal(FILE.levels[spec.to].exits[spec.via].to, id, `${spec.to} exit ${spec.via} should lead back to ${id}`);
       assert.equal(FILE.levels[spec.to].exits[spec.via].via, exit.key, `${spec.to} exit ${spec.via} should come out at exit ${exit.key}`);
       assert.equal(Math.abs(door.x - out.walk.captain.x) + Math.abs(door.y - out.walk.captain.y), 1, `${spec.to}: you should come out beside the door`);
       const back = walkCommand(game, { action: "go", to: `exit:${spec.via}` });
-      assert.equal(back.walk.here.id, id);
+      assert.equal(deckOf(back.walk), id);
     }
   }
 });
@@ -725,8 +764,8 @@ test("walking through a door with the arrow keys works too, and the path is stil
   standOn(game, door.x, door.y - 1);
   const through = walkCommand(game, { action: "step", dx: 0, dy: 1 });
   assert.equal(through.arrived.kind, "exit");
-  assert.equal(through.walk.here.id, "names");
-  assert.match(walkLine(game), /walked to The Names Bulkhead/);
+  assert.equal(deckOf(through.walk), "deck2");
+  assert.match(walkLine(game), /walked to The Lower Forward Stair/);
 });
 
 test("walking changes nothing but where the captain is: not the clock, not the fleet, not the AI", () => {
@@ -821,7 +860,7 @@ test("set_scene checks what it's given", () => {
 test("every kind of room can hold eight people with long names, and everything in it can be reached", () => {
   const names = Array.from({ length: 8 }, (_, i) => `Longer Name ${i}xx`.slice(0, 14));
   for (const kind of Object.keys(ROOM_KINDS)) {
-    for (const place of ["The Quiet Room", "The Other Room", "Number Three", "Somewhere Else", "A Fifth Place", "Room Six"]) {
+    for (const place of ["The Still Room", "The Other Room", "Number Three", "Somewhere Else", "A Fifth Place", "Room Six"]) {
       const game = newGame();
       tool(game, "set_scene", { area: place, people: names, kind });
       const view = walkView(game);
@@ -870,7 +909,7 @@ test("somewhere that isn't on the plan looks like what it is, never like a wrong
 test("with nothing said about a room, the game goes by its name and what the codex says about it", () => {
   const game = newGame();
   const kindOf = () => walkOf(game).room.kind;
-  for (const [name, kind] of [["The Brig", "cells"], ["Hangar Two", "hangar"], ["Father Roe's Chapel", "chapel"], ["Her Quarters", "cabin"], ["The Cannon Deck", "gundeck"], ["The Hydroponics Ward", "garden"], ["Somewhere Nobody's Named", "plain"]]) {
+  for (const [name, kind] of [["The Old Brig", "cells"], ["Hangar Two", "hangar"], ["Father Roe's Chapel", "chapel"], ["Her Quarters", "cabin"], ["The Cannon Deck", "gundeck"], ["The Hydroponics Ward", "garden"], ["Somewhere Nobody's Named", "plain"]]) {
     tool(game, "set_scene", { area: name });
     assert.equal(kindOf(), kind, name);
   }
@@ -988,7 +1027,7 @@ test("the state has one compact line about where the captain is, which only chan
   assert.ok(aiSnapshot(game).split("\n").includes(first));
   walkCommand(game, { action: "go", x: 10, y: 14 });
   assert.equal(walkLine(game), first, "walking around the same room isn't news");
-  walkCommand(game, { action: "go", to: "exit:1" });
+  walkCommand(game, { action: "go", to: "room:names" });
   assert.match(walkLine(game), /^Map: player walked to The Names Bulkhead\. Nearby: Roe \(sitting with the names\)(, \d+ other (person|people))?\.$/);
   assert.ok(walkLine(game).length < 200);
   tool(game, "set_scene", { area: "Section Fourteen", people: ["voss"] });
@@ -1394,7 +1433,7 @@ test("walking within a room adds nothing to the next message, and changing rooms
   walkCommand(game, { action: "go", x: 10, y: 14 });
   await runTurn({ game, settings, playerText: "Still looking.", emit: () => {} });
   assert.match(lastMessageText(), /Nothing has changed since your last update/);
-  walkCommand(game, { action: "go", to: "exit:1" });
+  walkCommand(game, { action: "go", to: "room:names" });
   await runTurn({ game, settings, playerText: "What's this?", emit: () => {} });
   assert.match(lastMessageText(), /Map: player walked to The Names Bulkhead/);
 });
@@ -1501,7 +1540,7 @@ test("a save from when the ship was one plan keeps the captain in the same room"
     old.walk = { place: "meridian", x, y, walked: false, with: [{ id: "voss", name: "Ilya Voss", x: 41, y: 5 }], room: null };
     const game = migrateGame(old);
     assert.equal(game.version, 15);
-    assert.equal(walkOf(game).level, level, `${x},${y}`);
+    assert.equal(roomHere(game).id, level, `${x},${y}`);
     assert.deepEqual(walkOf(game).with, [], "everyone's back at their posts");
     assert.equal(walkView(game).offPlan, false);
     assert.doesNotThrow(() => publicState(game));
@@ -1518,7 +1557,8 @@ test("a save from when Section Fourteen was a plain room comes back to it, drawn
   assert.equal(walkOf(game).room.kind, "ducts");
   assert.deepEqual(view.people.map((one) => one.key), ["dot-harrow", "the children"]);
   assert.ok(standable(view).some((cell) => cell.x === view.captain.x && cell.y === view.captain.y), "the captain's somewhere they can stand");
-  assert.equal(walkOf(game).level, "bridge");
+  assert.equal(walkOf(game).level, "deck1");
+  assert.equal(walkOf(game).room.from, "bridge", "and the way back leads to the bridge");
 });
 
 test("a save somewhere else opens wherever its latest scene says, from any older version", () => {
@@ -1549,7 +1589,7 @@ test("a save somewhere else opens wherever its latest scene says, from any older
 
 test("a save that's already got a place keeps it, and gains an empty list of opened doors", () => {
   const game = newGame();
-  walkCommand(game, { action: "go", to: "exit:1" });
+  walkCommand(game, { action: "go", to: "room:names" });
   const loaded = migrateGame(oldSave(game, 9));
   assert.equal(walkView(loaded).here.id, "names");
   assert.deepEqual(loaded.opened, {});
@@ -1626,7 +1666,7 @@ test("over the real server: walking, talking and closing never move the clock, a
   const hours = start.game.clock.hours;
   assert.equal(start.game.walk.here.id, "bridge");
 
-  const walked = await post("/api/walk", { action: "go", to: "exit:1" });
+  const walked = await post("/api/walk", { action: "go", to: "room:names" });
   assert.equal(walked.status, 200);
   assert.equal(walked.walk.here.id, "names");
   assert.ok(walked.path.length > 0);

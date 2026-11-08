@@ -26,7 +26,7 @@ const { aiDossier, aiSnapshot, passTime, publicState, rest, restCost, travel, wo
 const { arcBrief, fleetNews, leadsHere, storyView, threadNotes } = await import("../src/story-library.js");
 const { hasMovedOn, leadNow } = await import("../src/story-clock.js");
 const { newTurnLimits, runTool } = await import("../src/tools.js");
-const { mapFor, walkLine, walkOf, walkView } = await import("../src/walk.js");
+const { mapFor, roomHere, walkLine, walkOf, walkView } = await import("../src/walk.js");
 const { FLEET_DATA, STAR_MAP, STORY_CLOCK, WORLD_MAPS, WORLD_THREADS } = await import("../src/world.js");
 
 const CHAIR = FLEET_DATA.chair;
@@ -40,6 +40,11 @@ const newGame = (start = "captain", seed = 21) => {
 };
 const tool = (game, name, input) => runTool(game, name, input, newTurnLimits());
 const days = (game, count) => passTime(game, 24 * count, "routine");
+// Who's in one of the Meridian's rooms: the rooms are drawn on decks, so it's whoever on the deck stands inside it.
+const peopleIn = (game, room) => {
+  const { levelId, level } = mapFor("meridian").rooms[room];
+  return peopleAboard(game, "meridian", levelId).filter((one) => level.roomAt(one.x, one.y) === room);
+};
 const activeShips = (game) => Object.values(game.fleet.ships).filter((ship) => ship.status === "active").length;
 
 // ---- What's written down -----------------------------------------------------------
@@ -52,7 +57,7 @@ test("every start is somewhere real, with real people, a real job and something 
     assert.ok(["fleet", "world"].includes(start.group), id);
     for (const field of ["name", "short", "desc", "gm", "opening"]) assert.ok(typeof start[field] === "string" && start[field].length > 3, `${id}: ${field}`);
     assert.ok(LOCATIONS[start.place], `${id}: ${start.place}`);
-    assert.ok(mapFor(start.place)?.levels[start.room], `${id}: there's no ${start.room} at ${start.place}`);
+    assert.ok(mapFor(start.place)?.rooms[start.room], `${id}: there's no ${start.room} at ${start.place}`);
     assert.ok(start.job.name && start.job.done && start.job.pay > 0 && SKILLS[start.job.skill], `${id}: the job`);
     for (const person of start.people) assert.ok(NOTABLES[person], `${id}: ${person}`);
     for (const faction of Object.keys(start.factions ?? {})) assert.ok(FACTIONS[faction], `${id}: ${faction}`);
@@ -121,8 +126,8 @@ for (const id of OTHERS) {
     assert.deepEqual(game.role, { id, captain: false });
     assert.equal(isCaptain(game), false);
     assert.equal(game.location, start.place);
-    assert.equal(game.walk.level, start.room);
-    assert.equal(walkView(game).here.name, mapFor(start.place).levels[start.room].name);
+    assert.equal(roomHere(game).id, start.room);
+    assert.equal(walkView(game).here.name, mapFor(start.place).rooms[start.room].name);
     assert.ok(game.seenLore.includes(`place:${start.place}`));
     assert.deepEqual(game.quests.map((quest) => quest.id), [start.quest.id]);
     assert.ok(game.contacts.length >= start.people.length);
@@ -352,12 +357,12 @@ test("whoever has the chair is on the Meridian, and nobody else who could have h
   const game = newGame("engine_hand");
   game.clock.hours = 8;
   const chair = chairOf(game);
-  const onBridge = peopleAboard(game, "meridian", "bridge").map((one) => one.id);
+  const onBridge = peopleIn(game, "bridge").map((one) => one.id);
   assert.ok(onBridge.includes(chair.id), `${chair.id} isn't on the bridge: ${onBridge}`);
   for (const id of Object.keys(CHAIR.captains)) if (id !== chair.id) assert.ok(!onBridge.includes(id), id);
   assert.ok(onBridge.includes("voss"), "and Commander Voss is still her XO");
   const captain = newGame();
-  const captainsBridge = peopleAboard(captain, "meridian", "bridge").map((one) => one.id);
+  const captainsBridge = peopleIn(captain, "bridge").map((one) => one.id);
   for (const id of Object.keys(CHAIR.captains)) assert.ok(!captainsBridge.includes(id), `${id} shouldn't be there for a captain`);
   assert.equal(fleetView(game).ships.find((ship) => ship.id === "meridian").captain, chair.name);
   assert.match(fleetView(captain).ships.find((ship) => ship.id === "meridian").captain, new RegExp(captain.name));
@@ -560,7 +565,7 @@ test("the story can put them in the chair, once they're with the fleet, and then
   assert.ok(game.fleet.raid, "and the raids wait for them now");
   assert.equal(publicState(game).role.captain, true);
   assert.equal(publicState(game).role.job, null);
-  assert.ok(!peopleAboard(game, "meridian", "bridge").some((one) => one.id === was.id), "and whoever had it isn't standing there");
+  assert.ok(!peopleIn(game, "bridge").some((one) => one.id === was.id), "and whoever had it isn't standing there");
   const away = newGame("docker");
   const refused = tool(away, "change_command", { takes: true, reason: "A rumor" });
   assert.equal(refused.isError, true);
@@ -693,8 +698,9 @@ test("the Meridian's chair and the people aboard treat someone else as someone e
   assert.match(own.look, /It's yours now/);
   const voss = newGame("marine");
   assert.match(publicState(voss).people.find((person) => person.id === "voss").role, /^The Meridian's /);
-  const map = WORLD_MAPS.meridian;
-  assert.ok(Object.values(map.levels.engineering.people).find((person) => person.id === "tobin").asksOther);
+  // Engineering is drawn on a deck, so Tobin is among that deck's people in the ship's file.
+  const deck = WORLD_MAPS.meridian.levels[mapFor("meridian").rooms.engineering.levelId];
+  assert.ok(Object.values(deck.people).find((person) => person.id === "tobin").asksOther);
 });
 
 test("a save from before all this is a captain's, and stays one", () => {

@@ -17,7 +17,7 @@ import { clearFact, endStory, recordFact } from "./record.js";
 import { clockFacts, clockProblems } from "./story-clock.js";
 import { noteThreadStarted, notesProblems } from "./story-library.js";
 import { newTurnLimits, runTool, toolProblem } from "./tools.js";
-import { answerDoor, bringOver, personWhere } from "./walk.js";
+import { answerDoor, bringOver, mapFor, personWhere, roomOf } from "./walk.js";
 import { findCharacter, fullName } from "./campaign.js";
 import { heldUp } from "./quests.js";
 import { parseNarration } from "../public/story.js";
@@ -326,7 +326,7 @@ function enterPart(game, scene, id, { emit, turn }, hops = 0) {
         game.opened ??= {};
         game.opened[game.location] ??= [];
         if (!game.opened[game.location].includes(to)) game.opened[game.location].push(to);
-        emit({ type: "notice", text: `[DOOR] The way to ${WORLD_MAPS[game.location]?.levels?.[to]?.name ?? to} is open.` });
+        emit({ type: "notice", text: `[DOOR] The way to ${roomOf(mapFor(game.location), to)?.name ?? to} is open.` });
       }
       continue;
     }

@@ -249,7 +249,10 @@ const storyItem = (game) => {
 };
 
 test("a thing with a holds line opens with what's in it, keeps what's taken out and put in, and leaving the room shuts it", () => {
-  const thing = WORLD_MAPS.meridian.levels.bridge.things.l;
+  // The bridge is drawn on the command deck, so its locker is among the deck's things.
+  const deck = WORLD_MAPS.meridian.levels.deck1;
+  const letter = Object.keys(deck.things).find((key) => deck.things[key].name === "Ready room locker");
+  const thing = deck.things[letter];
   const saved = structuredClone(thing);
   try {
     thing.holds = { medkit: 2, service_rifle: 1 };
@@ -278,7 +281,7 @@ test("a thing with a holds line opens with what's in it, keeps what's taken out 
     assert.equal(view(game).open, null);
     assert.deepEqual(game.stores[locker.store].items.map((one) => one.id).sort(), ["medkit", "ration_pack"]);
   } finally {
-    WORLD_MAPS.meridian.levels.bridge.things.l = saved;
+    deck.things[letter] = saved;
     clearMaps();
   }
 });

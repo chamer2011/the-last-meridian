@@ -9,7 +9,7 @@ import { isoFrameNode, isoKeepClear, isoMark } from "./iso.js";
 import { paneNode, putPane } from "./pane.js";
 import { untagged } from "./story.js";
 import { closePopups, popsNode, popupDrawn, popupNext, popupPressed, popupReading, resetPopups } from "./popups.js";
-import { adopt, currentSquare, follow, leavingRoom, positionNow, resetMoving, startMoving } from "./move.js";
+import { adopt, currentSquare, follow, leavingRoom, levelIdOf, positionNow, resetMoving, startMoving } from "./move.js";
 
 const TICK_TIME = 500;
 // How fast the clock can run, in minutes of the game to each real minute.
@@ -96,6 +96,7 @@ function placeCaptain({ x, y }) {
   if (marker) {
     marker.style.left = `${x}ch`;
     marker.style.top = `calc(${y} * var(--walk-row))`;
+    keepCaptainInView();
   }
 }
 
@@ -114,13 +115,13 @@ function setOff() {
   if (popupsShown()) closePopups();
 }
 
-// The room as the server has it after a walk. In the same room, the people carry on from wherever they've got to since
-// the reply was sent.
+// The room as the server has it after a walk. On the same level (the same deck, on the ship), the people carry on from
+// wherever they've got to since the reply was sent, and only the room's own lines are drawn again.
 function takeWalk(reply) {
-  const sameRoom = walk.shownLevel === reply.walk.here.id;
+  const sameRoom = walk.shownLevel === levelIdOf(reply.walk);
   // A room saved in Tiled since it was last drawn is drawn again whole.
   const redrawn = (reply.walk.here.drawn ?? 0) !== (app.ui.game.walk.here.drawn ?? 0);
-  const { people } = sameRoom && app.ui.game.walk.here.id === reply.walk.here.id ? app.ui.game.walk : reply.walk;
+  const { people } = sameRoom && levelIdOf(app.ui.game.walk) === levelIdOf(reply.walk) ? app.ui.game.walk : reply.walk;
   app.ui.game.walk = { ...reply.walk, people };
   walk.message = reply.message ?? null;
   if (sameRoom && !redrawn && document.getElementById("walk-frame")) drawHere();
@@ -145,7 +146,7 @@ async function go(body, after = null, point = null) {
     return;
   }
   walk.sending = false;
-  const leaving = reply.walk.here.id !== app.ui.game.walk.here.id;
+  const leaving = levelIdOf(reply.walk) !== levelIdOf(app.ui.game.walk);
   follow(reply.path, {
     serverAt: reply.walk.captain,
     point: leaving ? null : point,
@@ -294,7 +295,7 @@ function colorsOf(colors = {}) {
 function frameNode() {
   const view = app.ui.game.walk;
   if (isoShown()) {
-    walk.shownLevel = view.here.id;
+    walk.shownLevel = levelIdOf(view);
     walk.marks = new Map();
     return el("div", { class: "walk-frame", id: "walk-frame" }, isoFrameNode({ view: () => app.ui.game?.walk ?? null, spot: shownSpot, blocked: cannotWalk, go, menu: (key, point) => openMenu(key, point), pressed: () => menuJustShut() || (popupsShown() && !anotherWindow() && popupPressed()), reading: () => popupsShown() && !anotherWindow() && popupReading(), drawn: () => {
       popupDrawn();
@@ -303,12 +304,15 @@ function frameNode() {
   }
   const spot = shownSpot();
   // A level the captain has just walked into fades up.
-  const arriving = walk.shownLevel !== null && walk.shownLevel !== view.here.id;
-  walk.shownLevel = view.here.id;
+  const arriving = walk.shownLevel !== null && walk.shownLevel !== levelIdOf(view);
+  walk.shownLevel = levelIdOf(view);
   walk.marks = new Map();
-  return el("div", { class: "walk-frame", id: "walk-frame" },
+  // A deck is too big to fit, so it's drawn at a readable size and the frame scrolls to keep the player in view.
+  const deck = Boolean(view.here.deck);
+  if (deck) requestAnimationFrame(keepCaptainInView);
+  return el("div", { class: `walk-frame${deck ? " scrolls" : ""}`, id: "walk-frame" },
     el("div", {
-      class: `walk-plan${cannotWalk() ? " waiting" : ""}${arriving ? " arriving" : ""}${view.room?.dark ? " dark" : ""}${view.room?.thin ? " thin" : ""}${view.room?.alarm ? " alarm" : ""}`,
+      class: `walk-plan${deck ? " deck" : ""}${cannotWalk() ? " waiting" : ""}${arriving ? " arriving" : ""}${view.room?.dark ? " dark" : ""}${view.room?.thin ? " thin" : ""}${view.room?.alarm ? " alarm" : ""}`,
       style: `--walk-cols:${view.cols};--walk-lines:${view.lines};${colorsOf(view.colors)}`,
       onclick: (event) => {
         const { x, y, point } = squareAt(event);
@@ -334,6 +338,17 @@ function frameNode() {
 
 function hereList(label, entries) {
   return entries.length > 0 && el("div", { class: "walk-here-list small" }, el("span", { class: "muted" }, label), entries);
+}
+
+// On a deck drawn in characters, the frame scrolls so the player stays in the middle of it.
+export function keepCaptainInView() {
+  const frame = document.getElementById("walk-frame");
+  const you = document.getElementById("walk-captain");
+  if (!frame?.classList.contains("scrolls") || !you) return;
+  const box = frame.getBoundingClientRect();
+  const mine = you.getBoundingClientRect();
+  frame.scrollLeft += mine.left + mine.width / 2 - (box.left + box.width / 2);
+  frame.scrollTop += mine.top + mine.height / 2 - (box.top + box.height / 2);
 }
 
 // The room's systems, in a line, when something's wrong with them.
@@ -373,8 +388,12 @@ function hereNode() {
     },
     ...props,
   }, text);
+  // On a deck, the lists are the room the player's in, not the whole deck.
+  const inRoom = (one) => !view.here.deck || one.room === view.here.id;
+  const ways = (view.ways ?? []).map((way) => button(way.locked ? `${way.name} (locked)` : way.name, way.locked ? `exit:door:${way.x},${way.y}` : `room:${way.to}`, { oncontextmenu: (event) => event.preventDefault() }));
   return el("div", { class: "walk-here", id: "walk-here" },
     el("div", { class: "walk-here-name" }, view.here.name),
+    view.here.deck && el("div", { class: "muted small walk-here-deck" }, view.here.deck.name),
     view.here.desc && el("div", { class: "muted small" }, view.here.desc),
     view.overview && el("div", {}, el("button", {
       disabled: cannotWalk(),
@@ -383,11 +402,11 @@ function hereNode() {
         app.render();
       },
     }, view.overview.title)),
-    hereList("People:", peopleList(view, button)),
-    hereList("Things:", view.things.filter((thing) => !thing.part).map((thing) => button(thing.name, `thing:${thing.id}`))),
-    hereList("Systems:", view.things.filter((thing) => thing.part).map((thing) => button(`${PART_WORDS[thing.part.kind] ?? "part"}${["on", "open", "watching", "released"].includes(thing.part.word) ? "" : ` (${thing.part.word})`}`, `thing:${thing.id}`, { class: `walk-here-part${thing.part.works ? "" : " down"}`, title: `${thing.name}, ${thing.part.word}` }))),
+    hereList("People:", peopleList({ ...view, people: view.people.filter(inRoom) }, button)),
+    hereList("Things:", view.things.filter((thing) => !thing.part && inRoom(thing)).map((thing) => button(thing.name, `thing:${thing.id}`))),
+    hereList("Systems:", view.things.filter((thing) => thing.part && inRoom(thing)).map((thing) => button(`${PART_WORDS[thing.part.kind] ?? "part"}${["on", "open", "watching", "released"].includes(thing.part.word) ? "" : ` (${thing.part.word})`}`, `thing:${thing.id}`, { class: `walk-here-part${thing.part.works ? "" : " down"}`, title: `${thing.name}, ${thing.part.word}` }))),
     roomNote(view.room),
-    hereList("Ways out:", view.exits.map((exit) => button(exit.closed ? `${exit.label} (closed)` : exit.label, `exit:${exit.key}`))),
+    hereList("Ways out:", [...ways, ...view.exits.filter(inRoom).map((exit) => button(exit.closed ? `${exit.label} (closed)` : exit.label, `exit:${exit.key}`))]),
     !app.ui.game.role.captain && hereList("You can:", [
       app.ui.game.role.job && el("button", { disabled: cannotWalk(), onclick: app.act({ action: "work" }) }, app.ui.game.role.job.name),
       app.ui.game.role.rest === 0 && el("button", { disabled: cannotWalk(), onclick: app.act({ action: "rest" }) }, "Sleep (8 hours)"),
@@ -530,7 +549,7 @@ function applyTick(reply) {
   const changed = ui.game.clock.label !== reply.clock.label;
   ui.game.clock = reply.clock;
   if (changed) app.renderStatus();
-  if (reply.here === walk.shownLevel && reply.here === ui.game.walk.here.id) {
+  if (reply.here === walk.shownLevel && reply.here === levelIdOf(ui.game.walk)) {
     ui.game.walk.people = reply.people;
     updatePeople();
   }
@@ -566,38 +585,56 @@ function goToRoom(to) {
   app.render();
 }
 
+// On a deck, a room picked on the plan is walked to, and one on another deck by way of the stairs.
+function walkToRoom(id) {
+  walk.plan = false;
+  app.render();
+  go({ action: "go", to: `room:${id}` });
+}
+
 const whoIsIn = (room) => [room.people.join(", "), room.others ? `${room.others} other${room.others === 1 ? "" : "s"}` : ""].filter(Boolean).join(" and ");
 
 function planWindow(view) {
   const plan = view.overview;
-  const here = plan.rooms.find((room) => room.here);
+  // A ship of decks has a plan for each, the one the player's on first.
+  const decks = plan.decks ?? null;
+  const shown = decks ? decks.find((deck) => deck.id === walk.planDeck) ?? decks.find((deck) => deck.here) ?? decks[0] : plan;
+  const here = shown.rooms.find((room) => room.here);
+  const pick = (id) => (decks ? walkToRoom(id) : goToRoom(id));
   return el("div", { class: "check-window walk-plan-window", "data-theme": "green", role: "dialog", "aria-label": plan.title, tabindex: "-1", id: "walk-window" },
     el("header", { class: "check-title" },
-      el("span", { class: "check-name" }, plan.title),
-      el("span", { class: "check-skill" }, "Click a room to walk there. It's free, and it takes no time.")),
+      el("span", { class: "check-name" }, decks ? `${plan.title}: ${shown.name}` : plan.title),
+      el("span", { class: "check-skill" }, decks ? "Click a room to walk there. A room on another deck is reached by the stairs." : "Click a room to walk there. It's free, and it takes no time.")),
+    decks && el("div", { class: "walk-plan-decks" }, decks.map((deck) => el("button", {
+      class: deck.id === shown.id ? "picked" : "",
+      onclick: () => {
+        walk.planDeck = deck.id;
+        app.render();
+      },
+    }, deck.here ? `${deck.name} (you're here)` : deck.name))),
     el("div", { class: "walk-plan-frame" },
       el("div", {
         class: "walk-plan",
-        style: `--walk-cols:${plan.cols};--walk-lines:${plan.lines}`,
+        style: `--walk-cols:${shown.cols};--walk-lines:${shown.lines}`,
         onclick: (event) => {
-          const { x, y } = squareAt(event, plan);
-          const level = plan.floors[plan.layers.floor[y]?.[x]];
-          if (level && !plan.rooms.find((room) => room.id === level)?.closed) goToRoom(level);
+          const { x, y } = squareAt(event, shown);
+          const level = shown.floors[shown.layers.floor[y]?.[x]];
+          if (level && !shown.rooms.find((room) => room.id === level)?.closed) pick(level);
         },
       },
-      ["floor", "walls", "doors", "scenery"].map((layer) => el("pre", { class: `walk-layer walk-${layer}`, "aria-hidden": "true" }, plan.layers[layer].join("\n"))),
-      plan.rooms.map((room) => el("button", {
+      ["floor", "walls", "doors", "scenery"].map((layer) => el("pre", { class: `walk-layer walk-${layer}`, "aria-hidden": "true" }, shown.layers[layer].join("\n"))),
+      shown.rooms.map((room) => el("button", {
         class: `walk-mark walk-room${room.here ? " here" : ""}${room.closed ? " closed" : ""}`,
         style: spotStyle(room.x, room.y),
         title: room.closed ? `${room.name}: you'd have to ask at the door` : whoIsIn(room) ? `${room.name}: ${whoIsIn(room)}` : room.name,
         disabled: room.closed,
         onclick: (event) => {
           event.stopPropagation();
-          goToRoom(room.id);
+          pick(room.id);
         },
       }, room.text)))),
     el("div", { class: "walk-plan-list" },
-      plan.rooms.map((room) => el("button", { class: `walk-plan-row${room.here ? " here" : ""}`, disabled: room.closed, onclick: () => goToRoom(room.id) },
+      shown.rooms.map((room) => el("button", { class: `walk-plan-row${room.here ? " here" : ""}`, disabled: room.closed, onclick: () => pick(room.id) },
         el("span", { class: "option-label" }, room.name),
         room.closed
           ? el("span", { class: "option-detail" }, "closed: you'd have to ask at the door")

@@ -83,7 +83,7 @@ test("every room in the game comes back from a Tiled map just as it was", () => 
 
 test("the ship's rooms are read from their Tiled maps, with nothing wrong in them", () => {
   const files = fs.readdirSync(path.join(mapsDir, "meridian")).filter((name) => name.endsWith(".tmj"));
-  assert.ok(files.length >= 8);
+  assert.ok(files.length >= 3, "a map to each deck");
   for (const name of files) {
     const level = WORLD_MAPS.meridian.levels[name.slice(0, -4)];
     assert.ok(level?.drawn > 0, `${name} is read`);
@@ -91,7 +91,7 @@ test("the ship's rooms are read from their Tiled maps, with nothing wrong in the
   }
   assert.deepEqual(MAP_FILE_PROBLEMS, []);
   const map = mapFor("meridian");
-  assert.ok(map.levels[WORLD_MAPS.meridian.start], "the ship starts in one of them");
+  assert.ok(map.rooms[WORLD_MAPS.meridian.start], "the ship starts in a room drawn on one of them");
   const project = JSON.parse(fs.readFileSync(path.join(mapsDir, "almagest-explorers.tiled-project"), "utf8"));
   assert.ok(project.folders.includes("meridian"), "Tiled's project shows the ship's rooms");
 });
@@ -144,7 +144,7 @@ test("a room saved as a .tmx file, Tiled's own kind, reads the same as its .tmj"
   const set = JSON.parse(fs.readFileSync(path.join(mapsDir, "tiles", "stand-ins.tsj"), "utf8"));
   fs.mkdirSync(path.join(dir, "tiles"));
   fs.writeFileSync(path.join(dir, "tiles", "stand-ins.tsx"), toTsx(set));
-  for (const id of ["bridge", "bunks", "names"]) {
+  for (const id of ["deck1", "deck2", "deck3"]) {
     const json = path.join(mapsDir, "meridian", `${id}.tmj`);
     const xml = path.join(dir, `${id}.tmx`);
     fs.writeFileSync(xml, toTmx(JSON.parse(fs.readFileSync(json, "utf8")), "tiles/stand-ins.tsx"));
@@ -153,7 +153,7 @@ test("a room saved as a .tmx file, Tiled's own kind, reads the same as its .tmj"
     assert.deepEqual(fromXml.level, tiled.roomFromMap(tiled.readMapFile(json)).level, id);
   }
   // The bridge's people have more than one thing to ask, a line each, which XML keeps inside the property.
-  const voss = Object.values(tiled.roomFromMap(tiled.readMapFile(path.join(dir, "bridge.tmx"))).level.people).find((one) => one.id === "voss");
+  const voss = Object.values(tiled.roomFromMap(tiled.readMapFile(path.join(dir, "deck1.tmx"))).level.people).find((one) => one.id === "voss");
   assert.equal(voss.asks.length, 2);
 });
 
@@ -234,8 +234,8 @@ test("what's wrong in a Tiled room is said plainly, and the rest of the room sti
   assert.match(crowded.problems.join("\n"), /a thing has no name, so it's left out/);
   assert.match(crowded.problems.join("\n"), /a way out called Nowhere doesn't say where it goes/);
   assert.deepEqual(crowded.level.things, { a: { name: "A box" } });
-  const big = say(smallMap(dir, "big", { width: 40, height: 19 }));
-  assert.match(big.problems.join(), /it's 40 tiles across and 19 down, and a room can be 39 across and 18 down at most/);
+  const big = say(smallMap(dir, "big", { width: 101, height: 61 }));
+  assert.match(big.problems.join(), /it's 101 tiles across and 61 down, and a map can be 100 across and 60 down at most/);
   const mixed = say(smallMap(dir, "mixed", { data: [2, 6, 2, 2, 2, 2], extraTiles: [{ id: 5, properties: [{ name: "mark", type: "string", value: "." }, { name: "floor", type: "string", value: "" }] }] }));
   assert.match(mixed.problems.join(), /the mark \. is floor on some tiles and not on others/);
   // A file that can't be read is left out, and so is the older of two files for one room.
@@ -259,7 +259,8 @@ test("a room saved in Tiled shows up while the game runs, and nobody's left stan
   const spots = first.floor.flatMap((row, y) => [...row].map((ch, x) => ({ x, y })).filter(({ x }) => row[x] === "." && row[x ^ 1] === "."));
   Object.assign(walkOf(game), spots.find((one) => !near(one.x, one.y) && (one.x !== first.captain.x || one.y !== first.captain.y)));
   const before = walkView(game);
-  const room = before.here.id;
+  // The file is the deck's, when the room is one drawn on a deck.
+  const room = before.here.deck?.id ?? before.here.id;
   const { x, y } = before.captain;
   const file = path.join(mapsDir, "meridian", `${room}.tmj`);
   const saved = fs.readFileSync(file, "utf8");

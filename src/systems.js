@@ -21,7 +21,7 @@ import { recordFact } from "./record.js";
 import { isCaptain } from "./role.js";
 import { changeStanding, changeStress, hoursNow } from "./rules.js";
 import { holderOf } from "./daily.js";
-import { atPost, mapFor } from "./walk.js";
+import { atPost, mapFor, roomOf, roomsOf, roomsOn, thingsIn } from "./walk.js";
 import { SYSTEMS_DEFAULTS, SYSTEMS_FILE_PROBLEMS, WORLD_CHARACTERS, WORLD_COMPUTERS, WORLD_LIFE, WORLD_SYSTEMS } from "./world.js";
 import { KNOWN_SYSTEMS, SYSTEM_TITLES, readComputerLine, readDoorLine, readLocksLine, readPartLine, slugOf } from "../public/systems-text.js";
 
@@ -64,30 +64,35 @@ const airLimits = () => ({ thin: D().air?.thin ?? 60, bad: D().air?.bad ?? 30, s
 // ---- Where parts can go --------------------------------------------------------------------------
 
 // Wall squares with the room in front of them: the back walls, facing the room, and the left-hand walls. The walls
-// nearest the viewer are drawn low so the room can be seen, so nothing goes on those.
-export function wallSpots(level, claimed = new Set()) {
+// nearest the viewer are drawn low so the room can be seen, so nothing goes on those. On a deck, area is the room
+// drawn on it, and only its own walls count: the ones with its floor in front of them.
+export function wallSpots(level, claimed = new Set(), area = null) {
   const spots = [];
-  const walkable = (x, y) => Boolean(level.open[y]?.[x]) && !level.solid.has(`${x},${y}`);
+  const inArea = (x, y) => !area || level.areaAt(x, y) === area.id;
+  const walkable = (x, y) => Boolean(level.open[y]?.[x]) && !level.solid.has(`${x},${y}`) && inArea(x, y);
   const wall = (x, y) => level.layers.walls[y]?.[x] === "#";
   const nearExit = (x, y) => level.exits.some((exit) => Math.abs(exit.x - x) <= 1 && Math.abs(exit.y - y) <= 1);
-  for (let y = 0; y < level.height; y += 1) {
-    for (let x = 0; x < level.width; x += 1) if (wall(x, y) && !nearExit(x, y) && !claimed.has(`${x},${y}`) && walkable(x, y + 1)) spots.push({ x, y, face: "back" });
+  const [x0, x1, y0, y1] = area ? [Math.max(0, area.x - 1), Math.min(level.width - 1, area.x + area.w), Math.max(0, area.y - 1), Math.min(level.height - 1, area.y + area.h)] : [0, level.width - 1, 0, level.height - 1];
+  for (let y = y0; y <= y1; y += 1) {
+    for (let x = x0; x <= x1; x += 1) if (wall(x, y) && !nearExit(x, y) && !claimed.has(`${x},${y}`) && walkable(x, y + 1)) spots.push({ x, y, face: "back" });
   }
-  for (let x = 0; x < level.width; x += 1) {
-    for (let y = 0; y < level.height; y += 1) if (wall(x, y) && !nearExit(x, y) && !claimed.has(`${x},${y}`) && !walkable(x, y + 1) && walkable(x + 1, y)) spots.push({ x, y, face: "side" });
+  for (let x = x0; x <= x1; x += 1) {
+    for (let y = y0; y <= y1; y += 1) if (wall(x, y) && !nearExit(x, y) && !claimed.has(`${x},${y}`) && !walkable(x, y + 1) && walkable(x + 1, y)) spots.push({ x, y, face: "side" });
   }
   return spots;
 }
 
 // Rooms with no such walls get a standing unit on the floor instead, at the edge, where it can't block the way.
-function floorSpot(level, taken, index, count, claimed = new Set()) {
-  const walkable = (x, y) => Boolean(level.open[y]?.[x]) && !level.solid.has(`${x},${y}`) && !taken.has(`${x},${y}`) && !claimed.has(`${x},${y}`);
+function floorSpot(level, taken, index, count, claimed = new Set(), area = null) {
+  const inArea = (x, y) => !area || level.areaAt(x, y) === area.id;
+  const walkable = (x, y) => Boolean(level.open[y]?.[x]) && !level.solid.has(`${x},${y}`) && !taken.has(`${x},${y}`) && !claimed.has(`${x},${y}`) && inArea(x, y);
   const homes = new Set(level.homes.map((home) => `${home.x},${home.y}`));
   const nearExit = (x, y) => level.exits.some((exit) => Math.abs(exit.x - x) + Math.abs(exit.y - y) <= 2);
   const candidates = [];
-  for (let y = 0; y < level.height; y += 1) {
-    for (let x = 0; x < level.width; x += 1) {
-      if (!walkable(x, y) || homes.has(`${x},${y}`) || (x === level.start.x && y === level.start.y) || nearExit(x, y)) continue;
+  const [x0, x1, y0, y1] = area ? [area.x, area.x + area.w - 1, area.y, area.y + area.h - 1] : [0, level.width - 1, 0, level.height - 1];
+  for (let y = y0; y <= y1; y += 1) {
+    for (let x = x0; x <= x1; x += 1) {
+      if (!walkable(x, y) || homes.has(`${x},${y}`) || (x === level.start.x && y === level.start.y) || nearExit(x, y) || level.doors.has(`${x},${y}`)) continue;
       if ([[0, -1], [-1, 0], [1, 0], [0, 1]].some(([dx, dy]) => !level.open[y + dy]?.[x + dx])) candidates.push({ x, y });
     }
   }
@@ -95,18 +100,21 @@ function floorSpot(level, taken, index, count, claimed = new Set()) {
   const first = Math.floor(((index + 0.5) * candidates.length) / Math.max(1, count));
   for (let k = 0; k < candidates.length; k += 1) {
     const spot = candidates[(first + k) % candidates.length];
-    if (staysConnected(level, taken, spot)) return spot;
+    if (staysConnected(level, taken, spot, area)) return spot;
   }
   return null;
 }
 
-// Whether everywhere that could be walked to still can be, with one more square taken.
-function staysConnected(level, taken, spot) {
-  const blocked = (x, y) => !level.open[y]?.[x] || level.solid.has(`${x},${y}`) || taken.has(`${x},${y}`) || (x === spot.x && y === spot.y);
+// Whether everywhere that could be walked to still can be, with one more square taken. On a deck, within the room
+// drawn there, its doors counting as its edge.
+function staysConnected(level, taken, spot, area = null) {
+  const inArea = (x, y) => !area || level.areaAt(x, y) === area.id || level.doors.has(`${x},${y}`);
+  const blocked = (x, y) => !level.open[y]?.[x] || level.solid.has(`${x},${y}`) || taken.has(`${x},${y}`) || (x === spot.x && y === spot.y) || !inArea(x, y);
   let total = 0;
   let from = null;
-  for (let y = 0; y < level.height; y += 1) {
-    for (let x = 0; x < level.width; x += 1) {
+  const [x0, x1, y0, y1] = area ? [Math.max(0, area.x - 1), Math.min(level.width - 1, area.x + area.w), Math.max(0, area.y - 1), Math.min(level.height - 1, area.y + area.h)] : [0, level.width - 1, 0, level.height - 1];
+  for (let y = y0; y <= y1; y += 1) {
+    for (let x = x0; x <= x1; x += 1) {
       if (blocked(x, y)) continue;
       total += 1;
       from ??= { x, y };
@@ -127,13 +135,16 @@ function staysConnected(level, taken, spot) {
   // Exits sit in the walls, so each one needs a square beside it that can still be reached.
   const reached = (mark) => [[0, -1], [-1, 0], [1, 0], [0, 1]].some(([dx, dy]) => seen.has(`${mark.x + dx},${mark.y + dy}`));
   // The same for every thing in the room, and every part already placed, since each has to be walked up to.
-  const placed = [...taken].map((key) => key.split(",").map(Number)).map(([x, y]) => ({ x, y }));
-  return seen.size === total && level.exits.every(reached) && level.things.every(reached) && placed.every(reached);
+  const inHere = (mark) => !area || level.areaAt(mark.x, mark.y) === area.id;
+  const placed = [...taken].map((key) => key.split(",").map(Number)).map(([x, y]) => ({ x, y })).filter(inHere);
+  const exits = level.exits.filter(inHere);
+  const things = level.things.filter(inHere);
+  return seen.size === total && exits.every(reached) && things.every(reached) && placed.every(reached);
 }
 
 // The squares names are written on: the ways out's, the room names', and the names of people at their posts or at
 // the places their days take them. A part on one would cover a name.
-function claimedSquares(place, level) {
+function claimedSquares(place, map, level) {
   const out = new Set();
   const run = (x, y, length, side = "right") => {
     for (let i = 0; i < length; i += 1) out.add(`${side === "left" ? x - i : x + i},${y}`);
@@ -142,15 +153,18 @@ function claimedSquares(place, level) {
   for (const label of level.labels) run(label.x, label.y, label.text.length);
   for (const home of level.homes) run(home.x, home.y, String(home.label ?? home.id ?? "").length + 2, home.side);
   out.add(`${level.start.x},${level.start.y}`);
+  for (const area of level.areas) out.add(`${area.start.x},${area.start.y}`);
   const life = WORLD_LIFE[place];
   if (life) {
-    const longest = Math.max(8, ...Object.values(mapFor(place)?.levels ?? {}).flatMap((one) => one.homes.map((home) => String(home.label ?? "").length))) + 2;
-    for (const [lvl, x, y, side] of Object.values(life.spots ?? {})) if (lvl === level.id) run(x, y, longest, side);
+    // A spot in the life file names a room, which can be one drawn on this level.
+    const onLevel = (lvl) => lvl === level.id || roomOf(map, lvl)?.levelId === level.id;
+    const longest = Math.max(8, ...Object.values(map?.levels ?? {}).flatMap((one) => one.homes.map((home) => String(home.label ?? "").length))) + 2;
+    for (const [lvl, x, y, side] of Object.values(life.spots ?? {})) if (onLevel(lvl)) run(x, y, longest, side);
     for (const entries of Object.values(life.groups ?? {})) {
       for (const entry of entries) {
         if (Array.isArray(entry)) {
-          if (entry[0] === level.id) run(entry[1], entry[2], longest);
-        } else if (entry.level === level.id) {
+          if (onLevel(entry[0])) run(entry[1], entry[2], longest);
+        } else if (onLevel(entry.level)) {
           for (let x = entry.from; x <= entry.to; x += entry.step ?? 1) run(x, entry.y, longest);
         }
       }
@@ -159,23 +173,48 @@ function claimedSquares(place, level) {
   return out;
 }
 
-// The squares one room's parts take up, for anyone placing people so their names cover nothing.
+// The squares one room's parts take up, for anyone placing people so their names cover nothing. Asked about a deck,
+// it's the parts of every room drawn on it.
 export function partSquares(place, room) {
   const model = systemsOf(place);
-  return (model?.partsIn[room] ?? []).map((id) => model.parts[id]).filter((part) => part && !part.unplaced).map((part) => `${part.x},${part.y}`);
+  if (!model) return [];
+  const map = mapFor(place);
+  const ids = map?.levels[room]?.areas.length ? roomsOn(map, room).flatMap((one) => model.partsIn[one.id] ?? []) : model.partsIn[room] ?? [];
+  return ids.map((id) => model.parts[id]).filter((part) => part && !part.unplaced).map((part) => `${part.x},${part.y}`);
 }
 
 // ---- What a place has, from its file or the defaults --------------------------------------------
 
+// A room by its name, id or alias: a level, or a room drawn on a deck.
 function roomFinder(map) {
-  const levels = Object.values(map.levels);
+  const rooms = roomsOf(map);
   return (name) => {
     const want = plain(name);
-    return levels.find((level) => plain(level.name) === want || level.id === want || (level.aliases ?? []).some((alias) => plain(alias) === want)) ?? null;
+    return rooms.find((room) => plain(room.name) === want || room.id === want || (room.aliases ?? []).some((alias) => plain(alias) === want)) ?? null;
   };
 }
-const waysInto = (map, room) => Object.values(map.levels).flatMap((level) => level.exits.filter((exit) => exit.to === room && !exit.back));
+// The ways into a room: the exits that lead to it, and on a deck, the doors in its walls.
+function waysInto(map, room) {
+  const exits = Object.values(map.levels).flatMap((level) => level.exits.filter((exit) => exit.to === room && !exit.back));
+  const area = roomOf(map, room)?.area;
+  return area ? [...exits, ...area.doors.map((door) => ({ x: door.x, y: door.y, to: room, inner: true }))] : exits;
+}
 const storyClosedInto = (map, room) => waysInto(map, room).some((exit) => exit.closed);
+
+// The rooms next to a room: through its doors, on a deck, and through the exits that leave it.
+function neighboursOf(map, id) {
+  const room = roomOf(map, id);
+  if (!room) return [];
+  const exits = room.area ? room.level.exits.filter((exit) => room.area.exits.includes(exit.key)) : room.level.exits;
+  const beyond = exits.map((exit) => {
+    const there = roomOf(map, exit.to);
+    if (!there) return null;
+    if (!there.level.areas.length) return there.id;
+    const back = there.level.exits.find((one) => one.key === exit.via);
+    return back ? there.level.roomAt(back.x, back.y) : there.id;
+  }).filter(Boolean);
+  return [...new Set([...(room.area?.doors.map((door) => door.to) ?? []), ...beyond])];
+}
 
 // The rooms in the order they're reached from the way in, in groups of a few, each group on one junction box.
 function sectionsOf(map, ids, size) {
@@ -186,10 +225,10 @@ function sectionsOf(map, ids, size) {
   while (queue.length) {
     const id = queue.shift();
     if (wanted.has(id)) order.push(id);
-    for (const exit of map.levels[id]?.exits ?? []) {
-      if (seen.has(exit.to) || !map.levels[exit.to]) continue;
-      seen.add(exit.to);
-      queue.push(exit.to);
+    for (const next of neighboursOf(map, id)) {
+      if (seen.has(next)) continue;
+      seen.add(next);
+      queue.push(next);
     }
   }
   for (const id of ids) if (!order.includes(id)) order.push(id);
@@ -203,16 +242,16 @@ const classWord = (text) => String(text ?? "").trim().toLowerCase().replace(/\s+
 // A place with no file of its own: the same shape as a file, so what's shown on the board can be saved as one.
 export function defaultFileFor(place, map) {
   const d = D();
-  const levels = Object.values(map.levels);
+  const levels = roomsOf(map);
   const value = { name: LOCATIONS[place]?.name ?? map.name ?? place, numbers: {}, systems: [], computers: [], defaults: true };
   if ((d["no systems"] ?? []).includes(place)) return value;
   const open = (d["open air"] ?? []).includes(place);
-  const inside = open ? levels.filter((level) => wallSpots(level).length >= 4) : levels;
+  const inside = open ? levels.filter((room) => wallSpots(room.level, new Set(), room.area).length >= 4) : levels;
   if (!inside.length) return value;
   const names = (list) => list.map((level) => level.name).join(", ");
   const everywhere = open ? names(inside) : "every room";
-  const start = map.levels[map.start];
-  const sections = sectionsOf(map, inside.map((level) => level.id), 3).map((ids) => ids.map((id) => map.levels[id]));
+  const start = roomOf(map, map.start);
+  const sections = sectionsOf(map, inside.map((level) => level.id), 3).map((ids) => ids.map((id) => roomOf(map, id)));
   value.systems.push({ name: "Power", id: "power", lines: sections.map((group) => ({ text: `junction box in ${group[0].name}${group.length > 1 ? ` for ${names(group)}` : ""}` })) });
   if (!open) {
     const words = d["plant rooms"] ?? [];
@@ -228,7 +267,7 @@ export function defaultFileFor(place, map) {
   value.systems.push({ name: "Alarm", id: "alarm", lines: [{ text: `speaker in ${everywhere}` }] });
   // Every computer at the place runs what's in its own room, and a big one runs everything.
   for (const level of levels) {
-    for (const thing of level.things) {
+    for (const thing of thingsIn(level)) {
       const written = writtenAtThing(place, level.id, thing);
       const generic = !written && genericKindOf(thing) && !thing.used && !thing.usedOther;
       if (!written && !generic) continue;
@@ -308,7 +347,7 @@ function compileSystems(place) {
   const problems = [];
   const at = (line, message) => problems.push({ line: line ?? null, message });
   const findRoom = roomFinder(map);
-  const levels = Object.values(map.levels);
+  const levels = roomsOf(map);
   const model = {
     place, name, written: Boolean(own), file, numbers: numbersOf(file),
     systems: [], parts: {}, partsIn: {}, doors: {}, circuits: {}, alarmLocks: [], computers: [], guards: [], engineers: [], problems,
@@ -365,13 +404,13 @@ function compileSystems(place) {
         entry.parts.push(part.id);
         for (const fed of feeds ?? []) {
           const had = model.circuits[fed.id];
-          if (had) at(line, `${fed.name} is already powered by the ${model.parts[had].name} in ${map.levels[model.parts[had].room].name}`);
+          if (had) at(line, `${fed.name} is already powered by the ${model.parts[had].name} in ${roomOf(map, model.parts[had].room)?.name ?? model.parts[had].room}`);
           else model.circuits[fed.id] = part.id;
         }
       }
     }
   }
-  for (const id of model.alarmLocks) if (!model.doors[id]) at(null, `the alarm locks the door to ${map.levels[id].name}, which needs to be under Doors too`);
+  for (const id of model.alarmLocks) if (!model.doors[id]) at(null, `the alarm locks the door to ${roomOf(map, id)?.name ?? id}, which needs to be under Doors too`);
   model.guards = peopleFor(place, map, file.guards, "guard words", "guards", at);
   model.engineers = peopleFor(place, map, file.engineers, "engineer words", "engineers", at);
   for (const raw of file.computers ?? []) {
@@ -393,7 +432,7 @@ function compileSystems(place) {
         at(line, `${name} has no room called ${c.room}`);
         continue;
       }
-      const thing = level.things.find((one) => plain(one.name) === plain(c.ref));
+      const thing = thingsIn(level).find((one) => plain(one.name) === plain(c.ref));
       if (thing) ref = { kind: "thing", thing: thing.id, room: level.id, name: thing.name };
       else {
         const part = addPart("computers", c.ref, level, { kind: "console", classKey: c.classKey ?? "moderate" });
@@ -402,7 +441,7 @@ function compileSystems(place) {
     } else if (WORLD_COMPUTERS[c.ref]) ref = { kind: "written", id: c.ref, room: null, name: WORLD_COMPUTERS[c.ref].name };
     else {
       for (const level of levels) {
-        const thing = level.things.find((one) => plain(one.name) === plain(c.ref));
+        const thing = thingsIn(level).find((one) => plain(one.name) === plain(c.ref));
         if (thing) {
           ref = { kind: "thing", thing: thing.id, room: level.id, name: thing.name };
           break;
@@ -416,11 +455,15 @@ function compileSystems(place) {
     model.computers.push({ ref, systems, rooms, line });
   }
   // Every part gets its square: on a wall where there's one free, else standing on the floor where it blocks nothing.
+  // On a deck, within the room drawn there, and the squares taken are the deck's, shared by all its rooms.
+  const takenOn = new Map();
   for (const [room, ids] of Object.entries(model.partsIn)) {
-    const level = map.levels[room];
-    const claimed = claimedSquares(place, level);
-    const walls = wallSpots(level, claimed);
-    const taken = new Set();
+    const entry = roomOf(map, room);
+    const { level, area } = entry;
+    const claimed = claimedSquares(place, map, level);
+    const walls = wallSpots(level, claimed, area);
+    if (!takenOn.has(level.id)) takenOn.set(level.id, new Set());
+    const taken = takenOn.get(level.id);
     ids.forEach((id, i) => {
       const part = model.parts[id];
       let spot = null;
@@ -431,9 +474,9 @@ function compileSystems(place) {
           if (!taken.has(`${one.x},${one.y}`)) spot = one;
         }
       }
-      spot ??= floorSpot(level, taken, i, ids.length, claimed);
+      spot ??= floorSpot(level, taken, i, ids.length, claimed, area);
       if (!spot) {
-        at(null, `there's no room left in ${level.name} for the ${part.name}`);
+        at(null, `there's no room left in ${entry.name} for the ${part.name}`);
         part.unplaced = true;
         return;
       }
@@ -450,7 +493,15 @@ export const partsOf = (model, system, room = null) => (model?.systems.find((one
   .map((id) => model.parts[id])
   .filter((part) => part && !part.unplaced && (!room || part.room === room));
 const hasSystem = (model, system) => Boolean(model?.systems.some((one) => one.id === system));
-const roomNameOf = (place, room) => mapFor(place)?.levels[room]?.name ?? room;
+const roomNameOf = (place, room) => roomOf(mapFor(place), room)?.name ?? room;
+
+// The people in a room right now: on a deck, those in the room drawn there, not the whole deck.
+function peopleIn(game, place, roomId) {
+  const room = roomOf(mapFor(place), roomId);
+  if (!room) return [];
+  const here = livesHere(place) ? peopleAboard(game, place, room.levelId) : room.level.homes.filter((home) => atPost(game, home.id));
+  return room.area ? here.filter((one) => room.level.areaAt(one.x, one.y) === room.id) : here;
+}
 
 // ---- The state, in the save ------------------------------------------------------------------------
 
@@ -546,7 +597,8 @@ export function playerSpot(game) {
   if (!map || !systemsOf(place)) return null;
   const walk = game.walk?.place === place ? game.walk : null;
   if (walk?.room) return null;
-  return { place, room: walk?.level && map.levels[walk.level] ? walk.level : map.start };
+  const level = walk?.level ? map.levels[walk.level] : null;
+  return { place, room: level ? level.roomAt(walk.x, walk.y) : map.start };
 }
 
 // ---- Changing things ---------------------------------------------------------------------------------
@@ -779,7 +831,7 @@ function driftAir(game, model, state, minutes, here) {
   const lines = [];
   const place = model.place;
   const limits = airLimits();
-  for (const level of Object.values(mapFor(place).levels)) {
+  for (const level of roomsOf(mapFor(place))) {
     const q = state.air[level.id] ?? 100;
     const flowing = airFlows(game, place, level.id);
     const next = flowing ? Math.min(100, q + (100 / model.numbers.airBack) * minutes) : Math.max(0, q - (100 / model.numbers.air) * minutes);
@@ -845,10 +897,10 @@ export function detourFor(game, place) {
     while (queue.length) {
       const id = queue.shift();
       if ((state.air[id] ?? 100) >= limits.thin && id !== room) return id;
-      for (const exit of map.levels[id]?.exits ?? []) {
-        if (seen.has(exit.to) || !map.levels[exit.to]) continue;
-        seen.add(exit.to);
-        queue.push(exit.to);
+      for (const next of neighboursOf(map, id)) {
+        if (seen.has(next)) continue;
+        seen.add(next);
+        queue.push(next);
       }
     }
     return null;
@@ -885,7 +937,7 @@ export function systemsLine(game) {
   if (!model || !state) return null;
   const limits = airLimits();
   const map = mapFor(place);
-  const rooms = Object.values(map.levels);
+  const rooms = roomsOf(map);
   const bits = [];
   const list = (levels) => levels.map((level) => level.name).join(", ");
   const unpowered = rooms.filter((level) => !roomPowered(game, place, level.id));
@@ -896,7 +948,7 @@ export function systemsLine(game) {
   const thinAir = rooms.filter((level) => airIn(game, place, level.id) < limits.thin && !badAir.includes(level));
   if (badAir.length) bits.push(`the air is bad in ${list(badAir)}`);
   if (thinAir.length) bits.push(`the air is thin in ${list(thinAir)}`);
-  const sleeping = livesHere(place) ? [...badAir, ...thinAir].flatMap((level) => peopleAboard(game, place, level.id).filter((one) => one.asleep && !one.crowd).map((one) => `${one.label ?? one.name} in ${level.name}`)) : [];
+  const sleeping = livesHere(place) ? [...badAir, ...thinAir].flatMap((level) => peopleIn(game, place, level.id).filter((one) => one.asleep && !one.crowd).map((one) => `${one.label ?? one.name} in ${level.name}`)) : [];
   if (sleeping.length) bits.push(`asleep in that air: ${sleeping.join(", ")}`);
   const blind = partsOf(model, "cameras").filter((part) => !partWorks(game, place, part)).map((part) => roomNameOf(place, part.room));
   if (blind.length) bits.push(`cameras not working in ${[...new Set(blind)].join(", ")}`);
@@ -1027,12 +1079,14 @@ export function doorActions(game, place, levelId, exit) {
 }
 
 // The locked door can be the one into the next room or the one into this room, and either way the player sees the way
-// out, so it's named by where it goes.
+// out, so it's named by where it goes. A door between two rooms drawn on a deck is already named that way, from the
+// side the player stands on.
 export function doorLook(game, place, levelId, exit) {
   const doors = D().doors ?? {};
   const room = doorLocked(game, place, exit.to) ? exit.to : levelId;
   const door = systemsOf(place)?.doors[room];
-  return `${door?.look ?? String(doors.look ?? "The door to {room}.").replaceAll("{room}", roomNameOf(place, exit.to))} ${doors.locked ?? "It's locked."}`;
+  const goesTo = exit.inner && exit.label ? exit.label : roomNameOf(place, exit.to);
+  return `${door?.look ?? String(doors.look ?? "The door to {room}.").replaceAll("{room}", goesTo)} ${doors.locked ?? "It's locked."}`;
 }
 
 // The player works a part in the room they're in. Something free happens at once; anything else opens a check, and
@@ -1179,10 +1233,7 @@ const CONTROL_WORDS = {
 };
 
 function peopleSeenIn(game, place, room) {
-  const level = mapFor(place)?.levels[room];
-  if (!level) return [];
-  const here = livesHere(place) ? peopleAboard(game, place, room) : level.homes.filter((home) => atPost(game, home.id));
-  return here.map((one) => one.label ?? WORLD_CHARACTERS[one.id]?.name ?? one.name).filter(Boolean);
+  return peopleIn(game, place, room).map((one) => one.label ?? WORLD_CHARACTERS[one.id]?.name ?? one.name).filter(Boolean);
 }
 
 function partRow(game, place, part) {
@@ -1291,7 +1342,7 @@ export function systemHolds(game, term) {
   const model = systemsOf(place);
   const room = roomIn(game, place, term.room);
   if (term.room && !room) return false;
-  const rooms = room ? [room] : Object.keys(mapFor(place)?.levels ?? {});
+  const rooms = room ? [room] : roomsOf(mapFor(place)).map((one) => one.id);
   const limits = airLimits();
   const off = ["off", "jammed", "locked", "broken", "bad", "thin", "ringing", "dark"].includes(term.state);
   if (!model) return !off;

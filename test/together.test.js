@@ -122,7 +122,9 @@ const done = { used: 0, worked: 0, pockets: 0, fights: 0 };
 async function workTheRoom(where) {
   let g = await holds(`${where}, arriving`);
   if (!g.walk) return;
-  for (const thing of g.walk.things.filter((one) => !one.part).slice(0, 4)) {
+  // On a deck, the whole deck's things are shown: the ones worked are the room's own.
+  const inRoom = (one) => !g.walk.here.deck || one.room === g.walk.here.id;
+  for (const thing of g.walk.things.filter((one) => !one.part && inRoom(one)).slice(0, 4)) {
     await call("/api/walk", { action: "go", to: `thing:${thing.id}` });
     const used = await call("/api/walk", { action: "use", key: thing.id });
     if (used.status === 200) done.used += 1;
@@ -135,7 +137,7 @@ async function workTheRoom(where) {
     await holds(`${where}, after using ${thing.name}`);
   }
   g = await state();
-  for (const part of g.walk.things.filter((one) => one.part).slice(0, 6)) {
+  for (const part of g.walk.things.filter((one) => one.part && inRoom(one)).slice(0, 6)) {
     for (const action of part.actions ?? []) {
       const reply = await call("/api/walk", { action: "work", key: part.id, how: action.id });
       if (reply.status === 200) done.worked += 1;
@@ -149,7 +151,7 @@ async function workTheRoom(where) {
     }
   }
   g = await state();
-  const people = g.walk.people.slice(0, 2);
+  const people = g.walk.people.filter(inRoom).slice(0, 2);
   for (const person of people) {
     const picked = await call("/api/walk", { action: "pickpocket", key: person.key });
     if (!picked.check) continue;

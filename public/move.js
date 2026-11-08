@@ -176,14 +176,18 @@ function pressed(event) {
   state.held.set(event.code, direction);
 }
 
-// The room the page has from the server, matched up with where the player's walked to: a new room puts them where the
+// The level a view shows: the deck, when the room is one drawn on a deck, since walking from room to room on a deck
+// stays on the same picture.
+export const levelIdOf = (view) => view.here.deck?.id ?? view.here.id;
+
+// The room the page has from the server, matched up with where the player's walked to: a new level puts them where the
 // server says, and so does the server moving them itself, as the story can, while nothing of theirs is on its way.
 export function adopt(view) {
   if (!view) return;
-  if (view.here.id !== state.level || !state.pos) {
-    // A walk into this room that was still being shown ends now.
+  if (levelIdOf(view) !== state.level || !state.pos) {
+    // A walk into this level that was still being shown ends now.
     if (state.route && state.pos) finishRoute();
-    state.level = view.here.id;
+    state.level = levelIdOf(view);
     state.pos = { ...view.captain };
     state.sent = { ...view.captain };
     state.leaving = false;
@@ -310,7 +314,7 @@ async function sync(view, now) {
     // Through a way out, or up to a closed door: the server's room, and its square, from here.
     state.leaving = false;
     state.sent = { ...reply.walk.captain };
-    if (reply.walk.here.id === state.level) state.pos = { ...reply.walk.captain };
+    if (levelIdOf(reply.walk) === state.level) state.pos = { ...reply.walk.captain };
     hooks.arrived(reply);
     return;
   }
@@ -322,5 +326,5 @@ async function sync(view, now) {
   state.sent = { ...reply.captain };
   // The page's room says the same as the server from here, so it isn't taken for the server moving the player.
   const shown = hooks.view();
-  if (shown?.here.id === state.level) shown.captain = { ...reply.captain };
+  if (shown && levelIdOf(shown) === state.level) shown.captain = { ...reply.captain };
 }

@@ -16,6 +16,8 @@ const FLOOR_EDGE = 0.22;
 const DAIS_HEIGHT = 0.22;
 const AMBIENT_BOOST = 1.6;
 const SIZES = { smallest: 46, largest: 84 };
+// The most pixels the picture of a level is drawn at, so a whole deck doesn't ask too much of a computer.
+const MOST_PICTURE = 24e6;
 const ZOOMS = { smallest: 0.55, largest: 1.7 };
 const MOST_TEXTURES = 300;
 const FONT = '"Cascadia Mono", Consolas, "Lucida Console", "Courier New", monospace';
@@ -289,6 +291,14 @@ export function buildScene(view) {
     lights.push({ wx, wy, color, radius, power });
   };
   const pick = (seed) => look.lights[Math.floor(seed * look.lights.length) % look.lights.length];
+  // On a deck, each room drawn there can have lamps of its own colour, and a room with its lights out has none lit.
+  const areas = view.areas ?? [];
+  const areaAt = (x, y) => areas.filter((area) => x >= area.x && x < area.x + area.w && y >= area.y && y < area.y + area.h).sort((a, b) => a.w * a.h - b.w * b.h)[0] ?? null;
+  const darkAt = (x, y) => Boolean(areaAt(x, y)?.dark);
+  const pickAt = (x, y, seed) => {
+    const own = areaAt(x, y)?.look?.lights;
+    return own?.length ? own[Math.floor(seed * own.length) % own.length] : pick(seed);
+  };
   const painted = (x, y) => runs.some((run) => run.y === y && x >= run.x && x < run.x + run.length);
   const mounted = new Set((view.things ?? []).filter((thing) => thing.part?.mount === "wall").map((thing) => `${thing.x},${thing.y}`));
   const fixtures = [];
@@ -297,11 +307,13 @@ export function buildScene(view) {
       if (kinds[y][x] !== "wall" || heights[y][x] !== WALL_HEIGHT || painted(x, y) || mounted.has(`${x},${y}`)) continue;
       const seed = hashOf(x, y);
       if (seeThrough(kindAt(x, y + 1)) && (x + y * 5) % 18 === 7) {
-        fixtures.push({ x, y, face: "left", color: pick(seed) });
-        addLight(x, y + 2, pick(seed), 3.6 + seed * 1.4, 0.95);
+        const off = darkAt(x, y + 1);
+        fixtures.push({ x, y, face: "left", color: pickAt(x, y + 1, seed), ...(off ? { off: true } : {}) });
+        if (!off) addLight(x, y + 2, pickAt(x, y + 1, seed), 3.6 + seed * 1.4, 0.95);
       } else if (!seeThrough(kindAt(x, y + 1)) && seeThrough(kindAt(x + 1, y)) && (x + y * 3) % 9 === 4) {
-        fixtures.push({ x, y, face: "right", color: pick(seed) });
-        addLight(x + 3, y, pick(seed), 3.6 + seed * 1.4, 0.95);
+        const off = darkAt(x + 1, y);
+        fixtures.push({ x, y, face: "right", color: pickAt(x + 1, y, seed), ...(off ? { off: true } : {}) });
+        if (!off) addLight(x + 3, y, pickAt(x + 1, y, seed), 3.6 + seed * 1.4, 0.95);
       }
     }
   }
@@ -313,7 +325,7 @@ export function buildScene(view) {
       const seed = hashOf(x, y);
       const lx = x + Math.floor(seed * 7) - 3;
       const ly = y + Math.floor(hashOf(y, x) * 4) - 2;
-      if (seeThrough(kindAt(lx, ly))) addLight(lx, ly, pick(seed), 3.2 + seed * 2.6, (0.7 + hashOf(lx, ly) * 0.3) * fill);
+      if (seeThrough(kindAt(lx, ly)) && !darkAt(lx, ly)) addLight(lx, ly, pickAt(lx, ly, seed), 3.2 + seed * 2.6, (0.7 + hashOf(lx, ly) * 0.3) * fill);
     }
   }
   glows.filter((cell) => cell.seed > 0.8).forEach((cell) => addLight(cell.x, cell.y, look.fire, 2.6, 0.9));
@@ -321,10 +333,11 @@ export function buildScene(view) {
     const middle = ground[Math.floor(ground.length / 2)];
     addLight(middle.x, middle.y, pick(0.3), 5, 0.9);
   }
-  blocks.filter((block) => block.style === "lamp" && block.seed > 0.5).forEach((block) => addLight(block.x, block.y, pick(block.seed), 2.4, 0.8));
+  blocks.filter((block) => block.style === "lamp" && block.seed > 0.5 && !darkAt(block.x, block.y)).forEach((block) => addLight(block.x, block.y, pickAt(block.x, block.y, block.seed), 2.4, 0.8));
   blocks.filter((block) => block.style === "machine" && block.seed > 0.86).forEach((block) => addLight(block.x, block.y, look.glow, 1.5, 0.5));
   for (const exit of view.exits ?? []) addLight(exit.x, exit.y, exit.closed ? "#c86048" : "#d8d0b0", 1.8, 0.55);
-  const dark = Boolean(view.room?.dark);
+  // A whole level goes dark where it's one room. On a deck, the rooms drawn there go dark one by one, below.
+  const dark = Boolean(view.room?.dark) && !areas.length;
   if (dark) {
     lights.length = 0;
     glows.filter((cell) => cell.seed > 0.8).forEach((cell) => addLight(cell.x, cell.y, look.fire, 2.6, 0.9));
@@ -350,6 +363,7 @@ export function buildScene(view) {
     junk: ground.filter((cell) => cell.kind === "dim" && cell.seed > 0.68),
     look: dark ? { ...look, ambient: mix(hexOr(look.ambient, FALLBACK_LOOK.ambient), "#000000", 0.74) } : look,
     dark,
+    darkAreas: areas.filter((area) => area.dark),
     bounds: bounds ?? { minU: -1, maxU: 1, minV: -1, maxV: 1 },
     colors: { ...FALLBACK_COLORS, ...view.colors },
   };
@@ -1523,6 +1537,18 @@ function drawLightmap(scene, unit, left, top, width, height) {
   const [ar, ag, ab] = rgbOf(hexOr(scene.look.ambient, FALLBACK_LOOK.ambient));
   ctx.fillStyle = `rgb(${Math.min(255, ar * AMBIENT_BOOST)},${Math.min(255, ag * AMBIENT_BOOST)},${Math.min(255, ab * AMBIENT_BOOST)})`;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // Rooms drawn on a deck whose lights are out are dark on their own, the rest of the deck staying lit.
+  for (const area of scene.darkAreas ?? []) {
+    const corners = [[area.x, area.y], [area.x + area.w, area.y], [area.x + area.w, area.y + area.h], [area.x, area.y + area.h]].map(([x, y]) => {
+      const { u, v } = project(x * CELL_WIDTH, y);
+      return [(u * unit - left) * by, (v * unit - top) * by];
+    });
+    ctx.fillStyle = mix(hexOr(scene.look.ambient, FALLBACK_LOOK.ambient), "#000000", 0.74);
+    ctx.beginPath();
+    corners.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    ctx.fill();
+  }
   ctx.globalCompositeOperation = "lighter";
   for (const light of scene.lights) {
     const { u, v } = project(light.wx, light.wy);
@@ -1882,9 +1908,11 @@ const iso = {
 
 function useScene(view) {
   const parts = (view.things ?? []).filter((thing) => thing.part).map((thing) => `${thing.id}=${thing.part.word}`).join(",");
-  const id = `${view.here.id}|${view.here.drawn ?? 0}|${view.cols}x${view.lines}|${closedKey(view)}|${view.room?.dark ? "dark" : "lit"}|${parts}`;
+  const darkRooms = (view.areas ?? []).filter((area) => area.dark).map((area) => area.id).join(",");
+  const id = `${view.here.deck?.id ?? view.here.id}|${view.here.drawn ?? 0}|${view.cols}x${view.lines}|${closedKey(view)}|${view.room?.dark ? "dark" : "lit"}|${darkRooms}|${parts}`;
   if (iso.sceneId === id) return;
-  const sameRoom = iso.sceneId?.split("|")[0] === view.here.id;
+  // The same level: on the ship, the same deck, whichever of its rooms the player's in.
+  const sameRoom = iso.sceneId?.split("|")[0] === (view.here.deck?.id ?? view.here.id);
   iso.scene = buildScene(view);
   iso.sceneId = id;
   iso.room = null;
@@ -1974,7 +2002,10 @@ function aim(width, height, dt) {
   const spanU = bounds.maxU - bounds.minU;
   const spanV = bounds.maxV - bounds.minV;
   const fit = Math.min(width / (spanU + 1), height / (spanV + 1));
-  const unit = Math.round(Math.min(SIZES.largest, Math.max(SIZES.smallest, fit)) * iso.zoom);
+  // A whole deck is drawn once into one big picture, which is kept to a size every computer can hold.
+  const ratio = window.devicePixelRatio || 1;
+  const most = Math.floor(Math.sqrt(MOST_PICTURE / Math.max(1, (spanU + 2) * (spanV + 2))) / ratio);
+  const unit = Math.min(Math.max(SIZES.smallest, most), Math.round(Math.min(SIZES.largest, Math.max(SIZES.smallest, fit)) * iso.zoom));
   iso.unit = unit;
   const { wx, wy } = cellCentre(iso.you.x, iso.you.y);
   let here = project(wx, wy);

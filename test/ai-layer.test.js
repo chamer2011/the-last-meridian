@@ -277,8 +277,9 @@ test("in a written conversation with an AI, the lines are the file's, the player
   assert.match(brief.text, /Go on/);
   assert.doesNotMatch(brief.text, /^>/m);
   talkCommand(game, { action: "close" });
-  // Someone with no conversation of their own: nothing written speaks, and the AI plays them.
-  const other = publicState(game).walk.people.find((one) => !/Voss|Sorel|Pell|Vey/.test(one.name));
+  // Someone with no conversation of their own: nothing written speaks, and the AI plays them. The whole deck's people
+  // are shown, so it's whoever on it has no talk file.
+  const other = publicState(game).walk.people.find((one) => !fs.existsSync(path.join(projectDir, "world", "scenes", `talk_${one.key}.txt`)));
   if (other) {
     talkCommand(game, { action: "open", person: other.key });
     assert.equal(openWrittenTalk(game, { filesOnly: true }), false);

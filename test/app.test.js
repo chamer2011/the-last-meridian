@@ -201,5 +201,6 @@ test("walking and then closing the app straight away still saves where the capta
   assert.equal(report.before, null);
   assert.equal(report.nothingToSave, null, "with nothing waiting, the save isn't touched");
   assert.equal(report.notYet, null, "a walk is saved a moment later");
-  assert.equal(report.saved, "names", "and closing doesn't wait for that moment");
+  // The first way out of the bridge's deck is the forward stair, down to the civilian deck.
+  assert.equal(report.saved, "deck2", "and closing doesn't wait for that moment");
 });

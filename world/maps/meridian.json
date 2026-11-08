@@ -1,6 +1,6 @@
 {
   "_help": [
-    "The rooms of this place are drawn in Tiled, the free map editor, in world/maps/meridian/, one file to a room, and the game reads them from there. world/maps/_how-to-draw-rooms-in-tiled.txt says how. A room that's still here is drawn in characters, as below.",
+    "The Meridian's decks are drawn in Tiled, the free map editor, in world/maps/meridian/, one file to a deck, with the rooms drawn on each deck as rectangles, and the game reads them from there. world/maps/_how-to-draw-rooms-in-tiled.txt says how. This file keeps the ship's name and the room it starts in; the deck plan is made from the decks. The overview below is the old drawing of the whole ship, kept only so that saves from when the ship was one plan still find their room.",
     "Each place's levels are in a file named after it, and each room is its own level, drawn in characters, which you can edit like a picture. These instructions are for all of them. Restart the game after changing a file.",
     "In a level's plan: # is a wall, + is a door inside the level, and @ is where the captain stands when the story puts them here. The floor setting says which characters are floor. Any other mark is scenery, which nobody can walk through.",
     "A capital letter is one of the level's people, a small letter is one of its things, and a digit is one of its exits. Move a letter to move them. A letter that isn't listed is a mistake, and digits that aren't listed are just scenery.",

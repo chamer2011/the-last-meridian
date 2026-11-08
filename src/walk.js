@@ -11,7 +11,7 @@
 import { allCharacters, campaignRooms, findCampaignRoom, findCharacter, fullName, saveCampaignRoom } from "./campaign.js";
 import { startCheck, startChoiceCheck } from "./checks.js";
 import { useComputer } from "./computers.js";
-import { clearSystems, doorActions, doorLook, exitLocked, partSquares, partThings, roomView, systemsOf, workOnDoor, workOnPart } from "./systems.js";
+import { clearSystems, doorActions, doorLocked, doorLook, exitLocked, partSquares, partThings, roomDark, roomView, systemsOf, workOnDoor, workOnPart } from "./systems.js";
 import { ITEMS, LOCATIONS } from "./data.js";
 import { clearLife, hasADay, livesHere, peopleAboard } from "./life.js";
 import { isCaptain, toOutsider } from "./role.js";
@@ -87,6 +87,8 @@ export function compileLevel(id, file, districts = []) {
     });
   }
   const layer = (pick) => rows.map((row, y) => [...row].map((ch, x) => (covered.has(spotKey(x, y)) ? " " : pick(ch))).join(""));
+  const solid = new Set(things.map((thing) => spotKey(thing.x, thing.y)));
+  const areas = compileAreas(file, { id, width, height: rows.length, open, solid, doors, exits, start, districts });
   return {
     id,
     name: file.name,
@@ -100,8 +102,13 @@ export function compileLevel(id, file, districts = []) {
     things,
     exits,
     doors,
-    solid: new Set(things.map((thing) => spotKey(thing.x, thing.y))),
+    solid,
     start: start ?? { x: 1, y: 1 },
+    // The rooms drawn on a deck, and which one each square is in: the deck itself, where no room is drawn.
+    areas: areas.list,
+    areaAt: areas.at,
+    roomAt: (x, y) => areas.at(x, y) ?? id,
+    doorAreas: areas.doorAreas,
     // How many times the rooms drawn in Tiled have been read, so the picture of one is drawn again when it changes.
     drawn: file.drawn ?? 0,
     labels: (file.labels ?? []).map((label) => ({ text: label.text, x: label.at[0], y: label.at[1] })),
@@ -121,6 +128,85 @@ export function compileLevel(id, file, districts = []) {
   };
 }
 
+// ---- The rooms drawn on a deck ------------------------------------------
+
+// A deck is one level with its rooms drawn on it as rectangles, each with its own id, so that the story, people's days
+// and the place's systems go on knowing rooms. A square is in the smallest room drawn over it, so a pit can sit
+// inside a bridge. Each room has the spot the story puts the player on, and knows the doors to the rooms beside it.
+function compileAreas(file, { id: levelId, width, height, open, solid, doors, exits, start, districts = [] }) {
+  const list = (file.areas ?? [])
+    .filter((one) => one && typeof one.id === "string" && one.w > 0 && one.h > 0)
+    .map((one) => ({ id: one.id, name: one.name ?? one.id, aliases: one.aliases ?? [], desc: one.desc ?? districts.find((district) => district.name === (one.district ?? one.name))?.desc ?? "", x: one.x, y: one.y, w: one.w, h: one.h }));
+  if (!list.length) return { list: [], at: () => null, doorAreas: new Map() };
+  const bySize = [...list].sort((a, b) => a.w * a.h - b.w * b.h);
+  const grid = Array.from({ length: height }, (_, y) => Array.from({ length: width }, (_, x) => bySize.find((a) => x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h)?.id ?? null));
+  const at = (x, y) => grid[y]?.[x] ?? null;
+  // A room's own start, when no flag gives one, is near its middle, but not on its painted name or any other words.
+  const lettered = new Set([
+    ...(file.labels ?? []).flatMap((label) => [...String(label.text ?? "")].map((_, i) => spotKey(Number(label.at?.[0]) + i, Number(label.at?.[1])))),
+    ...(file.writing ?? []).flatMap(([wx, wy, text]) => [...String(text ?? "")].map((_, i) => spotKey(Number(wx) + i, Number(wy)))),
+  ]);
+  const standable = (x, y) => Boolean(open[y]?.[x]) && !solid.has(spotKey(x, y)) && !doors.has(spotKey(x, y)) && !lettered.has(spotKey(x, y));
+  const starts = [...(file.starts ?? []), ...(start ? [start] : [])];
+  for (const area of list) {
+    const inside = (spot) => Boolean(spot) && at(spot.x, spot.y) === area.id;
+    area.start = starts.find((spot) => inside(spot) && standable(spot.x, spot.y)) ?? starts.find(inside) ?? nearestOpen(area, standable) ?? { x: area.x, y: area.y };
+    area.exits = exits.filter((exit) => inside(exit)).map((exit) => exit.key);
+  }
+  // A door is between the rooms on its sides: the rooms drawn there, or the deck itself, where a side is open floor
+  // in no room at all. A door with one room on both sides is inside that room.
+  const sideOf = (x, y) => at(x, y) ?? (open[y]?.[x] && !doors.has(spotKey(x, y)) ? levelId : null);
+  const doorAreas = new Map();
+  for (const key of doors) {
+    const [x, y] = key.split(",").map(Number);
+    const touched = new Set([at(x, y), ...STEPS.map(([dx, dy]) => sideOf(x + dx, y + dy))].filter(Boolean));
+    if (touched.size) doorAreas.set(key, touched);
+  }
+  for (const area of list) {
+    area.doors = [];
+    for (const [key, touched] of doorAreas) {
+      if (!touched.has(area.id)) continue;
+      const [x, y] = key.split(",").map(Number);
+      for (const other of touched) if (other !== area.id && other !== levelId) area.doors.push({ x, y, to: other });
+    }
+  }
+  return { list, at, doorAreas };
+}
+
+// The square nearest the middle of a room that can be stood on. The squares are half as wide as they are deep.
+function nearestOpen(area, standable) {
+  const cx = area.x + (area.w - 1) / 2;
+  const cy = area.y + (area.h - 1) / 2;
+  let best = null;
+  for (let y = area.y; y < area.y + area.h; y += 1) {
+    for (let x = area.x; x < area.x + area.w; x += 1) {
+      if (!standable(x, y)) continue;
+      const far = (x - cx) ** 2 + ((y - cy) * 2) ** 2;
+      if (!best || far < best.far) best = { x, y, far };
+    }
+  }
+  return best && { x: best.x, y: best.y };
+}
+
+// Every room of a place by its id: the rooms drawn on each deck, and each level, which is a room itself unless it's a
+// deck with rooms drawn on it.
+function roomsIndex(levels) {
+  const rooms = {};
+  for (const level of Object.values(levels)) {
+    rooms[level.id] = { id: level.id, name: level.name, aliases: level.aliases, desc: level.desc, levelId: level.id, level, area: null, start: level.start, deck: level.areas.length > 0 };
+    for (const area of level.areas) rooms[area.id] ??= { id: area.id, name: area.name, aliases: area.aliases, desc: area.desc || level.desc, levelId: level.id, level, area, start: area.start, deck: false };
+  }
+  return rooms;
+}
+export const roomOf = (map, id) => map?.rooms?.[id] ?? null;
+// The rooms the player can be in, in the order of the file: not the decks themselves.
+export const roomsOf = (map) => Object.values(map?.rooms ?? {}).filter((room) => !room.deck);
+// The rooms on one level: the level itself, or the rooms drawn on the deck.
+export const roomsOn = (map, levelId) => roomsOf(map).filter((room) => room.levelId === levelId);
+const inRoom = (room, spot) => (room.area ? room.level.areaAt(spot.x, spot.y) === room.id : true);
+export const thingsIn = (room) => room.level.things.filter((thing) => inRoom(room, thing));
+export const homesIn = (room) => room.level.homes.filter((home) => inRoom(room, home));
+
 // Which way an exit points, from where it is in the level's walls, and which side its name goes.
 function settleExit(exit, level, label) {
   const glyph = exit.x === 0 ? "<" : exit.x === level.width - 1 ? ">" : exit.y === 0 ? "^" : "v";
@@ -128,13 +214,62 @@ function settleExit(exit, level, label) {
   return { ...exit, label, glyph, side };
 }
 
+// The deck plan of a deck, made from the rooms drawn on it: every four squares across and two down become one, in
+// a character of that room's own, so the plan window can show it and be clicked, the way a drawn plan is.
+const OVERVIEW_CHARS = ".,:;'`_-=~^\"<>abcdefghijklmnopqrstuvwxyz";
+const shortLabel = (name) => String(name).replace(/^The /i, "").toUpperCase().slice(0, 10);
+function deckOverview(level) {
+  const [sx, sy] = [4, 2];
+  const cols = Math.ceil(level.width / sx);
+  const lines = Math.ceil(level.height / sy);
+  const chars = Object.fromEntries(level.areas.map((area, i) => [area.id, OVERVIEW_CHARS[i % OVERVIEW_CHARS.length]]));
+  const plan = [];
+  for (let gy = 0; gy < lines; gy += 1) {
+    let row = "";
+    for (let gx = 0; gx < cols; gx += 1) {
+      const counts = new Map();
+      let wall = false;
+      for (let y = gy * sy; y < (gy + 1) * sy; y += 1) {
+        for (let x = gx * sx; x < (gx + 1) * sx; x += 1) {
+          if (level.open[y]?.[x]) {
+            const id = level.areaAt(x, y);
+            if (id) counts.set(id, (counts.get(id) ?? 0) + 1);
+          } else if (level.layers.walls[y]?.[x] === WALL) wall = true;
+        }
+      }
+      const best = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+      row += best ? chars[best[0]] : wall ? WALL : " ";
+    }
+    plan.push(row);
+  }
+  const floors = Object.fromEntries(Object.entries(chars).map(([id, ch]) => [ch, id]));
+  // Each room's name sits at its middle, pulled in so it stays on the plan.
+  const rooms = level.areas.map((area) => {
+    const text = shortLabel(area.name);
+    const x = Math.max(0, Math.min(Math.floor((area.x + area.w / 2) / sx), cols - text.length));
+    return { level: area.id, at: [x, Math.min(lines - 1, Math.floor((area.y + area.h / 2) / sy))], text };
+  });
+  const compiled = compileLevel(`overview:${level.id}`, { name: level.name, plan, floor: Object.keys(floors).join("") });
+  return { id: level.id, name: level.name, width: compiled.width, height: compiled.height, layers: compiled.layers, floors, rooms };
+}
+
 function compileMap(file, districts = []) {
   const levels = Object.fromEntries(Object.entries(file.levels).map(([id, level]) => [id, compileLevel(id, level, districts)]));
   for (const level of Object.values(levels)) {
     level.exits = level.exits.map((exit) => settleExit(exit, level, exit.label ?? levels[exit.to]?.name ?? exit.to));
   }
+  const rooms = roomsIndex(levels);
+  const decks = Object.values(levels).filter((level) => level.areas.length);
   const overview = file.overview ? compileLevel("overview", { name: file.name, plan: file.overview.plan, floor: Object.keys(file.overview.floors).join("") }) : null;
-  return { name: file.name ?? "", start: file.start, levels, overview: overview && { ...overview, title: file.overview.title ?? "Map", floors: file.overview.floors, rooms: file.overview.rooms }, talk: { ...ROOM_TALK, ...file.talk } };
+  return {
+    name: file.name ?? "",
+    start: rooms[file.start] ? file.start : Object.keys(rooms)[0],
+    levels,
+    rooms,
+    decks: decks.length ? decks.map(deckOverview) : null,
+    overview: overview && { ...overview, title: file.overview.title ?? "Map", floors: file.overview.floors, rooms: file.overview.rooms },
+    talk: { ...ROOM_TALK, ...file.talk },
+  };
 }
 
 const maps = new Map();
@@ -192,8 +327,9 @@ function openDoorsTo(game, id) {
 // an answer that leaves it closed, a condition that opens it, or a check whose result decides.
 export function askAtDoor(game, key) {
   const walk = walkOf(game);
-  const level = levelOf(game, walk, mapFor(game.location));
-  const exit = level.exits.find((one) => one.key === key);
+  const map = mapFor(game.location);
+  const level = levelOf(game, walk, map);
+  const exit = exitByKey(level, lockedDoorExits(game, map, level), key);
   if (!exit || !storyClosed(game, exit)) throw new Error(exit && isClosed(game, exit, level.id) ? "It's locked. Force it, or get into its panel." : "That door isn't closed.");
   const rule = exit.closed.ask ?? {};
   const open = (said) => {
@@ -246,7 +382,7 @@ export function useThing(game, key) {
   // A thing with a computer file of its own is a computer: the player sits down at it, or hacks it. A console or
   // a panel nobody has written is one too, unless the map file already says what using it does.
   const written = (!isCaptain(game) && thing.usedOther) || thing.used;
-  const inside = useComputer(game, { place: game.location, levelId: walk.level, thing, look: thing.look ?? null, generic: !written });
+  const inside = useComputer(game, { place: game.location, levelId: level.roomAt(thing.x, thing.y), thing, look: thing.look ?? null, generic: !written });
   if (inside) return inside;
   return { said: written ?? "Nothing more comes of it, for now." };
 }
@@ -257,6 +393,8 @@ function roomsInReach(game, walk, map) {
   for (const id of reach) {
     for (const exit of map.levels[id]?.exits ?? []) if (!isClosed(game, exit, id)) reach.add(exit.to);
   }
+  // Every room drawn on a deck that can be reached can be walked to, a locked door being forced or hacked.
+  for (const id of [...reach]) for (const area of map.levels[id]?.areas ?? []) reach.add(area.id);
   return reach;
 }
 
@@ -322,7 +460,7 @@ function roomLevel(game, walk, map) {
     spots[ch] = { x, y };
     return floor[0];
   }).join(""));
-  const backTo = map.levels[saved?.exitTo] ?? map.levels[walk.level] ?? map.levels[map.start];
+  const backTo = roomOf(map, saved?.exitTo) ?? roomOf(map, room.from) ?? roomOf(map, walk.level) ?? roomOf(map, map.start);
   const label = layout.label ?? [3, 1];
   const level = compileLevel("room", {
     name: room.name,
@@ -365,8 +503,8 @@ function roomLevel(game, walk, map) {
 // ---- Where the captain is -----------------------------------------------
 
 const newWalk = (place, map) => {
-  const { start } = map.levels[map.start];
-  return { place, level: map.start, x: start.x, y: start.y, walked: false, with: [], withLevel: null, room: null };
+  const room = roomOf(map, map.start);
+  return { place, level: room.levelId, x: room.start.x, y: room.start.y, walked: false, with: [], withLevel: null, room: null };
 };
 
 // Wherever the captain arrives, they start from that place's way in. Places without levels have nothing here.
@@ -381,16 +519,22 @@ function walkAt(game) {
 // They're put on the nearest square they can stand on, or where the place starts, and the next step saves it.
 function onFloor(walk, map) {
   if (walk.room) return walk;
+  // A save from before the rooms were drawn on decks names one of them as its level: it stands at that room's spot.
+  const named = !map.levels[walk.level] && roomOf(map, walk.level);
+  if (named) return { ...walk, level: named.levelId, x: named.start.x, y: named.start.y };
   const level = map.levels[walk.level];
   if (level && (!level.drawn || canStand(level, walk.x, walk.y))) return walk;
-  const into = level ?? map.levels[map.start];
-  let best = null;
-  for (let y = 0; y < into.height; y += 1) for (let x = 0; x < into.width; x += 1) {
-    const far = (x - walk.x) ** 2 + (y - walk.y) ** 2;
-    if (canStand(into, x, y) && (!best || far < best.far)) best = { x, y, far };
+  if (!level) {
+    const room = roomOf(map, map.start);
+    return { ...walk, level: room.levelId, x: room.start.x, y: room.start.y };
   }
-  const spot = level && best ? best : into.start;
-  return { ...walk, level: level ? walk.level : map.start, x: spot.x, y: spot.y };
+  let best = null;
+  for (let y = 0; y < level.height; y += 1) for (let x = 0; x < level.width; x += 1) {
+    const far = (x - walk.x) ** 2 + (y - walk.y) ** 2;
+    if (canStand(level, x, y) && (!best || far < best.far)) best = { x, y, far };
+  }
+  const spot = best ?? roomOf(map, map.start).start;
+  return { ...walk, x: spot.x, y: spot.y };
 }
 
 // Where the player stands, for what's on the floor and what can be opened: the place, the room, the square and the
@@ -401,7 +545,7 @@ export function standingAt(game) {
   const map = mapFor(game.location);
   const level = levelOf(game, walk, map);
   const spot = walk.room ?? walk;
-  return { place: game.location, levelId: roomId(walk, level), x: spot.x, y: spot.y, things: level.things };
+  return { place: game.location, levelId: roomId(walk, level), room: walk.room ? walk.room.name : level.roomAt(spot.x, spot.y), x: spot.x, y: spot.y, things: level.things };
 }
 // What a level is called in the save: its id, or a made-up room's name.
 const roomId = (walk, level) => (walk.room ? walk.room.name : level.id);
@@ -409,9 +553,21 @@ const roomId = (walk, level) => (walk.room ? walk.room.name : level.id);
 // Someone who starts out at their job starts in the room they work in.
 export function startInRoom(game, room) {
   const map = mapFor(game.location);
-  if (!map?.levels[room]) return;
-  const { start } = map.levels[room];
-  game.walk = { ...newWalk(game.location, map), level: room, x: start.x, y: start.y };
+  const found = roomOf(map, room);
+  if (!found) return;
+  game.walk = { ...newWalk(game.location, map), level: found.levelId, x: found.start.x, y: found.start.y };
+}
+
+// The room the player is in, by its id: the one drawn around them on a deck, or the level itself.
+export function roomHere(game) {
+  const walk = walkAt(game);
+  if (!walk) return null;
+  const map = mapFor(game.location);
+  const level = levelOf(game, walk, map);
+  if (walk.room) return { id: walk.room.name, name: level.name, desc: level.desc, levelId: "room", offPlan: true };
+  const id = level.roomAt(walk.x, walk.y);
+  const room = roomOf(map, id);
+  return { id, name: room?.name ?? level.name, desc: room?.desc ?? level.desc, levelId: level.id };
 }
 
 // The same, for something that's about to move the captain.
@@ -461,12 +617,22 @@ export function personWhere(game, id) {
   const map = walk ? mapFor(game.location) : null;
   if (walk && map) {
     const here = levelOf(game, walk, map);
-    const there = (level) => peopleOnLevel(game, walk, level).some((one) => keyOf(one) === person.id);
-    if (there(here)) return { here: true, room: here.name };
+    const find = (level) => peopleOnLevel(game, walk, level).find((one) => keyOf(one) === person.id);
+    const roomName = (level, spot) => roomOf(map, level.roomAt(spot.x, spot.y))?.name ?? level.name;
+    const onThis = find(here);
+    if (onThis) {
+      // On a deck, "here" is the room drawn around them both, not the whole deck.
+      const mine = walk.room ? null : here.roomAt(walk.x, walk.y);
+      const theirs = walk.room ? null : here.roomAt(onThis.x, onThis.y);
+      if (walk.room || theirs === mine) return { here: true, room: walk.room ? here.name : roomName(here, onThis) };
+      return { here: false, room: roomName(here, onThis), level: theirs, reachable: true };
+    }
     if (!walk.room) {
       for (const level of Object.values(map.levels)) {
+        if (level.id === here.id) continue;
+        const found = find(level);
         // Behind a door only the story opens, they can't be walked to yet.
-        if (level.id !== here.id && there(level)) return { here: false, room: level.name, level: level.id, reachable: roomsInReach(game, walk, map).has(level.id) };
+        if (found) return { here: false, room: roomName(level, found), level: level.roomAt(found.x, found.y), reachable: roomsInReach(game, walk, map).has(level.id) };
       }
     }
   }
@@ -482,7 +648,9 @@ export function bringOver(game, ids) {
   const map = walk ? mapFor(game.location) : null;
   if (!walk || !map) return;
   const level = levelOf(game, walk, map);
-  const here = new Set(peopleOnLevel(game, walk, level).map(keyOf));
+  // On a deck, "here" is the room drawn around the player: someone in another room of the deck comes over too.
+  const mine = walk.room ? null : level.roomAt(walk.x, walk.y);
+  const here = new Set(peopleOnLevel(game, walk, level).filter((one) => walk.room || level.roomAt(one.x, one.y) === mine).map(keyOf));
   const coming = peopleNamed(game, ids).filter((one) => !here.has(keyOf(one)));
   if (!coming.length) return;
   if (walk.room) {
@@ -520,11 +688,42 @@ export function findPath(level, blocked, from, isThere) {
   return null;
 }
 
-// The captain walks around people if there's a way, and squeezes past them in a narrow duct if there isn't.
-function route(level, people, from, isThere) {
-  const blocked = new Set(people.map((person) => spotKey(person.x, person.y)));
-  return findPath(level, blocked, from, isThere) ?? findPath(level, new Set(), from, isThere);
+// The captain walks around people if there's a way, and squeezes past them in a narrow duct if there isn't. locked
+// has the squares of the doors the place's systems have shut, which nobody squeezes through.
+function route(level, people, locked, from, isThere) {
+  const shut = new Set(locked.keys());
+  const blocked = new Set([...people.map((person) => spotKey(person.x, person.y)), ...shut]);
+  return findPath(level, blocked, from, isThere) ?? findPath(level, shut, from, isThere);
 }
+
+// The doors inside a deck that the place's systems have shut: a door into a locked room is shut from both sides.
+function lockedDoorsOn(game, level) {
+  const out = new Map();
+  if (!level.doorAreas?.size || !systemsOf(game.location)) return out;
+  for (const [key, touched] of level.doorAreas) {
+    // A door with the same room on both sides is inside that room, and locking the room leaves it alone.
+    if (touched.size < 2) continue;
+    const shut = [...touched].find((id) => doorLocked(game, game.location, id));
+    if (shut) out.set(key, shut);
+  }
+  return out;
+}
+
+// Each of those as a way out of its own, so it shows as a shut door that can be forced or hacked, like a locked exit.
+function lockedDoorExits(game, map, level) {
+  const walk = walkAt(game);
+  const mine = walk && !walk.room && map.levels[walk.level] === level ? level.roomAt(walk.x, walk.y) : null;
+  return [...lockedDoorsOn(game, level)].map(([key, to]) => {
+    const [x, y] = key.split(",").map(Number);
+    // From inside the room that's locked, its door is named by where it goes, a room before the deck itself; from
+    // outside, by the room it's locked on.
+    const sides = to === mine ? [...(level.doorAreas.get(key) ?? [])].filter((id) => id !== mine) : [];
+    const beyond = sides.find((id) => id !== level.id) ?? sides[0] ?? null;
+    const named = beyond ?? to;
+    return settleExit({ key: `door:${key}`, to, via: null, x, y, inner: true }, level, roomOf(map, named)?.name ?? named);
+  });
+}
+const exitByKey = (level, inner, key) => level.exits.find((one) => one.key === key) ?? inner.find((one) => one.key === key) ?? null;
 
 function nearestFloor(level, people, x, y) {
   const taken = new Set(people.map((person) => spotKey(person.x, person.y)));
@@ -547,7 +746,7 @@ function markAt(game, walk, level, x, y) {
   if (thing) return { kind: "thing", key: thing.id, x, y };
   const part = partsOn(game, walk, level).find((one) => one.x === x && one.y === y);
   if (part) return { kind: "thing", key: `part:${part.id}`, x, y };
-  const exit = level.exits.find((one) => one.x === x && one.y === y);
+  const exit = level.exits.find((one) => one.x === x && one.y === y) ?? lockedDoorExits(game, mapFor(game.location), level).find((one) => one.x === x && one.y === y);
   return exit ? { kind: "exit", key: exit.key, x, y, exit } : null;
 }
 
@@ -559,42 +758,62 @@ function findMark(game, walk, level, target) {
     return person ? { kind, key, x: person.x, y: person.y } : null;
   }
   if (kind === "exit") {
-    const exit = level.exits.find((one) => one.key === key);
+    const exit = exitByKey(level, lockedDoorExits(game, mapFor(game.location), level), key);
     return exit ? { kind, key, x: exit.x, y: exit.y, exit } : null;
   }
   const thing = kind === "thing" ? level.things.find((one) => one.id === key) ?? partsOn(game, walk, level).find((one) => `part:${one.id}` === key) ?? pilesIn(game, game.location, roomId(walk, level)).find((one) => one.id === key) : null;
   return thing ? { kind, key, x: thing.x, y: thing.y } : null;
 }
 
-// The parts of the place's systems in this room, which aren't in the map file: src/systems.js places them.
+// The parts of the place's systems on this level, in every room drawn on it, which aren't in the map file:
+// src/systems.js places them.
 function partsOn(game, walk, level) {
   if (walk.room || level.id === "room") return [];
   const model = systemsOf(game.location);
-  return (model?.partsIn[level.id] ?? []).map((id) => model.parts[id]).filter((part) => part && !part.unplaced);
+  if (!model) return [];
+  const ids = roomsOn(mapFor(game.location), level.id).flatMap((room) => model.partsIn[room.id] ?? []);
+  return ids.map((id) => model.parts[id]).filter((part) => part && !part.unplaced);
 }
 
 const isWhole = (cell, level) => Number.isInteger(cell?.x) && Number.isInteger(cell?.y) && canStand(level, cell.x, cell.y);
 
-// Puts the captain in a level. Coming through a door, they stand beside the door they came out of.
+// Puts the captain in a room: a level, or one drawn on a deck. Coming through a door, they stand beside the door
+// they came out of.
 function enterLevel(game, walk, map, id, viaKey = null) {
-  const next = map.levels[id];
+  const room = roomOf(map, id);
+  const next = room.level;
   const door = next.exits.find((exit) => exit.key === viaKey);
   const people = peopleOnLevel(game, { ...walk, room: null }, next);
   const taken = new Set(people.map((person) => spotKey(person.x, person.y)));
   const beside = door && STEPS.map(([dx, dy]) => ({ x: door.x + dx, y: door.y + dy })).find((spot) => canStand(next, spot.x, spot.y) && !taken.has(spotKey(spot.x, spot.y)));
-  const spot = beside ?? next.start;
+  const spot = beside ?? room.start;
   // Whatever was open in the room being left is shut.
   if (game.looting) game.looting = null;
   walk.room = null;
-  walk.level = id;
+  walk.level = room.levelId;
   walk.x = spot.x;
   walk.y = spot.y;
   walk.walked = true;
 }
 
+// The first way out to take from one level towards another, through the levels between.
+function exitTowards(map, from, to) {
+  const seen = new Set([from]);
+  const queue = (map.levels[from]?.exits ?? []).map((exit) => ({ exit, at: exit.to }));
+  for (let i = 0; i < queue.length; i += 1) {
+    const { exit, at } = queue[i];
+    if (at === to) return exit;
+    if (seen.has(at)) continue;
+    seen.add(at);
+    for (const next of map.levels[at]?.exits ?? []) queue.push({ exit, at: next.to });
+  }
+  return null;
+}
+
 function takeExit(game, walk, map, exit) {
   if (exit.back) {
-    if (exit.to === walk.level) {
+    // Back from a room off the map to the deck it was left from, on the square it was left from.
+    if (roomOf(map, exit.to)?.levelId === walk.level) {
       walk.room = null;
       walk.walked = true;
     } else enterLevel(game, walk, map, exit.to);
@@ -610,26 +829,45 @@ export function walkCommand(game, body) {
   const map = mapFor(game.location);
   const level = levelOf(game, walk, map);
   const people = peopleOnLevel(game, walk, level);
+  const locked = lockedDoorsOn(game, level);
+  const inner = lockedDoorExits(game, map, level);
   // A click partway through a walk carries on from wherever the captain has got to.
   const spot = walk.room ?? walk;
   const from = isWhole(body.from, level) ? { x: body.from.x, y: body.from.y } : { x: spot.x, y: spot.y };
   const answer = (path, arrived = null, message = null) => ({ walk: walkView(game), path, arrived, message });
+  const roomBefore = walk.room ? null : level.roomAt(spot.x, spot.y);
   const stand = (path, arrived = null, message = null) => {
     const end = path.at(-1) ?? from;
     spot.x = end.x;
     spot.y = end.y;
+    // Walking into another room drawn on the deck counts as walking there, for the AI's line about the map.
+    if (!walk.room && level.roomAt(end.x, end.y) !== roomBefore) walk.walked = true;
     return answer(path, arrived, message);
   };
-  const goToMark = (mark, path = route(level, people, from, (here) => nextTo(here, mark))) => {
+  const goToMark = (mark, path = route(level, people, locked, from, (here) => nextTo(here, mark))) => {
     if (!path) return stand([], null, "You can't find a way there.");
     if (mark.kind !== "exit") return stand(path, { kind: mark.kind, key: mark.key });
     if (isClosed(game, mark.exit, level.id)) return stand(path, { kind: "door", key: mark.key });
     takeExit(game, walk, map, mark.exit);
     return answer(path, { kind: "exit", key: mark.key });
   };
+  // A room picked on the deck plan: walked to, if it's on this deck, and otherwise the stairs that lead toward it.
+  const goToRoom = (id) => {
+    const room = roomOf(map, id);
+    if (!room) throw new Error("That room isn't on the map.");
+    if (room.levelId === level.id && !walk.room) {
+      const path = route(level, people, locked, from, (here) => here.x === room.start.x && here.y === room.start.y)
+        ?? route(level, people, locked, from, (here) => level.roomAt(here.x, here.y) === room.id && !level.doors.has(spotKey(here.x, here.y)));
+      return path ? stand(path) : stand([], null, "You can't find a way there.");
+    }
+    const exit = walk.room ? null : exitTowards(map, level.id, room.levelId);
+    if (!exit) return stand([], null, "There's no way there from here.");
+    return goToMark({ kind: "exit", key: exit.key, x: exit.x, y: exit.y, exit });
+  };
 
   switch (body.action) {
     case "go": {
+      if (typeof body.to === "string" && body.to.startsWith("room:")) return goToRoom(body.to.slice("room:".length));
       if (body.to) {
         const mark = findMark(game, walk, level, body.to);
         if (!mark) throw new Error("They aren't there any more.");
@@ -640,7 +878,7 @@ export function walkCommand(game, body) {
       if (mark) return goToMark(mark);
       const target = nearestFloor(level, people, body.x, body.y);
       if (!target) return stand([], null, "You can't walk there.");
-      const path = route(level, people, from, (here) => here.x === target.x && here.y === target.y);
+      const path = route(level, people, locked, from, (here) => here.x === target.x && here.y === target.y);
       return path ? stand(path) : stand([], null, "You can't find a way there.");
     }
     // Walking freely, with the keys: the page says which square the player has walked onto, and the server keeps them
@@ -654,11 +892,11 @@ export function walkCommand(game, body) {
       const refused = { moved: false, captain: at };
       const mark = markAt(game, walk, level, x, y);
       if (mark?.kind === "exit") {
-        const path = route(level, [], at, (here) => nextTo(here, mark));
+        const path = route(level, [], locked, at, (here) => nextTo(here, mark));
         return path ? goToMark(mark, path) : refused;
       }
-      if (!canStand(level, x, y)) return refused;
-      if ((x !== at.x || y !== at.y) && !route(level, [], at, (here) => here.x === x && here.y === y)) return refused;
+      if (!canStand(level, x, y) || locked.has(spotKey(x, y))) return refused;
+      if ((x !== at.x || y !== at.y) && !route(level, [], locked, at, (here) => here.x === x && here.y === y)) return refused;
       spot.x = x;
       spot.y = y;
       return { moved: true, captain: { x, y } };
@@ -672,7 +910,7 @@ export function walkCommand(game, body) {
       if (mark?.kind === "exit") return goToMark(mark, []);
       // Nobody gets stopped for a talk by accident, just by crossing paths in a corridor.
       if (mark && !mark.passing) return stand([], { kind: mark.kind, key: mark.key });
-      return stand(canStand(level, x, y) ? [{ x, y }] : []);
+      return stand(canStand(level, x, y) && !locked.has(spotKey(x, y)) ? [{ x, y }] : []);
     }
     // The map of the place: straight to a room, or back to somewhere the story has already been.
     case "room": {
@@ -683,7 +921,7 @@ export function walkCommand(game, body) {
         putInRoom(game, walk, known.name, peopleNamed(game, known.regulars ?? []), known);
         walk.walked = true;
       } else {
-        if (!map.levels[to]) throw new Error("That room isn't on the map.");
+        if (!roomOf(map, to)) throw new Error("That room isn't on the map.");
         if (!roomsInReach(game, walk, map).has(to)) throw new Error("There's a closed door on the way. You'd have to ask at it.");
         enterLevel(game, walk, map, to);
       }
@@ -698,7 +936,7 @@ export function walkCommand(game, body) {
     case "work": {
       const key = String(body.key ?? "");
       if (key.startsWith("part:")) return workOnPart(game, key, String(body.how ?? ""));
-      const exit = level.exits.find((one) => one.key === key);
+      const exit = exitByKey(level, inner, key);
       if (!exit) throw new Error("That isn't here.");
       return workOnDoor(game, level.id, exit, String(body.how ?? ""));
     }
@@ -710,7 +948,7 @@ export function walkCommand(game, body) {
       if (!entry) throw new Error("They aren't there any more.");
       const shown = personView(game, entry);
       const who = { key, id: entry.id ?? null, name: shown.name, short: shown.short, asleep: Boolean(entry.asleep), doing: entry.doing ?? null };
-      const where = { place: game.location, room: walk.room ? null : level.id };
+      const where = { place: game.location, room: walk.room ? null : level.roomAt(spot.x, spot.y) };
       return body.action === "pickpocket" ? pickPocket(game, who, where) : attackPerson(game, who, where);
     }
     default:
@@ -724,7 +962,7 @@ const plainName = (text) => String(text).toLowerCase().replace(/\s+/g, " ").repl
 
 function findOnMap(map, name) {
   const wanted = plainName(name);
-  return Object.values(map.levels).find((level) => [level.name, ...level.aliases].some((alias) => plainName(alias) === wanted)) ?? null;
+  return roomsOf(map).find((room) => [room.name, ...room.aliases].some((alias) => plainName(alias) === wanted)) ?? null;
 }
 
 function peopleNamed(game, names) {
@@ -785,23 +1023,27 @@ function standNear(game, level, entry, people) {
   });
 }
 
-function putOnLevel(game, walk, level, people) {
-  openDoorsTo(game, level.id);
+// Puts the captain in a room the story named, with whoever's with them, where the story put them.
+function putOnLevel(game, walk, room, people) {
+  openDoorsTo(game, room.levelId);
   walk.room = null;
-  walk.level = level.id;
+  walk.level = room.levelId;
   walk.walked = false;
-  walk.x = level.start.x;
-  walk.y = level.start.y;
-  walk.with = standNear(game, level, level.start, people);
-  walk.withLevel = level.id;
+  walk.x = room.start.x;
+  walk.y = room.start.y;
+  walk.with = standNear(game, room.level, room.start, people);
+  walk.withLevel = room.levelId;
   walk.withUntil = null;
 }
 
 function putInRoom(game, walk, name, people, given = {}) {
   const map = mapFor(game.location);
   const saved = findCampaignRoom(game.campaign, name, game.location);
+  // The room the player left, which the way back leads to: the one drawn around them on a deck.
+  const from = walk.room ? walk.room.from : map.levels[walk.level]?.roomAt(walk.x, walk.y) ?? walk.level;
   walk.room = {
     name: saved?.name ?? name,
+    from,
     kind: ROOM_KINDS[given.kind] ? given.kind : saved?.kind ?? kindFromWords(game, name),
     things: given.things?.length ? given.things : saved?.things ?? [],
     people,
@@ -860,12 +1102,14 @@ export function walkLine(game) {
     return `Map: player off the map, at ${walk.room.name}.${names ? ` With: ${names}.` : ""}`;
   }
   const map = mapFor(game.location);
-  const level = map.levels[walk.level] ?? map.levels[map.start];
-  const people = peopleOnLevel(game, walk, level);
+  const level = map.levels[walk.level] ?? roomOf(map, map.start).level;
+  // On a deck, nearby means in the same room, not anywhere on the deck.
+  const roomNow = level.roomAt(walk.x, walk.y);
+  const people = peopleOnLevel(game, walk, level).filter((one) => level.roomAt(one.x, one.y) === roomNow);
   const named = people.filter((one) => !one.crowd).map((one) => (one.doing ? `${shortName(game, one)} (${one.doing})` : shortName(game, one)));
   const others = people.length - named.length;
   const here = [...named, ...(others ? [`${others} other ${others === 1 ? "person" : "people"}`] : [])];
-  return `Map: player ${walk.walked ? "walked to" : "at"} ${level.name}.${here.length ? ` Nearby: ${here.join(", ")}.` : ""}`;
+  return `Map: player ${walk.walked ? "walked to" : "at"} ${roomOf(map, roomNow)?.name ?? level.name}.${here.length ? ` Nearby: ${here.join(", ")}.` : ""}`;
 }
 
 // ---- Saves from before there were levels --------------------------------
@@ -898,7 +1142,7 @@ export function walkFromStory(game) {
   if (!map) return null;
   const walk = newWalk(game.location, map);
   const scenes = (game.transcript ?? []).filter((entry) => entry.role === "narrator").slice(-2);
-  const onMap = Object.values(map.levels).flatMap((level) => [level.name, ...level.aliases].map((name) => ({ name, level })));
+  const onMap = roomsOf(map).flatMap((room) => [room.name, ...room.aliases].map((name) => ({ name, level: room })));
   const invented = (game.lore ?? []).filter((entry) => entry.kind === "place").map((entry) => ({ name: entry.name, level: null }));
   const names = [...onMap, ...invented];
   let found = null;
@@ -934,7 +1178,7 @@ export function walkFromOnePlan(game) {
 
 // ---- What the browser gets to see ---------------------------------------
 
-function personView(game, entry) {
+function personView(game, entry, level = null) {
   const person = entry.id ? findCharacter(game.campaign, entry.id) : null;
   const name = person ? fullName(person) : entry.name;
   const key = keyOf(entry);
@@ -954,10 +1198,13 @@ function personView(game, entry) {
     ...(person?.appearance ? { look: person.appearance } : {}),
     pocket: pocketDetail(game, { id: entry.id ?? null, name, asleep: Boolean(entry.asleep) }),
     ...(isWary(game, game.location, key) ? { wary: true } : {}),
+    // On a deck, which of its rooms they're in.
+    ...(level?.areas.length ? { room: level.roomAt(entry.x, entry.y) } : {}),
   };
 }
 
-const thingView = (game, thing) => ({
+const thingView = (game, thing, level = null) => ({
+  ...(level?.areas.length ? { room: level.roomAt(thing.x, thing.y) } : {}),
   id: thing.id,
   name: thing.name,
   look: (!isCaptain(game) && thing.lookOther) || thing.look,
@@ -980,7 +1227,53 @@ function exitView(game, exit, levelId) {
   return { key, x, y, label, glyph: "x", side, closed: true, locked: true, look: doorLook(game, game.location, levelId, exit), written: true, actions };
 }
 
+// The deck plan: for decks with rooms drawn on them, made from the rooms, one plan to a deck, with who's in each room.
+function decksView(game, walk, map) {
+  const reach = roomsInReach(game, walk, map);
+  const current = walk.room ? null : walk.level;
+  const mine = walk.room ? null : map.levels[walk.level]?.roomAt(walk.x, walk.y);
+  return {
+    title: "Deck plan",
+    current,
+    decks: map.decks.map((deck) => {
+      const level = map.levels[deck.id];
+      const people = reach.has(deck.id) ? peopleOnLevel(game, { ...walk, room: null }, level) : [];
+      const byRoom = new Map();
+      for (const one of people) {
+        const id = level.roomAt(one.x, one.y);
+        if (!byRoom.has(id)) byRoom.set(id, []);
+        byRoom.get(id).push(one);
+      }
+      return {
+        id: deck.id,
+        name: deck.name,
+        here: current === deck.id,
+        cols: deck.width,
+        lines: deck.height,
+        layers: deck.layers,
+        floors: deck.floors,
+        rooms: deck.rooms.map((room) => {
+          const list = byRoom.get(room.level) ?? [];
+          return {
+            id: room.level,
+            name: roomOf(map, room.level)?.name ?? room.level,
+            text: room.text,
+            x: room.at[0],
+            y: room.at[1],
+            here: current === deck.id && mine === room.level,
+            closed: !reach.has(deck.id),
+            people: list.filter((one) => !one.crowd).map((one) => shortName(game, one)),
+            others: list.filter((one) => one.crowd).length,
+          };
+        }),
+      };
+    }),
+    elsewhere: Object.values(campaignRooms(game.campaign)).filter((room) => (room.place ?? game.location) === game.location).map((room) => ({ name: room.name, here: walk.room?.name === room.name })),
+  };
+}
+
 function overviewView(game, walk, map) {
+  if (map.decks) return decksView(game, walk, map);
   const { overview } = map;
   if (!overview) return null;
   const reach = roomsInReach(game, walk, map);
@@ -1012,12 +1305,22 @@ function overviewView(game, walk, map) {
 }
 
 // What a room's made of and how it's lit, for the isometric view. Nothing else needs to know.
-export function lookOf(place, levelName) {
+export function lookOf(place, levelName, { only = false } = {}) {
   const { levels = {}, ...general } = LOOKS.places[place] ?? {};
+  // Only what's written for this room by name, for a room drawn on a deck, whose deck has the look of its own.
+  if (only) return levels[levelName] ?? null;
   return { ...LOOKS.default, ...general, ...levels[levelName] };
 }
 
-const floorOf = (level) => Array.from({ length: level.height }, (_, y) => Array.from({ length: level.width }, (_, x) => (canStand(level, x, y) ? "." : " ")).join(""));
+const floorOf = (level, locked = new Map()) => Array.from({ length: level.height }, (_, y) => Array.from({ length: level.width }, (_, x) => (canStand(level, x, y) && !locked.has(spotKey(x, y)) ? "." : " ")).join(""));
+
+// The doors out of the room the player's in on a deck, one to each room beside it.
+function waysFrom(map, level, roomId) {
+  const area = level.areas.find((one) => one.id === roomId);
+  if (!area) return [];
+  const seen = new Set();
+  return area.doors.filter((door) => !seen.has(door.to) && seen.add(door.to)).map((door) => ({ to: door.to, name: roomOf(map, door.to)?.name ?? door.to, x: door.x, y: door.y }));
+}
 
 export function walkView(game) {
   const walk = walkAt(game);
@@ -1025,6 +1328,12 @@ export function walkView(game) {
   const map = mapFor(game.location);
   const level = levelOf(game, walk, map);
   const spot = walk.room ?? walk;
+  const inner = walk.room ? [] : lockedDoorExits(game, map, level);
+  const locked = new Map(inner.map((exit) => [spotKey(exit.x, exit.y), exit.to]));
+  // On a deck, here is the room drawn around the player, and the deck is named beside it.
+  const roomNow = walk.room ? walk.room.name : level.roomAt(spot.x, spot.y);
+  const room = walk.room ? null : roomOf(map, roomNow);
+  const onDeck = !walk.room && level.areas.length > 0;
   return {
     offPlan: Boolean(walk.room),
     cols: level.width,
@@ -1035,13 +1344,20 @@ export function walkView(game) {
     look: lookOf(game.location, level.name),
     captain: { x: spot.x, y: spot.y },
     // Where the player can walk, a row of the room to a line: "." for floor, a space for anything else. Ways out are
-    // under exits, and people under people, since they move.
-    floor: floorOf(level),
-    here: { id: walk.room ? walk.room.name : level.id, name: level.name, desc: level.desc, ...(level.drawn ? { drawn: level.drawn } : {}) },
-    people: peopleOnLevel(game, walk, level).map((entry) => personView(game, entry)),
-    things: [...level.things.map((thing) => thingView(game, thing)), ...(walk.room ? [] : partThings(game, game.location, level.id)), ...pilesIn(game, game.location, roomId(walk, level)).map((pile) => ({ ...pile, store: pile.id }))],
-    exits: level.exits.map((exit) => exitView(game, exit, level.id)),
-    ...(walk.room ? {} : { room: roomView(game, game.location, level.id) }),
+    // under exits, and people under people, since they move. A door the systems have locked isn't floor.
+    floor: floorOf(level, locked),
+    here: { id: roomNow, name: room?.name ?? level.name, desc: room?.desc ?? level.desc, ...(level.drawn ? { drawn: level.drawn } : {}), ...(onDeck ? { deck: { id: level.id, name: level.name } } : {}) },
+    people: peopleOnLevel(game, walk, level).map((entry) => personView(game, entry, level)),
+    things: [...level.things.map((thing) => thingView(game, thing, level)), ...(walk.room ? [] : roomsOn(map, level.id).flatMap((one) => partThings(game, game.location, one.id).map((thing) => (onDeck ? { ...thing, room: one.id } : thing)))), ...pilesIn(game, game.location, roomId(walk, level)).map((pile) => ({ ...pile, store: pile.id }))],
+    // On a deck, each way out says which room it's in, a shut door between rooms counting as in the player's room.
+    exits: [...level.exits, ...inner].map((exit) => ({ ...exitView(game, exit, level.id), ...(onDeck ? { room: exit.inner && level.doorAreas.get(spotKey(exit.x, exit.y))?.has(roomNow) ? roomNow : level.roomAt(exit.x, exit.y) } : {}) })),
+    ...(walk.room ? {} : { room: roomView(game, game.location, roomNow) }),
+    // The rooms drawn on the deck, with which are dark, so the picture can darken each by itself, and the doors out
+    // of this one to the rooms beside it, shut or not.
+    ...(onDeck ? {
+      areas: level.areas.map((area) => ({ id: area.id, name: area.name, x: area.x, y: area.y, w: area.w, h: area.h, dark: roomDark(game, game.location, area.id), look: lookOf(game.location, area.name, { only: true }) })),
+      ways: waysFrom(map, level, roomNow).map((way) => ({ ...way, ...(locked.has(spotKey(way.x, way.y)) ? { locked: true } : {}) })),
+    } : {}),
     overview: overviewView(game, walk, map),
     ...(livesHere(walk.place) ? { life: true } : {}),
   };
@@ -1051,7 +1367,7 @@ export function walkView(game) {
 function peopleNow(game) {
   const walk = walkAt(game);
   const level = levelOf(game, walk, mapFor(game.location));
-  return { here: walk.room ? walk.room.name : level.id, drawn: walk.room ? 0 : level.drawn, people: peopleOnLevel(game, walk, level).map((entry) => personView(game, entry)) };
+  return { here: walk.room ? walk.room.name : level.id, drawn: walk.room ? 0 : level.drawn, people: peopleOnLevel(game, walk, level).map((entry) => personView(game, entry, level)) };
 }
 
 // The clock running by itself, while the player explores somewhere people live their days. It waits
@@ -1120,7 +1436,8 @@ function openTalk(game, key) {
     personId: entry.id ?? null,
     name,
     short,
-    where: level.name,
+    // The room they're talked to in: on a deck, the one drawn around them.
+    where: roomOf(map, level.roomAt(entry.x, entry.y))?.name ?? level.name,
     doing: entry.doing ?? null,
     log: [{ role: "aside", text: greeting.replaceAll("{name}", short) }],
     lastReply: null,

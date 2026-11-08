@@ -18,15 +18,16 @@ import zlib from "node:zlib";
 
 const TILE_WIDTH = 128;
 const TILE_HEIGHT = 64;
-// The biggest room the plain view shows, in the game's squares. In Tiled that's 39 tiles across and 18 down.
-const MOST_ACROSS = 78;
-const MOST_DOWN = 18;
+// The biggest map the game draws, in the game's squares: a whole deck, which the view scrolls across. In Tiled that's
+// 100 tiles across and 60 down.
+const MOST_ACROSS = 200;
+const MOST_DOWN = 60;
 const ROOM_FILE = /\.(tmj|tmx|json)$/i;
 const START = "@";
 const VOID = " ";
 const FLIPS = 0x0fffffff;
 const MARKS = { person: "ABCDEFGHIJKLMNOPQRSTUVWXYZ", thing: "abcdefghijklmnopqrstuvwxyz", exit: "1234567890" };
-const ROLES = { person: "person", people: "person", thing: "thing", things: "thing", exit: "exit", "way out": "exit", start: "start", label: "label", writing: "writing", words: "writing" };
+const ROLES = { person: "person", people: "person", thing: "thing", things: "thing", exit: "exit", "way out": "exit", start: "start", label: "label", writing: "writing", words: "writing", room: "area", area: "area" };
 // What a property holds, where it isn't a line of words: one per line, or written out as JSON.
 const LISTS = new Set(["asks", "asksOther", "aliases"]);
 const OBJECTS = new Set(["closed", "holds"]);
@@ -34,7 +35,9 @@ const COLORS = ["floor", "walls", "scenery", "writing"];
 // A tile's own properties, which an object made from it shouldn't take as its own.
 const TILE_ONLY = ["mark", "floor", "what"];
 // The parts of a room that a Tiled file draws. Anything else about the room can still come from the place's JSON file.
-export const DRAWN = ["plan", "floor", "people", "things", "exits", "writing", "labels"];
+export const DRAWN = ["plan", "floor", "people", "things", "exits", "writing", "labels", "areas", "starts"];
+// A room's id from its name, when it doesn't say one: the_long_mess.
+export const slugOf = (text) => String(text).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 
 // ---- Tiled's XML files, .tmx and .tsx -------------------------------------------------------------------------
 
@@ -395,15 +398,47 @@ export function roomFromMap(map, { personId = (text) => text, rooms = null } = {
   const both = floors.filter((ch) => notFloor.has(ch));
   if (both.length) say(`the mark${both.length === 1 ? "" : "s"} ${both.join(" ")} ${both.length === 1 ? "is" : "are"} floor on some tiles and not on others, and the game takes ${both.length === 1 ? "it" : "them"} for floor all over the room`);
 
-  // People, things, ways out and where the player starts, each on one of the game's squares.
+  // People, things, ways out and where the player starts, each on one of the game's squares. A map that's a whole
+  // deck has its rooms drawn on it as rectangles with the class Room, each with a name and an id, and can have a
+  // place to start in each of them.
   const labels = [];
   const writing = [];
   const placed = [];
+  const starts = [];
+  const areas = [];
   const taken = new Map();
   for (const object of objects) {
     const found = object.gid ? tileOf(object.gid) : null;
     const props = { ...(found?.tile?.props ?? {}), ...object.props };
     const role = roleOf(object, found?.tile, props);
+    if (role === "area") {
+      const name = object.name.trim() || words(props.name).trim();
+      if (!name) {
+        say("a room drawn on the map has no name, so it's left out: give it one");
+        continue;
+      }
+      const [ax, ay] = inTiles(object.x, object.y);
+      const [aw, ah] = map.orientation === "orthogonal" ? [object.width / across, object.height / down] : [object.width / down, object.height / down];
+      const x0 = Math.max(0, Math.round((ax - left) * 2));
+      const y0 = Math.max(0, Math.round(ay - top));
+      const x1 = Math.min(width * 2, Math.round((ax - left + aw) * 2));
+      const y1 = Math.min(height, Math.round(ay - top + ah));
+      if (x1 - x0 < 1 || y1 - y0 < 1) {
+        say(`the room ${name} drawn on the map is outside it or has no size, so it's left out`);
+        continue;
+      }
+      const id = words(props.id).trim() || slugOf(name);
+      if (!/^[a-z0-9_]+$/.test(id)) {
+        say(`the room ${name} has an id the game can't use, ${id}: small letters, numbers and _ only`);
+        continue;
+      }
+      if (areas.some((one) => one.id === id)) {
+        say(`two rooms drawn on the map have the id ${id}, so the second is left out`);
+        continue;
+      }
+      areas.push({ id, name, x: x0, y: y0, w: x1 - x0, h: y1 - y0, ...fieldsOf(props, new Set(["id", "name", ...TILE_ONLY])) });
+      continue;
+    }
     // A shape is where its middle is, and anything else is where its point is: the feet, for a tile object.
     const shape = !object.gid && !object.point && object.text === null;
     const [dx, dy] = shape ? [object.width / 2, object.height / 2] : object.gid ? feet(object, found?.set.alignment) : [0, 0];
@@ -427,9 +462,10 @@ export function roomFromMap(map, { personId = (text) => text, rooms = null } = {
       say(`${described(role, object)} is on the same square as ${taken.get(spot)}, so it's left out`);
       continue;
     }
-    if (role === "start" && placed.some((one) => one.role === "start")) {
-      say("there are two places to start, so the second is left out");
-      continue;
+    // The first place to start is the map's own; the others are where the story puts the player in each room.
+    if (role === "start") {
+      starts.push({ x, y });
+      if (starts.length > 1) continue;
     }
     let fields = {};
     try {
@@ -510,7 +546,9 @@ export function roomFromMap(map, { personId = (text) => text, rooms = null } = {
   if (Object.keys(legend.exit).length) level.exits = legend.exit;
   if (writing.length) level.writing = writing;
   if (labels.length) level.labels = labels;
-  if (width * 2 > MOST_ACROSS || height > MOST_DOWN) say(`it's ${width} tiles across and ${height} down, and a room can be ${MOST_ACROSS / 2} across and ${MOST_DOWN} down at most`);
+  if (areas.length) level.areas = areas;
+  if (starts.length > 1) level.starts = starts;
+  if (width * 2 > MOST_ACROSS || height > MOST_DOWN) say(`it's ${width} tiles across and ${height} down, and a map can be ${MOST_ACROSS / 2} across and ${MOST_DOWN} down at most`);
   return { level, problems };
 }
 
@@ -647,6 +685,16 @@ export function roomToMap(level, { gidOf, figures, tileset = "../tiles/stand-ins
   const text = (type, [x, y], content) => words.push({ id: nextId++, name: "", type, x: (x / 2) * TILE_HEIGHT, y: y * TILE_HEIGHT, width: Math.max(32, content.length * 9), height: 20, rotation: 0, visible: true, text: { text: content, wrap: false, pixelsize: 14, color } });
   for (const [x, y, content] of level.writing ?? []) text("Writing", [x, y], content);
   for (const label of level.labels ?? []) text("Label", label.at, label.text);
+  // The rooms drawn on a deck, as rectangles, and where the story puts the player in each.
+  const rooms = (level.areas ?? []).map((area) => {
+    const { id, name, x, y, w, h, ...rest } = area;
+    return { id: nextId++, name, type: "Room", x: (x / 2) * TILE_HEIGHT, y: y * TILE_HEIGHT, width: (w / 2) * TILE_HEIGHT, height: h * TILE_HEIGHT, rotation: 0, visible: true, properties: props([["id", "string", id], ...Object.entries(rest).map(([key, value]) => [key, "string", asText(asLines(value))])]) };
+  });
+  const mainStart = rows.flatMap((row, y) => [...row].map((ch, x) => (ch === START ? { x, y } : null))).find(Boolean);
+  for (const start of level.starts ?? []) {
+    if (mainStart && start.x === mainStart.x && start.y === mainStart.y) continue;
+    standing.push({ id: nextId++, name: "Start", type: "", gid: figures.start.gid, ...at(start.x, start.y), width: figures.start.width, height: figures.start.height, rotation: 0, visible: true });
+  }
   const layer = (id, name, data) => ({ id, name, type: "tilelayer", width: across, height: down, x: 0, y: 0, opacity: 1, visible: true, data });
   const objectLayer = (id, name, objects) => ({ id, name, type: "objectgroup", draworder: "topdown", objects, x: 0, y: 0, opacity: 1, visible: true });
   return {
@@ -662,7 +710,7 @@ export function roomToMap(level, { gidOf, figures, tileset = "../tiles/stand-ins
     tileheight: TILE_HEIGHT,
     infinite: false,
     compressionlevel: -1,
-    nextlayerid: 5,
+    nextlayerid: rooms.length ? 6 : 5,
     nextobjectid: nextId,
     properties: props([
       ["name", "string", level.name],
@@ -673,6 +721,6 @@ export function roomToMap(level, { gidOf, figures, tileset = "../tiles/stand-ins
       ...COLORS.map((key) => [`${key} color`, /^#[0-9a-f]{6}$/i.test(String(level.colors?.[key])) ? "color" : "string", tiledColor(level.colors?.[key])]),
     ]),
     tilesets: [{ firstgid: 1, source: tileset }],
-    layers: [layer(1, "Floor", floor), layer(2, "Walls and things", walls), objectLayer(3, "People and things", standing), objectLayer(4, "Words", words)],
+    layers: [layer(1, "Floor", floor), layer(2, "Walls and things", walls), objectLayer(3, "People and things", standing), objectLayer(4, "Words", words), ...(rooms.length ? [objectLayer(5, "Rooms", rooms)] : [])],
   };
 }

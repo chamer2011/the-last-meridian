@@ -5,7 +5,7 @@
  "name": "Stand-ins",
  "tilewidth": 128,
  "tileheight": 160,
- "tilecount": 91,
+ "tilecount": 117,
  "columns": 0,
  "margin": 0,
  "spacing": 0,
@@ -2049,6 +2049,604 @@
      "name": "what",
      "type": "string",
      "value": "floor (;) at the back, door (+) at the front"
+    }
+   ]
+  },
+  {
+   "id": 91,
+   "image": "stand-ins/piece-091.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ""
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": "#+"
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "wall (#) at the back, door (+) at the front"
+    }
+   ]
+  },
+  {
+   "id": 92,
+   "image": "stand-ins/piece-092.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ""
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": "(["
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "machine (() at the back, machine ([) at the front"
+    }
+   ]
+  },
+  {
+   "id": 93,
+   "image": "stand-ins/piece-093.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ""
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": "])"
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "machine (]) at the back, machine ()) at the front"
+    }
+   ]
+  },
+  {
+   "id": 94,
+   "image": "stand-ins/piece-094.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ""
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": " ("
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "nothing at the back, machine (() at the front"
+    }
+   ]
+  },
+  {
+   "id": 95,
+   "image": "stand-ins/piece-095.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ""
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": ") "
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "machine ()) at the back, nothing at the front"
+    }
+   ]
+  },
+  {
+   "id": 96,
+   "image": "stand-ins/piece-096.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": "."
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": ".+"
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "floor (.) at the back, door (+) at the front"
+    }
+   ]
+  },
+  {
+   "id": 97,
+   "image": "stand-ins/piece-097.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ""
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": " ["
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "nothing at the back, machine ([) at the front"
+    }
+   ]
+  },
+  {
+   "id": 98,
+   "image": "stand-ins/piece-098.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ""
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": "] "
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "machine (]) at the back, nothing at the front"
+    }
+   ]
+  },
+  {
+   "id": 99,
+   "image": "stand-ins/piece-099.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": "."
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": ".|"
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "floor (.) at the back, post (|) at the front"
+    }
+   ]
+  },
+  {
+   "id": 100,
+   "image": "stand-ins/piece-100.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": "."
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": "|."
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "post (|) at the back, floor (.) at the front"
+    }
+   ]
+  },
+  {
+   "id": 101,
+   "image": "stand-ins/piece-101.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ","
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": ",|"
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "floor (,) at the back, post (|) at the front"
+    }
+   ]
+  },
+  {
+   "id": 102,
+   "image": "stand-ins/piece-102.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ","
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": "|,"
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "post (|) at the back, floor (,) at the front"
+    }
+   ]
+  },
+  {
+   "id": 103,
+   "image": "stand-ins/piece-103.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ""
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": "]#"
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "machine (]) at the back, wall (#) at the front"
+    }
+   ]
+  },
+  {
+   "id": 104,
+   "image": "stand-ins/piece-104.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ""
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": "\""
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "plants (\")"
+    }
+   ]
+  },
+  {
+   "id": 105,
+   "image": "stand-ins/piece-105.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ","
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": "+,"
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "door (+) at the back, floor (,) at the front"
+    }
+   ]
+  },
+  {
+   "id": 106,
+   "image": "stand-ins/piece-106.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ""
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": "["
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "machine ([)"
+    }
+   ]
+  },
+  {
+   "id": 107,
+   "image": "stand-ins/piece-107.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ","
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": ",+"
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "floor (,) at the back, door (+) at the front"
+    }
+   ]
+  },
+  {
+   "id": 108,
+   "image": "stand-ins/piece-108.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ":"
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": ":["
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "floor (:) at the back, machine ([) at the front"
+    }
+   ]
+  },
+  {
+   "id": 109,
+   "image": "stand-ins/piece-109.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ":"
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": "]:"
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "machine (]) at the back, floor (:) at the front"
+    }
+   ]
+  },
+  {
+   "id": 110,
+   "image": "stand-ins/piece-110.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ""
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": "(*"
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "machine (() at the back, sparks (*) at the front"
+    }
+   ]
+  },
+  {
+   "id": 111,
+   "image": "stand-ins/piece-111.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ":"
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": "):"
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "machine ()) at the back, floor (:) at the front"
+    }
+   ]
+  },
+  {
+   "id": 112,
+   "image": "stand-ins/piece-112.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": "~"
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": "~+"
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "floor (~) at the back, door (+) at the front"
+    }
+   ]
+  },
+  {
+   "id": 113,
+   "image": "stand-ins/piece-113.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ":"
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": "+:"
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "door (+) at the back, floor (:) at the front"
+    }
+   ]
+  },
+  {
+   "id": 114,
+   "image": "stand-ins/piece-114.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ":~"
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": ":~"
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "floor (:) at the back, floor (~) at the front"
+    }
+   ]
+  },
+  {
+   "id": 115,
+   "image": "stand-ins/piece-115.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ""
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": "+"
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "door (+)"
+    }
+   ]
+  },
+  {
+   "id": 116,
+   "image": "stand-ins/piece-116.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": "."
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": ".("
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "floor (.) at the back, machine (() at the front"
     }
    ]
   }

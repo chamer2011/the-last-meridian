@@ -187,7 +187,8 @@ function drawPlace(place) {
     }
     for (const person of Object.values(levels[id].people ?? {})) if (!WORLD_CHARACTERS[person.id]) problems.push(`${label}/${id}: there's nobody called ${person.id} in world/characters`);
   }
-  if (!levels[file.start]) problems.push(`${label}: the place starts in the room ${file.start}, and there isn't one`);
+  const isRoom = (id) => Boolean(levels[id]) || Object.values(levels).some((level) => (level.areas ?? []).some((area) => area.id === id));
+  if (!isRoom(file.start)) problems.push(`${label}: the place starts in the room ${file.start}, and there isn't one`);
   WORLD_MAPS[place] = { ...file, levels };
 }
 
