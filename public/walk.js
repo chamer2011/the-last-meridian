@@ -118,10 +118,12 @@ function setOff() {
 // the reply was sent.
 function takeWalk(reply) {
   const sameRoom = walk.shownLevel === reply.walk.here.id;
+  // A room saved in Tiled since it was last drawn is drawn again whole.
+  const redrawn = (reply.walk.here.drawn ?? 0) !== (app.ui.game.walk.here.drawn ?? 0);
   const { people } = sameRoom && app.ui.game.walk.here.id === reply.walk.here.id ? app.ui.game.walk : reply.walk;
   app.ui.game.walk = { ...reply.walk, people };
   walk.message = reply.message ?? null;
-  if (sameRoom && document.getElementById("walk-frame")) drawHere();
+  if (sameRoom && !redrawn && document.getElementById("walk-frame")) drawHere();
   else renderWalk();
 }
 
@@ -507,6 +509,7 @@ function applyTick(reply) {
   if (!reply.clock || !ui.game) return;
   // Every couple of hours the captain's fatigue changes, and now and then the fleet has news.
   if (reply.game) {
+    const drawnBefore = ui.game.walk?.here.drawn ?? 0;
     ui.game = reply.game;
     if (reply.news) {
       // A raid needs the whole screen. Anything else waits behind an open menu, so nothing being done in it is lost.
@@ -516,6 +519,10 @@ function applyTick(reply) {
         return;
       }
       walk.behindMenu = true;
+      renderWalk();
+    } else if ((ui.game.walk?.here.drawn ?? 0) !== drawnBefore) {
+      // The room was saved in Tiled: it's drawn again as it is now, and the player stands where the server has them.
+      adopt(ui.game.walk);
       renderWalk();
     }
     app.renderStatus();
@@ -544,7 +551,7 @@ async function tick() {
   if (walk.ticking || !clockCanRun()) return;
   walk.ticking = true;
   try {
-    applyTick(await api("/api/tick", { ms: TICK_TIME, rate: SPEEDS[walk.speed].rate }));
+    applyTick(await api("/api/tick", { ms: TICK_TIME, rate: SPEEDS[walk.speed].rate, drawn: ui.game.walk.here.drawn ?? 0 }));
   } catch {
     // Most likely the game master has just started writing. The next tick looks again.
   }

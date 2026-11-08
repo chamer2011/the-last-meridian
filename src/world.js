@@ -4,6 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { worldDir } from "./paths.js";
+import { DRAWN, readPlaceRooms, stampNow } from "./tiled.js";
 import { parseStoryText } from "../public/story-text.js";
 import { parseSystemsText } from "../public/systems-text.js";
 import { COMPUTER, ENEMY, FACTION, ITEM, PERK, PERSON, PLACE, SPECIES_SPEC, parseWorldText } from "../public/world-text.js";
@@ -128,7 +129,91 @@ reloadWorld();
 export const STORIES_DIR = process.env.GAME_STORIES_DIR ?? path.join(worldDir, "stories");
 export const WORLD_THREADS = {};
 export const STORY_FILE_PROBLEMS = [];
-export const WORLD_MAPS = readFolder(path.join(worldDir, "maps"));
+
+// Each place's map: its file in world/maps, with the rooms drawn in Tiled, in world/maps/<place>/, in place of the
+// file's own (see src/tiled.js). Those are read again when one changes, so a room saved in Tiled shows up while the game
+// is running. Tests point the folder at a copy.
+export const MAPS_DIR = process.env.GAME_MAPS_DIR ?? path.join(worldDir, "maps");
+const MAP_FILES = readFolder(MAPS_DIR);
+export const WORLD_MAPS = {};
+export const MAP_FILE_PROBLEMS = [];
+const drawnRooms = {};
+let drawings = 0;
+let lastLook = 0;
+
+// Whoever a person in a Tiled room is, by their id or their name.
+function personId(text) {
+  if (!text || WORLD_CHARACTERS[text]) return text;
+  const name = text.toLowerCase();
+  return Object.entries(WORLD_CHARACTERS).find(([id, one]) => id.toLowerCase() === name || String(one.name ?? "").toLowerCase() === name)?.[0] ?? text;
+}
+
+const titled = (id) => id.replace(/[_-]+/g, " ").replace(/^./, (ch) => ch.toUpperCase());
+
+// The places with a folder of rooms drawn in Tiled: the ones with a file for the place, and a folder of its name.
+const drawnPlaces = () => (fs.existsSync(MAPS_DIR) ? fs.readdirSync(MAPS_DIR, { withFileTypes: true }).filter((entry) => entry.isDirectory() && MAP_FILES[entry.name]).map((entry) => entry.name) : []);
+
+// One place's map, with its rooms from Tiled. The place's own file stays as it was read, so this can be done again.
+function drawPlace(place) {
+  const file = MAP_FILES[place];
+  const folder = path.join(MAPS_DIR, place);
+  const label = `maps/${place}`;
+  if (!fs.existsSync(folder)) {
+    WORLD_MAPS[place] = file;
+    delete drawnRooms[place];
+    return;
+  }
+  const { rooms, problems, stamp, uses } = readPlaceRooms(folder, { personId, label, known: Object.keys(file.levels ?? {}) });
+  drawnRooms[place] = { stamp, uses, problems };
+  drawings += 1;
+  const levels = structuredClone(file.levels ?? {});
+  for (const [id, level] of Object.entries(rooms)) {
+    const before = levels[id] ?? {};
+    const kept = Object.fromEntries(Object.entries(before).filter(([key]) => !DRAWN.includes(key)));
+    levels[id] = { ...kept, ...level, name: level.name ?? before.name ?? titled(id), drawn: drawings };
+  }
+  // A way out that doesn't say where it comes out goes to the way back, if there's only one.
+  for (const id of Object.keys(rooms)) {
+    for (const exit of Object.values(levels[id].exits ?? {})) {
+      const there = levels[exit.to];
+      if (!there) {
+        problems.push(`${label}/${id}: a way out leads to ${exit.to}, and there's no room called that`);
+        continue;
+      }
+      if (exit.via && there.exits?.[exit.via]) continue;
+      const back = Object.entries(there.exits ?? {}).filter(([, one]) => one.to === id);
+      if (back.length === 1) exit.via = back[0][0];
+      else problems.push(`${label}/${id}: a way out to ${there.name ?? exit.to} doesn't say which way out there it comes through: give it a via property, the mark of that way out`);
+    }
+    for (const person of Object.values(levels[id].people ?? {})) if (!WORLD_CHARACTERS[person.id]) problems.push(`${label}/${id}: there's nobody called ${person.id} in world/characters`);
+  }
+  if (!levels[file.start]) problems.push(`${label}: the place starts in the room ${file.start}, and there isn't one`);
+  WORLD_MAPS[place] = { ...file, levels };
+}
+
+function gatherMapProblems() {
+  MAP_FILE_PROBLEMS.splice(0, MAP_FILE_PROBLEMS.length, ...Object.values(drawnRooms).flatMap((one) => one.problems));
+}
+
+for (const [place, file] of Object.entries(MAP_FILES)) WORLD_MAPS[place] = file;
+for (const place of drawnPlaces()) drawPlace(place);
+gatherMapProblems();
+
+// Whether any room drawn in Tiled has changed since it was read, reading it again if it has. It looks at the files at
+// most once a second, so it's cheap to ask whenever a map's needed.
+export function roomsRedrawn(now = Date.now()) {
+  if (now - lastLook < 1000) return false;
+  lastLook = now;
+  let changed = false;
+  for (const place of new Set([...drawnPlaces(), ...Object.keys(drawnRooms)])) {
+    const known = drawnRooms[place];
+    if (known && stampNow(path.join(MAPS_DIR, place), known.uses) === known.stamp) continue;
+    drawPlace(place);
+    changed = true;
+  }
+  if (changed) gatherMapProblems();
+  return changed;
+}
 
 // A story's endings by name. An outcome written as a plain string gets its number for a name.
 export const endingsOf = (thread) => (thread?.gm?.outcomes ?? []).map((outcome, i) => (typeof outcome === "string" ? { id: `ending_${i + 1}`, text: outcome } : outcome));

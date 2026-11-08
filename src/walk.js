@@ -11,9 +11,9 @@
 import { allCharacters, campaignRooms, findCampaignRoom, findCharacter, fullName, saveCampaignRoom } from "./campaign.js";
 import { startCheck, startChoiceCheck } from "./checks.js";
 import { useComputer } from "./computers.js";
-import { doorActions, doorLook, exitLocked, partSquares, partThings, roomView, systemsOf, workOnDoor, workOnPart } from "./systems.js";
+import { clearSystems, doorActions, doorLook, exitLocked, partSquares, partThings, roomView, systemsOf, workOnDoor, workOnPart } from "./systems.js";
 import { ITEMS, LOCATIONS } from "./data.js";
-import { hasADay, livesHere, peopleAboard } from "./life.js";
+import { clearLife, hasADay, livesHere, peopleAboard } from "./life.js";
 import { isCaptain, toOutsider } from "./role.js";
 import { addItem, audienceBonus, clockRuns } from "./rules.js";
 import { conditionHolds } from "./scene-text.js";
@@ -22,7 +22,7 @@ import { attackPerson, isHurt, isWary, pickPocket, pocketDetail } from "./deeds.
 import { rumorsFrom } from "./story-library.js";
 import { pilesIn } from "./bag.js";
 import { colorForName, parseNarration } from "../public/story.js";
-import { COMBAT_ART, LOOKS, ROOM_KINDS, ROOM_TALK, WORLD_MAPS } from "./world.js";
+import { COMBAT_ART, LOOKS, ROOM_KINDS, ROOM_TALK, WORLD_MAPS, roomsRedrawn } from "./world.js";
 
 const STEPS = [[0, -1], [-1, 0], [1, 0], [0, 1]];
 const DOOR = "+";
@@ -50,7 +50,7 @@ function runSquares(x, y, length, side = "right") {
 // ---- The levels ---------------------------------------------------------
 
 // Turns one level from its file into what the game works with: where can be walked, and what's where.
-function compileLevel(id, file, districts = []) {
+export function compileLevel(id, file, districts = []) {
   const width = Math.max(...file.plan.map((row) => row.length));
   const rows = file.plan.map((row) => row.padEnd(width));
   const floors = new Set(file.floor ?? FLOOR);
@@ -102,6 +102,8 @@ function compileLevel(id, file, districts = []) {
     doors,
     solid: new Set(things.map((thing) => spotKey(thing.x, thing.y))),
     start: start ?? { x: 1, y: 1 },
+    // How many times the rooms drawn in Tiled have been read, so the picture of one is drawn again when it changes.
+    drawn: file.drawn ?? 0,
     labels: (file.labels ?? []).map((label) => ({ text: label.text, x: label.at[0], y: label.at[1] })),
     // The squares are drawn in layers, so that walls, floors and scenery can each have their own color.
     layers: {
@@ -137,8 +139,19 @@ function compileMap(file, districts = []) {
 
 const maps = new Map();
 
+// A room saved in Tiled while the game runs: the maps are made again, with the parts of the systems and people's days.
+// It looks at the files at most once a second; a test can say it's later than it is.
+export function redrawnRooms(now = Date.now()) {
+  if (!roomsRedrawn(now)) return false;
+  maps.clear();
+  clearSystems();
+  clearLife();
+  return true;
+}
+
 // A map with a mistake in it is skipped, so that place just stays in the classic view.
 export function mapFor(place) {
+  redrawnRooms();
   if (!maps.has(place)) {
     let map = null;
     try {
@@ -361,7 +374,23 @@ const newWalk = (place, map) => {
 function walkAt(game) {
   const map = mapFor(game.location);
   if (!map) return null;
-  return game.walk?.place === game.location ? game.walk : newWalk(game.location, map);
+  return game.walk?.place === game.location ? onFloor(game.walk, map) : newWalk(game.location, map);
+}
+
+// A room drawn in Tiled can change under the player while the game runs: a wall where they stood, or the room gone.
+// They're put on the nearest square they can stand on, or where the place starts, and the next step saves it.
+function onFloor(walk, map) {
+  if (walk.room) return walk;
+  const level = map.levels[walk.level];
+  if (level && (!level.drawn || canStand(level, walk.x, walk.y))) return walk;
+  const into = level ?? map.levels[map.start];
+  let best = null;
+  for (let y = 0; y < into.height; y += 1) for (let x = 0; x < into.width; x += 1) {
+    const far = (x - walk.x) ** 2 + (y - walk.y) ** 2;
+    if (canStand(into, x, y) && (!best || far < best.far)) best = { x, y, far };
+  }
+  const spot = level && best ? best : into.start;
+  return { ...walk, level: level ? walk.level : map.start, x: spot.x, y: spot.y };
 }
 
 // Where the player stands, for what's on the floor and what can be opened: the place, the room, the square and the
@@ -1008,7 +1037,7 @@ export function walkView(game) {
     // Where the player can walk, a row of the room to a line: "." for floor, a space for anything else. Ways out are
     // under exits, and people under people, since they move.
     floor: floorOf(level),
-    here: { id: walk.room ? walk.room.name : level.id, name: level.name, desc: level.desc },
+    here: { id: walk.room ? walk.room.name : level.id, name: level.name, desc: level.desc, ...(level.drawn ? { drawn: level.drawn } : {}) },
     people: peopleOnLevel(game, walk, level).map((entry) => personView(game, entry)),
     things: [...level.things.map((thing) => thingView(game, thing)), ...(walk.room ? [] : partThings(game, game.location, level.id)), ...pilesIn(game, game.location, roomId(walk, level)).map((pile) => ({ ...pile, store: pile.id }))],
     exits: level.exits.map((exit) => exitView(game, exit, level.id)),
@@ -1022,7 +1051,7 @@ export function walkView(game) {
 function peopleNow(game) {
   const walk = walkAt(game);
   const level = levelOf(game, walk, mapFor(game.location));
-  return { here: walk.room ? walk.room.name : level.id, people: peopleOnLevel(game, walk, level).map((entry) => personView(game, entry)) };
+  return { here: walk.room ? walk.room.name : level.id, drawn: walk.room ? 0 : level.drawn, people: peopleOnLevel(game, walk, level).map((entry) => personView(game, entry)) };
 }
 
 // The clock running by itself, while the player explores somewhere people live their days. It waits

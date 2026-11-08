@@ -1882,7 +1882,7 @@ const iso = {
 
 function useScene(view) {
   const parts = (view.things ?? []).filter((thing) => thing.part).map((thing) => `${thing.id}=${thing.part.word}`).join(",");
-  const id = `${view.here.id}|${view.cols}x${view.lines}|${closedKey(view)}|${view.room?.dark ? "dark" : "lit"}|${parts}`;
+  const id = `${view.here.id}|${view.here.drawn ?? 0}|${view.cols}x${view.lines}|${closedKey(view)}|${view.room?.dark ? "dark" : "lit"}|${parts}`;
   if (iso.sceneId === id) return;
   const sameRoom = iso.sceneId?.split("|")[0] === view.here.id;
   iso.scene = buildScene(view);

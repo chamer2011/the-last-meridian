@@ -1,0 +1,150 @@
+HOW TO DRAW A ROOM IN TILED
+===========================
+
+The ship's rooms are drawn in Tiled, a free map editor, and the game reads them from there: one file to a room,
+in world/maps/meridian/, named after the room, such as bridge.tmj. You lay a room out with tiles, put its people,
+things and ways out in it, and save. The game draws the room its own way. The blocks you see in Tiled are only
+stand-ins, so you can see what's where.
+
+
+GETTING TILED
+-------------
+
+Tiled is free, from https://www.mapeditor.org. Its download page on itch.io asks for a price, and "No thanks, just
+take me to the downloads" gets it for nothing. Install it the usual way.
+
+
+OPENING THE SHIP
+----------------
+
+In Tiled, choose File > Open File or Project, and open the-last-meridian.tiled-project, here in world/maps. The
+Project panel lists the ship's rooms under meridian. Double-click one to open it. Opening the project, rather than
+a room on its own, also gives each kind of object the right boxes to fill in.
+
+A room looks the way the game's isometric view sees it, from the same angle, built of plain blocks: grey walls,
+floors, amber doors, teal consoles and machines, brown crates, and the stars outside a viewport.
+
+
+ONE TILE, TWO OF THE GAME'S SQUARES
+-----------------------------------
+
+A tile is one square of floor the way the isometric view draws it. The game's own squares started as letters on a
+screen, so they're half as wide as they are deep, and a tile covers two of them side by side. That's why some tiles
+have something on one half only: a thin wall, a narrow door, the end of a console. Those keep the ship exactly the
+way it was. Use them, or whole tiles, as you like.
+
+People, things and ways out stand on one of the game's squares, so they can be on either half of a tile.
+
+A room can be 39 tiles across and 18 down at most.
+
+
+THE LAYERS
+----------
+
+The Layers panel has four, from the bottom up:
+
+    Floor               the floor.
+    Walls and things    walls, doors, consoles, crates, bunks, and anything else in the way. A tile here counts
+                        instead of the floor under it, which only matters if you take the tile away.
+    People and things   the people who stand here, the things you can look at and use (gold diamonds), the ways
+                        out to other rooms (teal arrows), and where you stand when the story puts you here (the
+                        flag).
+    Words               words painted on the walls, and the names of parts of the room.
+
+A layer you hide in Tiled, with its eye, is left out of the game too.
+
+
+DRAWING
+-------
+
+Click the layer first, in the Layers panel. Then pick a tile in the Tilesets panel, from Stand-ins, choose the
+Stamp Brush, and click or drag on the room. The Eraser takes tiles away, and Bucket Fill and Shape Fill fill an
+area.
+
+To see what a tile is, click it in the Tilesets panel: its "what" says, such as "wall (#)", or "wall (#) at the
+back, floor (.) at the front" for a thin wall. Its mark is what it puts in the game's plan of the room, the same
+characters the other places' rooms are drawn in, and its floor says which of those are floor. Leave both alone.
+
+
+PEOPLE, THINGS AND WAYS OUT
+---------------------------
+
+These are on the People and things layer.
+
+To move one, choose Select Objects and drag it. It stands on the square under its feet.
+
+To add one, pick its marker in the Stand-ins tileset (the person, the gold diamond, the teal arrow or the flag),
+choose Insert Tile, and click where it stands. Then fill in its properties, in the Properties panel:
+
+    A person    Name is what the room calls them, such as Voss. person is who they are: the name of their file
+                in world/characters, such as voss, or their full name. asks are what you can click to say to them
+                first, one to a line, and asksOther the same for someone who isn't the captain. greeting is how
+                they look when you come over, and side, left or right, is the side their name goes in the
+                Walk-around view.
+    A thing     Name is what it's called. look is what you read when you look at it, and use is what you do when
+                you use it, which goes to the story. used is what happens, written out, with no AI, and
+                usedOther the same for someone who isn't the captain. item is something you pick up from it.
+    A way out   to is the room it leads to, by the name of its file, such as mess. Its Name is what it says on
+                it, if that isn't the room's own name, and a way out named after the room it leads to needs no to
+                at all. Put it in the room's outer wall. You come into the other room by its way back here. When
+                there's more than one way back, via says which, by its mark.
+    The flag    where you stand when the story puts you in this room. One to a room.
+
+mark is the letter or number the game knows each of them by in its plan of the room. Leave it alone, or leave it
+empty on a new one, and the game picks one.
+
+Delete takes one away.
+
+
+WORDS
+-----
+
+On the Words layer, choose Insert Text, click where the words start, and type them. In the Properties panel, set
+Class to Writing for words painted on the walls, which cover what's under them so they can be read, or Label for
+the name of a part of the room.
+
+
+THE ROOM ITSELF
+---------------
+
+Map > Map Properties has:
+
+    name                what the room's called.
+    aliases             the other names the story might use for it, one to a line.
+    desc                what you read about the room.
+    floor               the marks that are floor. Leave it alone.
+    floor color, walls color, scenery color, writing color
+                        the room's colours in the game.
+
+
+A NEW ROOM
+----------
+
+The easiest way is to start from one that's there: open it, choose File > Save As, and save it in the same folder
+with the new room's name, in small letters with no spaces, such as cargo_bay.tmj. Change it, and give another room
+a way out to it.
+
+If you'd rather start from nothing, choose File > New > New Map: Isometric, a tile width of 128 and a height of
+64. Add the stand-ins with Map > Add External Tileset, choosing tiles/stand-ins.tsj here, and add the four layers.
+Save it in world/maps/meridian. Tiled's own kind of file, .tmx, is fine as well as .tmj.
+
+
+SAVING
+------
+
+Ctrl+S, or File > Save. The game notices within a second or two, even while you're playing, and draws the room
+again the next time the clock moves or you take a step. If a wall lands where you're standing, you're moved to the
+nearest floor.
+
+If something in a room is wrong, such as a person with no person, or a way out to a room that isn't there, the game
+leaves that one thing out and draws the rest. npm run check-story lists what's wrong in plain words.
+
+
+WHAT STAYS IN meridian.json
+---------------------------
+
+The ship's name, the room it starts in, and the deck plan: the map of the whole ship that opens from the button
+beside the room. The deck plan is still drawn in characters, so it doesn't change when you redraw a room.
+
+The other places still have their rooms in their own files here, drawn in characters. Any of them can be moved into
+Tiled the same way, exactly as they are: node tools/to-tiled.mjs and the place's name, such as haven.

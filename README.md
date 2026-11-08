@@ -374,6 +374,7 @@ The world is kept in files you can open with any text editor. Be warned that mos
 - `world/daily.json` has what changes at each place from day to day: where it gets its supplies, how much of a say each side has, how prices follow supplies, and everything that can happen there. Instructions are at the top.
 - `world/story-clock.json` has what happens to each story if nobody steps in, day by day, and the main story's own events. Instructions are at the top. It's full of spoilers.
 - `world/maps/` has one file for each place, with every room drawn in characters, which you can edit like a picture. Move a letter on a level to move a person or a thing. The file also has each room's colors, what each thing says when you look at it, what happens when you use it, what's in it if it can be opened (`holds`), what you can first say to each person, and which doors are closed. Instructions are at the top of `meridian.json`. A place with no file here just stays in the classic view.
+- `world/maps/meridian/` has the Meridian's rooms, drawn in Tiled, one file to a room, with the same things in them as a room in characters, and `world/maps/tiles/` has the stand-in tiles they're drawn with. A room drawn in Tiled counts instead of one in the place's file. See [Drawing rooms in Tiled](#drawing-rooms-in-tiled). They're read again whenever one is saved, with no restart.
 - `world/life/` has one file for each place, with everyone's day: where they sleep, eat and work, and what they do at what time. Instructions are at the top of `meridian.json`. A place with no file here keeps its people at their posts, with no clock.
 - `world/looks.json` has what each place and room is made of, and how it's lit, in the Isometric view. Instructions are at the top.
 - `world/rooms.json` has the kinds of room the game can draw for anywhere that isn't on a map, such as ducts, a brig or a chapel, with the things you'd usually find in each. It also has what anyone can be asked in a talk, and how people look when you come over.
@@ -501,6 +502,25 @@ The download is several GB. Local models make more mistakes with game actions th
 
 **Save** writes the file in `world/stories`, `world/scenes`, `world/characters`, `world/places`, `world/species`, `world/enemies`, `world/items`, `world/factions`, `world/perks`, `world/computers` or `world/systems`, through the same reader the game uses, so a file that can't be read is never written, and the game uses the new version from the next turn. The checker's problems are marked in red on the boxes and listed on the right. Nothing is saved until you press Save, and Close asks again if something isn't. A changed person, item or faction reaches the AI's own instructions and actions, and the codex, when the game next starts.
 
+## Drawing rooms in Tiled
+
+The Meridian's rooms are drawn in **Tiled**, a free map editor, and you can change them there or add new ones. Tiled shows a room from the same angle as the Isometric view, built of plain stand-in blocks: grey walls, amber doors, teal consoles, brown crates, a green figure for each person, a gold diamond for each thing you can look at, a teal arrow for each way out, and a flag where you start. The game still draws its own picture of the room. The blocks are only there so you can see what's where.
+
+- **Getting Tiled:** it's free from [mapeditor.org](https://www.mapeditor.org). Its itch.io page asks for a price, and **No thanks, just take me to the downloads** gets it for nothing.
+- **Opening the ship:** in Tiled, choose **File > Open File or Project** and open `world/maps/the-last-meridian.tiled-project`. The ship's rooms are listed on the left, one file to a room, such as `bridge.tmj`. Double-click one.
+- **A tile is a square of floor** the way the Isometric view draws it. The game's own squares are half as wide, so some tiles have something on one half only, such as a thin wall or a narrow door. That's how the ship came over exactly as it was.
+- **The layers:** **Floor**; **Walls and things**, for walls, doors, consoles, crates and anything else in the way; **People and things**; and **Words**, for words on the walls and the names of parts of a room.
+- **Drawing:** click the layer, pick a tile from **Stand-ins**, choose the **Stamp Brush**, and click or drag. The **Eraser** takes tiles away. Clicking a tile in the tileset shows what it is, under **what**.
+- **People, things and ways out:** drag them with **Select Objects**, and each stands on the square under its feet. To add one, pick its marker in the tileset, choose **Insert Tile**, and click where it stands. Its properties say who or what it is: a person's **person** is the name of their file in `world/characters`; a thing has its **Name**, what you read when you **look**, and what you do when you **use** it; a way out's **to** is the room it leads to.
+- **The room itself:** **Map > Map Properties** has its name, its other names, what you read about it, and its colours.
+- **Saving:** **Ctrl+S**, or **File > Save**. The game notices within a second or two, even while you're playing, and draws the room again the next time the clock moves or you take a step. If a wall lands where you're standing, you're moved to the nearest floor.
+- **A new room:** open a room, choose **File > Save As**, save it in the same folder under the new room's name, change it, and give another room a way out to it.
+- **If something's wrong,** such as a person with no **person** or a way out to a room that isn't there, the game leaves that one thing out and draws the rest, and `npm run check-story` lists it in plain words.
+- **Still in `meridian.json`:** the ship's name, the room it starts in, and the deck plan, the map of the whole ship from the button beside the room. The deck plan is still drawn in characters, so it doesn't change when you redraw a room.
+- **The other places** still have their rooms in their own files, drawn in characters. Any of them can move into Tiled the same way, exactly as they are, with `node tools/to-tiled.mjs` and the place's name.
+
+`world/maps/_how-to-draw-rooms-in-tiled.txt` explains all of it, step by step.
+
 ## Changing the game
 
 - `world/` holds the characters, enemies, places, stories and game text, as described under [Your files](#your-files). These are the safest files to edit.
@@ -512,6 +532,7 @@ The download is several GB. Local models make more mistakes with game actions th
 - `src/rules.js` holds the rules: dice, leveling, stress and beliefs.
 - `src/combat.js` holds the rules for fights, including talking in them, and `public/fight.js` draws the fight window.
 - `src/fleet.js` runs the fleet day by day, and `public/fleet.js` draws the Fleet menu, the star map and the raid window.
+- `src/tiled.js` reads the rooms drawn in Tiled, both of its kinds of file, into the same rooms as the ones drawn in characters, and writes a room out for Tiled. `tools/to-tiled.mjs` moves a place's rooms into Tiled, with the stand-in tiles they need, and `tools/stand-in-art.mjs` draws those tiles' pictures.
 - `src/walk.js` runs walking around, the levels, where you are, and talks. `public/walk.js` draws the levels, the clock's buttons and the map of each place, `public/move.js` walks the player freely, with the keys or along a click's way, and tells the server each new square, `public/iso.js` draws the isometric view, `public/popups.js` draws the story over the room, with `public/scene.js` cutting each scene into pieces, `public/writer.js` writing people's words out and `public/pane.js` drawing the pane by someone's head and a thing's window beside it and placing it with its line, `public/float.js` the check and computer windows' lines to what they're about, `public/pull.js` the pulling aside and sliding back that the panes and those windows share, and `public/talk.js` draws a talk, on a pane by the person's head or in its own window.
 - `src/life.js` runs everyone's days, and how they get around. `src/daily.js` runs each place's supplies, prices and factions, day by day. `src/story-clock.js` moves the stories on when nobody has stepped in. None of them has any screens, and none of them uses the AI.
 - `src/checks.js` runs the skill check windows, `src/check-games/` has the game behind each one, and `public/check.js` draws them.

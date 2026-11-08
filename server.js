@@ -620,7 +620,9 @@ async function handleApi(req, res, route) {
     const news = notes.length > 0 || Boolean(game.fleet?.raid);
     if (news) autosave();
     else saveInAWhile();
-    const passed = news || Math.floor(game.clock.hours / 2) !== before;
+    // A room saved in Tiled since the page last drew it is sent again whole, so it's drawn as it is now.
+    const redrawn = body.drawn !== undefined && reply.drawn !== Number(body.drawn);
+    const passed = news || redrawn || Math.floor(game.clock.hours / 2) !== before;
     return json(res, 200, { ...reply, clock: clockFor(game), ...(passed ? { game: publicState(game), news } : {}) });
   }
   // Walking runs here, without the AI. The reply is small, because this can be every key press.
