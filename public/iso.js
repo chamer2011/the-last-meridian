@@ -1578,25 +1578,25 @@ function drawLightmap(scene, unit, left, top, width, height) {
   return { canvas, haze };
 }
 
-// Everything that doesn't move, drawn once, and in tiles: a whole deck is far too big to draw every time the size
-// changes, so only the tiles in view are drawn, as they come into view, and kept. The last two sizes are kept whole,
-// so that zooming back is instant.
-// Small tiles, so that each is quick to draw and a frame can always fit one or two in.
+// Everything that doesn't move, drawn once, in small tiles: the whole level, at the size it's shown at with the wheel
+// at rest, kept for as long as the scene lasts and scaled when the wheel turns, so that zooming never draws anything
+// afresh. The tiles are drawn a few a frame, the ones in view and then the nearest first, so that nothing waits on
+// them, and until each is drawn the picture before it (the same level before a light went out, say, or the whole
+// level small) shows in its place, scaled: the level never goes blank.
 const TILE = 256;
-const tileSizeFor = () => TILE;
 // The most pixels in a picture's lightmap: it's soft light, so it needn't be sharp.
 const LIGHTMAP_PIXELS = 500000;
-const KEPT_PICTURES = 2;
-const MOST_TILES = 240;
-// The whole level small: the size it's drawn at, and its little tiles.
+// The most pixels in the whole level's picture: on a sharper screen a deck is drawn a little smaller and scaled up.
+const MOST_PICTURE = 40e6;
+// The whole level small, under whatever hasn't been drawn yet: the size it's drawn at, and its little tiles.
 const FAR_UNIT = 14;
 const FAR_TILE = 128;
 // How long one frame may spend drawing tiles before the rest wait for the next.
-const TILE_TIME = { walking: 8, still: 16 };
+const TILE_TIME = { walking: 8, still: 24 };
 
 // A picture of the level at a size: where it sits, in the canvas's own measure, and the tiles of it drawn so far.
 // Nothing is drawn here; the tiles are, as they're needed.
-function newPicture(view, unit, ratio, tile, key, { lit = true, most = MOST_TILES } = {}) {
+function newPicture(view, unit, ratio, tile, key, { lit = true } = {}) {
   const { scene } = iso;
   const { bounds } = scene;
   const pad = unit;
@@ -1607,9 +1607,12 @@ function newPicture(view, unit, ratio, tile, key, { lit = true, most = MOST_TILE
   // The materials are the same at every size, so they're made once for the scene.
   if (iso.materialsFor?.scene !== iso.sceneId) iso.materialsFor = { scene: iso.sceneId, materials: materialsFor(scene) };
   const { materials } = iso.materialsFor;
+  const cols = Math.ceil((width * ratio) / tile);
+  const rows = Math.ceil((height * ratio) / tile);
   return {
     key,
     scene: iso.sceneId,
+    level: view.here.deck?.id ?? view.here.id,
     ratio,
     unit,
     left,
@@ -1617,11 +1620,10 @@ function newPicture(view, unit, ratio, tile, key, { lit = true, most = MOST_TILE
     width,
     height,
     tile,
-    most,
-    cols: Math.ceil((width * ratio) / tile),
-    rows: Math.ceil((height * ratio) / tile),
+    cols,
+    rows,
+    total: cols * rows,
     tiles: new Map(),
-    drawnOrder: [],
     labels: view.labels ?? [],
     standing: standingOf(view, scene),
     materials,
@@ -1629,35 +1631,37 @@ function newPicture(view, unit, ratio, tile, key, { lit = true, most = MOST_TILE
   };
 }
 
-// The still picture at the size the view is drawn at now.
-function stillPicture(view, ratio, now = performance.now()) {
-  const { unit } = iso;
+// The size the whole level is drawn at: the size it's shown at with the wheel at rest, or a little less on a sharp
+// screen, so that the picture stays within what every computer can hold.
+function wholeUnitFor(scene, ratio) {
+  const { bounds } = scene;
+  const spanU = bounds.maxU - bounds.minU;
+  const spanV = bounds.maxV - bounds.minV;
+  const most = Math.floor(Math.sqrt(MOST_PICTURE / Math.max(1, (spanU + 2) * (spanV + 2))) / ratio);
+  return Math.max(Math.round(SIZES.smallest / 2), Math.min(iso.restUnit || SIZES.smallest, most));
+}
+
+// The whole level's picture for the scene, at its own size. The picture before it stays while this one has gaps, to
+// show under them, and goes once this one is whole.
+function stillPicture(view, ratio) {
+  const unit = wholeUnitFor(iso.scene, ratio);
   const key = `${iso.sceneId}|${unit}|${ratio}`;
   if (iso.room?.key === key) return iso.room;
   const kept = iso.rooms.find((one) => one.key === key);
-  if (kept) {
-    iso.room = kept;
-    iso.lightmap = kept.lightmap;
-    iso.materials = kept.materials;
-    return kept;
-  }
-  // While the wheel's still turning, the picture already drawn is shown scaled to the new size, which costs nothing,
-  // and the sharp one is drawn once the wheel has stopped.
-  if (now < iso.zoomUntil && iso.room && iso.room.scene === iso.sceneId && iso.room.ratio === ratio) return { ...iso.room, scale: unit / iso.room.unit };
-  const room = newPicture(view, unit, ratio, tileSizeFor(unit), key);
-  iso.materials = room.materials;
-  iso.lightmap = room.lightmap;
+  const room = kept ?? newPicture(view, unit, ratio, TILE, key);
+  if (!kept) iso.rooms.push(room);
+  iso.rooms = iso.rooms.filter((one) => one === room || (one.level === room.level && one.ratio === ratio && room.tiles.size < room.total)).slice(-2);
   iso.room = room;
-  iso.rooms.push(room);
-  while (iso.rooms.length > KEPT_PICTURES) iso.rooms.shift();
+  iso.lightmap = room.lightmap;
+  iso.materials = room.materials;
   return room;
 }
 
 // The whole level small, in little tiles drawn when there's a moment to spare. It shows, scaled up, wherever the
-// picture at the size wanted hasn't been drawn yet, so the level never goes blank, however fast the wheel turns.
+// level's own picture hasn't been drawn yet, so the level never goes blank, however fast the wheel turns.
 function farPicture(view, ratio) {
   const key = `${iso.sceneId}|far|${ratio}`;
-  if (iso.far?.key !== key) iso.far = newPicture(view, FAR_UNIT, ratio, FAR_TILE, key, { lit: false, most: Infinity });
+  if (iso.far?.key !== key) iso.far = newPicture(view, FAR_UNIT, ratio, FAR_TILE, key, { lit: false });
   return iso.far;
 }
 
@@ -1729,7 +1733,6 @@ function drawTile(room, tx, ty) {
     const y1 = box.maxV * unit - top;
     return x1 + margin >= tx * size && x0 - margin <= (tx + 1) * size && y1 + margin >= ty * size && y0 - margin <= (ty + 1) * size;
   };
-  const cellReaches = (x, y, margin) => reaches(uvBox(x, y, x + 1, y + 1, 1), margin);
   flat();
 
   // The floor. Each cell's stretch is worked out once for the scene, since every tile asks about every cell.
@@ -1871,7 +1874,7 @@ function drawTile(room, tx, ty) {
 }
 
 // A tile of the picture, drawn now if it hasn't been, and rasterised at once, so that the time it takes is counted
-// in this frame and not in some later one. The oldest go once there are too many.
+// in this frame and not in some later one.
 function tileOf(room, tx, ty) {
   const key = `${tx},${ty}`;
   let tile = room.tiles.get(key);
@@ -1879,18 +1882,21 @@ function tileOf(room, tx, ty) {
   tile = drawTile(room, tx, ty);
   tile.getContext("2d").getImageData(0, 0, 1, 1);
   room.tiles.set(key, tile);
-  room.drawnOrder.push(key);
-  while (room.drawnOrder.length > room.most) room.tiles.delete(room.drawnOrder.shift());
   return tile;
 }
 
-// The first tile of a picture that hasn't been drawn, or null once they all have.
-function nextMissing(room) {
-  if (room.tiles.size >= room.cols * room.rows) return null;
+// The tile of a picture still to be drawn that's nearest a point, in tiles, or null once they all have been.
+function nearestMissing(room, cx, cy) {
+  if (room.tiles.size >= room.total) return null;
+  let best = null;
   for (let ty = 0; ty < room.rows; ty += 1) {
-    for (let tx = 0; tx < room.cols; tx += 1) if (!room.tiles.has(`${tx},${ty}`)) return [tx, ty];
+    for (let tx = 0; tx < room.cols; tx += 1) {
+      if (room.tiles.has(`${tx},${ty}`)) continue;
+      const far = (tx + 0.5 - cx) ** 2 + (ty + 0.5 - cy) ** 2;
+      if (!best || far < best.far) best = { tx, ty, far };
+    }
   }
-  return null;
+  return best;
 }
 
 // Where a picture's tiles go on the canvas, at a scale, and which of them are in view.
@@ -1906,31 +1912,29 @@ function layoutOf(one, scale, ox, oy, ratio, canvasWidth, canvasHeight) {
     lastX: Math.min(one.cols - 1, Math.floor((canvasWidth - baseX) / step)),
     firstY: Math.max(0, Math.floor(-baseY / step)),
     lastY: Math.min(one.rows - 1, Math.floor((canvasHeight - baseY) / step)),
+    middleX: (canvasWidth / 2 - baseX) / step,
+    middleY: (canvasHeight / 2 - baseY) / step,
   };
 }
 
-// The still picture onto the canvas. The tiles in view are drawn as they're needed, as many a frame as the frame has
-// time for, so that nothing waits on them, and until each is drawn the picture at the size before shows in its place,
-// scaled, with the whole level's small picture under that: the level never goes blank. While the wheel turns, nothing
-// is drawn afresh, and the picture there is shows scaled, over the small one. With a moment to spare, the small
-// picture is finished, and then one more tile round the edge of the view, so that walking doesn't wait either.
+// The still picture onto the canvas, scaled to the size the view is at. The tiles in view are drawn as they're needed,
+// as many a frame as the frame has time for, and until each is drawn the picture before shows in its place, with the
+// whole level's small picture under that: the level never goes blank. With time to spare in a frame, the small
+// picture is finished and then the rest of the level, nearest the view first, until the whole of it is drawn.
 function drawStill(ctx, room, far, ox, oy, ratio, canvasWidth, canvasHeight, now) {
-  const scale = room.scale ?? 1;
-  const unit = room.unit * scale;
+  const { unit } = iso;
+  const scale = unit / room.unit;
   const place = (one, s) => layoutOf(one, s, ox, oy, ratio, canvasWidth, canvasHeight);
   // Draws a picture's tiles in view, scaled, drawing missing ones only while may() allows. True when any is missing.
-  const paint = (one, s, may, onMissing = null) => {
+  const paint = (one, s, may) => {
     const { step, baseX, baseY, firstX, lastX, firstY, lastY } = place(one, s);
     let missing = false;
     for (let ty = firstY; ty <= lastY; ty += 1) {
       for (let tx = firstX; tx <= lastX; tx += 1) {
         const tile = one.tiles.get(`${tx},${ty}`) ?? (may() ? tileOf(one, tx, ty) : null);
-        // Scaled tiles overlap the next by a pixel, so no hairline shows between them while the wheel turns.
+        // Scaled tiles overlap the next by a pixel, so no hairline shows between them.
         if (tile) ctx.drawImage(tile, baseX + tx * step, baseY + ty * step, step + (s === 1 ? 0 : 1), step + (s === 1 ? 0 : 1));
-        else {
-          missing = true;
-          onMissing?.(baseX + tx * step, baseY + ty * step, step);
-        }
+        else missing = true;
       }
     }
     return missing;
@@ -1938,14 +1942,15 @@ function drawStill(ctx, room, far, ox, oy, ratio, canvasWidth, canvasHeight, now
   const never = () => false;
   // Whether any tile in view of a picture, at a scale, is still to be drawn.
   const anyMissing = (one, s) => {
+    if (one.tiles.size >= one.total) return false;
     const { firstX, lastX, firstY, lastY } = place(one, s);
     for (let ty = firstY; ty <= lastY; ty += 1) for (let tx = firstX; tx <= lastX; tx += 1) if (!one.tiles.has(`${tx},${ty}`)) return true;
     return false;
   };
-  // Under whatever isn't drawn yet: the small picture, and the picture at the size before over it.
+  // Under whatever isn't drawn yet: the small picture, and the picture before over it.
   if (anyMissing(room, scale)) {
     if (far.tiles.size) paint(far, unit / far.unit, never);
-    const before = room.scale ? null : iso.rooms.find((one) => one !== room && one.scene === room.scene && one.ratio === room.ratio);
+    const before = iso.rooms.find((one) => one !== room && one.level === room.level && one.ratio === room.ratio);
     if (before) paint(before, unit / before.unit, never);
   }
   const deadline = now + (iso.youMoving ? TILE_TIME.walking : TILE_TIME.still);
@@ -1954,31 +1959,21 @@ function drawStill(ctx, room, far, ox, oy, ratio, canvasWidth, canvasHeight, now
     drawn += 1;
     return drawn === 1 || performance.now() < deadline;
   };
-  const missing = paint(room, scale, room.scale ? never : may);
-  if (missing) {
+  if (paint(room, scale, may)) {
     iso.redraw = true;
     return;
   }
-  if (room.scale) return;
-  // The small picture first, as many tiles as there's time for, then one round the edge of the view.
-  let next = nextMissing(far);
-  if (next) {
+  // The small picture, then the rest of the level, nearest the view first.
+  for (const one of [far, room]) {
+    const { middleX, middleY } = place(one, unit / one.unit);
+    let next = nearestMissing(one, middleX, middleY);
+    if (!next) continue;
     while (next && may()) {
-      tileOf(far, next[0], next[1]);
-      next = nextMissing(far);
+      tileOf(one, next.tx, next.ty);
+      next = nearestMissing(one, middleX, middleY);
     }
     iso.redraw = true;
     return;
-  }
-  const { firstX, lastX, firstY, lastY } = place(room, 1);
-  for (let ty = Math.max(0, firstY - 1); ty <= Math.min(room.rows - 1, lastY + 1); ty += 1) {
-    for (let tx = Math.max(0, firstX - 1); tx <= Math.min(room.cols - 1, lastX + 1); tx += 1) {
-      if (ty >= firstY && ty <= lastY && tx >= firstX && tx <= lastX) continue;
-      if (room.tiles.has(`${tx},${ty}`)) continue;
-      tileOf(room, tx, ty);
-      iso.redraw = true;
-      return;
-    }
   }
 }
 
@@ -2169,10 +2164,9 @@ const iso = {
   clear: null,
   nudge: { x: 0, y: 0 },
   drawnNudge: { x: 0, y: 0 },
-  // Until when the wheel counts as still turning: while it is, the picture there is shows scaled, and the sharp one
-  // is drawn once it stops, since drawing a whole deck afresh takes a moment.
-  zoomUntil: 0,
-  // The last pictures drawn, with their lightmaps and materials, so that zooming back to a size is instant.
+  // The size the level is shown at with the wheel at rest, which is the size its whole picture is drawn at.
+  restUnit: 0,
+  // The whole level's picture for the scene, and the one before it while this one still has gaps.
   rooms: [],
   // The whole level small, under whatever hasn't been drawn yet at the size wanted.
   far: null,
@@ -2190,9 +2184,10 @@ function useScene(view) {
   iso.scene = buildScene(view);
   iso.sceneId = id;
   iso.room = null;
+  // On the same level, the picture there is stays to show under the new one's gaps; another level starts afresh.
+  if (sameRoom) return;
   iso.rooms = [];
   iso.far = null;
-  if (sameRoom) return;
   iso.camera = null;
   iso.you = null;
   iso.shown = new Map();
@@ -2278,7 +2273,10 @@ function aim(width, height, dt) {
   const spanU = bounds.maxU - bounds.minU;
   const spanV = bounds.maxV - bounds.minV;
   const fit = Math.min(width / (spanU + 1), height / (spanV + 1));
-  const unit = Math.round(Math.min(SIZES.largest, Math.max(SIZES.smallest, fit)) * iso.zoom);
+  // The size with the wheel at rest, which the whole level's picture is drawn at, and the size the wheel has it at.
+  const rest = Math.round(Math.min(SIZES.largest, Math.max(SIZES.smallest, fit)));
+  iso.restUnit = rest;
+  const unit = Math.round(rest * iso.zoom);
   iso.unit = unit;
   const { wx, wy } = cellCentre(iso.you.x, iso.you.y);
   let here = project(wx, wy);
@@ -2478,10 +2476,10 @@ function draw(now, dt) {
   const ctx = canvas.getContext("2d");
   const { ox, oy } = aim(width, height, dt);
   const { unit } = iso;
-  const room = stillPicture(view, ratio, now);
+  const room = stillPicture(view, ratio);
   const far = farPicture(view, ratio);
-  // A picture drawn at another size, while the wheel turns, is scaled to this one.
-  const scale = room.scale ?? 1;
+  // The whole level's picture, scaled to the size the view is at.
+  const scale = unit / room.unit;
   const painter = painterFor(ctx, ratio, unit, ox, oy);
   const { at } = painter;
   // Whether a point, in the canvas's own measure, is on the screen or near enough to show: what's drawn every frame
@@ -2701,17 +2699,12 @@ function loop(now) {
   if (!view) return;
   iso.calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   useScene(view);
-  // The wheel has stopped turning: the picture is drawn sharp at the new size, once.
-  if (iso.zoomUntil && now >= iso.zoomUntil) {
-    iso.zoomUntil = 0;
-    iso.redraw = true;
-  }
   const moving = moveEveryone(view, dt);
   const cameraMoving = iso.camera && iso.lastGoal !== `${Math.round(iso.camera.u * 50)},${Math.round(iso.camera.v * 50)}`;
   iso.lastGoal = iso.camera ? `${Math.round(iso.camera.u * 50)},${Math.round(iso.camera.v * 50)}` : "";
   // Nothing going on: just enough to keep the lights and the water moving.
   // Walking, every frame there is; anything else moving, thirty a second; nothing going on, eight.
-  const every = iso.youMoving ? 0 : moving || cameraMoving || iso.redraw || now < iso.zoomUntil || now - iso.fadeFrom < 320 ? 1000 / 30 : 1000 / 8;
+  const every = iso.youMoving ? 0 : moving || cameraMoving || iso.redraw || now - iso.fadeFrom < 320 ? 1000 / 30 : 1000 / 8;
   if (now - iso.lastDraw < every) return;
   const since = now - iso.lastDraw;
   iso.lastDraw = now;
@@ -2797,8 +2790,6 @@ function onContext(event) {
 function onWheel(event) {
   event.preventDefault();
   iso.zoom = Math.min(ZOOMS.largest, Math.max(ZOOMS.smallest, iso.zoom * (event.deltaY < 0 ? 1.1 : 0.9)));
-  // The wheel counts as turning for a moment yet, so one gesture draws the picture afresh once, at the end.
-  iso.zoomUntil = performance.now() + 260;
   iso.redraw = true;
 }
 
