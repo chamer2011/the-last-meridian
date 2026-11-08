@@ -17,7 +17,7 @@ const DAIS_HEIGHT = 0.22;
 const AMBIENT_BOOST = 1.6;
 const SIZES = { smallest: 46, largest: 84 };
 // The most pixels the picture of a level is drawn at, so a whole deck doesn't ask too much of a computer.
-const MOST_PICTURE = 24e6;
+
 const ZOOMS = { smallest: 0.55, largest: 1.7 };
 const MOST_TEXTURES = 300;
 const FONT = '"Cascadia Mono", Consolas, "Lucida Console", "Courier New", monospace';
@@ -1405,10 +1405,11 @@ function drawPart(painter, thing) {
 
 // What moves on a part: a watching camera's red light, a ringing speaker, a screen.
 function drawPartLights(painter, now, view) {
-  const { ctx, unit } = painter;
+  const { ctx, at, unit } = painter;
   for (const thing of view.things ?? []) {
     const part = thing.part;
     if (!part || !part.works) continue;
+    if (!painter.seen?.(at((thing.x + 0.5) * CELL_WIDTH, thing.y + 0.5, 1), unit * 2)) continue;
     const look = partLook(thing);
     const floor = part.mount === "floor";
     const z0 = floor ? Math.min(0.9, look.z0 * 0.6 + 0.12) : look.z0;
@@ -1526,7 +1527,8 @@ function vivid(hex) {
 // How much light reaches each part of the room. It's multiplied over everything, moving or not. The
 // second picture is just the pools of light, which go on top again, faintly, as a colored haze.
 function drawLightmap(scene, unit, left, top, width, height) {
-  const by = 0.25;
+  // A quarter the size of the picture, and smaller still for a whole deck, since it's all soft light anyway.
+  const by = Math.min(0.25, Math.sqrt(LIGHTMAP_PIXELS / Math.max(1, width * height)));
   const canvas = newCanvas(width * by, height * by);
   const ctx = canvas.getContext("2d");
   const haze = newCanvas(width * by, height * by);
@@ -1579,18 +1581,57 @@ function drawLightmap(scene, unit, left, top, width, height) {
 // Everything that doesn't move, drawn once, and in tiles: a whole deck is far too big to draw every time the size
 // changes, so only the tiles in view are drawn, as they come into view, and kept. The last two sizes are kept whole,
 // so that zooming back is instant.
-// Tiles are smaller when the view's zoomed out, so that each holds about the same amount to draw.
-const TILE = { largest: 512, smallest: 256 };
-const tileSizeFor = (unit) => Math.min(TILE.largest, Math.max(TILE.smallest, Math.round((unit * 8) / 64) * 64));
+// Small tiles, so that each is quick to draw and a frame can always fit one or two in.
+const TILE = 256;
+const tileSizeFor = () => TILE;
+// The most pixels in a picture's lightmap: it's soft light, so it needn't be sharp.
+const LIGHTMAP_PIXELS = 500000;
 const KEPT_PICTURES = 2;
 const MOST_TILES = 240;
+// The whole level small: the size it's drawn at, and its little tiles.
+const FAR_UNIT = 14;
+const FAR_TILE = 128;
 // How long one frame may spend drawing tiles before the rest wait for the next.
 const TILE_TIME = { walking: 8, still: 16 };
 
-// The still picture of the level at this size: where it sits, in the canvas's own measure, and the tiles of it drawn
-// so far. Nothing is drawn here; the tiles are, as they're needed.
+// A picture of the level at a size: where it sits, in the canvas's own measure, and the tiles of it drawn so far.
+// Nothing is drawn here; the tiles are, as they're needed.
+function newPicture(view, unit, ratio, tile, key, { lit = true, most = MOST_TILES } = {}) {
+  const { scene } = iso;
+  const { bounds } = scene;
+  const pad = unit;
+  const width = (bounds.maxU - bounds.minU) * unit + pad * 2;
+  const height = (bounds.maxV - bounds.minV) * unit + pad * 2;
+  const left = bounds.minU * unit - pad;
+  const top = bounds.minV * unit - pad;
+  // The materials are the same at every size, so they're made once for the scene.
+  if (iso.materialsFor?.scene !== iso.sceneId) iso.materialsFor = { scene: iso.sceneId, materials: materialsFor(scene) };
+  const { materials } = iso.materialsFor;
+  return {
+    key,
+    scene: iso.sceneId,
+    ratio,
+    unit,
+    left,
+    top,
+    width,
+    height,
+    tile,
+    most,
+    cols: Math.ceil((width * ratio) / tile),
+    rows: Math.ceil((height * ratio) / tile),
+    tiles: new Map(),
+    drawnOrder: [],
+    labels: view.labels ?? [],
+    standing: standingOf(view, scene),
+    materials,
+    lightmap: lit ? drawLightmap(scene, unit, left, top, width, height) : null,
+  };
+}
+
+// The still picture at the size the view is drawn at now.
 function stillPicture(view, ratio, now = performance.now()) {
-  const { scene, unit } = iso;
+  const { unit } = iso;
   const key = `${iso.sceneId}|${unit}|${ratio}`;
   if (iso.room?.key === key) return iso.room;
   const kept = iso.rooms.find((one) => one.key === key);
@@ -1603,41 +1644,21 @@ function stillPicture(view, ratio, now = performance.now()) {
   // While the wheel's still turning, the picture already drawn is shown scaled to the new size, which costs nothing,
   // and the sharp one is drawn once the wheel has stopped.
   if (now < iso.zoomUntil && iso.room && iso.room.scene === iso.sceneId && iso.room.ratio === ratio) return { ...iso.room, scale: unit / iso.room.unit };
-  const { bounds } = scene;
-  const pad = unit;
-  const width = (bounds.maxU - bounds.minU) * unit + pad * 2;
-  const height = (bounds.maxV - bounds.minV) * unit + pad * 2;
-  const left = bounds.minU * unit - pad;
-  const top = bounds.minV * unit - pad;
-  // The materials are the same at every size, so they're made once for the scene.
-  if (iso.materialsFor?.scene !== iso.sceneId) iso.materialsFor = { scene: iso.sceneId, materials: materialsFor(scene) };
-  const { materials } = iso.materialsFor;
-  const tile = tileSizeFor(unit);
-  const room = {
-    key,
-    scene: iso.sceneId,
-    ratio,
-    unit,
-    left,
-    top,
-    width,
-    height,
-    tile,
-    cols: Math.ceil((width * ratio) / tile),
-    rows: Math.ceil((height * ratio) / tile),
-    tiles: new Map(),
-    drawnOrder: [],
-    labels: view.labels ?? [],
-    standing: standingOf(view, scene),
-    materials,
-    lightmap: drawLightmap(scene, unit, left, top, width, height),
-  };
-  iso.materials = materials;
+  const room = newPicture(view, unit, ratio, tileSizeFor(unit), key);
+  iso.materials = room.materials;
   iso.lightmap = room.lightmap;
   iso.room = room;
   iso.rooms.push(room);
   while (iso.rooms.length > KEPT_PICTURES) iso.rooms.shift();
   return room;
+}
+
+// The whole level small, in little tiles drawn when there's a moment to spare. It shows, scaled up, wherever the
+// picture at the size wanted hasn't been drawn yet, so the level never goes blank, however fast the wheel turns.
+function farPicture(view, ratio) {
+  const key = `${iso.sceneId}|far|${ratio}`;
+  if (iso.far?.key !== key) iso.far = newPicture(view, FAR_UNIT, ratio, FAR_TILE, key, { lit: false, most: Infinity });
+  return iso.far;
 }
 
 // The stretch of the picture, in units of the view, that a run of cells covers, from the floor up to a height.
@@ -1711,23 +1732,51 @@ function drawTile(room, tx, ty) {
   const cellReaches = (x, y, margin) => reaches(uvBox(x, y, x + 1, y + 1, 1), margin);
   flat();
 
-  // The floor.
+  // The floor. Each cell's stretch is worked out once for the scene, since every tile asks about every cell.
   const mainFloor = scene.ground.find((cell) => cell.kind === "floor")?.mark;
-  const ground = scene.ground.filter((cell) => cellReaches(cell.x, cell.y, unit * 0.8));
-  for (const cell of ground) {
+  scene.groundBoxes ??= scene.ground.map((cell) => uvBox(cell.x, cell.y, cell.x + 1, cell.y + 1, 1));
+  const ground = scene.ground.filter((cell, i) => reaches(scene.groundBoxes[i], unit * 0.8));
+  // All the cells with the same look are filled at once, through the texture laid as a pattern along the floor's own
+  // slant: a few fills for the tile instead of one for every cell, and no seams between them.
+  const quad = (cell) => {
     const x0 = cell.x * CELL_WIDTH;
     const x1 = x0 + CELL_WIDTH;
-    const corners = [at(x0, cell.y), at(x1, cell.y), at(x1, cell.y + 1), at(x0, cell.y + 1)];
+    ctx.moveTo(...at(x0, cell.y));
+    ctx.lineTo(...at(x1, cell.y));
+    ctx.lineTo(...at(x1, cell.y + 1));
+    ctx.lineTo(...at(x0, cell.y + 1));
+    ctx.closePath();
+  };
+  const byLook = new Map();
+  const dim = [];
+  for (const cell of ground) {
     if (cell.kind === "dim") {
-      polygon(ctx, corners, scaled(materials.floorColor, 0.28));
+      dim.push(cell);
       continue;
     }
-    polygon(ctx, corners, scaled(materials.floorColor, 0.7));
     const seed = hashOf(Math.floor(cell.x / 2), cell.y);
     const second = cell.kind === "floor" && cell.mark !== " " && cell.mark !== mainFloor;
     const image = second ? materials.floorAlt[Math.floor(seed * 2)] : materials.floor[Math.floor(seed * 4)];
-    plane(corners[0], corners[1], corners[3]);
-    ctx.drawImage(image, (cell.x % 2) * 64, 0, 64, 128, 0, 0, 1.01, 1.01);
+    if (!byLook.has(image)) byLook.set(image, []);
+    byLook.get(image).push(cell);
+  }
+  if (dim.length) {
+    ctx.beginPath();
+    for (const cell of dim) quad(cell);
+    ctx.fillStyle = scaled(materials.floorColor, 0.28);
+    ctx.fill();
+  }
+  for (const [image, cells] of byLook) {
+    ctx.beginPath();
+    for (const cell of cells) quad(cell);
+    ctx.fillStyle = scaled(materials.floorColor, 0.7);
+    ctx.fill();
+    // The texture covers two cells across and one down, so it's laid in those units, from the floor's own origin.
+    plane(at(0, 0), at(2 * CELL_WIDTH, 0), at(0, 1));
+    const pattern = ctx.createPattern(image, "repeat");
+    pattern.setTransform(new DOMMatrix().scale(1 / image.width, 1 / image.height));
+    ctx.fillStyle = pattern;
+    ctx.fill();
     flat();
   }
   // Where a floor stops at water or the dark, its edge shows.
@@ -1766,11 +1815,14 @@ function drawTile(room, tx, ty) {
   // Soft shadows around everything that stands on the floor, which is most of what makes it look solid. They're all
   // drawn sharp on one canvas a little bigger than the tile, and blurred once as they go on, which costs a fraction of
   // blurring each one, and keeps the blur at the tile's edges the same as in one whole picture.
+  // They're drawn and blurred at half size, since a blur has no sharp edges to lose, which costs a quarter as much.
   const blur = Math.max(2, unit * 0.14 * ratio);
   const reach = Math.ceil(blur * 3) + 2;
-  const shadow = newCanvas(TILE + reach * 2, TILE + reach * 2);
+  const half = 0.5;
+  const across = Math.ceil((TILE + reach * 2) * half);
+  const shadow = newCanvas(across, across);
   const sctx = shadow.getContext("2d");
-  const shadowPainter = painterFor(sctx, ratio, unit, ox + reach / ratio, oy + reach / ratio);
+  const shadowPainter = painterFor(sctx, ratio * half, unit, ox + reach / ratio, oy + reach / ratio);
   shadowPainter.flat();
   sctx.fillStyle = "#000";
   for (const block of scene.blocks) {
@@ -1784,12 +1836,14 @@ function drawTile(room, tx, ty) {
     sctx.closePath();
     sctx.fill();
   }
+  const soft = newCanvas(across, across);
+  const softCtx = soft.getContext("2d");
+  softCtx.filter = `blur(${blur * half}px)`;
+  softCtx.drawImage(shadow, 0, 0);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalCompositeOperation = "source-atop";
   ctx.globalAlpha = 0.82;
-  ctx.filter = `blur(${blur}px)`;
-  ctx.drawImage(shadow, -reach, -reach);
-  ctx.filter = "none";
+  ctx.drawImage(soft, -reach, -reach, across / half, across / half);
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
   flat();
@@ -1816,69 +1870,107 @@ function drawTile(room, tx, ty) {
   return canvas;
 }
 
-// A tile of the picture, drawn now if it hasn't been. The oldest go once there are too many.
+// A tile of the picture, drawn now if it hasn't been, and rasterised at once, so that the time it takes is counted
+// in this frame and not in some later one. The oldest go once there are too many.
 function tileOf(room, tx, ty) {
   const key = `${tx},${ty}`;
   let tile = room.tiles.get(key);
   if (tile) return tile;
   tile = drawTile(room, tx, ty);
+  tile.getContext("2d").getImageData(0, 0, 1, 1);
   room.tiles.set(key, tile);
   room.drawnOrder.push(key);
-  while (room.drawnOrder.length > MOST_TILES) room.tiles.delete(room.drawnOrder.shift());
+  while (room.drawnOrder.length > room.most) room.tiles.delete(room.drawnOrder.shift());
   return tile;
 }
 
-// The still picture onto the canvas: the tiles in view, drawn as they're needed, a few a frame so that nothing waits
-// on them, and one more round the edge each time so that walking doesn't wait either. Until every tile in view is
-// drawn, the picture at the size before shows underneath, scaled, so nothing's blank; and while the wheel turns, only
-// that scaled picture shows, and nothing is drawn afresh.
-function drawStill(ctx, room, ox, oy, ratio, canvasWidth, canvasHeight, now) {
-  // Where a picture's tiles go on the canvas, at a scale, and which of them are in view.
-  const layout = (one, scale) => {
-    const step = one.tile * scale;
-    const baseX = Math.round((ox + one.left * scale) * ratio);
-    const baseY = Math.round((oy + one.top * scale) * ratio);
-    return {
-      step,
-      baseX,
-      baseY,
-      firstX: Math.max(0, Math.floor(-baseX / step)),
-      lastX: Math.min(one.cols - 1, Math.floor((canvasWidth - baseX) / step)),
-      firstY: Math.max(0, Math.floor(-baseY / step)),
-      lastY: Math.min(one.rows - 1, Math.floor((canvasHeight - baseY) / step)),
-    };
+// The first tile of a picture that hasn't been drawn, or null once they all have.
+function nextMissing(room) {
+  if (room.tiles.size >= room.cols * room.rows) return null;
+  for (let ty = 0; ty < room.rows; ty += 1) {
+    for (let tx = 0; tx < room.cols; tx += 1) if (!room.tiles.has(`${tx},${ty}`)) return [tx, ty];
+  }
+  return null;
+}
+
+// Where a picture's tiles go on the canvas, at a scale, and which of them are in view.
+function layoutOf(one, scale, ox, oy, ratio, canvasWidth, canvasHeight) {
+  const step = one.tile * scale;
+  const baseX = Math.round((ox + one.left * scale) * ratio);
+  const baseY = Math.round((oy + one.top * scale) * ratio);
+  return {
+    step,
+    baseX,
+    baseY,
+    firstX: Math.max(0, Math.floor(-baseX / step)),
+    lastX: Math.min(one.cols - 1, Math.floor((canvasWidth - baseX) / step)),
+    firstY: Math.max(0, Math.floor(-baseY / step)),
+    lastY: Math.min(one.rows - 1, Math.floor((canvasHeight - baseY) / step)),
   };
-  // Draws what's in view of a picture, drawing missing tiles only while may() says so. True when any is still missing.
-  const paint = (one, scale, may) => {
-    const { step, baseX, baseY, firstX, lastX, firstY, lastY } = layout(one, scale);
+}
+
+// The still picture onto the canvas. The tiles in view are drawn as they're needed, as many a frame as the frame has
+// time for, so that nothing waits on them, and until each is drawn the picture at the size before shows in its place,
+// scaled, with the whole level's small picture under that: the level never goes blank. While the wheel turns, nothing
+// is drawn afresh, and the picture there is shows scaled, over the small one. With a moment to spare, the small
+// picture is finished, and then one more tile round the edge of the view, so that walking doesn't wait either.
+function drawStill(ctx, room, far, ox, oy, ratio, canvasWidth, canvasHeight, now) {
+  const scale = room.scale ?? 1;
+  const unit = room.unit * scale;
+  const place = (one, s) => layoutOf(one, s, ox, oy, ratio, canvasWidth, canvasHeight);
+  // Draws a picture's tiles in view, scaled, drawing missing ones only while may() allows. True when any is missing.
+  const paint = (one, s, may, onMissing = null) => {
+    const { step, baseX, baseY, firstX, lastX, firstY, lastY } = place(one, s);
     let missing = false;
     for (let ty = firstY; ty <= lastY; ty += 1) {
       for (let tx = firstX; tx <= lastX; tx += 1) {
         const tile = one.tiles.get(`${tx},${ty}`) ?? (may() ? tileOf(one, tx, ty) : null);
-        if (tile) ctx.drawImage(tile, baseX + tx * step, baseY + ty * step, step, step);
-        else missing = true;
+        // Scaled tiles overlap the next by a pixel, so no hairline shows between them while the wheel turns.
+        if (tile) ctx.drawImage(tile, baseX + tx * step, baseY + ty * step, step + (s === 1 ? 0 : 1), step + (s === 1 ? 0 : 1));
+        else {
+          missing = true;
+          onMissing?.(baseX + tx * step, baseY + ty * step, step);
+        }
       }
     }
     return missing;
   };
-  if (room.scale) {
-    paint(room, room.scale, () => false);
-    return;
+  const never = () => false;
+  // Whether any tile in view of a picture, at a scale, is still to be drawn.
+  const anyMissing = (one, s) => {
+    const { firstX, lastX, firstY, lastY } = place(one, s);
+    for (let ty = firstY; ty <= lastY; ty += 1) for (let tx = firstX; tx <= lastX; tx += 1) if (!one.tiles.has(`${tx},${ty}`)) return true;
+    return false;
+  };
+  // Under whatever isn't drawn yet: the small picture, and the picture at the size before over it.
+  if (anyMissing(room, scale)) {
+    if (far.tiles.size) paint(far, unit / far.unit, never);
+    const before = room.scale ? null : iso.rooms.find((one) => one !== room && one.scene === room.scene && one.ratio === room.ratio);
+    if (before) paint(before, unit / before.unit, never);
   }
-  const before = iso.rooms.find((one) => one !== room && one.scene === room.scene && one.ratio === room.ratio);
-  if (before && paint(room, 1, () => false)) paint(before, room.unit / before.unit, () => false);
   const deadline = now + (iso.youMoving ? TILE_TIME.walking : TILE_TIME.still);
   let drawn = 0;
-  const missing = paint(room, 1, () => {
+  const may = () => {
     drawn += 1;
     return drawn === 1 || performance.now() < deadline;
-  });
+  };
+  const missing = paint(room, scale, room.scale ? never : may);
   if (missing) {
     iso.redraw = true;
     return;
   }
-  // One tile round the edge, when there's one still to draw.
-  const { firstX, lastX, firstY, lastY } = layout(room, 1);
+  if (room.scale) return;
+  // The small picture first, as many tiles as there's time for, then one round the edge of the view.
+  let next = nextMissing(far);
+  if (next) {
+    while (next && may()) {
+      tileOf(far, next[0], next[1]);
+      next = nextMissing(far);
+    }
+    iso.redraw = true;
+    return;
+  }
+  const { firstX, lastX, firstY, lastY } = place(room, 1);
   for (let ty = Math.max(0, firstY - 1); ty <= Math.min(room.rows - 1, lastY + 1); ty += 1) {
     for (let tx = Math.max(0, firstX - 1); tx <= Math.min(room.cols - 1, lastX + 1); tx += 1) {
       if (ty >= firstY && ty <= lastY && tx >= firstX && tx <= lastX) continue;
@@ -2082,6 +2174,10 @@ const iso = {
   zoomUntil: 0,
   // The last pictures drawn, with their lightmaps and materials, so that zooming back to a size is instant.
   rooms: [],
+  // The whole level small, under whatever hasn't been drawn yet at the size wanted.
+  far: null,
+  // The dark round the edges of the view, made once for its size.
+  vignette: null,
 };
 
 function useScene(view) {
@@ -2095,6 +2191,7 @@ function useScene(view) {
   iso.sceneId = id;
   iso.room = null;
   iso.rooms = [];
+  iso.far = null;
   if (sameRoom) return;
   iso.camera = null;
   iso.you = null;
@@ -2181,10 +2278,7 @@ function aim(width, height, dt) {
   const spanU = bounds.maxU - bounds.minU;
   const spanV = bounds.maxV - bounds.minV;
   const fit = Math.min(width / (spanU + 1), height / (spanV + 1));
-  // A whole deck is drawn once into one big picture, which is kept to a size every computer can hold.
-  const ratio = window.devicePixelRatio || 1;
-  const most = Math.floor(Math.sqrt(MOST_PICTURE / Math.max(1, (spanU + 2) * (spanV + 2))) / ratio);
-  const unit = Math.min(Math.max(SIZES.smallest, most), Math.round(Math.min(SIZES.largest, Math.max(SIZES.smallest, fit)) * iso.zoom));
+  const unit = Math.round(Math.min(SIZES.largest, Math.max(SIZES.smallest, fit)) * iso.zoom);
   iso.unit = unit;
   const { wx, wy } = cellCentre(iso.you.x, iso.you.y);
   let here = project(wx, wy);
@@ -2251,7 +2345,9 @@ function drawWater(painter, now) {
   for (const cell of scene.water) {
     const x0 = cell.x * CELL_WIDTH;
     const x1 = x0 + CELL_WIDTH;
-    polygon(ctx, [at(x0, cell.y), at(x1, cell.y), at(x1, cell.y + 1), at(x0, cell.y + 1)], (Math.floor(cell.x / 2) + cell.y) % 2 ? deep : deeper);
+    const corner = at(x0, cell.y);
+    if (!painter.seen?.(corner, unit * 2)) continue;
+    polygon(ctx, [corner, at(x1, cell.y), at(x1, cell.y + 1), at(x0, cell.y + 1)], (Math.floor(cell.x / 2) + cell.y) % 2 ? deep : deeper);
     const swell = Math.sin(now / 900 + cell.seed * 40 + cell.x * 0.35 + cell.y * 0.8);
     if (swell > 0.45) {
       const c = at((cell.x + 0.5) * CELL_WIDTH, cell.y + 0.5);
@@ -2273,8 +2369,10 @@ function drawGlows(painter, now) {
   for (const cell of scene.glows) {
     const x0 = cell.x * CELL_WIDTH;
     const x1 = x0 + CELL_WIDTH;
+    const corner = at(x0, cell.y);
+    if (!painter.seen?.(corner, painter.unit * 2)) continue;
     const flicker = iso.calm ? 0.5 : 0.5 + 0.5 * Math.sin(now / (240 + cell.seed * 420) + cell.seed * 30);
-    polygon(ctx, [at(x0, cell.y), at(x1, cell.y), at(x1, cell.y + 1), at(x0, cell.y + 1)], mix(scaled(fire, 0.55), scaled(fire, 1.25), flicker));
+    polygon(ctx, [corner, at(x1, cell.y), at(x1, cell.y + 1), at(x0, cell.y + 1)], mix(scaled(fire, 0.55), scaled(fire, 1.25), flicker));
   }
 }
 
@@ -2296,6 +2394,7 @@ function drawShining(painter, now) {
   const { scene } = iso;
   ctx.globalCompositeOperation = "lighter";
   for (const fixture of scene.fixtures) {
+    if (!painter.seen?.(at((fixture.x + 0.5) * CELL_WIDTH, fixture.y + 0.5, 1), unit * 2)) continue;
     const { middle } = fixtureCorners(painter, fixture);
     const size = unit * 0.9;
     ctx.drawImage(glowSprite(vivid(fixture.color)), middle[0] - size / 2, middle[1] - size / 2, size, size);
@@ -2305,6 +2404,7 @@ function drawShining(painter, now) {
   for (const cell of scene.glows) {
     if (cell.seed < 0.5) continue;
     const [x, y] = at((cell.x + 0.5) * CELL_WIDTH, cell.y + 0.5, 0.1);
+    if (!painter.seen?.([x, y], unit * 2)) continue;
     const size = unit * 1.1;
     ctx.drawImage(flame, x - size / 2, y - size / 2, size, size);
   }
@@ -2317,6 +2417,7 @@ function drawSparks(painter, now) {
   const { scene } = iso;
   for (const spark of scene.sparks) {
     const c = at((spark.x + spark.seed) * CELL_WIDTH, spark.y + 1 - spark.seed);
+    if (!painter.seen?.(c, unit)) continue;
     const glow = 0.45 + 0.55 * Math.abs(Math.sin(now / 1400 + spark.seed * 30));
     ctx.fillStyle = see(scene.colors.writing, glow);
     const size = spark.mark === "*" ? unit * 0.05 : unit * 0.028;
@@ -2331,10 +2432,28 @@ function drawLights(painter, now) {
   for (const block of scene.blocks) {
     if (block.style !== "machine" || block.seed < 0.55) continue;
     const middle = at((block.x + 0.5) * CELL_WIDTH, block.y + 0.5, block.h);
+    if (!painter.seen?.(middle, unit)) continue;
     const lit = 0.3 + 0.7 * Math.abs(Math.sin(now / (500 + block.seed * 1500) + block.seed * 20));
     ctx.fillStyle = see(block.seed > 0.8 ? "#f0c060" : scene.look.glow, lit);
     ctx.fillRect(middle[0] - unit * 0.02, middle[1] - unit * 0.012, unit * 0.04, unit * 0.024);
   }
+}
+
+// The dark round the edges of the view, made once for its size.
+function vignetteFor(width, height, ratio) {
+  const key = `${width}x${height}@${ratio}`;
+  if (iso.vignette?.key !== key) {
+    const canvas = newCanvas(width * ratio, height * ratio);
+    const vctx = canvas.getContext("2d");
+    vctx.scale(ratio, ratio);
+    const edges = vctx.createRadialGradient(width / 2, height / 2, Math.min(width, height) * 0.45, width / 2, height / 2, Math.max(width, height) * 0.72);
+    edges.addColorStop(0, "rgba(0,0,0,0)");
+    edges.addColorStop(1, "rgba(0,0,0,.3)");
+    vctx.fillStyle = edges;
+    vctx.fillRect(0, 0, width, height);
+    iso.vignette = { key, canvas };
+  }
+  return iso.vignette.canvas;
 }
 
 function chip(ctx, text, x, y, color, { background = "rgba(4,6,5,.62)", size = 11, width, height }) {
@@ -2360,10 +2479,14 @@ function draw(now, dt) {
   const { ox, oy } = aim(width, height, dt);
   const { unit } = iso;
   const room = stillPicture(view, ratio, now);
+  const far = farPicture(view, ratio);
   // A picture drawn at another size, while the wheel turns, is scaled to this one.
   const scale = room.scale ?? 1;
   const painter = painterFor(ctx, ratio, unit, ox, oy);
   const { at } = painter;
+  // Whether a point, in the canvas's own measure, is on the screen or near enough to show: what's drawn every frame
+  // is only drawn where it can be seen, which on a deck leaves most of it out.
+  painter.seen = (point, margin = unit) => point[0] > -margin && point[0] < width + margin && point[1] > -margin && point[1] < height + margin;
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;
@@ -2376,7 +2499,7 @@ function draw(now, dt) {
   drawSparks(painter, now);
   drawGlows(painter, now);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  drawStill(ctx, room, ox, oy, ratio, canvas.width, canvas.height, now);
+  drawStill(ctx, room, far, ox, oy, ratio, canvas.width, canvas.height, now);
   painter.flat();
   drawLights(painter, now);
   drawPartLights(painter, now, view);
@@ -2446,19 +2569,20 @@ function draw(now, dt) {
   ctx.drawImage(iso.lightmap.haze, ox + room.left * scale, oy + room.top * scale, room.width * scale, room.height * scale);
   ctx.globalAlpha = 1;
   drawShining(painter, now);
-  // The player can always see a little way around themselves.
+  // The player can always see a little way around themselves: a soft glow made once, drawn over them, rather than a
+  // gradient laid over the whole screen every frame.
   ctx.globalCompositeOperation = "overlay";
-  const lantern = ctx.createRadialGradient(youX, youY - unit * 0.3, 0, youX, youY - unit * 0.3, unit * 3.2);
-  lantern.addColorStop(0, "rgba(255,240,215,.42)");
-  lantern.addColorStop(1, "rgba(255,240,215,0)");
-  ctx.fillStyle = lantern;
-  ctx.fillRect(0, 0, width, height);
+  const lantern = madeOnce("lantern", (lctx, size) => {
+    const glow = lctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    glow.addColorStop(0, "rgba(255,240,215,.42)");
+    glow.addColorStop(1, "rgba(255,240,215,0)");
+    lctx.fillStyle = glow;
+    lctx.fillRect(0, 0, size, size);
+  });
+  const reach = unit * 3.2;
+  ctx.drawImage(lantern, youX - reach, youY - unit * 0.3 - reach, reach * 2, reach * 2);
   ctx.globalCompositeOperation = "source-over";
-  const edges = ctx.createRadialGradient(width / 2, height / 2, Math.min(width, height) * 0.45, width / 2, height / 2, Math.max(width, height) * 0.72);
-  edges.addColorStop(0, "rgba(0,0,0,0)");
-  edges.addColorStop(1, "rgba(0,0,0,.3)");
-  ctx.fillStyle = edges;
-  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(vignetteFor(width, height, ratio), 0, 0, width, height);
 
   // Bad air hangs in the room, and a ringing alarm washes it red.
   const here = view.room;
