@@ -1576,27 +1576,145 @@ function drawLightmap(scene, unit, left, top, width, height) {
   return { canvas, haze };
 }
 
-// Everything that doesn't move, drawn once. It's far more detail than could be drawn every time.
-function drawRoom(view, ratio) {
+// Everything that doesn't move, drawn once, and in tiles: a whole deck is far too big to draw every time the size
+// changes, so only the tiles in view are drawn, as they come into view, and kept. The last two sizes are kept whole,
+// so that zooming back is instant.
+// Tiles are smaller when the view's zoomed out, so that each holds about the same amount to draw.
+const TILE = { largest: 512, smallest: 256 };
+const tileSizeFor = (unit) => Math.min(TILE.largest, Math.max(TILE.smallest, Math.round((unit * 8) / 64) * 64));
+const KEPT_PICTURES = 2;
+const MOST_TILES = 240;
+// How long one frame may spend drawing tiles before the rest wait for the next.
+const TILE_TIME = { walking: 8, still: 16 };
+
+// The still picture of the level at this size: where it sits, in the canvas's own measure, and the tiles of it drawn
+// so far. Nothing is drawn here; the tiles are, as they're needed.
+function stillPicture(view, ratio, now = performance.now()) {
   const { scene, unit } = iso;
   const key = `${iso.sceneId}|${unit}|${ratio}`;
   if (iso.room?.key === key) return iso.room;
+  const kept = iso.rooms.find((one) => one.key === key);
+  if (kept) {
+    iso.room = kept;
+    iso.lightmap = kept.lightmap;
+    iso.materials = kept.materials;
+    return kept;
+  }
+  // While the wheel's still turning, the picture already drawn is shown scaled to the new size, which costs nothing,
+  // and the sharp one is drawn once the wheel has stopped.
+  if (now < iso.zoomUntil && iso.room && iso.room.scene === iso.sceneId && iso.room.ratio === ratio) return { ...iso.room, scale: unit / iso.room.unit };
   const { bounds } = scene;
   const pad = unit;
   const width = (bounds.maxU - bounds.minU) * unit + pad * 2;
   const height = (bounds.maxV - bounds.minV) * unit + pad * 2;
   const left = bounds.minU * unit - pad;
   const top = bounds.minV * unit - pad;
-  const canvas = newCanvas(width * ratio, height * ratio);
+  // The materials are the same at every size, so they're made once for the scene.
+  if (iso.materialsFor?.scene !== iso.sceneId) iso.materialsFor = { scene: iso.sceneId, materials: materialsFor(scene) };
+  const { materials } = iso.materialsFor;
+  const tile = tileSizeFor(unit);
+  const room = {
+    key,
+    scene: iso.sceneId,
+    ratio,
+    unit,
+    left,
+    top,
+    width,
+    height,
+    tile,
+    cols: Math.ceil((width * ratio) / tile),
+    rows: Math.ceil((height * ratio) / tile),
+    tiles: new Map(),
+    drawnOrder: [],
+    labels: view.labels ?? [],
+    standing: standingOf(view, scene),
+    materials,
+    lightmap: drawLightmap(scene, unit, left, top, width, height),
+  };
+  iso.materials = materials;
+  iso.lightmap = room.lightmap;
+  iso.room = room;
+  iso.rooms.push(room);
+  while (iso.rooms.length > KEPT_PICTURES) iso.rooms.shift();
+  return room;
+}
+
+// The stretch of the picture, in units of the view, that a run of cells covers, from the floor up to a height.
+function uvBox(x0, y0, x1, y1, z = 0) {
+  const box = { minU: Infinity, maxU: -Infinity, minV: Infinity, maxV: -Infinity };
+  for (const [wx, wy] of [[x0 * CELL_WIDTH, y0], [x1 * CELL_WIDTH, y0], [x1 * CELL_WIDTH, y1], [x0 * CELL_WIDTH, y1]]) {
+    for (const zz of z ? [0, z] : [0]) {
+      const { u, v } = project(wx, wy, zz);
+      box.minU = Math.min(box.minU, u);
+      box.maxU = Math.max(box.maxU, u);
+      box.minV = Math.min(box.minV, v);
+      box.maxV = Math.max(box.maxV, v);
+    }
+  }
+  return box;
+}
+
+// Everything that stands up, from the back of the room to the front, each with the stretch of the picture it covers.
+function standingOf(view, scene) {
+  const standing = scene.blocks.map((block) => ({ ...block, box: block.span, tall: false }));
+  for (const thing of view.things) {
+    const { wx, wy } = cellCentre(thing.x, thing.y);
+    standing.push({ type: "thing", thing, depth: wx + wy, box: uvBox(thing.x, thing.y, thing.x + 1, thing.y + 1, 2.5), tall: true });
+  }
+  for (const exit of view.exits) {
+    const { wx, wy } = cellCentre(exit.x, exit.y);
+    const tallAt = (x, y) => (scene.heights[y]?.[x] ?? 0) > 1;
+    const along = tallAt(exit.x - 1, exit.y) || tallAt(exit.x + 1, exit.y) ? "x" : "y";
+    const tall = tallAt(exit.x - 1, exit.y) || tallAt(exit.x + 1, exit.y) || tallAt(exit.x, exit.y - 1) || tallAt(exit.x, exit.y + 1);
+    standing.push({ type: "door", exit, along, tall, depth: wx + wy - 0.4, box: uvBox(exit.x - 1, exit.y - 1, exit.x + 2, exit.y + 2, 3), wide: true });
+  }
+  for (const run of scene.runs) {
+    if (run.on === "wall" || run.on === "roof") {
+      const h = scene.heights[run.y][run.x];
+      standing.push({ type: "words", run, depth: (run.x + run.length) * CELL_WIDTH + run.y + 1, box: uvBox(run.x, run.y, run.x + run.length, run.y + 1, h + 1.5), wide: true });
+    }
+  }
+  for (const cell of scene.junk) {
+    const { wx, wy } = cellCentre(cell.x, cell.y);
+    standing.push({ type: "junk", cell, depth: wx + wy, box: uvBox(cell.x, cell.y, cell.x + 1, cell.y + 1, 1) });
+  }
+  for (const fixture of scene.fixtures) {
+    const { wx, wy } = cellCentre(fixture.x, fixture.y);
+    standing.push({ type: "fixture", fixture, depth: wx + wy + 0.01, box: uvBox(fixture.x - 1, fixture.y - 1, fixture.x + 2, fixture.y + 2, 3), wide: true });
+  }
+  standing.sort((a, b) => (a.frontDepth ?? a.depth) - (b.frontDepth ?? b.depth));
+  return standing;
+}
+
+// One tile of the still picture, drawn afresh: everything that reaches into it, in the same order as the whole picture
+// would be, so that the tiles join without a seam.
+function drawTile(room, tx, ty) {
+  const { scene } = iso;
+  const { unit, ratio, left, top, materials, tile: TILE } = room;
+  const canvas = newCanvas(TILE, TILE);
   const ctx = canvas.getContext("2d");
-  const painter = painterFor(ctx, ratio, unit, -left, -top);
+  const size = TILE / ratio;
+  const ox = -left - tx * size;
+  const oy = -top - ty * size;
+  const painter = painterFor(ctx, ratio, unit, ox, oy);
   const { at, plane, flat } = painter;
-  const materials = materialsFor(scene);
+  // Whether something reaches into this tile, with room round it for what hangs over the edge of its own stretch.
+  const reaches = (box, margin) => {
+    if (!box) return true;
+    const x0 = box.minU * unit - left;
+    const x1 = box.maxU * unit - left;
+    const y0 = box.minV * unit - top;
+    const y1 = box.maxV * unit - top;
+    return x1 + margin >= tx * size && x0 - margin <= (tx + 1) * size && y1 + margin >= ty * size && y0 - margin <= (ty + 1) * size;
+  };
+  const cellReaches = (x, y, margin) => reaches(uvBox(x, y, x + 1, y + 1, 1), margin);
   flat();
 
   // The floor.
   const mainFloor = scene.ground.find((cell) => cell.kind === "floor")?.mark;
-  for (const cell of scene.ground) {
+  const ground = scene.ground.filter((cell) => cellReaches(cell.x, cell.y, unit * 0.8));
+  for (const cell of ground) {
     const x0 = cell.x * CELL_WIDTH;
     const x1 = x0 + CELL_WIDTH;
     const corners = [at(x0, cell.y), at(x1, cell.y), at(x1, cell.y + 1), at(x0, cell.y + 1)];
@@ -1618,7 +1736,7 @@ function drawRoom(view, ratio) {
     return kind === undefined || kind === "water" || kind === "void" || kind === "spark";
   };
   const edge = scaled(materials.floorColor, 0.32);
-  for (const cell of scene.ground) {
+  for (const cell of ground) {
     const x0 = cell.x * CELL_WIDTH;
     const x1 = x0 + CELL_WIDTH;
     const y1 = cell.y + 1;
@@ -1626,7 +1744,7 @@ function drawRoom(view, ratio) {
     if (open(cell.x, cell.y + 1)) polygon(ctx, [at(x0, y1), at(x1, y1), at(x1, y1, -FLOOR_EDGE), at(x0, y1, -FLOOR_EDGE)], edge);
   }
   // Rubbish, and hazard paint at the doors.
-  for (const cell of scene.ground) {
+  for (const cell of ground) {
     if (cell.kind === "floor" && cell.seed > 0.84) drawLitter(painter, cell);
     if (cell.kind === "exit" || cell.kind === "door") {
       const x0 = cell.x * CELL_WIDTH;
@@ -1636,22 +1754,28 @@ function drawRoom(view, ratio) {
     }
   }
   const paint = mix(hexOr(scene.colors.writing, FALLBACK_COLORS.writing), "#c8c4b0", 0.5);
-  for (const label of view.labels ?? []) {
+  for (const label of room.labels) {
+    if (!reaches(uvBox(label.x, label.y, label.x + label.text.length, label.y + 1, 0.5), unit * 3)) continue;
     paintWords(painter, label.text, { at: at(label.x * CELL_WIDTH, label.y + 0.5), size: unit * 0.34, color: see(paint, 0.5) });
   }
   for (const run of scene.runs.filter((one) => one.on === "ground")) {
+    if (!reaches(uvBox(run.x, run.y, run.x + run.length, run.y + 1, 0.5), unit * 3)) continue;
     paintWords(painter, run.text, { at: at(run.x * CELL_WIDTH, run.y + 0.5), size: unit * 0.34, color: see(paint, 0.5) });
   }
 
-  // Soft shadows around everything that stands on the floor, which is most of what makes it look solid.
-  const shadow = newCanvas(canvas.width, canvas.height);
+  // Soft shadows around everything that stands on the floor, which is most of what makes it look solid. They're all
+  // drawn sharp on one canvas a little bigger than the tile, and blurred once as they go on, which costs a fraction of
+  // blurring each one, and keeps the blur at the tile's edges the same as in one whole picture.
+  const blur = Math.max(2, unit * 0.14 * ratio);
+  const reach = Math.ceil(blur * 3) + 2;
+  const shadow = newCanvas(TILE + reach * 2, TILE + reach * 2);
   const sctx = shadow.getContext("2d");
-  sctx.filter = `blur(${Math.max(2, unit * 0.14 * ratio)}px)`;
-  const shadowPainter = painterFor(sctx, ratio, unit, -left, -top);
+  const shadowPainter = painterFor(sctx, ratio, unit, ox + reach / ratio, oy + reach / ratio);
   shadowPainter.flat();
   sctx.fillStyle = "#000";
   for (const block of scene.blocks) {
     if (block.style === "plants" || block.style === "lamp" || block.wx !== undefined) continue;
+    if (!reaches(block.span, unit * 1.5)) continue;
     const x0 = block.x * CELL_WIDTH;
     const x1 = x0 + CELL_WIDTH;
     const grow = Math.min(0.28, block.h * 0.22);
@@ -1663,37 +1787,16 @@ function drawRoom(view, ratio) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalCompositeOperation = "source-atop";
   ctx.globalAlpha = 0.82;
-  ctx.drawImage(shadow, 0, 0);
+  ctx.filter = `blur(${blur}px)`;
+  ctx.drawImage(shadow, -reach, -reach);
+  ctx.filter = "none";
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
   flat();
 
   // Then everything that stands up, from the back of the room to the front.
-  const standing = [...scene.blocks];
-  for (const thing of view.things) {
-    const { wx, wy } = cellCentre(thing.x, thing.y);
-    standing.push({ type: "thing", thing, depth: wx + wy });
-  }
-  for (const exit of view.exits) {
-    const { wx, wy } = cellCentre(exit.x, exit.y);
-    const tallAt = (x, y) => (scene.heights[y]?.[x] ?? 0) > 1;
-    const along = tallAt(exit.x - 1, exit.y) || tallAt(exit.x + 1, exit.y) ? "x" : "y";
-    const tall = tallAt(exit.x - 1, exit.y) || tallAt(exit.x + 1, exit.y) || tallAt(exit.x, exit.y - 1) || tallAt(exit.x, exit.y + 1);
-    standing.push({ type: "door", exit, along, tall, depth: wx + wy - 0.4 });
-  }
-  for (const run of scene.runs) {
-    if (run.on === "wall" || run.on === "roof") standing.push({ type: "words", run, depth: (run.x + run.length) * CELL_WIDTH + run.y + 1 });
-  }
-  for (const cell of scene.junk) {
-    const { wx, wy } = cellCentre(cell.x, cell.y);
-    standing.push({ type: "junk", cell, depth: wx + wy });
-  }
-  for (const fixture of scene.fixtures) {
-    const { wx, wy } = cellCentre(fixture.x, fixture.y);
-    standing.push({ type: "fixture", fixture, depth: wx + wy + 0.01 });
-  }
-  standing.sort((a, b) => (a.frontDepth ?? a.depth) - (b.frontDepth ?? b.depth));
-  for (const item of standing) {
+  for (const item of room.standing) {
+    if (!reaches(item.box, item.wide ? unit * 2 : unit * 0.8)) continue;
     if (item.type === "block") drawBlock(painter, item, materials);
     else if (item.type === "junk") drawJunk(painter, item.cell);
     else if (item.type === "fixture") drawFixture(painter, item.fixture);
@@ -1710,11 +1813,81 @@ function drawRoom(view, ratio) {
       }
     }
   }
+  return canvas;
+}
 
-  iso.materials = materials;
-  iso.room = { key, canvas, left, top, width, height };
-  iso.lightmap = drawLightmap(scene, unit, left, top, width, height);
-  return iso.room;
+// A tile of the picture, drawn now if it hasn't been. The oldest go once there are too many.
+function tileOf(room, tx, ty) {
+  const key = `${tx},${ty}`;
+  let tile = room.tiles.get(key);
+  if (tile) return tile;
+  tile = drawTile(room, tx, ty);
+  room.tiles.set(key, tile);
+  room.drawnOrder.push(key);
+  while (room.drawnOrder.length > MOST_TILES) room.tiles.delete(room.drawnOrder.shift());
+  return tile;
+}
+
+// The still picture onto the canvas: the tiles in view, drawn as they're needed, a few a frame so that nothing waits
+// on them, and one more round the edge each time so that walking doesn't wait either. Until every tile in view is
+// drawn, the picture at the size before shows underneath, scaled, so nothing's blank; and while the wheel turns, only
+// that scaled picture shows, and nothing is drawn afresh.
+function drawStill(ctx, room, ox, oy, ratio, canvasWidth, canvasHeight, now) {
+  // Where a picture's tiles go on the canvas, at a scale, and which of them are in view.
+  const layout = (one, scale) => {
+    const step = one.tile * scale;
+    const baseX = Math.round((ox + one.left * scale) * ratio);
+    const baseY = Math.round((oy + one.top * scale) * ratio);
+    return {
+      step,
+      baseX,
+      baseY,
+      firstX: Math.max(0, Math.floor(-baseX / step)),
+      lastX: Math.min(one.cols - 1, Math.floor((canvasWidth - baseX) / step)),
+      firstY: Math.max(0, Math.floor(-baseY / step)),
+      lastY: Math.min(one.rows - 1, Math.floor((canvasHeight - baseY) / step)),
+    };
+  };
+  // Draws what's in view of a picture, drawing missing tiles only while may() says so. True when any is still missing.
+  const paint = (one, scale, may) => {
+    const { step, baseX, baseY, firstX, lastX, firstY, lastY } = layout(one, scale);
+    let missing = false;
+    for (let ty = firstY; ty <= lastY; ty += 1) {
+      for (let tx = firstX; tx <= lastX; tx += 1) {
+        const tile = one.tiles.get(`${tx},${ty}`) ?? (may() ? tileOf(one, tx, ty) : null);
+        if (tile) ctx.drawImage(tile, baseX + tx * step, baseY + ty * step, step, step);
+        else missing = true;
+      }
+    }
+    return missing;
+  };
+  if (room.scale) {
+    paint(room, room.scale, () => false);
+    return;
+  }
+  const before = iso.rooms.find((one) => one !== room && one.scene === room.scene && one.ratio === room.ratio);
+  if (before && paint(room, 1, () => false)) paint(before, room.unit / before.unit, () => false);
+  const deadline = now + (iso.youMoving ? TILE_TIME.walking : TILE_TIME.still);
+  let drawn = 0;
+  const missing = paint(room, 1, () => {
+    drawn += 1;
+    return drawn === 1 || performance.now() < deadline;
+  });
+  if (missing) {
+    iso.redraw = true;
+    return;
+  }
+  // One tile round the edge, when there's one still to draw.
+  const { firstX, lastX, firstY, lastY } = layout(room, 1);
+  for (let ty = Math.max(0, firstY - 1); ty <= Math.min(room.rows - 1, lastY + 1); ty += 1) {
+    for (let tx = Math.max(0, firstX - 1); tx <= Math.min(room.cols - 1, lastX + 1); tx += 1) {
+      if (ty >= firstY && ty <= lastY && tx >= firstX && tx <= lastX) continue;
+      if (room.tiles.has(`${tx},${ty}`)) continue;
+      tileOf(room, tx, ty);
+      iso.redraw = true;
+      return;
+    }
+  }
 }
 
 // ---- People -------------------------------------------------------------
@@ -1904,6 +2077,11 @@ const iso = {
   clear: null,
   nudge: { x: 0, y: 0 },
   drawnNudge: { x: 0, y: 0 },
+  // Until when the wheel counts as still turning: while it is, the picture there is shows scaled, and the sharp one
+  // is drawn once it stops, since drawing a whole deck afresh takes a moment.
+  zoomUntil: 0,
+  // The last pictures drawn, with their lightmaps and materials, so that zooming back to a size is instant.
+  rooms: [],
 };
 
 function useScene(view) {
@@ -1916,6 +2094,7 @@ function useScene(view) {
   iso.scene = buildScene(view);
   iso.sceneId = id;
   iso.room = null;
+  iso.rooms = [];
   if (sameRoom) return;
   iso.camera = null;
   iso.you = null;
@@ -2180,7 +2359,9 @@ function draw(now, dt) {
   const ctx = canvas.getContext("2d");
   const { ox, oy } = aim(width, height, dt);
   const { unit } = iso;
-  const room = drawRoom(view, ratio);
+  const room = stillPicture(view, ratio, now);
+  // A picture drawn at another size, while the wheel turns, is scaled to this one.
+  const scale = room.scale ?? 1;
   const painter = painterFor(ctx, ratio, unit, ox, oy);
   const { at } = painter;
 
@@ -2195,7 +2376,7 @@ function draw(now, dt) {
   drawSparks(painter, now);
   drawGlows(painter, now);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.drawImage(room.canvas, Math.round((ox + room.left) * ratio), Math.round((oy + room.top) * ratio));
+  drawStill(ctx, room, ox, oy, ratio, canvas.width, canvas.height, now);
   painter.flat();
   drawLights(painter, now);
   drawPartLights(painter, now, view);
@@ -2259,10 +2440,10 @@ function draw(now, dt) {
   const [youX, youY] = at(youAt.wx, youAt.wy);
   painter.flat();
   ctx.globalCompositeOperation = "multiply";
-  ctx.drawImage(iso.lightmap.canvas, ox + room.left, oy + room.top, room.width, room.height);
+  ctx.drawImage(iso.lightmap.canvas, ox + room.left * scale, oy + room.top * scale, room.width * scale, room.height * scale);
   ctx.globalCompositeOperation = "lighter";
   ctx.globalAlpha = 0.14;
-  ctx.drawImage(iso.lightmap.haze, ox + room.left, oy + room.top, room.width, room.height);
+  ctx.drawImage(iso.lightmap.haze, ox + room.left * scale, oy + room.top * scale, room.width * scale, room.height * scale);
   ctx.globalAlpha = 1;
   drawShining(painter, now);
   // The player can always see a little way around themselves.
@@ -2396,12 +2577,17 @@ function loop(now) {
   if (!view) return;
   iso.calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   useScene(view);
+  // The wheel has stopped turning: the picture is drawn sharp at the new size, once.
+  if (iso.zoomUntil && now >= iso.zoomUntil) {
+    iso.zoomUntil = 0;
+    iso.redraw = true;
+  }
   const moving = moveEveryone(view, dt);
   const cameraMoving = iso.camera && iso.lastGoal !== `${Math.round(iso.camera.u * 50)},${Math.round(iso.camera.v * 50)}`;
   iso.lastGoal = iso.camera ? `${Math.round(iso.camera.u * 50)},${Math.round(iso.camera.v * 50)}` : "";
   // Nothing going on: just enough to keep the lights and the water moving.
   // Walking, every frame there is; anything else moving, thirty a second; nothing going on, eight.
-  const every = iso.youMoving ? 0 : moving || cameraMoving || iso.redraw || now - iso.fadeFrom < 320 ? 1000 / 30 : 1000 / 8;
+  const every = iso.youMoving ? 0 : moving || cameraMoving || iso.redraw || now < iso.zoomUntil || now - iso.fadeFrom < 320 ? 1000 / 30 : 1000 / 8;
   if (now - iso.lastDraw < every) return;
   const since = now - iso.lastDraw;
   iso.lastDraw = now;
@@ -2487,6 +2673,8 @@ function onContext(event) {
 function onWheel(event) {
   event.preventDefault();
   iso.zoom = Math.min(ZOOMS.largest, Math.max(ZOOMS.smallest, iso.zoom * (event.deltaY < 0 ? 1.1 : 0.9)));
+  // The wheel counts as turning for a moment yet, so one gesture draws the picture afresh once, at the end.
+  iso.zoomUntil = performance.now() + 260;
   iso.redraw = true;
 }
 
