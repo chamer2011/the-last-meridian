@@ -104,7 +104,8 @@
           ],
           "glow": "#ff7030"
         }
-      }
+      },
+      "style": "navy"
     },
     "haven": {
       "floor": "deck",

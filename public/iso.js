@@ -24,6 +24,28 @@ const FONT = '"Cascadia Mono", Consolas, "Lucida Console", "Courier New", monosp
 const BACKGROUND = "#030403";
 const FALLBACK_COLORS = { floor: "#3a4040", walls: "#6a6e6c", scenery: "#8a8e80", writing: "#d8d4c0" };
 const FALLBACK_LOOK = { floor: "deck", walls: "panels", rough: "rock", ambient: "#5c5f63", lights: ["#e0b070", "#8fb8c8"], glow: "#6fd0a0", fire: "#ff9a50" };
+
+// A ship's look, round its rooms and on their walls: the hull's skin outside the walls, with the frames across it,
+// bulkhead doors between the rooms, pipes along the walls and light strips at the top of them. A place's look names
+// one (style), and meridian-ship-style in localStorage tries another on, for picking one.
+const HULL_REACH = 3;
+const HULL_DROP = 0.3;
+const SHIP_STYLES = {
+  // Each tints the walls, the floors and the light of every room towards its own colour, by so much.
+  navy: { name: "navy", hull: "#3c434c", rib: "#5c6670", ribEvery: 4, frame: "#8d949c", trim: "#d8c060", pipes: 0.35, pipe: "#60666c", strips: 0.7, strip: "#cfe4ff", passage: "deck", grime: 0, walls: ["#4a5668", 0.42], floors: ["#2e3642", 0.38], ambient: ["#4a5a78", 0.3] },
+  worn: { name: "worn", hull: "#3a3028", rib: "#56483c", ribEvery: 3, frame: "#6e5a44", trim: "#c08a30", pipes: 0.85, pipe: "#5a4a3c", strips: 0.45, strip: "#ffc070", passage: "grate", grime: 1, walls: ["#6a4a30", 0.45], floors: ["#4a3a28", 0.4], ambient: ["#5a4028", 0.35] },
+  clean: { name: "clean", hull: "#7a828a", rib: "#9aa2aa", ribEvery: 5, frame: "#b8c0c8", trim: "#4f7fb0", pipes: 0.1, pipe: "#9aa2aa", strips: 1, strip: "#eaf4ff", passage: "tile", grime: 0, walls: ["#c0c8d0", 0.5], floors: ["#9aa2a8", 0.45], ambient: ["#8a96a4", 0.4] },
+};
+const tinted = (color, tint) => (tint ? mix(color, tint[0], tint[1]) : color);
+function shipStyleOf(look) {
+  let picked = null;
+  try {
+    picked = localStorage.getItem("meridian-ship-style");
+  } catch {
+    picked = null;
+  }
+  return SHIP_STYLES[picked] ?? SHIP_STYLES[look.style] ?? null;
+}
 const SKIN = ["#d8b090", "#b98a64", "#8e6444", "#664834", "#e4c4a8"];
 const HAIR = ["#2a2420", "#4a3424", "#6e5a3c", "#8a8680", "#1c1c20", "#5a2c20"];
 const TROUSERS = ["#34322c", "#2c3034", "#3a342a", "#2a2c2a", "#40362c"];
@@ -75,6 +97,12 @@ function styleOfMark(mark, x, y, marks, look) {
 export function buildScene(view) {
   const { cols, lines, layers } = view;
   const look = { ...FALLBACK_LOOK, ...view.look };
+  const style = shipStyleOf(look);
+  if (style) look.ambient = tinted(hexOr(look.ambient, FALLBACK_LOOK.ambient), style.ambient);
+  // On a deck, each room drawn there can have lamps of its own colour, and a room with its lights out has none lit.
+  const areas = view.areas ?? [];
+  const areaAt = (x, y) => areas.filter((area) => x >= area.x && x < area.x + area.w && y >= area.y && y < area.y + area.h).sort((a, b) => a.w * a.h - b.w * b.h)[0] ?? null;
+  const darkAt = (x, y) => Boolean(areaAt(x, y)?.dark);
   const grid = (fill) => Array.from({ length: lines }, () => Array(cols).fill(fill));
   const kinds = grid("blank");
   const marks = grid(" ");
@@ -171,6 +199,27 @@ export function buildScene(view) {
       }
     }
   }
+  // On a ship, the hull's skin shows a little way out beyond the walls, where there'd be nothing, and the stars
+  // begin beyond it. Each square of it knows how far out it is, for the frames across it and the edge where it
+  // curves away.
+  const hull = grid(0);
+  if (style) {
+    const outside = (x, y) => inPlan(x, y) && (kinds[y][x] === "void" || kinds[y][x] === "spark");
+    let ring = [];
+    for (let y = 0; y < lines; y += 1) for (let x = 0; x < cols; x += 1) if (kinds[y][x] !== "void" && kinds[y][x] !== "spark") ring.push([x, y]);
+    for (let distance = 1; distance <= HULL_REACH && ring.length; distance += 1) {
+      const next = [];
+      for (const [cx, cy] of ring) {
+        for (const [nx, ny] of [[cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]]) {
+          if (!outside(nx, ny) || hull[ny][nx]) continue;
+          hull[ny][nx] = distance;
+          kinds[ny][nx] = "hull";
+          next.push([nx, ny]);
+        }
+      }
+      ring = next;
+    }
+  }
 
   // Walls and rock between the camera and the room are cut down, or nobody could see in.
   const hides = (x, y) => seeThrough(kindAt(x, y - 1)) || seeThrough(kindAt(x - 1, y)) || seeThrough(kindAt(x - 1, y - 1));
@@ -249,11 +298,13 @@ export function buildScene(view) {
       const kind = kinds[y][x];
       if (kind === "void") continue;
       const { wx, wy } = cellCentre(x, y);
-      reach(spanOf(x, y, heightAt(x, y), -FLOOR_EDGE));
+      reach(spanOf(x, y, heightAt(x, y), kind === "hull" ? -HULL_DROP - 1 : -FLOOR_EDGE));
       if (kind === "water") water.push({ x, y, seed: hashOf(x, y) });
       else if (kind === "glow") glows.push({ x, y, seed: hashOf(x, y) });
       else if (kind === "spark") sparks.push({ x, y, seed: hashOf(x, y), mark: marks[y][x] });
-      else ground.push({ x, y, kind, seed: hashOf(x, y), mark: floors[y][x] });
+      else if (kind === "hull") ground.push({ x, y, kind, seed: hashOf(x, y), mark: " ", ring: hull[y][x], rib: Math.floor(x / 2) % style.ribEvery === 0 });
+      // On a deck, the floor of the deck itself, between the rooms drawn on it, is a passage.
+      else ground.push({ x, y, kind, seed: hashOf(x, y), mark: floors[y][x], passage: Boolean(style) && kind === "floor" && areas.length > 0 && !areaAt(x, y) });
       if (heights[y][x] > 0) {
         blocks.push({
           type: "block",
@@ -269,6 +320,9 @@ export function buildScene(view) {
           side: heightAt(x - 1, y),
           depth: wx + wy,
           span: spanOf(x, y, heights[y][x]),
+          // Whether the rooms a wall's two faces look into have their lights on, for the strips along its top.
+          litLeft: !darkAt(x, y + 1),
+          litRight: !darkAt(x + 1, y),
         });
       }
     }
@@ -291,10 +345,6 @@ export function buildScene(view) {
     lights.push({ wx, wy, color, radius, power });
   };
   const pick = (seed) => look.lights[Math.floor(seed * look.lights.length) % look.lights.length];
-  // On a deck, each room drawn there can have lamps of its own colour, and a room with its lights out has none lit.
-  const areas = view.areas ?? [];
-  const areaAt = (x, y) => areas.filter((area) => x >= area.x && x < area.x + area.w && y >= area.y && y < area.y + area.h).sort((a, b) => a.w * a.h - b.w * b.h)[0] ?? null;
-  const darkAt = (x, y) => Boolean(areaAt(x, y)?.dark);
   const pickAt = (x, y, seed) => {
     const own = areaAt(x, y)?.look?.lights;
     return own?.length ? own[Math.floor(seed * own.length) % own.length] : pick(seed);
@@ -362,6 +412,7 @@ export function buildScene(view) {
     fixtures,
     junk: ground.filter((cell) => cell.kind === "dim" && cell.seed > 0.68),
     look: dark ? { ...look, ambient: mix(hexOr(look.ambient, FALLBACK_LOOK.ambient), "#000000", 0.74) } : look,
+    style,
     dark,
     darkAreas: areas.filter((area) => area.dark),
     bounds: bounds ?? { minU: -1, maxU: 1, minV: -1, maxV: 1 },
@@ -484,6 +535,28 @@ const RUST = "#6a3a18";
 
 // One tile of each floor: 128 by 128, and the size it's drawn at doesn't matter much.
 const FLOORS = {
+  // The hull's skin, seen from above: a plate to each square, with seams and rivets between, and worn in places.
+  plating(ctx, size, random, variant) {
+    grain(ctx, size, 12, random);
+    ctx.fillStyle = "rgba(0,0,0,.5)";
+    ctx.fillRect(0, 0, size, 3);
+    ctx.fillRect(0, 0, 3, size);
+    ctx.fillRect(size / 2 - 1, 0, 3, size);
+    ctx.fillStyle = "rgba(255,255,255,.08)";
+    ctx.fillRect(3, 3, size - 3, 1);
+    ctx.fillRect(3, 3, 1, size - 3);
+    ctx.fillRect(size / 2 + 2, 3, 1, size - 3);
+    for (let y = 10; y < size; y += 18) {
+      rivet(ctx, 8, y);
+      rivet(ctx, size / 2 - 6, y);
+      rivet(ctx, size / 2 + 7, y);
+      rivet(ctx, size - 6, y);
+    }
+    for (let x = 12; x < size; x += 20) rivet(ctx, x, 8);
+    scratches(ctx, size, 5, random);
+    stains(ctx, size, "#000000", 4, 30, 0.22, random);
+    if (variant === 1) stains(ctx, size, RUST, 7, 28, 0.36, random);
+  },
   deck(ctx, size, random, variant) {
     grain(ctx, size, 16, random);
     if (variant === 1) {
@@ -898,9 +971,9 @@ function materialsFor(scene) {
   const { look, colors } = scene;
   const floorKind = FLOORS[look.floor] ? look.floor : "deck";
   const wallKind = WALLS[look.walls] ? look.walls : "panels";
-  const floorColor = mix(FLOOR_COLORS[floorKind], colors.floor, floorKind === "carpet" ? 0.5 : 0.22);
-  const wallColor = mix(WALL_COLORS[wallKind], colors.walls, 0.14);
-  const steel = mix("#5a5e60", colors.scenery, 0.12);
+  const floorColor = tinted(mix(FLOOR_COLORS[floorKind], colors.floor, floorKind === "carpet" ? 0.5 : 0.22), scene.style?.floors);
+  const wallColor = tinted(mix(WALL_COLORS[wallKind], colors.walls, 0.14), scene.style?.walls);
+  const steel = tinted(mix("#5a5e60", colors.scenery, 0.12), scene.style?.walls && [scene.style.walls[0], scene.style.walls[1] * 0.4]);
   const rock = mix(WALL_COLORS.rock, colors.scenery, 0.2);
   const crate = mix("#7a6040", colors.scenery, 0.1);
   return {
@@ -922,6 +995,10 @@ function materialsFor(scene) {
     iceTop: textureFor("ice", FLOORS, FLOOR_COLORS.ice, 1),
     scrap: scrapPile(colors.scenery),
     plant: mix("#4e6e38", colors.scenery, 0.3),
+    // A ship's hull outside its walls, and the floor of the passages between its rooms, in its own style.
+    style: scene.style ?? null,
+    hull: scene.style ? textureFor("plating", FLOORS, scene.style.hull, scene.style.grime > 0.5 ? 1 : 0) : null,
+    passage: scene.style ? textureFor(FLOORS[scene.style.passage] ? scene.style.passage : floorKind, FLOORS, scaled(floorColor, 0.9), 2) : null,
   };
 }
 
@@ -1178,6 +1255,7 @@ function drawBlock(painter, block, materials) {
     const image = materials.wall[Math.floor(hashOf(Math.floor(x / 2), y) * 3)];
     if (block.left < h) leftFace(painter, image, x, y, h, block.left, 0.05);
     if (block.right < h) rightFace(painter, image, x, y, h, block.right, 0.42);
+    if (materials.style) drawWallDetail(painter, block, materials.style);
     polygon(ctx, [at(x0, y, h), at(x1, y, h), at(x1, y + 1, h), at(x0, y + 1, h)], materials.wallTop);
     // A worn edge, so that the top reads as the cut end of a thick wall.
     ctx.beginPath();
@@ -1260,6 +1338,78 @@ function drawDoor(painter, item) {
     ctx.strokeStyle = "rgba(0,0,0,.6)";
     ctx.stroke();
   }
+}
+
+// On a ship, what runs along a wall's faces: a pipe or two part way up, the same along the whole of a wall, and a
+// strip of light at the top, where the room it looks into has its lights on.
+function drawWallDetail(painter, block, style) {
+  const { ctx, at } = painter;
+  const { x, y, h } = block;
+  if (h < WALL_HEIGHT) return;
+  const x0 = x * CELL_WIDTH;
+  const x1 = x0 + CELL_WIDTH;
+  const band = (points, color) => polygon(ctx, points, color);
+  const pipe = (a, b, z) => {
+    const t = 0.1;
+    band([at(...a, z + t), at(...b, z + t), at(...b, z), at(...a, z)], scaled(style.pipe, 0.95));
+    band([at(...a, z + t), at(...b, z + t), at(...b, z + t * 0.6), at(...a, z + t * 0.6)], see("#ffffff", 0.14));
+    band([at(...a, z + t * 0.25), at(...b, z + t * 0.25), at(...b, z), at(...a, z)], see("#000000", 0.3));
+  };
+  const strip = (a, b, lit) => {
+    const z = WALL_HEIGHT - 0.18;
+    if (!lit) {
+      band([at(...a, z + 0.07), at(...b, z + 0.07), at(...b, z), at(...a, z)], "#1a1c1a");
+      return;
+    }
+    band([at(...a, z + 0.07), at(...b, z + 0.07), at(...b, z), at(...a, z)], style.strip);
+    band([at(...a, z), at(...b, z), at(...b, z - 0.14), at(...a, z - 0.14)], see(style.strip, 0.24));
+  };
+  // Along a row, the walls' faces that look down the screen; along a column, the ones that look right.
+  if (block.left < h) {
+    const a = [x0, y + 1];
+    const b = [x1, y + 1];
+    if (hashOf(y, 7) < style.pipes) pipe(a, b, 1.18);
+    if (hashOf(y, 7) < style.pipes * 0.5) pipe(a, b, 1.3);
+    if (hashOf(y, 13) < style.strips) strip(a, b, block.litLeft);
+  }
+  if (block.right < h) {
+    const a = [x1, y + 1];
+    const b = [x1, y];
+    if (hashOf(x, 11) < style.pipes) pipe(a, b, 1.18);
+    if (hashOf(x, 11) < style.pipes * 0.5) pipe(a, b, 1.3);
+    if (hashOf(x, 17) < style.strips) strip(a, b, block.litRight);
+  }
+}
+
+// A bulkhead door where a wall opens into the next room: two posts, a lintel with a stripe along it, and a sill.
+function drawFrame(painter, item, style) {
+  const { ctx, at } = painter;
+  const { x, y, along } = item;
+  const x0 = x * CELL_WIDTH;
+  const x1 = x0 + CELL_WIDTH;
+  const y0 = y;
+  const y1 = y0 + 1;
+  const high = WALL_HEIGHT * 0.94;
+  const post = 0.14;
+  const lintel = 0.16;
+  const face = (points, color) => polygon(ctx, points, color);
+  if (along === "x") {
+    // The opening runs along the screen's width, in the plane at the back of the square.
+    const px = CELL_WIDTH * post;
+    face([at(x0, y0, 0.02), at(x1, y0, 0.02), at(x1, y0 + 0.14, 0.02), at(x0, y0 + 0.14, 0.02)], scaled(style.frame, 0.6));
+    face([at(x0, y0, high), at(x0 + px, y0, high), at(x0 + px, y0), at(x0, y0)], scaled(style.frame, 0.9));
+    face([at(x1 - px, y0, high), at(x1, y0, high), at(x1, y0), at(x1 - px, y0)], scaled(style.frame, 0.75));
+    face([at(x0, y0, high), at(x1, y0, high), at(x1, y0, high - lintel), at(x0, y0, high - lintel)], style.frame);
+    face([at(x0, y0, high - lintel), at(x1, y0, high - lintel), at(x1, y0, high - lintel - 0.04), at(x0, y0, high - lintel - 0.04)], style.trim);
+    return;
+  }
+  // The opening runs down the screen, in the plane at the square's left side.
+  const py = post;
+  face([at(x0, y0, 0.02), at(x0 + CELL_WIDTH * 0.14, y0, 0.02), at(x0 + CELL_WIDTH * 0.14, y1, 0.02), at(x0, y1, 0.02)], scaled(style.frame, 0.6));
+  face([at(x0, y1, high), at(x0, y1 - py, high), at(x0, y1 - py), at(x0, y1)], scaled(style.frame, 0.75));
+  face([at(x0, y0 + py, high), at(x0, y0, high), at(x0, y0), at(x0, y0 + py)], scaled(style.frame, 0.6));
+  face([at(x0, y1, high), at(x0, y0, high), at(x0, y0, high - lintel), at(x0, y1, high - lintel)], scaled(style.frame, 0.85));
+  face([at(x0, y1, high - lintel), at(x0, y0, high - lintel), at(x0, y0, high - lintel - 0.04), at(x0, y1, high - lintel - 0.04)], scaled(style.trim, 0.9));
 }
 
 // What each kind of part looks like: how high on the wall it hangs, how much of the square it takes, and its colors.
@@ -1708,6 +1858,16 @@ function standingOf(view, scene) {
     const { wx, wy } = cellCentre(fixture.x, fixture.y);
     standing.push({ type: "fixture", fixture, depth: wx + wy + 0.01, box: uvBox(fixture.x - 1, fixture.y - 1, fixture.x + 2, fixture.y + 2, 3), wide: true });
   }
+  // On a ship, a bulkhead door frames every opening between rooms.
+  if (scene.style) {
+    const tallAt = (x, y) => (scene.heights[y]?.[x] ?? 0) > 1;
+    for (const cell of scene.ground) {
+      if (cell.kind !== "door") continue;
+      const { wx, wy } = cellCentre(cell.x, cell.y);
+      const along = tallAt(cell.x - 1, cell.y) || tallAt(cell.x + 1, cell.y) ? "x" : "y";
+      standing.push({ type: "frame", x: cell.x, y: cell.y, along, depth: wx + wy - 0.4, box: uvBox(cell.x - 1, cell.y - 1, cell.x + 2, cell.y + 2, 3), wide: true });
+    }
+  }
   standing.sort((a, b) => (a.frontDepth ?? a.depth) - (b.frontDepth ?? b.depth));
   return standing;
 }
@@ -1752,16 +1912,83 @@ function drawTile(room, tx, ty) {
   };
   const byLook = new Map();
   const dim = [];
+  const hull = [];
   for (const cell of ground) {
     if (cell.kind === "dim") {
       dim.push(cell);
       continue;
     }
+    if (cell.kind === "hull") {
+      hull.push(cell);
+      continue;
+    }
     const seed = hashOf(Math.floor(cell.x / 2), cell.y);
     const second = cell.kind === "floor" && cell.mark !== " " && cell.mark !== mainFloor;
-    const image = second ? materials.floorAlt[Math.floor(seed * 2)] : materials.floor[Math.floor(seed * 4)];
+    const image = cell.passage && materials.passage ? materials.passage : second ? materials.floorAlt[Math.floor(seed * 2)] : materials.floor[Math.floor(seed * 4)];
     if (!byLook.has(image)) byLook.set(image, []);
     byLook.get(image).push(cell);
+  }
+  // The hull's skin, a step below the deck, its outer edge curving away into the dark, with a frame across it every
+  // few squares.
+  if (hull.length) {
+    const { style } = materials;
+    const drop = -HULL_DROP;
+    const quadAt = (cell, z) => {
+      const x0 = cell.x * CELL_WIDTH;
+      const x1 = x0 + CELL_WIDTH;
+      ctx.moveTo(...at(x0, cell.y, z));
+      ctx.lineTo(...at(x1, cell.y, z));
+      ctx.lineTo(...at(x1, cell.y + 1, z));
+      ctx.lineTo(...at(x0, cell.y + 1, z));
+      ctx.closePath();
+    };
+    ctx.beginPath();
+    for (const cell of hull) quadAt(cell, drop);
+    ctx.fillStyle = scaled(style.hull, 0.7);
+    ctx.fill();
+    plane(at(0, 0, drop), at(2 * CELL_WIDTH, 0, drop), at(0, 1, drop));
+    const pattern = ctx.createPattern(materials.hull, "repeat");
+    pattern.setTransform(new DOMMatrix().scale(1 / materials.hull.width, 1 / materials.hull.height));
+    ctx.fillStyle = pattern;
+    ctx.fill();
+    flat();
+    // The frames.
+    ctx.beginPath();
+    for (const cell of hull) if (cell.rib) quadAt(cell, drop + 0.04);
+    ctx.fillStyle = see(style.rib, 0.85);
+    ctx.fill();
+    ctx.beginPath();
+    for (const cell of hull) {
+      if (!cell.rib) continue;
+      const x0 = cell.x * CELL_WIDTH;
+      ctx.moveTo(...at(x0, cell.y, drop + 0.04));
+      ctx.lineTo(...at(x0 + CELL_WIDTH, cell.y, drop + 0.04));
+    }
+    ctx.strokeStyle = "rgba(255,255,255,.16)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // Where the skin ends, it falls away.
+    const outerKind = (x, y) => scene.kinds[y]?.[x];
+    for (const cell of hull) {
+      if (cell.ring !== HULL_REACH) continue;
+      const x0 = cell.x * CELL_WIDTH;
+      const x1 = x0 + CELL_WIDTH;
+      const y1 = cell.y + 1;
+      const fall = (points) => {
+        const top = Math.min(points[0][1], points[1][1]);
+        const bottom = Math.max(points[2][1], points[3][1]);
+        const shade = ctx.createLinearGradient(0, top, 0, bottom);
+        shade.addColorStop(0, scaled(style.hull, 0.55));
+        shade.addColorStop(1, "#030403");
+        ctx.beginPath();
+        points.forEach((one, i) => (i ? ctx.lineTo(...one) : ctx.moveTo(...one)));
+        ctx.closePath();
+        ctx.fillStyle = shade;
+        ctx.fill();
+      };
+      if (outerKind(cell.x + 1, cell.y) !== "hull") fall([at(x1, cell.y, drop), at(x1, y1, drop), at(x1, y1, drop - 1), at(x1, cell.y, drop - 1)]);
+      if (outerKind(cell.x, cell.y + 1) !== "hull") fall([at(x0, y1, drop), at(x1, y1, drop), at(x1, y1, drop - 1), at(x0, y1, drop - 1)]);
+    }
   }
   if (dim.length) {
     ctx.beginPath();
@@ -1785,15 +2012,18 @@ function drawTile(room, tx, ty) {
   // Where a floor stops at water or the dark, its edge shows.
   const open = (x, y) => {
     const kind = scene.kinds[y]?.[x];
-    return kind === undefined || kind === "water" || kind === "void" || kind === "spark";
+    return kind === undefined || kind === "water" || kind === "void" || kind === "spark" || kind === "hull";
   };
+  // Against the hull the deck's edge goes down to the hull's skin.
+  const edgeDepth = (x, y) => (scene.kinds[y]?.[x] === "hull" ? -HULL_DROP : -FLOOR_EDGE);
   const edge = scaled(materials.floorColor, 0.32);
   for (const cell of ground) {
+    if (cell.kind === "hull") continue;
     const x0 = cell.x * CELL_WIDTH;
     const x1 = x0 + CELL_WIDTH;
     const y1 = cell.y + 1;
-    if (open(cell.x + 1, cell.y)) polygon(ctx, [at(x1, cell.y), at(x1, y1), at(x1, y1, -FLOOR_EDGE), at(x1, cell.y, -FLOOR_EDGE)], scaled(edge, 0.7));
-    if (open(cell.x, cell.y + 1)) polygon(ctx, [at(x0, y1), at(x1, y1), at(x1, y1, -FLOOR_EDGE), at(x0, y1, -FLOOR_EDGE)], edge);
+    if (open(cell.x + 1, cell.y)) polygon(ctx, [at(x1, cell.y), at(x1, y1), at(x1, y1, edgeDepth(cell.x + 1, cell.y)), at(x1, cell.y, edgeDepth(cell.x + 1, cell.y))], scaled(edge, 0.7));
+    if (open(cell.x, cell.y + 1)) polygon(ctx, [at(x0, y1), at(x1, y1), at(x1, y1, edgeDepth(cell.x, cell.y + 1)), at(x0, y1, edgeDepth(cell.x, cell.y + 1))], edge);
   }
   // Rubbish, and hazard paint at the doors.
   for (const cell of ground) {
@@ -1859,6 +2089,7 @@ function drawTile(room, tx, ty) {
     else if (item.type === "fixture") drawFixture(painter, item.fixture);
     else if (item.type === "thing") drawThing(painter, item.thing);
     else if (item.type === "door") drawDoor(painter, item);
+    else if (item.type === "frame") drawFrame(painter, item, scene.style);
     else if (item.type === "words") {
       const { run } = item;
       const h = scene.heights[run.y][run.x];
