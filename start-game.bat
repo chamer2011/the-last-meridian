@@ -1,5 +1,5 @@
 @echo off
-title The Last Meridian
+title Almagest Explorer's
 cd /d "%~dp0"
 set "PATH=%PATH%;C:\Program Files\nodejs"
 where node >nul 2>nul

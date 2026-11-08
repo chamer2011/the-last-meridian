@@ -100,7 +100,7 @@ export const STARTING_QUESTS = [
   },
 ];
 
-export const WORLD_BIBLE = `SETTING: THE LAST MERIDIAN
+export const WORLD_BIBLE = `SETTING: ALMAGEST EXPLORER'S
 Tone: hopeful exploration, swashbuckling adventure, and desperate survival, all in one original galaxy. Think thoughtful diplomacy on the bridge, scoundrels in cantinas, mystical powers, and a ragtag fleet hunted by machines. This is an ORIGINAL universe. Never use names, characters, ships or terms from existing franchises.
 
 BACKSTORY: Six months ago the Concord, a peaceful interstellar republic, fell in a single week to the Choir: silver machines that sing to one another across space and copy the faces of the people they kill. Nobody knows who built them. The survivors formed the Refugee Fleet: 41 ships and 30,000 people, led by the frigate CFS Meridian. Its newly appointed captain has the job because everyone above them is dead. The player may be that captain, or anyone else in the galaxy: the <player_dossier> says who they are.

@@ -9,7 +9,7 @@
 // public copy has alone: README.md, .gitignore, .github/ and pictures/. It stops if anything private turns up.
 //
 // Then, in <folder>: read `git status`, run the tests, and commit and push. For a new installer, run
-// `npm install` and `node app/build.js --for-others`, then attach dist/The-Last-Meridian-Setup.exe to a
+// `npm install` and `node app/build.js --for-others`, then attach dist/Almagest-Explorers-Setup.exe to a
 // new release with `gh release create`. Only publish when the owner asks.
 
 import { execFileSync } from "node:child_process";
@@ -51,13 +51,13 @@ const THE_APP = `## The app
 
 The installer gives the game its own window, with shortcuts on your desktop and in the Start menu. It holds its own copy of the game, so you don't need anything else installed.
 
-- **Where your things are:** your saved games, your settings and your API key are in \`%APPDATA%\\The Last Meridian\\data\`, which is what \`data/\` means in this guide if you used the installer.
+- **Where your things are:** your saved games, your settings and your API key are in \`%APPDATA%\\Almagest Explorer's\\data\`, which is what \`data/\` means in this guide if you used the installer. If you had it installed as The Last Meridian, the game's name until version 0.5.0, the first run under the new name copies them over from \`%APPDATA%\\The Last Meridian\`, and leaves that folder as it was.
 - **A new version:** run the newer installer. It replaces the game and leaves your saves alone.
-- **If something goes wrong:** what the game printed is in \`%APPDATA%\\The Last Meridian\\game.log\`.
-- **Uninstalling:** use **Installed apps** in Windows Settings. That only removes the game. Your saves and API key stay until you delete \`%APPDATA%\\The Last Meridian\` yourself.
+- **If something goes wrong:** what the game printed is in \`%APPDATA%\\Almagest Explorer's\\game.log\`.
+- **Uninstalling:** use **Installed apps** in Windows Settings. That only removes the game. Your saves and API key stay until you delete \`%APPDATA%\\Almagest Explorer's\` yourself.
 `;
 
-const GUIDE_TOP = "# The Last Meridian: the full guide\n\nHow everything in the game works. It names places and people you'll meet, but it doesn't say how the story ends. To get the game, see the [front page](README.md).\n\n";
+const GUIDE_TOP = "# Almagest Explorer's: the full guide\n\nHow everything in the game works. It names places and people you'll meet, but it doesn't say how the story ends. To get the game, see the [front page](README.md).\n\n";
 
 const GUIDE_CHANGES = [
   ["You can still play in your browser if you prefer:", "If you've downloaded the source instead of the installer, you can play in your browser:"],

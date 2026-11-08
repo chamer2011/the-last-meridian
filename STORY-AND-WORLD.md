@@ -1,4 +1,4 @@
-# The story and world of The Last Meridian
+# The story and world of Almagest Explorer's
 
 Copyright (c) 2026 chamer2011. All rights reserved.
 

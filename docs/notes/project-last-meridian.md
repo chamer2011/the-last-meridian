@@ -1,8 +1,8 @@
 # project-last-meridian
 
-*The Last Meridian, the user's sci-fi AI text RPG, and the look and references they've asked for*
+*Almagest Explorer's (The Last Meridian until 2026-11-08), the user's sci-fi AI RPG, and the look and references they've asked for*
 
-The user's game in D:\Test IA is The Last Meridian, a sci-fi text RPG with an AI game master. They asked for a Star Trek, Star Wars and Battlestar Galactica feel, in an original universe.
+The user's game in D:\Test IA is Almagest Explorer's, a sci-fi RPG with an AI game master. It was The Last Meridian until 2026-11-08, when they said "Change the name of the game to Almagest Explorer's": the name is used exactly as they spelt it, apostrophe included, so ask before "correcting" it; the ship is still the CFS Meridian, the saves, settings and ids kept their names, and both GitHub repositories keep their old names unless they ask (see [project-github](project-github.md) and [project-app](project-app.md) for what the rename did to the app). They asked for a Star Trek, Star Wars and Battlestar Galactica feel, in an original universe.
 
 On 2026-11-02 they wrote their own introduction at the top of the README, on the GitHub website, for people who'll see the project. In it: they have no coding experience and used Claude, and it's a passion project they couldn't have done without AI. Their vision is to cut the AI back progressively until it's an optional feature that adds depth, not the main part of the game, which it very much is now. They see AI art and music as a huge problem, and they plan to hire an artist. The style they have in mind for the finished game is Age of Decadence and Colony Ship. They're at university and working, so they don't have time to test deeply, which is why they want feedback. English is their second language, they may start a Patreon, and the project was 6 days old that day. They wanted it open source, and when asked they chose GPL-3.0 for the code only, with the story and world staying theirs.
 

@@ -92,7 +92,7 @@ test("the ship's rooms are read from their Tiled maps, with nothing wrong in the
   assert.deepEqual(MAP_FILE_PROBLEMS, []);
   const map = mapFor("meridian");
   assert.ok(map.levels[WORLD_MAPS.meridian.start], "the ship starts in one of them");
-  const project = JSON.parse(fs.readFileSync(path.join(mapsDir, "the-last-meridian.tiled-project"), "utf8"));
+  const project = JSON.parse(fs.readFileSync(path.join(mapsDir, "almagest-explorers.tiled-project"), "utf8"));
   assert.ok(project.folders.includes("meridian"), "Tiled's project shows the ship's rooms");
 });
 

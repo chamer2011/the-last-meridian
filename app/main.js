@@ -8,9 +8,9 @@ import net from "node:net";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { app, BrowserWindow, dialog, Menu, nativeTheme, screen, shell } from "electron";
-import { chooseHome, isGameFolder, looksLikeTheGame, windowPlace } from "./choices.js";
+import { OLD_NAME, chooseHome, isGameFolder, looksLikeTheGame, oldFilesToTakeOver, windowPlace } from "./choices.js";
 
-const NAME = "The Last Meridian";
+const NAME = "Almagest Explorer's";
 const PORT = Number(process.env.PORT) || 3210;
 const PAGE_COLOR = "#050a07";
 const appDir = path.dirname(fileURLToPath(import.meta.url));
@@ -18,7 +18,9 @@ const bundled = path.dirname(appDir);
 const LONGEST_TURN = 5 * 60 * 1000;
 
 app.setName(NAME);
+// The id is kept from the old name on purpose: a new installer then replaces the old app instead of sitting beside it.
 app.setAppUserModelId("com.lastmeridian.game");
+takeOverOldFiles();
 // The title bar matches the game's dark screen.
 nativeTheme.themeSource = "dark";
 
@@ -114,6 +116,19 @@ function chooseRoot() {
   // Without the folder, the copy inside the app can't keep its saves in itself, because that's read-only.
   if (!choice.home) process.env.GAME_DATA_DIR ||= path.join(app.getPath("userData"), "data");
   return choice.home ?? bundled;
+}
+
+// The app was called The Last Meridian until version 0.5.0, and kept its files under that name. The first time it
+// runs under this one with nothing of its own yet, it takes them over, so nobody's saves or key are left behind.
+function takeOverOldFiles() {
+  const mine = app.getPath("userData");
+  const old = path.join(app.getPath("appData"), OLD_NAME);
+  if (!oldFilesToTakeOver({ mine, old, exists: fs.existsSync })) return;
+  try {
+    fs.cpSync(old, mine, { recursive: true, force: false, errorOnExist: false });
+  } catch (err) {
+    console.error(`Couldn't take over the files from ${old}: ${err.message}`);
+  }
 }
 
 // ---- Starting the game's server --------------------------------------------

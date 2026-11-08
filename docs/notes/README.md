@@ -2,11 +2,11 @@
 
 What was decided and why, written as the work went on, up to 2026-11-02. Each note says what was true when it was written, so check it against the code before relying on it. The code records what was built, and these record what the owner asked for, in their own words where that matters.
 
-- [project-app](project-app.md): The Last Meridian as an installed Windows app (Electron), built 2026-11-01. How game changes reach it, and what that means for restarting and testing
+- [project-app](project-app.md): The game (Almagest Explorer's, The Last Meridian until 2026-11-08) as an installed Windows app (Electron), built 2026-11-01. How game changes reach it, and what that means for restarting and testing
 - [project-fleet-layer](project-fleet-layer.md): The Last Meridian's fleet command layer, built 2026-11-01, what's untested with real Claude, and what's left for later steps
 - [project-github](project-github.md): The game is on GitHub twice since 2026-11-02: private chamer2011/the-last-meridian so the player can carry on elsewhere, and public chamer2011/last-meridian with only the game, for feedback. What's in each, and that nothing uploads by itself
 - [project-inventory](project-inventory.md): The grid inventory on I: their pick (B with C's locker, smaller) built on 2026-11-06 and untried by them, with new rules they haven't confirmed (belt-only supplies in fights, a sidearm to draw, a load limit, loot piles)
-- [project-last-meridian](project-last-meridian.md): The Last Meridian, the user's sci-fi AI text RPG, and the look and references they've asked for
+- [project-last-meridian](project-last-meridian.md): Almagest Explorer's (The Last Meridian until 2026-11-08), the user's sci-fi AI RPG, and the look and references they've asked for
 - [project-menus](project-menus.md): The menus tidied on 2026-11-02 at the owner's request: seventeen entries grouped under five headings on the rail, long sections folded behind [ + ] lines, three entries renamed, and no explaining text under the names, which they asked for
 - [project-next-update](project-next-update.md): The owner's big update after 0.3.0 (announced 2026-11-05): three points agreed and on a plan page; all three are built (hacking, a usable system on every computer, each place's own systems) and untried by them
 - [project-optional-ai](project-optional-ai.md): Their next direction, from 2026-11-02: the game playable with or without an API key, in the genre of Age of Decadence and Colony Ship, with the AI as an optional layer. The seven-step plan I proposed, and no GitHub updates until they've tested

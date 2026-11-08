@@ -723,6 +723,6 @@ server.on("error", (err) => {
 });
 
 server.listen(PORT, "127.0.0.1", () => {
-  console.log(`The Last Meridian is running at http://localhost:${PORT}`);
+  console.log(`Almagest Explorer's is running at http://localhost:${PORT}`);
   console.log("Leave this window open while you play. Close it to stop the game.");
 });

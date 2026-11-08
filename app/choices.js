@@ -17,8 +17,14 @@ export function chooseHome({ remembered, built, exists }) {
 }
 
 // The game is already running if something on its port answers with its page. Only one copy may run
-// at a time, because two would overwrite each other's autosave, so the app uses that one instead.
-export const looksLikeTheGame = (page) => String(page).includes("<title>The Last Meridian");
+// at a time, because two would overwrite each other's autosave, so the app uses that one instead. An
+// older copy of the game still answers under its old name.
+export const OLD_NAME = "The Last Meridian";
+export const looksLikeTheGame = (page) => ["<title>Almagest Explorer's", `<title>${OLD_NAME}`].some((title) => String(page).includes(title));
+
+// The app kept its files under its old name until version 0.5.0: its settings, and on a computer without the
+// game's folder, the saves and the API key. They're taken over once, when this name has nothing of its own yet.
+export const oldFilesToTakeOver = ({ mine, old, exists }) => exists(old) && !exists(path.join(mine, "app-state.json")) && !exists(path.join(mine, "data"));
 
 // The title bar and borders take some of this, which leaves the page the 810 by 600 it's been checked at.
 const MIN_WIDTH = 830;

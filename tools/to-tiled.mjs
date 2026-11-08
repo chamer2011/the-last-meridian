@@ -5,7 +5,7 @@
 // Each room of world/maps/<place>.json becomes world/maps/<place>/<room>.tmj, exactly as it was, and leaves the place's
 // file, which keeps the rest (its name, where it starts, and its overview). The tiles they need are added to the
 // stand-in tileset, world/maps/tiles/stand-ins.tsj, with a picture for each, and the place's folder to the Tiled project,
-// world/maps/the-last-meridian.tiled-project. A room that's already drawn in Tiled is never written over. Each room is
+// world/maps/almagest-explorers.tiled-project. A room that's already drawn in Tiled is never written over. Each room is
 // read back before anything changes, and if any of them wouldn't come back exactly as it was, nothing is written.
 // See src/tiled.js for how a room is drawn, and world/maps/_how-to-draw-rooms-in-tiled.txt for the owner's side.
 
@@ -35,7 +35,7 @@ const roomsDir = path.join(mapsDir, place);
 const tilesDir = path.join(mapsDir, "tiles");
 const tilesetFile = path.join(tilesDir, "stand-ins.tsj");
 const imagesDir = path.join(tilesDir, "stand-ins");
-const projectFile = path.join(mapsDir, "the-last-meridian.tiled-project");
+const projectFile = path.join(mapsDir, "almagest-explorers.tiled-project");
 
 const already = (id) => ["tmj", "tmx", "json"].some((ext) => fs.existsSync(path.join(roomsDir, `${id}.${ext}`)));
 const moving = Object.entries(file.levels ?? {}).filter(([id]) => {

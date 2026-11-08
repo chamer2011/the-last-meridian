@@ -1,4 +1,4 @@
-# The Last Meridian
+# Almagest Explorer's
 
 *DISCLAMER*
 Hello I'm the solo "developer" working on this project. I would like to say that I do not have any experience nor knowledge of how to code; as such, I have used Claude's code to write the game. Knowing that AI is a divided subject right now (with merit I might have), I understand if it causes controversy and disinterest from you. That being said, this project is a passion project I wouldn't have been able to do without AI, though. NO AI was used to generate ART, MUSIC, etc. as I feel it is a HUMONGUS problem of AI right now. It is in my future plans to hire an artist to help me with the art; if you're interested, please contact me!
@@ -20,7 +20,7 @@ A sci-fi text RPG where an AI writes the story and the game's code keeps the rul
 
 ## How to play
 
-Double-click **The Last Meridian** on your desktop or in the Start menu. The game opens in its own window, and it saves itself after every action. Close the window when you're done.
+Double-click **Almagest Explorer's** on your desktop or in the Start menu. The game opens in its own window, and it saves itself after every action. Close the window when you're done.
 
 - **F11** switches to full screen and back.
 - **Ctrl** with **+** or **-** makes everything bigger or smaller, and **Ctrl** with **0** puts it back.
@@ -507,7 +507,7 @@ The download is several GB. Local models make more mistakes with game actions th
 The Meridian's rooms are drawn in **Tiled**, a free map editor, and you can change them there or add new ones. Tiled shows a room from the same angle as the Isometric view, built of plain stand-in blocks: grey walls, amber doors, teal consoles, brown crates, a green figure for each person, a gold diamond for each thing you can look at, a teal arrow for each way out, and a flag where you start. The game still draws its own picture of the room. The blocks are only there so you can see what's where.
 
 - **Getting Tiled:** it's free from [mapeditor.org](https://www.mapeditor.org). Its itch.io page asks for a price, and **No thanks, just take me to the downloads** gets it for nothing.
-- **Opening the ship:** in Tiled, choose **File > Open File or Project** and open `world/maps/the-last-meridian.tiled-project`. The ship's rooms are listed on the left, one file to a room, such as `bridge.tmj`. Double-click one.
+- **Opening the ship:** in Tiled, choose **File > Open File or Project** and open `world/maps/almagest-explorers.tiled-project`. The ship's rooms are listed on the left, one file to a room, such as `bridge.tmj`. Double-click one.
 - **A tile is a square of floor** the way the Isometric view draws it. The game's own squares are half as wide, so some tiles have something on one half only, such as a thin wall or a narrow door. That's how the ship came over exactly as it was.
 - **The layers:** **Floor**; **Walls and things**, for walls, doors, consoles, crates and anything else in the way; **People and things**; and **Words**, for words on the walls and the names of parts of a room.
 - **Drawing:** click the layer, pick a tile from **Stand-ins**, choose the **Stamp Brush**, and click or drag. The **Eraser** takes tiles away. Clicking a tile in the tileset shows what it is, under **what**.
@@ -562,7 +562,7 @@ npm test
 The app is a window around the same game. It starts the same local server that `start-game.bat` does and shows the same page, so nothing about the game itself is different.
 
 - **Changing the game:** on this computer, the app runs the game from this folder, so a change here shows up the next time you close the app and open it again. There's nothing to rebuild.
-- **Changing the app itself:** everything in `app/` is built into the app, so a change there needs a new build. Run these two, then run `dist/The-Last-Meridian-Setup.exe`, which updates the app in place and leaves your saves alone:
+- **Changing the app itself:** everything in `app/` is built into the app, so a change there needs a new build. Run these two, then run `dist/Almagest-Explorers-Setup.exe`, which updates the app in place and leaves your saves alone:
 
 ```bash
 npm install
@@ -572,9 +572,9 @@ npm install
 npm run build-app
 ```
 
-- **Giving it to someone else:** send them `dist/The-Last-Meridian-Setup.exe`. It holds a copy of the game as it was when it was built, without your saves or your API key. On a computer that doesn't have this folder, the app runs that copy, and keeps its saves in `%APPDATA%\The Last Meridian\data`. Windows warns about installers from unknown publishers unless you pay for a signing certificate, and each player needs their own API key.
+- **Giving it to someone else:** send them `dist/Almagest-Explorers-Setup.exe`. It holds a copy of the game as it was when it was built, without your saves or your API key. On a computer that doesn't have this folder, the app runs that copy, and keeps its saves in `%APPDATA%\Almagest Explorer's\data`. Windows warns about installers from unknown publishers unless you pay for a signing certificate, and each player needs their own API key.
 - **Moving this folder:** the app asks where it went the next time it opens, because your saves are in it.
-- **What the app keeps for itself:** `%APPDATA%\The Last Meridian\` has `game.log`, which is what the black window would have shown, and `app-state.json`, which says where the window was and where this folder is.
+- **What the app keeps for itself:** `%APPDATA%\Almagest Explorer's\` has `game.log`, which is what the black window would have shown, and `app-state.json`, which says where the window was and where this folder is. The game was called The Last Meridian until version 0.5.0, and an app installed under that name kept these in `%APPDATA%\The Last Meridian\`, with the saves and the API key of anyone without this folder: the first run under the new name copies them across, and leaves the old folder as it was.
 - **Uninstalling it:** use **Installed apps** in Windows Settings. That only removes the app, and this folder and your saves stay where they are.
 
 `app/main.js` is the app, `app/choices.js` has the decisions it makes when it starts, `app/build.js` makes the installer, and `app/icon.ico` is its icon.

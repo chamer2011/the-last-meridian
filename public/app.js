@@ -193,7 +193,7 @@ function titleScreen() {
   return el("div", { class: "screen stack" },
     el("div", {},
       el("div", { class: "boot" }, "MERIDIAN-OS 4.1 // CONCORD FLEET COMMAND\n[ OK ] Reactor: unstable but online\n[ OK ] Fleet link: 41 ships responding\n[WARN] Unknown signal on all channels"),
-      el("h1", { class: "title" }, "The Last Meridian"),
+      el("h1", { class: "title" }, "Almagest Explorer's"),
       el("p", { class: "subtitle" }, "Thirty thousand survivors. Forty-one ships. One signal from beyond the edge of the map. Where are you in all this?"),
     ),
     el("div", { class: "row" },

@@ -17,7 +17,7 @@ take me to the downloads" gets it for nothing. Install it the usual way.
 OPENING THE SHIP
 ----------------
 
-In Tiled, choose File > Open File or Project, and open the-last-meridian.tiled-project, here in world/maps. The
+In Tiled, choose File > Open File or Project, and open almagest-explorers.tiled-project, here in world/maps. The
 Project panel lists the ship's rooms under meridian. Double-click one to open it. Opening the project, rather than
 a room on its own, also gives each kind of object the right boxes to fill in.
 

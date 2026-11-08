@@ -8,7 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { after, test } from "node:test";
-import { chooseHome, isGameFolder, looksLikeTheGame, windowPlace } from "../app/choices.js";
+import { chooseHome, isGameFolder, looksLikeTheGame, oldFilesToTakeOver, windowPlace } from "../app/choices.js";
 import { projectDir } from "../src/paths.js";
 
 const pack = JSON.parse(fs.readFileSync(path.join(projectDir, "package.json"), "utf8"));
@@ -50,6 +50,17 @@ test("the app can recognize the game's own page, and nothing else", () => {
   assert.equal(looksLikeTheGame(fs.readFileSync(path.join(projectDir, "public", "index.html"), "utf8")), true);
   assert.equal(looksLikeTheGame("<html><title>Something else</title></html>"), false);
   assert.equal(looksLikeTheGame(""), false);
+});
+
+test("the app knows the game under its old name too, and takes over the old name's files once", () => {
+  assert.equal(looksLikeTheGame("<html><title>The Last Meridian</title></html>"), true);
+  const mine = "C:/Users/someone/AppData/Roaming/Almagest Explorer's";
+  const old = "C:/Users/someone/AppData/Roaming/The Last Meridian";
+  const has = (...files) => (file) => files.includes(file.replaceAll("\\", "/"));
+  assert.equal(oldFilesToTakeOver({ mine, old, exists: has(old) }), true, "nothing of its own yet");
+  assert.equal(oldFilesToTakeOver({ mine, old, exists: has(old, `${mine}/app-state.json`) }), false, "it has settings already");
+  assert.equal(oldFilesToTakeOver({ mine, old, exists: has(old, `${mine}/data`) }), false, "it has saves already");
+  assert.equal(oldFilesToTakeOver({ mine, old, exists: has() }), false, "nothing to take over");
 });
 
 // ---- Where the window opens --------------------------------------------------

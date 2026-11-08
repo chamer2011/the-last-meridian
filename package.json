@@ -1,9 +1,9 @@
 {
-  "name": "last-meridian",
-  "productName": "The Last Meridian",
+  "name": "almagest-explorers",
+  "productName": "Almagest Explorer's",
   "version": "0.5.0",
   "description": "A sci-fi text RPG with an AI game master",
-  "author": "The Last Meridian",
+  "author": "Almagest Explorer's",
   "license": "SEE LICENSE IN LICENSE",
   "private": true,
   "type": "module",
@@ -24,7 +24,8 @@
   },
   "build": {
     "appId": "com.lastmeridian.game",
-    "productName": "The Last Meridian",
+    "productName": "Almagest Explorer's",
+    "executableName": "Almagest Explorers",
     "asar": false,
     "directories": {
       "output": "dist"
@@ -44,13 +45,13 @@
       "icon": "app/icon.ico"
     },
     "nsis": {
-      "artifactName": "The-Last-Meridian-Setup.exe",
+      "artifactName": "Almagest-Explorers-Setup.exe",
       "oneClick": true,
       "perMachine": false,
       "runAfterFinish": false,
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
-      "shortcutName": "The Last Meridian",
+      "shortcutName": "Almagest Explorer's",
       "deleteAppDataOnUninstall": false
     }
   }
