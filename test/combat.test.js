@@ -516,7 +516,7 @@ test("a save from the middle of a one-on-one fight carries on with two sides", (
     intro: "It hovers.",
   };
   const migrated = migrateGame(save);
-  assert.equal(migrated.version, 16);
+  assert.equal(migrated.version, 17);
   const fight = view(migrated);
   assert.equal(fight.round, 5);
   assert.equal(fight.enemies[0].hp, 3);
@@ -553,7 +553,7 @@ test("a simulated fight in an older save takes its lines back out of the story",
 test("a save with no fight going just moves up a version", () => {
   const save = { ...structuredClone(newGame()), version: 4, bestiary: {}, pendingEvents: [], combat: null };
   const migrated = migrateGame(save);
-  assert.equal(migrated.version, 16);
+  assert.equal(migrated.version, 17);
   assert.equal(migrated.combat, null);
 });
 

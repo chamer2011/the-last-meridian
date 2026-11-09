@@ -122,11 +122,17 @@
       ["mess", 62, 10],
       ["mess", 63, 10]
     ],
+    "beds": [
+      ["garden", 94, 7],
+      ["garden", 104, 7],
+      ["garden", 112, 7],
+      ["garden", 96, 9]
+    ],
     "galley": [
-      ["mess", 44, 5],
-      ["mess", 45, 5],
-      ["mess", 45, 4],
-      ["mess", 47, 3]
+      ["galley", 82, 4],
+      ["galley", 84, 4],
+      ["galley", 86, 4],
+      ["galley", 88, 4]
     ],
     "racks": [
       ["bunks", 82, 23],
@@ -1164,6 +1170,46 @@
         },
         {
           "at": "21:00",
+          "doing": "asleep",
+          "go": "racks",
+          "asleep": true
+        }
+      ]
+    },
+    {
+      "names": [
+        [
+          "Gardener Odile",
+          0
+        ],
+        [
+          "Gardener Benno",
+          30
+        ]
+      ],
+      "day": [
+        {
+          "at": "05:30",
+          "doing": "tending the beds",
+          "go": "beds"
+        },
+        {
+          "at": "12:00",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "12:40",
+          "doing": "tending the beds",
+          "go": "beds"
+        },
+        {
+          "at": "18:30",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "19:10",
           "doing": "asleep",
           "go": "racks",
           "asleep": true

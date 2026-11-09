@@ -49,16 +49,27 @@ function supplyLine(s) {
 
 const suppliesSection = (s) => section("Stores", s.supplies.map(supplyLine), muted("Counted every midnight, in whatever way the day passes. With parts aboard the engineers mend the hull a little each day; without them, she wears."));
 
-// What's kept where, room by room, from world/logistics: each store is a thing in a room you can walk to and open.
+// What's kept where, room by room, from world/logistics: each store is a thing in a room you can walk to and open,
+// each machine takes from one and puts into another on the clock, and the whole ship eats from the kettle.
 function storesSection(s) {
   if (!s.stores?.length) return null;
+  const count = (n) => n.toLocaleString("en-US");
   const line = (store) => {
     const what = store.count ? `${store.count.n} of ${store.count.of} ${store.count.unit}` : store.items.map((one) => `${one.n}${one.of && one.n !== one.of ? ` of ${one.of}` : ""} ${one.name.toLowerCase()}${one.n === 1 || /produce$/i.test(one.name) ? "" : "s"}`).join(", ") || "empty";
     return el("div", { class: "menu-row small" },
       el("span", {}, store.name, el("span", { class: "muted" }, `, ${store.room}`)),
-      el("span", { class: store.full ? "" : "tone-bad" }, what));
+      el("span", { class: store.empty || store.items?.some((one) => one.of && one.n <= 0) ? "tone-bad" : "" }, what));
   };
-  return section("In the rooms", s.stores.map(line), muted("Walk up to any of them and open it beside your pack. What's taken out and put back is kept, and the count here follows it."));
+  const machine = (m) => el("div", { class: "menu-row small" },
+    el("span", {}, m.name, el("span", { class: "muted" }, `, ${m.room}: ${m.does}`)),
+    el("span", { class: m.bad ? "tone-bad" : m.runs ? "" : "muted" }, m.status));
+  const meals = s.meals && el("div", { class: "stack gap-small" },
+    small(`${s.meals.sittings} sittings a day, ${count(s.meals.aSitting)} people at each: ${s.meals.now}.`),
+    el("div", { class: `small${s.meals.today.missed ? " tone-bad" : ""}` }, `Today ${count(s.meals.today.served)} served${s.meals.today.missed ? `, ${count(s.meals.today.missed)} found the kettle empty` : ""}.${s.meals.yesterday ? ` Yesterday ${count(s.meals.yesterday.served)} served${s.meals.yesterday.missed ? `, ${count(s.meals.yesterday.missed)} went without` : ""}.` : ""}`));
+  return section("In the rooms", s.stores.map(line),
+    muted("Walk up to any of them and open it beside your pack. What's taken out and put back is kept, and the count here follows it."),
+    s.machines?.length ? [el("h4", { class: "small" }, "Machines"), s.machines.map(machine), muted("Each runs on the clock while its room has power and someone's at it, and nothing runs while the clock is paused.")] : null,
+    meals ? [el("h4", { class: "small" }, "The sittings"), meals, muted("Everyone aboard eats from the kettle at the sittings. Whoever finds it empty goes without, and the ship's morale feels that at midnight.")] : null);
 }
 
 function choiceCard({ current, name, detail, desc, onclick, disabled }) {

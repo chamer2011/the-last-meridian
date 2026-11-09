@@ -464,7 +464,7 @@ test("an older save keeps its AI game master, and a new game says which it has",
   delete old.mode;
   delete old.scene;
   const migrated = migrateGame(old);
-  assert.equal(migrated.version, 16);
+  assert.equal(migrated.version, 17);
   assert.equal(migrated.mode, "ai");
   assert.equal(migrated.scene, null);
   assert.deepEqual(migrated.flags, {});

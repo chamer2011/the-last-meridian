@@ -1,20 +1,32 @@
 // The ship's logistics: nothing aboard comes from nothing. world/logistics/<place>.txt says where every stock is kept,
 // and each store is a real thing in a room, full to start with, that the player can walk to and open beside their
-// pack; the Ship menu reads the same count. The file's other parts (machines, loads, errands, refills) are read and
-// checked for their shape, and come to life step by step. Everything here runs on this computer, and the AI isn't
-// told any of it yet. public/logistics-text.js reads the words; this knows the maps and the items.
+// pack; the Ship menu reads the same count. Its machines run on the clock, at the same beat as everyone's days: each
+// takes from one store and puts into another so often, while its room has power and someone's at it. The whole ship
+// eats from the kettle at its sittings, and whoever finds it empty goes without, which the ship's morale feels at
+// midnight. The file's other parts (loads, errands, refills) are read and checked for their shape, and come to life
+// step by step. Everything here runs on this computer, and the AI isn't told any of it yet. public/logistics-text.js
+// reads the words; this knows the maps, the items, the systems and everyone's days.
 
 import { ITEMS, LOCATIONS } from "./data.js";
-import { storeCounts } from "./bag.js";
-import { claimedSquares, floorSpot, systemsOf } from "./systems.js";
-import { mapFor, roomsOf, roomsOn, thingsIn } from "./walk.js";
+import { storeCounts, storePut, storeTake } from "./bag.js";
+import { usuallyIn, whoIsIn } from "./life.js";
+import { claimedSquares, floorSpot, roomPowered, systemsOf } from "./systems.js";
+import { mapFor, roomHere, roomsOf, roomsOn, thingsIn } from "./walk.js";
 import { LOGISTICS_FILE_PROBLEMS, WORLD_LOGISTICS } from "./world.js";
-import { readStoreLine, slugOf } from "../public/logistics-text.js";
+import { everyWords, readMachineLine, readStoreLine, slugOf } from "../public/logistics-text.js";
 
 const plain = (words) => String(words ?? "").toLowerCase().replace(/['’]/g, "").replace(/^the\s+/, "").replace(/\s+/g, " ").trim();
 const upperFirst = (text) => (text ? text[0].toUpperCase() + text.slice(1) : "");
 // A store can hold a count of something that isn't an item you pick up: the kettle's sittings.
 const COUNT_UNITS = ["sittings"];
+// When the whole ship eats, unless the file says: four sittings of an hour and a half, as the rota on the mess wall
+// has it, two in the morning and two in the evening, while the cooks are at the kettle.
+const DEFAULT_SITTINGS = { at: [6 * 60, 7 * 60 + 30, 18 * 60, 19 * 60 + 30], minutes: 90 };
+// The clock is stepped through in pieces this long, so that who's at a machine and whether there's a sitting on are
+// looked at often enough, however far the clock jumps at once.
+const CHUNK = 5;
+const ORDINALS = ["first", "second", "third", "fourth", "fifth", "sixth"];
+const clockWords = (minutes) => `${String(Math.floor(minutes / 60) % 24).padStart(2, "0")}:${String(Math.round(minutes) % 60).padStart(2, "0")}`;
 
 // An item by the words a file uses for it: its name or its id, plural or not.
 export function itemByWords(words) {
@@ -27,13 +39,15 @@ export function itemByWords(words) {
   return null;
 }
 
+const itemWords = (id, n) => {
+  const name = (ITEMS[id]?.name ?? id).toLowerCase();
+  return n === 1 || /produce$/.test(name) ? name : `${name}s`;
+};
+
 // "12 ration crates and 12 produce", or "400 sittings".
 export function describeHolds(holds, count = null) {
   if (count) return `${count.n} ${count.unit}`;
-  const parts = Object.entries(holds ?? {}).map(([id, n]) => {
-    const name = ITEMS[id]?.name ?? id;
-    return `${n} ${n === 1 || /produce$/i.test(name) ? name.toLowerCase() : `${name.toLowerCase()}s`}`;
-  });
+  const parts = Object.entries(holds ?? {}).map(([id, n]) => `${n} ${itemWords(id, n)}`);
   return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0] ?? "nothing";
 }
 
@@ -61,7 +75,6 @@ export function logisticsOf(place) {
   return models.get(place);
 }
 
-// A free square of the room for a store the map hasn't drawn, clear of names, parts and the other stores.
 // The squares a new store must leave alone: every thing's and part's own square and the squares beside them, which
 // is where you stand to reach them (a part on a wall is reached from the square in front of it, one of those).
 function keptClear(place, map, level) {
@@ -100,7 +113,7 @@ function compileLogistics(place) {
     const key = plain(want);
     return rooms.find((room) => plain(room.name) === key || room.id === key || (room.aliases ?? []).some((alias) => plain(alias) === key)) ?? null;
   };
-  const model = { place, name, file, numbers: file.numbers ?? {}, stores: [], storesIn: {}, problems };
+  const model = { place, name, file, numbers: file.numbers ?? {}, stores: [], storesIn: {}, machines: [], kettles: [], sittings: file.sittings ?? DEFAULT_SITTINGS, eats: Number(file.numbers?.eats) || 2, problems };
   const taken = new Map();
   for (const raw of file.stores ?? []) {
     const line = raw.line ?? null;
@@ -167,8 +180,237 @@ function compileLogistics(place) {
     const entry = { id, name: s.name, room: room.id, roomName: room.name, level: level.id, thing: thing.id, key: `thing:${place}:${thing.id}`, holds, count, look: s.look, placed: !existing, line };
     model.stores.push(entry);
     (model.storesIn[room.id] ??= []).push(id);
+    if (count) model.kettles.push(entry);
+  }
+  // The machines: what each takes, from where, what it makes, where that goes, how often, and what it needs.
+  const findStore = (words) => {
+    const key = plain(words);
+    return model.stores.find((store) => plain(store.name) === key || store.id === slugOf(words)) ?? null;
+  };
+  const storeNames = () => model.stores.map((store) => store.name).join(", ") || "none yet";
+  for (const raw of file.machines ?? []) {
+    const line = raw.line ?? null;
+    const m = readMachineLine(raw.text);
+    if (m.problem) {
+      at(line, m.problem);
+      continue;
+    }
+    const id = slugOf(m.name);
+    if (model.machines.some((one) => one.id === id)) {
+      at(line, `the ${m.name} is written twice`);
+      continue;
+    }
+    let sound = true;
+    const from = m.from ? findStore(m.from) : null;
+    if (m.from && !from) {
+      at(line, `there's no store called ${m.from} for the ${m.name} to take from: the stores are ${storeNames()}`);
+      sound = false;
+    }
+    const into = m.into ? findStore(m.into) : null;
+    if (m.into && !into) {
+      at(line, `there's no store called ${m.into} for the ${m.name} to put into: the stores are ${storeNames()}`);
+      sound = false;
+    }
+    const takes = [];
+    for (const { n, what } of m.takes) {
+      const item = itemByWords(what);
+      if (!item) {
+        at(line, `there's no item called ${what} in world/items for the ${m.name} to use`);
+        sound = false;
+      } else if (from && !(item in from.holds)) {
+        at(line, `the ${from.name} doesn't keep ${what}: add it to the ${from.name}'s holds line, or use something it keeps`);
+        sound = false;
+      } else takes.push({ item, n });
+    }
+    let gives = null;
+    if (m.gives) {
+      const unit = plain(m.gives.what).replace(/s$/, "");
+      if (COUNT_UNITS.includes(`${unit}s`)) {
+        if (!into) {
+          at(line, `the ${m.name} makes ${unit}s but doesn't say where they go: write into ${m.gives.n} ${unit}s in the soup kettle`);
+          sound = false;
+        } else if (into.count?.unit !== `${unit}s`) {
+          at(line, `the ${m.name} makes ${unit}s, so it has to put them into a store of ${unit}s, and the ${into.name} isn't one`);
+          sound = false;
+        } else gives = { count: true, unit: `${unit}s`, n: m.gives.n };
+      } else {
+        const item = itemByWords(m.gives.what);
+        if (!item) {
+          at(line, `there's no item called ${m.gives.what} in world/items for the ${m.name} to make`);
+          sound = false;
+        } else if (!into) {
+          at(line, `the ${m.name} makes ${m.gives.what} but doesn't say where they go: write into the garden bins`);
+          sound = false;
+        } else if (into.count || !(item in into.holds)) {
+          at(line, `the ${into.name} doesn't keep ${m.gives.what}: add it to the ${into.name}'s holds line`);
+          sound = false;
+        } else gives = { count: false, item, n: m.gives.n };
+      }
+    }
+    const room = m.room ? findRoom(m.room) : findRoom(m.name) ?? rooms.find((one) => one.id === (into ?? from)?.room) ?? null;
+    if (m.room && !room) {
+      at(line, `${name} has no room called ${m.room}`);
+      sound = false;
+    } else if (!room) {
+      at(line, `the ${m.name} needs a room: write ${m.name} in The Galley`);
+      sound = false;
+    }
+    if (!sound) continue;
+    // A machine that only gives power is the generator's, and waits for the step that brings power in.
+    model.machines.push({ id, name: m.name, verb: m.verb, room: room.id, roomName: room.name, takes, from: from?.id ?? null, gives, into: into?.id ?? null, every: m.every, needs: m.needs, power: m.power, runs: Boolean(gives), line, text: raw.text });
   }
   return model;
+}
+
+// ---- The counts -------------------------------------------------------------------------------------
+
+const storeById = (model, id) => model.stores.find((store) => store.id === id) ?? null;
+// What a store of sittings holds now: kept in the save once anything's moved, and the file's number before that.
+export const countOf = (game, store) => (store.count ? game.stores?.[store.key]?.count ?? store.count.n : null);
+function setCount(game, store, n) {
+  game.stores ??= {};
+  game.stores[store.key] = { ...(game.stores[store.key] ?? {}), count: Math.max(0, Math.min(store.count.n, Math.round(n))) };
+}
+// How much more a store can take of what a machine makes.
+function roomFor(game, store, gives) {
+  if (!gives) return Infinity;
+  if (gives.count) return store.count.n - countOf(game, store);
+  const counts = storeCounts(game, store.key, store.holds);
+  return (store.holds[gives.item] ?? 0) - (counts[gives.item] ?? 0);
+}
+// The first of a machine's choices that the store has enough of.
+function pickTake(game, store, takes) {
+  const counts = storeCounts(game, store.key, store.holds);
+  return takes.find((one) => (counts[one.item] ?? 0) >= one.n) ?? null;
+}
+const takesWords = (takes) => takes.map((one) => itemWords(one.item, 2)).join(" or ");
+// "the pantry is full", "the garden bins are full".
+const isFull = (store) => `the ${store.name} ${/s$/i.test(store.name) ? "are" : "is"} full`;
+
+// ---- The clock -----------------------------------------------------------------------------------
+
+// The state of a place's logistics in the save: when it was last run, each machine's progress, and the day's meals.
+function stateOf(game, place) {
+  game.logistics ??= {};
+  return game.logistics[place] ??= { at: null, machines: {}, meals: { days: {}, carry: 0, dry: false } };
+}
+
+// Who's at work in a room at a moment: the player standing there, and anyone whose day puts them there, awake.
+export function workersIn(game, place, roomId, hours) {
+  const names = whoIsIn(game, place, roomId, hours);
+  if (game.location === place && game.walk && roomHere(game)?.id === roomId) names.unshift("you");
+  return names;
+}
+
+// Why a machine isn't making anything at a minute of the clock, or null while it's running. Who's there comes from
+// everyone's days as written (the same however a jump of the clock is cut up), and the player standing in the room.
+function whyWaiting(game, place, m, from, into, minute, you) {
+  if (m.needs.power && !roomPowered(game, place, m.room)) return "no power";
+  if (m.needs.worker && you !== m.room && !usuallyIn(game, place, m.room, minute % 1440).length) return `waiting for ${m.needs.worker}`;
+  if (into && roomFor(game, into, m.gives) < m.gives.n) return isFull(into);
+  if (from && !pickTake(game, from, m.takes)) return `the ${from.name} ${/s$/i.test(from.name) ? "have" : "has"} no ${takesWords(m.takes)}`;
+  return null;
+}
+
+// One machine over one piece of the clock. It's at work while it has power and someone there, and its progress
+// builds up to one go, so that what's ready goes in as soon as there's room for it, or something to make it from.
+function runMachine(game, place, model, m, state, minute, minutes, you) {
+  const s = state.machines[m.id] ??= { progress: 0, made: 0, waiting: null };
+  const from = m.from ? storeById(model, m.from) : null;
+  const into = m.into ? storeById(model, m.into) : null;
+  const why = whyWaiting(game, place, m, from, into, minute, you);
+  const atWork = why === null || (why !== "no power" && !why.startsWith("waiting for "));
+  if (atWork) s.progress = Math.min(m.every, s.progress + minutes);
+  s.waiting = why;
+  while (why === null && s.progress >= m.every) {
+    const take = from ? pickTake(game, from, m.takes) : null;
+    if ((from && !take) || (into && roomFor(game, into, m.gives) < m.gives.n)) break;
+    if (from) storeTake(game, from.key, from.holds, take.item, take.n);
+    if (m.gives.count) setCount(game, into, countOf(game, into) + m.gives.n);
+    else storePut(game, into.key, into.holds, m.gives.item, m.gives.n);
+    s.progress -= m.every;
+    s.made += 1;
+  }
+}
+
+// The sitting that's on at a minute of the day, if any.
+const sittingAt = (sittings, minuteOfDay) => sittings.at.findIndex((start) => minuteOfDay >= start && minuteOfDay < start + sittings.minutes);
+
+// The whole ship eating over one piece of the clock: so many people a minute through each sitting, each taking a
+// sitting from the kettle while there's one to take. Whoever finds it empty goes without, and that's counted.
+function serveMeals(game, place, model, state, t, minutes, notes) {
+  if (!model.kettles.length) return;
+  const day = Math.floor(t / 1440);
+  const meals = state.meals;
+  const today = meals.days[day] ??= { served: 0, missed: 0 };
+  // Old days are let go once the ship's own day has had them, a few days on.
+  if (t % 1440 === 0) {
+    const keep = Math.min(day, game.ship?.day ?? day) - 3;
+    for (const key of Object.keys(meals.days)) if (Number(key) < keep) delete meals.days[key];
+  }
+  const index = sittingAt(model.sittings, t - day * 1440);
+  if (index < 0) return;
+  const aboard = game.ship?.aboard ?? 0;
+  const aSitting = (aboard * model.eats) / model.sittings.at.length;
+  meals.carry = (meals.carry ?? 0) + (aSitting / model.sittings.minutes) * minutes;
+  let people = Math.floor(meals.carry);
+  meals.carry -= people;
+  for (const kettle of model.kettles) {
+    if (people <= 0) break;
+    const have = countOf(game, kettle);
+    const take = Math.min(have, people);
+    if (take <= 0) continue;
+    setCount(game, kettle, have - take);
+    today.served += take;
+    people -= take;
+    // Soup again: the next time it runs dry is news again.
+    meals.dry = false;
+  }
+  if (people <= 0) return;
+  today.missed += people;
+  if (!meals.dry) {
+    meals.dry = true;
+    if (game.location === place) notes.push(`[SHIP] The kettle has run dry in the ${ORDINALS[index] ?? `${index + 1}th`} sitting, and people are leaving the mess hungry.`);
+  }
+}
+
+// The clock in whole minutes.
+const minutesOf = (hours) => Math.floor(hours * 60 + 1e-6);
+
+// A new game's logistics start with its clock, so that the first move of the clock counts from the start. A save from
+// before there were logistics has no mark, and starts from the clock's next move instead, with nothing to catch up.
+export function startLogistics(game) {
+  const now = minutesOf(game.clock.hours);
+  for (const place of Object.keys(WORLD_LOGISTICS)) if (logisticsOf(place)) stateOf(game, place).at = now;
+  return game;
+}
+
+// Called whenever the clock moves, by however much, wherever the player is, and at each midnight of a long wait before
+// the ship's own day is run, so that the day's hunger is counted first. The time since last time is stepped through in
+// whole pieces of five minutes, each from the last mark to the next, so that a wait comes out the same however it's cut
+// up; what's left over waits for the next move. Nothing happens while the clock is paused, since this isn't called then.
+export function advanceLogistics(game, untilHours = game.clock.hours) {
+  const notes = [];
+  const until = minutesOf(untilHours);
+  for (const place of Object.keys(WORLD_LOGISTICS)) {
+    const model = logisticsOf(place);
+    if (!model || (!model.kettles.length && !model.machines.some((m) => m.runs))) continue;
+    const state = stateOf(game, place);
+    if (state.at === null) {
+      state.at = until;
+      continue;
+    }
+    if (until < state.at) continue;
+    const you = game.location === place && game.walk ? roomHere(game)?.id ?? null : null;
+    let t = state.at;
+    while (t + CHUNK <= until) {
+      for (const m of model.machines) if (m.runs) runMachine(game, place, model, m, state, t, CHUNK, you);
+      serveMeals(game, place, model, state, t, CHUNK, notes);
+      t += CHUNK;
+    }
+    state.at = t;
+  }
+  return notes;
 }
 
 // ---- What the player sees ------------------------------------------------------------------------
@@ -180,14 +422,82 @@ export function storesView(game, place) {
   if (!model) return [];
   return model.stores.map((store) => {
     if (store.count) {
-      const n = game.stores?.[store.key]?.count ?? store.count.n;
-      return { id: store.id, name: upperFirst(store.name), room: store.roomName, items: [], count: { n, of: store.count.n, unit: store.count.unit }, full: n >= store.count.n };
+      const n = countOf(game, store);
+      return { id: store.id, name: upperFirst(store.name), room: store.roomName, items: [], count: { n, of: store.count.n, unit: store.count.unit }, full: n >= store.count.n, empty: n <= 0 };
     }
     const counts = storeCounts(game, store.key, store.holds);
     const items = Object.keys(store.holds).map((id) => ({ id, name: ITEMS[id]?.name ?? id, n: counts[id] ?? 0, of: store.holds[id] }));
     for (const [id, n] of Object.entries(counts)) if (!(id in store.holds)) items.push({ id, name: ITEMS[id]?.name ?? id, n, of: 0 });
-    return { id: store.id, name: upperFirst(store.name), room: store.roomName, items, count: null, full: items.every((one) => one.n >= one.of) };
+    return { id: store.id, name: upperFirst(store.name), room: store.roomName, items, count: null, full: items.every((one) => one.n >= one.of), empty: items.every((one) => one.n <= 0) };
   });
+}
+
+// Every machine with what it does and how it's getting on. Reading this changes nothing.
+export function machinesView(game, place) {
+  const model = logisticsOf(place);
+  if (!model) return [];
+  const state = game.logistics?.[place];
+  return model.machines.map((m) => {
+    const s = state?.machines?.[m.id] ?? null;
+    const from = m.from ? storeById(model, m.from) : null;
+    const into = m.into ? storeById(model, m.into) : null;
+    const does = [m.verb, m.takes.map((one) => `${one.n} ${itemWords(one.item, one.n)}`).join(" or "), from ? `from the ${from.name}` : "", m.gives ? `into ${m.gives.n} ${m.gives.count ? m.gives.unit : itemWords(m.gives.item, m.gives.n)} in the ${into.name}` : "", `every ${everyWords(m.every)}`].filter(Boolean).join(" ");
+    const status = !m.runs ? `waits for step 4, the generator${m.power ? `, to give its ${m.power} power` : ""}`
+      : !s ? "about to start"
+        : s.waiting ? s.waiting
+          : `at work, ${Math.max(1, Math.ceil(m.every - s.progress))} ${Math.ceil(m.every - s.progress) === 1 ? "minute" : "minutes"} to the next`;
+    // A full store or nobody there at night is how things are; no power or nothing left to work from is a want.
+    const bad = Boolean(s?.waiting) && (s.waiting === "no power" || / ha(?:s|ve) no /.test(s.waiting));
+    return { id: m.id, name: upperFirst(m.name), room: m.roomName, does, status, waiting: Boolean(s?.waiting) || !m.runs, bad, made: s?.made ?? 0, runs: m.runs };
+  });
+}
+
+// The sittings: how many a day and for how many people, which is on now, and what the kettle gave today and yesterday.
+export function mealsView(game, place) {
+  const model = logisticsOf(place);
+  if (!model?.kettles.length) return null;
+  const minutes = game.clock.hours * 60;
+  const day = Math.floor(minutes / 1440);
+  const minute = minutes - day * 1440;
+  const { at, minutes: length } = model.sittings;
+  const aSitting = Math.round(((game.ship?.aboard ?? 0) * model.eats) / at.length);
+  const index = sittingAt(model.sittings, minute);
+  const next = at.find((start) => start > minute) ?? at[0];
+  const days = game.logistics?.[place]?.meals?.days ?? {};
+  return {
+    sittings: at.length,
+    aSitting,
+    eats: model.eats,
+    now: index >= 0 ? `the ${ORDINALS[index] ?? `${index + 1}th`} sitting is on, ${aSitting} people over ${length} minutes, ${Math.max(1, Math.ceil(at[index] + length - minute))} to go` : `between sittings, the next at ${clockWords(next)}`,
+    today: { ...(days[day] ?? { served: 0, missed: 0 }) },
+    yesterday: days[day - 1] ? { ...days[day - 1] } : null,
+  };
+}
+
+// What the kettle gave and didn't on a day of the clock, for the ship's own day at midnight.
+export const mealsOfDay = (game, place, day) => game.logistics?.[place]?.meals?.days?.[day] ?? null;
+
+// Someone's "eating" when the kettle's empty finds it empty instead.
+export function mealWords(game, place, doing) {
+  if (!/\beating\b/i.test(doing ?? "")) return doing;
+  const model = logisticsOf(place);
+  if (!model?.kettles.length) return doing;
+  return model.kettles.every((kettle) => countOf(game, kettle) <= 0) ? "finding the kettle empty" : doing;
+}
+
+// A store's words with how it stands now: a kettle says how much is left in it, and an emptied store says so.
+export function storeLook(game, place, thing, look) {
+  if (!thing?.store) return look;
+  const store = logisticsOf(place)?.stores.find((one) => one.id === thing.store);
+  if (!store) return look;
+  if (store.count) {
+    const n = countOf(game, store);
+    const of = store.count.n;
+    const words = n <= 0 ? "It's been scraped empty." : n < of / 4 ? `There's not much left in it, ${n} ${store.count.unit} or so.` : n < of ? `About ${n} ${store.count.unit} left in it.` : "It's full.";
+    return `${look ?? ""} ${words}`.trim();
+  }
+  const counts = storeCounts(game, store.key, store.holds);
+  return Object.values(counts).some((n) => n > 0) ? look : `${look ?? ""} It's empty now.`.trim();
 }
 
 // ---- For the checker --------------------------------------------------------------------------------

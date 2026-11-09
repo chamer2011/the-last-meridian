@@ -179,6 +179,43 @@ export function storeCounts(game, key, holds) {
   else for (const [id, n] of Object.entries(holds ?? {})) if (ITEMS[id]) counts[id] = Math.max(0, Math.round(Number(n)) || 0);
   return counts;
 }
+// The ship's machines and people take from a store and put into it without opening it, on the same grid the open
+// window shows, so what they did is there when it's opened. What's kept starts from the holds line, like opening it.
+function storeItems(game, key, holds) {
+  const kept = game.stores?.[key]?.items;
+  if (kept) return kept;
+  const items = [];
+  for (const [id, n] of Object.entries(holds ?? {})) if (ITEMS[id]) pour(items, R().containers, id, Math.max(0, Math.round(Number(n)) || 0));
+  return items;
+}
+function keepStore(game, key, items) {
+  game.stores ??= {};
+  game.stores[key] = { ...(game.stores[key] ?? {}), items };
+}
+// Takes up to n of an item out of a store, from its last stacks first. Says how many came out.
+export function storeTake(game, key, holds, id, n) {
+  const items = storeItems(game, key, holds);
+  let left = n;
+  for (let i = items.length - 1; i >= 0 && left > 0; i -= 1) {
+    if (items[i].id !== id) continue;
+    const take = Math.min(items[i].n, left);
+    items[i].n -= take;
+    left -= take;
+    if (items[i].n <= 0) items.splice(i, 1);
+  }
+  keepStore(game, key, items);
+  return n - left;
+}
+// Puts up to n of an item into a store: never more than its holds line says it keeps, and never more than its
+// grid has room for. Says how many went in.
+export function storePut(game, key, holds, id, n) {
+  const items = storeItems(game, key, holds);
+  const have = items.filter((one) => one.id === id).reduce((sum, one) => sum + one.n, 0);
+  const want = Math.max(0, Math.min(n, (holds?.[id] ?? 0) - have));
+  const left = want > 0 ? pour(items, R().containers, id, want) : 0;
+  keepStore(game, key, items);
+  return want - left;
+}
 // What's in a thing, from its map file's holds line the first time it's opened.
 function contentsOf(game, found) {
   if (found.pile) return found.pile.items;

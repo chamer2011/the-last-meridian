@@ -13,6 +13,8 @@ process.env.GAME_DATA_DIR = dataDir;
 
 const { SYSTEM_PROMPT, runTurn } = await import("../src/ai.js");
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
+const { storePut } = await import("../src/bag.js");
+const { logisticsOf } = await import("../src/logistics.js");
 const { LOCATIONS } = await import("../src/data.js");
 const { LORE } = await import("../src/lore.js");
 const { migrateGame } = await import("../src/migrate.js");
@@ -58,7 +60,7 @@ test("the ship's file: nine hundred aboard, four supplies, four ration levels, a
 test("a new game's ship carries her stores, with the day's clock set and nobody else in the chair", () => {
   const game = newGame();
   const s = game.ship;
-  assert.equal(game.version, 16);
+  assert.equal(game.version, 17);
   assert.equal(s.aboard, 900);
   assert.equal(s.food, SHIP_DATA.start.food);
   assert.equal(s.medicine, SHIP_DATA.start.medicine);
@@ -214,7 +216,12 @@ test("restocking ends a shortage, and says so", () => {
 
 test("morale and health settle where the rations put them", () => {
   const game = newGame();
-  const stocked = () => Object.assign(game.ship, { food: 9000, medicine: 900, parts: 900, fuel: game.ship.maxFuel });
+  // The old count in tonnes, and the pantry the galley cooks from, both kept full: step 3's errands will do the carrying.
+  const pantry = logisticsOf(SHIP_ID).stores.find((one) => one.id === "pantry");
+  const stocked = () => {
+    Object.assign(game.ship, { food: 9000, medicine: 900, parts: 900, fuel: game.ship.maxFuel });
+    storePut(game, pantry.key, pantry.holds, "ration_crate", 12);
+  };
   // The stories that move on by themselves nudge morale a point or two, so it settles near its level, not on it.
   const near = (value, target) => Math.abs(value - target) <= 3;
   for (let day = 0; day < 40; day += 1) { stocked(); days(game, 1); }
@@ -573,7 +580,7 @@ test("a save from before the ship kept her own stores loads, with nothing charge
   save.ship = { name: "CFS Meridian", hull: 40, maxHull: 100, fuel: 3, maxFuel: 12, morale: 31 };
   save.transcript = [{ role: "narrator", text: "The story so far.\n\n> Do something" }];
   const game = migrateGame(save);
-  assert.equal(game.version, 16);
+  assert.equal(game.version, 17);
   assert.equal(game.ship.day, 9);
   assert.equal(game.ship.at, "kessara");
   assert.equal(game.ship.food, SHIP_DATA.start.food);
@@ -601,7 +608,7 @@ test("a save with the fleet in it loses the fleet, and keeps what was the ship's
   };
   save.transcript = [{ role: "narrator", text: "The story so far." }];
   const game = migrateGame(save);
-  assert.equal(game.version, 16);
+  assert.equal(game.version, 17);
   assert.equal(game.fleet, undefined);
   assert.equal(game.ship.day, 12);
   assert.equal(game.ship.at, "cinder");
@@ -634,7 +641,7 @@ test("a captain's save aboard the Sundial docks the Meridian there, and one from
   const ancient = { ...oldSave(), version: 3, bestiary: undefined };
   delete ancient.campaign;
   const game = migrateGame(ancient);
-  assert.equal(game.version, 16);
+  assert.equal(game.version, 17);
   assert.ok(game.ship.day !== undefined);
   assert.doesNotThrow(() => publicState(game));
 });

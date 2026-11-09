@@ -222,6 +222,14 @@ function fromVersion15(save) {
   return { ...rest, version: 16, ship, transcript: save.fleet ? [...(save.transcript ?? []), notice] : save.transcript ?? [] };
 }
 
+// Version 17 is the ship's logistics running on the clock. An old save has nothing to carry over: its stores are full
+// and its machines start when the clock next moves, which is what the game does with a state that isn't there yet, so
+// anything a save this old says about logistics is let go rather than replayed.
+function fromVersion16(save) {
+  const { logistics: _gone, ...rest } = save;
+  return { ...rest, version: 17 };
+}
+
 export function migrateGame(save) {
   if (!save) return save;
   let game = save;
@@ -240,6 +248,7 @@ export function migrateGame(save) {
   if (game.version < 14) game = fromVersion13(game);
   if (game.version < 15) game = fromVersion14(game);
   if (game.version < 16) game = fromVersion15(game);
+  if (game.version < 17) game = fromVersion16(game);
   // A place that's gone from the world's files can't hold anyone, and factions added since this save was made need a standing.
   if (!LOCATIONS[game.location]) game.location = "meridian";
   game.factions ??= {};

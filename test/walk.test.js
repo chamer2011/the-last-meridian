@@ -1492,7 +1492,7 @@ const oldSave = (game = newGame(), version = 7) => {
 
 test("a save from before there was any map loads, with the captain in a room", () => {
   const game = migrateGame(oldSave());
-  assert.equal(game.version, 16);
+  assert.equal(game.version, 17);
   assert.equal(game.talk, null);
   assert.equal(game.walk.place, "meridian");
   assert.equal(walkView(game).here.id, "bridge");
@@ -1536,7 +1536,7 @@ test("a save from when the ship was one plan keeps the captain in the same room"
     const old = oldSave(newGame(), 8);
     old.walk = { place: "meridian", x, y, walked: false, with: [{ id: "voss", name: "Ilya Voss", x: 41, y: 5 }], room: null };
     const game = migrateGame(old);
-    assert.equal(game.version, 16);
+    assert.equal(game.version, 17);
     assert.equal(roomHere(game).id, level, `${x},${y}`);
     assert.deepEqual(walkOf(game).with, [], "everyone's back at their posts");
     assert.equal(walkView(game).offPlan, false);
@@ -1564,7 +1564,7 @@ test("a save somewhere else opens wherever its latest scene says, from any older
     away.location = "haven";
     away.transcript = [{ role: "narrator", text: 'You push through the door of the Neutral Ground.\n\n@Jun Sable: "Weapons in the rack."' }];
     const game = migrateGame(oldSave(away, version));
-    assert.equal(game.version, 16);
+    assert.equal(game.version, 17);
     assert.equal(walkView(game).here.id, "bar", `from version ${version}`);
     assert.ok(person(game, "sable"), "whoever's in the scene is there");
     assert.doesNotThrow(() => publicState(game));
@@ -1598,10 +1598,10 @@ test("a save from any older version gets here too", () => {
   save.version = 6;
   delete save.fleet;
   const game = migrateGame(save);
-  assert.equal(game.version, 16);
+  assert.equal(game.version, 17);
   assert.ok(game.ship.day !== undefined && game.ship.food > 0, "the ship's stores are there");
   assert.doesNotThrow(() => publicState(game));
-  assert.equal(newGame().version, 16);
+  assert.equal(newGame().version, 17);
 });
 
 test("a save made while talking carries on talking", () => {
@@ -1713,7 +1713,7 @@ test("over the real server: walking, talking and closing never move the clock, a
   assert.equal(notes.length, 1);
 
   const onDisk = JSON.parse(fs.readFileSync(path.join(serverData, "saves", "autosave.json"), "utf8"));
-  assert.equal(onDisk.version, 16);
+  assert.equal(onDisk.version, 17);
   assert.equal(onDisk.talk, null);
   assert.equal(onDisk.clock.hours, hours);
 });

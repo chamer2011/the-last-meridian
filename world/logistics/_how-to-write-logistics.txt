@@ -11,10 +11,12 @@ and saving one there writes its file here.
 
 checks these files too.
 
-It's built in steps, each tried by the owner before the next. So far the game plays the Stores part: every
-store is a real thing in a room, full to start with, that the player can walk to and open beside their pack,
-and the Ship menu lists them all with what's in them. The other parts are read and written back, and checked
-for their shape, and they'll come to life step by step: Machines, then Errands, then Loads, then Refills.
+It's built in steps, each tried by the owner before the next. So far the game plays the Stores and the
+Machines, and everyone aboard eats: every store is a real thing in a room, full to start with, that the player
+can walk to and open beside their pack; every machine takes from one store and puts into another on the
+clock; the whole ship eats from the kettle at its sittings; and the Ship menu shows all of it. The other parts
+are read and written back, and checked for their shape, and they'll come to life step by step: Errands, then
+Loads, then Refills.
 
 
 THE FILE
@@ -22,8 +24,10 @@ THE FILE
 
     # CFS Meridian
     draft: the AI's, not yet edited by the owner     (the game doesn't read this: it's for whoever edits)
-    everyone aboard eats: 2 sittings a day           (what the whole ship eats, counted from step 2)
-    a crate feeds: 200 sittings                      (how far a ration crate goes)
+    everyone aboard eats: 2 sittings a day           (how many times a day each of the people aboard eats)
+    a crate feeds: 200 sittings                      (how far a ration crate goes: for whoever edits)
+    sittings at: 06:00, 07:30, 18:00, 19:30, each 90 minutes   (when the whole ship eats, two sittings to a
+                                                     meal; this is what it is when the line is left out)
 
     Stores:
     - pantry in The Galley: holds 12 ration crates, 12 produce: Shelves behind a wire door.
@@ -67,9 +71,46 @@ Draw one in Tiled later if you'd rather, with the same name, and the game will u
 What's taken out and put back is kept in the saved game, and the Ship menu reads the same count.
 
 
+MACHINES
+--------
+
+A machine takes from one store and puts into another, so often, on the clock. Each line is the machine's
+name, then in and its room if the room isn't named like it (galley, garden), a colon, and what it does:
+
+    - galley: cooks 1 produce or 1 ration crate from the pantry into 200 sittings in the soup kettle every hour, with power and a cook there
+    - garden: grows 1 produce into the garden bins every 2 hours, with power and someone tending it
+    - generator in Engineering: burns 1 fuel cell from the fuel rack every 8 hours, gives 100 power
+
+The pieces, in any order after the verb:
+
+    1 produce or 1 ration crate       what it uses each time, one of the choices, whichever the store has
+    from the pantry                   the store it takes that from, which has to keep those items
+    into 200 sittings in the soup kettle    what it makes and the store it goes into: sittings into a store of
+                                      sittings, or an item into a store whose holds line keeps that item
+    into the garden bins              the same, when the machine makes the one thing it names and uses nothing
+    every hour / every 2 hours / every 30 minutes    how often it does that
+    with power and a cook there       what it needs: power in its room, and someone there (any words after
+                                      with that aren't power mean someone, and they're shown when nobody is)
+    gives 100 power                   for the generator; a machine that only gives power waits for step 4
+
+A machine is at work while its room has power and someone's there: the player standing in it, or anyone
+whose day puts them there, awake. Its progress builds up to one go, and when there's room in the store it
+puts into, and something to make it from, it goes. Otherwise it waits, and the Ship menu says why: no power,
+waiting for a cook there, the soup kettle is full, the pantry has no produce or ration crates. Nothing
+happens while the clock is paused.
+
+THE SITTINGS
+------------
+
+Everyone aboard eats from the stores of sittings (the kettle) at the sittings, as many a day each as
+everyone aboard eats says, spread evenly through each sitting. Whoever finds the kettle empty goes without,
+anyone you can see eating finds it empty instead, and at midnight the ship's morale feels it by the share
+who went hungry, the way a food shortage does. The Ship menu shows the sittings, and what the kettle gave
+today and yesterday.
+
 THE OTHER PARTS, FOR NOW
 ------------------------
 
-Machines, Loads, Errands and Refills are read and written back by the board, and the checker only asks
-that each line starts with - and a space. What each line means is written in the words you'd use; the
-steps that bring them to life will read exactly those words, and this file will say how, step by step.
+Loads, Errands and Refills are read and written back by the board, and the checker only asks that each
+line starts with - and a space. What each line means is written in the words you'd use; the steps that
+bring them to life will read exactly those words, and this file will say how, step by step.

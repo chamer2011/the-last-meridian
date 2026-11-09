@@ -15,6 +15,7 @@ import { FIGHT_DIFFICULTIES, attackBonus, combatProfile, combatView, enemyNumber
 import { advanceWorld, holdingsOf, itemFactor, newWorld, newsView, placeLine, placeNow, worldOf } from "./daily.js";
 import { advanceShip, chairOf, chartEntry, isCharted, jumpCost, newShipState, shipGoingHungry, shipJumped, shipLine, shipOf, shipView } from "./ship.js";
 import { advanceLife, lifeOf } from "./life.js";
+import { advanceLogistics, startLogistics } from "./logistics.js";
 import { startingLoreIds } from "./lore.js";
 import { THREAT_LABELS } from "./npc.js";
 import { START_LIST, aboardShip, isCaptain, jobHere, roleBrief, startOf, toOutsider } from "./role.js";
@@ -259,10 +260,13 @@ export function passTime(game, hours, activity = "active") {
   game.clock.hours += hours;
   // Whoever the story has put beside the captain is still there once the time has passed.
   if (game.walk) game.walk.withUntil = null;
-  // The place's systems go first, so that people know where the alarm is, and where the air's gone bad.
+  // The place's systems go first, so that people know where the alarm is, and where the air's gone bad. Then everyone's
+  // days, then each day that's gone by (with the ship's machines and sittings run up to its midnight first), then the
+  // machines and sittings up to now.
   const systems = advanceSystems(game);
   advanceLife(game);
-  return [...systems, ...hoursPass(game, hours, activity)];
+  const notes = hoursPass(game, hours, activity);
+  return [...systems, ...notes, ...advanceLogistics(game)];
 }
 
 // The clock running by itself while the player explores. It moves in moments, and every two hours
@@ -276,6 +280,7 @@ export function clockRuns(game, minutes) {
   for (let hour = before + 1; hour <= Math.floor(game.clock.hours + 1e-6); hour += 1) {
     if (hour % 2 === 0) notes.push(...hoursPass(game, 2, "active"));
   }
+  notes.push(...advanceLogistics(game));
   return notes;
 }
 
@@ -310,7 +315,8 @@ function hoursPass(game, hours, activity) {
   const today = Math.floor(game.clock.hours / 24);
   const told = { today: 0, all: 0 };
   for (let day = Math.min(shipOf(game).day, worldOf(game).day, clockOf(game).day) + 1; day <= today; day += 1) {
-    notes.push(...advanceShip(game, day), ...advanceWorld(game, day), ...advanceStories(game, day, told));
+    // The ship's machines and sittings run up to this midnight first, so that the day's hunger is counted before her day.
+    notes.push(...advanceLogistics(game, day * 24), ...advanceShip(game, day), ...advanceWorld(game, day), ...advanceStories(game, day, told));
   }
   syncVitals(game);
   return notes;
@@ -670,7 +676,7 @@ export function travel(game, destination) {
 export function assembleGame(profile) {
   const start = START_LIST[profile.start] ?? START_LIST.captain;
   const game = {
-    version: 16,
+    version: 17,
     campaign: null,
     // Who writes the story: "written" plays the scenes in world/scenes, and "ai" is the AI game master. The server sets it from the Settings menu.
     mode: "ai",
@@ -733,6 +739,8 @@ export function assembleGame(profile) {
   Object.assign(game.ship, newShipState(game));
   game.world = newWorld(game);
   if (start.room) startInRoom(game, start.room);
+  // The ship's machines and sittings count from the first moment, whichever life this is.
+  startLogistics(game);
   return game;
 }
 

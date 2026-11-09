@@ -13,7 +13,7 @@ import { inTrouble, levelName, noneLeft, placeNow, supplyFactor, tellNews, trade
 import { aboardShip, isCaptain } from "./role.js";
 import { addCondition, buyPrice, changeStress, clamp, clockLabel, jumpHours, passTime, sellPrice, travel } from "./rules.js";
 import { navigationDown } from "./systems.js";
-import { storesView } from "./logistics.js";
+import { machinesView, mealsOfDay, mealsView, storesView } from "./logistics.js";
 import { SHIP_DATA, STAR_MAP } from "./world.js";
 
 const { rules: RULES, rations: RATIONS, supplies: SUPPLIES, text: TEXT, council: COUNCIL, chair: CHAIR, ship: SHIP } = SHIP_DATA;
@@ -256,10 +256,20 @@ function runDay(game) {
   const ship = game.ship;
   const notes = [];
   const ledger = shipLedger(game);
+  // Whoever found the kettle empty yesterday went without, and morale feels it by their share, through the same rule as
+  // the food running out. The day that's just ended is the one before the day the ship's clock has got to.
+  const meals = mealsOfDay(game, SHIP_ID, ship.day - 1);
+  const hungry = meals && meals.missed > 0 ? meals.missed / (meals.served + meals.missed) : 0;
+  ship.hungry = hungry > 0 ? (ship.hungry ?? 0) + 1 : 0;
+  if (hungry > 0) {
+    ledger.moraleTarget = clamp(ledger.moraleTarget + Math.round(hungry * (RULES.shortage.food?.morale ?? -25)), 5, 100);
+    // Said when it starts, and every few days while it goes on, like the other shortages.
+    if (ship.hungry === 1 || ship.hungry % 5 === 0) note(game, notes, "SHIP", `The kettle ran dry ${ship.hungry === 1 ? "yesterday" : `again yesterday, the ${ship.hungry}th day running`}: ${meals.missed.toLocaleString("en-US")} of ${(meals.served + meals.missed).toLocaleString("en-US")} sittings went unserved, and people are saying so.`);
+  }
   payForDay(game, ledger);
   checkShortages(game, notes);
-  // Things get worse faster than they get better, while something's actually run out.
-  const step = Object.keys(ship.out).length ? 2 : 1;
+  // Things get worse faster than they get better, while something's actually run out, or half the ship's going hungry.
+  const step = Object.keys(ship.out).length || hungry >= 0.5 ? 2 : 1;
   // People pick themselves up faster when they're being looked after and they've got a long way to climb.
   const climbing = !Object.keys(ship.out).length && ledger.moraleTarget - ship.morale >= RULES.climbFrom;
   ship.morale = clamp(moveToward(ship.morale, ledger.moraleTarget, climbing ? 2 : step), 0, 100);
@@ -688,6 +698,8 @@ export function shipView(game) {
     supplies: SUPPLY_IDS.map((id) => supplyRow(game, id, ledger)),
     // The stores in her rooms, from world/logistics: each a thing the player can open, with what's in it now.
     stores: storesView(game, SHIP_ID),
+    machines: machinesView(game, SHIP_ID),
+    meals: mealsView(game, SHIP_ID),
     shortages: SUPPLY_IDS.filter((id) => isOut(game, id) || (daysLeft(game, id, ledger) ?? Infinity) <= RULES.warnAtDays),
     trade: Object.entries(spot?.trade ?? {}).map(([id, each]) => {
       const supply = SUPPLIES[id];

@@ -2,6 +2,7 @@
 draft: the AI's, not yet edited by the owner
 everyone aboard eats: 2 sittings a day
 a crate feeds: 200 sittings
+sittings at: 06:00, 07:30, 18:00, 19:30, each 90 minutes
 
 Stores:
 - shuttle stores in The Lighter Bay: holds 20 ration crates, 12 fuel cells, 6 parts crates: Crates strapped down where the lighter unloads them, with the manifest on a clip.

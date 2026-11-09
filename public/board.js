@@ -9,7 +9,7 @@ import { el } from "./dom.js";
 import { writeStoryText } from "./story-text.js";
 import { LINE_PHRASES, PERK_NUMBERS, SPECS, writeWorldText } from "./world-text.js";
 import { KNOWN_SYSTEMS, readComputerLine, systemIdOf, writeSystemsText } from "./systems-text.js";
-import { LOGISTICS_PARTS, PART_TITLES, readStoreLine, writeLogisticsText } from "./logistics-text.js";
+import { LOGISTICS_PARTS, PART_TITLES, readMachineLine, readSittings, readStoreLine, writeLogisticsText, writeSittings } from "./logistics-text.js";
 
 const state = {
   kind: "story", id: null, lists: {},
@@ -415,7 +415,7 @@ function logisticsGraph() {
   const list = [], ws = [];
   const add = (node) => { list.push(node); return node.id; };
   const numbers = P.numbers ?? {};
-  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${numbers.eats ? `Everyone aboard eats ${numbers.eats} sittings a day. ` : ""}${numbers.crateFeeds ? `A crate feeds ${numbers.crateFeeds} sittings. ` : ""}Only the stores are played so far: the other parts are read, kept and checked for their shape.`, label: "The numbers at the top" });
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${numbers.eats ? `Everyone aboard eats ${numbers.eats} sittings a day. ` : ""}${numbers.crateFeeds ? `A crate feeds ${numbers.crateFeeds} sittings. ` : ""}${P.sittings ? `Sittings at ${writeSittings(P.sittings)}. ` : "Four sittings a day unless this says otherwise. "}The stores and the machines are played; the loads, errands and refills are read, kept and checked for their shape.`, label: "The numbers at the top" });
   const stores = (P.stores ?? []).map((one, i) => {
     const read = readStoreLine(one.text ?? one);
     const placed = (L.stores ?? []).find((s) => s.name === read.name);
@@ -423,11 +423,12 @@ function logisticsGraph() {
   });
   const cols = { machines: 2, errands: 3, loads: 4, refills: 2 };
   const kinds = { machines: "route", errands: "fact", loads: "clock", refills: "consequence" };
-  const labels = { machines: "A machine (from step 2)", errands: "An errand (from step 3)", loads: "A load (from step 4)", refills: "A refill (from step 5)" };
+  const labels = { machines: "A machine", errands: "An errand (from step 3)", loads: "A load (from step 4)", refills: "A refill (from step 5)" };
   for (const part of ["machines", "errands", "loads", "refills"]) {
     (P[part] ?? []).forEach((one, i) => {
       const words = one.text ?? one;
-      const id = add({ id: `${part}${i}`, kind: kinds[part], col: cols[part], name: words.split(":")[0].trim().slice(0, 40), text: words, label: labels[part], bind: { logLine: [part, i] } });
+      const read = part === "machines" ? readMachineLine(words) : null;
+      const id = add({ id: `${part}${i}`, kind: kinds[part], col: cols[part], name: words.split(":")[0].trim().slice(0, 40), text: read?.problem ?? words, label: read && !read.gives && read.power ? "A machine (its power waits for step 4)" : labels[part], bind: { logLine: [part, i] }, problem: Boolean(read?.problem) });
       const lower = plainWords(words);
       for (const store of stores) {
         if (store.read.problem) continue;
@@ -1242,21 +1243,32 @@ function inspectLogisticsAbout(inspector) {
   const draft = textBox("edit-draft", P.draft ?? "");
   const eats = numberBox("edit-eats", P.numbers?.eats ?? "");
   const feeds = numberBox("edit-feeds", P.numbers?.crateFeeds ?? "");
+  const sittings = textBox("edit-sittings", P.sittings ? writeSittings(P.sittings) : "");
+  const trouble = el("div", { class: "hint tone-bad" });
   fill(inspector, h2("The numbers at the top"),
     el("label", { for: "edit-title" }, "The place's name"), name,
     el("label", { for: "edit-draft" }, "Who wrote it (the game doesn't read this)"), draft,
     row(el("label", { for: "edit-eats" }, "everyone aboard eats, in sittings a day"), eats),
     row(el("label", { for: "edit-feeds" }, "a crate feeds, in sittings"), feeds),
+    el("label", { for: "edit-sittings" }, "sittings at: the times the whole ship eats, and how long each lasts (empty for four of 90 minutes, at 06:00, 07:30, 18:00 and 19:30)"), sittings,
+    trouble,
     row(button("Keep", () => {
+      const read = sittings.value.trim() ? readSittings(sittings.value) : null;
+      if (read?.problem) {
+        trouble.textContent = read.problem;
+        return;
+      }
       P.name = name.value.trim() || P.name;
       if (draft.value.trim()) P.draft = draft.value.trim();
       else delete P.draft;
       P.numbers = {};
       if (eats.value !== "") P.numbers.eats = Number(eats.value);
       if (feeds.value !== "") P.numbers.crateFeeds = Number(feeds.value);
+      if (read) P.sittings = read;
+      else delete P.sittings;
       changed();
     }), button("Undo", () => inspect())),
-    hint(`The file is world/logistics/${state.id}.txt. Only the stores are played so far; the other parts come to life step by step, and the how-to there says how.`));
+    hint(`The file is world/logistics/${state.id}.txt. The stores and the machines are played, and the whole ship eats at the sittings; the other parts come to life step by step, and the how-to there says how.`));
 }
 // A store: its line, with the room and what it holds picked from lists to write it.
 function inspectStoreLine(inspector, node) {
@@ -1296,7 +1308,9 @@ function inspectLogisticsLine(inspector, node) {
   if (!entry) return inspectNothing(inspector);
   const box = textarea("edit-line", entry.text ?? entry, 3);
   fill(inspector, h2(node.label), el("label", { for: "edit-line" }, `The line, under ${PART_TITLES[part]}`), box,
-    hint("Written in the words you'd use. The game keeps it, and reads it when its step is built; the how-to in world/logistics says what each step will read."),
+    part === "machines"
+      ? hint("A machine: its name, in and its room if the room isn't named like it, a colon, then what it does. It takes so many of an item (or one of two, with or between them) from a store, and puts so many of an item or of sittings into a store, every so long, with power and someone there if it needs them: galley: cooks 1 produce or 1 ration crate from the pantry into 200 sittings in the soup kettle every hour, with power and a cook there. One that only gives power waits for step 4.")
+      : hint("Written in the words you'd use. The game keeps it, and reads it when its step is built; the how-to in world/logistics says what each step will read."),
     row(button("Keep", () => { P[part][i] = { text: box.value.trim().replace(/\n+/g, " ") }; changed(); }), button("Undo", () => inspect())),
     row(button(`+ another under ${PART_TITLES[part]}`, () => addLogisticsLine(part)), button("Remove", () => remove(node), { class: "danger" })));
 }

@@ -189,9 +189,11 @@ test("the Ship menu lists every store with what's in it, the kettle by its sitti
   const shuttle = stores.find((one) => one.id === "shuttle_stores");
   assert.equal(shuttle.room, "The Lighter Bay");
   assert.deepEqual(shuttle.items.map((one) => `${one.n} ${one.id}`), ["20 ration_crate", "12 fuel_cell", "6 parts_crate"]);
+  // Three days on, the galley has cooked the pantry down and the kettle has been eaten from: the machines run on the clock.
   passTime(game, 24 * 3, "routine");
-  assert.deepEqual(storesView(game, "meridian"), stores, "nothing moves until step 2");
-  assert.equal(game.stores, undefined, "and nothing's written to the save until a store is opened");
+  const later = publicState(game).ship.stores;
+  assert.ok(later.find((one) => one.id === "pantry").items.reduce((sum, one) => sum + one.n, 0) < 24, "the pantry has been cooked from");
+  assert.ok(later.find((one) => one.id === "shuttle_stores").full, "and nothing touches the shuttle stores until the errands of step 3");
 });
 
 test("the new items for the stores have sizes, weights and stacks, and the four of them are in the item files", () => {

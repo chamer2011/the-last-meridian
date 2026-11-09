@@ -12,7 +12,7 @@ import { allCharacters, campaignRooms, findCampaignRoom, findCharacter, fullName
 import { startCheck, startChoiceCheck } from "./checks.js";
 import { useComputer } from "./computers.js";
 import { clearSystems, doorActions, doorLocked, doorLook, exitLocked, partSquares, partThings, roomDark, roomView, systemsOf, workOnDoor, workOnPart } from "./systems.js";
-import { clearLogistics, logisticsOf } from "./logistics.js";
+import { clearLogistics, logisticsOf, storeLook } from "./logistics.js";
 import { ITEMS, LOCATIONS } from "./data.js";
 import { clearLife, hasADay, livesHere, peopleAboard } from "./life.js";
 import { isCaptain, toOutsider } from "./role.js";
@@ -1222,7 +1222,8 @@ const thingView = (game, thing, level = null) => ({
   ...(level?.areas.length ? { room: level.roomAt(thing.x, thing.y) } : {}),
   id: thing.id,
   name: thing.name,
-  look: (!isCaptain(game) && thing.lookOther) || thing.look,
+  // One of the ship's stores says how it stands now: a kettle how much is left in it, an emptied store that it's empty.
+  look: storeLook(game, game.location, thing, (!isCaptain(game) && thing.lookOther) || thing.look),
   use: (!isCaptain(game) && thing.useOther) || thing.use,
   x: thing.x,
   y: thing.y,

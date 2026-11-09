@@ -8,6 +8,7 @@
 // world/life/ has one file for each place whose people live their days, named after the place.
 
 import { LOCATIONS } from "./data.js";
+import { mealWords } from "./logistics.js";
 import { atPost, canStand, findPath, mapFor, roomOf, seedFrom } from "./walk.js";
 import { detourFor, partSquares } from "./systems.js";
 import { WORLD_LIFE } from "./world.js";
@@ -73,6 +74,7 @@ function lifeFileFor(place) {
 export function clearLife() {
   lifeFiles.clear();
   settledAt.clear();
+  usual.clear();
 }
 
 export const livesHere = (place) => Boolean(lifeFileFor(place) && mapFor(place));
@@ -132,6 +134,61 @@ function planFor(map, file, entry, hours, detour) {
   if (!detour) return plan;
   const turn = detour(entry.key, levelOfPlan(map, file, entry, plan), Boolean(plan.block.asleep));
   return turn && roomOf(map, turn.where.slice(1)) ? { key: `systems:${turn.where}:${turn.doing}`, block: { doing: turn.doing, go: turn.where }, where: turn.where } : plan;
+}
+
+// The room a plan sends someone to, by its id: their post's room, the room named, or the room a spot or a group is in.
+function roomOfPlan(map, file, entry, plan) {
+  const where = plan.where;
+  if (!where) return null;
+  if (/^[@>]/.test(where)) return where.slice(1);
+  const spot = where === "post" ? postOf(map, entry.id) : file.spots[where] ?? file.groups[where]?.[0] ?? null;
+  const level = spot && map.levels[spot.level];
+  if (!level) return null;
+  return level.areas?.length ? level.roomAt(spot.x, spot.y) : level.id;
+}
+
+// Who's usually in a room at each five minutes of the day, from everyone's days as written: the ship's machines need
+// someone at them, and a long jump of the clock isn't walked through minute by minute, so this is as close as anyone
+// would know, and the same however the jump is cut up. Someone dead or away isn't counted when it's read.
+const USUAL_STEP = 5;
+const usual = new Map();
+export function usuallyIn(game, place, roomId, minuteOfDay) {
+  const key = `${place}/${roomId}`;
+  if (!usual.has(key)) {
+    const file = lifeFileFor(place);
+    const map = mapFor(place);
+    const buckets = [];
+    for (let minute = 0; minute < MINUTES_IN_A_DAY; minute += USUAL_STEP) {
+      const here = [];
+      if (file && map) {
+        for (const entry of file.roster) {
+          const plan = planAt(entry, minute / 60);
+          if (plan.block.asleep || plan.block.hidden) continue;
+          if (roomOfPlan(map, file, entry, plan) === roomId) here.push({ id: entry.id, name: entry.name ?? entry.id });
+        }
+      }
+      buckets.push(here);
+    }
+    usual.set(key, buckets);
+  }
+  const minute = ((minuteOfDay % MINUTES_IN_A_DAY) + MINUTES_IN_A_DAY) % MINUTES_IN_A_DAY;
+  return usual.get(key)[Math.floor(minute / USUAL_STEP)].filter((one) => !one.id || atPost(game, one.id)).map((one) => one.name);
+}
+
+// Everyone whose day has them in a room at a given time, awake and about, by name, as exactly as their days say.
+// Looking changes nothing.
+export function whoIsIn(game, place, roomId, hours) {
+  const file = lifeFileFor(place);
+  const map = mapFor(place);
+  if (!file || !map) return [];
+  const names = [];
+  for (const entry of file.roster) {
+    if (entry.id && !atPost(game, entry.id)) continue;
+    const plan = planAt(entry, hours);
+    if (plan.block.asleep || plan.block.hidden) continue;
+    if (roomOfPlan(map, file, entry, plan) === roomId) names.push(entry.name ?? entry.id);
+  }
+  return names;
 }
 
 const homeOf = (map, id) => Object.values(map.levels).flatMap((level) => level.homes).find((home) => home.id === id);
@@ -443,7 +500,7 @@ function seenAs(game, map, entry, state, detour = null) {
     ...(home?.greeting ? { greeting: home.greeting } : {}),
     x: state.x,
     y: state.y,
-    doing: settled || plan.block.rounds || plan.block.hidden ? plan.block.doing : `heading for ${heading}`,
+    doing: settled || plan.block.rounds || plan.block.hidden ? mealWords(game, map.place, plan.block.doing) : `heading for ${heading}`,
     ...(settled ? {} : { walking: true }),
     ...(settled && plan.block.asleep ? { asleep: true } : {}),
     ...(entry.crowd ? { crowd: true } : {}),

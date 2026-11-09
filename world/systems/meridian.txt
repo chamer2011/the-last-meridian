@@ -8,7 +8,7 @@ repairs take: 2
 
 Power:
 - junction box in Engineering for Engineering, The Aft Holds, The Crawlways: The main bus, a cabinet of breakers older than anyone aboard, with Marrow's handwriting on half the labels.
-- junction box in The Names Bulkhead for The Names Bulkhead, The Long Mess, The Hot Bunks, Medbay: The civilian deck's breakers, behind a panel someone has chalked a name on.
+- junction box in The Names Bulkhead for The Names Bulkhead, The Long Mess, The Galley, The Garden, The Hot Bunks, Medbay: The civilian deck's breakers, behind a panel someone has chalked a name on.
 - junction box in The Bridge for The Bridge: The bridge's own feed, on a breaker with a red tag that says DO NOT.
 
 Air:
