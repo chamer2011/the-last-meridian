@@ -18,9 +18,11 @@ import { COMPUTERS_DIR, COMPUTER_FLAVOR, ENEMIES_DIR, FACTIONS_DIR, ITEMS_DIR, P
 import { parseStoryText, writeStoryText } from "../public/story-text.js";
 import { parseSystemsText, writeSystemsText, KNOWN_SYSTEMS, SYSTEM_TITLES } from "../public/systems-text.js";
 import { clearSystems, defaultFileFor, placePeople, staffWords, systemsOf, systemsProblems } from "./systems.js";
-import { commandOf } from "./command.js";
+import { DUTY_MEASURES, clearCommand, commandOf, commandProblems } from "./command.js";
+import { COMMAND_DIR, WORLD_COMMAND, WORLD_LIFE, reloadCommand } from "./world.js";
+import { parseCommandText } from "../public/command-text.js";
 import { clearLogistics, logisticsOf, logisticsProblems } from "./logistics.js";
-import { clearMaps, mapFor } from "./walk.js";
+import { clearMaps, mapFor, roomsOf } from "./walk.js";
 import { clearLife } from "./life.js";
 import { LOGISTICS_DIR, SYSTEMS_DEFAULTS, SYSTEMS_DIR, WORLD_LOGISTICS, WORLD_SYSTEMS, reloadLogistics, reloadSystems } from "./world.js";
 import { parseLogisticsText } from "../public/logistics-text.js";
@@ -190,7 +192,7 @@ const WORLD_KINDS = {
   computer: { dir: () => COMPUTERS_DIR, spec: COMPUTER, all: WORLD_COMPUTERS, folder: "computers", what: "computer" },
 };
 const kindOf = (kind) => {
-  if (!WORLD_KINDS[kind]) throw new Error("The board knows stories, people, places, species, enemies, items, factions, perks, computers, systems and logistics.");
+  if (!WORLD_KINDS[kind]) throw new Error("The board knows stories, people, places, species, enemies, items, factions, perks, computers, systems, logistics and the chain of command.");
   return WORLD_KINDS[kind];
 };
 const talkIds = () => new Set(fs.existsSync(SCENES_DIR) ? fs.readdirSync(SCENES_DIR).map((name) => name.match(/^talk_(.+)\.txt$/)?.[1]).filter(Boolean) : []);
@@ -305,9 +307,62 @@ function saveLogistics(id, text) {
   return { saved: true, problems: logisticsFileProblems(id) };
 }
 
+// ---- A place's chain of command --------------------------------------------------------------------
+
+function commandList() {
+  return Object.keys(WORLD_COMMAND).map((id) => ({ id, name: LOCATIONS[id]?.name ?? WORLD_COMMAND[id].name ?? id, kind: "its own file", written: true }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+const commandFileProblems = (id) => commandProblems().filter((one) => one.startsWith(`command/${id}.txt`));
+
+// The chain of command as the board shows it: the file and what the game read, who holds each post and who does each job
+// when a game begins, and what there is to pick from: the rooms, the people with days there, the skills and the
+// measures a post's duty can be marked on.
+function commandItem(id) {
+  checkId(id);
+  const file = path.join(COMMAND_DIR, `${id}.txt`);
+  if (!fs.existsSync(file)) throw new Error(`${LOCATIONS[id]?.name ?? id} has no chain of command yet. world/command/_how-to-write-command.txt says how to write one.`);
+  const text = fs.readFileSync(file, "utf8");
+  const { value } = parseCommandText(text, id);
+  const model = commandOf(id);
+  const map = mapFor(id);
+  const life = WORLD_LIFE[id] ?? {};
+  const people = [
+    ...Object.keys(life.people ?? {}).map((key) => ({ key, name: WORLD_CHARACTERS[key]?.name ?? key })),
+    ...(life.crowd ?? []).flatMap((group) => group.names.map(([name]) => ({ key: name, name }))),
+  ];
+  return {
+    id, kind: "command", text, value,
+    links: {
+      place: { id, name: LOCATIONS[id]?.name ?? id },
+      posts: (model?.posts ?? []).map((post) => ({ id: post.id, title: post.title, room: post.roomName })),
+      jobs: (model?.jobs ?? []).map((job) => ({ id: job.id, title: job.title, room: job.roomName })),
+    },
+    lists: { ...boardLists(), rooms: map ? roomsOf(map).map((room) => room.name) : [], crew: people, measures: Object.keys(DUTY_MEASURES) },
+    layout: readLayout()[`command/${id}`] ?? {},
+    problems: commandFileProblems(id),
+  };
+}
+
+function saveCommand(id, text) {
+  checkId(id);
+  if (typeof text !== "string" || !text.trim()) throw new Error("There's nothing to save.");
+  const { problems } = parseCommandText(text, id);
+  if (problems.length) return { saved: false, problems: problems.map(lineOf) };
+  fs.mkdirSync(COMMAND_DIR, { recursive: true });
+  fs.writeFileSync(path.join(COMMAND_DIR, `${id}.txt`), text.endsWith("\n") ? text : `${text}\n`);
+  // The chain of command is read again, and people's days with it, since jobs and posts give them their days.
+  reloadCommand();
+  clearCommand();
+  clearLife();
+  return { saved: true, problems: commandFileProblems(id) };
+}
+
 export function boardWorldList(kind) {
   if (kind === "systems") return systemsList();
   if (kind === "logistics") return logisticsList();
+  if (kind === "command") return commandList();
   const { all } = kindOf(kind);
   const written = kind === "person" ? talkIds() : new Set();
   const groupOf = (one) => (kind === "person" || kind === "place" ? one.faction ?? "none" : kind === "enemy" ? one.motive ?? "other" : kind === "item" ? one.type ?? "other" : kind === "perk" ? (one.starting ? "starting" : one.ability ? "with an ability" : "learned") : kind === "computer" ? (LOCATIONS[one.place]?.name ?? one.place ?? "anywhere") : kind);
@@ -364,6 +419,7 @@ const fileProblems = (kind, folder, id) => [...WORLD_FILE_PROBLEMS, ...(kind ===
 export function boardWorldItem(kind, id) {
   if (kind === "systems") return systemsItem(id);
   if (kind === "logistics") return logisticsItem(id);
+  if (kind === "command") return commandItem(id);
   const { all, dir, spec, folder } = kindOf(kind);
   checkId(id);
   const value = all[id];
@@ -396,6 +452,7 @@ export function boardWorldItem(kind, id) {
 export function saveBoardWorldItem(kind, id, text) {
   if (kind === "systems") return saveSystems(id, text);
   if (kind === "logistics") return saveLogistics(id, text);
+  if (kind === "command") return saveCommand(id, text);
   const { dir, spec, folder } = kindOf(kind);
   checkId(id);
   if (typeof text !== "string" || !text.trim()) throw new Error("There's nothing to save.");

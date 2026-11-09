@@ -24,7 +24,7 @@ import { parseNarration } from "../public/story.js";
 import { computerProblems, enterComputer } from "./computers.js";
 import { applySystemsEffect, placesWithSystems, systemsProblems } from "./systems.js";
 import { logisticsProblems, placesWithLogistics } from "./logistics.js";
-import { SAMPLE_STAND_INS, commandProblems, commandSceneDue, commandSceneStarted, mutinyOutcome, standIns } from "./command.js";
+import { commandFacts, commandProblems, commandSceneDue, commandSceneStarted, mutinyOutcome, sampleStandIns, standIns, storyCommand } from "./command.js";
 import { storyHitsShip } from "./ship.js";
 import { FACT_LINES, MAP_FILE_PROBLEMS, SET_ASIDE, STORIES_DIR, STORY_CLOCK, STORY_FILE_PROBLEMS, WORLD_COMMAND, WORLD_COMPUTERS, WORLD_FILE_PROBLEMS, WORLD_MAPS, WORLD_THREADS, endingsOf } from "./world.js";
 
@@ -304,7 +304,7 @@ function fillStandIns(value, values, field = null) {
 }
 const leavesStandIns = new WeakMap();
 const filledScenes = new WeakMap();
-function withStandIns(game, scene) {
+export function withStandIns(game, scene) {
   if (!scene) return scene;
   if (!leavesStandIns.has(scene)) leavesStandIns.set(scene, /\{[a-z_]+\}/.test(JSON.stringify(scene)));
   if (!leavesStandIns.get(scene)) return scene;
@@ -386,6 +386,15 @@ function enterPart(game, scene, id, { emit, turn }, hops = 0) {
     if (step.mutiny) {
       // The ship's chain of command: a delegation, a quiet word or a captain's days in the brig, ending one way.
       for (const text of mutinyOutcome(game, step.mutiny, step.reason)) emit({ type: "notice", text });
+      continue;
+    }
+    if (step.command) {
+      // The ship's chain of command, as the story changes it: a post given or taken, someone moved, loyalty, a memory.
+      try {
+        for (const text of storyCommand(game, step)) emit({ type: "notice", text });
+      } catch (err) {
+        throw new Error(`In the scene ${game.scene.id}, part ${id}, ${err.message}`);
+      }
       continue;
     }
     if (step.password) {
@@ -748,9 +757,10 @@ function checkProblem(text) {
 export function sceneProblems(scene, id = "the scene", { talk = false } = {}) {
   const problems = [];
   // A scene's stand-ins are checked as if real people stood in them, and one the game doesn't fill in is a mistake.
-  const unknown = [...new Set([...JSON.stringify(scene ?? {}).matchAll(/\{([a-z_]+)\}/g)].map((one) => one[1]).filter((name) => !SAMPLE_STAND_INS[name]))];
-  for (const name of unknown) problems.push(`${id}: {${name}} isn't a stand-in the game fills in: the stand-ins are ${Object.keys(SAMPLE_STAND_INS).map((one) => `{${one}}`).join(" and ")}`);
-  scene = fillStandIns(scene, SAMPLE_STAND_INS);
+  const samples = sampleStandIns();
+  const unknown = [...new Set([...JSON.stringify(scene ?? {}).matchAll(/\{([a-z_]+)\}/g)].map((one) => one[1]).filter((name) => !samples[name]))];
+  for (const name of unknown) problems.push(`${id}: {${name}} isn't a stand-in the game fills in: the stand-ins are ${Object.keys(samples).map((one) => `{${one}}`).join(", ")}`);
+  scene = fillStandIns(scene, samples);
   const parts = scene?.parts ?? {};
   const at = (holder, where) => (holder?.line ? `${where} (line ${holder.line})` : where);
   if (!scene?.start) problems.push(`${id} doesn't say which part it starts at`);
@@ -813,7 +823,7 @@ export function sceneProblems(scene, id = "the scene", { talk = false } = {}) {
       }
       // The effects the game plays itself, with no tool behind them: a door, the place's systems, a password, a
       // computer, and the ship's stores. The parser has already said what's wrong with their words.
-      if (input.door !== undefined || input.systems || input.password || input.computer || input.mutiny) continue;
+      if (input.door !== undefined || input.systems || input.password || input.computer || input.mutiny || input.command) continue;
       if (input.stores) {
         for (const [what, amount] of Object.entries(input.stores)) if (!["food", "medicine", "parts"].includes(what) || !Number.isFinite(amount)) problems.push(`${at(step, `${where}, effect ${i + 1}`)}: stores can change food, medicine or parts by a number, not ${what}`);
         continue;
@@ -848,7 +858,7 @@ export function allSceneProblems(dir = SCENES_DIR) {
 // Every fact something in the world can leave on the record: a story's notes name it, a scene sets it with * flag,
 // or a door sets it when the player goes through.
 export function factsLeft(scenes) {
-  const names = new Set([...Object.keys(FACT_LINES), ...clockFacts()]);
+  const names = new Set([...Object.keys(FACT_LINES), ...clockFacts(), ...commandFacts()]);
   for (const scene of Object.values(scenes)) for (const part of Object.values(scene.parts ?? {})) for (const step of part.do ?? []) if (step.set) names.add(step.set);
   const walk = (node) => {
     if (!node || typeof node !== "object") return;

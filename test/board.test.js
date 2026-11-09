@@ -140,7 +140,7 @@ test("the board lists the people, places and species, and shows each with what i
   assert.ok(people.some((one) => one.id === "ione" && one.written === false));
   assert.equal(boardWorldList("place").length, 24);
   assert.deepEqual(boardWorldList("species").map((one) => one.id), ["human", "korrun", "veshti", "ilari", "thessan", "synthetic"]);
-  assert.throws(() => boardWorldList("ship"), /stories, people, places, species, enemies, items, factions, perks, computers, systems and logistics/);
+  assert.throws(() => boardWorldList("ship"), /stories, people, places, species, enemies, items, factions, perks, computers, systems, logistics and the chain of command/);
   assert.equal(boardWorldList("perk").length, 53);
   assert.equal(boardWorldList("perk")[0].id, "chain_of_command");
   const perk = boardWorldItem("perk", "dead_ship_passwords");

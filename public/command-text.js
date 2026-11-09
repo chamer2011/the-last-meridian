@@ -181,6 +181,25 @@ export function readWorkersLine(text) {
   return { job, people: /^nobody$/i.test(who) ? [] : listOf(who) };
 }
 
+// ---- Writing a line ----------------------------------------------------------------------------
+
+// A post's line from its pieces, the way readPostLine reads them, for the Story board to rewrite one.
+export function writePostLine(post) {
+  const parts = [`chosen by the ${post.chosenBy}`];
+  if (post.watchBill) parts.push("keeps the watch bill");
+  if (post.brig) parts.push("keeps the brig");
+  if (post.heads?.length) parts.push(`heads ${post.heads.join(", ")}`);
+  if (post.pool?.length) parts.push(`picked from ${post.pool.join(", ")}`);
+  if (post.skills?.length) parts.push(`skills ${post.skills.join(", ")}`);
+  if (post.duty?.length) parts.push(`duty: ${post.duty.join(", ")}`);
+  return `${post.title} ${post.prep} ${post.room}: ${parts.join("; ")}`;
+}
+
+// A job's line from its pieces, the way readJobLine reads them.
+export function writeJobLine(job) {
+  return `${job.title} ${job.prep} ${job.room}: ${job.wanted} wanted${job.skills?.length ? `; skills ${job.skills.join(", ")}` : ""}`;
+}
+
 // ---- Writing a file ----------------------------------------------------------------------------
 
 export function writeCommandText(value) {

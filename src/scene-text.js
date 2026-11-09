@@ -9,7 +9,17 @@ import { endedWith } from "./record.js";
 import { DIFFICULTY, attr, maxHp, skillRank } from "./rules.js";
 import { WORLD_THREADS, endingsOf } from "./world.js";
 import { systemHolds } from "./systems.js";
-import { MUTINY_CONDITIONS, MUTINY_OUTCOMES, mutinyHolds } from "./command.js";
+import { MUTINY_CONDITIONS, MUTINY_OUTCOMES, commandWords, knownPerson, loyaltyFor, mutinyHolds, storyHolds } from "./command.js";
+
+// Two people written one after the other, as in "* remember marrow tarrow -10": the first split where both are someone.
+function splitPeople(words) {
+  for (let i = 1; i < words.length; i += 1) {
+    const one = words.slice(0, i).join(" ");
+    const other = words.slice(i).join(" ");
+    if (knownPerson(one) && knownPerson(other)) return [one, other];
+  }
+  return null;
+}
 import { systemIdOf } from "../public/systems-text.js";
 
 // The place's systems, in conditions and effects: "power off in The Docks", "alarm ringing at haven", "door locked
@@ -168,8 +178,38 @@ export function parseCondition(text) {
         else Object.assign(term, found, { kind: "system" });
         break;
       }
+      case "holds": {
+        // Who holds a post in the ship's chain of command: holds quartermaster odessa, holds first_officer you, holds
+        // chief_engineer nobody. The post by its id, then someone by their id or name, you or nobody.
+        const { posts } = commandWords();
+        const post = rest[0]?.toLowerCase();
+        const who = rest.slice(1).join(" ");
+        if (!post || !posts.has(post)) problems.push(`"holds" is followed by a post, by its id (${[...posts].join(", ")}), then who: "${raw.trim()}"`);
+        else if (!who || !knownPerson(who)) problems.push(`there's nobody called ${who || "nothing"} aboard for "holds": write their id or name, you, or nobody`);
+        Object.assign(term, { id: post, who });
+        break;
+      }
+      case "job": {
+        // What someone does on the watch bill: job Cook Imre cook, job odessa spare.
+        const { jobs } = commandWords();
+        const job = rest.at(-1)?.toLowerCase();
+        const who = rest.slice(0, -1).join(" ");
+        if (!job || !jobs.has(job)) problems.push(`"job" is followed by someone, then a job by its id (${[...jobs].join(", ")}): "${raw.trim()}"`);
+        else if (!who || !knownPerson(who)) problems.push(`there's nobody called ${who || "nothing"} aboard for "job"`);
+        Object.assign(term, { id: job, who });
+        break;
+      }
+      case "loyalty": {
+        // How loyal someone is to the captain, from 0 to 100: loyalty marrow < 40.
+        const [op, amount] = rest.slice(-2);
+        const who = rest.slice(0, -2).join(" ");
+        if (!COMPARE[op] || !/^-?\d+$/.test(amount ?? "")) problems.push(`"loyalty" needs someone, one of >= <= > < = !=, and a number: "${raw.trim()}"`);
+        else if (!who || !knownPerson(who)) problems.push(`there's nobody called ${who || "nothing"} aboard for "loyalty"`);
+        Object.assign(term, { who, op, amount: Number(amount) });
+        break;
+      }
       case "mutiny": {
-        // The ship's chain of command: whether a mutiny's brewing, whether security would arrest its ringleader, and
+        // The ship's chain of command: how far a mutiny's got, whether security would arrest its ringleader, and
         // whether the officers would have the player back in the chair.
         const words = rest.join(" ").toLowerCase();
         if (!MUTINY_CONDITIONS.includes(words)) problems.push(`"mutiny" is followed by one of ${MUTINY_CONDITIONS.join(", ")}: "${raw.trim()}"`);
@@ -219,6 +259,9 @@ function termHolds(game, term, helpers) {
     case "at": result = game.location === term.id; break;
     case "system": result = systemHolds(game, term); break;
     case "mutiny": result = mutinyHolds(game, term.id); break;
+    case "holds":
+    case "job": result = storyHolds(game, term); break;
+    case "loyalty": result = COMPARE[term.op](loyaltyFor(game, term.who), term.amount); break;
     case "quest": {
       const quest = game.quests?.find((one) => one.id === term.id);
       result = term.state === "none" ? !quest : quest?.status === term.state;
@@ -330,6 +373,49 @@ export function parseEffect(text) {
     case "fuel": {
       const amount = signed(words[1] ?? "");
       return amount !== null && amount !== 0 && after ? { do: { tool: "change_ship", hull: 0, fuel: amount, morale: 0, reason: after } } : { problem: "fuel needs a number, with - to burn it, then a colon and the reason: * fuel 6: Mother Quill's depot" };
+    }
+    case "appoint": {
+      // Someone given a post: * appoint quartermaster tobin: reason. Whoever chooses for it appoints them.
+      const { posts, chairs } = commandWords();
+      const post = words[1]?.toLowerCase();
+      const who = words.slice(2).join(" ");
+      if (!post || !posts.has(post)) return { problem: `appoint is written * appoint a_post someone: reason, with the post by its id (${[...posts].join(", ")})` };
+      if (chairs.has(post)) return { problem: "the captain's chair changes hands through the story's change of command, or a mutiny, not appoint" };
+      if (!who || !knownPerson(who) || /^(you|nobody)$/i.test(who)) return { problem: `there's nobody called ${who || "nothing"} aboard to appoint: write their id or name (the player can't be given a post yet)` };
+      return after ? { do: { command: "appoint", post, who, reason: after } } : { problem: "appoint needs a colon and the reason after it" };
+    }
+    case "relieve": {
+      // Someone relieved of their post: * relieve chief_engineer: reason. Whoever chooses for it gives it to someone else.
+      const { posts, chairs } = commandWords();
+      const post = words[1]?.toLowerCase();
+      if (!post || !posts.has(post) || words.length > 2) return { problem: `relieve is written * relieve a_post: reason, with the post by its id (${[...posts].join(", ")})` };
+      if (chairs.has(post)) return { problem: "the captain's chair changes hands through the story's change of command, or a mutiny, not relieve" };
+      return after ? { do: { command: "relieve", post, reason: after } } : { problem: "relieve needs a colon and the reason after it" };
+    }
+    case "assign": {
+      // Someone moved on the watch bill: * assign Yusuf cook: reason, or spare for the spare hands.
+      const { jobs } = commandWords();
+      const job = words.at(-1)?.toLowerCase();
+      const who = words.slice(1, -1).join(" ");
+      if (!job || !jobs.has(job)) return { problem: `assign is written * assign someone a_job: reason, with the job by its id (${[...jobs].join(", ")})` };
+      if (!who || !knownPerson(who) || /^nobody$/i.test(who)) return { problem: `there's nobody called ${who || "nothing"} aboard to move on the watch bill` };
+      return after ? { do: { command: "assign", who, job, reason: after } } : { problem: "assign needs a colon and the reason after it" };
+    }
+    case "loyalty": {
+      // Someone's loyalty to the captain, moved by the story: * loyalty marrow -10: reason. It fades as memories do.
+      const amount = signed(words.at(-1) ?? "");
+      const who = words.slice(1, -1).join(" ");
+      if (amount === null || amount === 0) return { problem: "loyalty is written * loyalty someone -10: reason, with a number, a minus sign to lower it" };
+      if (!who || !knownPerson(who) || /^(you|nobody)$/i.test(who)) return { problem: `there's nobody called ${who || "nothing"} aboard whose loyalty can change` };
+      return after ? { do: { command: "loyalty", who, amount, reason: after } } : { problem: "loyalty needs a colon and the reason after it" };
+    }
+    case "remember": {
+      // Someone left remembering something of someone else, for or against them: * remember marrow tarrow -10: reason.
+      const amount = signed(words.at(-1) ?? "");
+      const pair = splitPeople(words.slice(1, -1));
+      if (amount === null || amount === 0) return { problem: "remember is written * remember someone someone_else -10: reason, with a number, a minus sign for a grudge" };
+      if (!pair || /^(you|nobody)$/i.test(pair[0]) || /^nobody$/i.test(pair[1])) return { problem: "remember needs who remembers it and who it's of, each someone aboard by their id or name (or you, for who it's of)" };
+      return after ? { do: { command: "remember", who: pair[0], other: pair[1], amount, reason: after } } : { problem: "remember needs a colon and the reason after it" };
     }
     case "mutiny": {
       // How a delegation, a quiet word or a captain's days in the brig end: src/command.js plays each.

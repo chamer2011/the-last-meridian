@@ -265,6 +265,40 @@ the spare hands. The officers would have the player back as captain when they we
 officers' feeling for them (their own loyalty, and what they remember of the player) is 50 or more on average.
 
 
+WHAT THE STORY CAN ASK AND CHANGE
+---------------------------------
+
+A written scene (world/scenes/_how-to-write-a-scene.txt) can ask "? holds quartermaster odessa", "? job Yusuf cook",
+"? loyalty marrow < 40" and "? mutiny brewing", and change things with "* appoint quartermaster tobin: reason",
+"* relieve chief_engineer: reason", "* assign Yusuf cook: reason", "* loyalty marrow -10: reason" and
+"* remember marrow tarrow -15: reason". Posts and jobs are named by their ids: the title in lowercase, with
+underscores for spaces and without a "the" in front. Whoever chooses for a post is the one who appoints or relieves.
+A scene can name whoever holds a post in curly brackets, {quartermaster}, for the game to fill in.
+
+What happens goes on the story's record, where later stories can react to it as facts:
+
+    <post>_changed_hands        the post went to someone new: quartermaster_changed_hands
+    <person>_relieved           someone was relieved of a post: odessa_relieved, cook_imre_relieved
+    <person>_arrested           someone was put in the brig: tarrow_arrested
+    ship_taken_by_mutiny        the officers took the ship from the player
+    captain_overthrown          the officers took it from another captain
+    chair_given_back            the officers gave the player the chair back
+    officers_given_ground       the captain gave the delegation what it asked for
+    mutiny_talked_down          the captain talked it round
+    mutiny_put_down             the captain had its ringleader arrested, or beat them
+    captain_stepped_down        the player stepped down
+    player_joined_mutiny        the player joined one against another captain
+    player_warned_captain       the player warned the captain
+
+A person's part of a name is their id in world/characters, or their crowd name in lowercase with underscores. In a
+game with an AI, its state has one line on the chain of command: who holds what where it's changed since the game
+began, who's in the brig, and how loyal the officers are and how confident the council is, to the nearest five.
+
+The Story board's Command page edits this file: each post a box with who holds it when a game begins and an arrow from
+whoever chooses it, each job a box with who does it and an arrow from the post that heads it, and the spare hands, with
+pickers for the rooms, the choosers, the jobs, the skills, the duty, and the people.
+
+
 NAMING A POST OR A JOB ELSEWHERE
 --------------------------------
 

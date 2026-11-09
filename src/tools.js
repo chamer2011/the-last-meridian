@@ -9,6 +9,7 @@ import { CONDITIONS, CONTEXTS, POLES, SKILLS, SPECIES, TRAITS } from "./characte
 import { changePlace, markWorldHeard, trackedPlaces, worldLines } from "./daily.js";
 import { changeCommand, markShipHeard } from "./ship.js";
 import { whereNow } from "./life.js";
+import { roleNow } from "./command.js";
 import { LORE_KINDS, hasStaticLore } from "./lore.js";
 import { MYSTERY_TOPICS, beginThread, mysteryNotes, noteThreadEnded, noteThreadStarted, placeFileIfNew, updateStory } from "./story-library.js";
 import { FACTS_PER_TURN, endStory, endingOf, recordEnding, recordFact } from "./record.js";
@@ -369,7 +370,9 @@ const handlers = {
     if (!file) throw new Error(`There's no file for "${input.name}". If they matter, add them with create_character.`);
     game.ai.sentCharacters = [...new Set([...(game.ai.sentCharacters ?? []), file.id])];
     const now = whereNow(game, file.id);
-    return { result: now ? `${file.brief}\nRight now: ${now}.` : file.brief };
+    // Their place in the ship's chain of command, when it isn't what their file says.
+    const post = roleNow(game, file.id);
+    return { result: [file.brief, now && `Right now: ${now}.`, post && `Their place aboard now: ${post}.`].filter(Boolean).join("\n") };
   },
   read_thread(game, input) {
     const notes = beginThread(game, input.id);

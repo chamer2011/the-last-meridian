@@ -313,7 +313,7 @@ test("the discontented grumble in talks and at the benches, while a mutiny's bre
 
 test("a scene's stand-ins are filled in from the game, and one the game doesn't know is a mistake", () => {
   const scene = { title: "T", start: "a", parts: { a: { text: ["@{ringleader}: \"Hello, {captain}.\" {somebody}"], fight: { enemy: "{ringleader}" }, won: "a", lost: "a" } } };
-  assert.match(sceneProblems(scene, "command_test").join(" | "), /\{somebody\} isn't a stand-in the game fills in: the stand-ins are \{ringleader\} and \{captain\}/);
+  assert.match(sceneProblems(scene, "command_test").join(" | "), /\{somebody\} isn't a stand-in the game fills in: the stand-ins are \{ringleader\}, \{captain\}, \{first_officer\}, \{quartermaster\}/);
   const game = newGame();
   brewing(game);
   days(game, 1);

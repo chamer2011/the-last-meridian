@@ -7,7 +7,7 @@
 import { findCharacter } from "./campaign.js";
 import { clearFact, recordFact } from "./record.js";
 import { toOutsider } from "./role.js";
-import { HELPERS, StoryError, loadScenes, matchChoice, openChoices, partText, ruleThatHolds, withoutChoices } from "./scenes.js";
+import { HELPERS, StoryError, loadScenes, matchChoice, openChoices, partText, ruleThatHolds, withStandIns, withoutChoices } from "./scenes.js";
 import { newTurnLimits, runTool } from "./tools.js";
 import { seedFrom, talkHeard, walkView } from "./walk.js";
 import { ROOM_TALK } from "./world.js";
@@ -50,7 +50,8 @@ export function stockTalk(game, talk) {
 
 function sceneOf(game, talk) {
   if (talk.written?.stock) return talk.written.stock;
-  const scene = loadScenes().scenes[talk.written?.id];
+  // A conversation can leave people for the game to fill in, as a scene can: {quartermaster} is whoever holds the post.
+  const scene = withStandIns(game, loadScenes().scenes[talk.written?.id]);
   if (!scene) throw new StoryError(`The conversation file ${talk.written?.id} has gone, or can't be read any more. Run npm run check-story to see why.`);
   return scene;
 }
@@ -99,7 +100,7 @@ export function openWrittenTalk(game, { filesOnly = false } = {}) {
   if (!talk) return false;
   const id = talk.personId ? `talk_${talk.personId}` : null;
   const { scenes, broken } = loadScenes();
-  const own = id ? scenes[id] ?? null : null;
+  const own = id ? withStandIns(game, scenes[id] ?? null) : null;
   if (filesOnly && !own) return false;
   talk.written = { id: own ? id : null, part: null, seen: [], stock: own ? null : stockTalk(game, talk) };
   if (id && broken[id]) talkHeard(game, `[STORY] The conversation file ${id} can't be read: ${broken[id]}. Stock lines are used instead.`, "notice");

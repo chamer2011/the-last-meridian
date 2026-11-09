@@ -60,6 +60,8 @@
 .board-tools { position: absolute; left: 8px; bottom: 8px; display: flex; gap: 4px; }
 .board-text { margin: 0; padding: 12px 14px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--story); font: 13px/1.5 var(--mono); position: absolute; inset: 0; overflow: auto; border: 1px solid var(--line); background: var(--panel); }
 .board-inspector { border: 1px solid var(--line); background: var(--panel); padding: 10px 12px; overflow: auto; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+/* A long inspector scrolls, and nothing in it is squeezed to fit, a line's box above all. */
+.board-inspector > * { flex-shrink: 0; }
 .board-inspector h2 { margin: 0; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .board-inspector h3 { margin: 0; font-size: 14px; color: var(--bright); }
 .board-inspector .hint { color: var(--muted); font-size: 12.5px; }

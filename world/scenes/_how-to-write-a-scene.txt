@@ -149,6 +149,14 @@ Lines starting with * happen when the part begins, and the player sees each as a
     * alarm ringing in The Docks             engines, navigation, docking, door locked or unlocked, fix and
     * door locked The Hook                   break. world/systems/_how-to-write-systems.txt has them all, and
     * fix everything                         what each one does)
+    * appoint quartermaster tobin: The reason   (the ship's chain of command: someone given a post, by its id,
+                                                which whoever chooses for it gives them; not the captain's chair)
+    * relieve chief_engineer: The reason        (whoever holds it relieved, and the post given to the best of those
+                                                it's picked from, as at a review)
+    * assign Yusuf cook: The reason             (someone moved on the watch bill: a job by its id, or spare)
+    * loyalty marrow -10: The reason            (their loyalty to the captain, a memory that fades like the rest)
+    * remember marrow tarrow -15: The reason    (Marrow remembering this of Tarrow, for or against them; you for the
+                                                player)
     * mutiny give ground: The reason      (the ship's chain of command, for the scenes it plays: give ground,
                                           calmed, arrest, crushed, step down, refused, taken, released, join,
                                           stay out or warn; world/command/_how-to-write-command.txt says what each does)
@@ -186,9 +194,16 @@ and join several with "and":
                                      here, or in and a room, and at and a place. world/systems has the rest.
     act < 2                          The main story's act, with the same comparisons as credits.
     chance 30                        True 30 times in 100, at random.
-    mutiny brewing                   A mutiny's brewing aboard the Meridian. Also mutiny can arrest (the
-                                     chief of security would lock up whoever's leading it) and mutiny
-                                     offers the chair (the officers would have the player back as captain).
+    holds quartermaster odessa       Who holds a post aboard the Meridian: the post by its id, then someone by
+                                     their id or name, you, or nobody.
+    job Cook Imre cook               What someone does on the watch bill: a job by its id, or spare.
+    loyalty marrow < 40              Someone's loyalty to the captain, from 0 to 100, with the same comparisons
+                                     as credits.
+    mutiny brewing                   A mutiny's brewing aboard the Meridian. Also mutiny calm, grumbling,
+                                     refusing orders and delegation (how far it's got), taken (the officers
+                                     relieved the player of command, and they're crew now), can arrest (the
+                                     chief of security would lock up whoever's leading it) and offers the chair
+                                     (the officers would have the player back as captain).
 
 A condition with a mistake in it is never true, and check-story points it out.
 
@@ -200,11 +215,16 @@ A scene the game starts by itself can leave a person for the game to fill in, in
 
     {ringleader}     whoever leads the officers against the captain, or led them when they took the ship
     {captain}        whoever has the chair: "you" in the words when it's the player
+    {quartermaster}  whoever holds that post now, and the same for every post by its id: {first_officer},
+                     {chief_engineer}, {chief_of_security}, {chief_medical_officer}, {deck_chief},
+                     {comms_officer}, {helm_officer}, {sensor_officer}, {speaker}
 
 In what's said and read it's their name, so @{ringleader}: "Captain." is them speaking; in a FIGHT, a WITH
-line and a check's audience it's their id, so FIGHT {ringleader} fights them. check-story reads a scene as if
-Kara Tarrow and Captain Reddick stood in, and says so if a word in curly brackets isn't one of these.
-command_delegation.txt, command_conspiracy.txt and command_brig.txt use them.
+line and a check's audience it's their id, so FIGHT {ringleader} fights them. Nobody standing in is "someone" in
+the words. check-story reads a scene as if Kara Tarrow led a mutiny against Captain Reddick, and as if everyone held
+the post they begin the game in, and says so if a word in curly brackets isn't one of these. A conversation can use
+them too. command_delegation.txt, command_conspiracy.txt and command_brig.txt use them, and so does Hask's question
+about the stores in talk_tobin.txt.
 
 
 RULES: GOING SOMEWHERE ELSE

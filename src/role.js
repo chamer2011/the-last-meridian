@@ -38,8 +38,10 @@ export function openingFor(game) {
 export function roleBrief(game, chair) {
   const start = startOf(game);
   if (isCaptain(game)) return `Their place in the world: ${START_LIST.captain.gm}`;
+  // A captain the officers relieved is crew aboard now.
+  const deposed = Boolean(deposedStart(game));
   return [
-    `Their place in the world: ${start?.gm ?? "They were the captain of the Meridian, and they aren't any more."}`,
+    deposed ? "Their place in the world: they were the captain of the Meridian until the officers relieved them of command, and they're crew aboard now, one of the spare hands on the watch bill." : `Their place in the world: ${start?.gm ?? "They were the captain of the Meridian, and they aren't any more."}`,
     `They are not the captain. ${chair ? `${chair.name} (id ${chair.id}) has the chair, and you play them: call read_character when they come up.` : "Someone else has the chair."}`,
     "Treat them as what they are. Nobody reports to them, nobody owes them anything, and the great events mostly happen over their head, until they do something about it. Don't hand them the captain's scenes. If they get close to the middle of things, they've earned it by their own doing.",
   ].join(" ");

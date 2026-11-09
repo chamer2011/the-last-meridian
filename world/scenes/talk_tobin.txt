@@ -6,6 +6,7 @@
 > Ask how the deck crew are holding up -> crew ? not seen crew
 > Ask what your last order weighed -> weighed ? not seen weighed
 > Ask about the scale -> scale ? not seen scale
+> Ask who keeps the stores these days -> stores ? not seen stores
 > Let him get on -> done
 
 == crew
@@ -13,6 +14,7 @@
 
 > Ask what your last order weighed -> weighed ? not seen weighed
 > Ask about the scale -> scale ? not seen scale
+> Ask who keeps the stores these days -> stores ? not seen stores
 > Let him get on -> done
 
 == weighed
@@ -24,6 +26,7 @@ He sets a folded paper on the scale, and a washer in the right pan, and another,
 
 > Ask how the deck crew are holding up -> crew ? not seen crew
 > Ask about the scale -> scale ? not seen scale
+> Ask who keeps the stores these days -> stores ? not seen stores
 > Let him get on -> done
 
 == scale
@@ -33,6 +36,28 @@ He folds it before he answers, and puts it in his pocket, and keeps his hand on 
 
 > Ask how the deck crew are holding up -> crew ? not seen crew
 > Ask what your last order weighed -> weighed ? not seen weighed
+> Ask who keeps the stores these days -> stores ? not seen stores
+> Let him get on -> done
+
+// Added for the chain of command's step 6, as the test its plan asks for: what Hask says depends on who holds the
+// quartermaster's post, and {quartermaster} is whoever does, filled in by the game. Draft by the AI (Claude),
+// 2026-11-09, not yet edited by the owner.
+== stores
+? holds quartermaster odessa -> stores_brandt
+-> stores_changed
+
+== stores_brandt
+@Chief Tobin Hask: "Brandt keeps them. Every crate counted twice and written down three times." He weighs a washer in his palm. "If it's in a hold, she knows what it weighs. Ask her, not me."
+
+> Ask how the deck crew are holding up -> crew ? not seen crew
+> Ask about the scale -> scale ? not seen scale
+> Let him get on -> done
+
+== stores_changed
+@Chief Tobin Hask: "{quartermaster} keeps them now, Captain. Brandt counted every crate twice." He sets a washer in one pan and leaves the other empty. "We'll see how the new count comes up."
+
+> Ask how the deck crew are holding up -> crew ? not seen crew
+> Ask about the scale -> scale ? not seen scale
 > Let him get on -> done
 
 == done

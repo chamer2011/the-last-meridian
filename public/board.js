@@ -10,6 +10,7 @@ import { writeStoryText } from "./story-text.js";
 import { LINE_PHRASES, PERK_NUMBERS, SPECS, writeWorldText } from "./world-text.js";
 import { KNOWN_SYSTEMS, readComputerLine, systemIdOf, writeSystemsText } from "./systems-text.js";
 import { LOGISTICS_PARTS, PART_TITLES, readErrandLine, readLoadsLine, readMachineLine, readRefillLine, readRepair, readSittings, readStoreLine, writeLogisticsText, writeRepair, writeSittings } from "./logistics-text.js";
+import { COMMAND_HEADER, SPARE, readHolderLine, readJobLine, readPostLine, readWorkersLine, slugOf, writeCommandText, writeJobLine, writePostLine } from "./command-text.js";
 
 const state = {
   kind: "story", id: null, lists: {},
@@ -24,8 +25,8 @@ const $ = (id) => document.getElementById(id);
 const spaced = (id) => String(id ?? "").replaceAll("_", " ");
 const fill = (parent, ...children) => { for (const child of children.flat()) if (child !== null && child !== undefined && child !== false) parent.append(child); return parent; };
 const STOP = new Set("if the they she he it you someone anyone a an and or of is are that this their them its in on at for as has have then when there".split(" "));
-const KIND_WORDS = { story: "The story", place: "The place", person: "The person", species: "The species", enemy: "The enemy", item: "The item", faction: "The faction", perk: "The perk", computer: "The computer", systems: "The systems", logistics: "The logistics" };
-const FOLDERS = { story: "stories", person: "characters", place: "places", species: "species", enemy: "enemies", item: "items", faction: "factions", perk: "perks", computer: "computers", systems: "systems", logistics: "logistics" };
+const KIND_WORDS = { story: "The story", place: "The place", person: "The person", species: "The species", enemy: "The enemy", item: "The item", faction: "The faction", perk: "The perk", computer: "The computer", systems: "The systems", logistics: "The logistics", command: "The chain of command" };
+const FOLDERS = { story: "stories", person: "characters", place: "places", species: "species", enemy: "enemies", item: "items", faction: "factions", perk: "perks", computer: "computers", systems: "systems", logistics: "logistics", command: "command" };
 
 // A name made from words, for an ending or a fact, so nobody has to type one.
 export function nameFrom(text) {
@@ -105,7 +106,7 @@ function boardNode() {
     el("header", { class: "board-head" },
       el("h2", {}, "Story board"),
       el("select", { id: "board-what", title: "Stories, places, people or species", onchange: (event) => changeKind(event.target.value) },
-        ...[["story", "Stories"], ["place", "Places"], ["person", "People"], ["species", "Species"], ["enemy", "Enemies"], ["item", "Items"], ["faction", "Factions"], ["perk", "Perks"], ["computer", "Computers"], ["systems", "Systems"], ["logistics", "Logistics"]].map(([kind, label]) => el("option", { value: kind }, label))),
+        ...[["story", "Stories"], ["place", "Places"], ["person", "People"], ["species", "Species"], ["enemy", "Enemies"], ["item", "Items"], ["faction", "Factions"], ["perk", "Perks"], ["computer", "Computers"], ["systems", "Systems"], ["logistics", "Logistics"], ["command", "Command"]].map(([kind, label]) => el("option", { value: kind }, label))),
       el("select", { id: "board-pick", title: "Which one", onchange: (event) => load(state.kind, event.target.value) }),
       el("nav", { class: "board-tabs", role: "tablist" },
         ...[["notes", "The story"], ["scene", "The written scene"], ["file", "As the file"]].map(([tab, label]) => el("button", { class: "board-tab", role: "tab", "data-tab": tab, "aria-selected": "false", onclick: () => showTab(tab) }, label))),
@@ -434,13 +435,69 @@ function logisticsGraph() {
         if (store.read.problem) continue;
         const name = plainWords(store.read.name);
         if (!lower.includes(name)) continue;
-        const outOf = new RegExp(`\\bfrom (the )?${name.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\function sceneGraph() {")}`).test(lower);
+        const outOf = new RegExp(`\\bfrom (the )?${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(lower);
         if (outOf) ws.push({ from: store.id, to: id });
         else ws.push({ from: id, to: store.id });
       }
     });
   }
   if (L.place) add(linkNode(`link_place_${L.place.id}`, "place", L.place.name, "The place itself.", "The place"));
+  return { list, ws };
+}
+// A place's chain of command: each post a box with who holds it when a game begins, with an arrow from whoever chooses
+// it (another post, the council or the civilians), and each job a box with who does it, with an arrow from the post
+// that heads it, and the spare hands.
+const firstUpper = (text) => (text ? text[0].toUpperCase() + text.slice(1) : text);
+const pluralOf = (words) => (/s$/.test(words) ? words : `${words}s`);
+const holderLines = (P) => (P.holders ?? []).map((one, i) => ({ i, read: readHolderLine(one.text ?? one) })).filter((one) => !one.read.problem);
+const workersLines = (P) => (P.workers ?? []).map((one, i) => ({ i, read: readWorkersLine(one.text ?? one) })).filter((one) => !one.read.problem);
+const sameJob = (a, b) => slugOf(a).replace(/s$/, "") === slugOf(b).replace(/s$/, "");
+function crewName(key) {
+  const want = String(key).toLowerCase();
+  return (state.lists.crew ?? []).find((one) => one.key.toLowerCase() === want || one.name.toLowerCase() === want)?.name ?? key;
+}
+function commandGraph() {
+  const P = state.item;
+  const list = [], ws = [];
+  const add = (node) => { list.push(node); return node.id; };
+  const n = P.numbers ?? {};
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: [n.reviews && `Reviews every ${n.reviews}.`, n.stretch && `A bad stretch: ${n.stretch}.`, n.mutiny && `A mutiny brews: ${n.mutiny}.`, n.brig && `The brig: ${n.brig}.`].filter(Boolean).join(" ") || "The numbers at the top.", label: "The numbers at the top" });
+  const posts = (P.posts ?? []).map((one, i) => ({ i, read: readPostLine(one.text ?? one) }));
+  const byTitle = (words) => posts.find((one) => !one.read.problem && slugOf(one.read.title) === slugOf(words));
+  const depth = (one, seen = new Set()) => {
+    if (one.read.problem || ["council", "civilians"].includes(one.read.chosenBy)) return 2;
+    const chooser = byTitle(one.read.chosenBy);
+    if (!chooser || seen.has(chooser.i)) return 2;
+    seen.add(chooser.i);
+    return depth(chooser, seen) + 1;
+  };
+  const holders = Object.fromEntries(holderLines(P).map(({ read }) => [slugOf(read.post), read.holder]));
+  for (const body of ["council", "civilians"]) {
+    if (posts.some((one) => !one.read.problem && one.read.chosenBy === body)) add({ id: `body_${body}`, kind: "lead", col: 1, name: `The ${body}`, text: body === "council" ? "The civil council, who choose the captain." : "The civilians aboard, who choose their speaker.", label: "Who chooses" });
+  }
+  for (const one of posts) {
+    const { read, i } = one;
+    const holder = read.problem ? null : holders[slugOf(read.title)];
+    const said = read.problem ? read.problem : [
+      `In ${read.room}.`, `Chosen by the ${read.chosenBy}.`, read.watchBill && "Keeps the watch bill.", read.brig && "Keeps the brig.",
+      read.heads.length && `Heads ${read.heads.join(", ")}.`, read.pool.length && `Picked from ${read.pool.join(", ")}.`,
+      read.skills.length && `Skills: ${read.skills.join(", ")}.`, read.duty.length && `Duty: ${read.duty.join(", ")}.`,
+    ].filter(Boolean).join(" ");
+    const id = add({ id: `post${i}`, kind: "beat", col: Math.min(4, depth(one)), name: read.problem ? "A post" : `${firstUpper(read.title)}: ${holder ? (holder === "the chair" ? "the chair" : crewName(holder)) : "nobody"}`, text: said, label: "A post", bind: { post: i }, problem: Boolean(read.problem) });
+    if (read.problem) continue;
+    const from = ["council", "civilians"].includes(read.chosenBy) ? `body_${read.chosenBy}` : byTitle(read.chosenBy) ? `post${byTitle(read.chosenBy).i}` : null;
+    if (from) ws.push({ from, to: id });
+  }
+  const workers = Object.fromEntries(workersLines(P).map(({ read }) => [slugOf(read.job), read.people]));
+  (P.jobs ?? []).forEach((one, i) => {
+    const read = readJobLine(one.text ?? one);
+    const who = read.problem ? [] : workers[slugOf(read.title)] ?? [];
+    const id = add({ id: `job${i}`, kind: "route", col: 5, name: read.problem ? "A job" : `${firstUpper(pluralOf(read.title))}, ${read.wanted} wanted`, text: read.problem ?? `In ${read.room}.${read.skills.length ? ` Skills: ${read.skills.join(", ")}.` : ""} ${who.length ? `Done by ${who.join(", ")}.` : "Nobody does it when a game begins."}`, label: "A job", bind: { job: i }, problem: Boolean(read.problem) });
+    if (read.problem) return;
+    for (const post of posts) if (!post.read.problem && post.read.heads.some((words) => sameJob(words, read.title))) ws.push({ from: `post${post.i}`, to: id });
+  });
+  const spare = workers[slugOf(SPARE)] ?? [];
+  add({ id: "spare", kind: "fact", col: 5, name: "Spare hands", text: spare.length ? spare.join(", ") : "Nobody.", label: "Spare hands, for the first officer to put to work", bind: { spare: true } });
   return { list, ws };
 }
 function sceneGraph() {
@@ -473,7 +530,7 @@ function sceneGraph() {
 }
 
 function build() {
-  const builders = { story: notesGraph, place: placeGraph, person: personGraph, species: speciesGraph, enemy: enemyGraph, item: itemGraph, faction: factionGraph, perk: perkGraph, computer: computerGraph, systems: systemsGraph, logistics: logisticsGraph };
+  const builders = { story: notesGraph, place: placeGraph, person: personGraph, species: speciesGraph, enemy: enemyGraph, item: itemGraph, faction: factionGraph, perk: perkGraph, computer: computerGraph, systems: systemsGraph, logistics: logisticsGraph, command: commandGraph };
   const graph = state.tab === "scene" ? sceneGraph() : builders[state.kind]();
   nodes = graph.list;
   wires = graph.ws;
@@ -614,6 +671,7 @@ function fileText() {
   if (state.kind === "story") return writeStoryText(S(), C());
   if (state.kind === "systems") return writeSystemsText(state.item);
   if (state.kind === "logistics") return writeLogisticsText(state.item);
+  if (state.kind === "command") return writeCommandText(state.item);
   return writeWorldText(state.item, SPECS[state.kind]);
 }
 const sceneText = () => (state.scene ? [state.scene.header, ...state.scene.parts.map((part) => `== ${part.name}\n${part.raw}`)].join("\n") : "");
@@ -882,6 +940,17 @@ function remove(node) {
   else if (b.computer !== undefined) state.item.computers.splice(b.computer, 1);
   else if (b.store !== undefined) state.item.stores.splice(b.store, 1);
   else if (b.logLine) state.item[b.logLine[0]].splice(b.logLine[1], 1);
+  else if (b.post !== undefined) {
+    // A post goes with the line that says who holds it.
+    const read = readPostLine(state.item.posts[b.post]?.text ?? state.item.posts[b.post]);
+    state.item.posts.splice(b.post, 1);
+    if (!read.problem) state.item.holders = (state.item.holders ?? []).filter((one) => { const held = readHolderLine(one.text ?? one); return held.problem || slugOf(held.post) !== slugOf(read.title); });
+  } else if (b.job !== undefined) {
+    // And a job with the line that says who does it.
+    const read = readJobLine(state.item.jobs[b.job]?.text ?? state.item.jobs[b.job]);
+    state.item.jobs.splice(b.job, 1);
+    if (!read.problem) state.item.workers = (state.item.workers ?? []).filter((one) => { const who = readWorkersLine(one.text ?? one); return who.problem || slugOf(who.job) !== slugOf(read.title); });
+  }
   else if (b.list) story.gm[b.list].splice(b.i, 1);
   else if (b.outcome !== undefined) {
     const id = story.gm.outcomes[b.outcome].id;
@@ -999,7 +1068,10 @@ function inspect() {
   if (state.tab === "scene") return inspectPart(inspector, node);
   if (node.kind === "link") return inspectLink(inspector, node);
   if (node.lines) return fill(inspector, h2("Written lines"), hint(node.text), state.written ? row(button("Open the written lines", () => showTab("scene"))) : hint("A file called talk_<id>.txt in world/scenes gives them written lines; the how-to there explains it."));
-  if (node.kind === "about") return state.kind === "story" ? inspectAbout(inspector) : state.kind === "systems" ? inspectSystemsAbout(inspector) : state.kind === "logistics" ? inspectLogisticsAbout(inspector) : inspectWorldAbout(inspector);
+  if (node.kind === "about") return state.kind === "story" ? inspectAbout(inspector) : state.kind === "systems" ? inspectSystemsAbout(inspector) : state.kind === "logistics" ? inspectLogisticsAbout(inspector) : state.kind === "command" ? inspectCommandAbout(inspector) : inspectWorldAbout(inspector);
+  if (node.bind?.post !== undefined) return inspectPostLine(inspector, node);
+  if (node.bind?.job !== undefined) return inspectJobLine(inspector, node);
+  if (node.bind?.spare) return inspectSpareLine(inspector);
   if (node.bind?.store !== undefined) return inspectStoreLine(inspector, node);
   if (node.bind?.logLine) return inspectLogisticsLine(inspector, node);
   if (node.bind?.numbers) return inspectNumbers(inspector, node);
@@ -1029,18 +1101,21 @@ function inspectNothing(inspector) {
                   : state.kind === "faction" ? "The faction as a board: what the player reads, what they believe, and their people, places, enemies and stories, each a box that opens."
                     : state.kind === "perk" ? "The perk as a board: what the player reads, what it changes, and the perks it needs or leads to. What it needs is in the box on the left."
                       : state.kind === "systems" ? "A place's systems as a board: who keeps it running, each system with its parts and the rooms they're in, each computer with arrows to what it runs, and the rooms with what's in each. Click any box to read it and change it."
-                      : state.kind === "logistics" ? "The ship's logistics as a board: each store with what it holds and the room it's in, and the machines, errands, loads and refills, each with arrows to the stores its words name. Only the stores are played so far. Click any box to read it and change it."
+                      : state.kind === "logistics" ? "The ship's logistics as a board: each store with what it holds and the room it's in, and the machines, errands, loads and refills, each with arrows to the stores its words name. Click any box to read it and change it."
+                      : state.kind === "command" ? "The chain of command as a board: each post with who holds it when a game begins, and an arrow from whoever chooses it; each job with who does it, and an arrow from the post that heads it; and the spare hands. Click any box to read it and change it."
                       : "The computer as a board: what the player sees when they sit down, its files, letters, logs and programs, and the computers it reaches over its network. Click any box to read all of it and change it; its class, place and login are in the box on the left."),
     el("div", { class: "legend" }, ...(state.tab === "scene" ? [["beat", "parts"], ["ending", "checks and fights"], ["end", "ends"], ["clock", "missing"]]
       : state.kind === "story" ? [["lead", "the lead"], ["beat", "beats"], ["route", "ways through"], ["ending", "endings"], ["fact", "facts"], ["consequence", "consequences"], ["clock", "the clock"], ["next", "other stories"]]
         : state.kind === "systems" ? [["beat", "systems"], ["route", "its own systems"], ["fact", "computers"], ["clock", "rooms"], ["next", "links to open"]]
         : state.kind === "logistics" ? [["beat", "stores"], ["route", "machines"], ["fact", "errands"], ["clock", "loads"], ["consequence", "refills"], ["next", "links to open"]]
+        : state.kind === "command" ? [["lead", "who chooses"], ["beat", "posts"], ["route", "jobs"], ["fact", "spare hands"]]
         : state.kind === "computer" ? [["lead", "what they see"], ["beat", "files"], ["fact", "letters"], ["clock", "logs"], ["route", "programs"], ["next", "links to open"]]
           : [["lead", "for the player"], ["beat", "for the game master"], ["route", "lists and numbers"], ["ending", "the dice"], ["next", "links to open"]]).map(([kind, words]) => el("span", { class: `l-${kind}` }, words))),
     state.tab === "notes" && state.kind === "story" ? row(button("+ an ending", addEnding), button("+ a fact", () => addFact()), button("+ something days later", () => addConsequence()), button("+ a stage of the clock", addStage), button("+ what changes this story", addReaction)) : null,
     state.tab === "notes" && state.kind === "place" ? row(button("+ a district", addDistrict)) : null,
     state.tab === "notes" && state.kind === "systems" ? row(button("+ a system", addSystem), button("+ a computer", addComputerLine)) : null,
     state.tab === "notes" && state.kind === "logistics" ? row(button("+ a store", addStore), ...["machines", "errands", "loads", "refills"].map((part) => button(`+ ${PART_TITLES[part].toLowerCase().replace(/s$/, "")}`, () => addLogisticsLine(part)))) : null,
+    state.tab === "notes" && state.kind === "command" ? row(button("+ a post", addPost), button("+ a job", addJob)) : null,
     state.tab === "notes" && state.kind === "computer" ? row(button("+ a file", () => addEntry("files")), button("+ a letter", () => addEntry("mail")), button("+ a program", () => addEntry("programs"))) : null,
     state.problems.length ? el("div", { class: "problems" }, h2("The checker says"), ...state.problems.map((one) => el("div", {}, one))) : hint("The checker has nothing to say about this one."),
     hint(`Save writes the file in world/${FOLDERS[state.kind]}, and the game uses the new version from the next turn.`));
@@ -1336,6 +1411,169 @@ function addStore() {
 function addLogisticsLine(part) {
   (state.item[part] ??= []).push({ text: `new ${PART_TITLES[part].toLowerCase().replace(/s$/, "")}: what it does, in words` });
   state.selected = { node: `${part}${state.item[part].length - 1}` };
+  changed();
+}
+
+// The chain of command: the numbers at the top, one box each, with what the line says in its label.
+const COMMAND_NUMBER_WORDS = {
+  "each point of skill": "each point of skill: how much quicker or slower each point of skill either side of 5 makes the work, like 8% quicker or slower",
+  "reviews every": "reviews every: how often the officers review their people, like 7 days",
+  "a bad stretch": "a bad stretch: when someone's warned, and then relieved at a review, like duty under 60 for 5 days",
+  "the captain's choices stand": "the captain's choices stand: how long nobody reviews someone the captain chose or kept on, like 10 days",
+  "memories fade": "memories fade: how fast people forget, like by half every 30 days",
+  "everyone else": "everyone else: the numbers of whoever has none in their own file, like ambition 2, temper 2, loyalty 60",
+  "mutiny brews": "mutiny brews: when, like morale under 30, loyalty under 35",
+  "the mutiny builds": "the mutiny builds: like grumbling after 1 day, orders refused after 4, a delegation after 7, the mutiny after 10",
+  "the council's confidence": "the council's confidence: when a game begins, like 60 to begin with",
+  "the brig": "the brig: the room, and how long someone's kept there, like The Brig, for 7 days",
+};
+function inspectCommandAbout(inspector) {
+  const P = state.item;
+  const name = textBox("edit-title", P.name ?? "");
+  const draft = textBox("edit-draft", P.draft ?? "");
+  const fields = COMMAND_HEADER.filter((one) => one.path.startsWith("numbers.")).map((one, i) => ({ one, box: textBox(`edit-number-${i}`, P.numbers?.[one.path.slice("numbers.".length)] ?? "") }));
+  fill(inspector, h2("The numbers at the top"),
+    el("label", { for: "edit-title" }, "The place's name"), name,
+    el("label", { for: "edit-draft" }, "Who wrote it (the game doesn't read this)"), draft,
+    ...fields.flatMap(({ one, box }) => [el("label", { for: box.id }, COMMAND_NUMBER_WORDS[one.key] ?? one.key), box]),
+    row(button("Keep", () => {
+      P.name = name.value.trim() || P.name;
+      if (draft.value.trim()) P.draft = draft.value.trim();
+      else delete P.draft;
+      P.numbers = {};
+      for (const { one, box } of fields) if (box.value.trim()) P.numbers[one.path.slice("numbers.".length)] = box.value.trim();
+      changed();
+    }), button("Undo", () => inspect())),
+    hint(`The file is world/command/${state.id}.txt. The how-to there says what each line does in the game.`));
+}
+// A post: its line, with its room, who chooses it, whether it keeps the watch bill or the brig, the jobs it heads, who
+// it's picked from, its skills, what its duty's marked on, and who holds it when a game begins, picked from lists.
+function inspectPostLine(inspector, node) {
+  const P = state.item, lists = state.lists;
+  const i = node.bind.post;
+  const entry = P.posts[i];
+  if (!entry) return inspectNothing(inspector);
+  const box = textarea("edit-line", entry.text ?? entry, 3);
+  const first = readPostLine(box.value);
+  const titles = (P.posts ?? []).map((one) => readPostLine(one.text ?? one)).filter((one) => !one.problem && (first.problem || one.title !== first.title)).map((one) => one.title);
+  const jobs = (P.jobs ?? []).map((one) => readJobLine(one.text ?? one)).filter((one) => !one.problem).map((one) => one.title);
+  const rewrite = (change) => {
+    const now = readPostLine(box.value);
+    if (now.problem) return;
+    change(now);
+    box.value = writePostLine(now);
+  };
+  const addTo = (list, words) => { if (!list.includes(words)) list.push(words); };
+  const rooms = lists.rooms ?? [];
+  const room = picker("edit-room", rooms.map((one) => [one, one]), first.problem ? rooms[0] : rooms.find((one) => one.toLowerCase() === first.room.toLowerCase()) ?? rooms[0]);
+  const choosers = [...titles.map((one) => [one, `the ${one}`]), ["council", "the council"], ["civilians", "the civilians"]];
+  const chooser = picker("edit-chooser", choosers, first.problem ? choosers[0]?.[0] : first.chosenBy);
+  const jobPick = picker("edit-job", jobs.map((one) => [one, pluralOf(one)]), jobs[0]);
+  const pools = [...jobs.map((one) => [pluralOf(one), `${pluralOf(one)} (a job)`]), ...titles.map((one) => [`the ${one}`, `the ${one} (a post)`])];
+  const poolPick = picker("edit-pool", pools, pools[0]?.[0]);
+  const skillPick = picker("edit-skill", (lists.skills ?? []).map((id) => [id.replace(/_/g, " "), id.replace(/_/g, " ")]), (lists.skills ?? [])[0]?.replace(/_/g, " "));
+  const dutyPick = picker("edit-duty", (lists.measures ?? []).map((one) => [one, one]), (lists.measures ?? [])[0]);
+  const held = first.problem ? null : holderLines(P).find(({ read }) => slugOf(read.post) === slugOf(first.title));
+  const holderPick = picker("edit-holder", [["the chair", "the chair: the player, or whoever the game gives it"], ...(lists.crew ?? []).map((one) => [one.key, one.name])], held?.read.holder ?? "the chair");
+  fill(inspector, h2(node.label),
+    el("label", { for: "edit-line" }, "The post, in or on its room, a colon, then what's said about it, each after a semicolon"), box,
+    row(el("span", {}, "in"), room, button("Put it there", () => rewrite((now) => { now.room = room.value; }))),
+    row(el("span", {}, "chosen by"), chooser, button("Chosen by them", () => rewrite((now) => { now.chosenBy = chooser.value; }))),
+    row(button("Keeps the watch bill, or not", () => rewrite((now) => { now.watchBill = !now.watchBill; })), button("Keeps the brig, or not", () => rewrite((now) => { now.brig = !now.brig; }))),
+    row(jobPick, button("+ heads them", () => rewrite((now) => addTo(now.heads, pluralOf(jobPick.value))))),
+    row(poolPick, button("+ picked from them", () => rewrite((now) => addTo(now.pool, poolPick.value)))),
+    row(skillPick, button("+ a skill", () => rewrite((now) => addTo(now.skills, skillPick.value)))),
+    row(dutyPick, button("+ marked on it", () => rewrite((now) => addTo(now.duty, dutyPick.value)))),
+    row(el("span", {}, "held by"), holderPick, button("Give it to them", () => {
+      const now = readPostLine(box.value);
+      if (now.problem) return;
+      P.posts[i] = { text: box.value.trim().replace(/\n+/g, " ") };
+      const line = { text: `${now.title}: ${holderPick.value}` };
+      const at = holderLines(P).find(({ read }) => slugOf(read.post) === slugOf(now.title));
+      if (at) P.holders[at.i] = line;
+      else (P.holders ??= []).push(line);
+      changed();
+    })),
+    hint("Who holds it when a game begins: someone with a day aboard, one post each, or the chair, for the captain. In a game, posts change hands at the reviews, and the Command menu shows who has each one."),
+    row(button("Keep", () => { P.posts[i] = { text: box.value.trim().replace(/\n+/g, " ") }; changed(); }), button("Undo", () => inspect())),
+    row(button("+ another post", addPost), button("Remove", () => remove(node), { class: "danger" })));
+}
+// A job: its line, with its room, how many it wants and its skills, and who does it when a game begins.
+function inspectJobLine(inspector, node) {
+  const P = state.item, lists = state.lists;
+  const i = node.bind.job;
+  const entry = P.jobs[i];
+  if (!entry) return inspectNothing(inspector);
+  const box = textBox("edit-line", entry.text ?? entry);
+  const first = readJobLine(box.value);
+  const rewrite = (change) => {
+    const now = readJobLine(box.value);
+    if (now.problem) return;
+    change(now);
+    box.value = writeJobLine(now);
+  };
+  const rooms = lists.rooms ?? [];
+  const room = picker("edit-room", rooms.map((one) => [one, one]), first.problem ? rooms[0] : rooms.find((one) => one.toLowerCase() === first.room.toLowerCase()) ?? rooms[0]);
+  const wanted = numberBox("edit-wanted", first.problem ? 2 : first.wanted);
+  const skillPick = picker("edit-skill", (lists.skills ?? []).map((id) => [id.replace(/_/g, " "), id.replace(/_/g, " ")]), (lists.skills ?? [])[0]?.replace(/_/g, " "));
+  const line = first.problem ? null : workersLines(P).find(({ read }) => slugOf(read.job) === slugOf(first.title));
+  const workers = textBox("edit-workers", line ? (line.read.people.length ? line.read.people.join(", ") : "nobody") : "");
+  const person = picker("edit-person", (lists.crew ?? []).map((one) => [one.key, one.name]), (lists.crew ?? [])[0]?.key);
+  fill(inspector, h2(node.label),
+    el("label", { for: "edit-line" }, "The job, in or on the room it's done in, a colon, how many it wants, and its skills after a semicolon"), box,
+    row(el("span", {}, "in"), room, button("Put it there", () => rewrite((now) => { now.room = room.value; }))),
+    row(wanted, el("span", {}, "wanted"), button("Set it", () => rewrite((now) => { now.wanted = Math.max(0, Number(wanted.value) || 0); }))),
+    row(skillPick, button("+ a skill", () => rewrite((now) => { if (!now.skills.includes(skillPick.value)) now.skills.push(skillPick.value); }))),
+    el("label", { for: "edit-workers" }, "Who does it when a game begins, by their names with commas between, or nobody"), workers,
+    row(person, button("+ add them", () => {
+      const names = workers.value.split(",").map((one) => one.trim()).filter((one) => one && !/^nobody$/i.test(one));
+      if (!names.includes(person.value)) names.push(person.value);
+      workers.value = names.join(", ");
+    })),
+    row(button("Keep", () => {
+      P.jobs[i] = { text: box.value.trim() };
+      const now = readJobLine(box.value);
+      if (!now.problem && workers.value.trim()) {
+        const said = { text: `${now.title}: ${workers.value.trim()}` };
+        const at = workersLines(P).find(({ read }) => slugOf(read.job) === slugOf(now.title));
+        if (at) P.workers[at.i] = said;
+        else (P.workers ??= []).push(said);
+      }
+      changed();
+    }), button("Undo", () => inspect())),
+    row(button("+ another job", addJob), button("Remove", () => remove(node), { class: "danger" })));
+}
+// The spare hands: the people the first officer can put to work, by name.
+function inspectSpareLine(inspector) {
+  const P = state.item, lists = state.lists;
+  const line = workersLines(P).find(({ read }) => slugOf(read.job) === slugOf(SPARE));
+  const workers = textBox("edit-workers", line ? line.read.people.join(", ") : "");
+  const person = picker("edit-person", (lists.crew ?? []).map((one) => [one.key, one.name]), (lists.crew ?? [])[0]?.key);
+  fill(inspector, h2("Spare hands"),
+    el("label", { for: "edit-workers" }, "The spare hands when a game begins, by their names with commas between: people the first officer can put to work where a job's short"), workers,
+    row(person, button("+ add them", () => {
+      const names = workers.value.split(",").map((one) => one.trim()).filter(Boolean);
+      if (!names.includes(person.value)) names.push(person.value);
+      workers.value = names.join(", ");
+    })),
+    row(button("Keep", () => {
+      const names = workers.value.trim();
+      if (line && names) P.workers[line.i] = { text: `${SPARE}: ${names}` };
+      else if (line) P.workers.splice(line.i, 1);
+      else if (names) (P.workers ??= []).push({ text: `${SPARE}: ${names}` });
+      changed();
+    }), button("Undo", () => inspect())));
+}
+function addPost() {
+  const room = (state.lists.rooms ?? [])[0] ?? "The Bridge";
+  (state.item.posts ??= []).push({ text: `new post in ${room}: chosen by the captain` });
+  state.selected = { node: `post${state.item.posts.length - 1}` };
+  changed();
+}
+function addJob() {
+  const room = (state.lists.rooms ?? [])[0] ?? "The Bridge";
+  (state.item.jobs ??= []).push({ text: `new job in ${room}: 1 wanted` });
+  state.selected = { node: `job${state.item.jobs.length - 1}` };
   changed();
 }
 
@@ -1672,7 +1910,7 @@ async function save() {
       state.items = state.stories;
       say(result.problems.length ? `Saved. ${result.problems.length} ${result.problems.length === 1 ? "thing" : "things"} the checker would like changed.` : "Saved. The game plays the new version from the next turn.");
     } else {
-      const result = await call(`/api/board/world/${state.kind}/${state.id}`, { text: state.kind === "systems" ? writeSystemsText(state.item) : state.kind === "logistics" ? writeLogisticsText(state.item) : writeWorldText(state.item, SPECS[state.kind]) });
+      const result = await call(`/api/board/world/${state.kind}/${state.id}`, { text: state.kind === "systems" ? writeSystemsText(state.item) : state.kind === "logistics" ? writeLogisticsText(state.item) : state.kind === "command" ? writeCommandText(state.item) : writeWorldText(state.item, SPECS[state.kind]) });
       if (!result.saved) return say(`Not saved: ${result.problems[0]}`, false);
       state.dirty = false;
       state.problems = result.problems;

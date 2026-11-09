@@ -16,7 +16,7 @@ import { advanceWorld, holdingsOf, itemFactor, newWorld, newsView, placeLine, pl
 import { advanceShip, chairOf, chartEntry, isCharted, jumpCost, newShipState, shipGoingHungry, shipJumped, shipLine, shipOf, shipView } from "./ship.js";
 import { advanceLife, lifeOf } from "./life.js";
 import { advanceLogistics, startLogistics } from "./logistics.js";
-import { advanceCommand, commandView, dutyDay, moodDay, reviewDay, sidesTaken, startCommand } from "./command.js";
+import { advanceCommand, commandLine, commandView, dutyDay, moodDay, reviewDay, sidesTaken, startCommand } from "./command.js";
 import { startingLoreIds } from "./lore.js";
 import { THREAT_LABELS } from "./npc.js";
 import { START_LIST, aboardShip, isCaptain, jobHere, roleBrief, startOf, toOutsider } from "./role.js";
@@ -1115,6 +1115,7 @@ export function aiSnapshot(game) {
     ...(systemsNow ? [systemsNow] : []),
     `${isCaptain(game) ? "Ship" : "The Meridian"}: hull ${game.ship.hull}/${game.ship.maxHull}, fuel ${game.ship.fuel}/${game.ship.maxFuel}, morale aboard ${game.ship.morale}/100.`,
     shipLine(game),
+    ...(commandLine(game) ? [commandLine(game)] : []),
     `Faction standing: ${factions}.`,
     ...(quests.length ? quests : ["Active quests: none."]),
     `Finished quests: ${finished}.`,
