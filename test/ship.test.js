@@ -218,9 +218,12 @@ test("morale and health settle where the rations put them", () => {
   const game = newGame();
   // The old count in tonnes, and the pantry the galley cooks from, both kept full: step 3's errands will do the carrying.
   const pantry = logisticsOf(SHIP_ID).stores.find((one) => one.id === "pantry");
+  const rack = logisticsOf(SHIP_ID).stores.find((one) => one.id === "fuel_rack");
   const stocked = () => {
     Object.assign(game.ship, { food: 9000, medicine: 900, parts: 900, fuel: game.ship.maxFuel });
     storePut(game, pantry.key, pantry.holds, "ration_crate", 12);
+    // And the generator's rack, until step 5 refills the shuttle stores it's kept from.
+    storePut(game, rack.key, rack.holds, "fuel_cell", 6);
   };
   // The stories that move on by themselves nudge morale a point or two, so it settles near its level, not on it.
   const near = (value, target) => Math.abs(value - target) <= 3;

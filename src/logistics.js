@@ -14,7 +14,8 @@ import { hasReached, isAbout, rosterOf, usuallyIn, whoIsIn } from "./life.js";
 import { claimedSquares, floorSpot, roomPowered, systemsOf } from "./systems.js";
 import { mapFor, roomHere, roomsOf, roomsOn, thingsIn } from "./walk.js";
 import { LOGISTICS_FILE_PROBLEMS, WORLD_LOGISTICS } from "./world.js";
-import { everyWords, readErrandLine, readMachineLine, readStoreLine, slugOf } from "../public/logistics-text.js";
+import { everyWords, readErrandLine, readLoadsLine, readMachineLine, readStoreLine, slugOf } from "../public/logistics-text.js";
+import { KNOWN_SYSTEMS, SYSTEM_TITLES } from "../public/systems-text.js";
 
 const plain = (words) => String(words ?? "").toLowerCase().replace(/['’]/g, "").replace(/^the\s+/, "").replace(/\s+/g, " ").trim();
 const upperFirst = (text) => (text ? text[0].toUpperCase() + text.slice(1) : "");
@@ -257,8 +258,50 @@ function compileLogistics(place) {
       sound = false;
     }
     if (!sound) continue;
-    // A machine that only gives power is the generator's, and waits for the step that brings power in.
-    model.machines.push({ id, name: m.name, verb: m.verb, room: room.id, roomName: room.name, takes, from: from?.id ?? null, gives, into: into?.id ?? null, every: m.every, needs: m.needs, power: m.power, runs: Boolean(gives), line, text: raw.text });
+    // A machine that gives power and makes nothing else is a generator: it burns what it's given and keeps the place lit.
+    const generator = Boolean(m.power) && !gives;
+    model.machines.push({ id, name: m.name, verb: m.verb, room: room.id, roomName: room.name, takes, from: from?.id ?? null, gives, into: into?.id ?? null, every: m.every, needs: m.needs, power: m.power, generator, runs: Boolean(gives) || generator, line, text: raw.text });
+  }
+  model.generators = model.machines.filter((m) => m.generator);
+  // The loads: what each system draws from the generator, and the order they're let go in when there isn't enough.
+  model.loads = [];
+  model.drop = [];
+  const SYNONYMS = { "air plant": "air", air: "air", nav: "navigation", lighting: "lights", light: "lights", camera: "cameras", engine: "engines", door: "doors", comm: "comms", computer: "computers" };
+  const systemIdOf = (words) => {
+    const key = plain(words).replace(/s$/, "");
+    if (SYNONYMS[key]) return SYNONYMS[key];
+    return KNOWN_SYSTEMS.find((one) => plain(one).replace(/s$/, "") === key || plain(SYSTEM_TITLES[one]).replace(/s$/, "") === key) ?? null;
+  };
+  const systemNames = () => `${KNOWN_SYSTEMS.filter((one) => one !== "power").join(", ")}, and computers`;
+  for (const raw of file.loads ?? []) {
+    const line = raw.line ?? null;
+    const l = readLoadsLine(raw.text);
+    if (l.problem) {
+      at(line, l.problem);
+      continue;
+    }
+    if (l.drop) {
+      if (model.drop.length) at(line, "the order to drop systems in is written twice, and the second is the one kept");
+      model.drop = [];
+      for (const words of l.drop) {
+        const id = systemIdOf(words);
+        if (!id || id === "power" || id === "computers") at(line, `there's no system called ${words} to drop: the systems are ${KNOWN_SYSTEMS.filter((one) => one !== "power").join(", ")}`);
+        else model.drop.push(id);
+      }
+      continue;
+    }
+    for (const one of l.loads) {
+      const id = systemIdOf(one.system);
+      if (!id || id === "power") {
+        at(line, `there's no system called ${one.system} to draw power: the systems are ${systemNames()}`);
+        continue;
+      }
+      if (one.while && !/^(under way|underway|jumping|moving)$/.test(one.while)) {
+        at(line, `"while ${one.while}" isn't a time the game knows: write while under way`);
+        continue;
+      }
+      model.loads.push({ system: id, amount: one.amount, per: one.per, underWay: Boolean(one.while), words: one.system });
+    }
   }
   // The errands: who carries what from which store to which, when the store it goes to is short, so many a trip.
   model.errands = [];
@@ -459,6 +502,41 @@ function runMachine(game, place, model, m, state, minute, minutes, you) {
   }
 }
 
+// A generator over one piece of the clock: it burns what it's given, and when that's spent it takes the next from its
+// store, or stops until there's one, and nothing aboard has power meanwhile. It starts with one in it.
+function runGenerator(game, model, m, state, minutes) {
+  const s = state.machines[m.id] ??= { progress: 0, made: 0, waiting: null, burning: m.every };
+  if (s.burning === undefined) s.burning = m.every;
+  const from = m.from ? storeById(model, m.from) : null;
+  if (s.burning > 0) s.burning -= minutes;
+  if (s.burning > 0) {
+    s.waiting = null;
+    return;
+  }
+  const take = from ? pickTake(game, from, m.takes) : null;
+  if (from && !take) {
+    s.burning = 0;
+    s.waiting = `the ${from.name} ${/s$/i.test(from.name) ? "have" : "has"} no ${takesWords(m.takes)}`;
+    return;
+  }
+  if (from) storeTake(game, from.key, from.holds, take.item, take.n);
+  s.burning += m.every;
+  s.made += 1;
+  s.waiting = null;
+}
+
+// What the place's generators give right now: nothing from one that's stopped for want of fuel. Null where no
+// generator is written, which is to say nowhere the power can run short.
+export function powerSupply(game, place) {
+  const model = logisticsOf(place);
+  if (!model?.generators?.length) return null;
+  const state = game.logistics?.[place]?.machines ?? {};
+  return model.generators.reduce((sum, m) => sum + ((state[m.id]?.burning ?? m.every) > 0 ? m.power : 0), 0);
+}
+// What each system draws, and the order they're let go in, as the place's file has them.
+export const loadsOf = (place) => logisticsOf(place)?.loads ?? [];
+export const dropOrderOf = (place) => logisticsOf(place)?.drop ?? [];
+
 // The sitting that's on at a minute of the day, if any.
 const sittingAt = (sittings, minuteOfDay) => sittings.at.findIndex((start) => minuteOfDay >= start && minuteOfDay < start + sittings.minutes);
 
@@ -530,7 +608,10 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
     const you = game.location === place && game.walk ? roomHere(game)?.id ?? null : null;
     let t = state.at;
     while (t + CHUNK <= until) {
-      for (const m of model.machines) if (m.runs) runMachine(game, place, model, m, state, t, CHUNK, you);
+      for (const m of model.machines) {
+        if (m.generator) runGenerator(game, model, m, state, CHUNK);
+        else if (m.runs) runMachine(game, place, model, m, state, t, CHUNK, you);
+      }
       serveMeals(game, place, model, state, t, CHUNK, notes);
       runErrands(game, place, model, state, t);
       t += CHUNK;
@@ -568,14 +649,17 @@ export function machinesView(game, place) {
     const s = state?.machines?.[m.id] ?? null;
     const from = m.from ? storeById(model, m.from) : null;
     const into = m.into ? storeById(model, m.into) : null;
-    const does = [m.verb, m.takes.map((one) => `${one.n} ${itemWords(one.item, one.n)}`).join(" or "), from ? `from the ${from.name}` : "", m.gives ? `into ${m.gives.n} ${m.gives.count ? m.gives.unit : itemWords(m.gives.item, m.gives.n)} in the ${into.name}` : "", `every ${everyWords(m.every)}`].filter(Boolean).join(" ");
-    const status = !m.runs ? `waits for step 4, the generator${m.power ? `, to give its ${m.power} power` : ""}`
-      : !s ? "about to start"
-        : s.waiting ? s.waiting
-          : `at work, ${Math.max(1, Math.ceil(m.every - s.progress))} ${Math.ceil(m.every - s.progress) === 1 ? "minute" : "minutes"} to the next`;
+    const does = [m.verb, m.takes.map((one) => `${one.n} ${itemWords(one.item, one.n)}`).join(" or "), from ? `from the ${from.name}` : "", m.gives ? `into ${m.gives.n} ${m.gives.count ? m.gives.unit : itemWords(m.gives.item, m.gives.n)} in the ${into.name}` : "", `every ${everyWords(m.every)}`, m.power ? `, ${m.power} power` : ""].filter(Boolean).join(" ").replace(" ,", ",");
+    const left = (minutes) => `${Math.floor(minutes / 60) ? `${Math.floor(minutes / 60)} h ` : ""}${Math.round(minutes % 60)} min`;
+    const status = m.generator
+      ? ((s?.burning ?? m.every) > 0 ? `running, ${left(s?.burning ?? m.every)} on this ${m.takes[0] ? itemWords(m.takes[0].item, 1) : "charge"}, giving ${m.power} power` : `stopped: ${s.waiting}, and nothing aboard has power`)
+      : !m.runs ? "not in play"
+        : !s ? "about to start"
+          : s.waiting ? s.waiting
+            : `at work, ${Math.max(1, Math.ceil(m.every - s.progress))} ${Math.ceil(m.every - s.progress) === 1 ? "minute" : "minutes"} to the next`;
     // A full store or nobody there at night is how things are; no power or nothing left to work from is a want.
     const bad = Boolean(s?.waiting) && (s.waiting === "no power" || / ha(?:s|ve) no /.test(s.waiting));
-    return { id: m.id, name: upperFirst(m.name), room: m.roomName, does, status, waiting: Boolean(s?.waiting) || !m.runs, bad, made: s?.made ?? 0, runs: m.runs };
+    return { id: m.id, name: upperFirst(m.name), room: m.roomName, does, status, waiting: Boolean(s?.waiting) || !m.runs, bad, made: s?.made ?? 0, runs: m.runs, generator: m.generator };
   });
 }
 

@@ -9,7 +9,7 @@ import { el } from "./dom.js";
 import { writeStoryText } from "./story-text.js";
 import { LINE_PHRASES, PERK_NUMBERS, SPECS, writeWorldText } from "./world-text.js";
 import { KNOWN_SYSTEMS, readComputerLine, systemIdOf, writeSystemsText } from "./systems-text.js";
-import { LOGISTICS_PARTS, PART_TITLES, readErrandLine, readMachineLine, readSittings, readStoreLine, writeLogisticsText, writeSittings } from "./logistics-text.js";
+import { LOGISTICS_PARTS, PART_TITLES, readErrandLine, readLoadsLine, readMachineLine, readSittings, readStoreLine, writeLogisticsText, writeSittings } from "./logistics-text.js";
 
 const state = {
   kind: "story", id: null, lists: {},
@@ -423,12 +423,12 @@ function logisticsGraph() {
   });
   const cols = { machines: 2, errands: 3, loads: 4, refills: 2 };
   const kinds = { machines: "route", errands: "fact", loads: "clock", refills: "consequence" };
-  const labels = { machines: "A machine", errands: "An errand", loads: "A load (from step 4)", refills: "A refill (from step 5)" };
+  const labels = { machines: "A machine", errands: "An errand", loads: "What draws power", refills: "A refill (from step 5)" };
   for (const part of ["machines", "errands", "loads", "refills"]) {
     (P[part] ?? []).forEach((one, i) => {
       const words = one.text ?? one;
-      const read = part === "machines" ? readMachineLine(words) : part === "errands" ? readErrandLine(words) : null;
-      const id = add({ id: `${part}${i}`, kind: kinds[part], col: cols[part], name: words.split(":")[0].trim().slice(0, 40), text: read?.problem ?? words, label: read && !read.gives && read.power ? "A machine (its power waits for step 4)" : labels[part], bind: { logLine: [part, i] }, problem: Boolean(read?.problem) });
+      const read = part === "machines" ? readMachineLine(words) : part === "errands" ? readErrandLine(words) : part === "loads" ? readLoadsLine(words) : null;
+      const id = add({ id: `${part}${i}`, kind: kinds[part], col: cols[part], name: read?.drop ? "When short, drop" : words.split(":")[0].trim().slice(0, 40), text: read?.problem ?? words, label: read && !read.gives && read.power ? "The generator" : read?.drop ? "The order they're let go in" : labels[part], bind: { logLine: [part, i] }, problem: Boolean(read?.problem) });
       const lower = plainWords(words);
       for (const store of stores) {
         if (store.read.problem) continue;
@@ -1312,7 +1312,9 @@ function inspectLogisticsLine(inspector, node) {
       ? hint("A machine: its name, in and its room if the room isn't named like it, a colon, then what it does. It takes so many of an item (or one of two, with or between them) from a store, and puts so many of an item or of sittings into a store, every so long, with power and someone there if it needs them: galley: cooks 1 produce or 1 ration crate from the pantry into 200 sittings in the soup kettle every hour, with power and a cook there. One that only gives power waits for step 4.")
       : part === "errands"
         ? hint("An errand: who carries, by their name in the place's life file (a crowd name, or someone's name), a colon, what they carry, from a store, to a store, when the store it goes to is under so many, and how many a trip: Quartermaster Brandt: ration crates from the shuttle stores to the pantry when under 4, two at a time.")
-        : hint("Written in the words you'd use. The game keeps it, and reads it when its step is built; the how-to in world/logistics says what each step will read."),
+        : part === "loads"
+          ? hint("The loads: each system and what it draws from the generator, with a room or each to count them, and while under way for what only draws on a jump: air plant 20, engines 30 while under way, lights 1 a room, computers 2 each. Another line says the order they're let go in when the generator hasn't enough: when short, drop: cameras, comms, lights, doors, navigation, air.")
+          : hint("Written in the words you'd use. The game keeps it, and reads it when its step is built; the how-to in world/logistics says what each step will read."),
     row(button("Keep", () => { P[part][i] = { text: box.value.trim().replace(/\n+/g, " ") }; changed(); }), button("Undo", () => inspect())),
     row(button(`+ another under ${PART_TITLES[part]}`, () => addLogisticsLine(part)), button("Remove", () => remove(node), { class: "danger" })));
 }

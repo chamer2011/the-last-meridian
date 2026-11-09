@@ -19,7 +19,7 @@ Machines:
 - galley: cooks 1 produce or 1 ration crate from the pantry into 200 sittings in the soup kettle every hour, with power and a cook there
 
 Loads:
-- air plant 20, engines 30 while under way, doors 6, comms 6, navigation 6, cameras 4, lights 2 a room, computers 2 each
+- air plant 20, engines 30 while under way, doors 6, comms 6, navigation 6, cameras 4, lights 1 a room, computers 2 each
 - when short, drop: cameras, comms, lights, doors, navigation, air
 
 Errands:

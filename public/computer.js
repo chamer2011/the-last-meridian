@@ -122,6 +122,7 @@ function systemScreen(view, screen) {
   if (!system) return [el("div", { class: "computer-screen-title" }, screen.title ?? "Systems"), el("div", { class: "tone-dim" }, "This computer doesn't run that any more.")];
   return [
     el("div", { class: "computer-screen-title" }, system.title),
+    system.note && el("div", { class: `tone-${/let go|No power/.test(system.note) ? "warn" : "dim"}` }, system.note),
     el("div", { class: "computer-rows" }, system.rows.map((row) => el("div", { class: `computer-row${row.works ? "" : " down"}` },
       el("div", { class: "computer-row-head" },
         el("span", { class: "computer-row-name tone-bright" }, row.name),

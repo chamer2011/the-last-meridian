@@ -662,7 +662,14 @@ export function travel(game, destination) {
   game.location = destination;
   game.walk = null;
   shipJumped(game, destination);
-  const notes = passTime(game, cost.hours);
+  // Under way, the engines draw their share of the generator's power, and the systems written to go first are let go.
+  game.ship.underWay = true;
+  let notes;
+  try {
+    notes = passTime(game, cost.hours);
+  } finally {
+    delete game.ship.underWay;
+  }
   notes.push(...practice(game, "navigation", 2));
   return {
     message: `Jumped to ${place.name} in ${cost.hours} hours.${saved ? " A clean jump saved the fuel." : ""} Fuel left: ${game.ship.fuel}. It's now ${clockLabel(game)}.`,

@@ -246,6 +246,27 @@ export function readErrandLine(text) {
   return { who, what, from, to, under, each };
 }
 
+// ---- The words of a loads line ---------------------------------------------------------------
+
+// "air plant 20, engines 30 while under way, doors 6, comms 6, navigation 6, cameras 4, lights 1 a room, computers 2
+// each": what each system draws from the generator; or "when short, drop: cameras, comms, lights, doors, navigation,
+// air": the order they're let go in when the generator hasn't enough for them all.
+export function readLoadsLine(text) {
+  const words = String(text).trim();
+  const drop = words.match(/^when\s+short,?\s*drop:\s*(.*)$/i);
+  if (drop) {
+    const order = drop[1].split(/\s*,\s*|\s+and\s+|\s+then\s+/i).map((one) => one.trim().replace(/^the\s+/i, "")).filter(Boolean);
+    return order.length ? { drop: order } : { problem: `"${text}" names nothing to drop: write when short, drop: cameras, comms, lights` };
+  }
+  const loads = [];
+  for (const piece of words.split(/\s*,\s*/).map((one) => one.trim()).filter(Boolean)) {
+    const found = piece.match(/^(.+?)\s+(\d+)(?:\s+(a room|per room|each|apiece))?(?:\s+while\s+(.+))?$/i);
+    if (!found) return { problem: `"${piece}" should be a system and a number, such as air plant 20, lights 1 a room, or engines 30 while under way` };
+    loads.push({ system: found[1].trim().replace(/^the\s+/i, ""), amount: Number(found[2]), per: found[3] ? (/room/i.test(found[3]) ? "room" : "each") : null, while: found[4] ? found[4].trim().toLowerCase() : null });
+  }
+  return loads.length ? { loads } : { problem: `"${text}" names no load: write a system and a number, such as air plant 20` };
+}
+
 // ---- Writing a file ----------------------------------------------------------------------------
 export function writeLogisticsText(value) {
   const out = [`# ${value.name ?? ""}`];

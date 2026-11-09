@@ -17,6 +17,7 @@ import { LOCATIONS } from "./data.js";
 import { startCheck } from "./checks.js";
 import { genericKindOf, writtenAtThing } from "./computers.js";
 import { livesHere, peopleAboard } from "./life.js";
+import { dropOrderOf, loadsOf, powerSupply } from "./logistics.js";
 import { recordFact } from "./record.js";
 import { isCaptain } from "./role.js";
 import { changeStanding, changeStress, hoursNow } from "./rules.js";
@@ -533,7 +534,78 @@ export const ownedBy = (game, place) => place === "meridian" && isCaptain(game);
 
 // ---- What's working --------------------------------------------------------------------------------
 
+// The generator against the loads (world/logistics): what the place's generator gives, what each system draws, and
+// which systems are let go, in the written order, when there isn't enough for them all. Null where no generator is
+// written, so nothing changes at a place that hasn't one. Looked at often, so it's kept until something it hangs on
+// changes: the supply, whether the ship's under way, or a part being switched or broken.
+const balances = new WeakMap();
+export function powerBalance(game, place) {
+  const supply = powerSupply(game, place);
+  const model = systemsOf(place);
+  if (supply === null || !model) return null;
+  const state = game.systems?.[place];
+  const underWay = place === "meridian" && Boolean(game.ship?.underWay);
+  const key = `${supply}|${underWay}|${JSON.stringify(state?.parts ?? {})}`;
+  let mine = balances.get(game);
+  if (!mine) balances.set(game, (mine = new Map()));
+  if (mine.get(place)?.key === key) return mine.get(place).value;
+  const live = (part) => {
+    const s = partState(game, place, part.id);
+    return !part.unplaced && s.on !== false && !s.damage;
+  };
+  const loads = [];
+  for (const load of loadsOf(place)) {
+    if (load.underWay && !underWay) continue;
+    let count = 1;
+    if (load.system === "computers") count = load.per ? model.computers.length : 1;
+    else if (load.system === "doors") {
+      // The doors the place's systems run aren't parts on a wall: each is a lock in a doorway.
+      const doors = Object.keys(model.doors ?? {}).length;
+      if (!doors) continue;
+      count = load.per ? doors : 1;
+    } else {
+      const parts = partsOf(model, load.system).filter(live);
+      if (!parts.length) continue;
+      count = load.per === "room" ? new Set(parts.map((part) => part.room)).size : load.per === "each" ? parts.length : 1;
+    }
+    if (load.amount * count > 0) loads.push({ system: load.system, title: SYSTEM_TITLES[load.system] ?? load.words, amount: load.amount * count });
+  }
+  const load = loads.reduce((sum, one) => sum + one.amount, 0);
+  let running = load;
+  const dropped = [];
+  for (const id of dropOrderOf(place)) {
+    if (running <= supply) break;
+    const one = loads.find((entry) => entry.system === id);
+    if (!one) continue;
+    dropped.push(id);
+    running -= one.amount;
+  }
+  const value = { supply, load, loads, dropped, running, short: Math.max(0, load - supply) };
+  mine.set(place, { key, value });
+  return value;
+}
+
+// The generator against the loads, in a line: for the Ship menu, a computer's screen and the reactor's readouts.
+export function powerNote(game, place) {
+  const b = powerBalance(game, place);
+  if (!b) return null;
+  const loads = b.loads.map((one) => `${one.title.toLowerCase()} ${one.amount}`).join(", ");
+  if (b.supply <= 0) return `No power: the generator's stopped. The ship would draw ${b.load}: ${loads}.`;
+  const names = b.dropped.map((id) => (SYSTEM_TITLES[id] ?? id).toLowerCase());
+  const tail = b.dropped.length ? ` That's ${b.short} more than it gives, so ${names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`} ${names.length === 1 ? "is" : "are"} let go until there's more.` : " Nothing's let go.";
+  return `The generator gives ${b.supply} power, and the ship draws ${b.load}: ${loads}.${tail}`;
+}
+
+// Whether a system's parts have the power for them: not when the generator's stopped, and not when the system's been
+// let go for want of enough.
+function starved(game, place, system) {
+  const b = powerBalance(game, place);
+  return Boolean(b) && (b.supply <= 0 || b.dropped.includes(system));
+}
+
 export function roomPowered(game, place, room) {
+  const balance = powerBalance(game, place);
+  if (balance && balance.supply <= 0) return false;
   const box = systemsOf(place)?.circuits[room];
   if (!box) return true;
   const s = partState(game, place, box);
@@ -543,7 +615,8 @@ export function roomPowered(game, place, room) {
 export function partWorks(game, place, part) {
   const s = partState(game, place, part.id);
   if (s.on === false || s.damage) return false;
-  return NEEDS_NO_POWER.has(part.kind) || roomPowered(game, place, part.room);
+  if (NEEDS_NO_POWER.has(part.kind)) return true;
+  return !starved(game, place, part.system) && roomPowered(game, place, part.room);
 }
 
 export function roomDark(game, place, room) {
@@ -1030,8 +1103,16 @@ export function lookAt(game, place, part) {
   const spec = kindSpec(part.kind);
   const s = partState(game, place, part.id);
   const works = partWorks(game, place, part);
-  const state = s.damage ? spec.damaged ?? "It's broken." : s.on === false ? spec.off ?? "It's off." : !works ? "It's dead. There's no power in here." : ringingNow(game, place, part) ? "It's ringing." : spec.on ?? "It's working.";
+  const state = s.damage ? spec.damaged ?? "It's broken." : s.on === false ? spec.off ?? "It's off." : !works ? deadWords(game, place, part) : ringingNow(game, place, part) ? "It's ringing." : spec.on ?? "It's working.";
   return `${part.look ?? spec.look ?? `The ${part.name}.`} ${state}`;
+}
+
+// Why a part that's on and whole does nothing: the generator's stopped, its system was let go, or its room's cut off.
+function deadWords(game, place, part) {
+  const b = powerBalance(game, place);
+  if (b && b.supply <= 0) return "It's dead: the generator's stopped, and nothing aboard has power.";
+  if (b && b.dropped.includes(part.system)) return "It's dead: there isn't the power for everything just now, and this was let go first.";
+  return "It's dead. There's no power in here.";
 }
 
 function stateWord(game, place, part) {
@@ -1297,7 +1378,8 @@ export function controlsView(game, place, controls, { room = null } = {}) {
         if (part && !part.unplaced && inScope(part.room)) rows.push(partRow(game, place, part));
       }
     }
-    if (rows.length) out.push({ id: system.id, title: system.title, rows });
+    // The power system's screen says what the generator gives against what's drawn, and what's been let go.
+    if (rows.length) out.push({ id: system.id, title: system.title, rows, ...(system.id === "power" && powerNote(game, place) ? { note: powerNote(game, place) } : {}) });
   }
   return out;
 }

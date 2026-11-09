@@ -12,7 +12,7 @@ import { newTurnLimits, runTool } from "./tools.js";
 import { startCheck } from "./checks.js";
 import { closest } from "./check-games/kit.js";
 import { WORLD_COMPUTERS } from "./world.js";
-import { applySystemsEffect, controlSystem, controlsView, roomPowered } from "./systems.js";
+import { applySystemsEffect, controlSystem, controlsView, powerNote, roomPowered } from "./systems.js";
 import { untagged } from "../public/story.js";
 import { MAX_LOG, MINUTES_PER_ACTION, classKeys, contentOf, knowsPassword, levelNamed, line, memoryOf, openSession, peopleAt, programOffered, sameName, slug, writtenContent } from "./computers.js";
 
@@ -116,6 +116,9 @@ function logLines(game, session, content, log) {
       const out = [];
       if (ship) out.push(line(`${ship.name ?? "CFS Meridian"}: hull ${ship.hull}/${ship.maxHull}, ${ship.aboard ?? "unknown"} aboard.`, "info"));
       if (ship) out.push(line(`Fuel: ${ship.fuel}/${ship.maxFuel}.`, "info"));
+      // The generator against the loads, from the ship's logistics, when the place has them.
+      const power = powerNote(game, place);
+      if (power) out.push(line(power, /let go|No power/.test(power) ? "warn" : "info"));
       out.push(line(`Day ${Math.floor((game.clock?.hours ?? 0) / 24) + 1}, air plant at 140% of design.`, "dim"));
       return out;
     }

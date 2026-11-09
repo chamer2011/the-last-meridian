@@ -142,6 +142,7 @@ function systemsSection(g) {
     systems.map((system) => {
       const down = system.rows.filter((row) => !row.works).length;
       return folded(`ship-systems-${system.id}`, `${system.title}${down ? ` (${down} down)` : ""}`,
+        system.note ? el("div", { class: `small${/let go|No power/.test(system.note) ? " tone-bad" : " muted"}` }, system.note) : null,
         system.rows.map((row) => el("div", { class: "menu-row small ship-system-row" },
           el("span", { class: "ship-system-name" }, row.name, row.feed?.length ? el("span", { class: "muted" }, `, on camera: ${row.feed.join(", ")}`) : null),
           el("span", { class: `tag${row.works ? "" : " bad"}` }, row.word),

@@ -58,7 +58,7 @@ test("the Meridian's machines know their stores, rooms and needs, and the genera
   assert.deepEqual([byId.galley.room, byId.galley.takes, byId.galley.from, byId.galley.gives, byId.galley.into, byId.galley.every, byId.galley.needs, byId.galley.runs],
     ["galley", [{ item: "produce", n: 1 }, { item: "ration_crate", n: 1 }], "pantry", { count: true, unit: "sittings", n: 200 }, "soup_kettle", 60, { power: true, worker: "a cook there" }, true]);
   assert.deepEqual([byId.garden.room, byId.garden.takes, byId.garden.gives, byId.garden.into, byId.garden.every, byId.garden.runs], ["garden", [], { count: false, item: "produce", n: 1 }, "garden_bins", 120, true]);
-  assert.deepEqual([byId.generator.room, byId.generator.from, byId.generator.power, byId.generator.runs], ["engineering", "fuel_rack", 100, false]);
+  assert.deepEqual([byId.generator.room, byId.generator.from, byId.generator.power, byId.generator.runs, byId.generator.generator], ["engineering", "fuel_rack", 100, true, true]);
   assert.deepEqual(model.sittings, { at: [360, 450, 1080, 1170], minutes: 90 });
   assert.equal(model.eats, 2);
   assert.deepEqual(model.kettles.map((one) => one.id), ["soup_kettle"]);
@@ -149,8 +149,8 @@ test("the garden fills its bins, one produce every two hours while someone tends
   assert.equal(machinesView(game, "meridian").find((one) => one.id === "garden").made, 2);
   atHour(game, 24 + 2);
   assert.equal(status(game, "garden"), "waiting for someone tending it");
-  assert.equal(status(game, "generator"), "waits for step 4, the generator, to give its 100 power");
-  assert.equal(storesView(game, "meridian").find((one) => one.id === "fuel_rack").items[0].n, 6, "the generator burns nothing yet");
+  assert.match(status(game, "generator"), /^running, .* on this fuel cell, giving 100 power$/);
+  assert.equal(storesView(game, "meridian").find((one) => one.id === "fuel_rack").items[0].n, 4, "the generator has taken two cells from the rack by two in the morning");
 });
 
 test("the whole ship eats at the sittings, 450 a sitting from the kettle, and whoever finds it empty goes without", () => {
@@ -211,7 +211,9 @@ test("an old save comes up at version 17 with its stores full and its machines a
   const migrated = migrateGame(old);
   assert.equal(migrated.version, 17);
   assert.ok(storesView(migrated, "meridian").every((one) => one.full));
-  assert.deepEqual(machinesView(migrated, "meridian").map((one) => one.status), ["waits for step 4, the generator, to give its 100 power", "about to start", "about to start"]);
+  const statuses = machinesView(migrated, "meridian").map((one) => one.status);
+  assert.match(statuses[0], /^running, 8 h 0 min on this fuel cell, giving 100 power$/, "the generator starts with a cell in it");
+  assert.deepEqual(statuses.slice(1), ["about to start", "about to start"]);
   assert.deepEqual(mealsView(migrated, "meridian").today, { served: 0, missed: 0 });
   clockRuns(migrated, 5);
   assert.ok(migrated.logistics.meridian.at > 0, "and it runs from the clock's next move");
