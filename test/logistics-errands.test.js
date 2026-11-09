@@ -29,7 +29,8 @@ const storeOf = (id) => logisticsOf("meridian").stores.find((one) => one.id === 
 const count = (game, storeId, item) => storesView(game, "meridian").find((one) => one.id === storeId).items.find((one) => one.id === item)?.n ?? 0;
 const take = (game, storeId, item, n) => bag.storeTake(game, storeOf(storeId).key, storeOf(storeId).holds, item, n);
 const put = (game, storeId, item, n) => bag.storePut(game, storeOf(storeId).key, storeOf(storeId).holds, item, n);
-const BRANDT = "quartermaster_brandt:ration_crate";
+// The quartermaster's errand: Brandt, while she holds the post.
+const BRANDT = "quartermaster:ration_crate";
 const errand = (game, id) => errandsView(game, "meridian").find((one) => one.id === id);
 // A quarter of an hour at a time, in the five-minute pieces the clock is counted in, noting what Brandt's up to.
 function watch(game, minutes, who = "odessa") {
@@ -56,7 +57,7 @@ test("the Meridian's errands name their people, stores and items, and the checke
   const errands = logisticsOf("meridian").errands;
   assert.deepEqual(errands.map((one) => [one.id, one.key, one.item, one.from, one.to, one.under, one.each]), [
     ["tech_oona:fuel_cell", "Tech Oona", "fuel_cell", "shuttle_stores", "fuel_rack", 3, 2],
-    [BRANDT, "odessa", "ration_crate", "shuttle_stores", "pantry", 4, 2],
+    [BRANDT, null, "ration_crate", "shuttle_stores", "pantry", 4, 2],
     ["cook_imre:produce", "Cook Imre", "produce", "garden_bins", "pantry", 4, 4],
     ["tech_sami:parts_crate", "Tech Sami", "parts_crate", "shuttle_stores", "parts_lockers", 2, 1],
   ]);

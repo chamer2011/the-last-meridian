@@ -17,7 +17,8 @@ import { SHIP_EFFECT_KEYS } from "./ship.js";
 import { COMPUTERS_DIR, COMPUTER_FLAVOR, ENEMIES_DIR, FACTIONS_DIR, ITEMS_DIR, PEOPLE_DIR, PERKS_DIR, PLACES_DIR, SPECIES_DIR, STORIES_DIR, STORY_CLOCK, STORY_FILE_PROBLEMS, WORLD_CHARACTERS, WORLD_COMPUTERS, WORLD_ENEMIES, WORLD_FACTIONS, WORLD_FILE_PROBLEMS, WORLD_ITEMS, WORLD_PERKS, WORLD_PLACES, WORLD_SPECIES, WORLD_THREADS, endingsOf, reloadStories, reloadWorld } from "./world.js";
 import { parseStoryText, writeStoryText } from "../public/story-text.js";
 import { parseSystemsText, writeSystemsText, KNOWN_SYSTEMS, SYSTEM_TITLES } from "../public/systems-text.js";
-import { clearSystems, defaultFileFor, placePeople, systemsOf, systemsProblems } from "./systems.js";
+import { clearSystems, defaultFileFor, placePeople, staffWords, systemsOf, systemsProblems } from "./systems.js";
+import { commandOf } from "./command.js";
 import { clearLogistics, logisticsOf, logisticsProblems } from "./logistics.js";
 import { clearMaps, mapFor } from "./walk.js";
 import { clearLife } from "./life.js";
@@ -224,7 +225,13 @@ function systemsItem(id) {
   ];
   return {
     id, kind: "systems", text, value,
-    links: { place: { id, name: LOCATIONS[id].name }, own, rooms, people: placePeople(id), guards: model?.guards ?? [], engineers: model?.engineers ?? [] },
+    // The posts of the place's chain of command come first, so that a guard or an engineer can be whoever holds one.
+    links: {
+      place: { id, name: LOCATIONS[id].name }, own, rooms,
+      people: [...(commandOf(id)?.posts ?? []).map((post) => ({ key: `the ${post.title}`, name: `The ${post.title}, whoever holds the post` })), ...placePeople(id)],
+      guards: (model?.guards ?? []).map((ref) => staffWords(id, ref)),
+      engineers: (model?.engineers ?? []).map((ref) => staffWords(id, ref)),
+    },
     lists: { ...boardLists(), rooms: rooms.map((room) => room.name), partKinds: Object.keys(SYSTEMS_DEFAULTS?.parts ?? {}).filter((one) => one !== "console"), systemNames: KNOWN_SYSTEMS.map((sid) => ({ id: sid, name: SYSTEM_TITLES[sid] })), computers },
     layout: readLayout()[`systems/${id}`] ?? {},
     problems: systemsFileProblems(id),

@@ -42,18 +42,18 @@
   },
 
   "council": {
-    "_note": "What the officers and the council will do by themselves if nobody else does. when is what has to be true (days of a supply left, and so on), for at least wait days. every is the fewest days between two of the same decision. set is what they do: the rations. The first one that's ready each day happens. respect is how many days an order of the captain's own stands before they'd change it. {who} is the person named, if they're still around, and otherwise whoever's in anyone.",
+    "_note": "What the officers and the council will do by themselves if nobody else does. when is what has to be true (days of a supply left, and so on), for at least wait days. every is the fewest days between two of the same decision. set is what they do: the rations. The first one that's ready each day happens. respect is how many days an order of the captain's own stands before they'd change it. post is the post whose holder decides, from world/command/meridian.txt, and {who} becomes their title and name (Quartermaster Brandt), or whoever's in anyone if nobody holds the post or they've been lost.",
     "wait": 2,
     "respect": 4,
     "anyone": "The council",
     "free": "The officers and the council will act on their own again if something's gone wrong and you haven't dealt with it.",
     "held": "You've told the officers and the council to wait for your word, whatever happens.",
     "decisions": [
-      { "id": "half_rations", "when": { "foodBelow": 3, "rations": ["generous", "standard", "reduced"] }, "wait": 1, "set": { "rations": "half" }, "who": "halm", "name": "Speaker Halm", "text": "There's about three days of food left, and nobody was answering. {who} has put the whole ship on half rations." },
-      { "id": "cut_rations", "when": { "foodBelow": 7, "rations": ["generous", "standard"] }, "set": { "rations": "reduced" }, "who": "odessa", "name": "Quartermaster Brandt", "text": "{who} has checked the food count twice, and cut rations to three quarters without waiting for the captain." },
-      { "id": "feast", "when": { "moraleBelow": 30, "foodAbove": 25, "rations": ["standard"] }, "wait": 2, "every": 20, "set": { "rations": "generous" }, "who": "halm", "name": "Speaker Halm", "text": "{who} has talked the council into generous rations for a while, since it's cheaper than a ship that's stopped listening." },
-      { "id": "feast_over", "when": { "theirRations": true, "rations": ["generous"], "moraleAbove": 50 }, "set": { "rations": "standard" }, "who": "odessa", "name": "Quartermaster Brandt", "text": "{who} has put the ship back on standard rations, now that people have stopped talking about leaving." },
-      { "id": "more_food", "when": { "foodAtStandard": 20, "rations": ["reduced", "half"], "moraleBelow": 55 }, "set": { "rations": "standard" }, "who": "odessa", "name": "Quartermaster Brandt", "text": "{who} says the stores can stand it, and the ship's back on standard rations." }
+      { "id": "half_rations", "when": { "foodBelow": 3, "rations": ["generous", "standard", "reduced"] }, "wait": 1, "set": { "rations": "half" }, "post": "speaker", "text": "There's about three days of food left, and nobody was answering. {who} has put the whole ship on half rations." },
+      { "id": "cut_rations", "when": { "foodBelow": 7, "rations": ["generous", "standard"] }, "set": { "rations": "reduced" }, "post": "quartermaster", "text": "{who} has checked the food count twice, and cut rations to three quarters without waiting for the captain." },
+      { "id": "feast", "when": { "moraleBelow": 30, "foodAbove": 25, "rations": ["standard"] }, "wait": 2, "every": 20, "set": { "rations": "generous" }, "post": "speaker", "text": "{who} has talked the council into generous rations for a while, since it's cheaper than a ship that's stopped listening." },
+      { "id": "feast_over", "when": { "theirRations": true, "rations": ["generous"], "moraleAbove": 50 }, "set": { "rations": "standard" }, "post": "quartermaster", "text": "{who} has put the ship back on standard rations, now that people have stopped talking about leaving." },
+      { "id": "more_food", "when": { "foodAtStandard": 20, "rations": ["reduced", "half"], "moraleBelow": 55 }, "set": { "rations": "standard" }, "post": "quartermaster", "text": "{who} says the stores can stand it, and the ship's back on standard rations." }
     ]
   },
 

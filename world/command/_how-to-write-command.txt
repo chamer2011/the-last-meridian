@@ -1,0 +1,98 @@
+HOW TO WRITE A PLACE'S CHAIN OF COMMAND
+=======================================
+
+Who holds which post, who chooses them, and what each post answers for. It's one plain text file in this folder,
+world/command/<place>.txt, named after the place (the file name of its map in world/maps). Only the Meridian has
+one so far.
+
+    npm run check-story
+
+checks these files too.
+
+It's built in steps, each tried by the owner before the next. The game plays the posts and who holds them now: the
+Command menu shows each post as a card, and everything in the other files that names someone for a post (the
+council's rations decisions in world/ship.json, the guards and engineers in world/systems, the carriers of the
+errands in world/logistics, and the captain's chair) asks this file who holds it. The jobs and the numbers at the
+top are read, kept and checked, and come to life in the later steps.
+
+
+THE FILE
+--------
+
+    # CFS Meridian
+    draft: the AI's, not yet edited by the owner      (the game doesn't read this: it's for whoever edits)
+    reviews every: 7 days                            (kept for a later step: how often the officers review)
+    a bad stretch: duty under 40 for 5 days          (kept for a later step: when someone's replaced)
+    mutiny brews: morale under 30, loyalty under 35  (kept for a later step: when trouble starts)
+
+    Posts:
+    - captain on The Bridge: chosen by the council; skills leadership, tactics
+    - first officer on The Bridge: chosen by the captain; keeps the watch bill; skills leadership, composure
+    - quartermaster in The Long Mess: chosen by the captain; heads cooks, mess hands, gardeners; skills commerce
+
+    Jobs:
+    - cook in The Galley: 2 wanted; skills survival
+
+    Who holds what:
+    - captain: the chair
+    - first officer: voss
+    - quartermaster: odessa
+
+The first line is the place's name. The lines after it, before the first part, are the numbers at the top. Then
+come the parts, each a heading with a colon and lines that start with - and a space.
+
+
+POSTS
+-----
+
+Each line is the post's name, in or on, the room it's kept in, a colon, and then what's said about it, each part
+after a semicolon:
+
+    chosen by the captain          who chooses whoever holds it: another post, or the council, or the
+                                   civilians. Every post has one. Nobody chooses themselves, and following who
+                                   chooses whom has to end at the council or the civilians.
+    keeps the watch bill           the post that gives everyone their job (played from a later step)
+    heads cooks, mess hands        the jobs it answers for, by their names in the Jobs part
+    skills commerce, persuasion    the skills that count for it: the Command menu shows the holder's numbers
+                                   in them, from their file in world/characters
+    duty: sittings missed          what its duty will be measured by (played from a later step)
+
+The room is one of the place's rooms, by its name in the maps. The Command menu groups the posts by who chooses
+them, in the file's order.
+
+
+JOBS
+----
+
+Each line is the job, in or on, the room it's done in, a colon, how many it wants, and its skills:
+
+    - cook in The Galley: 2 wanted; skills survival
+
+They're read and checked now, and the watch bill gives people these jobs from the next step.
+
+
+WHO HOLDS WHAT
+--------------
+
+Each line is a post, a colon, and who holds it when a game begins: someone with a day at the place in
+world/life, by their id (odessa), their name (Odessa Brandt, or Brandt) or their crowd name (Tech Sami). One post
+each. The captain's post can be the chair: the player, if they started as the captain, and otherwise whoever the
+game gave the chair, from the chair's list in world/ship.json. A post that nobody holds is a problem the checker
+names.
+
+A game keeps who holds what in its save from the moment it begins, so a change here reaches new games, and the
+games under way keep theirs.
+
+
+NAMING A POST ELSEWHERE
+-----------------------
+
+The other files can name a post instead of a person, as the and the post's name, and whoever holds it is the one:
+
+    world/ship.json, a council decision:     "post": "quartermaster"
+    world/systems/<place>.txt:               guards: the chief of security
+                                             engineers: the chief engineer, Tech Sami, Tech Oona
+    world/logistics/<place>.txt, an errand:  - the quartermaster: ration crates from the shuttle stores to ...
+
+A council decision says {who} as the post and the holder's name (Quartermaster Brandt), and the council does it
+itself if nobody holds the post, or whoever does has been lost.

@@ -325,6 +325,16 @@ button.fighter:hover:not(:disabled), button.fighter:focus-visible { background: 
 .menu-section h3::before { content: "-- "; }
 .menu-section h3::after { content: " --"; }
 .menu-section h4 { font-size: 12px; color: var(--muted); text-transform: uppercase; margin: 10px 0 2px; font-weight: normal; }
+/* The Command menu: a card for each post, in a grid that's one column on a narrow window. */
+.post-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(30ch, 100%), 1fr)); gap: 10px; }
+.post-card { display: flex; flex-direction: column; gap: 3px; min-width: 0; width: 100%; text-align: left; }
+.post-title { font-size: 12px; color: var(--warn); text-transform: uppercase; letter-spacing: .06em; }
+.post-who { color: var(--bright); font-weight: 700; overflow-wrap: anywhere; }
+.post-who.lost { color: var(--bad); text-decoration: line-through; }
+.post-line { overflow-wrap: anywhere; }
+.post-label { color: var(--muted); }
+.post-since { color: var(--muted); margin-top: 2px; }
+button.post-card:hover:not(:disabled) *, button.post-card:focus-visible * { color: var(--bg); }
 .menu-row { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
 .menu-row strong { color: var(--bright); }
 .menu-entry { display: flex; flex-direction: column; gap: 2px; padding-bottom: 6px; border-bottom: 1px dotted var(--line); min-width: 0; }

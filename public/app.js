@@ -6,6 +6,7 @@ import { api, el, meter, money, readLines } from "./dom.js";
 import { fightNode, fightOpen, focusFight, initFight, resetFight, startSim } from "./fight.js";
 import { initMap } from "./map.js";
 import { initShip } from "./ship.js";
+import { initCommand } from "./command.js";
 import { openBoard } from "./board.js";
 import { MENUS, MENU_GROUPS, initMenus } from "./menus.js";
 import { choicesFor, dropStaleTooltip, initStory, loreCatalog, optionContent, setStoryContext, storyEntryNode, thinkingNode } from "./story-view.js";
@@ -762,6 +763,7 @@ initFight({ ui, render, sendChat, openMenu, closeMenu });
 initCheck({ ui, render, sendChat, openMenu, closeMenu });
 initMap({ ui, render, runAction, renderMenus, openMenu, closeMenu });
 initShip({ ui, render, runAction, renderMenus, openMenu, closeMenu });
+initCommand({ ui, closeMenu, openPersonSheet });
 initWalk({
   ui,
   reading,

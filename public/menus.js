@@ -5,6 +5,7 @@ import { checkStyle, setCheckStyle } from "./check.js";
 import { api, beliefBar, columns, el, folded, meter, money, signed, strainMeter } from "./dom.js";
 import { mapMenu } from "./map.js";
 import { shipMenu } from "./ship.js";
+import { commandMenu } from "./command.js";
 import { oddsFor } from "./story.js";
 
 // What the menus need from the main screen. Set once, when the page loads.
@@ -600,6 +601,7 @@ export const MENUS = {
   codex: { label: "What you know", command: "codex", about: "Places, factions, ships and ideas you've come across", view: codexMenu },
   inventory: { label: "Inventory", command: "inv", about: "What you're carrying and wearing, on a grid, or press I", window: "bag" },
   ship: { label: "Ship", command: "ship", about: "The Meridian: her stores, rations, orders, systems and crew. If you aren't the captain, how she stands", view: shipMenu },
+  command: { label: "Command", command: "command", about: "Who holds each post aboard the Meridian, who chose them, and since when", view: commandMenu },
   map: { label: "Star map", command: "map", about: "The chart of known space, and setting course", view: mapMenu },
   market: { label: "Market", command: "market", about: "Buying and selling, where there's a market", view: marketMenu },
   bestiary: { label: "Enemies met", command: "bestiary", about: "Enemies you know of, how they fight, and the simulator", view: bestiaryMenu },
@@ -610,7 +612,7 @@ export const MENUS = {
 export const MENU_GROUPS = [
   { title: "You", ids: ["character", "skills", "traits", "perks", "beliefs", "dossier"] },
   { title: "The story", ids: ["quests", "leads", "board", "people", "codex", "bestiary"] },
-  { title: "The ship", ids: ["ship", "map"] },
+  { title: "The ship", ids: ["ship", "command", "map"] },
   { title: "Gear", ids: ["inventory", "market"] },
   { title: "Game", ids: ["settings"] },
 ];

@@ -8,6 +8,7 @@ import { DRAWN, readPlaceRooms, stampNow } from "./tiled.js";
 import { parseStoryText } from "../public/story-text.js";
 import { parseSystemsText } from "../public/systems-text.js";
 import { parseLogisticsText } from "../public/logistics-text.js";
+import { parseCommandText } from "../public/command-text.js";
 import { COMPUTER, ENEMY, FACTION, ITEM, PERK, PERSON, PLACE, SPECIES_SPEC, parseWorldText } from "../public/world-text.js";
 
 // A file with a mistake in it is skipped, so one typo can't stop the whole game.
@@ -81,6 +82,23 @@ export function reloadLogistics() {
   }
 }
 reloadLogistics();
+// A place's chain of command, as plain text in world/command, read by public/command-text.js: its posts, its jobs,
+// and who holds each post when a game begins. Only the Meridian has a file so far. Tests point the folder at a copy.
+export const COMMAND_DIR = process.env.GAME_COMMAND_DIR ?? path.join(worldDir, "command");
+export const WORLD_COMMAND = {};
+export const COMMAND_FILE_PROBLEMS = [];
+export function reloadCommand() {
+  for (const key of Object.keys(WORLD_COMMAND)) delete WORLD_COMMAND[key];
+  COMMAND_FILE_PROBLEMS.splice(0);
+  if (!fs.existsSync(COMMAND_DIR)) return;
+  for (const name of fs.readdirSync(COMMAND_DIR).sort()) {
+    if (!name.endsWith(".txt") || name.startsWith("_")) continue;
+    const { value, problems } = parseCommandText(fs.readFileSync(path.join(COMMAND_DIR, name), "utf8"), name.slice(0, -".txt".length));
+    for (const one of problems) COMMAND_FILE_PROBLEMS.push(`command/${name}${one.line ? ` (line ${one.line})` : ""}: ${one.message}`);
+    WORLD_COMMAND[name.slice(0, -".txt".length)] = value;
+  }
+}
+reloadCommand();
 export function reloadSystems() {
   for (const key of Object.keys(WORLD_SYSTEMS)) delete WORLD_SYSTEMS[key];
   SYSTEMS_FILE_PROBLEMS.splice(0);

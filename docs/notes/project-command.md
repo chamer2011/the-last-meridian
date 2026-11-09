@@ -1,6 +1,6 @@
 # project-command
 
-*The ship's command and jobs, asked for on 2026-11-09: posts that change hands when their holders do badly (their reference: Shadow of Mordor's nemesis system), mutiny against the captain, and a watch bill of jobs kept by the bridge officer who manages crew; a seven-step plan page they tick off, nothing built yet*
+*The ship's command and jobs, asked for on 2026-11-09: posts that change hands when their holders do badly (their reference: Shadow of Mordor's nemesis system), mutiny against the captain, and a watch bill of jobs kept by the bridge officer who manages crew; a seven-step plan page they tick off; step 1 (who holds what, the Command menu) built 2026-11-09, untried by them*
 
 On 2026-11-09, after the logistics steps and release 0.7.0, they said, verbatim: "Now I would like to add a big update about jobs and positions in the command of the ship. For the command, It should be like the nemesis system in Shadow of Mordor like the position can all switch poeple if they don't do a good job/ possible mutinerie for the captain. For the job like cook, engineer, etc. they all are assigne by the position that manage crew on thebridge and can change. How would you implement it in a comprehensive way"
 
@@ -15,6 +15,8 @@ Steps, each after their test: (1) who holds what: Command menu cards, everything
 My picks, offered as choices: Voss keeps the watch bill; the named crew first; a winning mutiny relieves the player and keeps them aboard; the officers act on their own with a hold switch; character from three lines in each officer's file.
 
 Flagged to them on the page: their own rule that nothing from another game goes in (the plan takes the feeling and builds it from the Meridian's own pieces), and that Warner Bros. holds a US patent on its Nemesis System (granted 2021), so keep the design the game's own and get a lawyer's look before any sale; and that the written scenes assume who's who (Marrow as chief engineer, Brandt as quartermaster) until step 6 lets a scene ask.
+
+**Step 1 is in (2026-11-09, on their "Yes, start step 1", which took my five picks), untried by them:** world/command/meridian.txt (posts with room, chooser, watch bill, heads, skills, duty; jobs; who holds what, with "the chair" for the captain) read by public/command-text.js and compiled by src/command.js; save version 18 keeps the holders (game.command.meridian.holders); a Command menu under The ship shows each post as a card (holder, station, chooser, skills, heads, since when), grouped by who chooses, and a story person's card opens their registry printout. The council's decisions name posts ("post" in world/ship.json), the systems' guards and engineers can be "the chief of security"/"the chief engineer", the errand is "the quartermaster", the chair reads the captain's post, and changeCommand records the new captain. Nobody changes posts by themselves yet. The ship's own lines in world/ship.json still name Marrow and Aduro by name: step 4 must make them follow the posts. No AI change.
 
 **Why:** they want a living chain of command on the ship, where posts change hands by how well people do, the captain can lose the ship, and jobs are assigned from the bridge.
 

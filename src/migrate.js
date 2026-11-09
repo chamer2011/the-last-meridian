@@ -5,6 +5,7 @@ import { slugify } from "./campaign.js";
 import { ENEMIES, LOCATIONS, STARTING_FACTIONS } from "./data.js";
 import { newWorld } from "./daily.js";
 import { newShipState, shipOf } from "./ship.js";
+import { newCommandState } from "./command.js";
 import { noteLoreSeen, startingLoreIds } from "./lore.js";
 import { crewContacts, maxEnergy, maxHp } from "./rules.js";
 import { emptyStory } from "./story-library.js";
@@ -230,6 +231,13 @@ function fromVersion16(save) {
   return { ...rest, version: 17 };
 }
 
+// Version 18 is the ship's chain of command. An old save starts with everyone in the post they hold now: the file's
+// holders, with the player or the chair's captain in the captain's post.
+function fromVersion17(save) {
+  shipOf(save);
+  return { ...save, version: 18, command: newCommandState(save) };
+}
+
 export function migrateGame(save) {
   if (!save) return save;
   let game = save;
@@ -249,6 +257,7 @@ export function migrateGame(save) {
   if (game.version < 15) game = fromVersion14(game);
   if (game.version < 16) game = fromVersion15(game);
   if (game.version < 17) game = fromVersion16(game);
+  if (game.version < 18) game = fromVersion17(game);
   // A place that's gone from the world's files can't hold anyone, and factions added since this save was made need a standing.
   if (!LOCATIONS[game.location]) game.location = "meridian";
   game.factions ??= {};

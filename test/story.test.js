@@ -436,7 +436,7 @@ test("saves from before the codex pick up what they've already seen", () => {
   delete old.lore;
   delete old.seenLore;
   const migrated = migrateGame(old);
-  assert.equal(migrated.version, 17);
+  assert.equal(migrated.version, 18);
   assert.deepEqual(migrated.lore, []);
   assert.ok(migrated.seenLore.includes("person:quill"));
   assert.ok(!migrated.seenLore.includes("place:vantor"));

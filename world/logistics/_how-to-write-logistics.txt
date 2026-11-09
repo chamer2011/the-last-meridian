@@ -46,7 +46,7 @@ THE FILE
     - air plant 20, engines 30 while under way, lights 2 a room
 
     Errands:
-    - Quartermaster Brandt: ration crates from the shuttle stores to the pantry when under 4, two at a time
+    - the quartermaster: ration crates from the shuttle stores to the pantry when under 4, two at a time
 
     Refills:
     - the shuttle stores: ration crates and fuel cells from nothing for now, every 6 hours, up to full
@@ -122,13 +122,14 @@ An errand is someone carrying from one store to another when the second runs sho
 carries, a colon, what they carry, from a store, to a store, when the store it goes to is under so many,
 and how many they carry a trip (a number, or a number in words):
 
-    - Quartermaster Brandt: ration crates from the shuttle stores to the pantry when under 4, two at a time
+    - the quartermaster: ration crates from the shuttle stores to the pantry when under 4, two at a time
     - Tech Oona: fuel cells from the shuttle stores to the fuel rack when under 3, two at a time
     - Cook Imre: produce from the garden bins to the pantry when under 4, four at a time
     - Tech Sami: parts crates from the shuttle stores to the parts lockers when under 2, one at a time
 
 Who carries is someone with a day in the place's file in world/life: a crowd name as written there (Tech
-Oona, Cook Imre), or the name of someone the game knows (Quartermaster Brandt is Odessa Brandt). Both stores
+Oona, Cook Imre), or the name of someone the game knows (Odessa Brandt), or a post in the place's chain of
+command (world/command), written with the: the quartermaster is whoever holds that post at the time. Both stores
 have to keep the item on their holds lines, and the store it goes to has to keep at least as many as the
 number after under, or they'd never stop.
 

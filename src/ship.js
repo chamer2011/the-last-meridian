@@ -13,6 +13,7 @@ import { inTrouble, levelName, noneLeft, placeNow, supplyFactor, tellNews, trade
 import { aboardShip, isCaptain } from "./role.js";
 import { addCondition, buyPrice, changeStress, clamp, clockLabel, jumpHours, passTime, sellPrice, travel } from "./rules.js";
 import { navigationDown } from "./systems.js";
+import { YOU, commandOf, holderKey, postAndName, setHolder, stillAlive } from "./command.js";
 import { countAboard, errandsView, foodADay, machinesView, mealsOfDay, mealsView, putAboard, refilledADay, refillsView, repairsView, storesView, takeAboard } from "./logistics.js";
 import { SHIP_DATA, STAR_MAP } from "./world.js";
 
@@ -99,11 +100,15 @@ export function newChair(game) {
   return { id: ids[seedFrom(`${game.name}|chair`) % ids.length], funds: CHAIR.funds, lastJump: -99, lastBuy: -99 };
 }
 
-const chairFile = (ship) => (ship?.chair ? CHAIR.captains[ship.chair.id] ?? null : null);
+// Whoever holds the captain's post when the player doesn't: the chain of command says who, and the captain they are
+// says how they run her.
+const captainPost = () => commandOf(SHIP_ID)?.chairPost ?? null;
+const chairKey = (game) => (game.ship?.chair ? (captainPost() ? holderKey(game, SHIP_ID, captainPost()) : null) ?? game.ship.chair.id : null);
+const chairFile = (game) => (chairKey(game) ? CHAIR.captains[chairKey(game)] ?? null : null);
 
 export function chairOf(game) {
-  const file = chairFile(game.ship);
-  return file ? { id: game.ship.chair.id, name: file.name } : null;
+  const file = chairFile(game);
+  return file ? { id: chairKey(game), name: file.name } : null;
 }
 
 // Places on every captain's chart from the start, so the star map isn't empty on day one.
@@ -421,7 +426,7 @@ function chairMoves(game, chair, notes) {
 
 function chairDay(game, notes) {
   const ship = game.ship;
-  const chair = chairFile(ship);
+  const chair = chairFile(game);
   if (!chair) return;
   ship.chair.funds += CHAIR.income;
   chairMoves(game, chair, notes);
@@ -462,8 +467,13 @@ function councilSees(game, ledger, council) {
   };
 }
 
-// Whoever would do this, if they can. If they've been lost, the council does it instead.
+// Whoever would do this, if they can: whoever holds the post it names. If nobody does, or they've been lost, the council
+// does it instead. A decision can still name a person, as the old files did.
 function whoDecides(game, decision) {
+  if (decision.post) {
+    const key = holderKey(game, SHIP_ID, decision.post);
+    return key && key !== YOU && stillAlive(game, key) ? postAndName(game, SHIP_ID, decision.post) ?? COUNCIL.anyone : COUNCIL.anyone;
+  }
   const person = decision.who ? findCharacter(game.campaign, decision.who) : null;
   const status = person && game.contacts?.find((contact) => contact.name.toLowerCase() === person.name.toLowerCase())?.status;
   return person && (!status || status === "alive") ? decision.name : COUNCIL.anyone;
@@ -875,11 +885,13 @@ export function changeCommand(game, { takes, reason }) {
     const was = chairOf(game);
     game.role.captain = true;
     ship.chair = null;
+    if (captainPost()) setHolder(game, SHIP_ID, captainPost(), YOU);
     return { summary: `They're the captain now. ${was ? `${was.name} isn't, and the rations, the buying and the jumps are all the player's to answer.` : ""}`, notice: `[SHIP] You have command of the Meridian: ${reason}`, notes: [] };
   }
   if (!isCaptain(game)) return { summary: "They aren't in command anyway." };
   game.role.captain = false;
   ship.chair = newChair(game);
+  if (captainPost()) setHolder(game, SHIP_ID, captainPost(), ship.chair.id);
   const chair = chairOf(game);
   return { summary: `They aren't the captain any more. ${chair.name} (id ${chair.id}) is, and you play them. The ship goes on by itself from here, and the player goes where they like.`, notice: `[SHIP] ${chair.name} has command of the Meridian now: ${reason}`, notes: [] };
 }

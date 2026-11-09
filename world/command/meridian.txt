@@ -1,0 +1,41 @@
+# CFS Meridian
+draft: the AI's, not yet edited by the owner
+reviews every: 7 days
+a bad stretch: duty under 40 for 5 days
+mutiny brews: morale under 30, loyalty under 35
+
+Posts:
+- captain on The Bridge: chosen by the council; skills leadership, tactics; duty: morale, shortages, deaths aboard
+- first officer on The Bridge: chosen by the captain; keeps the watch bill; skills leadership, composure; duty: stations staffed
+- quartermaster in The Long Mess: chosen by the captain; heads cooks, mess hands, gardeners; skills commerce; duty: sittings missed, stores run dry
+- chief engineer in Engineering: chosen by the captain; heads techs; skills engineering; duty: power short, repairs waiting, hull worn
+- chief of security in The Aft Holds: chosen by the captain; heads guards; skills firearms, tactics; duty: alarms, tampering seen, thefts
+- chief medical officer in Medbay: chosen by the captain; heads nurses; skills medicine; duty: medicine out, deaths aboard
+- deck chief in Engineering: chosen by the captain; heads deckhands; skills void ops, leadership; duty: errands left waiting
+- comms officer on The Bridge: chosen by the first officer; skills hacking, science
+- helm officer on The Bridge: chosen by the first officer; skills piloting, navigation
+- sensor officer on The Bridge: chosen by the first officer; skills science, awareness
+- speaker in The Long Mess: chosen by the civilians; skills persuasion, leadership; duty: the council's confidence
+
+Jobs:
+- cook in The Galley: 2 wanted; skills survival
+- mess hand in The Long Mess: 2 wanted
+- gardener in The Garden: 2 wanted; skills science, survival
+- tech in Engineering: 3 wanted; skills engineering
+- nurse in Medbay: 2 wanted; skills medicine
+- deckhand in The Lighter Bay: 4 wanted; skills athletics
+- ensign on The Bridge: 3 wanted; skills piloting, awareness
+- guard in The Aft Holds: 2 wanted; skills firearms, awareness
+
+Who holds what:
+- captain: the chair
+- first officer: voss
+- quartermaster: odessa
+- chief engineer: marrow
+- chief of security: tarrow
+- chief medical officer: aduro
+- deck chief: tobin
+- comms officer: iven
+- helm officer: pell
+- sensor officer: lira
+- speaker: halm

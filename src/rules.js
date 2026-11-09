@@ -16,6 +16,7 @@ import { advanceWorld, holdingsOf, itemFactor, newWorld, newsView, placeLine, pl
 import { advanceShip, chairOf, chartEntry, isCharted, jumpCost, newShipState, shipGoingHungry, shipJumped, shipLine, shipOf, shipView } from "./ship.js";
 import { advanceLife, lifeOf } from "./life.js";
 import { advanceLogistics, startLogistics } from "./logistics.js";
+import { commandView, startCommand } from "./command.js";
 import { startingLoreIds } from "./lore.js";
 import { THREAT_LABELS } from "./npc.js";
 import { START_LIST, aboardShip, isCaptain, jobHere, roleBrief, startOf, toOutsider } from "./role.js";
@@ -683,7 +684,7 @@ export function travel(game, destination) {
 export function assembleGame(profile) {
   const start = START_LIST[profile.start] ?? START_LIST.captain;
   const game = {
-    version: 17,
+    version: 18,
     campaign: null,
     // Who writes the story: "written" plays the scenes in world/scenes, and "ai" is the AI game master. The server sets it from the Settings menu.
     mode: "ai",
@@ -748,6 +749,8 @@ export function assembleGame(profile) {
   if (start.room) startInRoom(game, start.room);
   // The ship's machines and sittings count from the first moment, whichever life this is.
   startLogistics(game);
+  // Who holds which post aboard, as the chain of command's file has it, with the player or the chair's captain on top.
+  startCommand(game);
   return game;
 }
 
@@ -1004,6 +1007,7 @@ export function publicState(game) {
     defense: defense(game),
     credits: game.credits,
     ship: shipView(game),
+    command: commandView(game),
     role: roleView(game),
     world: { here: placeNow(game, game.location), news: newsView(game) },
     location: { id: game.location, ...place },

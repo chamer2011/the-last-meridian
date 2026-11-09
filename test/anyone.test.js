@@ -124,7 +124,7 @@ test("three people could have the chair, each with a file, a post, a day, and th
 
 test("a captain's game hasn't changed: it starts where it always did, with the people it always had", () => {
   const game = createGameFromDraft(randomDraft({ seed: 21, archetype: "officer" }));
-  assert.equal(game.version, 17);
+  assert.equal(game.version, 18);
   assert.deepEqual(game.role, { id: "captain", captain: true });
   assert.equal(isCaptain(game), true);
   assert.equal(game.location, "meridian");
@@ -653,7 +653,7 @@ test("a save from before all this is a captain's, and stays one", () => {
   old.clock.hours = 300;
   old.location = "meridian";
   const game = migrateGame(JSON.parse(JSON.stringify(old)));
-  assert.equal(game.version, 17);
+  assert.equal(game.version, 18);
   assert.deepEqual(game.role, { id: "captain", captain: true });
   assert.equal(isCaptain(game), true);
   assert.equal(chairOf(game), null);

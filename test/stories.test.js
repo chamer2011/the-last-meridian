@@ -17,6 +17,7 @@ const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const { worldReport } = await import("../src/daily.js");
 const { LOCATIONS } = await import("../src/data.js");
 const { councilOf, shipCommand, shipLedger, shipView } = await import("../src/ship.js");
+const { holderKey, postAndName } = await import("../src/command.js");
 const { migrateGame } = await import("../src/migrate.js");
 const { projectDir } = await import("../src/paths.js");
 const { passTime, publicState } = await import("../src/rules.js");
@@ -379,7 +380,7 @@ test("an old save picks it all up from today, with nothing happening at once", (
   old.ship.day = 300;
   old.world.day = 300;
   const game = migrateGame(JSON.parse(JSON.stringify(old)));
-  assert.equal(game.version, 17);
+  assert.equal(game.version, 18);
   assert.equal(game.story.clock.start, 300);
   assert.equal(game.story.clock.day, 300);
   comfortable(game);
@@ -387,7 +388,7 @@ test("an old save picks it all up from today, with nothing happening at once", (
   assert.deepEqual(game.story.clock.moved, []);
   assert.deepEqual(shipView(game).council, { off: false, recent: [] });
   until(game, () => clockOf(game).moved.length > 0);
-  assert.equal(game.version, 17);
+  assert.equal(game.version, 18);
   assert.equal(JSON.parse(JSON.stringify(game)).story.clock.start, 300);
 });
 
@@ -467,7 +468,8 @@ for (const [id, scene] of Object.entries(SCENES)) {
     const said = notes.filter((line) => line.startsWith("[COUNCIL]"));
     assert.ok(said.length >= 1, `nothing happened: ${notes.join(" | ")}`);
     assert.ok(said[0].includes(decision.text.split("{who}").at(-1)), said[0]);
-    assert.ok(said[0].includes(decision.name) || !decision.text.includes("{who}"), said[0]);
+    // Whoever holds the post it names: Quartermaster Brandt, or Speaker Halm.
+    assert.ok(said[0].includes(postAndName(game, "meridian", decision.post)) || !decision.text.includes("{who}"), said[0]);
     assert.equal(game.ship.rations, decision.set.rations);
     assert.ok(shipView(game).council.recent.length >= 1, "and it's on the Ship screen");
   });
@@ -607,7 +609,7 @@ test("someone who's gone can't decide anything, so the council does it instead",
   assert.ok(!line.includes("Brandt"));
   for (const decision of COUNCIL.decisions) {
     if (decision.text.includes("{who}")) assert.ok(/^\{who\}|\. \{who\}/.test(decision.text), `${decision.id} has to read properly when it says "${COUNCIL.anyone}"`);
-    assert.ok(findCharacter(game.campaign, decision.who), decision.who);
+    assert.ok(holderKey(game, "meridian", decision.post), `${decision.id}: nobody holds the ${decision.post}`);
   }
 });
 
@@ -616,7 +618,7 @@ test("everything they decide is something the ship can really do", () => {
     assert.ok(decision.set.rations && SHIP_DATA.rations[decision.set.rations], decision.id);
     for (const id of decision.when.rations ?? []) assert.ok(SHIP_DATA.rations[id], `${decision.id}: ${id}`);
     assert.ok(decision.text.length > 20);
-    assert.ok(decision.id && decision.name);
+    assert.ok(decision.id && decision.post);
     assert.ok(SCENES[decision.id], `${decision.id} has no test of its own`);
   }
 });

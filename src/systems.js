@@ -19,6 +19,7 @@ import { genericKindOf, writtenAtThing } from "./computers.js";
 import { livesHere, peopleAboard } from "./life.js";
 import { dropOrderOf, loadsOf, noPartsWords, powerSupply, repairPartsAboard, repairPartsWords, repairStore, takeRepairParts } from "./logistics.js";
 import { recordFact } from "./record.js";
+import { YOU, holderKey, postByWords } from "./command.js";
 import { isCaptain } from "./role.js";
 import { changeStanding, changeStress, hoursNow } from "./rules.js";
 import { holderOf } from "./daily.js";
@@ -308,6 +309,9 @@ function peopleFor(place, map, list, wordsKey, what, at) {
   const known = peopleAt(place, map);
   if (Array.isArray(list)) {
     return list.map((one) => {
+      // A post in the place's chain of command ("the chief engineer"): whoever holds it, at the time.
+      const post = postByWords(place, one);
+      if (post && /^the\s/i.test(String(one).trim())) return `post:${post}`;
       const want = plain(one);
       const found = known.find((person) => plain(person.key) === want || plain(person.name) === want || plain(person.name).split(" ").includes(want));
       if (!found) at(null, `${what}: ${one} isn't anyone with a day or a post at this place`);
@@ -845,7 +849,12 @@ function settleChange(game, place) {
 // ---- Time going by ---------------------------------------------------------------------------------
 
 // What the game calls someone: the short name on their post, or their name, or the crowd name they go by.
-const personName = (place, key) => Object.values(mapFor(place)?.levels ?? {}).flatMap((level) => level.homes).find((home) => home.id === key)?.label ?? WORLD_CHARACTERS[key]?.name ?? key;
+const personName = (place, key) => (key === YOU ? "You" : Object.values(mapFor(place)?.levels ?? {}).flatMap((level) => level.homes).find((home) => home.id === key)?.label ?? WORLD_CHARACTERS[key]?.name ?? key);
+// The guards or engineers as they are in a game: someone named by a post is whoever holds it now, and a post nobody
+// holds is nobody.
+export const staffOf = (game, place, list) => (list ?? []).map((ref) => (String(ref).startsWith("post:") ? holderKey(game, place, ref.slice(5)) : ref)).filter(Boolean);
+// "the chief engineer" for a post, as the files and the board write it.
+export const staffWords = (place, ref) => (String(ref).startsWith("post:") ? `the ${String(ref).slice(5).replace(/_/g, " ")}` : ref);
 
 // A repair that's due takes what the place's logistics say a repair of that damage takes, from its stores. Without
 // enough there it waits, which is said once, and starts again within the hour once some comes. Gives the words for
@@ -857,7 +866,7 @@ function repairWith(game, place, model, s, damage, what, say) {
     return took;
   }
   delete s.fixAt;
-  if (!s.noParts) say(`[SYSTEMS] ${personName(place, model.engineers[0] ?? "Someone")} can't fix ${what}: ${noPartsWords(place, damage)}.`);
+  if (!s.noParts) say(`[SYSTEMS] ${personName(place, staffOf(game, place, model.engineers)[0] ?? "Someone")} can't fix ${what}: ${noPartsWords(place, damage)}.`);
   s.noParts = true;
   return null;
 }
@@ -897,7 +906,7 @@ export function advanceSystems(game) {
         if (took !== null) {
           delete s.damage;
           delete s.fixAt;
-          say(`[SYSTEMS] ${personName(place, model.engineers[0] ?? "Someone")} has fixed ${what}${took ? `, with ${took}` : ""}.`);
+          say(`[SYSTEMS] ${personName(place, staffOf(game, place, model.engineers)[0] ?? "Someone")} has fixed ${what}${took ? `, with ${took}` : ""}.`);
         }
       }
       if (s.backAt && s.backAt <= t) {
@@ -917,7 +926,7 @@ export function advanceSystems(game) {
         if (took !== null) {
           delete s.forced;
           delete s.fixAt;
-          say(`[SYSTEMS] ${personName(place, model.engineers[0] ?? "Someone")} has fixed ${what}${took ? `, with ${took}` : ""}.`);
+          say(`[SYSTEMS] ${personName(place, staffOf(game, place, model.engineers)[0] ?? "Someone")} has fixed ${what}${took ? `, with ${took}` : ""}.`);
         }
       }
       if (s.backAt && s.backAt <= t) {
@@ -1000,8 +1009,10 @@ export function detourFor(game, place) {
   const ringing = state.alarm?.ringing?.room && commsUp(game, place) ? state.alarm.ringing.room : null;
   const due = Object.entries(state.parts).filter(([id, s]) => s.fixAt && s.fixAt - t <= 1 && model.parts[id]).sort((a, b) => a[1].fixAt - b[1].fixAt);
   const fixing = {};
+  const engineers = staffOf(game, place, model.engineers);
+  const guards = staffOf(game, place, model.guards);
   due.forEach(([id, s], i) => {
-    const key = model.engineers[i % Math.max(1, model.engineers.length)];
+    const key = engineers[i % Math.max(1, engineers.length)];
     if (key && !fixing[key]) fixing[key] = { part: model.parts[id], s };
   });
   const map = mapFor(place);
@@ -1020,7 +1031,7 @@ export function detourFor(game, place) {
     return null;
   };
   return (key, room, asleep) => {
-    if (ringing && model.guards.includes(key)) return { where: `@${ringing}`, doing: `answering the alarm in ${lowerFirst(roomNameOf(place, ringing))}` };
+    if (ringing && guards.includes(key)) return { where: `@${ringing}`, doing: `answering the alarm in ${lowerFirst(roomNameOf(place, ringing))}` };
     if (fixing[key]) {
       const { part, s } = fixing[key];
       // A repair that takes parts spends the first half of its hour fetching them from the stores.
@@ -1159,8 +1170,9 @@ export function lookAt(game, place, part) {
 function repairWords(game, place, s) {
   const parts = repairPartsWords(place, s.damage);
   const model = systemsOf(place);
-  if (!parts || !model?.engineers.length) return "";
-  const who = personName(place, model.engineers[0]);
+  const engineers = model ? staffOf(game, place, model.engineers) : [];
+  if (!parts || !engineers.length) return "";
+  const who = personName(place, engineers[0]);
   if (s.noParts) return ` ${who} can't fix it until there's ${parts} in the stores.`;
   return s.fixAt ? ` ${who} will fix it with ${parts} from the stores.` : "";
 }

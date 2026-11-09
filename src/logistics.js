@@ -12,6 +12,7 @@ import { storeCounts, storePut, storeTake } from "./bag.js";
 import { findCharacter } from "./campaign.js";
 import { hasReached, isAbout, rosterOf, usuallyIn, whoIsIn } from "./life.js";
 import { claimedSquares, damageKinds, floorSpot, roomPowered, systemsOf, waitingForParts } from "./systems.js";
+import { holderKey, postAndName, postByWords } from "./command.js";
 import { mapFor, roomHere, roomsOf, roomsOn, thingsIn } from "./walk.js";
 import { LOGISTICS_FILE_PROBLEMS, WORLD_LOGISTICS } from "./world.js";
 import { everyWords, readErrandLine, readLoadsLine, readMachineLine, readRefillLine, readStoreLine, slugOf } from "../public/logistics-text.js";
@@ -381,6 +382,9 @@ function compileLogistics(place) {
   const roster = rosterOf(place);
   const findPerson = (who) => {
     const key = plain(who);
+    // A post in the place's chain of command ("the quartermaster"): whoever holds it does the carrying.
+    const post = /^the\s/i.test(String(who).trim()) ? postByWords(place, who) : null;
+    if (post) return { key: null, post };
     const crowd = roster.find((one) => one.name && plain(one.name) === key);
     if (crowd) return crowd;
     const person = findCharacter(null, who);
@@ -396,7 +400,7 @@ function compileLogistics(place) {
     let sound = true;
     const person = findPerson(e.who);
     if (!person) {
-      at(line, `nobody called ${e.who} has a day at ${name} in world/life, and an errand needs someone who does`);
+      at(line, `nobody called ${e.who} has a day at ${name} in world/life, or is a post in world/command, and an errand needs someone who does`);
       sound = false;
     }
     const item = itemByWords(e.what);
@@ -424,12 +428,12 @@ function compileLogistics(place) {
       sound = false;
     }
     if (!sound) continue;
-    const id = `${slugOf(e.who)}:${item}`;
+    const id = `${person.post ?? slugOf(e.who)}:${item}`;
     if (model.errands.some((one) => one.id === id)) {
       at(line, `${e.who} is given ${e.what} to carry twice`);
       continue;
     }
-    model.errands.push({ id, who: e.who, key: person.key, item, from: from.id, to: to.id, under: e.under, each: e.each, line, text: raw.text });
+    model.errands.push({ id, who: e.who, key: person.key, post: person.post ?? null, item, from: from.id, to: to.id, under: e.under, each: e.each, line, text: raw.text });
   }
   return model;
 }
@@ -593,22 +597,27 @@ function errandDoing(model, e, s) {
 // The errands over one piece of the clock. One starts when the store it keeps up is short and its person is awake and
 // about: they go to the store they fetch from, stand there a minute and take what they can carry, or wait there when
 // there's nothing, carry it over and put it in, and go back to their day; and again while the store's still short.
+// Who does an errand in a game: the person it names, or whoever holds the post it names, or nobody.
+const carrierOf = (game, place, e) => (e.post ? holderKey(game, place, e.post) : e.key);
+
 function runErrands(game, place, model, state, t) {
   state.errands ??= {};
   for (const e of model.errands) {
     const from = storeById(model, e.from);
     const to = storeById(model, e.to);
     const s = state.errands[e.id];
+    const key = carrierOf(game, place, e);
+    if (!key) continue;
     const have = () => storeCounts(game, to.key, to.holds)[e.item] ?? 0;
     const room = () => Math.max(0, (to.holds[e.item] ?? 0) - have());
     if (!s) {
-      if (have() >= e.under || !isAbout(game, place, e.key, t / 60)) continue;
+      if (have() >= e.under || !isAbout(game, place, key, t / 60)) continue;
       state.errands[e.id] = { phase: "going", since: t, load: null };
       continue;
     }
     // They've arrived when their walk has got them there, or when a walk's worth of time has gone by since they set
     // out: over a long jump of the clock nobody is walked minute by minute, and the errand still has to get done.
-    const there = hasReached(game, place, e.key, errandWhere(e, s)) || t - s.since >= WALK_MINUTES;
+    const there = hasReached(game, place, key, errandWhere(e, s)) || t - s.since >= WALK_MINUTES;
     if (s.phase === "going") {
       if (there) Object.assign(s, { phase: "loading", since: t });
     } else if (s.phase === "loading" || s.phase === "waiting") {
@@ -640,7 +649,7 @@ export function errandDetour(game, place) {
   return (key) => {
     for (const e of model.errands) {
       const s = errands[e.id];
-      if (s && e.key === key) return { where: errandWhere(e, s), doing: errandDoing(model, e, s) };
+      if (s && carrierOf(game, place, e) === key) return { where: errandWhere(e, s), doing: errandDoing(model, e, s) };
     }
     return null;
   };
@@ -990,7 +999,7 @@ export function errandsView(game, place) {
     const s = errands[e.id] ?? null;
     return {
       id: e.id,
-      who: e.who,
+      who: e.post ? postAndName(game, place, e.post) ?? `Nobody: ${e.who} is nobody's post` : e.who,
       does: `${itemWords(e.item, 2)} from the ${from.name} to the ${to.name} when under ${e.under}, ${e.each} at a time`,
       status: s ? errandDoing(model, e, s) : "about their day",
       busy: Boolean(s),
