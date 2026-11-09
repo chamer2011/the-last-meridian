@@ -7,11 +7,11 @@
 import { allStoryProblems, SCENES_DIR } from "./scenes.js";
 
 const dir = process.argv[2] ?? SCENES_DIR;
-const { count, stories, computers, systems, drawn, problems, fleet } = allStoryProblems(dir);
+const { count, stories, computers, systems, logistics, drawn, problems, fleet } = allStoryProblems(dir);
 if (!problems.length) {
-  console.log(`All ${count} ${count === 1 ? "scene is" : "scenes are"} sound, and so are the notes of ${stories} stories, the ${computers} computers, the systems of ${systems} places and the ${drawn} ${drawn === 1 ? "map" : "maps"} drawn in Tiled.`);
+  console.log(`All ${count} ${count === 1 ? "scene is" : "scenes are"} sound, and so are the notes of ${stories} stories, the ${computers} computers, the systems of ${systems} places, the logistics of ${logistics} ${logistics === 1 ? "place" : "places"} and the ${drawn} ${drawn === 1 ? "map" : "maps"} drawn in Tiled.`);
 } else {
-  console.log(`${problems.length} ${problems.length === 1 ? "problem" : "problems"} in ${dir}, world\\stories, world\\computers, world\\systems and world\\maps:\n`);
+  console.log(`${problems.length} ${problems.length === 1 ? "problem" : "problems"} in ${dir}, world\\stories, world\\computers, world\\systems, world\\logistics and world\\maps:\n`);
   for (const problem of problems) console.log(`- ${problem}`);
   console.log("\nFix these and run it again. The how-tos are world\\scenes\\_how-to-write-a-scene.txt, world\\stories\\_how-to-write-a-story.txt and world\\maps\\_how-to-draw-rooms-in-tiled.txt.");
 }

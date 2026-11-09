@@ -12,6 +12,7 @@ import { allCharacters, campaignRooms, findCampaignRoom, findCharacter, fullName
 import { startCheck, startChoiceCheck } from "./checks.js";
 import { useComputer } from "./computers.js";
 import { clearSystems, doorActions, doorLocked, doorLook, exitLocked, partSquares, partThings, roomDark, roomView, systemsOf, workOnDoor, workOnPart } from "./systems.js";
+import { clearLogistics, logisticsOf } from "./logistics.js";
 import { ITEMS, LOCATIONS } from "./data.js";
 import { clearLife, hasADay, livesHere, peopleAboard } from "./life.js";
 import { isCaptain, toOutsider } from "./role.js";
@@ -280,6 +281,7 @@ export function redrawnRooms(now = Date.now()) {
   if (!roomsRedrawn(now)) return false;
   maps.clear();
   clearSystems();
+  clearLogistics();
   clearLife();
   return true;
 }
@@ -296,15 +298,18 @@ export function mapFor(place) {
     }
     if (map) map.place = place;
     maps.set(place, map);
-    // The place's systems stand some of their parts on the floor, where nobody can walk, so they're placed now.
+    // The place's systems stand some of their parts on the floor, where nobody can walk, so they're placed now,
+    // and so are the stores of its logistics that the map hasn't drawn.
     if (map) systemsOf(place);
+    if (map) logisticsOf(place);
   }
   return maps.get(place);
 }
 
-// Made again from the files, after the story board saves a place's systems.
+// Made again from the files, after the story board saves a place's systems or logistics.
 export function clearMaps() {
   maps.clear();
+  clearLogistics();
 }
 
 export const canStand = (level, x, y) => Boolean(level.open[y]?.[x]) && !level.solid.has(spotKey(x, y));

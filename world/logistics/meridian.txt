@@ -1,0 +1,30 @@
+# CFS Meridian
+draft: the AI's, not yet edited by the owner
+everyone aboard eats: 2 sittings a day
+a crate feeds: 200 sittings
+
+Stores:
+- shuttle stores in The Lighter Bay: holds 20 ration crates, 12 fuel cells, 6 parts crates: Crates strapped down where the lighter unloads them, with the manifest on a clip.
+- fuel rack in Engineering: holds 6 fuel cells: A rack of cells by the reactor, each one tagged with the day it came aboard.
+- pantry in The Galley: holds 12 ration crates, 12 produce: Shelves behind a wire door, and the smell of whatever's nearest to going off.
+- garden bins in The Garden: holds 12 produce: Bins at the end of the beds, with today's picking in them.
+- medicine cabinet in Medbay: holds 5 medicine crates: A locked cabinet with a list on its door of what's left.
+- parts lockers in Stores: holds 6 parts crates: Lockers of spares, sorted by someone who's since given up.
+- soup kettle in The Long Mess: holds 400 sittings
+
+Machines:
+- generator in Engineering: burns 1 fuel cell from the fuel rack every 8 hours, gives 100 power
+- garden: grows 1 produce into the garden bins every 2 hours, with power and someone tending it
+- galley: cooks 1 produce or 1 ration crate from the pantry into 200 sittings in the soup kettle every hour, with power and a cook there
+
+Loads:
+- air plant 20, engines 30 while under way, doors 6, comms 6, navigation 6, cameras 4, lights 2 a room, computers 2 each
+- when short, drop: cameras, comms, lights, doors, navigation, air
+
+Errands:
+- Tech Oona: fuel cells from the shuttle stores to the fuel rack when under 3, two at a time
+- Quartermaster Brandt: ration crates from the shuttle stores to the pantry when under 4, two at a time
+- Cook Imre: produce from the garden bins to the pantry when under 4, four at a time
+
+Refills:
+- the shuttle stores: ration crates and fuel cells from nothing for now, every 6 hours, up to full

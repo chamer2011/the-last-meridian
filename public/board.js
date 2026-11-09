@@ -9,6 +9,7 @@ import { el } from "./dom.js";
 import { writeStoryText } from "./story-text.js";
 import { LINE_PHRASES, PERK_NUMBERS, SPECS, writeWorldText } from "./world-text.js";
 import { KNOWN_SYSTEMS, readComputerLine, systemIdOf, writeSystemsText } from "./systems-text.js";
+import { LOGISTICS_PARTS, PART_TITLES, readStoreLine, writeLogisticsText } from "./logistics-text.js";
 
 const state = {
   kind: "story", id: null, lists: {},
@@ -23,8 +24,8 @@ const $ = (id) => document.getElementById(id);
 const spaced = (id) => String(id ?? "").replaceAll("_", " ");
 const fill = (parent, ...children) => { for (const child of children.flat()) if (child !== null && child !== undefined && child !== false) parent.append(child); return parent; };
 const STOP = new Set("if the they she he it you someone anyone a an and or of is are that this their them its in on at for as has have then when there".split(" "));
-const KIND_WORDS = { story: "The story", place: "The place", person: "The person", species: "The species", enemy: "The enemy", item: "The item", faction: "The faction", perk: "The perk", computer: "The computer", systems: "The systems" };
-const FOLDERS = { story: "stories", person: "characters", place: "places", species: "species", enemy: "enemies", item: "items", faction: "factions", perk: "perks", computer: "computers", systems: "systems" };
+const KIND_WORDS = { story: "The story", place: "The place", person: "The person", species: "The species", enemy: "The enemy", item: "The item", faction: "The faction", perk: "The perk", computer: "The computer", systems: "The systems", logistics: "The logistics" };
+const FOLDERS = { story: "stories", person: "characters", place: "places", species: "species", enemy: "enemies", item: "items", faction: "factions", perk: "perks", computer: "computers", systems: "systems", logistics: "logistics" };
 
 // A name made from words, for an ending or a fact, so nobody has to type one.
 export function nameFrom(text) {
@@ -104,7 +105,7 @@ function boardNode() {
     el("header", { class: "board-head" },
       el("h2", {}, "Story board"),
       el("select", { id: "board-what", title: "Stories, places, people or species", onchange: (event) => changeKind(event.target.value) },
-        ...[["story", "Stories"], ["place", "Places"], ["person", "People"], ["species", "Species"], ["enemy", "Enemies"], ["item", "Items"], ["faction", "Factions"], ["perk", "Perks"], ["computer", "Computers"], ["systems", "Systems"]].map(([kind, label]) => el("option", { value: kind }, label))),
+        ...[["story", "Stories"], ["place", "Places"], ["person", "People"], ["species", "Species"], ["enemy", "Enemies"], ["item", "Items"], ["faction", "Factions"], ["perk", "Perks"], ["computer", "Computers"], ["systems", "Systems"], ["logistics", "Logistics"]].map(([kind, label]) => el("option", { value: kind }, label))),
       el("select", { id: "board-pick", title: "Which one", onchange: (event) => load(state.kind, event.target.value) }),
       el("nav", { class: "board-tabs", role: "tablist" },
         ...[["notes", "The story"], ["scene", "The written scene"], ["file", "As the file"]].map(([tab, label]) => el("button", { class: "board-tab", role: "tab", "data-tab": tab, "aria-selected": "false", onclick: () => showTab(tab) }, label))),
@@ -406,6 +407,41 @@ function systemsGraph() {
   if (L.place) add(linkNode(`link_place_${L.place.id}`, "place", L.place.name, "The place itself.", "The place"));
   return { list, ws };
 }
+// A place's logistics: each store a box with what it holds, and the machines, errands, loads and refills as boxes
+// with arrows to the stores their words name: from a store into the box, out of the box into a store.
+const plainWords = (words) => String(words ?? "").toLowerCase().replace(/['’]/g, "").replace(/^the\s+/, "").replace(/\s+/g, " ").trim();
+function logisticsGraph() {
+  const P = state.item, L = state.links;
+  const list = [], ws = [];
+  const add = (node) => { list.push(node); return node.id; };
+  const numbers = P.numbers ?? {};
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${numbers.eats ? `Everyone aboard eats ${numbers.eats} sittings a day. ` : ""}${numbers.crateFeeds ? `A crate feeds ${numbers.crateFeeds} sittings. ` : ""}Only the stores are played so far: the other parts are read, kept and checked for their shape.`, label: "The numbers at the top" });
+  const stores = (P.stores ?? []).map((one, i) => {
+    const read = readStoreLine(one.text ?? one);
+    const placed = (L.stores ?? []).find((s) => s.name === read.name);
+    return { i, read, id: add({ id: `store${i}`, kind: "beat", col: 1, name: read.problem ? "A store" : `${read.name}, in ${read.room}`, text: read.problem ? read.problem : `Holds ${read.holds.map((h) => `${h.n} ${h.what}`).join(", ")}.${placed ? placed.placed ? " The game puts it in the room, since the map hasn't drawn one." : " It's the thing of that name in the room." : ""}${read.look ? ` ${read.look}` : ""}`, label: "A store", bind: { store: i }, problem: Boolean(read.problem) }) };
+  });
+  const cols = { machines: 2, errands: 3, loads: 4, refills: 2 };
+  const kinds = { machines: "route", errands: "fact", loads: "clock", refills: "consequence" };
+  const labels = { machines: "A machine (from step 2)", errands: "An errand (from step 3)", loads: "A load (from step 4)", refills: "A refill (from step 5)" };
+  for (const part of ["machines", "errands", "loads", "refills"]) {
+    (P[part] ?? []).forEach((one, i) => {
+      const words = one.text ?? one;
+      const id = add({ id: `${part}${i}`, kind: kinds[part], col: cols[part], name: words.split(":")[0].trim().slice(0, 40), text: words, label: labels[part], bind: { logLine: [part, i] } });
+      const lower = plainWords(words);
+      for (const store of stores) {
+        if (store.read.problem) continue;
+        const name = plainWords(store.read.name);
+        if (!lower.includes(name)) continue;
+        const outOf = new RegExp(`\\bfrom (the )?${name.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\function sceneGraph() {")}`).test(lower);
+        if (outOf) ws.push({ from: store.id, to: id });
+        else ws.push({ from: id, to: store.id });
+      }
+    });
+  }
+  if (L.place) add(linkNode(`link_place_${L.place.id}`, "place", L.place.name, "The place itself.", "The place"));
+  return { list, ws };
+}
 function sceneGraph() {
   const scene = state.scene;
   const list = [], ws = [];
@@ -436,7 +472,7 @@ function sceneGraph() {
 }
 
 function build() {
-  const builders = { story: notesGraph, place: placeGraph, person: personGraph, species: speciesGraph, enemy: enemyGraph, item: itemGraph, faction: factionGraph, perk: perkGraph, computer: computerGraph, systems: systemsGraph };
+  const builders = { story: notesGraph, place: placeGraph, person: personGraph, species: speciesGraph, enemy: enemyGraph, item: itemGraph, faction: factionGraph, perk: perkGraph, computer: computerGraph, systems: systemsGraph, logistics: logisticsGraph };
   const graph = state.tab === "scene" ? sceneGraph() : builders[state.kind]();
   nodes = graph.list;
   wires = graph.ws;
@@ -576,6 +612,7 @@ function fileText() {
   if (state.tab === "scene" || (state.scene && state.tab === "file" && state.lastBoard === "scene")) return sceneText();
   if (state.kind === "story") return writeStoryText(S(), C());
   if (state.kind === "systems") return writeSystemsText(state.item);
+  if (state.kind === "logistics") return writeLogisticsText(state.item);
   return writeWorldText(state.item, SPECS[state.kind]);
 }
 const sceneText = () => (state.scene ? [state.scene.header, ...state.scene.parts.map((part) => `== ${part.name}\n${part.raw}`)].join("\n") : "");
@@ -842,6 +879,8 @@ function remove(node) {
   else if (b.entry) state.item[b.entry].splice(b.i, 1);
   else if (b.system !== undefined) state.item.systems.splice(b.system, 1);
   else if (b.computer !== undefined) state.item.computers.splice(b.computer, 1);
+  else if (b.store !== undefined) state.item.stores.splice(b.store, 1);
+  else if (b.logLine) state.item[b.logLine[0]].splice(b.logLine[1], 1);
   else if (b.list) story.gm[b.list].splice(b.i, 1);
   else if (b.outcome !== undefined) {
     const id = story.gm.outcomes[b.outcome].id;
@@ -959,7 +998,9 @@ function inspect() {
   if (state.tab === "scene") return inspectPart(inspector, node);
   if (node.kind === "link") return inspectLink(inspector, node);
   if (node.lines) return fill(inspector, h2("Written lines"), hint(node.text), state.written ? row(button("Open the written lines", () => showTab("scene"))) : hint("A file called talk_<id>.txt in world/scenes gives them written lines; the how-to there explains it."));
-  if (node.kind === "about") return state.kind === "story" ? inspectAbout(inspector) : state.kind === "systems" ? inspectSystemsAbout(inspector) : inspectWorldAbout(inspector);
+  if (node.kind === "about") return state.kind === "story" ? inspectAbout(inspector) : state.kind === "systems" ? inspectSystemsAbout(inspector) : state.kind === "logistics" ? inspectLogisticsAbout(inspector) : inspectWorldAbout(inspector);
+  if (node.bind?.store !== undefined) return inspectStoreLine(inspector, node);
+  if (node.bind?.logLine) return inspectLogisticsLine(inspector, node);
   if (node.bind?.numbers) return inspectNumbers(inspector, node);
   if (node.bind?.fight) return inspectFight(inspector, node);
   if (node.bind?.speciesNumbers) return inspectSpeciesNumbers(inspector, node);
@@ -987,15 +1028,18 @@ function inspectNothing(inspector) {
                   : state.kind === "faction" ? "The faction as a board: what the player reads, what they believe, and their people, places, enemies and stories, each a box that opens."
                     : state.kind === "perk" ? "The perk as a board: what the player reads, what it changes, and the perks it needs or leads to. What it needs is in the box on the left."
                       : state.kind === "systems" ? "A place's systems as a board: who keeps it running, each system with its parts and the rooms they're in, each computer with arrows to what it runs, and the rooms with what's in each. Click any box to read it and change it."
+                      : state.kind === "logistics" ? "The ship's logistics as a board: each store with what it holds and the room it's in, and the machines, errands, loads and refills, each with arrows to the stores its words name. Only the stores are played so far. Click any box to read it and change it."
                       : "The computer as a board: what the player sees when they sit down, its files, letters, logs and programs, and the computers it reaches over its network. Click any box to read all of it and change it; its class, place and login are in the box on the left."),
     el("div", { class: "legend" }, ...(state.tab === "scene" ? [["beat", "parts"], ["ending", "checks and fights"], ["end", "ends"], ["clock", "missing"]]
       : state.kind === "story" ? [["lead", "the lead"], ["beat", "beats"], ["route", "ways through"], ["ending", "endings"], ["fact", "facts"], ["consequence", "consequences"], ["clock", "the clock"], ["next", "other stories"]]
         : state.kind === "systems" ? [["beat", "systems"], ["route", "its own systems"], ["fact", "computers"], ["clock", "rooms"], ["next", "links to open"]]
+        : state.kind === "logistics" ? [["beat", "stores"], ["route", "machines"], ["fact", "errands"], ["clock", "loads"], ["consequence", "refills"], ["next", "links to open"]]
         : state.kind === "computer" ? [["lead", "what they see"], ["beat", "files"], ["fact", "letters"], ["clock", "logs"], ["route", "programs"], ["next", "links to open"]]
           : [["lead", "for the player"], ["beat", "for the game master"], ["route", "lists and numbers"], ["ending", "the dice"], ["next", "links to open"]]).map(([kind, words]) => el("span", { class: `l-${kind}` }, words))),
     state.tab === "notes" && state.kind === "story" ? row(button("+ an ending", addEnding), button("+ a fact", () => addFact()), button("+ something days later", () => addConsequence()), button("+ a stage of the clock", addStage), button("+ what changes this story", addReaction)) : null,
     state.tab === "notes" && state.kind === "place" ? row(button("+ a district", addDistrict)) : null,
     state.tab === "notes" && state.kind === "systems" ? row(button("+ a system", addSystem), button("+ a computer", addComputerLine)) : null,
+    state.tab === "notes" && state.kind === "logistics" ? row(button("+ a store", addStore), ...["machines", "errands", "loads", "refills"].map((part) => button(`+ ${PART_TITLES[part].toLowerCase().replace(/s$/, "")}`, () => addLogisticsLine(part)))) : null,
     state.tab === "notes" && state.kind === "computer" ? row(button("+ a file", () => addEntry("files")), button("+ a letter", () => addEntry("mail")), button("+ a program", () => addEntry("programs"))) : null,
     state.problems.length ? el("div", { class: "problems" }, h2("The checker says"), ...state.problems.map((one) => el("div", {}, one))) : hint("The checker has nothing to say about this one."),
     hint(`Save writes the file in world/${FOLDERS[state.kind]}, and the game uses the new version from the next turn.`));
@@ -1189,6 +1233,83 @@ function inspectSystemsAbout(inspector) {
       changed();
     }), button("Undo", () => inspect())),
     hint(`The file is world/systems/${state.id}.txt.`));
+}
+
+// The ship's logistics: the numbers at the top.
+function inspectLogisticsAbout(inspector) {
+  const P = state.item;
+  const name = textBox("edit-title", P.name ?? "");
+  const draft = textBox("edit-draft", P.draft ?? "");
+  const eats = numberBox("edit-eats", P.numbers?.eats ?? "");
+  const feeds = numberBox("edit-feeds", P.numbers?.crateFeeds ?? "");
+  fill(inspector, h2("The numbers at the top"),
+    el("label", { for: "edit-title" }, "The place's name"), name,
+    el("label", { for: "edit-draft" }, "Who wrote it (the game doesn't read this)"), draft,
+    row(el("label", { for: "edit-eats" }, "everyone aboard eats, in sittings a day"), eats),
+    row(el("label", { for: "edit-feeds" }, "a crate feeds, in sittings"), feeds),
+    row(button("Keep", () => {
+      P.name = name.value.trim() || P.name;
+      if (draft.value.trim()) P.draft = draft.value.trim();
+      else delete P.draft;
+      P.numbers = {};
+      if (eats.value !== "") P.numbers.eats = Number(eats.value);
+      if (feeds.value !== "") P.numbers.crateFeeds = Number(feeds.value);
+      changed();
+    }), button("Undo", () => inspect())),
+    hint(`The file is world/logistics/${state.id}.txt. Only the stores are played so far; the other parts come to life step by step, and the how-to there says how.`));
+}
+// A store: its line, with the room and what it holds picked from lists to write it.
+function inspectStoreLine(inspector, node) {
+  const P = state.item, lists = state.lists;
+  const entry = P.stores[node.bind.store];
+  if (!entry) return inspectNothing(inspector);
+  const box = textBox("edit-line", entry.text ?? entry);
+  const read = readStoreLine(box.value);
+  const room = picker("edit-room", (lists.rooms ?? []).map((one) => [one, one]), read.problem ? (lists.rooms ?? [])[0] : (lists.rooms ?? []).find((one) => one.toLowerCase() === read.room.toLowerCase()) ?? (lists.rooms ?? [])[0]);
+  // The picker starts on what the store already holds, so adding more of the same is one click.
+  const firstHeld = read.problem ? "" : read.holds[0].what.toLowerCase().replace(/s$/, "");
+  const held = (lists.items ?? []).find((one) => one.name.toLowerCase().replace(/s$/, "") === firstHeld || one.id === firstHeld.replace(/ /g, "_"));
+  const item = picker("edit-item", [...(lists.items ?? []).map((one) => [one.name, one.name]), ["sittings", "sittings (a count, not things)"]], held?.name ?? (firstHeld === "sitting" ? "sittings" : (lists.items ?? [])[0]?.name ?? "sittings"));
+  const count = numberBox("edit-count", 6);
+  fill(inspector, h2(node.label), el("label", { for: "edit-line" }, "The store, in, its room, a colon, holds and what it holds, and after another colon how it looks"), box,
+    row(el("span", {}, "in"), room, button("Put it there", () => {
+      const now = readStoreLine(box.value);
+      if (now.problem) return;
+      box.value = `${now.name} in ${room.value}: holds ${now.holds.map((h) => `${h.n} ${h.what}`).join(", ")}${now.look ? `: ${now.look}` : ""}`;
+    })),
+    row(count, item, button("+ add to what it holds", () => {
+      const now = readStoreLine(box.value);
+      const n = Math.max(1, Number(count.value) || 1);
+      const words = item.value === "sittings" ? "sittings" : item.value.toLowerCase();
+      if (now.problem) box.value = `new store in ${room.value}: holds ${n} ${words}`;
+      else box.value = `${now.name} in ${now.room}: holds ${[...now.holds.map((h) => `${h.n} ${h.what}`), `${n} ${words}`].join(", ")}${now.look ? `: ${now.look}` : ""}`;
+    })),
+    hint("Items are named the way their files name them, plural or not; the plural with an s is written in the file. The store starts full, with this much, and never holds more."),
+    row(button("Keep", () => { P.stores[node.bind.store] = { text: box.value.trim() }; changed(); }), button("Undo", () => inspect())),
+    row(button("+ another store", addStore), button("Remove", () => remove(node), { class: "danger" })));
+}
+// A line of the other parts, kept as words until its step is built.
+function inspectLogisticsLine(inspector, node) {
+  const P = state.item;
+  const [part, i] = node.bind.logLine;
+  const entry = P[part]?.[i];
+  if (!entry) return inspectNothing(inspector);
+  const box = textarea("edit-line", entry.text ?? entry, 3);
+  fill(inspector, h2(node.label), el("label", { for: "edit-line" }, `The line, under ${PART_TITLES[part]}`), box,
+    hint("Written in the words you'd use. The game keeps it, and reads it when its step is built; the how-to in world/logistics says what each step will read."),
+    row(button("Keep", () => { P[part][i] = { text: box.value.trim().replace(/\n+/g, " ") }; changed(); }), button("Undo", () => inspect())),
+    row(button(`+ another under ${PART_TITLES[part]}`, () => addLogisticsLine(part)), button("Remove", () => remove(node), { class: "danger" })));
+}
+function addStore() {
+  const room = (state.lists.rooms ?? [])[0] ?? "a room";
+  state.item.stores.push({ text: `new store in ${room}: holds 6 ration crates` });
+  state.selected = { node: `store${state.item.stores.length - 1}` };
+  changed();
+}
+function addLogisticsLine(part) {
+  (state.item[part] ??= []).push({ text: `new ${PART_TITLES[part].toLowerCase().replace(/s$/, "")}: what it does, in words` });
+  state.selected = { node: `${part}${state.item[part].length - 1}` };
+  changed();
 }
 
 // A system: its name and its parts, one to a line, with a part and a room picked from lists to add one.
@@ -1524,7 +1645,7 @@ async function save() {
       state.items = state.stories;
       say(result.problems.length ? `Saved. ${result.problems.length} ${result.problems.length === 1 ? "thing" : "things"} the checker would like changed.` : "Saved. The game plays the new version from the next turn.");
     } else {
-      const result = await call(`/api/board/world/${state.kind}/${state.id}`, { text: state.kind === "systems" ? writeSystemsText(state.item) : writeWorldText(state.item, SPECS[state.kind]) });
+      const result = await call(`/api/board/world/${state.kind}/${state.id}`, { text: state.kind === "systems" ? writeSystemsText(state.item) : state.kind === "logistics" ? writeLogisticsText(state.item) : writeWorldText(state.item, SPECS[state.kind]) });
       if (!result.saved) return say(`Not saved: ${result.problems[0]}`, false);
       state.dirty = false;
       state.problems = result.problems;

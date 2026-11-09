@@ -49,6 +49,18 @@ function supplyLine(s) {
 
 const suppliesSection = (s) => section("Stores", s.supplies.map(supplyLine), muted("Counted every midnight, in whatever way the day passes. With parts aboard the engineers mend the hull a little each day; without them, she wears."));
 
+// What's kept where, room by room, from world/logistics: each store is a thing in a room you can walk to and open.
+function storesSection(s) {
+  if (!s.stores?.length) return null;
+  const line = (store) => {
+    const what = store.count ? `${store.count.n} of ${store.count.of} ${store.count.unit}` : store.items.map((one) => `${one.n}${one.of && one.n !== one.of ? ` of ${one.of}` : ""} ${one.name.toLowerCase()}${one.n === 1 || /produce$/i.test(one.name) ? "" : "s"}`).join(", ") || "empty";
+    return el("div", { class: "menu-row small" },
+      el("span", {}, store.name, el("span", { class: "muted" }, `, ${store.room}`)),
+      el("span", { class: store.full ? "" : "tone-bad" }, what));
+  };
+  return section("In the rooms", s.stores.map(line), muted("Walk up to any of them and open it beside your pack. What's taken out and put back is kept, and the count here follows it."));
+}
+
 function choiceCard({ current, name, detail, desc, onclick, disabled }) {
   return el("button", { class: `card selectable${current ? " selected" : ""}`, "aria-pressed": String(Boolean(current)), disabled, onclick },
     el("strong", {}, name), muted(desc), detail);
@@ -163,7 +175,7 @@ export function shipMenu() {
   const g = app.ui.game;
   if (!g.role.captain) return outsiderShip(g);
   return twoColumns(
-    [statusSection(g), suppliesSection(g.ship), systemsSection(g)],
+    [statusSection(g), suppliesSection(g.ship), storesSection(g.ship), systemsSection(g)],
     [ordersSection(g), rationsSection(g.ship), councilSection(g.ship), logSection(g.ship), crewSection(g)],
   );
 }

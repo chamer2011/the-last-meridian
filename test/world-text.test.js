@@ -28,7 +28,7 @@ const canon = (value) => JSON.stringify(value, (key, inner) => (inner && typeof 
 
 test("every person, place and species reads without a problem, writes back the same, and the game holds them all", () => {
   assert.deepEqual(WORLD_FILE_PROBLEMS, []);
-  for (const [dir, spec, count] of [[PEOPLE_DIR, PERSON, 61], [PLACES_DIR, PLACE, 24], [SPECIES_DIR, SPECIES_SPEC, 6], [ENEMIES_DIR, ENEMY, 34], [ITEMS_DIR, ITEM, 60], [FACTIONS_DIR, FACTION, 12], [PERKS_DIR, PERK, 53]]) {
+  for (const [dir, spec, count] of [[PEOPLE_DIR, PERSON, 61], [PLACES_DIR, PLACE, 24], [SPECIES_DIR, SPECIES_SPEC, 6], [ENEMIES_DIR, ENEMY, 34], [ITEMS_DIR, ITEM, 64], [FACTIONS_DIR, FACTION, 12], [PERKS_DIR, PERK, 53]]) {
     const files = fs.readdirSync(dir).filter((name) => name.endsWith(".txt") && !name.startsWith("_"));
     assert.equal(files.length, count, dir);
     for (const name of files) {
@@ -65,7 +65,7 @@ test("every person, place and species reads without a problem, writes back the s
   assert.equal(ENEMIES.dock_thug.weapon, "Stun Baton");
   assert.deepEqual(ENEMIES.dock_thug.damage, [2, 5]);
   assert.ok(ENEMIES.dock_thug.lines.intro.length >= 1);
-  assert.equal(Object.keys(ITEMS).length, 60);
+  assert.equal(Object.keys(ITEMS).length, 64);
   assert.deepEqual(Object.keys(ITEMS).slice(0, 2), ["sidearm", "focus_blade"], "the items keep the order they had in the code");
   assert.equal(ITEMS.service_rifle.type, "weapon");
   assert.deepEqual(ITEMS.service_rifle.damage, [5, 9]);

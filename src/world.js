@@ -7,6 +7,7 @@ import { worldDir } from "./paths.js";
 import { DRAWN, readPlaceRooms, stampNow } from "./tiled.js";
 import { parseStoryText } from "../public/story-text.js";
 import { parseSystemsText } from "../public/systems-text.js";
+import { parseLogisticsText } from "../public/logistics-text.js";
 import { COMPUTER, ENEMY, FACTION, ITEM, PERK, PERSON, PLACE, SPECIES_SPEC, parseWorldText } from "../public/world-text.js";
 
 // A file with a mistake in it is skipped, so one typo can't stop the whole game.
@@ -63,6 +64,23 @@ export const SYSTEMS_DIR = process.env.GAME_SYSTEMS_DIR ?? path.join(worldDir, "
 export const WORLD_SYSTEMS = {};
 export const SYSTEMS_FILE_PROBLEMS = [];
 export const SYSTEMS_DEFAULTS = readFile("systems/_defaults.json");
+// A place's logistics, as plain text in world/logistics, read by public/logistics-text.js and read again when the
+// story board saves one. Only the Meridian has a file so far. Tests point the folder at a copy.
+export const LOGISTICS_DIR = process.env.GAME_LOGISTICS_DIR ?? path.join(worldDir, "logistics");
+export const WORLD_LOGISTICS = {};
+export const LOGISTICS_FILE_PROBLEMS = [];
+export function reloadLogistics() {
+  for (const key of Object.keys(WORLD_LOGISTICS)) delete WORLD_LOGISTICS[key];
+  LOGISTICS_FILE_PROBLEMS.splice(0);
+  if (!fs.existsSync(LOGISTICS_DIR)) return;
+  for (const name of fs.readdirSync(LOGISTICS_DIR).sort()) {
+    if (!name.endsWith(".txt") || name.startsWith("_")) continue;
+    const { value, problems } = parseLogisticsText(fs.readFileSync(path.join(LOGISTICS_DIR, name), "utf8"), name.slice(0, -".txt".length));
+    for (const one of problems) LOGISTICS_FILE_PROBLEMS.push(`logistics/${name}${one.line ? ` (line ${one.line})` : ""}: ${one.message}`);
+    WORLD_LOGISTICS[name.slice(0, -".txt".length)] = value;
+  }
+}
+reloadLogistics();
 export function reloadSystems() {
   for (const key of Object.keys(WORLD_SYSTEMS)) delete WORLD_SYSTEMS[key];
   SYSTEMS_FILE_PROBLEMS.splice(0);

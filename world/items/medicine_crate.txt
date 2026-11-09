@@ -1,0 +1,9 @@
+# Medicine Crate
+type: gadget
+price: 28
+size: 1x1
+weight: 10
+stack: 1
+
+In a line:
+A sealed crate of medicine for the medbay's cabinet, counted dose by dose by Dr. Aduro.

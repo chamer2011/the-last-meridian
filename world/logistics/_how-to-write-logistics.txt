@@ -1,0 +1,75 @@
+HOW TO WRITE A PLACE'S LOGISTICS
+================================
+
+Nothing aboard comes from nothing. The ship's logistics say where every stock is kept, what machines turn one
+thing into another, what each system draws from the generator, who carries what from where, and what gets
+refilled from outside. It's one plain text file in this folder, world/logistics/<place>.txt, named after the
+place (the file name of its map in world/maps). The Story board shows it under Logistics, as boxes and arrows,
+and saving one there writes its file here.
+
+    npm run check-story
+
+checks these files too.
+
+It's built in steps, each tried by the owner before the next. So far the game plays the Stores part: every
+store is a real thing in a room, full to start with, that the player can walk to and open beside their pack,
+and the Ship menu lists them all with what's in them. The other parts are read and written back, and checked
+for their shape, and they'll come to life step by step: Machines, then Errands, then Loads, then Refills.
+
+
+THE FILE
+--------
+
+    # CFS Meridian
+    draft: the AI's, not yet edited by the owner     (the game doesn't read this: it's for whoever edits)
+    everyone aboard eats: 2 sittings a day           (what the whole ship eats, counted from step 2)
+    a crate feeds: 200 sittings                      (how far a ration crate goes)
+
+    Stores:
+    - pantry in The Galley: holds 12 ration crates, 12 produce: Shelves behind a wire door.
+    - fuel rack in Engineering: holds 6 fuel cells
+    - soup kettle in The Long Mess: holds 400 sittings
+
+    Machines:
+    - galley: cooks 1 produce or 1 ration crate from the pantry into 200 sittings in the soup kettle every hour
+
+    Loads:
+    - air plant 20, engines 30 while under way, lights 2 a room
+
+    Errands:
+    - Quartermaster Brandt: ration crates from the shuttle stores to the pantry when under 4, two at a time
+
+    Refills:
+    - the shuttle stores: ration crates and fuel cells from nothing for now, every 6 hours, up to full
+
+The first line is the place's name. The lines after it, before the first part, are the numbers at the top.
+Then come the parts, each a heading with a colon and lines that start with - and a space.
+
+
+STORES
+------
+
+A store is a thing in a room. Each line is the store's name, in, the room it's in, a colon, holds, what it
+holds, and, if you like, another colon and how it looks:
+
+    - pantry in The Galley: holds 12 ration crates, 12 produce: Shelves behind a wire door.
+
+The room is one from the place's map, by its name (The Galley, Engineering, Medbay). What it holds is a
+number and an item from world/items each, by the item's name or its id, plural or not: ration crates,
+fuel cells, parts crates, medicine crates, produce. That's what the store holds when the game starts, and
+also the most it holds, so it starts full. A store of sittings (holds 400 sittings) is a count, not things
+you can pick up: the kettle is one.
+
+If the room already has a thing with the store's name, that thing is the store, and it keeps its own look.
+If it hasn't, the game puts one there, on a free square of the room, so nothing needs drawing to start.
+Draw one in Tiled later if you'd rather, with the same name, and the game will use yours.
+
+What's taken out and put back is kept in the saved game, and the Ship menu reads the same count.
+
+
+THE OTHER PARTS, FOR NOW
+------------------------
+
+Machines, Loads, Errands and Refills are read and written back by the board, and the checker only asks
+that each line starts with - and a space. What each line means is written in the words you'd use; the
+steps that bring them to life will read exactly those words, and this file will say how, step by step.

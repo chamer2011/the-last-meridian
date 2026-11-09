@@ -18,9 +18,11 @@ import { COMPUTERS_DIR, COMPUTER_FLAVOR, ENEMIES_DIR, FACTIONS_DIR, ITEMS_DIR, P
 import { parseStoryText, writeStoryText } from "../public/story-text.js";
 import { parseSystemsText, writeSystemsText, KNOWN_SYSTEMS, SYSTEM_TITLES } from "../public/systems-text.js";
 import { clearSystems, defaultFileFor, placePeople, systemsOf, systemsProblems } from "./systems.js";
+import { clearLogistics, logisticsOf, logisticsProblems } from "./logistics.js";
 import { clearMaps, mapFor } from "./walk.js";
 import { clearLife } from "./life.js";
-import { SYSTEMS_DEFAULTS, SYSTEMS_DIR, WORLD_SYSTEMS, reloadSystems } from "./world.js";
+import { LOGISTICS_DIR, SYSTEMS_DEFAULTS, SYSTEMS_DIR, WORLD_LOGISTICS, WORLD_SYSTEMS, reloadLogistics, reloadSystems } from "./world.js";
+import { parseLogisticsText } from "../public/logistics-text.js";
 import { COMPUTER, ENEMY, FACTION, ITEM, PERK, PERSON, PLACE, SPECIES_SPEC, parseWorldText, writeWorldText } from "../public/world-text.js";
 
 const ID = /^[a-z][a-z0-9_]{1,60}$/;
@@ -187,7 +189,7 @@ const WORLD_KINDS = {
   computer: { dir: () => COMPUTERS_DIR, spec: COMPUTER, all: WORLD_COMPUTERS, folder: "computers", what: "computer" },
 };
 const kindOf = (kind) => {
-  if (!WORLD_KINDS[kind]) throw new Error("The board knows stories, people, places, species, enemies, items, factions, perks, computers and systems.");
+  if (!WORLD_KINDS[kind]) throw new Error("The board knows stories, people, places, species, enemies, items, factions, perks, computers, systems and logistics.");
   return WORLD_KINDS[kind];
 };
 const talkIds = () => new Set(fs.existsSync(SCENES_DIR) ? fs.readdirSync(SCENES_DIR).map((name) => name.match(/^talk_(.+)\.txt$/)?.[1]).filter(Boolean) : []);
@@ -245,8 +247,56 @@ function saveSystems(id, text) {
   return { saved: true, problems: systemsFileProblems(id) };
 }
 
+// ---- A place's logistics ----------------------------------------------------------------------------
+
+function logisticsList() {
+  return Object.keys(WORLD_LOGISTICS).filter((id) => mapFor(id)).map((id) => ({ id, name: LOCATIONS[id]?.name ?? WORLD_LOGISTICS[id].name ?? id, kind: "its own file", written: true }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+const logisticsFileProblems = (id) => logisticsProblems().filter((one) => one.startsWith(`logistics/${id}.txt`));
+
+function logisticsItem(id) {
+  checkId(id);
+  const map = mapFor(id);
+  if (!map) throw new Error(`There's no map of a place called ${id}.`);
+  const file = path.join(LOGISTICS_DIR, `${id}.txt`);
+  if (!fs.existsSync(file)) throw new Error(`${LOCATIONS[id]?.name ?? id} has no logistics file yet. world/logistics/_how-to-write-logistics.txt says how to write one.`);
+  const text = fs.readFileSync(file, "utf8");
+  const { value } = parseLogisticsText(text, id);
+  const model = logisticsOf(id);
+  const rooms = Object.values(map.rooms ?? {}).filter((room) => room.area || !map.levels[room.id]?.areas?.length).map((room) => room.name);
+  return {
+    id, kind: "logistics", text, value,
+    links: {
+      place: { id, name: LOCATIONS[id]?.name ?? id },
+      stores: (model?.stores ?? []).map((store) => ({ id: store.id, name: store.name, room: store.roomName, placed: store.placed, holds: store.holds, count: store.count })),
+    },
+    lists: { ...boardLists(), rooms, items: Object.entries(WORLD_ITEMS).map(([itemId, one]) => ({ id: itemId, name: one.name })) },
+    layout: readLayout()[`logistics/${id}`] ?? {},
+    problems: logisticsFileProblems(id),
+  };
+}
+
+function saveLogistics(id, text) {
+  checkId(id);
+  if (!mapFor(id)) throw new Error(`There's no map of a place called ${id}.`);
+  if (typeof text !== "string" || !text.trim()) throw new Error("There's nothing to save.");
+  const { problems } = parseLogisticsText(text, id);
+  if (problems.length) return { saved: false, problems: problems.map(lineOf) };
+  fs.mkdirSync(LOGISTICS_DIR, { recursive: true });
+  fs.writeFileSync(path.join(LOGISTICS_DIR, `${id}.txt`), text.endsWith("\n") ? text : `${text}\n`);
+  // The stores are placed again, with the maps.
+  reloadLogistics();
+  clearLogistics();
+  clearMaps();
+  clearLife();
+  return { saved: true, problems: logisticsFileProblems(id) };
+}
+
 export function boardWorldList(kind) {
   if (kind === "systems") return systemsList();
+  if (kind === "logistics") return logisticsList();
   const { all } = kindOf(kind);
   const written = kind === "person" ? talkIds() : new Set();
   const groupOf = (one) => (kind === "person" || kind === "place" ? one.faction ?? "none" : kind === "enemy" ? one.motive ?? "other" : kind === "item" ? one.type ?? "other" : kind === "perk" ? (one.starting ? "starting" : one.ability ? "with an ability" : "learned") : kind === "computer" ? (LOCATIONS[one.place]?.name ?? one.place ?? "anywhere") : kind);
@@ -302,6 +352,7 @@ const fileProblems = (kind, folder, id) => [...WORLD_FILE_PROBLEMS, ...(kind ===
 // there is to pick from, and the checker's problems with the file.
 export function boardWorldItem(kind, id) {
   if (kind === "systems") return systemsItem(id);
+  if (kind === "logistics") return logisticsItem(id);
   const { all, dir, spec, folder } = kindOf(kind);
   checkId(id);
   const value = all[id];
@@ -333,6 +384,7 @@ export function boardWorldItem(kind, id) {
 
 export function saveBoardWorldItem(kind, id, text) {
   if (kind === "systems") return saveSystems(id, text);
+  if (kind === "logistics") return saveLogistics(id, text);
   const { dir, spec, folder } = kindOf(kind);
   checkId(id);
   if (typeof text !== "string" || !text.trim()) throw new Error("There's nothing to save.");

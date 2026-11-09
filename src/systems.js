@@ -83,7 +83,7 @@ export function wallSpots(level, claimed = new Set(), area = null) {
 }
 
 // Rooms with no such walls get a standing unit on the floor instead, at the edge, where it can't block the way.
-function floorSpot(level, taken, index, count, claimed = new Set(), area = null) {
+export function floorSpot(level, taken, index, count, claimed = new Set(), area = null) {
   const inArea = (x, y) => !area || level.areaAt(x, y) === area.id;
   const walkable = (x, y) => Boolean(level.open[y]?.[x]) && !level.solid.has(`${x},${y}`) && !taken.has(`${x},${y}`) && !claimed.has(`${x},${y}`) && inArea(x, y);
   const homes = new Set(level.homes.map((home) => `${home.x},${home.y}`));
@@ -144,7 +144,7 @@ function staysConnected(level, taken, spot, area = null) {
 
 // The squares names are written on: the ways out's, the room names', and the names of people at their posts or at
 // the places their days take them. A part on one would cover a name.
-function claimedSquares(place, map, level) {
+export function claimedSquares(place, map, level) {
   const out = new Set();
   const run = (x, y, length, side = "right") => {
     for (let i = 0; i < length; i += 1) out.add(`${side === "left" ? x - i : x + i},${y}`);

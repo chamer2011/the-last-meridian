@@ -1,0 +1,9 @@
+# Parts Crate
+type: gadget
+price: 22
+size: 1x1
+weight: 20
+stack: 1
+
+In a line:
+A crate of spares: seals, couplings, filters and the one valve nobody can ever find.

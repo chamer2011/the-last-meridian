@@ -170,6 +170,15 @@ function containerHere(game, key) {
   const thing = here.things.find((one) => `thing:${here.place}:${one.id}` === key && one.holds);
   return thing ? { key, name: thing.name, box: R().containers, thing } : null;
 }
+// What a store holds right now, by item: what's kept in the save once it's been opened, and otherwise what its holds
+// line says, so the Ship menu reads the same count as the open grid. Reading it changes nothing.
+export function storeCounts(game, key, holds) {
+  const kept = game.stores?.[key]?.items;
+  const counts = {};
+  if (kept) for (const one of kept) counts[one.id] = (counts[one.id] ?? 0) + one.n;
+  else for (const [id, n] of Object.entries(holds ?? {})) if (ITEMS[id]) counts[id] = Math.max(0, Math.round(Number(n)) || 0);
+  return counts;
+}
 // What's in a thing, from its map file's holds line the first time it's opened.
 function contentsOf(game, found) {
   if (found.pile) return found.pile.items;

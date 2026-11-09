@@ -13,6 +13,7 @@ import { inTrouble, levelName, noneLeft, placeNow, supplyFactor, tellNews, trade
 import { aboardShip, isCaptain } from "./role.js";
 import { addCondition, buyPrice, changeStress, clamp, clockLabel, jumpHours, passTime, sellPrice, travel } from "./rules.js";
 import { navigationDown } from "./systems.js";
+import { storesView } from "./logistics.js";
 import { SHIP_DATA, STAR_MAP } from "./world.js";
 
 const { rules: RULES, rations: RATIONS, supplies: SUPPLIES, text: TEXT, council: COUNCIL, chair: CHAIR, ship: SHIP } = SHIP_DATA;
@@ -685,6 +686,8 @@ export function shipView(game) {
       return { id, name: rations.name, desc: rations.desc, current: ship.rations === id, foodUsed: round2(next.used.food), moraleTarget: next.moraleTarget, healthTarget: next.healthTarget };
     }),
     supplies: SUPPLY_IDS.map((id) => supplyRow(game, id, ledger)),
+    // The stores in her rooms, from world/logistics: each a thing the player can open, with what's in it now.
+    stores: storesView(game, SHIP_ID),
     shortages: SUPPLY_IDS.filter((id) => isOut(game, id) || (daysLeft(game, id, ledger) ?? Infinity) <= RULES.warnAtDays),
     trade: Object.entries(spot?.trade ?? {}).map(([id, each]) => {
       const supply = SUPPLIES[id];
