@@ -3,7 +3,6 @@
 
 import { FACTIONS, LOCATIONS } from "./data.js";
 import { NOTABLES, SPECIES } from "./character-data.js";
-import { FLEET_DATA } from "./world.js";
 import { buildLoreIndex, findLoreIds } from "../public/story.js";
 
 export const LORE_KINDS = ["person", "faction", "place", "ship", "people", "concept"];
@@ -80,14 +79,6 @@ export const LORE = [
     text: species.desc,
   })),
   ...CONCEPTS.map((concept) => ({ ...concept, id: `concept:${concept.id}`, kind: "concept" })),
-  // The fleet's ships, apart from the ones you can go aboard, which are places already.
-  ...FLEET_DATA.ships.filter((ship) => !ship.place).map((ship) => ({
-    id: `ship:${ship.id}`,
-    name: ship.name,
-    kind: "ship",
-    aliases: ship.aliases ?? [],
-    text: `${ship.role} in the fleet. ${ship.class}, under ${ship.captain}. ${ship.note}`,
-  })),
 ];
 
 const staticIndex = buildLoreIndex(LORE);

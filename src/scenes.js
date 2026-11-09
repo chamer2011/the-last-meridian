@@ -23,7 +23,8 @@ import { heldUp } from "./quests.js";
 import { parseNarration } from "../public/story.js";
 import { computerProblems, enterComputer } from "./computers.js";
 import { applySystemsEffect, placesWithSystems, systemsProblems } from "./systems.js";
-import { FACT_LINES, MAP_FILE_PROBLEMS, STORY_FILE_PROBLEMS, WORLD_COMPUTERS, WORLD_FILE_PROBLEMS, WORLD_MAPS, WORLD_THREADS, endingsOf } from "./world.js";
+import { storyHitsShip } from "./ship.js";
+import { FACT_LINES, MAP_FILE_PROBLEMS, SET_ASIDE, STORIES_DIR, STORY_CLOCK, STORY_FILE_PROBLEMS, WORLD_COMPUTERS, WORLD_FILE_PROBLEMS, WORLD_MAPS, WORLD_THREADS, endingsOf } from "./world.js";
 
 // Something the player did that the written story has no answer to. The turn changes nothing, and they read this.
 export class StoryError extends Error {}
@@ -334,6 +335,15 @@ function enterPart(game, scene, id, { emit, turn }, hops = 0) {
       for (const text of applySystemsEffect(game, step.systems, { by: "story" })) emit({ type: "notice", text });
       continue;
     }
+    if (step.stores) {
+      // The ship's stores change: food, medicine or parts, with a reason the player reads.
+      const notes = [];
+      storyHitsShip(game, step.stores, notes);
+      const changes = Object.entries(step.stores).map(([what, amount]) => `${what[0].toUpperCase()}${what.slice(1)} ${amount > 0 ? "+" : ""}${amount}`).join(", ");
+      emit({ type: "notice", text: `[SHIP] ${changes}: ${step.reason}` });
+      for (const text of notes) emit({ type: "notice", text });
+      continue;
+    }
     if (step.password) {
       game.passwords ??= {};
       game.passwords[step.password] = step.word;
@@ -492,7 +502,7 @@ function carryOn(game, scenes, context) {
     context.emit({ type: "state" });
     return;
   }
-  // The fleet, or the player alone, has just arrived somewhere with a written arrival. A scene already under way comes first.
+  // The Meridian, or the player alone, has just arrived somewhere with a written arrival. A scene already under way comes first.
   if (game.arrived) {
     const place = game.arrived;
     game.arrived = null;
@@ -517,7 +527,7 @@ function carryOn(game, scenes, context) {
       const next = nextAfter(game, pending);
       if (next) return goOn(game, scene, next, context);
     }
-    // A part can wait for something, such as the fleet arriving somewhere: its rules are read again now, and one
+    // A part can wait for something, such as the Meridian arriving somewhere: its rules are read again now, and one
     // that has come to hold since the part began sends the story on.
     const rule = ruleThatHolds(part, game);
     if (rule) return goOn(game, scene, rule.to, context);
@@ -744,6 +754,13 @@ export function sceneProblems(scene, id = "the scene", { talk = false } = {}) {
         if (!/^[a-z][a-z0-9_]{1,39}$/.test(set ?? clear)) problems.push(`${at(step, `${where}, effect ${i + 1}`)}: a flag's name is lowercase letters, digits and underscores, like told_the_fleet`);
         continue;
       }
+      // The effects the game plays itself, with no tool behind them: a door, the place's systems, a password, a
+      // computer, and the ship's stores. The parser has already said what's wrong with their words.
+      if (input.door !== undefined || input.systems || input.password || input.computer) continue;
+      if (input.stores) {
+        for (const [what, amount] of Object.entries(input.stores)) if (!["food", "medicine", "parts"].includes(what) || !Number.isFinite(amount)) problems.push(`${at(step, `${where}, effect ${i + 1}`)}: stores can change food, medicine or parts by a number, not ${what}`);
+        continue;
+      }
       const problem = toolProblem(tool, input);
       if (problem) problems.push(`${at(step, `${where}, effect ${i + 1}`)}: ${problem}`);
     }
@@ -800,5 +817,29 @@ export function allStoryProblems(dir = SCENES_DIR) {
   }
   problems.push(...STORY_FILE_PROBLEMS, ...WORLD_FILE_PROBLEMS, ...MAP_FILE_PROBLEMS, ...notesProblems(known), ...clockProblems(known), ...computerProblems(), ...systemsProblems());
   const drawn = Object.values(WORLD_MAPS).flatMap((map) => Object.values(map.levels ?? {})).filter((level) => level.drawn).length;
-  return { count, stories: Object.keys(WORLD_THREADS).length, computers: Object.keys(WORLD_COMPUTERS).length, systems: placesWithSystems(), drawn, problems };
+  return { count, stories: Object.keys(WORLD_THREADS).length, computers: Object.keys(WORLD_COMPUTERS).length, systems: placesWithSystems(), drawn, problems, fleet: fleetLeftovers(dir) };
+}
+
+// The fleet is a thing of the past, and the world's words are the owner's to rework in their own time. This is
+// what still speaks of it, for them to know: not problems, since the game reads it all as the Meridian's or lets
+// it go, but a list.
+const FLEET_WORDS = /\bfleet\b/i;
+const OTHER_SHIPS_KEYS = ["pursuit", "ships", "picked", "sat", "named"];
+
+export function fleetLeftovers(dir = SCENES_DIR) {
+  const inFolder = (folder, keep = () => true) => {
+    if (!fs.existsSync(folder)) return [];
+    return fs.readdirSync(folder).filter((name) => name.endsWith(".txt") && !name.startsWith("_") && keep(name) && FLEET_WORDS.test(fs.readFileSync(path.join(folder, name), "utf8"))).map((name) => name.slice(0, -".txt".length)).sort();
+  };
+  const worldDir = path.dirname(SCENES_DIR);
+  // A stage or a consequence that changes the fleet in a way the ship can't read: other ships lost, the Choir's pursuit.
+  const otherShips = Object.entries(STORY_CLOCK.threads).filter(([, entry]) => [...(entry.stages ?? []), ...(entry.consequences ?? [])].some((one) => Object.keys(one?.fleet ?? {}).some((key) => OTHER_SHIPS_KEYS.includes(key)))).map(([id]) => id).sort();
+  return {
+    setAside: [...SET_ASIDE].sort(),
+    otherShips,
+    stories: inFolder(STORIES_DIR),
+    scenes: inFolder(dir),
+    places: inFolder(path.join(worldDir, "places")),
+    people: inFolder(path.join(worldDir, "characters")),
+  };
 }

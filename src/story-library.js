@@ -1,18 +1,18 @@
-// The world's story material, kept in files: story threads, what's going on at each place, the
-// main story's clues, and news from around the fleet. The game master is given these only when
-// they become relevant, which keeps every message small. The player can see the leads and rumors
-// at wherever they are in a menu, without using the AI at all.
+// The world's story material, kept in files: story threads, what's going on at each place, and the
+// main story's clues. The game master is given these only when they become relevant, which keeps
+// every message small. The player can see the leads and rumors at wherever they are in a menu,
+// without using the AI at all.
 
 import { fullName } from "./campaign.js";
 import { NOTABLES } from "./character-data.js";
 import { ENEMIES, FACTIONS, ITEMS, LOCATIONS } from "./data.js";
 import { worldRumors } from "./daily.js";
 import { hasMovedOn, leadNow, movedView, ranItsCourse, whatHappened } from "./story-clock.js";
-import { inTheFleet, isCaptain } from "./role.js";
+import { isCaptain } from "./role.js";
 import { writtenThreadIds } from "./scene-files.js";
 import { conditionHolds, parseCondition } from "./scene-text.js";
-import { chairOf, lostShipNames } from "./fleet.js";
-import { FLEET_EVENTS, WORLD_ARC, WORLD_THREADS, endingsOf } from "./world.js";
+import { chairOf } from "./ship.js";
+import { SET_ASIDE, WORLD_ARC, WORLD_THREADS, endingsOf } from "./world.js";
 
 const LEADS_SHOWN = 4;
 const RUMORS_SHOWN = 3;
@@ -20,8 +20,6 @@ const ENCOUNTERS_SENT = 3;
 const CLUES_SENT = 3;
 // What's going around at a place changes this often, in days.
 const NEWS_CYCLE = 2;
-// Fleet news comes no more often than this, in AI turns.
-const TURNS_BETWEEN_NEWS = 6;
 
 export const emptyStory = () => ({ threads: {}, used: [], clues: [], act: 1, lastNews: null });
 
@@ -51,22 +49,20 @@ function seededShuffle(list, text) {
 // What's going around at this place right now. It stays the same for a couple of days, then moves on.
 const cycleSeed = (game, kind) => `${game.name}|${game.location}|${kind}|${Math.floor(dayOf(game) / NEWS_CYCLE)}`;
 
+// A story written for "the fleet" happens aboard the Meridian now.
 function fitsHere(thread, game) {
-  const place = LOCATIONS[game.location];
-  return (thread.places ?? []).some((id) => id === "any" || id === game.location || (id === "fleet" && place?.fleet));
+  return (thread.places ?? []).some((id) => id === "any" || id === game.location || (id === "fleet" && game.location === "meridian"));
 }
-
-// A story can't start from a ship that's gone.
-const namesLostShip = (text, game) => lostShipNames(game).some((name) => text?.includes(name));
 
 function threadOpen(id, thread, game) {
   const { threads } = storyOf(game);
   if (threads[id]) return false;
+  // A story set aside in world/stories/_set-aside.txt stays in its file, and out of the game.
+  if (SET_ASIDE.has(id)) return false;
   // A story with nothing written for anyone else is the captain's own business, and it goes on over everyone's head.
   if (!isCaptain(game) && !thread.anyone) return false;
   if ((thread.minLevel ?? 1) > game.level) return false;
   if (thread.after && threads[thread.after] !== "done" && !ranItsCourse(game, thread.after)) return false;
-  if (namesLostShip(leadNow(game, id), game)) return false;
   return fitsHere(thread, game);
 }
 
@@ -313,19 +309,4 @@ export function updateStory(game, { clue, act }) {
   }
   if (!said.length) throw new Error("Give a clue or an act.");
   return said.join("\n");
-}
-
-// Something small happening in the fleet, to bring in when there's a lull.
-export function fleetNews(game) {
-  if (!inTheFleet(game)) return null;
-  const story = storyOf(game);
-  if (story.lastNews !== null && game.turn - story.lastNews < TURNS_BETWEEN_NEWS) return null;
-  const events = FLEET_EVENTS.events ?? [];
-  const day = dayOf(game) + 1;
-  const ready = events.filter((event) => !story.used.includes(`n:${event.id}`) && (event.minDay ?? 1) <= day && !namesLostShip(event.text, game));
-  const [event] = seededShuffle(ready, `${game.name}|news|${game.turn}`);
-  if (!event) return null;
-  story.used.push(`n:${event.id}`);
-  story.lastNews = game.turn;
-  return `<fleet_news>Happening in the fleet right now, which you can bring in when there's a lull, or let pass: ${event.text}</fleet_news>`;
 }

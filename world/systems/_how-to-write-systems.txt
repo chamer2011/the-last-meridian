@@ -108,10 +108,10 @@ The game knows what these do:
                  up, costs standing with whoever holds the place, and puts the fact on the record
                  that the player was seen. It stops after a while, or from a computer.
     Comms        A relay. With every relay down, the guards don't hear the alarm.
-    Engines      On the Meridian: with her engines down, the fleet can't jump.
+    Engines      On the Meridian: with her engines down, she can't jump.
     Navigation   On the Meridian: with it down, every jump is plotted by hand, a fuel more and half
                  as long again.
-    Docking      Docking clamps: locked, the fleet can't leave the place.
+    Docking      Docking clamps: locked, the Meridian can't leave the place.
 
 Any other heading is a system of the place's own, like Water with a pump in it. It does nothing by
 itself, but its parts are there to work, the story can ask about it and change it, and the AI hears

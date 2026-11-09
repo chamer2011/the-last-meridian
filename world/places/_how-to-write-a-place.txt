@@ -1,7 +1,7 @@
 HOW TO WRITE A PLACE
 ====================
 
-Every place the fleet can reach is one file in this folder, named by its id: haven.txt is Haven Station, and the
+Every place the Meridian can reach is one file in this folder, named by its id: haven.txt is Haven Station, and the
 stories, the people and the star map name it by that id. The Story board in the game (The story, then Story board,
 then Places) shows and changes the same files, and npm run check-story reads them all and says what's wrong, with
 the file and the line. What a place looks like when the player walks around in it is in world/maps.
@@ -12,7 +12,6 @@ A file starts with the name, then a few lines about it, then parts under heading
     also called: Haven
     faction: drift                      (who holds it: an id from world/factions.json, or none)
     market: medkit, stim, energy_cell   (what's for sale there: ids from world/items.json; leave it empty for no market)
-    the fleet is here: no
     a place to rest: no
     dangerous: no
     hidden: no                          (not on the star map until the story shows it)

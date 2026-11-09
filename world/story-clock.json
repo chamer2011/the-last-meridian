@@ -1,7 +1,7 @@
 {
   "_help": [
-    "The main story's own clock, by act: dated events, and moves_on, which moves the story on to the next act if nobody has by then. It never moves on to the last act by itself, since the fleet has to be taken there.",
-    "after is how many days into the act, give or take a fifth. news is what people hear. fleet changes the fleet: morale, food, medicine, parts, fuel, pursuit, ships, picked and named, as in the stories' files.",
+    "The main story's own clock, by act: dated events, and moves_on, which moves the story on to the next act if nobody has by then. It never moves on to the last act by itself, since the Meridian has to be taken there.",
+    "after is how many days into the act, give or take a fifth. news is what people hear. fleet is what changes aboard the Meridian, as in the stories' files: morale, food, medicine, parts and fuel are read, and the rest (pursuit, ships, picked, sat, named), written when there was a fleet, is let go.",
     "Each story's own clock is in its file in world/stories, under If nobody steps in and Consequences."
   ],
   "acts": [

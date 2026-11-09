@@ -2,7 +2,6 @@
 also called: Bastion Nine, Bastion
 faction: hegemony
 market: ration_pack, medkit, refugee_coat, flak_vest, service_rifle, shock_baton, calm_tabs
-the fleet is here: no
 a place to rest: no
 dangerous: no
 hidden: no

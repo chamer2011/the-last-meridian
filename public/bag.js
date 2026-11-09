@@ -51,8 +51,8 @@ export const toggleBag = () => (state.open ? closeBag() : openBag());
 
 export function bagNode() {
   const g = app?.ui.game;
-  // A fight, a check, a talk, a computer or a raid takes over from it.
-  if (state.open && g && (g.combat || g.check || g.talk || g.computer || g.fleet?.raid)) {
+  // A fight, a check, a talk or a computer takes over from it.
+  if (state.open && g && (g.combat || g.check || g.talk || g.computer)) {
     state.open = false;
     closeMenu();
     hideTip();
@@ -417,7 +417,7 @@ function onKey(event) {
   }
   if ((event.key === "i" || event.key === "I") && !event.repeat) {
     const g = ui.game;
-    if (g.combat || g.check || g.talk || g.computer || g.fleet?.raid || ui.sideOpen) return;
+    if (g.combat || g.check || g.talk || g.computer || ui.sideOpen) return;
     event.preventDefault();
     toggleBag();
   }

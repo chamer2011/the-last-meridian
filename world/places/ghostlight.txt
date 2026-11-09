@@ -2,7 +2,6 @@
 also called: the Ghostlight Nebula, Ghostlight Nebula, the Ghostlight, Ghostlight
 faction: remnant
 market: signal_scrambler, emergency_patch, fuel_cell, service_rifle, energy_cell, ration_pack
-the fleet is here: no
 a place to rest: no
 dangerous: no
 hidden: no

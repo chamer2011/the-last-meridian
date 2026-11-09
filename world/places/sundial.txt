@@ -2,7 +2,6 @@
 also called: the Sundial, The Sundial, Sundial
 faction: fleet
 market: ration_pack, nutrient_gel, refugee_coat, work_suit, tool_roll, calm_tabs
-the fleet is here: yes
 a place to rest: no
 dangerous: no
 hidden: no

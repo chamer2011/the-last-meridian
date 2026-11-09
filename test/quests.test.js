@@ -155,10 +155,10 @@ test("the tracker follows the main quest until the player picks another, and nev
   assert.equal(questsView(game).following, "the_beacon");
   followQuest(game, "fuel_for_the_fleet");
   assert.equal(questsView(game).following, "fuel_for_the_fleet");
-  assert.equal(stepOf(game, "fuel_for_the_fleet").text, "Secure a fuel supplier for the fleet.");
-  runTool(game, "update_quest", { id: "fuel_for_the_fleet", status: "completed", objective: "Quill sold the fleet her fuel." }, newTurnLimits());
+  assert.equal(stepOf(game, "fuel_for_the_fleet").text, "Secure a fuel supplier for the ship.");
+  runTool(game, "update_quest", { id: "fuel_for_the_fleet", status: "completed", objective: "Quill sold the ship her fuel." }, newTurnLimits());
   assert.equal(questsView(game).following, "the_beacon", "a quest that's over isn't followed");
-  assert.deepEqual(game.quests.find((one) => one.id === "fuel_for_the_fleet").done, ["Secure a fuel supplier for the fleet."], "what it asked before is a step done");
+  assert.deepEqual(game.quests.find((one) => one.id === "fuel_for_the_fleet").done, ["Secure a fuel supplier for the ship."], "what it asked before is a step done");
   assert.throws(() => followQuest(game, "fuel_for_the_fleet"), /over/);
   assert.throws(() => followQuest(game, "no_such_quest"), /no quest/);
 });

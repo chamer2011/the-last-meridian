@@ -3,7 +3,8 @@
 
 import { checkStyle, setCheckStyle } from "./check.js";
 import { api, beliefBar, columns, el, folded, meter, money, signed, strainMeter } from "./dom.js";
-import { fleetMenu, mapMenu } from "./fleet.js";
+import { mapMenu } from "./map.js";
+import { shipMenu } from "./ship.js";
 import { oddsFor } from "./story.js";
 
 // What the menus need from the main screen. Set once, when the page loads.
@@ -54,13 +55,13 @@ function characterMenu() {
         small(`${g.ideologyTitle}. ${d.drive ? `Driven to: ${d.drive}.` : ""}`))),
     !g.role.captain && section("Your place",
       el("strong", {}, g.role.title),
-      g.role.chair && muted(`${g.role.chair} has the fleet, and the Meridian. You're not the one they ask.`),
+      g.role.chair && muted(`${g.role.chair} has the Meridian's chair. You're not the one they ask.`),
       g.role.job
         ? [muted(`It's a living: about ${g.role.job.pay} credits for eight hours, and it wears you out.`), el("div", {}, el("button", { disabled: Boolean(g.combat || g.talk), onclick: act({ action: "work" }) }, g.role.job.name))]
         : g.role.jobAway && muted(`Your work's back at ${g.role.jobAway.place}.`),
       el("div", { class: "row" },
         el("button", { disabled: Boolean(g.combat || g.talk || g.check), onclick: () => app.openMenu("map") }, "Open the star map"),
-        el("button", { onclick: () => app.openMenu("fleet") }, "What's the fleet doing?"))),
+        el("button", { onclick: () => app.openMenu("ship") }, "How's the Meridian?"))),
     section("Experience",
       row("Level", g.level),
       el("div", { class: "menu-row" }, el("span", {}, "Next level"), el("span", {}, `${asciiBar(g.xp, g.xpToNext)} ${g.xp}/${g.xpToNext} XP`)),
@@ -372,49 +373,7 @@ function codexMenu() {
   ];
 }
 
-// ---- Ship ---------------------------------------------------------------
-
-// The Meridian's own systems, which the captain runs from here with no hacking: each one folded, with what isn't
-// working said on its line.
-function shipSystems(g) {
-  const systems = g.shipSystems;
-  if (!systems?.length) return null;
-  const turn = (row, to) => app.runAction(async () => {
-    const { game } = await api("/api/systems", { row, to });
-    app.ui.game = game;
-  });
-  return section("Systems",
-    systems.map((system) => {
-      const down = system.rows.filter((row) => !row.works).length;
-      return folded(`ship-systems-${system.id}`, `${system.title}${down ? ` (${down} down)` : ""}`,
-        system.rows.map((row) => el("div", { class: "menu-row small ship-system-row" },
-          el("span", { class: "ship-system-name" }, row.name, row.feed?.length ? el("span", { class: "muted" }, `, on camera: ${row.feed.join(", ")}`) : null),
-          el("span", { class: `tag${row.works ? "" : " bad"}` }, row.word),
-          row.actions.map((action) => el("button", { class: "small", onclick: turn(row.id, action.to) }, action.label)))));
-    }));
-}
-
-function shipMenu() {
-  const g = app.ui.game;
-  const s = g.ship;
-  return columns(
-    section(s.name,
-      el("div", { class: "stack gap-small small" }, meter("HULL  ", s.hull, s.maxHull), meter("FUEL  ", s.fuel, s.maxFuel), meter("MORALE", s.morale, 100)),
-      muted("Each jump uses 1 to 3 fuel, depending on how far it is. If fuel runs out, the fleet can't jump anywhere.")),
-    section("Current location",
-      el("div", { class: "card" }, el("strong", {}, g.location.name), muted(g.location.desc), small(g.clock.label))),
-    shipSystems(g),
-    section("Crew",
-      g.people.filter((p) => p.crew).map((p) => el("div", { class: "menu-row small" },
-        el("span", {}, p.name, el("span", { class: "muted" }, `, ${p.role}`)),
-        el("span", { class: p.status === "alive" ? "tag" : "tag bad" }, p.status === "alive" ? p.attitude ?? "not met" : p.status)))),
-    section("Where to go",
-      muted(`You know of ${g.locations.filter((l) => !l.withFleet).length} places. You'll hear about more as the story goes on.`),
-      el("div", { class: "row" },
-        el("button", { class: "primary", onclick: () => app.openMenu("map") }, "Open the star map"),
-        el("button", { onclick: () => app.openMenu("fleet") }, "Open the Fleet menu"))),
-  );
-}
+// ---- Ship: in ship.js, and the star map in map.js ---------------------------
 
 // ---- Market -------------------------------------------------------------
 
@@ -640,8 +599,7 @@ export const MENUS = {
   leads: { label: "Leads", command: "leads", about: "Stories you could start here, and what people are saying", view: leadsMenu },
   codex: { label: "What you know", command: "codex", about: "Places, factions, ships and ideas you've come across", view: codexMenu },
   inventory: { label: "Inventory", command: "inv", about: "What you're carrying and wearing, on a grid, or press I", window: "bag" },
-  ship: { label: "Ship", command: "ship", about: "The Meridian and her crew", view: shipMenu, captainOnly: true },
-  fleet: { label: "Fleet", command: "fleet", about: "All 41 ships: supplies, rations, work crews and orders", view: fleetMenu },
+  ship: { label: "Ship", command: "ship", about: "The Meridian: her stores, rations, orders, systems and crew. If you aren't the captain, how she stands", view: shipMenu },
   map: { label: "Star map", command: "map", about: "The chart of known space, and setting course", view: mapMenu },
   market: { label: "Market", command: "market", about: "Buying and selling, where there's a market", view: marketMenu },
   bestiary: { label: "Enemies met", command: "bestiary", about: "Enemies you know of, how they fight, and the simulator", view: bestiaryMenu },
@@ -652,7 +610,7 @@ export const MENUS = {
 export const MENU_GROUPS = [
   { title: "You", ids: ["character", "skills", "traits", "perks", "beliefs", "dossier"] },
   { title: "The story", ids: ["quests", "leads", "board", "people", "codex", "bestiary"] },
-  { title: "The fleet", ids: ["fleet", "ship", "map"] },
+  { title: "The ship", ids: ["ship", "map"] },
   { title: "Gear", ids: ["inventory", "market"] },
   { title: "Game", ids: ["settings"] },
 ];

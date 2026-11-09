@@ -2,7 +2,6 @@
 also called: Lumen Sanctuary, Lumen
 faction: circle
 market: medkit, calm_tabs, nutrient_gel, surgeon_lens, resonance_tuner, adept_robes
-the fleet is here: no
 a place to rest: no
 dangerous: no
 hidden: no

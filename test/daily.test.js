@@ -14,7 +14,7 @@ process.env.GAME_DATA_DIR = dataDir;
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const { changePlace, levelName, newWorld, newsView, placeLine, placeNow, supplyFactor, worldLines, worldReport, worldRumors } = await import("../src/daily.js");
 const { FACTIONS, ITEMS, LOCATIONS } = await import("../src/data.js");
-const { chartEntry, fleetCommand, fleetView } = await import("../src/fleet.js");
+const { chartEntry, shipCommand, shipView } = await import("../src/ship.js");
 const { migrateGame } = await import("../src/migrate.js");
 const { projectDir } = await import("../src/paths.js");
 const { aiSnapshot, buy, buyPrice, passTime, publicState, sell, sellPrice } = await import("../src/rules.js");
@@ -32,7 +32,7 @@ const tool = (game, name, input) => runTool(game, name, input, newTurnLimits());
 const days = (game, count) => passTime(game, 24 * count, "routine");
 const at = (place) => {
   const game = newGame();
-  game.fleet.at = place;
+  game.ship.at = place;
   game.location = place;
   game.walk = null;
   return game;
@@ -78,9 +78,10 @@ test("everything that can happen happens at real places, and is written properly
   }
 });
 
-test("whatever sells to the fleet on the star map is something that place deals in", () => {
+test("whatever sells to the Meridian on the star map is something that place deals in, unless it's a ship with no day of its own", () => {
   for (const [id, spot] of Object.entries(STAR_MAP.places)) {
-    for (const good of Object.keys(spot.trade ?? {})) assert.notEqual(FILE[id]?.goods?.[good], undefined, `${id} sells ${good} to the fleet, so it needs a level for it`);
+    if (!FILE[id]) continue;
+    for (const good of Object.keys(spot.trade ?? {})) assert.notEqual(FILE[id]?.goods?.[good], undefined, `${id} sells ${good} to the ship, so it needs a level for it`);
   }
 });
 
@@ -105,13 +106,13 @@ test("on day one, every price and every chart entry is exactly what it always wa
 });
 
 test("a new game has a world, and an older save gets one that starts from now", () => {
-  assert.equal(newGame().version, 15);
+  assert.equal(newGame().version, 16);
   assert.ok(newGame().world.places.haven);
   const old = { ...newGame(), version: 11, clock: { hours: 24 * 40 + 8 } };
-  old.fleet.day = 40;
+  old.ship.day = 40;
   delete old.world;
   const game = migrateGame(JSON.parse(JSON.stringify(old)));
-  assert.equal(game.version, 15);
+  assert.equal(game.version, 16);
   assert.equal(game.world.day, 40, "nobody pays for the days that went by before");
   assert.deepEqual(passTime(game, 1), [], "and nothing happens all at once");
   assert.doesNotThrow(() => publicState(game));
@@ -164,7 +165,6 @@ test("over the years, every place has good times and bad, and comes back from th
   const high = {};
   for (let day = 0; day < 365 * 3; day += 1) {
     days(game, 1);
-    game.fleet.raid = null;
     for (const [id, state] of Object.entries(game.world.places)) {
       for (const [good, level] of Object.entries(state.goods)) {
         const key = `${id}/${good}`;
@@ -273,45 +273,45 @@ test("the less there is of something, the more it costs, and there's a band for 
   assert.deepEqual([150, 100, 60, 30, 5].map(levelName), ["plenty", "normal", "short", "scarce", "almost gone"]);
 });
 
-test("the fleet pays what things cost today, each lot it buys raises the price, and it can run out", () => {
+test("the ship pays what things cost today, each lot it buys raises the price, and it can run out", () => {
   const game = at("haven");
   game.credits = 100000;
   game.ship.fuel = 2;
-  const before = fleetView(game).trade.find((one) => one.id === "fuel");
+  const before = shipView(game).trade.find((one) => one.id === "fuel");
   assert.equal(before.level, "normal");
   const credits = game.credits;
-  fleetCommand(game, { action: "buy", id: "fuel" });
+  shipCommand(game, { action: "buy", id: "fuel" });
   assert.equal(game.credits, credits - before.price);
-  const after1 = fleetView(game).trade.find((one) => one.id === "fuel");
+  const after1 = shipView(game).trade.find((one) => one.id === "fuel");
   assert.ok(after1.price > before.price, `${after1.price} after ${before.price}`);
   game.world.places.haven.goods.fuel = 5;
-  const empty = fleetView(game).trade.find((one) => one.id === "fuel");
+  const empty = shipView(game).trade.find((one) => one.id === "fuel");
   assert.equal(empty.none, true);
-  assert.throws(() => fleetCommand(game, { action: "buy", id: "fuel" }), /any left/);
+  assert.throws(() => shipCommand(game, { action: "buy", id: "fuel" }), /any left/);
 });
 
-test("the fleet can sell what it has, for more where it's short, and that eases the shortage", () => {
+test("the ship can sell what it has, for more where it's short, and that eases the shortage", () => {
   const game = at("haven");
   const { goods } = game.world.places.haven;
-  const row = (id) => fleetView(game).trade.find((one) => one.id === id);
+  const row = (id) => shipView(game).trade.find((one) => one.id === id);
   const usual = row("medicine").sellFor;
   goods.medicine = 30;
   const dear = row("medicine").sellFor;
   assert.ok(dear > usual * 1.5, `${dear} against ${usual}`);
   assert.ok(row("medicine").price > dear, "buying always costs more than selling pays");
   const credits = game.credits;
-  const stock = game.fleet.medicine;
-  const reply = fleetCommand(game, { action: "sell", id: "medicine" });
+  const stock = game.ship.medicine;
+  const reply = shipCommand(game, { action: "sell", id: "medicine" });
   assert.equal(game.credits, credits + dear);
-  assert.equal(game.fleet.medicine, stock - 5);
+  assert.equal(game.ship.medicine, stock - 1);
   assert.ok(goods.medicine > 30);
-  assert.match(reply.message, /Sold 5 crates of the fleet's medicine/);
-  game.fleet.parts = 1;
-  assert.throws(() => fleetCommand(game, { action: "sell", id: "parts" }), /hasn't got/);
+  assert.match(reply.message, /Sold 1 crate of the ship's medicine/);
+  game.ship.parts = 0.5;
+  assert.throws(() => shipCommand(game, { action: "sell", id: "parts" }), /hasn't got/);
   game.ship.fuel = 0;
-  assert.throws(() => fleetCommand(game, { action: "sell", id: "fuel" }), /hasn't got/);
+  assert.throws(() => shipCommand(game, { action: "sell", id: "fuel" }), /hasn't got/);
   const nowhere = at("meridian");
-  assert.throws(() => fleetCommand(nowhere, { action: "sell", id: "food" }), /Nobody here/);
+  assert.throws(() => shipCommand(nowhere, { action: "sell", id: "food" }), /Nobody here/);
 });
 
 test("the market's prices follow the supplies too, and what you sell is worth more where it's short", () => {
@@ -355,11 +355,13 @@ test("whoever holds a place charges you more if they hate you, and less if they 
   assert.ok(buyPrice(game, ITEMS.medkit) > usual, "and it's whoever holds it now that counts");
 });
 
-test("the fleet's own ships have no prices of their own", () => {
-  const game = at("sundial");
-  assert.equal(buyPrice(game, ITEMS.ration_pack), buyPrice(newGame(), ITEMS.ration_pack));
-  assert.equal(placeNow(game, "sundial"), null);
-  assert.equal(placeLine(game), null);
+test("the Meridian herself, and a ship with no day of its own, have no prices of their own", () => {
+  for (const id of ["meridian", "sundial"]) {
+    const game = at(id);
+    assert.equal(buyPrice(game, ITEMS.ration_pack), buyPrice(newGame(), ITEMS.ration_pack), id);
+    assert.equal(placeNow(game, id), null, id);
+    assert.equal(placeLine(game), null, id);
+  }
 });
 
 // ---- The game master ------------------------------------------------------------
@@ -369,7 +371,7 @@ test("the game master gets one short line about wherever the captain is, in plai
   const line = placeLine(game);
   assert.match(line, /^Cinder Reach today: The refinery company holds it \(company 45, strike 45, hegemony 5, drift 5\)\. Supplies: food normal, fuel normal, medicine normal, parts normal\.$/);
   assert.ok(aiSnapshot(game).split("\n").includes(line));
-  assert.ok(!aiSnapshot(newGame()).includes(" today: "), "nothing about the fleet's own ships");
+  assert.ok(!aiSnapshot(newGame()).includes(" today: "), "nothing about the Meridian herself");
   game.world.places.cinder.events = [{ id: "cinder_tremor", left: 5 }];
   game.world.places.cinder.goods.fuel = 40;
   assert.match(placeLine(game), /fuel scarce.*Going on: A big tremor/);
@@ -500,16 +502,16 @@ test("over the real server: the clock runs away from the Meridian, trading moves
   assert.ok(tick.people.length > 0, "there's someone at the docks");
 
   const start = (await (await fetch(`http://127.0.0.1:${port}/api/state`)).json()).game;
-  const fuel = start.fleet.trade.find((one) => one.id === "fuel");
+  const fuel = start.ship.trade.find((one) => one.id === "fuel");
   assert.equal(fuel.level, "normal");
-  const bought = await post("/api/fleet", { action: "buy", id: "parts" });
+  const bought = await post("/api/ship", { action: "buy", id: "parts" });
   assert.equal(bought.status, 200);
-  assert.ok(bought.game.fleet.trade.find((one) => one.id === "parts").price > start.fleet.trade.find((one) => one.id === "parts").price);
-  const sold = await post("/api/fleet", { action: "sell", id: "parts" });
+  assert.ok(bought.game.ship.trade.find((one) => one.id === "parts").price > start.ship.trade.find((one) => one.id === "parts").price);
+  const sold = await post("/api/ship", { action: "sell", id: "parts" });
   assert.equal(sold.status, 200);
   assert.ok(sold.game.credits > bought.game.credits);
 
-  const waited = await post("/api/fleet", { action: "wait", days: 3 });
+  const waited = await post("/api/ship", { action: "wait", days: 3 });
   assert.equal(waited.status, 200);
   assert.ok(waited.game.clock.hours >= start.clock.hours + 72);
   assert.ok(waited.game.world.here.goods.length === 4);

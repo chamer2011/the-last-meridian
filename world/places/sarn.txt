@@ -2,7 +2,6 @@
 also called: the Long Archive, Long Archive, Sarn
 faction: archive
 market: data_chip, field_scanner, nav_slate, calm_tabs, energy_cell
-the fleet is here: no
 a place to rest: no
 dangerous: no
 hidden: no

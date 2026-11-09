@@ -129,6 +129,9 @@ reloadWorld();
 export const STORIES_DIR = process.env.GAME_STORIES_DIR ?? path.join(worldDir, "stories");
 export const WORLD_THREADS = {};
 export const STORY_FILE_PROBLEMS = [];
+// Stories kept in their files but out of the game, one id a line in world/stories/_set-aside.txt: since the fleet
+// went, the ones that stand on a ship that isn't there any more.
+export const SET_ASIDE = new Set();
 
 // Each place's map: its file in world/maps, with the rooms drawn in Tiled, in world/maps/<place>/, in place of the
 // file's own (see src/tiled.js). Those are read again when one changes, so a room saved in Tiled shows up while the game
@@ -227,7 +230,6 @@ export const WORLD_LIFE = readFolder(path.join(worldDir, "life"));
 
 
 export const WORLD_ARC = readFile("arc.json");
-export const FLEET_EVENTS = readFile("fleet-events.json");
 export const DAILY = readFile("daily.json");
 export const STORY_CLOCK = { ...readFile("story-clock.json"), threads: {} };
 export const STARTS = readFile("starts.json");
@@ -250,7 +252,7 @@ export const COMBAT_TEXT = readRequired("combat-text.json");
 export const COMBAT_ART = readRequired("art.json");
 export const PARLEY = readRequired("parley.json");
 export const LOOKS = readRequired("looks.json");
-export const FLEET_DATA = readRequired("fleet.json");
+export const SHIP_DATA = readRequired("ship.json");
 export const STAR_MAP = readRequired("starmap.json");
 
 // Reads every story file. A file with a problem is still read as far as it goes, so one mistake can't stop the
@@ -260,6 +262,7 @@ export function reloadStories() {
   for (const key of Object.keys(STORY_CLOCK.threads)) delete STORY_CLOCK.threads[key];
   for (const key of Object.keys(FACT_LINES)) delete FACT_LINES[key];
   STORY_FILE_PROBLEMS.splice(0);
+  SET_ASIDE.clear();
   if (!fs.existsSync(STORIES_DIR)) return;
   for (const name of fs.readdirSync(STORIES_DIR).sort()) {
     if (!name.endsWith(".txt") || name.startsWith("_")) continue;
@@ -269,6 +272,14 @@ export function reloadStories() {
     WORLD_THREADS[id] = story;
     STORY_CLOCK.threads[id] = clock;
     Object.assign(FACT_LINES, story.gm?.facts ?? {});
+  }
+  const asideFile = path.join(STORIES_DIR, "_set-aside.txt");
+  if (!fs.existsSync(asideFile)) return;
+  for (const raw of fs.readFileSync(asideFile, "utf8").split(/\r?\n/)) {
+    const id = raw.replace(/#.*$/, "").trim();
+    if (!id) continue;
+    if (WORLD_THREADS[id]) SET_ASIDE.add(id);
+    else STORY_FILE_PROBLEMS.push(`stories/_set-aside.txt: there's no story called ${id}`);
   }
 }
 reloadStories();

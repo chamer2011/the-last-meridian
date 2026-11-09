@@ -1,0 +1,108 @@
+{
+  "_note": "The Meridian on her own: who's aboard and what they use up each day, what she starts with, the ration levels, what the officers and the council do by themselves, who captains her when the player doesn't, and everything she says in the story. You can change any of it, then restart the game. Changes reach new games, and the numbers reach saved games too. The fleet she led is a thing of the past: there are no other ships here.",
+
+  "ship": {
+    "name": "CFS Meridian",
+    "aboard": 900,
+    "uses": { "parts": 0.14, "fuel": 0.4 },
+    "produces": {},
+    "note": "Built for three hundred crew and carrying nine hundred. Medbay, mess hall, one working cannon."
+  },
+
+  "start": { "food": 22, "medicine": 5, "parts": 6, "health": 70 },
+
+  "supplies": {
+    "food": { "name": "Food", "unit": "t", "lot": 5, "perPerson": 0.001 },
+    "fuel": { "name": "Fuel", "unit": "", "lot": 1 },
+    "medicine": { "name": "Medicine", "unit": "crates", "lot": 1, "perPerson": 0.0001 },
+    "parts": { "name": "Parts", "unit": "crates", "lot": 1 }
+  },
+
+  "rations": {
+    "generous": { "name": "Generous", "food": 1.25, "morale": 74, "health": 84, "desc": "Full plates, and people remember what that was like." },
+    "standard": { "name": "Standard", "food": 1, "morale": 60, "health": 72, "desc": "Enough to work on, if nobody asks for seconds." },
+    "reduced": { "name": "Reduced", "food": 0.75, "morale": 42, "health": 58, "desc": "Three quarters of a meal, and a lot of arguments about whose quarter." },
+    "half": { "name": "Half", "food": 0.5, "morale": 24, "health": 38, "desc": "Half a meal. People get thin and quiet, and the captain eats what they eat." }
+  },
+
+  "rules": {
+    "_note": "warnAtDays is how many days of a supply are left when the story warns. With parts aboard the engineers mend the hull by mend a day; without them it wears by wearNoParts a day. Below deadlyHealth people aboard start dying, down to peopleFloor. shortage is what each supply running out does to where morale and health settle.",
+    "warnAtDays": 5,
+    "wearNoParts": 0.9,
+    "mend": 0.5,
+    "deadlyHealth": 30,
+    "peopleFloor": 300,
+    "climbFrom": 20,
+    "shortage": {
+      "food": { "morale": -25, "health": -45 },
+      "fuel": { "morale": -10, "health": -5 },
+      "medicine": { "morale": -15, "health": -25 },
+      "parts": { "morale": -5, "health": 0 }
+    }
+  },
+
+  "council": {
+    "_note": "What the officers and the council will do by themselves if nobody else does. when is what has to be true (days of a supply left, and so on), for at least wait days. every is the fewest days between two of the same decision. set is what they do: the rations. The first one that's ready each day happens. respect is how many days an order of the captain's own stands before they'd change it. {who} is the person named, if they're still around, and otherwise whoever's in anyone.",
+    "wait": 2,
+    "respect": 4,
+    "anyone": "The council",
+    "free": "The officers and the council will act on their own again if something's gone wrong and you haven't dealt with it.",
+    "held": "You've told the officers and the council to wait for your word, whatever happens.",
+    "decisions": [
+      { "id": "half_rations", "when": { "foodBelow": 3, "rations": ["generous", "standard", "reduced"] }, "wait": 1, "set": { "rations": "half" }, "who": "halm", "name": "Speaker Halm", "text": "There's about three days of food left, and nobody was answering. {who} has put the whole ship on half rations." },
+      { "id": "cut_rations", "when": { "foodBelow": 7, "rations": ["generous", "standard"] }, "set": { "rations": "reduced" }, "who": "odessa", "name": "Quartermaster Brandt", "text": "{who} has checked the food count twice, and cut rations to three quarters without waiting for the captain." },
+      { "id": "feast", "when": { "moraleBelow": 30, "foodAbove": 25, "rations": ["standard"] }, "wait": 2, "every": 20, "set": { "rations": "generous" }, "who": "halm", "name": "Speaker Halm", "text": "{who} has talked the council into generous rations for a while, since it's cheaper than a ship that's stopped listening." },
+      { "id": "feast_over", "when": { "theirRations": true, "rations": ["generous"], "moraleAbove": 50 }, "set": { "rations": "standard" }, "who": "odessa", "name": "Quartermaster Brandt", "text": "{who} has put the ship back on standard rations, now that people have stopped talking about leaving." },
+      { "id": "more_food", "when": { "foodAtStandard": 20, "rations": ["reduced", "half"], "moraleBelow": 55 }, "set": { "rations": "standard" }, "who": "odessa", "name": "Quartermaster Brandt", "text": "{who} says the stores can stand it, and the ship's back on standard rations." }
+    ]
+  },
+
+  "chair": {
+    "_note": "Who captains the Meridian if the player isn't the captain. One of these is chosen for each game, and each has a file in world/characters and a day in world/life/meridian.json. moveAt is how few days of a supply they'll let it come to before leaving to get more, stockTo is how many days of it they buy up to, restDays is the fewest days between jumps, and risk is the most dangerous place they'll take the ship (see world/starmap.json). funds is what they start with to buy supplies, and income is what comes in each day. fuelReserve is the fuel they try to carry, fuelLow is when they go and get more whatever else is happening, and desperate is how few days of anything will make them jump again straight away. ports are the places a ship like this would go.",
+    "funds": 600,
+    "income": 60,
+    "lotsAtOnce": 4,
+    "buyEvery": 3,
+    "fuelReserve": 6,
+    "fuelLow": 3,
+    "desperate": 3,
+    "ports": ["haven", "kessara", "graveyard", "frontier", "cinder", "deepyards", "korrath", "lumen", "maris", "wheel", "ghostlight"],
+    "captains": {
+      "reddick": { "name": "Captain Reddick", "moveAt": 12, "stockTo": 25, "restDays": 9, "risk": 1 },
+      "marchetti": { "name": "Captain Marchetti", "moveAt": 8, "stockTo": 22, "restDays": 11, "risk": 3 },
+      "lund": { "name": "Captain Lund", "moveAt": 9, "stockTo": 22, "restDays": 10, "risk": 2 }
+    }
+  },
+
+  "text": {
+    "chairJumped": "{who} has taken the Meridian to {place}, {why}.",
+    "chairWhy": { "food": "to get food", "fuel": "to find fuel", "medicine": "to find medicine", "parts": "to find parts" },
+    "chairLeft": "The Meridian has left {from} for {place}.",
+    "chairCame": "The Meridian has come in at {place}.",
+    "chairBought": "{who} has bought {what} for the ship at {place}.",
+    "chairTook": "{who} has the chair. Rations, buying and jumps are for {who} to answer, and you're not the one they ask.",
+    "waitOther": "You let {days} go by. It's now {clock}.",
+    "medicineOutOther": "The Meridian is out of medicine. Health will fall, and the sick are starting to die of things that used to be easy.",
+    "foodLow": "Food is down to about {days} days. Quartermaster Brandt has started checking the count twice.",
+    "fuelLow": "Fuel is down to about {days} days. Chief Marrow has stopped rounding up.",
+    "medicineLow": "Medicine is down to about {days} days, and Dr. Aduro has started counting doses out loud.",
+    "partsLow": "Parts are down to about {days} days. The engineers are starting to patch their patches.",
+    "foodOut": "The Meridian is out of food. The galley is serving what's left in the garden, and it isn't enough. Morale and health will fall fast.",
+    "fuelOut": "The Meridian is out of fuel. She can't jump, the heat's off the lower decks, and everyone's working in coats.",
+    "medicineOut": "The Meridian is out of medicine. Health will fall, and the sick are starting to die of things that used to be easy. Your own wounds will heal slower too.",
+    "partsOut": "The Meridian is out of parts. Nothing that breaks gets mended, and the hull is wearing.",
+    "foodBack": "There's food again. The queue at the galley is still long, but people are standing up straighter.",
+    "fuelBack": "There's fuel in the tank again, and heat in the lower decks.",
+    "medicineBack": "There's medicine again. Dr. Aduro sleeps for six hours straight, and denies it.",
+    "partsBack": "There are parts again, and the engineers stop patching their patches.",
+    "foodStill": "Day {days} with no food stores. People are starving.",
+    "fuelStill": "Day {days} with no fuel. The ship is cold, and she can't run.",
+    "medicineStill": "Day {days} with no medicine, and the medbay is getting quieter in the wrong way.",
+    "partsStill": "Day {days} with no parts, and the ship is coming apart at the seams.",
+    "deaths": "{dead} more people aboard have died of hunger and sickness.",
+    "underfed": "You've been eating what everyone else is eating, and it's starting to show.",
+    "wait": "The Meridian holds position for {days}. It's now {clock}.",
+    "bought": "Bought {amount} of {supply} for the ship, for {price} credits.",
+    "sold": "Sold {amount} of the ship's {supply}, for {price} credits."
+  }
+}

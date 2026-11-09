@@ -967,15 +967,15 @@ export function systemsLine(game) {
   return bits.length ? `Systems at ${model.name}: ${bits.join("; ")}. Everything else is working.` : null;
 }
 
-// The Meridian can't jump with her engines down, and the fleet can't leave a station that has its clamps locked.
+// The Meridian can't jump with her engines down, and she can't leave a station that has its clamps locked.
 export function jumpBlocked(game) {
   if (!isCaptain(game)) return null;
   const ship = systemsOf("meridian");
   const engines = partsOf(ship, "engines");
-  if (engines.length && !engines.every((part) => partWorks(game, "meridian", part))) return "The Meridian's engines are down, so the fleet can't jump until they're running again.";
-  const at = game.fleet?.at;
+  if (engines.length && !engines.every((part) => partWorks(game, "meridian", part))) return "The Meridian's engines are down, so she can't jump until they're running again.";
+  const at = game.ship?.at;
   const dock = at ? systemsOf(at) : null;
-  if (partsOf(dock, "docking").some((part) => !partWorks(game, at, part))) return `The docking clamps at ${dock.name} are locked, so the fleet can't leave until they're released.`;
+  if (partsOf(dock, "docking").some((part) => !partWorks(game, at, part))) return `The docking clamps at ${dock.name} are locked, so the Meridian can't leave until they're released.`;
   return null;
 }
 

@@ -4,15 +4,16 @@ import { creatorScreen, initCreator, openCreator, resetCreator } from "./creator
 import { checkNode, checkOpen, focusCheck, initCheck, resetCheck, startChoiceCheck, startPractice } from "./check.js";
 import { api, el, meter, money, readLines } from "./dom.js";
 import { fightNode, fightOpen, focusFight, initFight, resetFight, startSim } from "./fight.js";
-import { focusRaid, initFleet, raidNode, raidOpen, resetRaid } from "./fleet.js";
+import { initMap } from "./map.js";
+import { initShip } from "./ship.js";
 import { openBoard } from "./board.js";
 import { MENUS, MENU_GROUPS, initMenus } from "./menus.js";
 import { choicesFor, dropStaleTooltip, initStory, loreCatalog, optionContent, setStoryContext, storyEntryNode, thinkingNode } from "./story-view.js";
 import { focusTalk, initTalk, resetTalk, startTalk, talkNode, talkOpen } from "./talk.js";
 import { computerNode, computerOpen, focusComputer, initComputer, resetComputer } from "./computer.js";
 import { bagNode, bagOpen, initBag, openBag, resetBag, toggleBag } from "./bag.js";
-import { drawQuests, initQuests, questTrackerNode, questsOpen, resetQuests, toggleQuests } from "./quests.js";
 import { initSheet, resetSheet, sheetNode, toggleSheet } from "./sheet.js";
+import { drawQuests, initQuests, questTrackerNode, questsOpen, resetQuests, toggleQuests } from "./quests.js";
 import { beginScene, initPopups, openPopups, popupDrawn, popupNext, popupsAttached, updatePopups } from "./popups.js";
 import { INTERFACE_SIZES, interfaceZoom } from "./scene.js";
 import { focusThing, initWalk, keepClear, markPoint, newsBehindMenu, popupsShown, putAwayRoomWindows, renderWalk, resetWalk, showWholeStory, thingNode, thingOpen, toggleClock, walkShown, walkViewNode } from "./walk.js";
@@ -38,9 +39,6 @@ const ui = {
   renderedCount: 0,
   menuFocus: null,
   peopleFilter: "all",
-  fleetTab: "command",
-  shipFilter: "all",
-  stripping: null,
   mapSelected: null,
   codexSearch: "",
   error: null,
@@ -180,8 +178,6 @@ async function sendChat(body) {
   if (ui.error && body.text) ui.draft = body.text;
   ui.streaming = false;
   ui.liveEntries = [];
-  // A raid that started during this turn needs the whole screen.
-  if (ui.game?.fleet.raid) ui.sideOpen = false;
   render();
 }
 
@@ -193,9 +189,9 @@ function titleScreen() {
   const saves = ui.saves.filter((s) => !s.empty);
   return el("div", { class: "screen stack" },
     el("div", {},
-      el("div", { class: "boot" }, "MERIDIAN-OS 4.1 // CONCORD FLEET COMMAND\n[ OK ] Reactor: unstable but online\n[ OK ] Fleet link: 41 ships responding\n[WARN] Unknown signal on all channels"),
+      el("div", { class: "boot" }, "MERIDIAN-OS 4.1 // CFS MERIDIAN\n[ OK ] Reactor: unstable but online\n[ OK ] Ship's systems: 900 souls aboard\n[WARN] Unknown signal on all channels"),
       el("h1", { class: "title" }, "Almagest Explorer's"),
-      el("p", { class: "subtitle" }, "Thirty thousand survivors. Forty-one ships. One signal from beyond the edge of the map. Where are you in all this?"),
+      el("p", { class: "subtitle" }, "Nine hundred survivors. One battered ship. One signal from beyond the edge of the map. Where are you in all this?"),
     ),
     el("div", { class: "row" },
       el("button", { class: "primary", onclick: runAction(async () => { ui.screen = "create"; await openCreator(ui.setup); }) }, "New game"),
@@ -219,12 +215,11 @@ async function loadGame(slot) {
   const { game, saves } = await api("/api/load", { slot });
   resetFight();
   resetCheck();
-  resetSheet();
-  resetRaid();
   resetWalk();
   resetTalk();
   resetComputer();
   resetBag();
+  resetSheet();
   resetQuests();
   ui.typing = false;
   ui.game = game;
@@ -238,13 +233,12 @@ async function loadGame(slot) {
 async function startNewGame(draft) {
   const { game, saves } = await api("/api/new", { draft });
   resetFight();
-  resetSheet();
   resetCheck();
-  resetRaid();
   resetWalk();
   resetTalk();
   resetComputer();
   resetBag();
+  resetSheet();
   resetQuests();
   ui.typing = false;
   ui.game = game;
@@ -278,9 +272,8 @@ function statusNode() {
     g.conditions.length > 0 && el("span", { class: "meter low" }, `HURT ${g.conditions.length}`),
     el("span", {}, `CR ${g.credits}`),
     !g.role.captain && el("span", {}, g.role.short.toUpperCase()),
-    g.role.captain && el("span", {}, `FLEET ${g.fleet.shipCount}`),
-    g.role.captain && el("span", { class: g.fleet.pursuit >= 75 ? "meter low" : "" }, `PURSUIT ${g.fleet.pursuit}`),
-    g.role.captain && g.fleet.shortages.length > 0 && el("span", { class: "meter low" }, `SHORT: ${g.fleet.shortages.join(", ").toUpperCase()}`),
+    g.role.captain && el("span", { class: g.ship.fuel < 2 ? "meter low" : "" }, `FUEL ${g.ship.fuel}`),
+    g.role.captain && g.ship.shortages.length > 0 && el("span", { class: "meter low" }, `SHORT: ${g.ship.shortages.join(", ").toUpperCase()}`),
     el("span", { class: "muted" }, `${g.clock.label} @ ${g.location.name}`),
     ui.settings.spending.lastTurn !== null && el("span", { class: "muted", title: "What the last AI turn cost. There's more in Settings." }, `LAST TURN ${money(ui.settings.spending.lastTurn)}`),
     el("button", { class: "mobile-toggle", onclick: () => openMenu(ui.tab) }, "Menu"),
@@ -290,8 +283,8 @@ function statusNode() {
 // The numbered choices on offer right now. Each can be clicked, or picked by typing its number.
 function currentOptions() {
   const g = ui.game;
-  // A fight, a check, a raid or a talk has its own window, with its own choices.
-  if (ui.streaming || ui.waiting || g.combat || g.check || g.talk || g.computer || g.fleet.raid) return [];
+  // A fight, a check or a talk has its own window, with its own choices.
+  if (ui.streaming || ui.waiting || g.combat || g.check || g.talk || g.computer) return [];
   // After a fight or a check, the game waits. The story only goes on when the player says to carry on.
   const written = g.mode === "written";
   const carryOn = [{ label: "Continue the story", detail: written || g.scene ? "the story picks it up from here" : "the game master picks it up from here", run: () => sendChat({ event: "continue" }) }];
@@ -409,7 +402,7 @@ function composerNode() {
           autocomplete: "off",
           spellcheck: "false",
           placeholder: hint,
-          disabled: ui.streaming || ui.waiting || Boolean(g.combat) || Boolean(g.check) || Boolean(g.talk) || Boolean(g.computer) || Boolean(g.fleet.raid),
+          disabled: ui.streaming || ui.waiting || Boolean(g.combat) || Boolean(g.check) || Boolean(g.talk) || Boolean(g.computer),
           value: ui.draft,
           oninput: (e) => { ui.draft = e.target.value; },
           onkeydown: (e) => {
@@ -495,7 +488,7 @@ function placeLog(previousTop, isNew) {
   if (!log) return;
   if (!isNew) {
     log.scrollTop = previousTop;
-  } else if (ui.game.combat || ui.game.check || ui.game.fleet.raid || ui.consoleLines.length || ui.error) {
+  } else if (ui.game.combat || ui.game.check || ui.consoleLines.length || ui.error) {
     log.scrollTop = log.scrollHeight;
   } else if (walkShown() && ui.game.transcript.at(-1)?.role === "notice") {
     // A line added under the story, such as the note a talk leaves, has to be in view in that small panel.
@@ -515,11 +508,9 @@ const act = (body) => runAction(async () => {
   const { game, message } = await api("/api/action", body);
   ui.game = game;
   if (message) ui.menuMessage = { ok: true, text: message };
-  // Sleeping can run into a raid, and that needs the whole screen.
-  if (game.fleet.raid) ui.sideOpen = false;
 });
 
-const menuAlerts = (g) => ({ character: g.statPoints, skills: g.skillPoints, perks: g.perkPoints, fleet: g.role.captain ? g.fleet.shortages.length : 0 });
+const menuAlerts = (g) => ({ character: g.statPoints, skills: g.skillPoints, perks: g.perkPoints, ship: g.role.captain ? g.ship.shortages.length : 0 });
 
 // The menus, in their groups, each group under its own heading. What a menu holds is on its tooltip, not on the screen.
 function menuButtons(g) {
@@ -590,12 +581,6 @@ function openMenu(id, focus = null) {
   // The story board is a whole screen of its own, not a drawer.
   if (MENUS[id]?.board) {
     closeMenu();
-  // The character sheet is a printout that feeds down inside the map.
-  if (MENUS[id]?.window === "sheet") {
-    closeMenu();
-    toggleSheet();
-    return;
-  }
     openBoard();
     return;
   }
@@ -603,6 +588,12 @@ function openMenu(id, focus = null) {
   if (MENUS[id]?.window === "quests") {
     closeMenu();
     toggleQuests();
+    return;
+  }
+  // The character sheet is a printout that feeds down inside the map.
+  if (MENUS[id]?.window === "sheet") {
+    closeMenu();
+    toggleSheet();
     return;
   }
   if (MENUS[id]?.window) {
@@ -629,7 +620,6 @@ function closeMenu() {
   renderRail();
   if (fightOpen()) focusFight();
   else if (checkOpen()) focusCheck();
-  else if (raidOpen() && !computerOpen()) focusRaid();
   else if (talkOpen()) focusTalk();
   else if (computerOpen()) focusComputer();
   else if (thingOpen()) focusThing();
@@ -676,7 +666,6 @@ function render() {
   const previousMenu = document.querySelector("#side .menu-body");
   const sameMenu = document.getElementById("side")?.getAttribute("aria-label") === MENUS[ui.tab].label;
   const menuTop = sameMenu ? previousMenu?.scrollTop ?? 0 : 0;
-    !walkShown() && sheetNode(),
   const count = ui.game.transcript.length + ui.consoleLines.length + (ui.error ? 1 : 0);
   const isNew = !previous || count !== ui.renderedCount;
   ui.renderedCount = count;
@@ -684,10 +673,10 @@ function render() {
     el("main", { class: "story" }, statusNode(), walkShown() ? walkViewNode(logNode, composerNode) : logNode(), !popupsShown() && composerNode(), !walkShown() && questTrackerNode()),
     fightNode(),
     checkNode(),
-    raidNode(),
     talkNode(),
     computerNode(),
     bagNode(),
+    !walkShown() && sheetNode(),
     thingNode(),
     railNode(),
     backdropNode(),
@@ -704,8 +693,6 @@ function render() {
   if (ui.sideOpen) {
     const body = document.querySelector("#side .menu-body");
     if (body) body.scrollTop = menuTop;
-  } else if (raidOpen() && !fightOpen() && !checkOpen() && !computerOpen()) {
-    focusRaid();
   } else if (talkOpen() && !fightOpen() && !checkOpen()) {
     focusTalk();
   } else if (computerOpen() && !fightOpen() && !checkOpen()) {
@@ -773,9 +760,8 @@ initMenus({
 
 initFight({ ui, render, sendChat, openMenu, closeMenu });
 initCheck({ ui, render, sendChat, openMenu, closeMenu });
-// A raid waits for a fight, a check or a computer to be done with, and then has the whole screen.
-initFleet({ ui, render, runAction, renderMenus, openMenu, closeMenu, raidWaits: () => fightOpen() || checkOpen() || computerOpen() });
-  sheet: () => sheetNode({ inMap: true }),
+initMap({ ui, render, runAction, renderMenus, openMenu, closeMenu });
+initShip({ ui, render, runAction, renderMenus, openMenu, closeMenu });
 initWalk({
   ui,
   reading,
@@ -789,6 +775,7 @@ initWalk({
   talkTo,
   startTyping,
   questTracker: questTrackerNode,
+  sheet: () => sheetNode({ inMap: true }),
   questsOpen,
   // A number key picks one of the story's choices, when there's nothing to type it into.
   pickOption: (n) => {
@@ -807,7 +794,6 @@ initPopups({
   options: currentOptions,
   typing: () => ui.typing || (ui.game?.transcript.length === 0 && !ui.streaming && !ui.waiting && !ui.error),
   retry: () => {
-initSheet({ ui, render, act, openMenu });
     const { retry } = ui.error;
     ui.error = null;
     sendChat(retry);
@@ -821,6 +807,7 @@ initSheet({ ui, render, act, openMenu });
 initTalk({ ui, reading, render, openMenu, popupsShown });
 initComputer({ ui, render, openMenu });
 initBag({ ui, render, renderStatus, renderWalk, putAway: putAwayRoomWindows });
+initSheet({ ui, render, act, openMenu });
 initQuests({ ui, render, placed: popupDrawn });
 aimWith(markPoint, keepClear);
 

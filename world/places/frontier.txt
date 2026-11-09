@@ -2,7 +2,6 @@
 also called: Tessen
 faction: none
 market: medkit, fuel_cell, flak_vest, ration_pack, nutrient_gel, slug_thrower, refugee_coat, work_suit
-the fleet is here: no
 a place to rest: no
 dangerous: no
 hidden: no

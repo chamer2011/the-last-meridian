@@ -12,7 +12,7 @@ import { conditionHolds, parseCondition, parseEffect } from "./scene-text.js";
 import { startCheck, tierFor } from "./checks.js";
 import { classOf } from "./check-games/crack.js";
 import { fill } from "./check-games/kit.js";
-import { CHECK_TEXT, COMPUTER_FLAVOR, WORLD_COMPUTERS, WORLD_MAPS, WORLD_PLACES } from "./world.js";
+import { CHECK_TEXT, COMPUTER_FLAVOR, WORLD_COMPUTERS, WORLD_MAPS } from "./world.js";
 import { controlsFor, controlsView, partWorks, roomPowered, runsSystems, systemsOf } from "./systems.js";
 
 
@@ -155,8 +155,7 @@ function genericContent(game, { key, name, kind, place, room = null, roomId = nu
   const values = { place: place ?? "here", placeName, room: room ?? "", holder, person, other, user, goods, people: people.length ? people.join(", ") : "nobody by name", note: fill(pick(flavor.notes ?? ["Nothing of note."]), { person, other }) };
   const files = (spec.files ?? []).map((id) => flavor.files?.[id]).filter(Boolean).map((file) => ({ id: slug(file.name), name: file.name, text: fill(file.text, values) }));
   const mail = (flavor.mail ?? []).slice(0, spec.mail ?? 0).map((entry, i) => ({ id: `mail_${i + 1}`, from: fill(entry.from, values), to: fill(entry.to, values), subject: entry.subject ?? null, text: fill(entry.text, values) }));
-  const fleetHere = Boolean(WORLD_PLACES[place]?.fleet) || yours;
-  const logs = (spec.logs ?? []).filter((id) => id !== "berths" || fleetHere).map(logOf);
+  const logs = (spec.logs ?? []).map(logOf);
   const programs = (spec.programs ?? []).map((program) => programOf({ name: program.name, desc: fill(program.text, values) }));
   return {
     id: key, name, classKey: classKey ?? classKeyOf(spec.class), yours, owner: null, place, room, thing: null, door, user, password: null, flavor: yours ? "yours" : "default",

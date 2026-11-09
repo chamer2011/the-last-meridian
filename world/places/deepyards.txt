@@ -2,7 +2,6 @@
 also called: the Deepyards, The Deepyards, Deepyards, Veshti Deepyards
 faction: families
 market: veshti_longrifle, veshti_skin, pilot_gloves, nav_slate, repair_kit, emergency_patch, energy_cell, fuel_cell
-the fleet is here: no
 a place to rest: no
 dangerous: no
 hidden: no

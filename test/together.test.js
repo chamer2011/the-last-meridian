@@ -198,12 +198,7 @@ test("midnight comes with a check open, and the alarm rings and stops, with noth
   for (let i = 0; i < 40 && dayOf(await state()) === day; i += 1) await tick(5);
   const g = await holds("after midnight with a check open");
   assert.notEqual(dayOf(g), day, "midnight came");
-  if (g.fleet.raid) {
-    const refused = await call("/api/fleet", { action: "raid", id: "voss" });
-    assert.equal(refused.status, 400, "a raid waits for the check");
-  }
   await finishCheck();
-  if ((await state()).fleet.raid) await call("/api/fleet", { action: "raid", id: "voss" });
   await call("/api/systems", { row: "alarm", to: "ringing" });
   await tick(6);
   await workTheRoom("the bridge with the alarm ringing");
@@ -229,8 +224,8 @@ test("handed to the AI, it's told the written story once, and handed back, the w
   assert.deepEqual(problems, []);
 });
 
-test("the fleet jumps to Haven, and its rooms work the same", async () => {
-  const course = await call("/api/fleet", { action: "course", id: "haven" });
+test("the Meridian jumps to Haven, and its rooms work the same", async () => {
+  const course = await call("/api/ship", { action: "course", id: "haven" });
   assert.equal(course.status, 200, course.error);
   await call("/api/chat", { event: "continue" });
   const g = await holds("at Haven");

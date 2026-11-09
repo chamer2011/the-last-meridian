@@ -2,7 +2,6 @@
 also called: the Harbor, The Harbor
 faction: none
 market: 
-the fleet is here: no
 a place to rest: no
 dangerous: no
 hidden: yes

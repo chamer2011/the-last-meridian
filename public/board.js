@@ -252,7 +252,7 @@ function placeGraph() {
   const P = state.item, L = state.links;
   const list = [], ws = [];
   const add = (node) => { list.push(node); return node.id; };
-  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${P.faction ? `Held by ${P.faction}. ` : ""}${P.aliases?.length ? `Also called ${P.aliases.join(", ")}. ` : ""}${[P.fleet && "the fleet is here", P.rest && "a place to rest", P.dangerous && "dangerous", P.hidden && "hidden"].filter(Boolean).join(", ")}`, label: "About this place" });
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${P.faction ? `Held by ${P.faction}. ` : ""}${P.aliases?.length ? `Also called ${P.aliases.join(", ")}. ` : ""}${[P.rest && "a place to rest", P.dangerous && "dangerous", P.hidden && "hidden"].filter(Boolean).join(", ")}`, label: "About this place" });
   add({ id: "desc", kind: "lead", col: 1, name: "In a line", text: P.desc ?? "", label: "What the player sees", bind: { path: "desc" } });
   add({ id: "feel", kind: "truth", col: 1, name: "The feel of it", text: P.gm?.feel ?? "", label: "For the game master", bind: { path: "gm.feel" } });
   ws.push({ from: "desc", to: "feel" });
@@ -1043,8 +1043,8 @@ function inspectNode(inspector, node) {
     node.kind === "ending" ? row(button("+ a fact it leaves", () => addFact(node.ending)), button("+ something days later", () => addConsequence(node.ending))) : null,
     node.kind === "beat" && b.list ? row(button("+ a beat after this", () => addBeat(b.i))) : null,
     node.kind === "fact" ? factAfterRow(node) : null,
-    node.kind === "consequence" ? [daysRow(clock.consequences[b.cons]), conditionPicker(clock.consequences[b.cons], "of", "What has to be on the record"), placeRow(clock.consequences[b.cons]), subFacts(clock.consequences[b.cons]), placeHitsEditor(clock.consequences[b.cons]), fleetEditor(clock.consequences[b.cons])] : null,
-    node.kind === "clock" ? [daysRow(clock.stages[b.stage]), stageLeadRow(clock.stages[b.stage]), conditionPicker(clock.stages[b.stage], "if", "Only if", true), placeRow(clock.stages[b.stage]), subFacts(clock.stages[b.stage]), stageEndingRow(clock.stages[b.stage]), placeHitsEditor(clock.stages[b.stage]), fleetEditor(clock.stages[b.stage])] : null,
+    node.kind === "consequence" ? [daysRow(clock.consequences[b.cons]), conditionPicker(clock.consequences[b.cons], "of", "What has to be on the record"), placeRow(clock.consequences[b.cons]), subFacts(clock.consequences[b.cons]), placeHitsEditor(clock.consequences[b.cons]), shipEditor(clock.consequences[b.cons])] : null,
+    node.kind === "clock" ? [daysRow(clock.stages[b.stage]), stageLeadRow(clock.stages[b.stage]), conditionPicker(clock.stages[b.stage], "if", "Only if", true), placeRow(clock.stages[b.stage]), subFacts(clock.stages[b.stage]), stageEndingRow(clock.stages[b.stage]), placeHitsEditor(clock.stages[b.stage]), shipEditor(clock.stages[b.stage])] : null,
     node.kind === "react" ? conditionPicker(story.gm.reacts[b.react], "to", "When this is on the record") : null,
     ["ending", "fact", "consequence", "clock", "react"].includes(node.kind) || b.list ? row(button("Remove", () => remove(node), { class: "danger" })) : null,
     node.problem ? el("div", { class: "problems" }, ...state.problems.filter((one) => problemTouches(one, node)).map((one) => el("div", {}, one))) : null,
@@ -1286,27 +1286,22 @@ function placeHitsEditor(holder) {
   box.append(row(button("+ a place", () => { (holder.places ??= []).push({ id: state.places[0]?.id ?? "haven", goods: { fuel: -5 } }); changed(); })));
   return box;
 }
-// What a stage or a consequence changes in the fleet: its numbers, and a ship lost or gone by name.
-function fleetEditor(holder) {
+// What a stage or a consequence changes aboard the Meridian: the morale of her people, her stores and her fuel. The
+// file still writes it as "fleet:", from when there was one, and anything else written there (other ships, the
+// Choir's pursuit) is kept in the file but not offered, since the game no longer reads it.
+function shipEditor(holder) {
   const box = el("div", { class: "subfacts" });
-  box.append(el("label", {}, "What changes in the fleet"));
-  const keys = state.lists.fleetKeys ?? ["morale", "food", "medicine", "parts", "fuel", "pursuit", "ships", "picked", "sat"];
-  const view = { numbers: Object.fromEntries(Object.entries(holder.fleet ?? {}).filter(([key]) => key !== "named")) };
+  box.append(el("label", {}, "What changes aboard the ship"));
+  const keys = state.lists.shipKeys ?? ["morale", "food", "medicine", "parts", "fuel"];
+  const view = { numbers: Object.fromEntries(Object.entries(holder.fleet ?? {}).filter(([key]) => keys.includes(key))) };
+  const rest = Object.fromEntries(Object.entries(holder.fleet ?? {}).filter(([key]) => !keys.includes(key)));
   const put = () => {
-    const named = holder.fleet?.named;
-    holder.fleet = { ...(view.numbers ?? {}), ...(named ? { named } : {}) };
+    holder.fleet = { ...(view.numbers ?? {}), ...rest };
     if (!Object.keys(holder.fleet).length) delete holder.fleet;
   };
-  box.append(pairsEditor(view, "numbers", "Morale, supplies, pursuit, ships leaving or picked off", keys, 1, put));
-  const named = holder.fleet?.named;
-  const ship = picker("edit-named-ship", [["", "no ship in particular"], ...(state.lists.ships ?? []).map((one) => [one.id, one.name])], named?.id ?? "");
-  const status = picker("edit-named-status", [["lost", "lost"], ["gone", "gone"]], named?.status ?? "lost");
-  const spared = numberBox("edit-named-spared", named?.spared ?? "");
-  box.append(row(el("label", { for: "edit-named-ship" }, "A ship by name"), ship, status, el("label", { for: "edit-named-spared" }, "spared"), spared, button("Keep", () => {
-    if (ship.value) (holder.fleet ??= {}).named = { id: ship.value, status: status.value, ...(spared.value !== "" ? { spared: Number(spared.value) } : {}) };
-    else if (holder.fleet) { delete holder.fleet.named; if (!Object.keys(holder.fleet).length) delete holder.fleet; }
-    changed();
-  }, { class: "small" })));
+  box.append(pairsEditor(view, "numbers", "Morale aboard, food, medicine, parts and fuel", keys, 1, put));
+  const leftovers = Object.keys(rest);
+  if (leftovers.length) box.append(hint(`Also written here, from when there was a fleet, and no longer read by the game: ${leftovers.join(", ")}.`));
   return box;
 }
 function inspectNumbers(inspector, node) {

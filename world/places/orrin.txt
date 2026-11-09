@@ -2,7 +2,6 @@
 also called: Saint Orrin's Comet, Saint Orrin's, Orrin's Comet
 faction: none
 market: focus_blade, adept_robes, resonance_tuner, energy_cell
-the fleet is here: no
 a place to rest: no
 dangerous: no
 hidden: no

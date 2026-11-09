@@ -1,4 +1,4 @@
-// Stories that move on without the captain, and a fleet that makes its own decisions. None of this calls a real AI.
+// Stories that move on without the captain, and a ship whose officers make their own decisions. None of this calls a real AI.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -16,16 +16,16 @@ const { findCharacter } = await import("../src/campaign.js");
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const { worldReport } = await import("../src/daily.js");
 const { LOCATIONS } = await import("../src/data.js");
-const { answerRaid, councilOf, fleetCommand, fleetLedger, fleetView, lostShipNames } = await import("../src/fleet.js");
+const { councilOf, shipCommand, shipLedger, shipView } = await import("../src/ship.js");
 const { migrateGame } = await import("../src/migrate.js");
 const { projectDir } = await import("../src/paths.js");
 const { passTime, publicState } = await import("../src/rules.js");
 const { clockOf, hasMovedOn, leadNow, ranItsCourse, whatHappened } = await import("../src/story-clock.js");
 const { arcBriefIfNew, leadsHere, storyView, threadNotes } = await import("../src/story-library.js");
 const { newTurnLimits, runTool } = await import("../src/tools.js");
-const { DAILY, FLEET_DATA, STORY_CLOCK, WORLD_ARC, WORLD_THREADS } = await import("../src/world.js");
+const { DAILY, SHIP_DATA, STORY_CLOCK, WORLD_ARC, WORLD_THREADS } = await import("../src/world.js");
 
-const COUNCIL = FLEET_DATA.council;
+const COUNCIL = SHIP_DATA.council;
 const newGame = (seed = 21) => {
   const game = createGameFromDraft(randomDraft({ seed, archetype: "officer" }));
   game.transcript.push({ role: "narrator", text: "The story so far." });
@@ -33,15 +33,13 @@ const newGame = (seed = 21) => {
 };
 const tool = (game, name, input) => runTool(game, name, input, newTurnLimits());
 const days = (game, count) => passTime(game, 24 * count, "routine");
-// Keeps the fleet out of trouble, so that only what's being tested gets a say.
+// Keeps the ship out of trouble, so that only what's being tested gets a say.
 function comfortable(game) {
-  game.fleet.food = 9000;
-  game.fleet.medicine = 900;
-  game.fleet.parts = 900;
+  game.ship.food = 9000;
+  game.ship.medicine = 900;
+  game.ship.parts = 900;
   game.ship.fuel = game.ship.maxFuel;
-  game.fleet.pursuit = 0;
   game.ship.morale = 60;
-  game.fleet.raid = null;
 }
 // A day at a time until something's happened, with nobody in charge of anything.
 function until(game, reached, limit = 400) {
@@ -65,7 +63,7 @@ test("every story says what happens if nobody steps in, or why it has to wait", 
   }
   for (const id of Object.keys(STORY_CLOCK.threads)) assert.ok(WORLD_THREADS[id], `${id} isn't a story`);
   const waiting = ids.filter((id) => STORY_CLOCK.threads[id].waits).sort();
-  assert.deepEqual(waiting, ["deep_past_the_lamp", "main_safe_harbor", "main_the_last_watch"], "only the ones that need the fleet at the Harbor");
+  assert.deepEqual(waiting, ["deep_past_the_lamp", "main_safe_harbor", "main_the_last_watch"], "only the ones that need the Meridian at the Harbor");
 });
 
 test("every stage is well formed, and only touches things that exist", () => {
@@ -83,10 +81,8 @@ test("every stage is well formed, and only touches things that exist", () => {
     }
     for (const key of Object.keys(stage.fleet ?? {})) assert.ok(fleetKeys.includes(key), `${where}: ${key}`);
     const { named } = stage.fleet ?? {};
-    if (named) {
-      assert.ok(FLEET_DATA.ships.some((ship) => ship.id === named.id), `${where}: ${named.id}`);
-      assert.ok(["lost", "gone"].includes(named.status), `${where}: ${named.status}`);
-    }
+    // A ship named here is from when there was a fleet: the file still reads, and the game lets the line go.
+    if (named) assert.ok(typeof named.id === "string" && ["lost", "gone"].includes(named.status), `${where}: named`);
   };
   let stages = 0;
   for (const [id, entry] of Object.entries(STORY_CLOCK.threads)) {
@@ -101,7 +97,7 @@ test("every stage is well formed, and only touches things that exist", () => {
     }
   }
   assert.ok(stages > 150, `only ${stages} stages`);
-  assert.equal(STORY_CLOCK.acts.length, 4, "the last act needs someone to take the fleet there");
+  assert.equal(STORY_CLOCK.acts.length, 4, "the last act needs someone to take the Meridian there");
   STORY_CLOCK.acts.forEach((act, index) => {
     let last = 0;
     for (const event of act.events) {
@@ -128,17 +124,6 @@ test("nothing that's told to everyone gives a secret away", () => {
   }
 });
 
-test("a lead for a ship that can go never says her name, so the story stays open after she's gone", () => {
-  for (const [id, entry] of Object.entries(STORY_CLOCK.threads)) {
-    entry.stages.forEach((stage, index) => {
-      const { named } = stage.fleet ?? {};
-      if (!named) return;
-      const { name } = FLEET_DATA.ships.find((ship) => ship.id === named.id);
-      for (const later of entry.stages.slice(index)) assert.ok(!later.lead.includes(name.replace(/^The /, "")), `${id}: ${later.lead}`);
-    });
-  }
-});
-
 // ---- Stories moving on --------------------------------------------------------------
 
 test("nothing happens straight away, and then the stories start to move", () => {
@@ -153,7 +138,7 @@ test("nothing happens straight away, and then the stories start to move", () => 
 
 test("when a story's day comes, the world changes, the lead changes, and the news goes round", () => {
   const game = newGame();
-  game.fleet.at = "cinder";
+  game.ship.at = "cinder";
   game.location = "cinder";
   game.walk = null;
   const before = {};
@@ -176,7 +161,7 @@ test("when a story's day comes, the world changes, the lead changes, and the new
 test("a lead that's moved on says how things stand now, and says that it's moved", () => {
   const game = newGame();
   game.location = "haven";
-  game.fleet.at = "haven";
+  game.ship.at = "haven";
   game.walk = null;
   let lead = null;
   until(game, () => {
@@ -239,7 +224,7 @@ test("what follows a story opens once that story has run its course, and only th
   const game = newGame();
   game.level = 5;
   game.location = "cinder";
-  game.fleet.at = "cinder";
+  game.ship.at = "cinder";
   game.walk = null;
   // Only a few leads show at once, so these two get the place to themselves.
   for (const [id, thread] of Object.entries(WORLD_THREADS)) {
@@ -262,41 +247,6 @@ test("a story waits for the world to reach it", () => {
   comfortable(game);
   days(game, 20);
   for (const [id] of lateOnes) assert.equal(game.story.clock.threads[id], undefined, `${id} started too soon`);
-});
-
-test("it can't happen to a ship that's gone", () => {
-  const game = newGame();
-  game.fleet.ships.harrows_bounty.status = "lost";
-  game.fleet.ships.harrows_bounty.aboard = 0;
-  assert.ok(lostShipNames(game).includes("Harrow's Bounty"));
-  until(game, () => (clockOf(game).threads.fleet_bunk_forty_one?.stage ?? 0) >= 1);
-  assert.ok(!game.world.news.some((entry) => entry.text.includes("Harrow's Bounty")));
-  assert.ok(!game.story.clock.moved.some((entry) => entry.text.includes("Harrow's Bounty")));
-});
-
-test("a story can take a ship the stories need, but only if it says so, and only that one", () => {
-  const game = newGame();
-  const people = () => Object.values(game.fleet.ships).reduce((sum, ship) => sum + ship.aboard, 0);
-  let before = 0;
-  until(game, () => {
-    if (hasMovedOn(game, "fleet_frost_line")) return true;
-    before = people();
-    return false;
-  });
-  assert.equal(game.fleet.ships.vesper_landing.status, "lost");
-  assert.equal(game.fleet.ships.vesper_landing.aboard, 0);
-  assert.ok(people() < before, "some of them went with the Hegemony");
-  assert.ok(people() > before - 1100, "and most of them are on other ships");
-  game.level = 5;
-  assert.ok(!leadNow(game, "fleet_frost_line").includes("Vesper Landing"), "so the lead can still be followed");
-  assert.equal(lostShipNames(game).filter((name) => name === "Vesper Landing").length, 1);
-});
-
-test("stories that send ships away send the ones with least reason to stay", () => {
-  const game = newGame();
-  const story = FLEET_DATA.ships.filter((ship) => ship.story && ship.id !== "vesper_landing" && ship.id !== "tollivers_ark");
-  until(game, () => game.story.act >= 2);
-  for (const ship of story) assert.equal(game.fleet.ships[ship.id].status, "active", ship.id);
 });
 
 // ---- The main story -----------------------------------------------------------------
@@ -322,7 +272,7 @@ test("the main story's pressure builds, and it moves on if nobody moves it, as f
     comfortable(game);
     days(game, 1);
   }
-  assert.equal(game.story.act, 4, "the fleet has to be taken to the last one");
+  assert.equal(game.story.act, 4, "the Meridian has to be taken to the last one");
 });
 
 test("when the story moves on through the game master, the act's clock starts again from there", () => {
@@ -353,8 +303,7 @@ test("it comes out the same however the time is cut up, and after saving and loa
   for (let day = 0; day < 40; day += 1) days(loaded, 1);
   assert.deepEqual(one.story.clock, loaded.story.clock);
   assert.deepEqual(one.world, loaded.world);
-  assert.deepEqual(one.fleet.ships, loaded.fleet.ships);
-  assert.equal(one.fleet.food, loaded.fleet.food);
+  assert.equal(one.ship.food, loaded.ship.food);
   assert.equal(one.ship.morale, loaded.ship.morale);
   const other = newGame(99);
   other.name = "Somebody Else";
@@ -384,7 +333,7 @@ test("a long wait doesn't flood the screen, but all of it is still in the news",
 
 test("the game master hears what's happened, once", () => {
   const game = newGame();
-  game.fleet.at = "meridian";
+  game.ship.at = "meridian";
   until(game, () => game.world.unheard.some((text) => clockOf(game).moved.some((entry) => entry.text === text)));
   const report = worldReport(game);
   assert.match(report, /^<world_report>/);
@@ -411,7 +360,7 @@ test("looking at it changes nothing in the save", () => {
   const before = JSON.stringify(game);
   publicState(game);
   storyView(game);
-  fleetView(game);
+  shipView(game);
   leadsHere(game);
   assert.equal(JSON.stringify(game), before);
   const fresh = newGame();
@@ -426,19 +375,19 @@ test("an old save picks it all up from today, with nothing happening at once", (
   old.clock.hours = 24 * 300;
   old.version = 12;
   delete old.story.clock;
-  delete old.fleet.council;
-  old.fleet.day = 300;
+  delete old.ship.council;
+  old.ship.day = 300;
   old.world.day = 300;
   const game = migrateGame(JSON.parse(JSON.stringify(old)));
-  assert.equal(game.version, 15);
+  assert.equal(game.version, 16);
   assert.equal(game.story.clock.start, 300);
   assert.equal(game.story.clock.day, 300);
   comfortable(game);
   days(game, 1);
   assert.deepEqual(game.story.clock.moved, []);
-  assert.deepEqual(fleetView(game).council, { off: false, recent: [] });
+  assert.deepEqual(shipView(game).council, { off: false, recent: [] });
   until(game, () => clockOf(game).moved.length > 0);
-  assert.equal(game.version, 15);
+  assert.equal(game.version, 16);
   assert.equal(JSON.parse(JSON.stringify(game)).story.clock.start, 300);
 });
 
@@ -447,15 +396,12 @@ test("a year of it is quick, and doesn't fill up the save", () => {
   const started = Date.now();
   for (let day = 0; day < 365; day += 1) {
     days(game, 1);
-    if (game.fleet.raid) answerRaid(game, "voss");
     game.pendingEvents = [];
   }
   assert.ok(Date.now() - started < 4000, `it took ${Date.now() - started} ms`);
   assert.ok(JSON.stringify(game.story.clock).length < 16000, `${JSON.stringify(game.story.clock).length} characters`);
-  assert.ok(JSON.stringify(game.fleet.council).length < 3000);
-  assert.ok(Object.values(game.fleet.ships).some((ship) => ship.status === "active"));
+  assert.ok(JSON.stringify(game.ship.council).length < 3000);
   assert.ok(game.ship.morale >= 0 && game.ship.morale <= 100);
-  assert.ok(game.fleet.pursuit >= 0 && game.fleet.pursuit <= 100);
 });
 
 test("the game master is told that stories don't wait, and the instructions stay the same line to line", () => {
@@ -470,22 +416,17 @@ test("the game master is told that stories don't wait, and the instructions stay
 
 // How long a supply's got left, in days.
 function left(game, id, count) {
-  const net = Math.abs(fleetLedger(game).net[id] ?? 0) || 1;
-  game.fleet[id] = net * count;
+  const net = Math.abs(shipLedger(game).net[id] ?? 0) || 1;
+  game.ship[id] = net * count;
 }
 
 // Each decision, with how things have to stand for it to happen.
 const SCENES = {
-  half_rations: (game) => { game.fleet.rations = "standard"; left(game, "food", 2.5); },
-  cut_rations: (game) => { game.fleet.rations = "standard"; left(game, "food", 6); },
-  run: (game) => { game.fleet.pursuit = 92; game.ship.fuel = 6; },
-  farm_shifts: (game) => { game.fleet.rations = "reduced"; left(game, "food", 5.9); },
-  clinic: (game) => { left(game, "medicine", 4); },
-  scrounge: (game) => { left(game, "parts", 4); },
-  repair_gangs: (game) => { game.fleet.ships.kittiwake.condition = 8; },
-  stand_down: (game) => { game.fleet.rations = "generous"; game.ship.morale = 15; },
-  feast: (game) => { game.ship.morale = 20; game.fleet.crews = "rest"; },
-  more_food: (game) => { game.fleet.rations = "reduced"; game.ship.morale = 40; },
+  half_rations: (game) => { game.ship.rations = "standard"; left(game, "food", 2.5); },
+  cut_rations: (game) => { game.ship.rations = "standard"; left(game, "food", 6); },
+  feast: (game) => { game.ship.rations = "standard"; game.ship.morale = 20; },
+  feast_over: (game) => { game.ship.rations = "generous"; councilOf(game.ship).setRations = "generous"; game.ship.morale = 70; },
+  more_food: (game) => { game.ship.rations = "reduced"; game.ship.morale = 40; },
 };
 
 for (const [id, scene] of Object.entries(SCENES)) {
@@ -501,123 +442,59 @@ for (const [id, scene] of Object.entries(SCENES)) {
     assert.ok(said.length >= 1, `nothing happened: ${notes.join(" | ")}`);
     assert.ok(said[0].includes(decision.text.split("{who}").at(-1)), said[0]);
     assert.ok(said[0].includes(decision.name) || !decision.text.includes("{who}"), said[0]);
-    const { rations, crews } = decision.set;
-    if (rations) assert.equal(game.fleet.rations, rations);
-    if (crews) assert.equal(game.fleet.crews, crews);
-    assert.ok(fleetView(game).council.recent.length >= 1, "and it's on the Fleet screen");
+    assert.equal(game.ship.rations, decision.set.rations);
+    assert.ok(shipView(game).council.recent.length >= 1, "and it's on the Ship screen");
   });
 }
-
-test("if the fuel's running out and the crews are idle, the Chief has them skim for it", () => {
-  const decision = COUNCIL.decisions.find((one) => one.id === "skim");
-  const game = newGame();
-  comfortable(game);
-  game.ship.fuel = 0;
-  game.fleet.out = {};
-  const notes = [];
-  for (let day = 0; day < 8; day += 1) {
-    game.fleet.parts = 900;
-    notes.push(...passTime(game, 24, "routine"));
-    game.ship.fuel = Math.min(game.ship.fuel, 1);
-    if (game.fleet.crews === "fuel") break;
-  }
-  assert.equal(game.fleet.crews, "fuel", notes.join(" | "));
-  assert.ok(notes.some((line) => line.includes(decision.text.split("{who}").at(-1))));
-});
-
-test("a blind jump costs fuel, shakes the Choir off, and isn't something they do every week", () => {
-  const game = newGame();
-  comfortable(game);
-  game.fleet.pursuit = 92;
-  game.ship.fuel = 8;
-  const notes = [];
-  for (let day = 0; day < 4 && !notes.some((line) => line.includes("blind jump")); day += 1) notes.push(...passTime(game, 24, "routine"));
-  assert.ok(notes.some((line) => line.includes("blind jump")), notes.join(" | "));
-  assert.ok(game.ship.fuel < 8, "it costs fuel");
-  assert.ok(game.fleet.pursuit < 92, "and they're further away");
-  game.fleet.pursuit = 92;
-  const next = [];
-  for (let day = 0; day < 3; day += 1) {
-    game.fleet.raid = null;
-    next.push(...passTime(game, 24, "routine"));
-    game.fleet.pursuit = Math.min(game.fleet.pursuit, 92);
-  }
-  assert.ok(!next.some((line) => line.includes("blind jump")), "the next raid gets through, unless someone else stops it");
-});
-
-test("once the worst is over they stand the crews down, and they only undo what they did themselves", () => {
-  const game = newGame();
-  comfortable(game);
-  left(game, "medicine", 4);
-  for (let day = 0; day < 6 && game.fleet.crews !== "medical"; day += 1) passTime(game, 24, "routine");
-  assert.equal(game.fleet.crews, "medical");
-  const notes = [];
-  for (let day = 0; day < 8 && game.fleet.crews === "medical"; day += 1) {
-    comfortable(game);
-    notes.push(...passTime(game, 24, "routine"));
-  }
-  assert.equal(game.fleet.crews, "upkeep", notes.join(" | "));
-  assert.ok(notes.some((line) => line.includes("worst of it's over")));
-
-  const own = newGame();
-  comfortable(own);
-  fleetCommand(own, { action: "crews", id: "medical" });
-  for (let day = 0; day < 12; day += 1) {
-    comfortable(own);
-    passTime(own, 24, "routine");
-  }
-  assert.equal(own.fleet.crews, "medical", "that was the captain's order, and it stands");
-});
 
 test("generous rations for morale come back off once people are happier, unless they were the captain's idea", () => {
   const game = newGame();
   comfortable(game);
   game.ship.morale = 20;
-  game.fleet.crews = "rest";
-  for (let day = 0; day < 6 && game.fleet.rations !== "generous"; day += 1) {
-    game.fleet.food = 9000;
+  for (let day = 0; day < 6 && game.ship.rations !== "generous"; day += 1) {
+    game.ship.food = 9000;
     passTime(game, 24, "routine");
   }
-  assert.equal(game.fleet.rations, "generous");
+  assert.equal(game.ship.rations, "generous");
   const notes = [];
-  for (let day = 0; day < 6 && game.fleet.rations === "generous"; day += 1) {
+  for (let day = 0; day < 6 && game.ship.rations === "generous"; day += 1) {
     comfortable(game);
     game.ship.morale = 70;
     notes.push(...passTime(game, 24, "routine"));
   }
-  assert.equal(game.fleet.rations, "standard", notes.join(" | "));
+  assert.equal(game.ship.rations, "standard", notes.join(" | "));
 
   const own = newGame();
   comfortable(own);
-  fleetCommand(own, { action: "rations", id: "generous" });
+  shipCommand(own, { action: "rations", id: "generous" });
   for (let day = 0; day < 10; day += 1) {
     comfortable(own);
     own.ship.morale = 70;
     passTime(own, 24, "routine");
   }
-  assert.equal(own.fleet.rations, "generous", "the captain's order stands");
+  assert.equal(own.ship.rations, "generous", "the captain's order stands");
 });
 
 test("they give the captain time first", () => {
   const game = newGame();
   comfortable(game);
-  game.fleet.rations = "standard";
+  game.ship.rations = "standard";
   left(game, "food", 6);
   const first = passTime(game, 24, "routine");
   assert.ok(!first.some((line) => line.startsWith("[COUNCIL]")), "not on the first day");
-  assert.equal(game.fleet.rations, "standard");
-  assert.equal(game.fleet.council.waiting.cut_rations !== undefined, true);
+  assert.equal(game.ship.rations, "standard");
+  assert.equal(game.ship.council.waiting.cut_rations !== undefined, true);
   comfortable(game);
   days(game, 1);
-  assert.equal(game.fleet.council.waiting.cut_rations, undefined, "and if it stops being a problem they forget about it");
+  assert.equal(game.ship.council.waiting.cut_rations, undefined, "and if it stops being a problem they forget about it");
 });
 
 test("an order of the captain's own stands for a while before they'd change it", () => {
   const game = newGame();
   comfortable(game);
-  fleetCommand(game, { action: "rations", id: "standard" });
-  fleetCommand(game, { action: "rations", id: "generous" });
-  const ordered = game.fleet.council.ordered.rations;
+  shipCommand(game, { action: "rations", id: "standard" });
+  shipCommand(game, { action: "rations", id: "generous" });
+  const ordered = game.ship.council.ordered.rations;
   assert.ok(Number.isFinite(ordered));
   const notes = [];
   for (let day = 0; day < COUNCIL.respect - 1; day += 1) {
@@ -625,21 +502,21 @@ test("an order of the captain's own stands for a while before they'd change it",
     notes.push(...passTime(game, 24, "routine"));
   }
   assert.ok(!notes.some((line) => line.startsWith("[COUNCIL]")), notes.join(" | "));
-  assert.equal(game.fleet.rations, "generous");
+  assert.equal(game.ship.rations, "generous");
   for (let day = 0; day < 4; day += 1) {
     left(game, "food", 6);
     passTime(game, 24, "routine");
   }
-  assert.notEqual(game.fleet.rations, "generous", "but not for ever, if it's going to starve everyone");
+  assert.notEqual(game.ship.rations, "generous", "but not for ever, if it's going to starve everyone");
 });
 
 test("told to wait, they wait, whatever happens, and they can be let go again", () => {
   const game = newGame();
   comfortable(game);
-  const { message } = fleetCommand(game, { action: "council", on: false });
+  const { message } = shipCommand(game, { action: "council", on: false });
   assert.equal(message, COUNCIL.held);
-  assert.equal(fleetView(game).council.off, true);
-  game.fleet.rations = "standard";
+  assert.equal(shipView(game).council.off, true);
+  game.ship.rations = "standard";
   game.ship.morale = 20;
   const notes = [];
   for (let day = 0; day < 10; day += 1) {
@@ -647,15 +524,13 @@ test("told to wait, they wait, whatever happens, and they can be let go again", 
     left(game, "medicine", 2);
     left(game, "parts", 2);
     notes.push(...passTime(game, 24, "routine"));
-    game.fleet.raid = null;
   }
   assert.ok(!notes.some((line) => line.startsWith("[COUNCIL]")), notes.join(" | "));
-  assert.equal(game.fleet.rations, "standard");
-  assert.equal(game.fleet.crews, "upkeep");
-  const second = fleetCommand(game, { action: "council", on: false });
+  assert.equal(game.ship.rations, "standard");
+  const second = shipCommand(game, { action: "council", on: false });
   assert.equal(second.message, null, "saying it twice doesn't say it twice");
-  fleetCommand(game, { action: "council", on: true });
-  assert.equal(fleetView(game).council.off, false);
+  shipCommand(game, { action: "council", on: true });
+  assert.equal(shipView(game).council.off, false);
   const later = [];
   for (let day = 0; day < 4; day += 1) {
     left(game, "food", 2);
@@ -667,17 +542,15 @@ test("told to wait, they wait, whatever happens, and they can be let go again", 
 test("one decision a day, because whatever else is wrong will still be wrong tomorrow", () => {
   const game = newGame();
   comfortable(game);
-  game.fleet.rations = "standard";
+  game.ship.rations = "standard";
   for (let day = 0; day < 8; day += 1) {
     left(game, "food", 2.5);
     left(game, "medicine", 3);
     left(game, "parts", 3);
-    game.fleet.pursuit = 92;
     const said = passTime(game, 24, "routine").filter((line) => line.startsWith("[COUNCIL]"));
     assert.ok(said.length <= 1, said.join(" | "));
-    game.fleet.raid = null;
   }
-  assert.ok(game.fleet.council.recent.length >= 2);
+  assert.ok(game.ship.council.recent.length >= 1);
 });
 
 test("someone who's gone can't decide anything, so the council does it instead", () => {
@@ -686,10 +559,10 @@ test("someone who's gone can't decide anything, so the council does it instead",
   const person = findCharacter(game.campaign, "odessa");
   assert.ok(person, "Quartermaster Brandt is in the story");
   game.contacts.push({ name: person.name, status: "dead", attitude: "friendly", note: "" });
-  game.fleet.rations = "standard";
+  game.ship.rations = "standard";
   left(game, "food", 6);
   const notes = [];
-  for (let day = 0; day < 4 && game.fleet.rations === "standard"; day += 1) {
+  for (let day = 0; day < 4 && game.ship.rations === "standard"; day += 1) {
     left(game, "food", 6);
     notes.push(...passTime(game, 24, "routine"));
   }
@@ -703,127 +576,47 @@ test("someone who's gone can't decide anything, so the council does it instead",
   }
 });
 
-test("they don't do anything in the middle of a raid", () => {
-  const game = newGame();
-  comfortable(game);
-  game.fleet.rations = "standard";
-  left(game, "food", 6);
-  game.fleet.pursuit = 100;
-  const notes = [];
-  for (let day = 0; day < 4; day += 1) {
-    if (!game.fleet.raid) game.fleet.pursuit = 100;
-    left(game, "food", 6);
-    notes.push(...passTime(game, 24, "routine"));
-  }
-  assert.ok(game.fleet.raid, "there's a raid on");
-  assert.equal(game.fleet.rations, "standard");
-});
-
-test("everything they decide is something the fleet can really do", () => {
+test("everything they decide is something the ship can really do", () => {
   for (const decision of COUNCIL.decisions) {
-    const { rations, crews } = decision.set;
-    if (rations) assert.ok(FLEET_DATA.rations[rations], decision.id);
-    if (crews) assert.ok(FLEET_DATA.crews[crews], decision.id);
-    for (const list of [decision.when.rations, decision.when.crews]) {
-      for (const id of list ?? []) assert.ok(FLEET_DATA.rations[id] || FLEET_DATA.crews[id], `${decision.id}: ${id}`);
-    }
+    assert.ok(decision.set.rations && SHIP_DATA.rations[decision.set.rations], decision.id);
+    for (const id of decision.when.rations ?? []) assert.ok(SHIP_DATA.rations[id], `${decision.id}: ${id}`);
     assert.ok(decision.text.length > 20);
     assert.ok(decision.id && decision.name);
+    assert.ok(SCENES[decision.id], `${decision.id} has no test of its own`);
   }
 });
 
-test("a fleet left to itself doesn't flip back and forth", () => {
+test("a ship left to itself doesn't flip back and forth", () => {
   for (const seed of [3, 21, 77]) {
     const game = newGame(seed);
     const said = [];
     for (let day = 0; day < 365; day += 1) {
       said.push(...days(game, 1).filter((line) => line.startsWith("[COUNCIL]")));
-      if (game.fleet.raid) answerRaid(game, "voss");
       game.pendingEvents = [];
-      assert.ok(FLEET_DATA.rations[game.fleet.rations]);
-      assert.ok(FLEET_DATA.crews[game.fleet.crews]);
+      assert.ok(SHIP_DATA.rations[game.ship.rations]);
       assert.ok(game.ship.fuel >= 0);
     }
-    assert.ok(said.length > 2, `seed ${seed}: they only did ${said.length} things in a year`);
+    assert.ok(said.length >= 2, `seed ${seed}: they only did ${said.length} things in a year`);
     assert.ok(said.length < 120, `seed ${seed}: ${said.length} decisions in a year is too many`);
   }
 });
 
-test("a well-supplied fleet with nobody following up its stories gets worn down, but it isn't wiped out", () => {
+test("a well-supplied ship with nobody following up its stories feels them, but it isn't worn down", () => {
   for (const seed of [3, 21, 77]) {
     const game = newGame(seed);
     let lowest = 100;
     for (let day = 0; day < 100; day += 1) {
-      game.fleet.food = Math.max(game.fleet.food, 900);
-      game.fleet.medicine = Math.max(game.fleet.medicine, 60);
-      game.fleet.parts = Math.max(game.fleet.parts, 60);
+      game.ship.food = Math.max(game.ship.food, 90);
+      game.ship.medicine = Math.max(game.ship.medicine, 20);
+      game.ship.parts = Math.max(game.ship.parts, 20);
       game.ship.fuel = Math.max(game.ship.fuel, 10);
       days(game, 1);
-      if (game.fleet.raid) answerRaid(game, "voss");
       game.pendingEvents = [];
       lowest = Math.min(lowest, game.ship.morale);
     }
-    const ships = Object.values(game.fleet.ships).filter((ship) => ship.status === "active").length;
-    assert.ok(ships >= 18, `seed ${seed}: only ${ships} ships left`);
     assert.ok(game.ship.morale >= 15, `seed ${seed}: morale ${game.ship.morale}`);
     assert.ok(lowest < 60, "and it does feel it");
   }
-});
-
-// ---- Leaving a raid to Commander Voss ------------------------------------------------------
-
-test("a raid can be left to Commander Voss, and it goes on her record", () => {
-  const game = newGame();
-  comfortable(game);
-  game.fleet.pursuit = 100;
-  passTime(game, 24, "routine");
-  assert.ok(game.fleet.raid);
-  const view = fleetView(game).raid;
-  assert.ok(view.voss);
-  const choice = view.responses.find((one) => one.id === view.voss);
-  assert.ok(choice?.available, "she'd only order what can be done");
-  game.pendingEvents = [];
-  const result = answerRaid(game, "voss");
-  assert.equal(game.fleet.raid, null);
-  assert.ok(result);
-  const report = fleetView(game).lastReport ?? game.fleet.lastRaid ?? game.fleet.report ?? result.report;
-  assert.ok(report);
-  assert.equal(report.byVoss, true);
-  assert.equal(report.response, choice.name);
-  assert.ok(game.pendingEvents.some((line) => line.includes("left it to Commander Voss")), "the game master knows who gave the order");
-});
-
-test("she'd rather fight if she's got the guns, and she runs if she hasn't", () => {
-  const game = newGame();
-  comfortable(game);
-  game.ship.hull = game.ship.maxHull ?? game.ship.hull;
-  game.fleet.pursuit = 100;
-  passTime(game, 24, "routine");
-  assert.equal(fleetView(game).raid.voss, "fight");
-
-  const weak = newGame();
-  comfortable(weak);
-  for (const ship of FLEET_DATA.ships.filter((one) => one.guns && one.id !== "meridian")) weak.fleet.ships[ship.id].status = "lost";
-  weak.ship.hull = 2;
-  weak.fleet.pursuit = 100;
-  passTime(weak, 24, "routine");
-  const { raid } = fleetView(weak);
-  assert.ok(raid);
-  assert.notEqual(raid.voss, "fight");
-  assert.ok(raid.responses.find((one) => one.id === raid.voss).available);
-});
-
-test("giving your own order still works, and it says so", () => {
-  const game = newGame();
-  comfortable(game);
-  game.fleet.pursuit = 100;
-  passTime(game, 24, "routine");
-  game.pendingEvents = [];
-  const option = fleetView(game).raid.responses.find((one) => one.available);
-  answerRaid(game, option.id);
-  assert.ok(game.pendingEvents.some((line) => line.includes("The captain ordered")));
-  assert.ok(!game.pendingEvents.some((line) => line.includes("Commander Voss")));
-  assert.throws(() => answerRaid(game, "voss"), /no raid/);
 });
 
 // ---- Over the real server -------------------------------------------------------------------
@@ -869,28 +662,22 @@ after(() => {
   }
 });
 
-test("over the real server: waiting moves the stories on, the Leads and Fleet screens show it, and the council can be told to wait", async () => {
-  const held = await post("/api/fleet", { action: "council", on: false });
+test("over the real server: waiting moves the stories on, the Leads and Ship screens show it, and the council can be told to wait", async () => {
+  const held = await post("/api/ship", { action: "council", on: false });
   assert.equal(held.status, 200);
-  assert.equal(held.game.fleet.council.off, true);
+  assert.equal(held.game.ship.council.off, true);
   let game = held.game;
   for (let i = 0; i < 12; i += 1) {
-    const waited = await post("/api/fleet", { action: "wait", days: 7 });
+    const waited = await post("/api/ship", { action: "wait", days: 7 });
     if (waited.status !== 200) break;
     game = waited.game;
-    if (game.fleet.raid) {
-      const answered = await post("/api/fleet", { action: "raid", id: "voss" });
-      assert.equal(answered.status, 200, JSON.stringify(answered));
-      assert.equal(answered.game.fleet.raid, null);
-      game = answered.game;
-    }
     if (game.story.moved.length) break;
   }
   assert.ok(game.story.moved.length > 0, "something's moved on");
   assert.ok(game.story.moved[0].title && game.story.moved[0].text && game.story.moved[0].day >= 1);
-  const free = await post("/api/fleet", { action: "council", on: true });
-  assert.equal(free.game.fleet.council.off, false);
+  const free = await post("/api/ship", { action: "council", on: true });
+  assert.equal(free.game.ship.council.off, false);
   const state = await (await fetch(`http://127.0.0.1:${port}/api/state`)).json();
   assert.ok(state.game.story.moved.length > 0);
-  assert.deepEqual(state.game.fleet.council.recent, free.game.fleet.council.recent);
+  assert.deepEqual(state.game.ship.council.recent, free.game.ship.council.recent);
 });

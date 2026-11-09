@@ -93,7 +93,7 @@ test("every spot and seat is on a real level, and can be walked up to", () => {
 test("nobody in the crowd has the same name as anyone else, or as anyone on the bulkhead of the dead", () => {
   const names = FILE.crowd.flatMap((group) => group.names.map(([name]) => name));
   assert.equal(new Set(names).size, names.length);
-  assert.ok(names.length >= 20, "a ship with thirty thousand survivors in its fleet should feel busy");
+  assert.ok(names.length >= 20, "a ship carrying nine hundred should feel busy");
   const dead = levelOf("names").layers.writing.join(" ");
   for (const name of names) assert.ok(!dead.includes(name.split(" ").at(-1).toUpperCase()), `${name} is on the wall of the dead`);
 });
@@ -116,7 +116,7 @@ test("the clock shows real minutes, and a tiny rounding error can't show 08:00 a
   assert.equal(clockLabel(game), "Day 4, 23:59");
 });
 
-test("the clock running counts in whole hours for the captain, and days for the fleet", () => {
+test("the clock running counts in whole hours for the captain, and days for the ship", () => {
   const game = at(10);
   game.needs.fatigue = 10;
   game.energy = 1;
@@ -133,11 +133,11 @@ test("the clock running counts in whole hours for the captain, and days for the 
   assert.equal(conditions.conditions[0].hoursLeft, 1);
 
   const night = at(23.5);
-  const { day } = night.fleet;
+  const { day } = night.ship;
   clockRuns(night, 20);
-  assert.equal(night.fleet.day, day, "it isn't midnight yet");
+  assert.equal(night.ship.day, day, "it isn't midnight yet");
   clockRuns(night, 20);
-  assert.equal(night.fleet.day, day + 1, "and now a day of the fleet has gone by");
+  assert.equal(night.ship.day, day + 1, "and now a day aboard has gone by");
 });
 
 test("the story's time works exactly as it did, and everyone's day moves on with it", () => {
@@ -326,7 +326,7 @@ test("an older save moves up a version, and everyone starts from wherever this t
   const old = { ...newGame(), version: 10, clock: { hours: 12.5 } };
   delete old.life;
   const game = migrateGame(JSON.parse(JSON.stringify(old)));
-  assert.equal(game.version, 15);
+  assert.equal(game.version, 16);
   assert.equal(game.life, null);
   assert.equal(find(game, "voss").doing, "eating");
   assert.doesNotThrow(() => publicState(game));
@@ -362,10 +362,10 @@ const PLACE_IDS = Object.keys(LOCATIONS);
 const atPlace = (place, hours = 8) => {
   const game = newGame();
   game.location = place;
-  game.fleet.at = LOCATIONS[place].fleet ? null : place;
+  game.ship.at = place === "meridian" ? null : place;
   game.walk = null;
   game.clock.hours = hours;
-  game.fleet.day = Math.floor(hours / 24);
+  game.ship.day = Math.floor(hours / 24);
   game.world.day = Math.floor(hours / 24);
   return game;
 };
@@ -418,7 +418,6 @@ test("at every place, over a couple of days, names don't cover anything and nobo
     const walking = {};
     for (let step = 0; step < 2 * 144; step += 1) {
       clockRuns(game, 10);
-      game.fleet.raid = null;
       for (const level of Object.values(mapFor(place).levels)) {
         const taken = new Map();
         const claim = (name, x, y, length = 1) => {
@@ -479,7 +478,7 @@ test("only the captain's own place is kept in the save, and everywhere else is w
   assert.deepEqual(Object.keys(game.life.places), ["meridian"]);
   game.location = "haven";
   game.walk = null;
-  game.fleet.at = "haven";
+  game.ship.at = "haven";
   clockRuns(game, 5);
   assert.deepEqual(Object.keys(game.life.places), ["haven"]);
   assert.ok(JSON.stringify(game.life).length < 5000);
@@ -753,7 +752,6 @@ test("the clock waits for anything with its own window", () => {
   const cases = {
     talk: (game) => talkCommand(game, { action: "open", person: "voss" }),
     fight: (game) => { game.combat = { id: 1 }; },
-    raid: (game) => { game.fleet.raid = { id: 1 }; },
   };
   for (const [name, start] of Object.entries(cases)) {
     const game = newGame();
@@ -817,7 +815,7 @@ after(() => {
   }
 });
 
-test("over the real server: the clock ticks small, gets the whole game when the fleet's day turns over, and stops for a talk", async () => {
+test("over the real server: the clock ticks small, gets the whole game when the ship's day turns over, and stops for a talk", async () => {
   const first = await post("/api/tick", { ms: 500, rate: 10 });
   assert.equal(first.status, 200);
   assert.ok(first.clock.hours > 23.97);

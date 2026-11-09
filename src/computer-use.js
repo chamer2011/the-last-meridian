@@ -11,7 +11,7 @@ import { passTime } from "./rules.js";
 import { newTurnLimits, runTool } from "./tools.js";
 import { startCheck } from "./checks.js";
 import { closest } from "./check-games/kit.js";
-import { WORLD_COMPUTERS, WORLD_PLACES } from "./world.js";
+import { WORLD_COMPUTERS } from "./world.js";
 import { applySystemsEffect, controlSystem, controlsView, roomPowered } from "./systems.js";
 import { untagged } from "../public/story.js";
 import { MAX_LOG, MINUTES_PER_ACTION, classKeys, contentOf, knowsPassword, levelNamed, line, memoryOf, openSession, peopleAt, programOffered, sameName, slug, writtenContent } from "./computers.js";
@@ -84,17 +84,17 @@ function openMail(game, session, content, id) {
   return out ?? { over: false };
 }
 
-// The logs the game writes itself, from what it knows of the place and the fleet.
+// The logs the game writes itself, from what it knows of the place and the ship.
 function logLines(game, session, content, log) {
   const place = content.place ?? game.location;
   const placeName = LOCATIONS[place]?.name ?? place;
   switch (log.kind) {
     case "berths": {
-      const fleetHere = Boolean(WORLD_PLACES[place]?.fleet) || place === "meridian";
-      if (!fleetHere) return [line(`No fleet ships berthed at ${placeName}.`, "dim")];
-      const ships = Object.entries(game.fleet?.ships ?? {}).filter(([, ship]) => ship.status === "active");
-      if (!ships.length) return [line("The berth log is empty.", "dim")];
-      return ships.map(([id, ship]) => line(`${(game.fleet?.names?.[id] ?? id).padEnd(24)} condition ${ship.condition}%  aboard ${ship.aboard}`, "info"));
+      const ship = game.ship ?? {};
+      const shipHere = place === "meridian" || (ship.at && place === ship.at);
+      if (!shipHere) return [line(`${ship.name ?? "CFS Meridian"} is not at the berths of ${placeName}.`, "dim")];
+      const hull = ship.maxHull ? Math.round((ship.hull / ship.maxHull) * 100) : 0;
+      return [line(`${(ship.name ?? "CFS Meridian").padEnd(24)} hull ${hull}%  aboard ${ship.aboard ?? "unknown"}`, "info")];
     }
     case "prices": {
       worldOf(game);
@@ -112,11 +112,10 @@ function logLines(game, session, content, log) {
       return entries.length ? entries.map((entry) => line(`Day ${entry.day + 1}: ${entry.text}`, "info")) : [line(`Nothing's been heard of ${placeName} lately.`, "dim")];
     }
     case "readouts": {
-      const ship = game.fleet?.ships?.meridian;
+      const ship = game.ship;
       const out = [];
-      if (ship) out.push(line(`CFS Meridian: condition ${ship.condition}%, ${ship.aboard} aboard.`, "info"));
-      const fuel = game.fleet?.supplies?.fuel ?? game.fleet?.fuel;
-      if (fuel !== undefined) out.push(line(`Fuel: ${typeof fuel === "number" ? fuel : JSON.stringify(fuel)}.`, "info"));
+      if (ship) out.push(line(`${ship.name ?? "CFS Meridian"}: hull ${ship.hull}/${ship.maxHull}, ${ship.aboard ?? "unknown"} aboard.`, "info"));
+      if (ship) out.push(line(`Fuel: ${ship.fuel}/${ship.maxFuel}.`, "info"));
       out.push(line(`Day ${Math.floor((game.clock?.hours ?? 0) / 24) + 1}, air plant at 140% of design.`, "dim"));
       return out;
     }

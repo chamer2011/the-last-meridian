@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { slugify } from "./campaign.js";
 import { ENEMIES, LOCATIONS, STARTING_FACTIONS } from "./data.js";
 import { newWorld } from "./daily.js";
-import { newFleet, syncFleetShips } from "./fleet.js";
+import { newShipState, shipOf } from "./ship.js";
 import { noteLoreSeen, startingLoreIds } from "./lore.js";
 import { crewContacts, maxEnergy, maxHp } from "./rules.js";
 import { emptyStory } from "./story-library.js";
@@ -152,15 +152,10 @@ function fromVersion5(save) {
   };
 }
 
-// Version 7 gave the fleet real ships, supplies that run out, and the Choir on its trail. The
-// clock starts from now: nobody pays for the days that went by before this save knew about them.
+// Version 7 gave the fleet real ships and supplies that run out. The fleet's gone since version 16, so a save this old
+// only gets the ship's own stores there, with nothing charged for the days that went by before.
 function fromVersion6(save) {
-  return {
-    ...save,
-    version: 7,
-    fleet: newFleet(save),
-    transcript: [...(save.transcript ?? []), { role: "notice", text: "[FLEET] The fleet is now 41 real ships, with food, fuel, medicine and parts that run out, and the Choir on its trail. The new Fleet menu and Star map show it all." }],
-  };
+  return { ...save, version: 7 };
 }
 
 // Version 8 gave the captain a place on the deck plan, and a way to talk to whoever's there.
@@ -205,6 +200,28 @@ function fromVersion14(save) {
   return { ...save, version: 15, mode: "ai", scene: null, flags: {}, lastCheck: null, lastFight: null };
 }
 
+// Version 16 is the Meridian on her own. The fleet's part of the save goes, and what was the fleet's and is still
+// the ship's carries over: where she is, whose chair it is, the day her clock has got to, the rations, her people's
+// health and the log. Her stores start from the file, since the fleet's tonnes were for thirty thousand people.
+function fromVersion15(save) {
+  const fleet = save.fleet ?? {};
+  const { fleet: _gone, ...rest } = save;
+  const fresh = newShipState(save);
+  const ship = {
+    ...(save.ship ?? {}),
+    ...fresh,
+    day: fleet.day ?? fresh.day,
+    at: fleet.at ?? fresh.at,
+    chair: fleet.chair ? { id: fleet.chair.id, funds: fleet.chair.funds ?? fresh.chair?.funds ?? 0, lastJump: fleet.chair.lastJump ?? -99, lastBuy: fleet.chair.lastBuy ?? -99 } : fresh.chair,
+    health: fleet.health ?? fresh.health,
+    rations: fleet.rations ?? fresh.rations,
+    log: fleet.log ?? [],
+    ...(fleet.council ? { council: { off: Boolean(fleet.council.off), ordered: fleet.council.ordered ?? {}, waiting: {}, last: fleet.council.last ?? {}, setRations: fleet.council.setRations ?? null, recent: fleet.council.recent ?? [] } } : {}),
+  };
+  const notice = { role: "notice", text: "[SHIP] The fleet is a thing of the past: the game is about the Meridian alone now. Her stores, rations and morale are on the Ship menu, and the star map is hers." };
+  return { ...rest, version: 16, ship, transcript: save.fleet ? [...(save.transcript ?? []), notice] : save.transcript ?? [] };
+}
+
 export function migrateGame(save) {
   if (!save) return save;
   let game = save;
@@ -222,10 +239,11 @@ export function migrateGame(save) {
   if (game.version < 13) game = fromVersion12(game);
   if (game.version < 14) game = fromVersion13(game);
   if (game.version < 15) game = fromVersion14(game);
+  if (game.version < 16) game = fromVersion15(game);
   // A place that's gone from the world's files can't hold anyone, and factions added since this save was made need a standing.
   if (!LOCATIONS[game.location]) game.location = "meridian";
   game.factions ??= {};
   for (const [id, start] of Object.entries(STARTING_FACTIONS)) game.factions[id] ??= start;
-  syncFleetShips(game);
+  shipOf(game);
   return game;
 }

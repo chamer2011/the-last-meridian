@@ -13,11 +13,11 @@ import {
 import { checkView } from "./checks.js";
 import { FIGHT_DIFFICULTIES, attackBonus, combatProfile, combatView, enemyNumbers, parleyNotes } from "./combat.js";
 import { advanceWorld, holdingsOf, itemFactor, newWorld, newsView, placeLine, placeNow, worldOf } from "./daily.js";
-import { advanceFleet, chairOf, chartEntry, fleetGoingHungry, fleetJumped, fleetLine, fleetOf, fleetView, isCharted, jumpCost, newFleet } from "./fleet.js";
+import { advanceShip, chairOf, chartEntry, isCharted, jumpCost, newShipState, shipGoingHungry, shipJumped, shipLine, shipOf, shipView } from "./ship.js";
 import { advanceLife, lifeOf } from "./life.js";
 import { startingLoreIds } from "./lore.js";
 import { THREAT_LABELS } from "./npc.js";
-import { START_LIST, inTheFleet, isCaptain, jobHere, roleBrief, startOf, toOutsider } from "./role.js";
+import { START_LIST, aboardShip, isCaptain, jobHere, roleBrief, startOf, toOutsider } from "./role.js";
 import { recordLines, recordView } from "./record.js";
 import { advanceStories, clockOf } from "./story-clock.js";
 import { emptyStory, storyView } from "./story-library.js";
@@ -280,7 +280,7 @@ export function clockRuns(game, minutes) {
 }
 
 // What time does to the captain. Conditions fade, fatigue builds, and rest heals. Each day that goes
-// by also runs a day of the fleet. A "routine" day has a night's sleep in it, so it doesn't tire you.
+// by also runs a day aboard the Meridian. A "routine" day has a night's sleep in it, so it doesn't tire you.
 function hoursPass(game, hours, activity) {
   const notes = [];
   if (activity === "rest") {
@@ -295,22 +295,22 @@ function hoursPass(game, hours, activity) {
     addFatigue(game, (activity === "work" ? 3 : 1.5) * hours * tiring(game));
     game.energy = Math.min(maxEnergy(game), game.energy + Math.floor(hours / 2));
   }
-  // With no medicine in the fleet, wounds take twice as long to heal.
-  const speed = (activity === "rest" ? 1.5 : 1) * (game.fleet?.out?.medicine && inTheFleet(game) ? 0.5 : 1);
+  // With no medicine aboard the Meridian, wounds take twice as long to heal.
+  const speed = (activity === "rest" ? 1.5 : 1) * (game.ship?.out?.medicine && aboardShip(game) ? 0.5 : 1);
   for (const c of [...game.conditions]) {
     c.hoursLeft -= hours * speed;
-    // Nobody recovers from being underfed while the fleet's still going hungry.
-    if (c.hoursLeft <= 0 && c.id === "underfed" && fleetGoingHungry(game)) c.hoursLeft = 1;
+    // Nobody recovers from being underfed while the ship's still going hungry.
+    if (c.hoursLeft <= 0 && c.id === "underfed" && shipGoingHungry(game)) c.hoursLeft = 1;
     if (c.hoursLeft <= 0) {
       removeCondition(game, c.id);
       notes.push(`[HEALTH] You've recovered: ${CONDITIONS[c.id].name}.`);
     }
   }
-  // The fleet, the world and the stories go through each day together, so it makes no difference how a long wait is cut up.
+  // The ship, the world and the stories go through each day together, so it makes no difference how a long wait is cut up.
   const today = Math.floor(game.clock.hours / 24);
   const told = { today: 0, all: 0 };
-  for (let day = Math.min(fleetOf(game).day, worldOf(game).day, clockOf(game).day) + 1; day <= today; day += 1) {
-    notes.push(...advanceFleet(game, day), ...advanceWorld(game, day), ...advanceStories(game, day, told));
+  for (let day = Math.min(shipOf(game).day, worldOf(game).day, clockOf(game).day) + 1; day <= today; day += 1) {
+    notes.push(...advanceShip(game, day), ...advanceWorld(game, day), ...advanceStories(game, day, told));
   }
   syncVitals(game);
   return notes;
@@ -511,14 +511,14 @@ export function raiseStat(game, stat) {
 }
 
 // What a night's sleep costs here. A captain sleeps aboard the Meridian. Anyone else sleeps for nothing
-// where they live and anywhere in the fleet, and pays for a bunk anywhere else. Null means there's nowhere.
+// where they live and aboard the Meridian, and pays for a bunk anywhere else. Null means there's nowhere.
 const BUNK_PRICE = 6;
 const SLEEPING_ROUGH_STRESS = 8;
 
 export function restCost(game) {
   const place = LOCATIONS[game.location];
   if (isCaptain(game)) return place?.rest ? 0 : null;
-  return place?.rest || place?.fleet || startOf(game)?.place === game.location ? 0 : BUNK_PRICE;
+  return place?.rest || game.location === "meridian" || startOf(game)?.place === game.location ? 0 : BUNK_PRICE;
 }
 
 export function rest(game, { rough = false } = {}) {
@@ -631,16 +631,15 @@ export function travel(game, destination) {
   const place = LOCATIONS[destination];
   if (!place) throw new Error(`Unknown location: ${destination}`);
   if (destination === game.location) return { message: `Already at ${place.name}.`, notes: [] };
-  if (game.fleet?.raid) throw new Error("The fleet is under attack, and nobody's going anywhere until the captain gives the order.");
   const cost = jumpCost(game, destination);
-  // Someone with no fleet of their own goes by themselves, on whatever's going that way.
+  // Someone with no ship of their own goes by themselves, on whatever's going that way.
   if (!isCaptain(game)) {
     game.location = destination;
     game.walk = null;
     const notes = passTime(game, cost.hours);
     return { message: cost.jump ? `Took passage to ${place.name}, which took ${cost.hours} hours. It's now ${clockLabel(game)}.` : `Crossed over to ${place.name}.`, notes };
   }
-  // Whatever's already with the fleet is a short shuttle ride away, so no jump is needed.
+  // The dock the Meridian's at is a short shuttle ride away, so no jump is needed.
   if (!cost.jump) {
     game.location = destination;
     game.walk = null;
@@ -649,14 +648,14 @@ export function travel(game, destination) {
   const blocked = jumpBlocked(game);
   if (blocked) throw new Error(blocked);
   if (game.ship.fuel < 1) throw new Error("The ship is out of fuel and can't jump.");
-  if (game.ship.fuel < cost.fuel) throw new Error(`A jump to ${place.name} takes ${cost.fuel} fuel, and the fleet has ${game.ship.fuel}.`);
+  if (game.ship.fuel < cost.fuel) throw new Error(`A jump to ${place.name} takes ${cost.fuel} fuel, and the Meridian has ${game.ship.fuel}.`);
   // A good navigator gets there sooner, and sometimes saves some of the fuel.
   const navigation = skillRank(game, "navigation");
   const saved = Math.random() < navigation * 0.04;
   game.ship.fuel -= saved ? cost.fuel - 1 : cost.fuel;
   game.location = destination;
   game.walk = null;
-  fleetJumped(game, destination, cost.fuel);
+  shipJumped(game, destination);
   const notes = passTime(game, cost.hours);
   notes.push(...practice(game, "navigation", 2));
   return {
@@ -671,7 +670,7 @@ export function travel(game, destination) {
 export function assembleGame(profile) {
   const start = START_LIST[profile.start] ?? START_LIST.captain;
   const game = {
-    version: 15,
+    version: 16,
     campaign: null,
     // Who writes the story: "written" plays the scenes in world/scenes, and "ai" is the AI game master. The server sets it from the Settings menu.
     mode: "ai",
@@ -731,7 +730,7 @@ export function assembleGame(profile) {
   if (start.place && !game.seenLore.includes(`place:${start.place}`)) game.seenLore.push(`place:${start.place}`);
   game.hp = maxHp(game);
   game.energy = maxEnergy(game);
-  game.fleet = newFleet(game);
+  Object.assign(game.ship, newShipState(game));
   game.world = newWorld(game);
   if (start.room) startInRoom(game, start.room);
   return game;
@@ -877,14 +876,14 @@ function activeEffects(game) {
 
 function locationList(game) {
   return Object.entries(LOCATIONS)
-    .filter(([id, place]) => id === game.location || (!place.hidden && (isCharted(id) || place.fleet || game.seenLore.includes(`place:${id}`))))
+    .filter(([id, place]) => id === game.location || (!place.hidden && (isCharted(id) || game.seenLore.includes(`place:${id}`))))
     .map(([id, place]) => ({
       id,
       name: place.name,
       desc: place.desc,
       here: id === game.location,
       hasMarket: place.market.length > 0,
-      withFleet: Boolean(place.fleet),
+      ownShip: id === "meridian",
       dangerous: Boolean(place.dangerous),
       ...chartEntry(game, id),
     }));
@@ -989,8 +988,7 @@ export function publicState(game) {
     maxEnergy: maxEnergy(game),
     defense: defense(game),
     credits: game.credits,
-    ship: game.ship,
-    fleet: fleetView(game),
+    ship: shipView(game),
     role: roleView(game),
     world: { here: placeNow(game, game.location), news: newsView(game) },
     location: { id: game.location, ...place },
@@ -1046,7 +1044,7 @@ function roleView(game) {
     job: job ? { name: job.name, pay: job.pay + skillRank(game, job.skill) } : null,
     jobAway: !captain && !job && start?.job ? { name: start.job.name, place: LOCATIONS[start.place]?.name ?? start.place } : null,
     chair: chairOf(game)?.name ?? null,
-    inFleet: inTheFleet(game),
+    withShip: aboardShip(game),
     rest: restCost(game),
   };
 }
@@ -1089,8 +1087,8 @@ export function aiSnapshot(game) {
     ...(deckPlan ? [deckPlan] : []),
     ...(placeToday ? [placeToday] : []),
     ...(systemsNow ? [systemsNow] : []),
-    `${isCaptain(game) ? "Ship" : "The Meridian"}: hull ${game.ship.hull}/${game.ship.maxHull}, fuel ${game.ship.fuel}/${game.ship.maxFuel}, fleet morale ${game.ship.morale}/100.`,
-    fleetLine(game),
+    `${isCaptain(game) ? "Ship" : "The Meridian"}: hull ${game.ship.hull}/${game.ship.maxHull}, fuel ${game.ship.fuel}/${game.ship.maxFuel}, morale aboard ${game.ship.morale}/100.`,
+    shipLine(game),
     `Faction standing: ${factions}.`,
     ...(quests.length ? quests : ["Active quests: none."]),
     `Finished quests: ${finished}.`,

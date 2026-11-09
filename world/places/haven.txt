@@ -2,7 +2,6 @@
 also called: Haven
 faction: drift
 market: medkit, stim, energy_cell, repair_kit, fuel_cell, sidearm, heavy_carbine, flak_vest, marine_plate, forged_papers, lockbreaker, data_chip, slug_thrower, ration_pack
-the fleet is here: no
 a place to rest: no
 dangerous: no
 hidden: no

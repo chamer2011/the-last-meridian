@@ -29,15 +29,13 @@ const newGame = (seed = 21) => {
   return game;
 };
 const days = (game, count) => passTime(game, 24 * count, "routine");
-// Keeps the fleet out of trouble, so that only what's being tested gets a say.
+// Keeps the ship out of trouble, so that only what's being tested gets a say.
 function comfortable(game) {
-  game.fleet.food = 9000;
-  game.fleet.medicine = 900;
-  game.fleet.parts = 900;
+  game.ship.food = 9000;
+  game.ship.medicine = 900;
+  game.ship.parts = 900;
   game.ship.fuel = game.ship.maxFuel;
-  game.fleet.pursuit = 0;
   game.ship.morale = 60;
-  game.fleet.raid = null;
 }
 // A day at a time until something's happened, with nobody in charge of anything.
 function until(game, reached, limit = 400) {

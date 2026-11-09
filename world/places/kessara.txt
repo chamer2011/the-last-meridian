@@ -2,7 +2,6 @@
 also called: Kessara, the Drift, The Drift
 faction: drift
 market: stim, energy_cell, fuel_cell, needle_rifle, smugglers_coat, ghostweave, lockbreaker, forged_papers, slicer_rig, signal_scrambler, shock_baton, slug_thrower
-the fleet is here: no
 a place to rest: no
 dangerous: no
 hidden: no

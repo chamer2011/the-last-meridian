@@ -1,13 +1,13 @@
 {
   "_help": [
-    "Who the player can be. Being captain of the Meridian is one way to start, and these are the others. If they start as anything but the captain, someone else is in the chair, and the fleet goes on without them. Restart the game after changing this.",
-    "group is where it's listed: fleet or world. name and desc are what the player reads when they choose. short is what they're called in the status line. place and room say where they start: room is a level of that place's map.",
+    "Who the player can be. Being captain of the Meridian is one way to start, and these are the others. If they start as anything but the captain, someone else is in the chair, and the Meridian goes on without them. Restart the game after changing this.",
+    "group is where it's listed: fleet (the Meridian, and the two ships that aren't hers, the Sundial and Anselm's Mercy) or world. name and desc are what the player reads when they choose. short is what they're called in the status line. place and room say where they start: room is a level of that place's map.",
     "job is the work they can do at that place for money: name is what the button says, pay is the credits for an eight-hour shift, skill is the skill it practices and adds to the pay, and done is what's said when it's over.",
     "people are who they already know there, by id. factions changes how those factions regard them from the start. quest is what's on their mind when the story opens.",
     "gm and opening are for the game master: who this person is, and how the story opens. Keep them to what's plain to see, and let the story do the rest."
   ],
 
-  "groups": { "fleet": "In the fleet", "world": "Out in the world" },
+  "groups": { "fleet": "On the ships", "world": "Out in the world" },
 
   "starts": {
     "captain": {
@@ -15,8 +15,8 @@
       "captain": true,
       "name": "Captain of the Meridian",
       "short": "captain",
-      "desc": "Everyone above you is dead, so forty-one ships and thirty thousand people are yours to feed, move and answer for. You give the orders, and you carry what comes of them.",
-      "gm": "The captain of the CFS Meridian, and so of the whole Refugee Fleet, because everyone above them is dead. Everything the notes say about the captain means them.",
+      "desc": "Everyone above you is dead, so the Meridian and the nine hundred people aboard her are yours to feed, move and answer for. You give the orders, and you carry what comes of them.",
+      "gm": "The captain of the CFS Meridian, because everyone above them is dead. Everything the notes say about the captain means them.",
       "opening": "The Meridian has just picked up the mysterious Beacon signal, and the player has just been made captain. Introduce Commander Voss."
     },
 

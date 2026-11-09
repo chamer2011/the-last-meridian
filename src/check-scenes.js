@@ -7,12 +7,23 @@
 import { allStoryProblems, SCENES_DIR } from "./scenes.js";
 
 const dir = process.argv[2] ?? SCENES_DIR;
-const { count, stories, computers, systems, drawn, problems } = allStoryProblems(dir);
+const { count, stories, computers, systems, drawn, problems, fleet } = allStoryProblems(dir);
 if (!problems.length) {
   console.log(`All ${count} ${count === 1 ? "scene is" : "scenes are"} sound, and so are the notes of ${stories} stories, the ${computers} computers, the systems of ${systems} places and the ${drawn} ${drawn === 1 ? "map" : "maps"} drawn in Tiled.`);
 } else {
   console.log(`${problems.length} ${problems.length === 1 ? "problem" : "problems"} in ${dir}, world\\stories, world\\computers, world\\systems and world\\maps:\n`);
   for (const problem of problems) console.log(`- ${problem}`);
   console.log("\nFix these and run it again. The how-tos are world\\scenes\\_how-to-write-a-scene.txt, world\\stories\\_how-to-write-a-story.txt and world\\maps\\_how-to-draw-rooms-in-tiled.txt.");
-  process.exit(1);
 }
+
+// Not problems: the fleet is a thing of the past, and these are the files that still speak of it, to rework in time.
+const list = (ids) => (ids.length ? ids.join(", ") : "none");
+console.log(`\nThe fleet, which the game no longer has:
+- Set aside, in world\\stories\\_set-aside.txt, because they stand on a ship that's gone (${fleet.setAside.length}): ${list(fleet.setAside)}
+- Stories whose clock still changes other ships or the Choir's pursuit, which the game lets go (${fleet.otherShips.length}): ${list(fleet.otherShips)}
+- Stories whose words still speak of the fleet (${fleet.stories.length}): ${list(fleet.stories)}
+- Scenes (${fleet.scenes.length}): ${list(fleet.scenes)}
+- Places (${fleet.places.length}): ${list(fleet.places)}
+- People (${fleet.people.length}): ${list(fleet.people)}`);
+
+if (problems.length) process.exit(1);

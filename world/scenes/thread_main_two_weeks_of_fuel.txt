@@ -353,7 +353,7 @@ The tankers come across from the depot that night, and the next morning there ar
 => The fleet owes Mother Quill forty-one favors, and she'll name them at the worst possible moments.
 
 * fuel 6: Mother Quill's depot, on credit
-* raw change_fleet {"food": 40, "reason": "Parcels of food from Kessara, with a card"}
+* stores food 10: Parcels of food from Kessara, with a card
 * faction drift 8: The fleet signed with Mother Quill
 * flag signed_with_quill
 * flag fuel_sorted
@@ -374,7 +374,7 @@ The tankers come across from the depot that night, and the next morning there ar
 => The fleet owes Mother Quill forty-one favors, one each, with a limit on them in her own initials.
 
 * fuel 6: Mother Quill's depot, on credit
-* raw change_fleet {"food": 40, "reason": "Parcels of food from Kessara, with a card"}
+* stores food 10: Parcels of food from Kessara, with a card
 * faction drift 8: The fleet signed with Mother Quill
 * flag signed_with_quill
 * flag fuel_sorted

@@ -50,7 +50,6 @@ const perks = textFolder("perks", PERK);
 const factions = textFolder("factions", FACTION);
 const art = single("art.json");
 const arc = single("arc.json");
-const events = single("fleet-events.json");
 
 const itemIds = new Set([...BASE_ITEMS, ...Object.keys(items)]);
 const placeIds = new Set([...BASE_PLACES, ...Object.keys(places)]);
@@ -186,7 +185,7 @@ test("story threads are complete, and everything they mention exists", () => {
   finish("Problems with threads:");
 });
 
-test("the main story and the fleet's events are complete", () => {
+test("the main story is complete", () => {
   for (const [i, act] of (arc.acts ?? []).entries()) {
     if (!text(act.name) || !text(act.goal)) report(`arc/act ${i}`, "needs a name and a goal");
   }
@@ -194,9 +193,5 @@ test("the main story and the fleet's events are complete", () => {
     if (!text(clue.id) || !text(clue.text)) report(`arc/clue ${clue.id}`, "needs an id and text");
     for (const place of clue.places ?? []) if (!placeIds.has(place)) report(`arc/clue ${clue.id}`, `unknown place ${place}`);
   }
-  for (const [i, event] of (events.events ?? []).entries()) {
-    if (!text(event.id) || !text(event.text)) report(`fleet-events/${i}`, "needs an id and text");
-    for (const person of event.people ?? []) if (!characters[person]) report(`fleet-events/${event.id}`, `unknown person ${person}`);
-  }
-  finish("Problems with the main story and fleet events:");
+  finish("Problems with the main story:");
 });

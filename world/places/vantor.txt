@@ -2,7 +2,6 @@
 also called: Vantor
 faction: hegemony
 market: medkit, energy_cell, repair_kit, marine_plate, heavy_carbine, service_rifle, trauma_kit, emergency_patch
-the fleet is here: no
 a place to rest: no
 dangerous: no
 hidden: no

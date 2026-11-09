@@ -225,7 +225,6 @@ function windowNode() {
         el("div", { class: "check-log computer-console", id: "computer-console", role: "log" }, view.log.map((entry, i) => lineNode(entry, i >= comp.seen)))),
       advisorNode(view)),
     comp.message && el("div", { class: "notice-inline fail" }, comp.message),
-    app.ui.game?.fleet?.raid && el("div", { class: "notice-inline fail" }, "The fleet's under attack. Log off to give your orders."),
     el("div", { class: "check-controls" }, inputNode(view)),
     el("footer", { class: "check-taskbar" },
       el("span", { class: "check-start" }, "Start"),

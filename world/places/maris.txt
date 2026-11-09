@@ -2,7 +2,6 @@
 also called: Maris Deep, Maris
 faction: none
 market: ration_pack, nutrient_gel, work_suit, emergency_patch
-the fleet is here: no
 a place to rest: no
 dangerous: no
 hidden: no

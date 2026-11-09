@@ -67,7 +67,7 @@ export function resetWalk() {
 
 const anotherWindow = () => {
   const g = app.ui.game;
-  return Boolean(g.combat || g.check || g.talk || g.computer || g.fleet.raid || walk.plan || app.bagOpen?.() || app.questsOpen?.());
+  return Boolean(g.combat || g.check || g.talk || g.computer || walk.plan || app.bagOpen?.() || app.questsOpen?.());
 };
 
 // While the AI is writing or another window is up, the captain stays where they are.
@@ -483,12 +483,12 @@ function clockHeld() {
 }
 
 // The clock runs all the time, through menus, the deck plan, a thing's window, every skill check and a computer in use,
-// until Space pauses it. Talks, fights and raids stop it, the same as walkTick in src/walk.js, and so does the Story
+// until Space pauses it. Talks and fights stop it, the same as walkTick in src/walk.js, and so does the Story
 // board, which is for writing.
 function clockWaits() {
   const { ui } = app;
   const g = ui.game;
-  return ui.streaming || ui.waiting || Boolean(g.combat || g.talk || g.fleet.raid) || Boolean(document.getElementById("board"));
+  return ui.streaming || ui.waiting || Boolean(g.combat || g.talk) || Boolean(document.getElementById("board"));
 }
 
 // Time stands still for anything that stops the clock, and while the game's window is put away.
@@ -527,13 +527,12 @@ function drawClock() {
 function applyTick(reply) {
   const { ui } = app;
   if (!reply.clock || !ui.game) return;
-  // Every couple of hours the captain's fatigue changes, and now and then the fleet has news.
+  // Every couple of hours the captain's fatigue changes, and now and then the ship has news.
   if (reply.game) {
     const drawnBefore = ui.game.walk?.here.drawn ?? 0;
     ui.game = reply.game;
     if (reply.news) {
-      // A raid needs the whole screen. Anything else waits behind an open menu, so nothing being done in it is lost.
-      if (ui.game.fleet.raid) ui.sideOpen = false;
+      // News waits behind an open menu, so nothing being done in it is lost.
       if (!ui.sideOpen) {
         app.render();
         return;
@@ -1306,10 +1305,10 @@ function onKey(event) {
   } else if (/^[1-9]$/.test(event.key) && app.pickOption(Number(event.key))) event.preventDefault();
 }
 
-// Space pauses the clock, and goes on again, unless a fight, a check, a raid or a talk is open, which use it themselves.
+// Space pauses the clock, and goes on again, unless a fight, a check or a talk is open, which use it themselves.
 function pauseKey(event) {
   const g = app.ui.game;
-  if (!walkShown() || !g.walk?.life || g.combat || g.check || g.fleet.raid || g.talk) return;
+  if (!walkShown() || !g.walk?.life || g.combat || g.check || g.talk) return;
   event.preventDefault();
   walk.spaceTaken = true;
   toggleClock();

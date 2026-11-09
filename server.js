@@ -11,7 +11,7 @@ import { SKILLS } from "./src/character-data.js";
 import { checkCommand, startCheck, startChoiceCheck } from "./src/checks.js";
 import { simulatorFollowers } from "./src/combat.js";
 import { buildCharacter, createGameFromDraft, creatorSetup, randomDraft } from "./src/creator.js";
-import { fleetCommand } from "./src/fleet.js";
+import { shipCommand } from "./src/ship.js";
 import { noteLoreSeen } from "./src/lore.js";
 import { openingFor } from "./src/role.js";
 import { migrateGame } from "./src/migrate.js";
@@ -330,8 +330,6 @@ const requireGame = () => {
   return game;
 };
 
-// Nothing else can happen while a raid's waiting on the captain's order.
-const RAID_WAITING = "The fleet's under attack. Give your orders first.";
 // The clock stands still during a talk, so anything that could move it waits until it's over.
 const TALK_WAITING = "Finish the talk first.";
 // The clock stands still on a computer too, and the AI only hears about it at log-off.
@@ -339,8 +337,6 @@ const COMPUTER_WAITING = "Log off the computer first.";
 
 function menuAction(body) {
   const g = requireGame();
-  // Sleeping lets time pass, and that has to wait until the raid's been answered.
-  if (g.fleet?.raid && (body.action === "rest" || body.action === "work")) throw new Error(RAID_WAITING);
   if (g.talk && (body.action === "rest" || body.action === "work")) throw new Error(TALK_WAITING);
   if (g.computer && (body.action === "rest" || body.action === "work")) throw new Error(COMPUTER_WAITING);
   if (body.action === "rest" && airBadHere(g)) throw new Error("You can't rest here: the air's bad. Get somewhere it's moving first.");
@@ -502,16 +498,16 @@ async function handleApi(req, res, route) {
     autosave();
     return json(res, 200, { game: publicState(game), message });
   }
-  // The Fleet menu, the star map and raids all run here. The AI hears about them with its next message.
-  if (route === "/api/fleet") {
+  // The Ship menu's orders and the star map run here. The AI hears about them with its next message.
+  if (route === "/api/ship") {
     if (requireGame().combat) throw new Error("Finish the fight first.");
     if (game.check) throw new Error("Finish the check first.");
     if (game.talk) throw new Error(TALK_WAITING);
     if (game.computer) throw new Error(COMPUTER_WAITING);
-    const { message, notes = [], report = null, moved = false } = fleetCommand(game, body);
+    const { message, notes = [], moved = false } = shipCommand(game, body);
     if (notes.length) log("notice", notes.join("\n"));
     autosave();
-    return json(res, 200, { game: publicState(game), message, report, moved });
+    return json(res, 200, { game: publicState(game), message, moved });
   }
   // Fights happen right here. No request goes to the AI until the player continues the story.
   if (route === "/api/combat") {
@@ -530,8 +526,7 @@ async function handleApi(req, res, route) {
   }
   // A check plays out here too, and the AI only hears about it once it's over.
   if (route === "/api/check/start") {
-    if (requireGame().fleet?.raid) throw new Error(RAID_WAITING);
-    if (game.talk) throw new Error(TALK_WAITING);
+    if (requireGame().talk) throw new Error(TALK_WAITING);
     if (game.computer) throw new Error(COMPUTER_WAITING);
     if (body.practice) {
       if (!SKILLS[body.practice]) throw new Error("Unknown skill.");
@@ -567,7 +562,6 @@ async function handleApi(req, res, route) {
   if (route === "/api/systems") {
     if (requireGame().combat) throw new Error("Finish the fight first.");
     if (game.check) throw new Error("Finish the check first.");
-    if (game.fleet?.raid) throw new Error(RAID_WAITING);
     if (!systemsOf("meridian")) throw new Error("The Meridian has no systems to run.");
     if (game.role?.captain === false) throw new Error("The Meridian isn't yours to run.");
     const all = [{ systems: systemsOf("meridian").systems.map((one) => one.id), rooms: null }];
@@ -601,7 +595,6 @@ async function handleApi(req, res, route) {
   if (route === "/api/sim") {
     if (requireGame().combat) throw new Error("Finish the fight first.");
     if (game.check) throw new Error("Finish the check first.");
-    if (game.fleet?.raid) throw new Error(RAID_WAITING);
     if (game.talk) throw new Error(TALK_WAITING);
     if (game.computer) throw new Error(COMPUTER_WAITING);
     if (!publicState(game).location.rest) throw new Error("The simulator is aboard the Meridian.");
@@ -616,8 +609,7 @@ async function handleApi(req, res, route) {
     const { notes = [], ...reply } = walkTick(game, body);
     if (reply.held || reply.still) return json(res, 200, reply);
     if (notes.length) log("notice", notes.join("\n"));
-    // A raid needs the whole screen, even if it hasn't got a line in the story yet.
-    const news = notes.length > 0 || Boolean(game.fleet?.raid);
+    const news = notes.length > 0;
     if (news) autosave();
     else saveInAWhile();
     // A room saved in Tiled since the page last drew it is sent again whole, so it's drawn as it is now.
@@ -629,7 +621,6 @@ async function handleApi(req, res, route) {
   if (route === "/api/walk") {
     if (requireGame().combat) throw new Error("Finish the fight first.");
     if (game.check) throw new Error("Finish the check first.");
-    if (game.fleet?.raid) throw new Error(RAID_WAITING);
     if (game.talk) throw new Error(TALK_WAITING);
     if (game.computer) throw new Error(COMPUTER_WAITING);
     const reply = walkCommand(game, body);
@@ -646,7 +637,6 @@ async function handleApi(req, res, route) {
   if (route === "/api/talk") {
     if (requireGame().combat) throw new Error("Finish the fight first.");
     if (game.check) throw new Error("Finish the check first.");
-    if (game.fleet?.raid) throw new Error(RAID_WAITING);
     if (body.action === "say") {
       if (!game.talk) throw new Error("You're not talking to anyone right now.");
       const text = typeof body.text === "string" ? body.text.trim().slice(0, 2000) : "";
@@ -666,7 +656,6 @@ async function handleApi(req, res, route) {
     requireGame();
     if (game.combat) throw new Error("Finish the fight first.");
     if (game.check) throw new Error("Finish the check first.");
-    if (game.fleet?.raid) throw new Error(RAID_WAITING);
     if (game.computer) throw new Error(COMPUTER_WAITING);
     // Anything that would move the story on leaves the talk first.
     closeTalk(game);

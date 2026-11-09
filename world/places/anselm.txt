@@ -2,7 +2,6 @@
 also called: Anselm's Mercy, the Mercy, The Mercy
 faction: fleet
 market: medkit, stim, trauma_kit, nutrient_gel, calm_tabs, surgeon_lens
-the fleet is here: yes
 a place to rest: no
 dangerous: no
 hidden: no

@@ -2,7 +2,6 @@
 also called: the Graveyard, Graveyard
 faction: guild
 market: emergency_patch, repair_kit, work_suit, tool_roll, boarding_axe, fuel_cell, slug_thrower
-the fleet is here: no
 a place to rest: no
 dangerous: no
 hidden: no

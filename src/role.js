@@ -1,5 +1,5 @@
 // Who the player is. Being captain of the Meridian is one way to start. Anyone else has a job somewhere,
-// someone else has the chair, and the fleet goes on without them. world/starts.json has the choices.
+// someone else has the chair, and the ship goes on without them. world/starts.json has the choices.
 
 import { LOCATIONS } from "./data.js";
 import { STARTS } from "./world.js";
@@ -12,8 +12,8 @@ const STORY_STARTS = "The game is starting. Open the story:";
 export const isCaptain = (game) => game.role?.captain !== false;
 export const startOf = (game) => START_LIST[game.role?.id] ?? null;
 
-// Aboard one of the fleet's ships, or at the place it's at. A captain's always with their fleet.
-export const inTheFleet = (game) => isCaptain(game) || Boolean(LOCATIONS[game.location]?.fleet) || (Boolean(game.fleet?.at) && game.location === game.fleet.at);
+// Aboard the Meridian, or on the dock she's at. A captain's always with their ship.
+export const aboardShip = (game) => isCaptain(game) || game.location === "meridian" || (Boolean(game.ship?.at) && game.location === game.ship.at);
 
 // The work they do, if this is where they do it.
 export function jobHere(game) {
@@ -28,7 +28,7 @@ export const toOutsider = (game, text) => (isCaptain(game) || !text ? text : tex
 export function openingFor(game) {
   const start = startOf(game) ?? START_LIST.captain;
   if (isCaptain(game)) return `${STORY_STARTS} ${START_LIST.captain.opening}`;
-  return `${STORY_STARTS} ${start.opening} Keep it small and close. This is one person's ordinary day, and whatever's happening to the fleet is happening a long way over their head.`;
+  return `${STORY_STARTS} ${start.opening} Keep it small and close. This is one person's ordinary day, and whatever's happening to the Meridian is happening a long way over their head.`;
 }
 
 // What the game master is told about who the player is, whenever a conversation begins.

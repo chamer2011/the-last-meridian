@@ -56,7 +56,8 @@ test("every person, place and species reads without a problem, writes back the s
   assert.equal(LOCATIONS.haven.name, "Haven Station");
   assert.ok(LOCATIONS.haven.market.includes("medkit"));
   assert.equal(LOCATIONS.haven.gm.districts.length, 5);
-  assert.equal(LOCATIONS.meridian.fleet, true);
+  assert.equal(LOCATIONS.meridian.rest, true);
+  assert.equal(LOCATIONS.meridian.fleet, undefined, "the fleet's flag is gone from the place files");
   assert.equal(ENEMIES, WORLD_ENEMIES);
   assert.equal(ITEMS, WORLD_ITEMS);
   assert.equal(FACTIONS, WORLD_FACTIONS);

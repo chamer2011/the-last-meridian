@@ -8,12 +8,12 @@
 
 import { knownPlace, pushPlace, tellNews } from "./daily.js";
 import { LOCATIONS } from "./data.js";
-import { lostShipNames, storyHitsFleet } from "./fleet.js";
+import { storyHitsShip } from "./ship.js";
 import { FACT_ID, endStory, recordFact } from "./record.js";
 import { isCaptain } from "./role.js";
 import { conditionHolds, parseCondition } from "./scene-text.js";
 import { storyOf } from "./story-library.js";
-import { STORY_CLOCK, WORLD_ARC, WORLD_THREADS, endingsOf } from "./world.js";
+import { SET_ASIDE, STORY_CLOCK, WORLD_ARC, WORLD_THREADS, endingsOf } from "./world.js";
 
 const THREADS = STORY_CLOCK.threads ?? {};
 const ACTS = STORY_CLOCK.acts ?? [];
@@ -38,7 +38,7 @@ const dayNow = (game) => Math.floor(game.clock.hours / 24);
 export function clockOf(game) {
   const story = storyOf(game);
   // They start from the day the game does, however long the first wait turns out to be.
-  const day = game.fleet?.day ?? dayNow(game);
+  const day = game.ship?.day ?? dayNow(game);
   story.clock ??= { day, start: day, threads: {}, act: null, moved: [] };
   return story.clock;
 }
@@ -51,7 +51,7 @@ export const ranItsCourse = (game, id) => {
 
 const isOver = (game, id) => storyOf(game).threads[id] === "done" || ranItsCourse(game, id);
 
-// Where a story's news comes from. Whatever's happening in the fleet is happening aboard the flagship.
+// Where a story's news comes from. A story written for "the fleet" happens aboard the Meridian.
 function newsPlace(thread) {
   const place = (thread?.places ?? []).find((one) => LOCATIONS[one]);
   return place ?? "meridian";
@@ -59,7 +59,8 @@ function newsPlace(thread) {
 
 function happen(game, stage, place, notes, told) {
   for (const hit of stage.places ?? []) pushPlace(game, hit.id, hit);
-  if (stage.fleet) storyHitsFleet(game, stage.fleet, notes);
+  // The stories' files still say "fleet:" for what a stage changes aboard; the ship reads the numbers that are hers.
+  if (stage.fleet) storyHitsShip(game, stage.fleet, notes);
   // Plenty can happen in a day, and the story's only got room for some of it. It's all in the news.
   const heard = [];
   tellNews(game, stage.place ?? place, stage.news, heard, stage.big);
@@ -69,9 +70,6 @@ function happen(game, stage, place, notes, told) {
     notes.push(...heard);
   }
 }
-
-// It can't happen to a ship that's gone.
-const shipIsGone = (game, news) => lostShipNames(game).some((name) => news.includes(name));
 
 function logMoved(clock, entry) {
   clock.moved.push(entry);
@@ -92,7 +90,8 @@ function leave(game, id, stage, summary) {
 function threadDay(game, clock, id, day, notes, told) {
   const file = THREADS[id];
   const thread = WORLD_THREADS[id];
-  if (!thread || storyOf(game).threads[id]) return;
+  // A story set aside in world/stories/_set-aside.txt stays still, like one someone's taken up.
+  if (!thread || storyOf(game).threads[id] || SET_ASIDE.has(id)) return;
   let state = clock.threads[id];
   if (!state) {
     if (day - clock.start < (file.from ?? (Math.max(1, thread.minLevel ?? 1) - 1) * DAYS_PER_LEVEL)) return;
@@ -111,7 +110,6 @@ function threadDay(game, clock, id, day, notes, told) {
       (state.skipped ??= []).push(index);
       continue;
     }
-    if (shipIsGone(game, stage.news)) return;
     happen(game, stage, newsPlace(thread), notes, told);
     leave(game, id, stage, stage.news);
     logMoved(clock, { day, id, title: thread.title, text: stage.news, place: stage.place ?? newsPlace(thread) });
@@ -124,7 +122,7 @@ function threadDay(game, clock, id, day, notes, told) {
 function consequenceDay(game, clock, id, day, notes, told) {
   const thread = WORLD_THREADS[id];
   const list = THREADS[id]?.consequences ?? [];
-  if (!thread || !list.length) return;
+  if (!thread || !list.length || SET_ASIDE.has(id)) return;
   clock.consequences ??= {};
   for (const [i, one] of list.entries()) {
     const key = `${id}:${i}`;
@@ -137,7 +135,7 @@ function consequenceDay(game, clock, id, day, notes, told) {
     clock.consequences[key] ??= { since: day };
     if (day - clock.consequences[key].since < Math.round((one.after ?? 0) * stretch(game, key))) continue;
     clock.consequences[key].done = day;
-    if (typeof one.news !== "string" || shipIsGone(game, one.news)) continue;
+    if (typeof one.news !== "string") continue;
     happen(game, one, newsPlace(thread), notes, told);
     leave(game, id, one, one.news);
     logMoved(clock, { day, id, title: thread.title, text: one.news, place: one.place ?? newsPlace(thread) });
@@ -154,10 +152,8 @@ function actDay(game, clock, day, notes, told) {
   const event = file.events?.[clock.act.next];
   if (event && day - clock.act.from >= Math.round(event.after * scale)) {
     clock.act.next += 1;
-    if (!shipIsGone(game, event.news)) {
-      happen(game, { ...event, big: event.big ?? true }, "meridian", notes, told);
-      logMoved(clock, { day, id: null, title: WORLD_ARC.acts?.[story.act - 1]?.name ?? "The Beacon", text: event.news, place: event.place ?? "meridian" });
-    }
+    happen(game, { ...event, big: event.big ?? true }, "meridian", notes, told);
+    logMoved(clock, { day, id: null, title: WORLD_ARC.acts?.[story.act - 1]?.name ?? "The Beacon", text: event.news, place: event.place ?? "meridian" });
   }
   if (!file.moves_on || story.act >= LAST_ACT_BY_ITSELF || day - clock.act.from < Math.round(file.moves_on.after * scale)) return;
   happen(game, { ...file.moves_on, big: true }, "meridian", notes, told);

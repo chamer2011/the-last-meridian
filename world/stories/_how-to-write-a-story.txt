@@ -101,9 +101,10 @@ If nobody steps in is the story's clock: what happens by itself, on the day give
 Every line under a stage is optional: lead is what the lead says from then on, if is a condition the stage needs
 (skipped otherwise, so two stages on the same day with opposite ifs are a fork), place is where it happens if not
 the story's first place, big means everyone who knows the place hears it, at a_place changes what a place has
-(food, fuel, medicine, parts) or who holds it (a faction, by its id), fleet changes the fleet (morale, food,
-medicine, parts, fuel, pursuit, ships, picked), named marks one ship lost or gone, fact puts a fact on the record,
-and ending ends the story by one of its own endings.
+(food, fuel, medicine, parts) or who holds it (a faction, by its id), fleet changes what's aboard the Meridian
+(morale, food, medicine, parts, fuel: the line is still called fleet from when there was one, and anything else
+written there, such as pursuit or ships, is kept but not read), fact puts a fact on the record, and ending ends the
+story by one of its own endings. A story in _set-aside.txt stays in its file and out of the game.
 
 Consequences follow from the record, whether or not anyone has taken the story up: once the condition holds, that
 many days later the news happens, once, and if the condition stops holding before then the count starts over.

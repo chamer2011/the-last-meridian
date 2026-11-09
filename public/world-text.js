@@ -51,7 +51,7 @@ export const PLACE = {
   title: "name",
   header: [
     { path: "aliases", key: "also called", type: "list" }, { path: "faction", key: "faction", type: "name" }, { path: "market", key: "market", type: "list" },
-    { path: "fleet", key: "the fleet is here", type: "flag" }, { path: "rest", key: "a place to rest", type: "flag" }, { path: "dangerous", key: "dangerous", type: "flag" }, { path: "hidden", key: "hidden", type: "flag" },
+    { path: "rest", key: "a place to rest", type: "flag" }, { path: "dangerous", key: "dangerous", type: "flag" }, { path: "hidden", key: "hidden", type: "flag" },
     { path: "gm.people", key: "people", type: "list" }, { path: "gm.enemies", key: "enemies", type: "list" }, { path: "gm.items", key: "items", type: "list" },
   ],
   sections: [

@@ -2,7 +2,6 @@
 also called: Korrath Forge, Korrath
 faction: clans
 market: forge_hammer, korrun_harness, boarding_axe, heavy_carbine, marine_plate, arc_welder, repair_kit, emergency_patch, tool_roll, work_suit, refined_fuel
-the fleet is here: no
 a place to rest: no
 dangerous: no
 hidden: no

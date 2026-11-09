@@ -1,0 +1,17 @@
+# Stories set aside: kept in this folder, read by the checker and the Story board, but never offered in the game
+# and never moved on by the clock. One story's id a line, as its file is named without .txt. Anything after a #
+# is a comment. Take a line out, and that story is back in the game the next time it starts.
+#
+# The fleet is a thing of the past, and these stand on a ship of it that isn't there any more.
+
+crew_pell_certificate          # the Harrow's Bounty
+crew_voss_relieved             # the Little Marigold
+fleet_bunk_forty_one           # the Harrow's Bounty
+fleet_deck_nine_drill          # the Bright Tomorrow
+fleet_frost_line               # the Vesper Landing
+fleet_landlord_of_deck_three   # the Tollan Arms
+fleet_mutiny_ashgrove          # the CFS Ashgrove
+fleet_permission_slip          # the Wintermere
+fleet_slow_harriet             # the Slow Harriet
+main_the_ship_that_sat_down    # the Patience of Ostra
+out_wheel_ship_in_the_pot      # Tolliver's Ark

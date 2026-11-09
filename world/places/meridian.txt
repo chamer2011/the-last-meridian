@@ -2,7 +2,6 @@
 also called: the Meridian, The Meridian, Meridian
 faction: fleet
 market: 
-the fleet is here: yes
 a place to rest: yes
 dangerous: no
 hidden: no

@@ -8,8 +8,8 @@
 // shortage at one place reaches the next a few days later, and it all recovers in the end.
 
 import { FACTIONS, ITEMS, LOCATIONS } from "./data.js";
-import { isCharted } from "./fleet.js";
-import { inTheFleet } from "./role.js";
+import { isCharted } from "./ship.js";
+import { aboardShip } from "./role.js";
 import { DAILY } from "./world.js";
 
 const PLACES = DAILY.places ?? {};
@@ -84,12 +84,12 @@ export const sideName = (place, side) => PLACES[place]?.sides?.[side] ?? FACTION
 
 export const knownPlace = (game, id) => {
   const place = LOCATIONS[id];
-  return Boolean(place) && (id === game.location || (!place.hidden && (isCharted(id) || place.fleet || game.seenLore?.includes(`place:${id}`))));
+  return Boolean(place) && (id === game.location || (!place.hidden && (isCharted(id) || game.seenLore?.includes(`place:${id}`))));
 };
 
 // ---- News -------------------------------------------------------------------
 
-// Everything goes on the list. The captain hears straight away about wherever they or the fleet are,
+// Everything goes on the list. The captain hears straight away about wherever they or the Meridian are,
 // and about anything big that happens somewhere they know of.
 export function tellNews(game, place, text, notes, big = false) {
   tell(game, worldOf(game), place, text, notes, big);
@@ -98,7 +98,7 @@ export function tellNews(game, place, text, notes, big = false) {
 function tell(game, world, place, text, notes, big = false) {
   world.news.push({ day: world.day, place, text });
   if (world.news.length > MAX_NEWS) world.news.splice(0, world.news.length - MAX_NEWS);
-  const close = place === game.location || (inTheFleet(game) && place === game.fleet?.at);
+  const close = place === game.location || (aboardShip(game) && place === game.ship?.at);
   if (!close && !(big && knownPlace(game, place))) return;
   notes.push(`[WORLD] ${text}`);
   world.unheard.push(text);
@@ -229,7 +229,7 @@ export function itemFactor(game, item) {
   return swing * standingFactor(game, place);
 }
 
-// What the fleet buying or selling a lot does to what's left there.
+// What the Meridian buying or selling a lot does to what's left there.
 export function tradedAt(game, place, good, sold = false) {
   const goods = worldOf(game).places[place]?.goods;
   if (goods?.[good] === undefined) return;

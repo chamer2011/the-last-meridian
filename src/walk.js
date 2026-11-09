@@ -585,7 +585,7 @@ export function atPost(game, id) {
   const person = findCharacter(game.campaign, id);
   if (!person) return false;
   // Whoever could have had the chair is only here if they do.
-  if (person.chair && game.fleet?.chair?.id !== id) return false;
+  if (person.chair && game.ship?.chair?.id !== id) return false;
   const status = contactOf(game, person.name)?.status;
   return !status || status === "alive";
 }
@@ -1371,11 +1371,11 @@ function peopleNow(game) {
 }
 
 // The clock running by itself, while the player explores somewhere people live their days. It waits
-// for talks, fights and raids, because time stands still for those, and everywhere else it stays still.
+// for talks and fights, because time stands still for those, and everywhere else it stays still.
 // Every skill check lets it run on, the story's own as well as those on the room's parts, things, doors and people, and so
 // does a computer in use.
 export function walkTick(game, body) {
-  if (game.combat || game.talk || game.fleet?.raid) return { held: true };
+  if (game.combat || game.talk) return { held: true };
   if (!walkAt(game) || !livesHere(game.location)) return { still: true };
   if (!CLOCK_RATES.includes(body.rate)) throw new Error("That isn't one of the clock's speeds.");
   const ms = Math.max(0, Math.min(Number(body.ms) || 0, LONGEST_TICK));
@@ -1533,7 +1533,7 @@ export function talkHeard(game, text, role = "narrator") {
 
 // A fight or a check has its own window, so it takes over from the talk.
 export function talkLineOver(game) {
-  if (game.combat || game.check || game.fleet?.raid) closeTalk(game);
+  if (game.combat || game.check) closeTalk(game);
 }
 
 // What runTurn needs for one line of a talk. In a written conversation, the AI fits the line to the written ones instead of answering freely.

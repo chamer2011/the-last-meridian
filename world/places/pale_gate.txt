@@ -2,7 +2,6 @@
 also called: the Pale Gate, The Pale Gate, Pale Gate
 faction: none
 market: 
-the fleet is here: no
 a place to rest: no
 dangerous: yes
 hidden: no

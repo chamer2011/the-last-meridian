@@ -2,7 +2,6 @@
 also called: Foundry Seven, the Foundry
 faction: unbound
 market: slicer_rig, tool_roll, field_scanner, repair_kit, emergency_patch, energy_cell
-the fleet is here: no
 a place to rest: no
 dangerous: no
 hidden: no

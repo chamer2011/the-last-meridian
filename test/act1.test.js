@@ -84,7 +84,7 @@ const roomNow = (game) => publicState(game).walk.here.name;
 
 // ---- The engine's new pieces ----------------------------------------------------------
 
-test("the written story can move the act and fill the tanks, and a part can wait for the fleet to arrive", () => {
+test("the written story can move the act and fill the tank, and a part can wait for the Meridian to arrive", () => {
   assert.deepEqual(parseEffect("act 2").do, { tool: "update_story", act: 2 });
   assert.match(parseEffect("act two").problem, /act needs/);
   assert.deepEqual(parseEffect("fuel 6: Quill's depot").do, { tool: "change_ship", hull: 0, fuel: 6, morale: 0, reason: "Quill's depot" });
@@ -108,7 +108,7 @@ test("the written story can move the act and fill the tanks, and a part can wait
   assert.equal(waiting.scene.part, "here", "nothing has changed, so the story stays");
   assert.doesNotMatch(still, /You're there/);
   waiting.location = "kessara";
-  waiting.pendingEvents.push("The fleet jumped.");
+  waiting.pendingEvents.push("The Meridian jumped.");
   const arrived = play(waiting, { event: "continue" }, scenes);
   assert.match(arrived, /You're there/);
   assert.equal(waiting.scene, null);
@@ -129,7 +129,7 @@ test("the council story is in the world, with a clock, after the Warm Room, and 
   const hand = newGame("docker");
   hand.location = "haven";
   hand.story.threads.main_the_old_scholar = "done";
-  assert.ok(!leadsHere(hand).some((one) => one.id === COUNCIL), "a dock hand isn't asked where the fleet's going");
+  assert.ok(!leadsHere(hand).some((one) => one.id === COUNCIL), "a dock hand isn't asked where the Meridian's going");
 });
 
 // ---- Two Weeks of Fuel ----------------------------------------------------------------
@@ -154,7 +154,7 @@ test("the fuel: the captain finds days with Marrow, jumps to Kessara, limits Qui
   // The jump is the star map's. Here it's done by hand, and the story goes on when the player continues.
   game.location = "kessara";
   game.walk = null;
-  game.pendingEvents.push("On the captain's order, the fleet jumped to Kessara Drift.");
+  game.pendingEvents.push("On the captain's order, the Meridian jumped to Kessara Drift.");
   const parlor = play(game, { event: "continue" });
   assert.equal(game.scene.part, "parlor");
   assert.match(parlor, /@Mother Quill/);

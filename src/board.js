@@ -13,7 +13,8 @@ import { SCENES_DIR, factsLeft, loadScenes, sceneProblems } from "./scenes.js";
 import { classKeyOf, classKeys, classNameOf, computerProblems, programOf } from "./computers.js";
 import { clockProblems } from "./story-clock.js";
 import { notesProblems } from "./story-library.js";
-import { COMPUTERS_DIR, COMPUTER_FLAVOR, ENEMIES_DIR, FACTIONS_DIR, FLEET_DATA, ITEMS_DIR, PEOPLE_DIR, PERKS_DIR, PLACES_DIR, SPECIES_DIR, STORIES_DIR, STORY_CLOCK, STORY_FILE_PROBLEMS, WORLD_CHARACTERS, WORLD_COMPUTERS, WORLD_ENEMIES, WORLD_FACTIONS, WORLD_FILE_PROBLEMS, WORLD_ITEMS, WORLD_PERKS, WORLD_PLACES, WORLD_SPECIES, WORLD_THREADS, endingsOf, reloadStories, reloadWorld } from "./world.js";
+import { SHIP_EFFECT_KEYS } from "./ship.js";
+import { COMPUTERS_DIR, COMPUTER_FLAVOR, ENEMIES_DIR, FACTIONS_DIR, ITEMS_DIR, PEOPLE_DIR, PERKS_DIR, PLACES_DIR, SPECIES_DIR, STORIES_DIR, STORY_CLOCK, STORY_FILE_PROBLEMS, WORLD_CHARACTERS, WORLD_COMPUTERS, WORLD_ENEMIES, WORLD_FACTIONS, WORLD_FILE_PROBLEMS, WORLD_ITEMS, WORLD_PERKS, WORLD_PLACES, WORLD_SPECIES, WORLD_THREADS, endingsOf, reloadStories, reloadWorld } from "./world.js";
 import { parseStoryText, writeStoryText } from "../public/story-text.js";
 import { parseSystemsText, writeSystemsText, KNOWN_SYSTEMS, SYSTEM_TITLES } from "../public/systems-text.js";
 import { clearSystems, defaultFileFor, placePeople, systemsOf, systemsProblems } from "./systems.js";
@@ -275,9 +276,8 @@ function boardLists() {
     itemTypes: ["weapon", "armor", "consumable", "gadget", "story"],
     perks: named(PERKS),
     abilities: named(ABILITIES),
-    ships: (FLEET_DATA.ships ?? []).map((one) => ({ id: one.id, name: one.name })),
     goods: ["food", "fuel", "medicine", "parts"],
-    fleetKeys: ["morale", "food", "medicine", "parts", "fuel", "pursuit", "ships", "picked", "sat"],
+    shipKeys: [...SHIP_EFFECT_KEYS],
     computers: named(WORLD_COMPUTERS),
     classes: classKeys().map((id) => ({ id, name: classNameOf(id) })),
     flavors: Object.keys(COMPUTER_FLAVOR?.motd ?? { default: 1, yours: 1 }),

@@ -2,7 +2,6 @@
 also called: the Gilded Wheel, Gilded Wheel, the Wheel, The Wheel
 faction: drift
 market: stim, calm_tabs, smugglers_coat, needle_rifle, ghostweave, slicer_rig, ledger_of_favors, forged_papers, wheel_marker
-the fleet is here: no
 a place to rest: no
 dangerous: no
 hidden: no

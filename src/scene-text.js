@@ -305,6 +305,18 @@ export function parseEffect(text) {
       // A flag with words after a colon is a fact the player can read on the record.
       return { do: verb === "flag" ? { set: name, ...(after ? { text: after } : {}) } : { clear: name } };
     }
+    case "stores": {
+      // What's aboard the Meridian: * stores food 40, medicine -2: The reason. Fuel has its own line.
+      const stores = {};
+      const pieces = head.trim().slice(verb.length).split(",").map((piece) => piece.trim()).filter(Boolean);
+      for (const piece of pieces) {
+        const [name, number, ...more] = piece.split(/\s+/);
+        const amount = signed(number ?? "");
+        if (!["food", "medicine", "parts"].includes(name) || amount === null || amount === 0 || more.length) return { problem: "stores is written * stores food 40, medicine -2: The reason, with food, medicine or parts and a number each, and a minus sign to use some up" };
+        stores[name] = amount;
+      }
+      return pieces.length && after ? { do: { stores, reason: after } } : { problem: "stores needs food, medicine or parts and a number each, then a colon and the reason: * stores food 40: Parcels from Kessara" };
+    }
     case "fuel": {
       const amount = signed(words[1] ?? "");
       return amount !== null && amount !== 0 && after ? { do: { tool: "change_ship", hull: 0, fuel: amount, morale: 0, reason: after } } : { problem: "fuel needs a number, with - to burn it, then a colon and the reason: * fuel 6: Mother Quill's depot" };
@@ -362,6 +374,11 @@ export function parseEffect(text) {
       const tool = words[1];
       try {
         const input = JSON.parse(line.slice(line.indexOf("{")));
+        // The fleet's old tool, in a draft written when there was one: it's the ship's stores now, and the rest of it is let go.
+        if (tool === "change_fleet" && input && typeof input === "object") {
+          const stores = Object.fromEntries(["food", "medicine", "parts"].filter((key) => Number.isFinite(input[key]) && input[key] !== 0).map((key) => [key, input[key]]));
+          return Object.keys(stores).length ? { do: { stores, reason: String(input.reason ?? "") } } : { problem: "change_fleet is the fleet's old tool: write * stores food 40: The reason for the ship's stores, and leave the rest out" };
+        }
         return tool && input && typeof input === "object" ? { do: { tool, ...input } } : { problem: "raw needs a tool's name and its fields in braces" };
       } catch {
         return { problem: "raw needs a tool's name and its fields in braces, written the way JSON is" };

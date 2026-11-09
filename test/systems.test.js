@@ -19,7 +19,7 @@ const { computerCommand, screenGoesDark } = await import("../src/computer-use.js
 const { enterComputer, enterDoorPanel, useComputer } = await import("../src/computers.js");
 const { conditionHolds, parseCondition, parseEffect } = await import("../src/scene-text.js");
 const { peopleAboard } = await import("../src/life.js");
-const { jumpCost } = await import("../src/fleet.js");
+const { jumpCost } = await import("../src/ship.js");
 const { stockTalk } = await import("../src/talks.js");
 const { LOCATIONS } = await import("../src/data.js");
 const { SYSTEMS_DEFAULTS, WORLD_SYSTEMS } = await import("../src/world.js");
@@ -451,7 +451,7 @@ test("the Meridian can't jump with her engines down, plots by hand with her navi
   sys.applySystemsEffect(game, parseEffect("engines off at meridian").do.systems);
   assert.throws(() => travel(game, destination), /engines are down/);
   sys.applySystemsEffect(game, parseEffect("engines on at meridian").do.systems);
-  game.fleet.at = "haven";
+  game.ship.at = "haven";
   sys.applySystemsEffect(game, parseEffect("docking locked at haven").do.systems);
   assert.match(sys.jumpBlocked(game), /docking clamps at Haven Station are locked/);
   sys.applySystemsEffect(game, parseEffect("docking released at haven").do.systems);

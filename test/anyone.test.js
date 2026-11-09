@@ -17,19 +17,19 @@ const { NOTABLES, SKILLS } = await import("../src/character-data.js");
 const { checkView, startCheck } = await import("../src/checks.js");
 const { buildCharacter, createGameFromDraft, creatorSetup, normalizeDraft, randomDraft } = await import("../src/creator.js");
 const { FACTIONS, LOCATIONS, STARTING_QUESTS, WORLD_BIBLE } = await import("../src/data.js");
-const { answerRaid, chairOf, changeCommand, fleetCommand, fleetLine, fleetReport, fleetView } = await import("../src/fleet.js");
+const { chairOf, changeCommand, shipCommand, shipLine, shipReport, shipView } = await import("../src/ship.js");
 const { peopleAboard } = await import("../src/life.js");
 const { migrateGame } = await import("../src/migrate.js");
 const { projectDir } = await import("../src/paths.js");
-const { START_LIST, inTheFleet, isCaptain, jobHere, openingFor, startOf } = await import("../src/role.js");
+const { START_LIST, aboardShip, isCaptain, jobHere, openingFor, startOf } = await import("../src/role.js");
 const { aiDossier, aiSnapshot, passTime, publicState, rest, restCost, travel, workShift } = await import("../src/rules.js");
-const { arcBrief, fleetNews, leadsHere, storyView, threadNotes } = await import("../src/story-library.js");
+const { arcBrief, leadsHere, storyView, threadNotes } = await import("../src/story-library.js");
 const { hasMovedOn, leadNow } = await import("../src/story-clock.js");
 const { newTurnLimits, runTool } = await import("../src/tools.js");
 const { mapFor, roomHere, walkLine, walkOf, walkView } = await import("../src/walk.js");
-const { FLEET_DATA, STAR_MAP, STORY_CLOCK, WORLD_MAPS, WORLD_THREADS } = await import("../src/world.js");
+const { SHIP_DATA, STAR_MAP, STORY_CLOCK, WORLD_MAPS, WORLD_THREADS } = await import("../src/world.js");
 
-const CHAIR = FLEET_DATA.chair;
+const CHAIR = SHIP_DATA.chair;
 const OTHERS = Object.keys(START_LIST).filter((id) => id !== "captain");
 const newGame = (start = "captain", seed = 21) => {
   const draft = randomDraft({ seed, archetype: "officer" });
@@ -45,7 +45,6 @@ const peopleIn = (game, room) => {
   const { levelId, level } = mapFor("meridian").rooms[room];
   return peopleAboard(game, "meridian", levelId).filter((one) => level.roomAt(one.x, one.y) === room);
 };
-const activeShips = (game) => Object.values(game.fleet.ships).filter((ship) => ship.status === "active").length;
 
 // ---- What's written down -----------------------------------------------------------
 
@@ -63,7 +62,7 @@ test("every start is somewhere real, with real people, a real job and something 
     for (const faction of Object.keys(start.factions ?? {})) assert.ok(FACTIONS[faction], `${id}: ${faction}`);
     for (const field of ["id", "title", "desc", "objective"]) assert.ok(start.quest[field], `${id}: the quest's ${field}`);
     assert.ok(!/\b(captain of the Meridian|your fleet|your ship)\b/i.test(start.desc), `${id} sounds like a captain`);
-    if (start.group === "fleet") assert.ok(LOCATIONS[start.place].fleet, `${id} is listed with the fleet, and isn't there`);
+    if (start.group === "fleet") assert.ok(["meridian", "sundial", "anselm"].includes(start.place), `${id} is listed with the ships, and isn't on one`);
   }
   assert.equal(new Set(OTHERS.map((id) => START_LIST[id].quest.id)).size, OTHERS.length, "each has a quest of its own");
 });
@@ -92,26 +91,25 @@ test("three people could have the chair, each with a file, a post, a day, and th
     assert.ok(Object.values(mapFor("meridian").levels).some((level) => level.homes.some((home) => home.id === id)), `${id} has no post`);
     const file = CHAIR.captains[id];
     assert.equal(file.name, `Captain ${person.name.split(" ").at(-1)}`);
-    for (const key of ["moveAt", "stockTo", "runAt", "restDays", "risk", "fightGuns"]) assert.ok(Number.isFinite(file[key]), `${id}: ${key}`);
+    for (const key of ["moveAt", "stockTo", "restDays", "risk"]) assert.ok(Number.isFinite(file[key]), `${id}: ${key}`);
   }
   for (const port of CHAIR.ports) assert.ok(STAR_MAP.places[port] && !LOCATIONS[port].hidden, port);
-  for (const crews of Object.values(CHAIR.crews)) assert.ok(FLEET_DATA.crews[crews], crews);
 });
 
 test("a captain's game hasn't changed: it starts where it always did, with the people it always had", () => {
   const game = createGameFromDraft(randomDraft({ seed: 21, archetype: "officer" }));
-  assert.equal(game.version, 15);
+  assert.equal(game.version, 16);
   assert.deepEqual(game.role, { id: "captain", captain: true });
   assert.equal(isCaptain(game), true);
   assert.equal(game.location, "meridian");
-  assert.equal(game.fleet.chair, null);
+  assert.equal(game.ship.chair, null);
   assert.deepEqual(game.quests.map((quest) => quest.id), STARTING_QUESTS.map((quest) => quest.id));
   assert.ok(game.contacts.some((contact) => contact.name === NOTABLES.voss.name));
   assert.equal(publicState(game).role.captain, true);
   assert.equal(publicState(game).role.job, null);
   assert.equal(chairOf(game), null);
   assert.match(aiSnapshot(game), /^Day 1, 08:00\. Captain /);
-  assert.match(fleetLine(game), /^Fleet: 41 ships/);
+  assert.match(shipLine(game), /^Aboard: 900 people/);
   assert.match(aiDossier(game), /Their place in the world: The captain of the CFS Meridian/);
   assert.equal(openingFor(game), "The game is starting. Open the story: The Meridian has just picked up the mysterious Beacon signal, and the player has just been made captain. Introduce Commander Voss.");
   assert.match(publicState(game).people.find((person) => person.id === "voss").role, /^Your /);
@@ -132,7 +130,7 @@ for (const id of OTHERS) {
     assert.deepEqual(game.quests.map((quest) => quest.id), [start.quest.id]);
     assert.ok(game.contacts.length >= start.people.length);
     for (const person of start.people) assert.ok(game.contacts.some((contact) => contact.name === NOTABLES[person].name), person);
-    assert.equal(game.fleet.at, null, "the fleet is wherever it is, and it's not here");
+    assert.equal(game.ship.at, null, "the Meridian is wherever she is, and it's not here");
     assert.ok(chairOf(game));
     const shown = publicState(game);
     assert.equal(shown.role.title, start.name);
@@ -189,39 +187,37 @@ test("the creator offers every start, keeps the choice, and won't take a start t
 
 // ---- What they can and can't do -----------------------------------------------------------
 
-test("someone who isn't the captain can't give the fleet orders, but they can wait, and go places", () => {
+test("someone who isn't the captain can't give the ship orders, but they can wait, and go places", () => {
   const game = newGame("docker");
-  const { rations, crews } = game.fleet;
-  for (const order of [{ action: "rations", id: "half" }, { action: "crews", id: "rest" }, { action: "evade" }, { action: "buy", id: "fuel" }, { action: "sell", id: "fuel" }, { action: "strip", id: "kittiwake" }, { action: "council", on: false }, { action: "raid", id: "jump" }]) {
-    assert.throws(() => fleetCommand(game, order), /has the chair/, order.action);
+  const { rations } = game.ship;
+  for (const order of [{ action: "rations", id: "half" }, { action: "buy", id: "fuel" }, { action: "sell", id: "fuel" }, { action: "council", on: false }]) {
+    assert.throws(() => shipCommand(game, order), /has the chair/, order.action);
   }
-  assert.equal(game.fleet.rations, rations);
-  assert.equal(game.fleet.crews, crews);
-  const waited = fleetCommand(game, { action: "wait", days: 1 });
+  assert.equal(game.ship.rations, rations);
+  const waited = shipCommand(game, { action: "wait", days: 1 });
   assert.match(waited.message, /^You let 1 day go by/);
   assert.ok(game.clock.hours >= 32);
 });
 
-test("passage costs credits and time, moves them and nobody else, and doesn't touch the fleet", () => {
+test("passage costs credits and time, moves them and nobody else, and doesn't touch the ship", () => {
   const game = newGame("docker");
+  // Whoever has the chair has just jumped, so the ship stays put for the days this takes.
+  game.ship.chair.lastJump = 999;
   game.credits = 200;
   const { fuel } = game.ship;
-  const { pursuit } = game.fleet;
-  const at = game.fleet.at;
+  const at = game.ship.at;
   const entry = publicState(game).locations.find((place) => place.id === "kessara");
   assert.ok(entry.fare > 0, "it isn't free");
-  assert.equal(entry.fuel, 0, "and it's not the fleet's fuel");
+  assert.equal(entry.fuel, 0, "and it's not the ship's fuel");
   assert.equal(entry.jump, true);
-  assert.equal(entry.shakes, 0);
   assert.equal(entry.canGo, true);
   const hours = game.clock.hours;
-  const result = fleetCommand(game, { action: "course", id: "kessara" });
+  const result = shipCommand(game, { action: "course", id: "kessara" });
   assert.equal(result.moved, true);
   assert.equal(game.location, "kessara");
   assert.equal(game.credits, 200 - entry.fare);
   assert.equal(game.ship.fuel, fuel);
-  assert.equal(game.fleet.at, at);
-  assert.ok(game.fleet.pursuit >= pursuit, "and nobody's shaken off the Choir by it");
+  assert.equal(game.ship.at, at);
   assert.equal(game.clock.hours, hours + entry.hours);
   assert.equal(game.walk, null);
   assert.ok(game.pendingEvents.some((line) => line.includes("passage to Kessara Drift") && line.includes("alone")));
@@ -234,39 +230,39 @@ test("nobody can book a passage they can't pay for, or that nobody runs", () => 
   const entry = publicState(game).locations.find((place) => place.id === "kessara");
   assert.equal(entry.canGo, false);
   assert.match(entry.why, /Passage costs \d+ credits, and you have 2/);
-  assert.throws(() => fleetCommand(game, { action: "course", id: "kessara" }), /costs \d+ credits/);
+  assert.throws(() => shipCommand(game, { action: "course", id: "kessara" }), /costs \d+ credits/);
   assert.equal(game.location, "haven");
   game.credits = 9000;
   game.seenLore.push("place:nest");
   const nest = publicState(game).locations.find((place) => place.id === "nest");
   assert.equal(nest.canGo, false);
   assert.match(nest.why, /Nobody runs a ship there/);
-  assert.throws(() => fleetCommand(game, { action: "course", id: "nest" }), /Nobody runs a ship/);
+  assert.throws(() => shipCommand(game, { action: "course", id: "nest" }), /Nobody runs a ship/);
   assert.equal(game.credits, 9000);
 });
 
-test("danger and distance make a passage dearer, and the fleet's ships are a short hop only from the fleet", () => {
+test("danger and distance make a passage dearer, and the Meridian is a short hop only from the dock she's at", () => {
   const game = newGame("docker");
   game.credits = 500;
   const fare = (id) => publicState(game).locations.find((place) => place.id === id);
   assert.ok(fare("kessara").fare > 0);
-  assert.equal(fare("meridian").jump, true, "the fleet isn't here");
+  assert.equal(fare("meridian").jump, true, "the Meridian isn't here");
   assert.ok(fare("meridian").fare > 0);
-  game.fleet.at = "haven";
-  assert.equal(inTheFleet(game), true);
-  assert.equal(fare("meridian").jump, false, "and now it is");
+  game.ship.at = "haven";
+  assert.equal(aboardShip(game), true);
+  assert.equal(fare("meridian").jump, false, "and now she is");
   assert.equal(fare("meridian").fare, 0);
   assert.equal(fare("meridian").hours, 1);
   const before = game.credits;
-  fleetCommand(game, { action: "course", id: "meridian" });
+  shipCommand(game, { action: "course", id: "meridian" });
   assert.equal(game.location, "meridian");
   assert.equal(game.credits, before);
-  assert.equal(fare("sundial").jump, false, "and from one ship to another");
   assert.equal(fare("haven").jump, false, "and back to the dock");
-  game.fleet.at = "cinder";
+  assert.equal(fare("sundial").jump, true, "the Sundial is a place of her own now, a passage away");
+  game.ship.at = "cinder";
   game.seenLore.push("place:cinder");
   assert.equal(fare("cinder").jump, false);
-  assert.equal(fare("haven").jump, true, "the fleet took them along");
+  assert.equal(fare("haven").jump, true, "the ship took them along");
   const cheap = newGame("docker");
   cheap.seenLore.push("place:ghostlight", "place:deepyards");
   const spots = STAR_MAP.places;
@@ -277,19 +273,20 @@ test("danger and distance make a passage dearer, and the fleet's ships are a sho
   assert.ok(Number.isInteger(quiet.fare) && Number.isInteger(risky.fare));
 });
 
-test("if the story takes them somewhere, they go by themselves, and it can't move the fleet", () => {
+test("if the story takes them somewhere, they go by themselves, and it can't move the ship", () => {
   const game = newGame("engine_hand");
+  game.ship.chair.lastJump = 999;
   const { fuel } = game.ship;
   const { message } = travel(game, "wheel");
   assert.match(message, /Took passage/);
   assert.equal(game.location, "wheel");
   assert.equal(game.ship.fuel, fuel);
-  assert.equal(game.fleet.at, null);
-  assert.equal(inTheFleet(game), false);
+  assert.equal(game.ship.at, null);
+  assert.equal(aboardShip(game), false);
   const { result, isError } = tool(game, "travel", { destination: "korrath" });
   assert.ok(!isError, result);
   assert.equal(game.location, "korrath");
-  assert.equal(game.fleet.at, null);
+  assert.equal(game.ship.at, null);
 });
 
 test("a shift at their job pays, takes eight hours, tires them out, and practices what it's for", () => {
@@ -317,7 +314,7 @@ test("a shift at their job pays, takes eight hours, tires them out, and practice
   assert.equal(publicState(newGame()).role.jobAway, null);
 });
 
-test("they can sleep for nothing where they live and in the fleet, and elsewhere they pay or sleep rough", () => {
+test("they can sleep for nothing where they live and aboard the Meridian, and elsewhere they pay or sleep rough", () => {
   const game = newGame("docker");
   assert.equal(restCost(game), 0);
   game.hp = 1;
@@ -340,7 +337,7 @@ test("they can sleep for nothing where they live and in the fleet, and elsewhere
   assert.equal(game.credits, credits);
   assert.ok(game.hp < publicState(game).maxHp, "it doesn't do you as much good");
   assert.ok(game.needs.stress > 0);
-  game.location = "sundial";
+  game.location = "meridian";
   assert.equal(restCost(game), 0);
   assert.throws(() => rest(game, { rough: true }), /no need to sleep rough/);
   const captain = newGame();
@@ -364,8 +361,8 @@ test("whoever has the chair is on the Meridian, and nobody else who could have h
   const captain = newGame();
   const captainsBridge = peopleIn(captain, "bridge").map((one) => one.id);
   for (const id of Object.keys(CHAIR.captains)) assert.ok(!captainsBridge.includes(id), `${id} shouldn't be there for a captain`);
-  assert.equal(fleetView(game).ships.find((ship) => ship.id === "meridian").captain, chair.name);
-  assert.match(fleetView(captain).ships.find((ship) => ship.id === "meridian").captain, new RegExp(captain.name));
+  assert.equal(shipView(game).chair, chair.name);
+  assert.equal(shipView(captain).chair, null);
   assert.ok(findCharacter(game.campaign, chair.id).chair);
 });
 
@@ -377,146 +374,82 @@ test("the same person gets the same captain, a save keeps them, and other people
   assert.equal(seen.size, 3);
 });
 
-test("the fleet goes on by itself: it moves, buys what it needs with its own money, and never asks the player", () => {
+test("the ship goes on by itself: whoever has the chair moves her when she needs something, buys it with her own money, and never asks the player", () => {
   const game = newGame("docker");
   const { credits } = game;
-  const funds = game.fleet.chair.funds;
+  const funds = game.ship.chair.funds;
   const places = new Set();
   let bought = false;
   for (let day = 0; day < 120; day += 1) {
-    const before = game.fleet.chair.funds;
+    const before = game.ship.chair.funds;
     days(game, 1);
-    if (game.fleet.chair.funds < before + CHAIR.income) bought = true;
-    if (game.fleet.at) places.add(game.fleet.at);
-    assert.equal(game.fleet.raid, null, "nobody's waiting for the player to answer a raid");
-    assert.equal(game.pendingEvents.length, 0, "and nothing's waiting on them");
+    if (game.ship.chair.funds < before + CHAIR.income) bought = true;
+    if (game.ship.at) places.add(game.ship.at);
+    assert.equal(game.pendingEvents.length, 0, "nothing's waiting on them");
     assert.equal(game.location, "haven", "and they haven't been taken anywhere");
   }
   assert.equal(game.credits, credits, "none of that came out of their pocket");
-  assert.ok(places.size >= 3, `the fleet only went to ${[...places]}`);
-  assert.ok(bought, `it never bought anything: ${funds}`);
+  assert.ok(places.size >= 1, "she went somewhere for what she needed");
+  assert.ok(bought, `she never bought anything: ${funds}`);
   for (const place of places) assert.ok(CHAIR.ports.includes(place), place);
-  assert.ok(game.fleet.record.raids + places.size > 3);
-  assert.ok(activeShips(game) >= 25, `only ${activeShips(game)} ships after 120 days`);
-  assert.ok(game.fleet.food > 0 || game.fleet.medicine > 0);
+  assert.ok(game.ship.food > 0 && game.ship.medicine > 0, "and she's kept fed");
 });
 
-test("raids get answered, by whoever has the chair, in their own way", () => {
-  const order = (id) => {
-    const game = newGame("docker");
-    game.fleet.chair.id = id;
-    game.fleet.chair.lastJump = 999;
-    game.fleet.pursuit = 99.9;
-    game.ship.hull = 90;
-    game.ship.fuel = 8;
-    const report = [];
-    for (let day = 0; day < 2 && !game.fleet.record.raids; day += 1) {
-      const clock = game.clock.hours;
-      days(game, 1);
-      report.push(game.clock.hours - clock);
-    }
-    assert.equal(game.fleet.record.raids, 1, id);
-    assert.equal(game.fleet.raid, null, id);
-    assert.ok(report.every((hours) => hours === 24), "a raid doesn't take any of the player's time");
-    return game;
-  };
-  const fights = order("marchetti");
-  assert.ok(fights.ship.hull < 90, "Captain Marchetti stands and fights");
-  assert.ok(fights.fleet.pursuit <= 25, `pursuit ${fights.fleet.pursuit}`);
-  const runs = order("reddick");
-  assert.ok(runs.ship.fuel < 8, "Captain Reddick runs");
-  assert.ok(runs.fleet.pursuit >= 40);
-});
-
-test("a raid costs them nothing unless they're there, and the captain's skills aren't theirs to lend", () => {
-  const game = newGame("docker");
-  game.needs.stress = 10;
-  game.fleet.chair.lastJump = 999;
-  game.fleet.pursuit = 99.9;
-  const notes = days(game, 1);
-  assert.equal(game.fleet.record.raids, 1);
-  assert.equal(game.needs.stress, 10, "it's a long way off");
-  assert.ok(!notes.some((line) => line.startsWith("[RAID]")), notes.join(" | "));
-  assert.equal(fleetReport(game), null, "the game master doesn't hear it as the fleet's report");
-  const aboard = newGame("engine_hand");
-  aboard.fleet.chair.lastJump = 999;
-  aboard.fleet.pursuit = 99.9;
-  const heard = days(aboard, 1);
-  assert.equal(aboard.fleet.record.raids, 1);
-  assert.ok(heard.some((line) => line.startsWith("[RAID]")), heard.join(" | "));
-  assert.equal(aboard.pendingEvents.length, 0);
-  assert.match(fleetReport(aboard), /A Choir raid hit the fleet/);
-});
-
-test("if it costs a ship, it's news, wherever they are", () => {
-  let told = null;
-  for (let seed = 1; seed < 30 && !told; seed += 1) {
-    const game = newGame("docker", seed);
-    for (let day = 0; day < 40 && !told; day += 1) {
-      game.fleet.chair.lastJump = 999;
-      game.fleet.pursuit = 99.9;
-      const lost = game.fleet.record.shipsLost;
-      days(game, 1);
-      if (game.fleet.record.shipsLost > lost && game.world.news.some((entry) => /The Choir has hit the Refugee Fleet/.test(entry.text))) told = game;
-    }
-  }
-  assert.ok(told, "nobody heard about a ship being lost");
-});
-
-test("someone away from the fleet doesn't go hungry with it, or hear its troubles, or heal slower for them", () => {
+test("someone away from the Meridian doesn't go hungry with her, or hear her troubles, or heal slower for them", () => {
   const away = newGame("docker");
-  away.fleet.food = 0;
-  away.fleet.medicine = 0;
-  away.fleet.chair.funds = 0;
+  away.ship.food = 0;
+  away.ship.medicine = 0;
+  away.ship.fuel = 0;
+  away.ship.chair.funds = 0;
   const notes = days(away, 6);
   assert.ok(!away.conditions.some((condition) => condition.id === "underfed"));
   assert.ok(!notes.some((line) => line.startsWith("[SUPPLY]") || line.startsWith("[COUNCIL]")), notes.join(" | "));
-  assert.ok(away.fleet.log.length > 0, "it's still happening, and it's in the fleet's own log");
-  assert.equal(fleetReport(away), null);
-  assert.match(fleetLine(away), /only know what's got around/);
-  assert.ok(!fleetLine(away).includes("Left:"), "and the game master isn't reminded of what they can't know");
+  assert.ok(away.ship.log.length > 0, "it's still happening, and it's in the ship's own log");
+  assert.equal(shipReport(away), null);
+  assert.match(shipLine(away), /only know what's got around/);
+  assert.ok(!shipLine(away).includes("Left:"), "and the game master isn't reminded of what they can't know");
   const aboard = newGame("engine_hand");
-  aboard.fleet.food = 0;
-  aboard.fleet.chair.funds = 0;
-  aboard.fleet.rations = "half";
+  aboard.ship.food = 0;
+  aboard.ship.chair.funds = 0;
+  aboard.ship.rations = "half";
   const heard = days(aboard, 6);
   assert.ok(aboard.conditions.some((condition) => condition.id === "underfed"), "aboard, they eat what everyone eats");
   assert.ok(heard.some((line) => line.startsWith("[SUPPLY]")));
-  assert.match(fleetLine(aboard), /isn't the player's to command: \d+ ships/);
+  assert.match(shipLine(aboard), /isn't the player's to command: \d+ people/);
 });
 
-test("whoever's on the dock sees the fleet come and go", () => {
+test("whoever's on the dock sees the Meridian come and go", () => {
   const game = newGame("docker");
-  game.fleet.at = "haven";
-  game.fleet.food = 1;
-  game.fleet.chair.id = "reddick";
-  game.fleet.chair.funds = 0;
+  game.ship.at = "haven";
+  game.ship.food = 1;
+  game.ship.chair.id = "reddick";
+  game.ship.chair.funds = 0;
   game.world.places.haven.goods.food = 0;
   let notes = [];
-  for (let day = 0; day < 12 && game.fleet.at === "haven"; day += 1) notes = days(game, 1);
-  assert.notEqual(game.fleet.at, "haven", "they should have gone looking for food");
-  assert.ok(notes.some((line) => /The Refugee Fleet has left Haven Station/.test(line)), notes.join(" | "));
+  for (let day = 0; day < 12 && game.ship.at === "haven"; day += 1) notes = days(game, 1);
+  assert.notEqual(game.ship.at, "haven", "she should have gone looking for food");
+  assert.ok(notes.some((line) => /The Meridian has left Haven Station/.test(line)), notes.join(" | "));
   assert.equal(game.location, "haven");
-  assert.equal(inTheFleet(game), false);
-  assert.ok(game.world.news.some((entry) => /The Refugee Fleet has arrived at/.test(entry.text)));
+  assert.equal(aboardShip(game), false);
+  assert.ok(game.world.news.some((entry) => /The Meridian has come in at/.test(entry.text)));
 });
 
 test("a year of it under each of them never breaks anything, and comes out the same however it's cut up", () => {
   for (const id of Object.keys(CHAIR.captains)) {
     const game = newGame("engine_hand");
-    game.fleet.chair.id = id;
+    game.ship.chair.id = id;
     for (let day = 0; day < 365; day += 1) {
       days(game, 1);
-      assert.equal(game.fleet.raid, null);
-      for (const key of ["food", "medicine", "parts"]) assert.ok(Number.isFinite(game.fleet[key]) && game.fleet[key] >= 0, key);
+      for (const key of ["food", "medicine", "parts"]) assert.ok(Number.isFinite(game.ship[key]) && game.ship[key] >= 0, key);
       assert.ok(game.ship.fuel >= 0 && game.ship.fuel <= game.ship.maxFuel, `fuel ${game.ship.fuel}`);
-      assert.ok(game.fleet.chair.funds >= 0);
-      assert.ok(FLEET_DATA.rations[game.fleet.rations] && FLEET_DATA.crews[game.fleet.crews]);
-      assert.ok(game.fleet.at === null || LOCATIONS[game.fleet.at]);
+      assert.ok(game.ship.hull >= 1 && game.ship.hull <= game.ship.maxHull, `hull ${game.ship.hull}`);
+      assert.ok(game.ship.chair.funds >= 0);
+      assert.ok(SHIP_DATA.rations[game.ship.rations]);
+      assert.ok(game.ship.at === null || LOCATIONS[game.ship.at]);
+      assert.ok(game.ship.aboard >= SHIP_DATA.rules.peopleFloor, `${game.ship.aboard} aboard`);
     }
-    assert.ok(activeShips(game) >= 14, `${id}: ${activeShips(game)} ships`);
-    assert.ok(JSON.stringify(game.fleet.chair).length < 200);
-    assert.ok(JSON.stringify(game.fleet.council).length < 3000);
+    assert.ok(JSON.stringify(game.ship.chair).length < 200);
+    assert.ok(JSON.stringify(game.ship.council).length < 3000);
   }
   const one = newGame("docker");
   days(one, 70);
@@ -524,78 +457,66 @@ test("a year of it under each of them never breaks anything, and comes out the s
   days(two, 30);
   const loaded = JSON.parse(JSON.stringify(two));
   for (let day = 0; day < 40; day += 1) days(loaded, 1);
-  assert.deepEqual(one.fleet.ships, loaded.fleet.ships);
-  assert.deepEqual(one.fleet.chair, loaded.fleet.chair);
-  assert.equal(one.fleet.at, loaded.fleet.at);
+  // The log's day labels say when each line was written, which depends on how the time was cut up; the rest can't.
+  const same = (ship) => ({ ...ship, log: ship.log.map((entry) => entry.text), council: { ...ship.council, recent: ship.council.recent.map((entry) => entry.text) } });
+  assert.deepEqual(same(one.ship), same(loaded.ship));
   assert.deepEqual(one.world.places, loaded.world.places);
 });
 
-test("a fleet under each of them lasts at least as long as a fleet nobody's looking after", () => {
+test("a ship with someone in the chair is at least as well off as one nobody's looking after", () => {
   for (const seed of [3, 21, 77]) {
     const looked = newGame("docker", seed);
     days(looked, 100);
-    assert.ok(activeShips(looked) >= 22, `seed ${seed}: ${activeShips(looked)} ships at day 100`);
-    assert.ok(looked.fleet.health >= 25, `seed ${seed}: health ${looked.fleet.health} at day 100`);
+    assert.ok(looked.ship.health >= 25, `seed ${seed}: health ${looked.ship.health} at day 100`);
     const onItsOwn = newGame("captain", seed);
-    onItsOwn.fleet.council = { off: true, ordered: {}, waiting: {}, last: {}, setRations: null, setCrews: null, recent: [] };
-    for (let day = 0; day < 100; day += 1) {
-      days(onItsOwn, 1);
-      if (onItsOwn.fleet.raid) answerRaid(onItsOwn, fleetView(onItsOwn).raid.responses.find((one) => one.available).id);
-    }
-    assert.ok(looked.fleet.health >= onItsOwn.fleet.health, `seed ${seed}: ${looked.fleet.health} against ${onItsOwn.fleet.health}`);
+    onItsOwn.ship.council = { off: true, ordered: {}, waiting: {}, last: {}, setRations: null, recent: [] };
+    days(onItsOwn, 100);
+    assert.ok(looked.ship.health >= onItsOwn.ship.health, `seed ${seed}: ${looked.ship.health} against ${onItsOwn.ship.health}`);
   }
 });
 
 // ---- The chair can change hands ----------------------------------------------------------------
 
-test("the story can put them in the chair, once they're with the fleet, and then it's all theirs", () => {
+test("the story can put them in the chair, once they're aboard, and then it's all theirs", () => {
   const game = newGame("engine_hand");
   const was = chairOf(game);
   const { result, notice, isError } = tool(game, "change_command", { takes: true, reason: "The council voted" });
   assert.ok(!isError, result);
-  assert.match(notice, /You have command of the fleet: The council voted/);
+  assert.match(notice, /You have command of the Meridian: The council voted/);
   assert.ok(result.includes(was.name));
   assert.equal(isCaptain(game), true);
   assert.equal(chairOf(game), null);
-  assert.equal(game.fleet.chair, null);
-  fleetCommand(game, { action: "rations", id: "reduced" });
-  assert.equal(game.fleet.rations, "reduced");
-  game.fleet.pursuit = 99.9;
-  days(game, 1);
-  assert.ok(game.fleet.raid, "and the raids wait for them now");
+  assert.equal(game.ship.chair, null);
+  shipCommand(game, { action: "rations", id: "reduced" });
+  assert.equal(game.ship.rations, "reduced");
   assert.equal(publicState(game).role.captain, true);
   assert.equal(publicState(game).role.job, null);
   assert.ok(!peopleIn(game, "bridge").some((one) => one.id === was.id), "and whoever had it isn't standing there");
   const away = newGame("docker");
   const refused = tool(away, "change_command", { takes: true, reason: "A rumor" });
   assert.equal(refused.isError, true);
-  assert.match(refused.result, /have to be with the fleet/);
+  assert.match(refused.result, /aboard the Meridian/);
   assert.equal(isCaptain(away), false);
 });
 
 test("the story can take a captain out of the chair, and the world carries on without them in it", () => {
   const game = newGame();
-  game.fleet.pursuit = 99.9;
-  days(game, 1);
-  assert.ok(game.fleet.raid);
   const { result, notice, isError } = tool(game, "change_command", { takes: false, reason: "The Admiral's court" });
   assert.ok(!isError, result);
-  assert.match(notice, /has command of the fleet now: The Admiral's court/);
+  assert.match(notice, /has command of the Meridian now: The Admiral's court/);
   assert.equal(isCaptain(game), false);
   const chair = chairOf(game);
   assert.ok(chair);
   assert.ok(result.includes(chair.name));
-  assert.equal(game.fleet.raid, null);
   const shown = publicState(game).role;
   assert.equal(shown.title, "Former captain of the Meridian");
   assert.equal(shown.short, "former captain");
   assert.equal(shown.job, null);
   assert.equal(shown.chair, chair.name);
-  assert.throws(() => fleetCommand(game, { action: "rations", id: "half" }), /has the chair/);
+  assert.throws(() => shipCommand(game, { action: "rations", id: "half" }), /has the chair/);
   assert.equal(restCost(game), 0, "they still have a bunk aboard");
   assert.match(aiSnapshot(game), /former captain, not in command/);
   days(game, 30);
-  assert.equal(game.fleet.raid, null);
   const already = tool(game, "change_command", { takes: false, reason: "Again" });
   assert.match(already.result, /aren't in command anyway/);
 });
@@ -665,15 +586,6 @@ test("the main story's brief tells the game master it's happening around them", 
   assert.ok(!arcBrief(newGame()).includes("happening around the player"));
 });
 
-test("news from around the fleet only reaches someone who's with it", () => {
-  const away = newGame("docker");
-  away.ai = { provider: null, messages: [] };
-  assert.equal(fleetNews(away), null);
-  const aboard = newGame("engine_hand");
-  aboard.clock.hours = 24 * 40;
-  assert.match(fleetNews(aboard), /^<fleet_news>/);
-});
-
 test("the instructions don't assume the player's the captain, and they say what to do if they aren't", () => {
   assert.ok(!WORLD_BIBLE.includes("The player is its newly appointed captain"));
   assert.match(WORLD_BIBLE, /The player may be that captain, or anyone else in the galaxy/);
@@ -707,22 +619,22 @@ test("a save from before all this is a captain's, and stays one", () => {
   const old = newGame();
   old.version = 13;
   delete old.role;
-  delete old.fleet.chair;
+  delete old.ship.chair;
   old.clock.hours = 300;
   old.location = "meridian";
   const game = migrateGame(JSON.parse(JSON.stringify(old)));
-  assert.equal(game.version, 15);
+  assert.equal(game.version, 16);
   assert.deepEqual(game.role, { id: "captain", captain: true });
   assert.equal(isCaptain(game), true);
   assert.equal(chairOf(game), null);
   assert.equal(publicState(game).role.captain, true);
-  fleetCommand(game, { action: "rations", id: "reduced" });
-  assert.equal(game.fleet.rations, "reduced");
+  shipCommand(game, { action: "rations", id: "reduced" });
+  assert.equal(game.ship.rations, "reduced");
   // Even one with no role in it at all still counts.
   assert.equal(isCaptain({}), true);
   const same = newGame("docker");
   assert.deepEqual(migrateGame(JSON.parse(JSON.stringify(same))).role, same.role);
-  assert.deepEqual(migrateGame(JSON.parse(JSON.stringify(same))).fleet.chair, same.fleet.chair);
+  assert.deepEqual(migrateGame(JSON.parse(JSON.stringify(same))).ship.chair, same.ship.chair);
 });
 
 test("looking at it changes nothing in the save", () => {
@@ -731,7 +643,7 @@ test("looking at it changes nothing in the save", () => {
   const before = JSON.stringify(game);
   publicState(game);
   storyView(game);
-  fleetView(game);
+  shipView(game);
   assert.equal(JSON.stringify(game), before);
 });
 
@@ -821,7 +733,7 @@ test("the game master's told who they are, and it only gets the files for the pe
   assert.ok(!JSON.stringify(requests[0].system).includes(game.name), "the instructions are the same for everyone, so they stay cheap");
 });
 
-test("over the real server: starting as a dock hand, working, booking passage, and being refused the fleet's orders", async () => {
+test("over the real server: starting as a dock hand, working, booking passage, and being refused the ship's orders", async () => {
   const draft = randomDraft({ seed: 42, archetype: "officer" });
   draft.start = "docker";
   const made = await post("/api/new", { draft });
@@ -847,12 +759,12 @@ test("over the real server: starting as a dock hand, working, booking passage, a
   assert.ok(worked.game.credits > credits);
   assert.ok(worked.message.includes(START_LIST.docker.job.done));
 
-  const refused = await post("/api/fleet", { action: "rations", id: "half" });
+  const refused = await post("/api/ship", { action: "rations", id: "half" });
   assert.equal(refused.status, 400);
   assert.match(refused.error, /has the chair/);
 
   const entry = worked.game.locations.find((place) => place.id === "kessara");
-  const gone = await post("/api/fleet", { action: "course", id: "kessara" });
+  const gone = await post("/api/ship", { action: "course", id: "kessara" });
   assert.equal(gone.status, 200, JSON.stringify(gone));
   assert.equal(gone.moved, true);
   assert.equal(gone.game.location.id, "kessara");

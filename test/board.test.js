@@ -222,7 +222,7 @@ test("the board remembers where boxes were moved, by story or thing, in the data
   assert.ok(fs.existsSync(path.join(dataDir, "board-layout.json")));
   assert.throws(() => saveLayout("../x", {}), /kind and the id/);
   const lists = boardStory(FUEL).lists;
-  assert.ok(lists.ships.length > 10 && lists.goods.includes("fuel") && lists.fleetKeys.includes("morale"), "a stage's place and fleet changes have lists to pick from");
+  assert.ok(lists.goods.includes("fuel") && lists.shipKeys.includes("morale") && !lists.shipKeys.includes("pursuit"), "a stage's place and ship changes have lists to pick from");
 });
 
 test("a person's written lines come as parts and choices, like a scene", () => {

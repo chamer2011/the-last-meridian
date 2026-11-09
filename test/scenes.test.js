@@ -350,7 +350,7 @@ test("the captain's opening plays through with no AI: speech, a choice, conseque
   assert.equal(game.scene.part, "orders");
   play(game, { playerText: "Have Pell plot the course for Haven" });
   assert.equal(game.scene, null, "the scene is over");
-  assert.doesNotMatch(lastNarration(game), /Sundial's asking/, "the fleet wasn't told, so the plain ending plays");
+  assert.doesNotMatch(lastNarration(game), /Sundial's asking/, "the ship wasn't told, so the plain ending plays");
   assert.match(game.quests.find((quest) => quest.id === "the_beacon").objective, /Haven Station is plotted/);
   assert.equal(game.xp, 10);
   assert.ok(game.transcript.some((entry) => entry.role === "notice" && /XP/.test(entry.text)), "the award shows as a game message");
@@ -464,7 +464,7 @@ test("an older save keeps its AI game master, and a new game says which it has",
   delete old.mode;
   delete old.scene;
   const migrated = migrateGame(old);
-  assert.equal(migrated.version, 15);
+  assert.equal(migrated.version, 16);
   assert.equal(migrated.mode, "ai");
   assert.equal(migrated.scene, null);
   assert.deepEqual(migrated.flags, {});
@@ -857,7 +857,7 @@ test("every closed door in the world has a written rule, and every rule is sound
 
 // ---- Act 1, for three lives: arriving at Haven, two more openings, and the Warm Room -------------
 
-const { fleetCommand } = await import("../src/fleet.js");
+const { shipCommand } = await import("../src/ship.js");
 const WARM = "main_the_old_scholar";
 const quest = (game, id) => game.quests.find((one) => one.id === id);
 
@@ -898,7 +898,7 @@ test("arriving somewhere with a written arrival plays it when the player continu
   play(game, { playerText: "listen" });
   play(game, { playerText: "go on" });
   play(game, { playerText: "have pell plot" });
-  const jump = fleetCommand(game, { action: "course", id: "haven" });
+  const jump = shipCommand(game, { action: "course", id: "haven" });
   assert.equal(jump.moved, true);
   assert.equal(game.location, "haven");
   assert.equal(game.arrived, "haven");
@@ -910,9 +910,9 @@ test("arriving somewhere with a written arrival plays it when the player continu
   assert.equal(game.scene, null, "the arrival ends by itself");
   assert.ok(arrival.some((piece) => piece.role === "notice" && /Leads menu/.test(piece.text)));
   // Back and forth: the second arrival is a line.
-  fleetCommand(game, { action: "course", id: "meridian" });
+  shipCommand(game, { action: "course", id: "meridian" });
   play(game, { event: "continue" });
-  fleetCommand(game, { action: "course", id: "haven" });
+  shipCommand(game, { action: "course", id: "haven" });
   const again = play(game, { event: "continue" });
   assert.match(again[0].text, /Haven again/);
   // Someone arriving alone gets their own words.
@@ -921,7 +921,7 @@ test("arriving somewhere with a written arrival plays it when the player continu
   play(hand, { playerText: "Keep your head down" });
   play(hand, { playerText: "Get back to work" });
   hand.credits = 200;
-  fleetCommand(hand, { action: "course", id: "haven" });
+  shipCommand(hand, { action: "course", id: "haven" });
   assert.equal(hand.location, "haven");
   const alone = play(hand, { event: "continue" });
   assert.match(alone[0].text, /Haven Station, on your own/);
@@ -933,7 +933,7 @@ test("the captain plays the Warm Room through to the reveal: Sable, Tharel's tes
   play(game, { playerText: "listen" });
   play(game, { playerText: "go on" });
   play(game, { playerText: "have pell plot" });
-  fleetCommand(game, { action: "course", id: "haven" });
+  shipCommand(game, { action: "course", id: "haven" });
   play(game, { event: "continue" });
   const leads = publicState(game).story.here;
   assert.equal(leads[0].id, WARM, "the main story comes first at Haven");
@@ -989,7 +989,7 @@ test("the Warm Room lost: standing aside, Quill's people take him, and Sable sel
   play(game, { playerText: "listen" });
   play(game, { playerText: "go on" });
   play(game, { playerText: "have pell plot" });
-  fleetCommand(game, { action: "course", id: "haven" });
+  shipCommand(game, { action: "course", id: "haven" });
   play(game, { event: "continue" });
   play(game, { playerText: "I look into this", threadId: WARM });
   game.credits = 100;
@@ -1019,9 +1019,9 @@ test("the engine hand and the dock hand each get their own way into the Warm Roo
   play(hand, { playerText: "Keep your head down" });
   play(hand, { playerText: "Get back to work" });
   hand.credits = 200;
-  fleetCommand(hand, { action: "course", id: "haven" });
+  shipCommand(hand, { action: "course", id: "haven" });
   play(hand, { event: "continue" });
-  assert.ok(publicState(hand).story.here.some((one) => one.id === WARM), "the lead reaches a fleet hand who's crossed to Haven");
+  assert.ok(publicState(hand).story.here.some((one) => one.id === WARM), "the lead reaches a ship's hand who's crossed to Haven");
   play(hand, { playerText: "I look into this", threadId: WARM });
   assert.equal(hand.scene.part, "hand_start", "the rule knew the life");
   play(hand, { playerText: "Offer to fix the boiler" });

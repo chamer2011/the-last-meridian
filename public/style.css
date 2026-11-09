@@ -164,7 +164,7 @@ input:focus { border-bottom-color: var(--text); }
 @media (prefers-reduced-motion: reduce) {
   .thinking::after, .cursor::after { animation: none; }
   .turn.past, .drawer, .backdrop { transition: none; }
-  .fighter, .fight-float, .map-fleet { animation: none !important; }
+  .fighter, .fight-float, .map-here { animation: none !important; }
 }
 
 .composer { border-top: 1px solid var(--line); background: var(--panel); padding: 8px 16px; }
@@ -449,7 +449,7 @@ button.fighter:hover:not(:disabled), button.fighter:focus-visible { background: 
   background: var(--c-bg); color: var(--c); border: 1px solid var(--c); outline: 0; font: 13px/1.4 var(--mono);
   box-shadow: 0 0 22px color-mix(in srgb, var(--c) 28%, transparent), 0 16px 48px rgba(0, 0, 0, .7);
 }
-/* The console colours, one set for every window that has them: the check, computer, raid and talk windows, a thing's
+/* The console colours, one set for every window that has them: the check, computer and talk windows, a thing's
    window beside it in the room, and the right-click menu. */
 :is(.check-window, .walk-thing-pane, .walk-menu)[data-theme="amber"] { --c: #ffc466; --c-dim: #a57f3e; --c-line: #6e5426; --c-bg: #120c03; --c-panel: rgba(32, 22, 6, .92); --c-bright: #fff0d4; }
 :is(.check-window, .walk-thing-pane, .walk-menu)[data-theme="green"] { --c: #8df5ac; --c-dim: #4f9a68; --c-line: #2a6a43; --c-bg: #03110a; --c-panel: rgba(6, 30, 17, .92); --c-bright: #e6ffef; }
@@ -691,44 +691,20 @@ body:has(#bag) .pop-notes { visibility: hidden; }
   .check-window { border-width: 0 0 1px; box-shadow: none; }
 }
 
-/* The Fleet menu. */
-.fleet-supply { display: flex; flex-direction: column; gap: 1px; }
-.fleet-supply-line { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0 12px; font-size: 13px; white-space: pre; }
-.fleet-supply-line strong { color: var(--bright); }
-.fleet-supply.low .fleet-supply-line, .fleet-supply.low .fleet-supply-line strong { color: var(--bad); }
-.fleet-confirm { display: flex; flex-direction: column; gap: 4px; }
-.fleet-ships { display: flex; flex-direction: column; }
-.fleet-ship {
-  display: grid; gap: 2px 14px; padding: 6px 0; border-bottom: 1px dotted var(--line); align-items: baseline;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) 11ch 17ch minmax(0, 1.25fr);
-  grid-template-areas: "name captain aboard condition flow" "note note note note note" "actions actions actions actions actions";
-}
-.fleet-ship.gone { opacity: .6; }
-.fleet-ship strong { color: var(--bright); }
-.fleet-ship-name { grid-area: name; min-width: 0; }
-.fleet-ship-captain { grid-area: captain; min-width: 0; }
-.fleet-ship-aboard { grid-area: aboard; white-space: nowrap; text-align: right; }
-.fleet-ship-condition { grid-area: condition; white-space: pre; }
-.fleet-ship-flow { grid-area: flow; min-width: 0; }
-.fleet-ship-note { grid-area: note; }
-.fleet-ship-actions { grid-area: actions; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
-.fleet-ship-actions:empty { display: none; }
-/* When there's no room for all those columns, each ship takes more lines. */
-@container fleetmenu (max-width: 760px) {
-  .fleet-ship {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "name aboard" "captain condition" "flow flow" "note note" "actions actions";
-  }
-}
-.menu-body { container: fleetmenu / inline-size; }
+/* The Ship menu. */
+.ship-supply { display: flex; flex-direction: column; gap: 1px; }
+.ship-supply-line { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0 12px; font-size: 13px; white-space: pre; }
+.ship-supply-line strong { color: var(--bright); }
+.ship-supply.low .ship-supply-line, .ship-supply.low .ship-supply-line strong { color: var(--bad); }
+.menu-body { container: shipmenu / inline-size; }
 
 /* The star map: a chart drawn in characters, with each place a button in its spot. */
 .map-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
-@container fleetmenu (min-width: 880px) {
+@container shipmenu (min-width: 880px) {
   .map-layout { grid-template-columns: max-content minmax(26ch, 1fr); }
 }
 .map-frame { container-type: inline-size; min-width: 0; max-width: 100%; }
-@container fleetmenu (min-width: 880px) {
+@container shipmenu (min-width: 880px) {
   .map-frame { container-type: normal; width: fit-content; }
 }
 .map-chart {
@@ -737,13 +713,15 @@ body:has(#bag) .pop-notes { visibility: hidden; }
   position: relative; width: fit-content; font: 13px/var(--map-row) var(--mono); font-size: min(13px, calc(100cqw / (var(--map-cols) * .61)));
   border: 1px solid var(--line); background: var(--bg); overflow: hidden;
 }
-@container fleetmenu (min-width: 880px) {
+@container shipmenu (min-width: 880px) {
   .map-chart { font-size: 13px; }
 }
 .map-stars, .map-course { margin: 0; font: inherit; line-height: var(--map-row); white-space: pre; }
 .map-stars { color: var(--line); width: calc(var(--map-cols) * 1ch); height: calc(var(--map-lines) * var(--map-row)); }
 .map-course { position: absolute; inset: 0; color: var(--warn); pointer-events: none; }
-.map-fleet { position: absolute; color: var(--bright); font-weight: 700; line-height: var(--map-row); pointer-events: none; animation: blink 1.4s steps(1) infinite; z-index: 2; }
+/* The @ for the ship, or for the player when it isn't theirs, and an M for the Meridian seen from elsewhere. */
+.map-here { position: absolute; color: var(--bright); font-weight: 700; line-height: var(--map-row); pointer-events: none; animation: blink 1.4s steps(1) infinite; z-index: 2; }
+.map-here-ship { opacity: 0.75; }
 .map-star { position: absolute; padding: 0 2px 0 0; margin: 0; font: inherit; line-height: var(--map-row); white-space: nowrap; background: var(--bg); z-index: 1; }
 .map-star::before, .map-star::after { content: none !important; }
 .map-star.selected { background: var(--text); color: var(--bg); }
@@ -761,24 +739,11 @@ body:has(#bag) .pop-notes { visibility: hidden; }
 .map-control { min-width: 0; }
 .map-short { min-width: 0; }
 .map-going { color: var(--warn); }
-.fleet-trade { flex-wrap: wrap; gap: 2px 12px; }
-@container fleetmenu (max-width: 640px) {
+.ship-trade { flex-wrap: wrap; gap: 2px 12px; }
+@container shipmenu (max-width: 640px) {
   .map-row { grid-template-columns: minmax(0, 1fr) 4ch 5ch auto; }
   .map-head span:nth-child(4), .map-head span:nth-child(5), .map-head span:nth-child(6), .map-row > .map-control, .map-row > .map-short, .map-row > span:nth-child(4) { display: none; }
 }
-
-/* The raid window borrows the check window's look, in red. */
-.map-fleet-other { opacity: 0.75; }
-.raid-window { width: min(100%, 110ch); }
-.raid-intro { font-size: 13px; color: var(--c-bright); }
-.raid-art { margin: 0; color: var(--c); font: 12px/1.15 var(--mono); white-space: pre; overflow: hidden; }
-.raid-orders { flex: none; padding: 4px 8px 8px; display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--c-line); }
-.raid-order { display: block; width: 100%; padding: 4px 8px; border: 1px solid var(--c-line); background: var(--c-panel); }
-.raid-order::before, .raid-order::after { content: none !important; }
-.raid-order-name { color: var(--c-bright); font-weight: 700; }
-.raid-order-cost { color: var(--c); font-size: 12px; }
-.raid-order:hover:not(:disabled), .raid-order:focus-visible { background: var(--c); color: var(--c-bg); }
-.raid-order:hover:not(:disabled) *, .raid-order:focus-visible * { color: var(--c-bg); }
 
 /* The walk-around view: the level and what's here, with the story under them. */
 .walk-view {

@@ -8,9 +8,9 @@ import { FACTIONS, ITEMS, LOCATIONS, STARTING_FACTIONS } from "../src/data.js";
 import { LORE } from "../src/lore.js";
 import { migrateGame } from "../src/migrate.js";
 import { audienceBonus, buyPrice, publicState, travel } from "../src/rules.js";
-import { arcBrief, fleetNews, leadsHere, placeFile, placeFileIfNew, rumorsHere, threadNotes, updateStory } from "../src/story-library.js";
+import { arcBrief, leadsHere, placeFile, placeFileIfNew, rumorsHere, threadNotes, updateStory } from "../src/story-library.js";
 import { newTurnLimits, runTool, TOOL_DEFS } from "../src/tools.js";
-import { FLEET_EVENTS, WORLD_ARC, WORLD_THREADS } from "../src/world.js";
+import { WORLD_ARC, WORLD_THREADS } from "../src/world.js";
 import { SYSTEM_PROMPT } from "../src/ai.js";
 
 const newGame = (seed = 11, archetype = "officer") => createGameFromDraft(randomDraft({ seed, archetype }));
@@ -26,7 +26,6 @@ test("every place has a file, and the world is much bigger than it was", () => {
   }
   assert.ok(Object.keys(FACTIONS).length >= 12);
   assert.ok(Object.keys(WORLD_THREADS).length >= 80, `only ${Object.keys(WORLD_THREADS).length} threads`);
-  assert.ok((FLEET_EVENTS.events ?? []).length >= 40);
   assert.ok((WORLD_ARC.acts ?? []).length >= 3);
   assert.ok((WORLD_ARC.clues ?? []).length >= 20);
 });
@@ -48,7 +47,7 @@ test("the leads menu shows what fits here, and it changes from place to place", 
       seen.add(lead.id);
       const thread = WORLD_THREADS[lead.id];
       assert.ok((thread.minLevel ?? 1) <= game.level, lead.id);
-      assert.ok(thread.places.includes(id) || thread.places.includes("any") || (thread.places.includes("fleet") && LOCATIONS[id].fleet), `${lead.id} at ${id}`);
+      assert.ok(thread.places.includes(id) || thread.places.includes("any") || (thread.places.includes("fleet") && id === "meridian"), `${lead.id} at ${id}`);
       assert.ok(!thread.after, `${lead.id} isn't unlocked yet`);
     }
   }
@@ -177,30 +176,16 @@ test("the main story moves on as clues are found, and it won't take nonsense", (
   }
 });
 
-test("news from the fleet comes now and then, and never repeats", () => {
-  const game = newGame();
-  game.clock.hours = 24 * 40;
-  const told = new Set();
-  game.turn = 0;
-  for (let i = 0; i < 40; i += 1) {
-    game.turn += 6;
-    const news = fleetNews(game);
-    assert.ok(news, `ran out too soon, at ${i}`);
-    assert.ok(!told.has(news), "the same news came twice");
-    told.add(news);
-    assert.equal(fleetNews(game), null, "too soon for more news");
-  }
-});
-
-test("the fleet's own ships are close by: no fuel, and an hour to cross", () => {
+test("the dock the Meridian's at is close by: no fuel, and an hour to cross; anywhere else is a jump", () => {
   const game = newGame();
   game.ship.fuel = 0;
   game.location = "meridian";
-  const { message } = travel(game, "sundial");
-  assert.match(message, /Sundial/);
-  assert.equal(game.location, "sundial");
+  game.ship.at = "haven";
+  const { message } = travel(game, "haven");
+  assert.match(message, /Haven/);
+  assert.equal(game.location, "haven");
   assert.equal(game.ship.fuel, 0);
-  assert.throws(() => travel(game, "haven"), /fuel/);
+  assert.throws(() => travel(game, "sundial"), /fuel/, "the Sundial is a place of her own now, a jump away");
   travel(game, "meridian");
   assert.equal(game.location, "meridian");
 });

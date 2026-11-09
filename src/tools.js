@@ -7,7 +7,7 @@ import { startCheck } from "./checks.js";
 import { FACTIONS, ITEMS, LOCATIONS, STATS } from "./data.js";
 import { CONDITIONS, CONTEXTS, POLES, SKILLS, SPECIES, TRAITS } from "./character-data.js";
 import { changePlace, markWorldHeard, trackedPlaces, worldLines } from "./daily.js";
-import { changeCommand, changeFleet, changeFleetShip, fleetRoster, markFleetHeard } from "./fleet.js";
+import { changeCommand, markShipHeard } from "./ship.js";
 import { whereNow } from "./life.js";
 import { LORE_KINDS, hasStaticLore } from "./lore.js";
 import { MYSTERY_TOPICS, beginThread, mysteryNotes, noteThreadEnded, noteThreadStarted, placeFileIfNew, updateStory } from "./story-library.js";
@@ -151,7 +151,7 @@ export const TOOL_DEFS = [
   },
   {
     name: "pass_time",
-    description: "Move the clock forward whenever meaningful time passes in the story: a long conversation, a shift of work, a night's sleep. Travel moves the clock by itself. Time heals injuries, builds fatigue, uses up the fleet's supplies and lets the Choir get closer, so keep it honest.",
+    description: "Move the clock forward whenever meaningful time passes in the story: a long conversation, a shift of work, a night's sleep. Travel moves the clock by itself. Time heals injuries, builds fatigue and uses up the ship's supplies, so keep it honest.",
     input_schema: obj({
       hours: num("Hours passing, from 1 to 72."),
       activity: oneOf(["active", "work", "rest"], "active for normal activity, work for hard labor or a demanding shift, rest for real sleep or recovery."),
@@ -194,39 +194,13 @@ export const TOOL_DEFS = [
   },
   {
     name: "change_ship",
-    description: "Change the ship's hull or fuel, or the fleet's morale, because of something that happened in the story.",
-    input_schema: obj({ hull: num("Change in hull, or 0."), fuel: num("Change in fuel, or 0."), morale: num("Change in fleet morale, or 0."), reason: str("Short reason shown to the player.") }),
-  },
-  {
-    name: "change_fleet",
-    description: "Change the fleet's stores or how close the Choir is, because of something that happened in the story: a supply deal, a looted depot, a broadcast that gives away their position. The daily drain, shortages and raids run by themselves, so never use this for those. Fuel goes through change_ship.",
-    input_schema: obj({
-      food: num("Optional. Tons of food gained or lost. The whole fleet eats about 30 tons a day."),
-      medicine: num("Optional. Crates of medicine gained or lost. The fleet uses about 4 a day."),
-      parts: num("Optional. Crates of parts gained or lost. The fleet uses about 3 a day."),
-      pursuit: num("Optional. Change in the pursuit meter, from -40 to 25. Negative when the fleet shakes the Choir off."),
-      reason: str("Short reason shown to the player."),
-    }, ["reason"]),
-  },
-  {
-    name: "change_fleet_ship",
-    description: "Change one of the fleet's ships, because of something that happened in the story: damage or repairs, or a ship lost or gone for good. Use a ship the player already knows about. Everyone aboard is lost or leaves with her, unless you say otherwise in the story and move them yourself.",
-    input_schema: obj({
-      ship: str("The ship's name or id."),
-      condition: num("Optional. Change in her condition, from -60 to 40."),
-      status: oneOf(["active", "lost", "gone"], "Optional. lost if she's destroyed, gone if she's left the fleet, active if she's come back."),
-      reason: str("Short reason shown to the player."),
-    }, ["ship", "reason"]),
+    description: "Change the Meridian's hull or fuel, or the morale of the people aboard her, because of something that happened in the story. Her food, medicine and parts drain by themselves and are bought on the Ship menu, so never use this for those.",
+    input_schema: obj({ hull: num("Change in hull, or 0."), fuel: num("Change in fuel, or 0."), morale: num("Change in morale aboard, or 0."), reason: str("Short reason shown to the player.") }),
   },
   {
     name: "change_command",
-    description: "Change who has the fleet, because the story really has put the player in the captain's chair or taken them out of it: an appointment, a mutiny, a resignation, a court martial that holds. It's a very big thing, and it stays that way until something else changes it. The rations, the crews, the jumps and the raids go with it.",
+    description: "Change who captains the Meridian, because the story really has put the player in the captain's chair or taken them out of it: an appointment, a mutiny, a resignation, a court martial that holds. It's a very big thing, and it stays that way until something else changes it. The rations, the buying and the jumps go with it.",
     input_schema: obj({ takes: bool("True if the player has just become the captain. False if they've just stopped being it."), reason: str("Short reason shown to the player.") }),
-  },
-  {
-    name: "read_fleet",
-    description: "Read the fleet's roster, or one ship's entry: role, captain, people aboard, condition. Only call this when a scene needs it, since the Fleet line in the state is usually enough. One ship's entry is much smaller than the whole list.",
-    input_schema: obj({ ship: str("Optional. One ship's name or id.") }, []),
   },
   {
     name: "read_world",
@@ -255,7 +229,7 @@ export const TOOL_DEFS = [
   },
   {
     name: "travel",
-    description: "Move the player to another location. If they're the captain, a jump moves the whole fleet: it costs 1 to 3 fuel and many hours, depending on how far it is, and it shakes off some of the Choir's pursuit, and it fails without enough fuel. If they aren't, they go by themselves and the fleet stays where it is, so charge any fare with change_credits. Crossing to one of the fleet's own ships, or to the place the fleet's already at, takes an hour and no fuel. Use it whenever the player actually arrives somewhere new.",
+    description: "Move the player to another location. If they're the captain, a jump moves the Meridian: it costs 1 to 3 fuel and many hours, depending on how far it is, and it fails without enough fuel. If they aren't, they go by themselves and the ship stays where it is, so charge any fare with change_credits. Crossing between the Meridian and the dock she's at takes an hour and no fuel. Use it whenever the player actually arrives somewhere new.",
     input_schema: obj({ destination: oneOf(Object.keys(LOCATIONS), "Where to go.") }),
   },
   {
@@ -318,7 +292,7 @@ export const TOOL_DEFS = [
   },
   {
     name: "note_fact",
-    description: "Put a lasting fact on the record, for the stories that come later: something the player did or learned that another story should know, such as a door closed to the fleet, a debt owed, or a person who now trusts or hates them. Give it a short name and one line of plain words, and when the story's notes name the facts it can leave, use those names. The record is in your state as Fact lines, so don't note what's already there, and don't note passing things.",
+    description: "Put a lasting fact on the record, for the stories that come later: something the player did or learned that another story should know, such as a door closed to the Meridian, a debt owed, or a person who now trusts or hates them. Give it a short name and one line of plain words, and when the story's notes name the facts it can leave, use those names. The record is in your state as Fact lines, so don't note what's already there, and don't note passing things.",
     input_schema: obj({ id: str("A short name in lowercase letters, digits and underscores, like signed_with_quill."), text: str("One line, written for the player, saying what's true now.") }),
   },
   {
@@ -330,14 +304,11 @@ export const TOOL_DEFS = [
 
 const withNotes = (first, notes = []) => [first, ...notes].filter(Boolean).join("\n");
 
-// Time passing can set off a raid. Like a fight, the game runs it, and the AI hears how it went next.
-const RAID_STARTED = "A Choir raid has just hit the fleet. The player is answering it in its own window, and how it went comes next, so write nothing more.";
-
-// The AI hears what the fleet did during this time in the result, so it doesn't need telling again.
+// The AI hears what the ship and the world did during this time in the result, so it doesn't need telling again.
 function timeResult(game, text) {
-  markFleetHeard(game);
+  markShipHeard(game);
   markWorldHeard(game);
-  return game.fleet?.raid ? `${text}\n${RAID_STARTED}` : text;
+  return text;
 }
 
 // ---- Handlers. Each returns { result, notice }: result goes to the AI, notice to the player. ----
@@ -549,20 +520,9 @@ const handlers = {
       .map((key) => `${key[0].toUpperCase()}${key.slice(1)} ${s[key] > before[key] ? "+" : ""}${s[key] - before[key]}`);
     return { result: `Ship is now hull ${s.hull}, fuel ${s.fuel}, morale ${s.morale}.`, notice: `[SHIP] ${changes.length ? `${changes.join(", ")}: ` : ""}${input.reason}` };
   },
-  change_fleet(game, input) {
-    const { summary, notice, notes } = changeFleet(game, input);
-    return { result: withNotes(`The fleet now has: ${summary}`, notes), notice: withNotes(notice, notes) };
-  },
-  change_fleet_ship(game, input) {
-    const { summary, notice, notes } = changeFleetShip(game, input);
-    return { result: withNotes(summary, notes), notice: withNotes(notice, notes) };
-  },
   change_command(game, input) {
     const { summary, notice } = changeCommand(game, input);
     return { result: summary, notice };
-  },
-  read_fleet(game, input) {
-    return { result: fleetRoster(game, input.ship) };
   },
   read_world(game, input) {
     return { result: worldLines(game, input.place) };
