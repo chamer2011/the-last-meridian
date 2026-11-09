@@ -334,6 +334,7 @@ button.fighter:hover:not(:disabled), button.fighter:focus-visible { background: 
 .post-line { overflow-wrap: anywhere; }
 .post-label { color: var(--muted); }
 .post-since { color: var(--muted); margin-top: 2px; }
+.post-duty { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; }
 button.post-card:hover:not(:disabled) *, button.post-card:focus-visible * { color: var(--bg); }
 /* The watch bill: a row for each job, with its people as buttons the captain picks and moves. */
 .watch-row { display: grid; grid-template-columns: minmax(14ch, 22ch) 1fr; gap: 2px 14px; align-items: baseline; padding: 5px 0; border-bottom: 1px dotted var(--line); }

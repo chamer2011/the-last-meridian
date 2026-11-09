@@ -13,7 +13,7 @@ import { inTrouble, levelName, noneLeft, placeNow, supplyFactor, tellNews, trade
 import { aboardShip, isCaptain } from "./role.js";
 import { addCondition, buyPrice, changeStress, clamp, clockLabel, jumpHours, passTime, sellPrice, travel } from "./rules.js";
 import { navigationDown } from "./systems.js";
-import { YOU, commandOf, holderKey, postAndName, setHolder, stillAlive } from "./command.js";
+import { YOU, commandOf, holderKey, postAndName, setHolder, stillAlive, tallyDuty } from "./command.js";
 import { countAboard, errandsView, foodADay, machinesView, mealsOfDay, mealsView, putAboard, refilledADay, refillsView, repairsView, storesView, takeAboard } from "./logistics.js";
 import { SHIP_DATA, STAR_MAP } from "./world.js";
 
@@ -280,6 +280,8 @@ function countTheDead(game, notes) {
     const dead = Math.min(ship.aboard - RULES.peopleFloor, Math.max(1, Math.round(ship.aboard * (RULES.deadlyHealth - ship.health) * 0.0004)));
     ship.aboard -= dead;
     ship.deaths += dead;
+    // The day that's just ended, for the captain's and the doctor's duty.
+    tallyDuty(game, SHIP_ID, ship.day - 1, { deaths: dead });
   }
   if (ship.deaths >= 5 && ship.day % 3 === 0) {
     note(game, notes, "SHIP", say("deaths", { dead: ship.deaths.toLocaleString("en-US") }));

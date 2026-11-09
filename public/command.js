@@ -3,7 +3,7 @@
 // with everyone's job, which the captain changes with two clicks. It's drawn from the game's state (src/command.js),
 // and nothing here calls the AI. A card for one of the story's people opens their registry printout.
 
-import { api, el, folded } from "./dom.js";
+import { api, el, folded, meter } from "./dom.js";
 
 // What this screen needs from the main screen. Set once, when the page loads.
 let app;
@@ -15,11 +15,23 @@ export function initCommand(hooks) {
 const section = (title, ...children) => el("section", { class: "menu-section" }, title && el("h3", {}, title), children);
 const line = (label, value) => value && el("div", { class: "post-line small" }, el("span", { class: "post-label" }, `${label} `), value);
 
+// How the holder has done over their last week in the post, and what the last day was made of.
+function duty(post) {
+  const d = post.duty;
+  if (!d) return null;
+  if (d.score === null) return el("div", { class: "post-line small" }, el("span", { class: "post-label" }, "Duty "), `no days on record yet: ${d.measures}`);
+  return [
+    el("div", { class: "post-duty small" }, meter("DUTY", d.score, 100), el("span", { class: "post-label" }, `over ${d.days} ${d.days === 1 ? "day" : "days"}`)),
+    el("div", { class: "post-since small" }, `Last day's marks: ${d.last}`),
+  ];
+}
+
 function card(post) {
   const holder = post.holder;
   const body = [
     el("div", { class: "post-title" }, post.title),
     el("div", { class: `post-who${holder && !holder.alive ? " lost" : ""}` }, holder ? holder.name : "Nobody"),
+    duty(post),
     line("At", post.station),
     line("Chosen by", post.chooser ? `${post.chosenBy}, ${post.chooser}` : post.chosenBy),
     line("Skills", post.skills),

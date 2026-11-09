@@ -9,8 +9,8 @@ one so far.
 
 checks these files too.
 
-It's built in steps, each tried by the owner before the next. The game plays the posts and who holds them, and the
-watch bill: the Command menu shows each post as a card and each job with who's on it, everything in the other files
+It's built in steps, each tried by the owner before the next. The game plays the posts and who holds them, each
+post's duty, skill in the work, and the watch bill: the Command menu shows each post as a card and each job with who's on it, everything in the other files
 that names someone for a post or a job (the council's rations decisions in world/ship.json, the guards and engineers
 in world/systems, the machines and the carriers of the errands in world/logistics, and the captain's chair) asks
 this file who that is, and everyone on the watch bill lives their job's day. The numbers at the top are read, kept
@@ -22,6 +22,8 @@ THE FILE
 
     # CFS Meridian
     draft: the AI's, not yet edited by the owner      (the game doesn't read this: it's for whoever edits)
+    each point of skill: 8% quicker or slower        (how much each point of a worker's skill either side of 5
+                                                     speeds the work or slows it: see SKILL)
     reviews every: 7 days                            (kept for a later step: how often the officers review)
     a bad stretch: duty under 40 for 5 days          (kept for a later step: when someone's replaced)
     mutiny brews: morale under 30, loyalty under 35  (kept for a later step: when trouble starts)
@@ -61,7 +63,7 @@ after a semicolon:
     heads cooks, mess hands        the jobs it answers for, by their names in the Jobs part
     skills commerce, persuasion    the skills that count for it: the Command menu shows the holder's numbers
                                    in them, from their file in world/characters
-    duty: sittings missed          what its duty will be measured by (played from a later step)
+    duty: sittings missed          what its holder is marked on each day: see DUTY
 
 The room is one of the place's rooms, by its name in the maps. The Command menu groups the posts by who chooses
 them, in the file's order.
@@ -112,6 +114,43 @@ The captain moves people from the Command menu: a click on someone, then Move he
 beating, with a spare hand, and sends the spare hand back once they're back, saying so in the story both times.
 
 A game keeps its watch bill in its save from the moment it begins.
+
+
+DUTY
+----
+
+At each midnight the holder of every post is marked out of 100 on each of its duty's measures for the day that's
+ended, and their duty for the day is the average. The Command menu shows the average of their last week, and the
+last day's marks. Someone new in a post starts with a clean record. The measures are:
+
+    morale                  the ship's morale at midnight
+    shortages               25 off for each of food, fuel, medicine and parts that's run out
+    deaths aboard           5 off for each person who died aboard that day
+    stations staffed        how much of what the watch bill wants is being done
+    sittings missed         the share of the day's sittings that were served
+    stores run dry          34 off for each of food, medicine and parts that's run out
+    power short             about 8 off for each hour the generator was short of what's drawn
+    repairs waiting         30 off for each repair waiting for parts at midnight
+    hull worn               the hull, out of its best
+    alarms                  30 off for each time the alarm rang
+    tampering seen          30 off for each time a camera saw tampering
+    thefts                  25 off for each pocket picked aboard
+    medicine out            nothing while the medicine's out, and full marks otherwise
+    errands left waiting    10 off for each hour errands stood waiting at an empty store
+
+The council's confidence is measured in a later step. Any other word is a problem the checker names.
+
+
+SKILL
+-----
+
+The line each point of skill at the top says how much each point of a worker's skill either side of 5 speeds the
+work or slows it, never to more than half as fast again nor less than half as fast. At 8%, Marrow's engineering 8
+takes a two-hour repair down to about an hour and forty minutes, and a 2 works about a quarter slower than a 5. It
+counts for the engineers' repairs (the best engineer's engineering) and for a machine whose worker is someone doing
+a job (the best of them at the job's first skill: survival, for a cook). Someone with a file in world/characters has
+its numbers, the player has their own, and someone without a file is a 5 in the skills of the job this file starts
+them in and a 2 in everything else. Leave the line out, and skill doesn't change the pace of anything.
 
 
 NAMING A POST OR A JOB ELSEWHERE

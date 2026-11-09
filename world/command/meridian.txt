@@ -1,5 +1,6 @@
 # CFS Meridian
 draft: the AI's, not yet edited by the owner
+each point of skill: 8% quicker or slower
 reviews every: 7 days
 a bad stretch: duty under 40 for 5 days
 mutiny brews: morale under 30, loyalty under 35

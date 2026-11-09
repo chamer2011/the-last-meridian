@@ -12,6 +12,7 @@ import { holderOf } from "./daily.js";
 import { recordFact } from "./record.js";
 import { changeStanding, findContact, hoursNow } from "./rules.js";
 import { ownedBy, soundAlarm, watched } from "./systems.js";
+import { countForDuty } from "./command.js";
 import { DEEDS } from "./world.js";
 
 const LADDER = ["easy", "moderate", "hard", "very_hard", "nearly_impossible"];
@@ -80,6 +81,8 @@ export function settleDeed(game, outcome) {
   if (outcome.success) {
     const got = between(...(asked.id ? rules.credits.named : rules.credits.anyone));
     game.credits += got;
+    // A pocket picked aboard is one more theft on the chief of security's watch.
+    countForDuty(game, asked.place, "thefts");
     lines.push(`[STEALTH] You lift ${got} credits from ${asked.short}, and they don't notice a thing.`);
     game.pendingEvents?.push(`The player picked ${asked.name}'s pocket at ${where} and got ${got} credits. Nobody noticed. Bring it into the story only if it matters.`);
   } else {

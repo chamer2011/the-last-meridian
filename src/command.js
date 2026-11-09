@@ -8,6 +8,7 @@ import { SKILLS } from "./character-data.js";
 import { LOCATIONS } from "./data.js";
 import { isHurt } from "./deeds.js";
 import { aboardShip, isCaptain, startOf } from "./role.js";
+import { waitingForParts } from "./systems.js";
 import { atPost, mapFor, roomsOf } from "./walk.js";
 import { COMMAND_FILE_PROBLEMS, WORLD_CHARACTERS, WORLD_COMMAND, WORLD_LIFE } from "./world.js";
 import { BODIES, SPARE, THE_CHAIR, readHolderLine, readJobLine, readPostLine, readWorkersLine, slugOf } from "../public/command-text.js";
@@ -23,6 +24,30 @@ const titleCase = (words) => String(words).split(" ").map((word, i) => (i && SMA
 const listWords = (list) => (list.length > 1 ? `${list.slice(0, -1).join(", ")} and ${list.at(-1)}` : list[0] ?? "");
 const plural = (words) => (/s$/.test(words) ? words : `${words}s`);
 
+// ---- What a post's duty is measured by ----------------------------------------------------------
+
+// Each one a day's score out of 100, from what the game already counts, read at midnight for the day that's ended.
+// c is what's known about that day: the ship, the day's tally, and the watch bill, the sittings and the repairs.
+const outOf = (c, ids) => ids.filter((id) => (c.ship.out?.[id] ?? 0) > 0).length;
+export const DUTY_MEASURES = {
+  "morale": (c) => c.ship.morale,
+  "shortages": (c) => 100 - 25 * outOf(c, ["food", "fuel", "medicine", "parts"]),
+  "deaths aboard": (c) => 100 - 5 * c.tally.deaths,
+  "stations staffed": (c) => c.staffed,
+  "sittings missed": (c) => c.sittings,
+  "stores run dry": (c) => 100 - 34 * outOf(c, ["food", "medicine", "parts"]),
+  "power short": (c) => 100 - c.tally.powerShort / 7.2,
+  "repairs waiting": (c) => 100 - 30 * c.waitingParts,
+  "hull worn": (c) => (100 * c.ship.hull) / (c.ship.maxHull || 100),
+  "alarms": (c) => 100 - 30 * c.tally.alarms,
+  "tampering seen": (c) => 100 - 30 * c.tally.tampering,
+  "thefts": (c) => 100 - 25 * c.tally.thefts,
+  "medicine out": (c) => (c.ship.out?.medicine ? 0 : 100),
+  "errands left waiting": (c) => 100 - c.tally.errandsWaiting / 6,
+};
+// Words a post's duty may carry that a later step measures.
+export const DUTY_LATER = ["the council's confidence"];
+
 // ---- The file, compiled -------------------------------------------------------------------------
 
 const models = new Map();
@@ -30,6 +55,7 @@ const models = new Map();
 // Read again after the file changes.
 export function clearCommand() {
   models.clear();
+  speeds.clear();
 }
 
 export function commandOf(place) {
@@ -129,7 +155,12 @@ function compileCommand(place) {
       if (!job) at(raw.line, `there's no job called ${words} under Jobs, for the ${post.title} to head`);
       return job?.id ?? null;
     }).filter(Boolean);
-    model.posts.push({ id, title: post.title, room: room.id, roomName: room.name, chosenBy: post.chosenBy, watchBill: post.watchBill, heads, skills: readSkills(post.skills, raw.line, `the ${post.title}`), duty: post.duty, line: raw.line });
+    const measures = post.duty.filter((words) => {
+      if (DUTY_MEASURES[words.toLowerCase()]) return true;
+      if (!DUTY_LATER.includes(words.toLowerCase())) at(raw.line, `${words} isn't something a post's duty can be measured by: the measures are ${Object.keys(DUTY_MEASURES).join(", ")}`);
+      return false;
+    }).map((words) => words.toLowerCase());
+    model.posts.push({ id, title: post.title, room: room.id, roomName: room.name, chosenBy: post.chosenBy, watchBill: post.watchBill, heads, skills: readSkills(post.skills, raw.line, `the ${post.title}`), duty: post.duty, measures, line: raw.line });
   }
 
   // Who chooses whoever holds each post: another post, or the council, or the civilians. Nobody chooses themselves.
@@ -419,15 +450,21 @@ const jobWords = (job) => (job ? `a ${job.title}` : "one of the spare hands");
 
 // The days the watch bill changes: someone doing a job other than the one their group in world/life does takes that
 // job's day, at their own shift, and someone sent to the spare hands takes theirs. Null when nothing's changed.
+// Remembered for as long as the watch bill is the same one, since the life engine asks it every five minutes.
+const movedKept = new WeakMap();
 export function movedDays(game, place) {
   const model = commandOf(place);
   if (!model) return null;
+  const jobs = jobsOf(game, place);
+  const kept = movedKept.get(jobs);
+  if (kept && kept.model === model) return kept.moved;
   let moved = null;
-  for (const [key, job] of Object.entries(jobsOf(game, place))) {
+  for (const [key, job] of Object.entries(jobs)) {
     if (key === YOU || !(key in model.startJob) || model.startJob[key] === job) continue;
     const day = job === null ? model.spareDay : model.jobs.find((one) => one.id === job)?.day;
     if (day) (moved ??= {})[key] = { job, day };
   }
+  movedKept.set(jobs, { model, moved });
   return moved;
 }
 
@@ -529,6 +566,117 @@ export function setHolder(game, place, postId, key, { by = null } = {}) {
   else delete game.command[place].holders[postId];
 }
 
+// ---- Skill in the work ------------------------------------------------------------------------------
+
+// How much each point of skill either side of 5 speeds the work or slows it, from the file's "each point of skill".
+const skillStep = (place) => {
+  const n = parseFloat(String(WORLD_COMMAND[place]?.numbers?.skill ?? ""));
+  return Number.isFinite(n) ? n / 100 : 0;
+};
+
+// Someone's number in a skill: their file's, or the player's own. Someone without a file is a 5 in the skills of the
+// job the file starts them in, and a 2 in everything else, so a cook put in engineering is slow at it.
+export function skillOfPerson(game, place, key, skill) {
+  if (key === YOU) return game.skills?.[skill] ?? 0;
+  const file = WORLD_CHARACTERS[key];
+  if (file) return file.skills?.[skill] ?? 0;
+  const model = commandOf(place);
+  const own = model?.startJob?.[key];
+  const job = own ? model.jobs.find((one) => one.id === own) : null;
+  return job?.skills.includes(skill) ? 5 : 2;
+}
+
+// How much quicker the best of some people does work that needs a skill: 1 for a 5, a step quicker or slower for each
+// point either side, never under a half nor over half again. 1 where the file says nothing about skill. Remembered,
+// since the machines ask it every five minutes of the clock: only the player's own skill can change.
+const speeds = new Map();
+export function speedOf(game, place, keys, skill) {
+  const step = skillStep(place);
+  if (!step || !skill || !keys.length) return 1;
+  const remember = !keys.includes(YOU);
+  const key = `${place}|${skill}|${keys.join(",")}`;
+  if (remember && speeds.has(key)) return speeds.get(key);
+  const best = Math.max(...keys.map((one) => skillOfPerson(game, place, one, skill)));
+  const speed = Math.min(1.5, Math.max(0.5, 1 + step * (best - 5)));
+  if (remember) {
+    if (speeds.size > 500) speeds.clear();
+    speeds.set(key, speed);
+  }
+  return speed;
+}
+
+// ---- Duty: counted through the day, settled at midnight ------------------------------------------
+
+const dayIndex = (game) => Math.floor((game.clock?.hours ?? 0) / 24);
+
+// What's counted through a day for the posts' duty: minutes of power short and of errands left waiting, and alarms,
+// tampering seen, thefts and deaths aboard. Kept a couple of days back.
+export function tallyDuty(game, place, day, adds) {
+  if (!commandOf(place) || !Object.values(adds).some(Boolean)) return;
+  const state = commandState(game, place);
+  state.tally ??= {};
+  const tally = (state.tally[day] ??= {});
+  for (const [what, n] of Object.entries(adds)) if (n) tally[what] = (tally[what] ?? 0) + n;
+  for (const key of Object.keys(state.tally)) if (Number(key) < day - 2) delete state.tally[key];
+}
+export const countForDuty = (game, place, what, n = 1) => tallyDuty(game, place, dayIndex(game), { [what]: n });
+
+// How much of what the watch bill wants is being done, out of 100: each job counts up to what it wants.
+function staffedScore(game, place, model) {
+  let wanted = 0;
+  let filled = 0;
+  for (const job of model.jobs) {
+    wanted += job.wanted;
+    filled += Math.min(job.wanted, onJob(game, place, job.id).filter((key) => !lostReason(game, place, key)).length);
+  }
+  return wanted ? (100 * filled) / wanted : null;
+}
+
+// At each midnight, the duty of whoever holds each post for the day that's ended: each of its measures out of 100,
+// and their average, kept a week back for each post. Called from the day's loop after the ship's own day.
+export function dutyDay(game, day) {
+  for (const place of Object.keys(WORLD_COMMAND)) {
+    const model = commandOf(place);
+    if (!model || !game.ship) continue;
+    const state = commandState(game, place);
+    if ((state.dutyAt ?? -1) >= day) continue;
+    state.dutyAt = day;
+    const ended = day - 1;
+    const meals = game.logistics?.[place]?.meals?.days?.[ended];
+    const c = {
+      ship: game.ship,
+      tally: { powerShort: 0, errandsWaiting: 0, alarms: 0, tampering: 0, thefts: 0, deaths: 0, ...(state.tally?.[ended] ?? {}) },
+      staffed: staffedScore(game, place, model),
+      sittings: meals && meals.served + meals.missed > 0 ? (100 * meals.served) / (meals.served + meals.missed) : null,
+      waitingParts: waitingForParts(game, place).length,
+    };
+    state.duty ??= {};
+    for (const post of model.posts) {
+      const key = holderKey(game, place, post.id);
+      if (!post.measures.length || !key) continue;
+      const parts = {};
+      for (const word of post.measures) {
+        const value = DUTY_MEASURES[word](c);
+        if (Number.isFinite(value)) parts[word] = Math.round(Math.max(0, Math.min(100, value)));
+      }
+      const values = Object.values(parts);
+      if (!values.length) continue;
+      const list = (state.duty[post.id] ??= []);
+      list.push({ day: ended, key, score: Math.round(values.reduce((sum, one) => sum + one, 0) / values.length), parts });
+      if (list.length > 7) list.splice(0, list.length - 7);
+    }
+  }
+  return [];
+}
+
+// How a post's holder has done: the average of their days on record, up to a week, and the last day's measures.
+function dutyOf(game, place, post, key) {
+  if (!post.measures.length) return null;
+  const days = (stateOf(game, place)?.duty?.[post.id] ?? []).filter((one) => one.key === key);
+  if (!days.length) return { score: null, days: 0, measures: post.measures.join(", ") };
+  return { score: Math.round(days.reduce((sum, one) => sum + one.score, 0) / days.length), days: days.length, last: Object.entries(days.at(-1).parts).map(([word, score]) => `${word} ${score}/100`).join(", ") };
+}
+
 // ---- What the Command menu shows ------------------------------------------------------------------
 
 // The holder's numbers in the skills that count for a post: "commerce 7", "engineering 8, science 4".
@@ -561,6 +709,7 @@ export function commandView(game, place = "meridian") {
       skills: skillWords(game, key, post.skills),
       heads: post.heads.length ? listWords(post.heads.map((id) => plural(model.jobs.find((job) => job.id === id)?.title ?? id))) : null,
       watchBill: post.watchBill,
+      duty: key ? dutyOf(game, place, post, key) : null,
     };
   };
   const groups = [];

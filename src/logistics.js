@@ -11,8 +11,8 @@ import { ITEMS, LOCATIONS } from "./data.js";
 import { storeCounts, storePut, storeTake } from "./bag.js";
 import { findCharacter } from "./campaign.js";
 import { hasReached, isAbout, rosterOf, usuallyIn, whoIsIn } from "./life.js";
-import { claimedSquares, damageKinds, floorSpot, roomPowered, systemsOf, waitingForParts } from "./systems.js";
-import { YOU, holderKey, jobById, jobByWords, lostReason, onJob, personCalled, postAndName, postByWords } from "./command.js";
+import { claimedSquares, damageKinds, floorSpot, powerBalance, roomPowered, systemsOf, waitingForParts } from "./systems.js";
+import { YOU, holderKey, jobById, jobByWords, lostReason, onJob, personCalled, postAndName, postByWords, speedOf, tallyDuty } from "./command.js";
 import { mapFor, roomHere, roomsOf, roomsOn, thingsIn } from "./walk.js";
 import { LOGISTICS_FILE_PROBLEMS, WORLD_LOGISTICS } from "./world.js";
 import { everyWords, readErrandLine, readLoadsLine, readMachineLine, readRefillLine, readStoreLine, slugOf } from "../public/logistics-text.js";
@@ -265,7 +265,7 @@ function compileLogistics(place) {
     // A machine that gives power and makes nothing else is a generator: it burns what it's given and keeps the place lit.
     const generator = Boolean(m.power) && !gives;
     // A worker the words name by their job ("a cook") has to be someone the watch bill has doing it.
-    const job = m.needs?.worker ? jobByWords(place, m.needs.worker.replace(/s+there$/i, "")) : null;
+    const job = m.needs?.worker ? jobByWords(place, m.needs.worker.replace(/\s+there$/i, "")) : null;
     const needs = job ? { ...m.needs, job } : m.needs;
     model.machines.push({ id, name: m.name, verb: m.verb, room: room.id, roomName: room.name, takes, from: from?.id ?? null, gives, into: into?.id ?? null, every: m.every, needs, power: m.power, generator, runs: Boolean(gives) || generator, line, text: raw.text });
   }
@@ -681,9 +681,9 @@ export function workersIn(game, place, roomId, hours) {
 
 // Why a machine isn't making anything at a minute of the clock, or null while it's running. Who's there comes from
 // everyone's days as written (the same however a jump of the clock is cut up), and the player standing in the room.
-function whyWaiting(game, place, m, from, into, minute, you) {
+function whyWaiting(game, place, m, from, into, minute, you, workers = null) {
   if (m.needs.power && !roomPowered(game, place, m.room)) return "no power";
-  if (m.needs.worker && you !== m.room && !usuallyIn(game, place, m.room, minute % 1440, m.needs.job).length) return `waiting for ${m.needs.worker}`;
+  if (m.needs.worker && you !== m.room && !(workers ?? usuallyIn(game, place, m.room, minute % 1440, m.needs.job)).length) return `waiting for ${m.needs.worker}`;
   if (into) {
     const room = roomFor(game, into, m.gives);
     if (room < m.gives.n) return room > 0 ? `no room in the ${into.name} for ${m.gives.n} ${m.gives.count ? "sittings" : itemWords(m.gives.item, m.gives.n)} yet` : isFull(into);
@@ -698,9 +698,13 @@ function runMachine(game, place, model, m, state, minute, minutes, you) {
   const s = state.machines[m.id] ??= { progress: 0, made: 0, waiting: null };
   const from = m.from ? storeById(model, m.from) : null;
   const into = m.into ? storeById(model, m.into) : null;
-  const why = whyWaiting(game, place, m, from, into, minute, you);
+  // Who's at it, asked once: whether it waits for someone, and how fast they go.
+  const workers = m.needs.worker ? usuallyIn(game, place, m.room, minute % 1440, m.needs.job) : null;
+  const why = whyWaiting(game, place, m, from, into, minute, you, workers);
   const atWork = why === null || (why !== "no power" && !why.startsWith("waiting for "));
-  if (atWork) s.progress = Math.min(m.every, s.progress + minutes);
+  // A machine that needs someone doing a job goes as fast as the best of them at that job's skill.
+  const speed = atWork && m.needs.job ? speedOf(game, place, you === m.room ? [...workers, YOU] : workers, jobById(place, m.needs.job)?.skills[0]) : 1;
+  if (atWork) s.progress = Math.min(m.every, s.progress + minutes * speed);
   s.waiting = why;
   while (why === null && s.progress >= m.every) {
     const take = from ? pickTake(game, from, m.takes) : null;
@@ -948,6 +952,11 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
     if (until < state.at) continue;
     const you = game.location === place && game.walk ? roomHere(game)?.id ?? null : null;
     let t = state.at;
+    // Whether systems are let go for want of power changes only when the generator does, or with the parts, so it's
+    // looked at once an hour, or as soon as the supply changes.
+    let supplyWas = undefined;
+    let balanceAt = -Infinity;
+    let dropping = false;
     while (t + CHUNK <= until) {
       for (const m of model.machines) {
         if (m.generator) runGenerator(game, model, m, state, CHUNK);
@@ -956,6 +965,16 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
       serveMeals(game, place, model, state, t, CHUNK, notes);
       runRefills(game, place, model, state, t);
       runErrands(game, place, model, state, t);
+      // What the posts' duty counts: the minutes the generator was short of the loads, and the minutes errands stood
+      // waiting at an empty store.
+      const supply = powerSupply(game, place);
+      if (supply !== supplyWas || t - balanceAt >= 60) {
+        dropping = Boolean(powerBalance(game, place)?.dropped.length);
+        supplyWas = supply;
+        balanceAt = t;
+      }
+      const waiting = Object.values(state.errands ?? {}).filter((one) => one.phase === "waiting").length;
+      tallyDuty(game, place, Math.floor(t / 1440), { powerShort: (supply !== null && supply <= 0) || dropping ? CHUNK : 0, errandsWaiting: waiting * CHUNK });
       t += CHUNK;
     }
     state.at = t;

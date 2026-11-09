@@ -91,7 +91,7 @@ test("the Meridian's chain of command knows its posts, rooms, jobs and holders, 
     .replace("- speaker: halm", "- speaker: halm\n- speaker: lira\n- quarterback: odessa");
   withFile(bad, () => {
     const problems = cmd.commandProblems().join(" | ");
-    for (const want of [/line 10.*no room called The Pub/, /deck chief is chosen by bosun, which isn't another post/, /no job called dockers under Jobs/, /no skill called juggling/, /nobody called Mott Jessup has a day at CFS Meridian/, /voss already holds the first officer: one post each/, /the speaker is given twice/, /no post called quarterback/, /nobody holds the comms officer/]) {
+    for (const want of [/line 11.*no room called The Pub/, /deck chief is chosen by bosun, which isn't another post/, /no job called dockers under Jobs/, /no skill called juggling/, /nobody called Mott Jessup has a day at CFS Meridian/, /voss already holds the first officer: one post each/, /the speaker is given twice/, /no post called quarterback/, /nobody holds the comms officer/]) {
       assert.match(problems, want);
     }
   });

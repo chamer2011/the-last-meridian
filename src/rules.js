@@ -16,7 +16,7 @@ import { advanceWorld, holdingsOf, itemFactor, newWorld, newsView, placeLine, pl
 import { advanceShip, chairOf, chartEntry, isCharted, jumpCost, newShipState, shipGoingHungry, shipJumped, shipLine, shipOf, shipView } from "./ship.js";
 import { advanceLife, lifeOf } from "./life.js";
 import { advanceLogistics, startLogistics } from "./logistics.js";
-import { advanceCommand, commandView, startCommand } from "./command.js";
+import { advanceCommand, commandView, dutyDay, startCommand } from "./command.js";
 import { startingLoreIds } from "./lore.js";
 import { THREAT_LABELS } from "./npc.js";
 import { START_LIST, aboardShip, isCaptain, jobHere, roleBrief, startOf, toOutsider } from "./role.js";
@@ -320,7 +320,8 @@ function hoursPass(game, hours, activity) {
   const told = { today: 0, all: 0 };
   for (let day = Math.min(shipOf(game).day, worldOf(game).day, clockOf(game).day) + 1; day <= today; day += 1) {
     // The ship's machines and sittings run up to this midnight first, so that the day's hunger is counted before her day.
-    notes.push(...advanceLogistics(game, day * 24), ...advanceShip(game, day), ...advanceWorld(game, day), ...advanceStories(game, day, told));
+    // Each post's duty for the day is settled once the ship's own day has had it.
+    notes.push(...advanceLogistics(game, day * 24), ...advanceShip(game, day), ...dutyDay(game, day), ...advanceWorld(game, day), ...advanceStories(game, day, told));
   }
   syncVitals(game);
   return notes;

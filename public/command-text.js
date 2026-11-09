@@ -9,9 +9,11 @@ export const COMMAND_TITLES = { posts: "Posts", jobs: "Jobs", holders: "Who hold
 // The people the first officer can put to work where a job's short, written under Who does which job.
 export const SPARE = "spare hands";
 
-// The lines at the top of the file. The last three are kept as they're written until the steps that play them.
+// The lines at the top of the file. The reviews, the bad stretch and the mutiny are kept as they're written until the
+// steps that play them.
 export const COMMAND_HEADER = [
   { key: "draft", path: "draft" },
+  { key: "each point of skill", path: "numbers.skill" },
   { key: "reviews every", path: "numbers.reviews" },
   { key: "a bad stretch", path: "numbers.stretch" },
   { key: "mutiny brews", path: "numbers.mutiny" },

@@ -73,7 +73,7 @@ test("the Meridian's machines know their stores, rooms and needs, and the genera
   const byId = Object.fromEntries(model.machines.map((m) => [m.id, m]));
   assert.deepEqual(Object.keys(byId).sort(), ["galley", "garden", "generator"]);
   assert.deepEqual([byId.galley.room, byId.galley.takes, byId.galley.from, byId.galley.gives, byId.galley.into, byId.galley.every, byId.galley.needs, byId.galley.runs],
-    ["galley", [{ item: "produce", n: 1 }, { item: "ration_crate", n: 1 }], "pantry", { count: true, unit: "sittings", n: 200 }, "soup_kettle", 60, { power: true, worker: "a cook there" }, true]);
+    ["galley", [{ item: "produce", n: 1 }, { item: "ration_crate", n: 1 }], "pantry", { count: true, unit: "sittings", n: 200 }, "soup_kettle", 60, { power: true, worker: "a cook there", job: "cook" }, true]);
   assert.deepEqual([byId.garden.room, byId.garden.takes, byId.garden.gives, byId.garden.into, byId.garden.every, byId.garden.runs], ["garden", [], { count: false, item: "produce", n: 1 }, "garden_bins", 120, true]);
   assert.deepEqual([byId.generator.room, byId.generator.from, byId.generator.power, byId.generator.runs, byId.generator.generator], ["engineering", "fuel_rack", 100, true, true]);
   assert.deepEqual(model.sittings, { at: [360, 450, 1080, 1170], minutes: 90 });

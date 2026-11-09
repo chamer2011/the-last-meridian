@@ -19,7 +19,7 @@ import { genericKindOf, writtenAtThing } from "./computers.js";
 import { livesHere, peopleAboard } from "./life.js";
 import { dropOrderOf, loadsOf, noPartsWords, powerSupply, repairPartsAboard, repairPartsWords, repairStore, takeRepairParts } from "./logistics.js";
 import { recordFact } from "./record.js";
-import { YOU, holderKey, jobById, jobByWords, lostReason, onJob, postByWords } from "./command.js";
+import { YOU, countForDuty, holderKey, jobById, jobByWords, lostReason, onJob, postByWords, speedOf } from "./command.js";
 import { isCaptain } from "./role.js";
 import { changeStanding, changeStress, hoursNow } from "./rules.js";
 import { holderOf } from "./daily.js";
@@ -709,13 +709,16 @@ export function switchPart(game, place, id, on, { by = "player" } = {}) {
   return settleChange(game, place);
 }
 
+// How long the engineers take to fix something: the place's hours, quicker or slower by the best of them at engineering.
+const repairHours = (game, place, model) => model.numbers.repair / speedOf(game, place, staffOf(game, place, model.engineers), "engineering");
+
 export function damagePart(game, place, id, damage = "broken", { by = "player" } = {}) {
   const model = systemsOf(place);
   if (!model?.parts[id]) throw new Error("There's no such part.");
   const state = stateOf(game, place, true);
   const s = (state.parts[id] ??= {});
   Object.assign(s, { damage, by, since: hoursNow(game) });
-  if (model.engineers.length) s.fixAt = hoursNow(game) + model.numbers.repair;
+  if (model.engineers.length) s.fixAt = hoursNow(game) + repairHours(game, place, model);
   else delete s.fixAt;
   return settleChange(game, place);
 }
@@ -755,7 +758,7 @@ export function setDoor(game, place, room, how, { by = "player" } = {}) {
     Object.assign(s, { forced: true, by, since: hoursNow(game) });
     delete s.locked;
     delete s.backAt;
-    if (model.engineers.length) s.fixAt = hoursNow(game) + model.numbers.repair;
+    if (model.engineers.length) s.fixAt = hoursNow(game) + repairHours(game, place, model);
   } else if (how === "fixed") {
     delete s.forced;
     delete s.fixAt;
@@ -775,6 +778,7 @@ export function setDoor(game, place, room, how, { by = "player" } = {}) {
 // Whoever holds the place hears about it, and it goes on the record for the stories.
 function seenCost(game, place, model) {
   const lines = [];
+  countForDuty(game, place, "tampering");
   const standing = changeStanding(game, holderOf(game, place), D().seen?.standing ?? -2, `You were seen tampering with the systems at ${model.name}.`);
   if (standing) lines.push(standing);
   try {
@@ -797,6 +801,7 @@ export function soundAlarm(game, place, room, { seen = false, by = "player" } = 
   const had = state.alarm.ringing;
   state.alarm.ringing = { room: room ?? had?.room ?? null, since: had?.since ?? hoursNow(game), seen: Boolean(seen || had?.seen), by };
   if (!had) {
+    countForDuty(game, place, "alarms");
     lines.push(`[ALARM] The alarm is ringing at ${model.name}${room ? `, in ${roomNameOf(place, room)}` : ""}.`);
     for (const to of model.alarmLocks) {
       const s = (state.doors[to] ??= {});

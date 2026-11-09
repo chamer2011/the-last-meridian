@@ -91,7 +91,12 @@ export const livesHere = (place) => Boolean(lifeFileFor(place) && mapFor(place))
 // The roster as a game has it: each named person's day is the one their job on the ship's watch bill gives them
 // (src/command.js), where that's been changed from the job their group in the file does. Kept until it changes again.
 const rosters = new WeakMap();
-const rosterSignature = (moved) => (moved ? Object.entries(moved).map(([key, one]) => `${key}=${one.job}`).join("|") : "");
+const signatures = new WeakMap();
+function rosterSignature(moved) {
+  if (!moved) return "";
+  if (!signatures.has(moved)) signatures.set(moved, Object.entries(moved).map(([key, one]) => `${key}=${one.job}`).join("|"));
+  return signatures.get(moved);
+}
 function rosterFor(game, place) {
   const file = lifeFileFor(place);
   if (!file) return [];
