@@ -628,7 +628,7 @@ function settingsMenu() {
 
 // about is what a menu holds, for the tooltip on its button: it isn't written on the screen.
 export const MENUS = {
-  character: { label: "Character", command: "char", about: "Level, condition, attributes, and your numbers in a fight", view: characterMenu },
+  character: { label: "Character", command: "char", about: "Your registry printout: who you are, your numbers, condition and gear, or press C", view: characterMenu, window: "sheet" },
   skills: { label: "Skills", command: "skills", about: "What you're good at, your odds, and practice", view: skillsMenu },
   traits: { label: "Traits", command: "traits", about: "Traits, convictions, and everything affecting you", view: traitsMenu },
   perks: { label: "Perks", command: "perks", about: "What you've learned, and what you can learn now", view: perksMenu },

@@ -46,7 +46,7 @@ Each menu also has a command you can type:
 
 | Command | Menu | What's in it |
 |---|---|---|
-| `/char` | Character | Level, your place and your job, condition, attributes, and your numbers in a fight |
+| `/char` or C | Character | Your registry printout, which slides down inside the map: who you are, level, attributes, skills, condition, gear, work and sleep. Tear it off (or C, Esc) to put it away |
 | `/skills` | Skills | Every skill, your odds at each difficulty, your progress, and practice for each check window |
 | `/traits` | Traits | Traits, convictions, and everything currently affecting you |
 | `/perks` | Perks | What you've learned, what you can learn now, and what's locked |
@@ -202,8 +202,8 @@ The life you pick decides where you start, who you know, where you stand with ea
 - **They really run the fleet.** They move it, buy what it needs out of its own money, set the work crews and answer raids, every day, on your computer, at no cost. It happens whether you're aboard or on the far side of the map. They can't save everyone: about 32 of the 41 ships are left after a hundred days, somewhere between 16 and 29 after two hundred, and by the end of a year it's down to the 14 named in the story.
 - **The Fleet menu tells you what you'd know.** Aboard any ship in the fleet, or on the same dock as it, you see how it stands, what's been decided and the log. Anywhere else, you only get where it was last heard of. You can't give it orders, there's no **Ship** menu, and **Wait** just lets the time go by. The story only tells you about the fleet while you're with it, or if it's big news.
 - **Getting around costs money.** The **Star map** shows a fare and a time instead of fuel, and **Book passage** takes you there by yourself, on whatever's going that way. The further and the more dangerous it is, the more it costs, and it's slower than a jump. A few places have no passage at all, because nobody goes there for ordinary reasons, so you'd need the story to get you there. Going aboard a ship in the fleet costs a fare too, unless the fleet's where you are.
-- **You can work.** Where your job is, you'll find it under **Your place** in the **Character** menu, and under **You can** beside the room. A shift takes eight hours, wears you out, and pays a few credits, a little more as your skill improves.
-- **You have to sleep somewhere.** It's free where you live and anywhere in the fleet. Anywhere else, you can rent a bunk for 6 credits, or sleep rough for nothing, which doesn't bring back your health or energy, and leaves you no calmer. Both are in the same two places as your job, and in **Condition** in the **Character** menu.
+- **You can work.** Where your job is, you'll find it at the bottom of the **Character** printout, and under **You can** beside the room. A shift takes eight hours, wears you out, and pays a few credits, a little more as your skill improves.
+- **You have to sleep somewhere.** It's free where you live and anywhere in the fleet. Anywhere else, you can rent a bunk for 6 credits, or sleep rough for nothing, which doesn't bring back your health or energy, and leaves you no calmer. Both are in the same two places as your job, and at the bottom of the **Character** printout.
 - **Leads are written for you.** Stories reach you the way they'd reach someone who isn't in charge. The 12 that only work for the captain, such as a court martial or the Commandant's request, stay closed, and the main story goes on around you.
 - **It can change.** If the story gets there, the game master can hand you the chair, or take it away from you. The orders, the raids and the **Ship** menu then become yours, or stop being yours, and the fleet goes on from wherever it's got to.
 - **It costs the same.** Passage, shifts, sleep and whoever's in the chair don't use the AI, and a turn with the game master costs what it always has.

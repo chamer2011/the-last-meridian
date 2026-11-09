@@ -12,6 +12,7 @@ import { focusTalk, initTalk, resetTalk, startTalk, talkNode, talkOpen } from ".
 import { computerNode, computerOpen, focusComputer, initComputer, resetComputer } from "./computer.js";
 import { bagNode, bagOpen, initBag, openBag, resetBag, toggleBag } from "./bag.js";
 import { drawQuests, initQuests, questTrackerNode, questsOpen, resetQuests, toggleQuests } from "./quests.js";
+import { initSheet, resetSheet, sheetNode, toggleSheet } from "./sheet.js";
 import { beginScene, initPopups, openPopups, popupDrawn, popupNext, popupsAttached, updatePopups } from "./popups.js";
 import { INTERFACE_SIZES, interfaceZoom } from "./scene.js";
 import { focusThing, initWalk, keepClear, markPoint, newsBehindMenu, popupsShown, putAwayRoomWindows, renderWalk, resetWalk, showWholeStory, thingNode, thingOpen, toggleClock, walkShown, walkViewNode } from "./walk.js";
@@ -26,7 +27,7 @@ const ui = {
   setup: null,
   settings: null,
   screen: "title",
-  tab: "character",
+  tab: "skills",
   sideOpen: false,
   streaming: false,
   waiting: false,
@@ -218,6 +219,7 @@ async function loadGame(slot) {
   const { game, saves } = await api("/api/load", { slot });
   resetFight();
   resetCheck();
+  resetSheet();
   resetRaid();
   resetWalk();
   resetTalk();
@@ -236,6 +238,7 @@ async function loadGame(slot) {
 async function startNewGame(draft) {
   const { game, saves } = await api("/api/new", { draft });
   resetFight();
+  resetSheet();
   resetCheck();
   resetRaid();
   resetWalk();
@@ -587,6 +590,12 @@ function openMenu(id, focus = null) {
   // The story board is a whole screen of its own, not a drawer.
   if (MENUS[id]?.board) {
     closeMenu();
+  // The character sheet is a printout that feeds down inside the map.
+  if (MENUS[id]?.window === "sheet") {
+    closeMenu();
+    toggleSheet();
+    return;
+  }
     openBoard();
     return;
   }
@@ -667,6 +676,7 @@ function render() {
   const previousMenu = document.querySelector("#side .menu-body");
   const sameMenu = document.getElementById("side")?.getAttribute("aria-label") === MENUS[ui.tab].label;
   const menuTop = sameMenu ? previousMenu?.scrollTop ?? 0 : 0;
+    !walkShown() && sheetNode(),
   const count = ui.game.transcript.length + ui.consoleLines.length + (ui.error ? 1 : 0);
   const isNew = !previous || count !== ui.renderedCount;
   ui.renderedCount = count;
@@ -765,6 +775,7 @@ initFight({ ui, render, sendChat, openMenu, closeMenu });
 initCheck({ ui, render, sendChat, openMenu, closeMenu });
 // A raid waits for a fight, a check or a computer to be done with, and then has the whole screen.
 initFleet({ ui, render, runAction, renderMenus, openMenu, closeMenu, raidWaits: () => fightOpen() || checkOpen() || computerOpen() });
+  sheet: () => sheetNode({ inMap: true }),
 initWalk({
   ui,
   reading,
@@ -796,6 +807,7 @@ initPopups({
   options: currentOptions,
   typing: () => ui.typing || (ui.game?.transcript.length === 0 && !ui.streaming && !ui.waiting && !ui.error),
   retry: () => {
+initSheet({ ui, render, act, openMenu });
     const { retry } = ui.error;
     ui.error = null;
     sendChat(retry);

@@ -447,7 +447,8 @@ export function walkViewNode(logNode, composerNode) {
       popped ? popsNode(composerNode, legend, clockBar()) : legend,
       thingLayer(),
       menuLayer(),
-      app.questTracker?.()),
+      app.questTracker?.(),
+      app.sheet?.()),
     hereNode(),
     !popped && el("div", { class: "walk-story" }, storyBar(), logNode({ latest: true })));
 }
