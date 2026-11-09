@@ -63,12 +63,16 @@ function storesSection(s) {
   const machine = (m) => el("div", { class: "menu-row small" },
     el("span", {}, m.name, el("span", { class: "muted" }, `, ${m.room}: ${m.does}`)),
     el("span", { class: m.bad ? "tone-bad" : m.runs ? "" : "muted" }, m.status));
+  const errand = (e) => el("div", { class: "menu-row small" },
+    el("span", {}, e.who, el("span", { class: "muted" }, `: ${e.does}`)),
+    el("span", { class: e.waiting ? "tone-bad" : e.busy ? "" : "muted" }, e.status));
   const meals = s.meals && el("div", { class: "stack gap-small" },
     small(`${s.meals.sittings} sittings a day, ${count(s.meals.aSitting)} people at each: ${s.meals.now}.`),
     el("div", { class: `small${s.meals.today.missed ? " tone-bad" : ""}` }, `Today ${count(s.meals.today.served)} served${s.meals.today.missed ? `, ${count(s.meals.today.missed)} found the kettle empty` : ""}.${s.meals.yesterday ? ` Yesterday ${count(s.meals.yesterday.served)} served${s.meals.yesterday.missed ? `, ${count(s.meals.yesterday.missed)} went without` : ""}.` : ""}`));
   return section("In the rooms", s.stores.map(line),
     muted("Walk up to any of them and open it beside your pack. What's taken out and put back is kept, and the count here follows it."),
     s.machines?.length ? [el("h4", { class: "small" }, "Machines"), s.machines.map(machine), muted("Each runs on the clock while its room has power and someone's at it, and nothing runs while the clock is paused.")] : null,
+    s.errands?.length ? [el("h4", { class: "small" }, "Errands"), s.errands.map(errand), muted("Each goes when the store they keep up runs short: to the store they fetch from, a minute there, and back with the load. With nothing to fetch, they stand at it and wait.")] : null,
     meals ? [el("h4", { class: "small" }, "The sittings"), meals, muted("Everyone aboard eats from the kettle at the sittings. Whoever finds it empty goes without, and the ship's morale feels that at midnight.")] : null);
 }
 

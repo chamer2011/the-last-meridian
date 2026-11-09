@@ -217,6 +217,35 @@ export function readMachineLine(text) {
   return { name, room, verb, takes, from, gives, into, every, needs, power };
 }
 
+// ---- The words of an errand's line -------------------------------------------------------------
+
+const NUMBER_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
+const numberOf = (words) => (/^\d+$/.test(words) ? Number(words) : NUMBER_WORDS[String(words).toLowerCase()] ?? null);
+
+// "Quartermaster Brandt: ration crates from the shuttle stores to the pantry when under 4, two at a time": who
+// carries, what, from which store to which, when the store it goes to is short of how many, and how many a trip.
+export function readErrandLine(text) {
+  const colon = String(text).indexOf(":");
+  if (colon < 0) return { problem: `"${text}" needs a colon after who carries, then what they carry` };
+  const who = String(text).slice(0, colon).trim();
+  let body = String(text).slice(colon + 1).trim();
+  if (!who) return { problem: `"${text}" needs to say who carries, before the colon` };
+  let each = 1;
+  body = body.replace(/,?\s*(\w+)\s+at\s+a\s+time\s*$/i, (_, n) => { each = numberOf(n); return ""; }).trim();
+  if (each === null || each < 1) return { problem: `"${text}": how many at a time should be a number, such as two at a time` };
+  let under = null;
+  body = body.replace(/,?\s*when\s+(?:it'?s\s+|they'?re\s+)?under\s+(\w+)\s*$/i, (_, n) => { under = numberOf(n); return ""; }).trim();
+  if (under === null || under < 1) return { problem: `"${text}" needs to say when they go: when under 4, counting what the store it goes to has` };
+  const fromAt = body.search(/\s+from\s+/i);
+  const toAt = body.search(/\s+to\s+/i);
+  if (fromAt < 0 || toAt < 0 || toAt < fromAt) return { problem: `"${text}" needs what they carry, from a store, to a store: ration crates from the shuttle stores to the pantry` };
+  const what = body.slice(0, fromAt).trim();
+  const from = body.slice(fromAt, toAt).replace(/^\s+from\s+(?:the\s+)?/i, "").trim();
+  const to = body.slice(toAt).replace(/^\s+to\s+(?:the\s+)?/i, "").trim();
+  if (!what || !from || !to) return { problem: `"${text}" needs what they carry, from a store, to a store: ration crates from the shuttle stores to the pantry` };
+  return { who, what, from, to, under, each };
+}
+
 // ---- Writing a file ----------------------------------------------------------------------------
 export function writeLogisticsText(value) {
   const out = [`# ${value.name ?? ""}`];

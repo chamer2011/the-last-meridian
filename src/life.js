@@ -8,7 +8,7 @@
 // world/life/ has one file for each place whose people live their days, named after the place.
 
 import { LOCATIONS } from "./data.js";
-import { mealWords } from "./logistics.js";
+import { errandDetour, logisticsOf, mealWords } from "./logistics.js";
 import { atPost, canStand, findPath, mapFor, roomOf, seedFrom } from "./walk.js";
 import { detourFor, partSquares } from "./systems.js";
 import { WORLD_LIFE } from "./world.js";
@@ -47,6 +47,14 @@ function readLifeFile(file, map) {
   const levelOf = (id) => roomOf(map, id)?.levelId ?? id;
   const spots = Object.fromEntries(Object.entries(file.spots ?? {}).map(([name, [level, x, y, side]]) => [name, { level: levelOf(level), x, y, ...(side ? { side } : {}) }]));
   const groups = Object.fromEntries(Object.entries(file.groups ?? {}).map(([name, entries]) => [name, expandGroup(entries).map((spot) => ({ ...spot, level: levelOf(spot.level) }))]));
+  // The place's stores (world/logistics) get a spot each, the square you stand on to reach one, so that an errand can
+  // send someone there.
+  for (const store of (map?.place && logisticsOf(map.place)?.stores) || []) {
+    const level = map.levels[store.level];
+    const thing = level?.things.find((one) => one.id === store.thing);
+    const beside = thing && STEPS.map(([dx, dy]) => ({ x: thing.x + dx, y: thing.y + dy })).find((spot) => canStand(level, spot.x, spot.y));
+    if (beside) spots[`store:${store.id}`] = { level: level.id, ...beside };
+  }
   const roster = [
     ...Object.entries(file.people ?? {}).map(([id, day]) => ({ key: id, id, day, shift: 0 })),
     ...(file.crowd ?? []).flatMap((group) => group.names.map(([name, shift]) => ({ key: name, id: null, name, crowd: true, day: group.day, shift }))),
@@ -133,7 +141,46 @@ function planFor(map, file, entry, hours, detour) {
   const plan = planAt(entry, hours);
   if (!detour) return plan;
   const turn = detour(entry.key, levelOfPlan(map, file, entry, plan), Boolean(plan.block.asleep));
-  return turn && roomOf(map, turn.where.slice(1)) ? { key: `systems:${turn.where}:${turn.doing}`, block: { doing: turn.doing, go: turn.where }, where: turn.where } : plan;
+  // A detour names a room, or a spot the file knows, such as the square beside one of the ship's stores.
+  const known = turn && (/^[@>]/.test(turn.where) ? roomOf(map, turn.where.slice(1)) : file.spots[turn.where]);
+  return known ? { key: `systems:${turn.where}:${turn.doing}`, block: { doing: turn.doing, go: turn.where }, where: turn.where } : plan;
+}
+
+// Everything that turns someone aside from their day: the place's systems first (the alarm, a repair, bad air), then
+// the ship's errands. Null when nothing's going on.
+function detoursFor(game, place) {
+  const systems = detourFor(game, place);
+  const errands = errandDetour(game, place);
+  if (!systems && !errands) return null;
+  return (key, room, asleep) => systems?.(key, room, asleep) ?? errands?.(key, room, asleep) ?? null;
+}
+
+// The people of a place, for the ship's errands to name: their key in its file, their id if they're someone, and their
+// crowd name otherwise. Read from the file as it is, since the logistics are compiled before the file is read in full.
+export function rosterOf(place) {
+  const file = WORLD_LIFE[place];
+  if (!file) return [];
+  return [
+    ...Object.keys(file.people ?? {}).map((id) => ({ key: id, id, name: null })),
+    ...(file.crowd ?? []).flatMap((group) => group.names.map(([name]) => ({ key: name, id: null, name }))),
+  ];
+}
+
+// Whether someone's awake and about at a time, as their day has it, and here at all.
+export function isAbout(game, place, key, hours) {
+  const entry = lifeFileFor(place)?.roster.find((one) => one.key === key);
+  if (!entry || (entry.id && !atPost(game, entry.id))) return false;
+  const plan = planAt(entry, hours);
+  return !plan.block.asleep && !plan.block.hidden;
+}
+
+// Whether someone's walk has brought them to where a detour sent them. Where the captain isn't, everyone is where
+// their day says, so they're there already.
+export function hasReached(game, place, key, where) {
+  if (place !== game.location) return true;
+  const state = game.life?.places?.[place]?.[key];
+  if (!state) return true;
+  return typeof state.task === "string" && state.task.startsWith(`systems:${where}:`) && atGoal(state);
 }
 
 // The room a plan sends someone to, by its id: their post's room, the room named, or the room a spot or a group is in.
@@ -478,7 +525,7 @@ export function advanceLife(game) {
   life.carry -= steps;
   const place = game.location;
   const people = life.places[place];
-  const detour = livesHere(place) ? detourFor(game, place) : null;
+  const detour = livesHere(place) ? detoursFor(game, place) : null;
   if (livesHere(place) && people && gap <= LONG_GAP) moveOn(place, people, hours, steps, detour);
   life.places = livesHere(place) ? { [place]: people && gap <= LONG_GAP ? people : settle(place, hours, people, detour) } : {};
   companyMovesOn(game, hours);
@@ -493,6 +540,8 @@ function seenAs(game, map, entry, state, detour = null) {
   if (settled && plan.block.hidden) return null;
   const home = entry.id ? homeOf(map, entry.id) : null;
   const heading = roomNameAt(map, state.goal).replace(/^The /, "the ");
+  // Someone on one of the ship's errands says what they're carrying as they go.
+  const errand = String(plan.key).startsWith("systems:store:");
   return {
     id: entry.id,
     name: entry.name ?? entry.id,
@@ -500,7 +549,7 @@ function seenAs(game, map, entry, state, detour = null) {
     ...(home?.greeting ? { greeting: home.greeting } : {}),
     x: state.x,
     y: state.y,
-    doing: settled || plan.block.rounds || plan.block.hidden ? mealWords(game, map.place, plan.block.doing) : `heading for ${heading}`,
+    doing: settled || plan.block.rounds || plan.block.hidden ? mealWords(game, map.place, plan.block.doing) : errand ? `${plan.block.doing}, heading for ${heading}` : `heading for ${heading}`,
     ...(settled ? {} : { walking: true }),
     ...(settled && plan.block.asleep ? { asleep: true } : {}),
     ...(entry.crowd ? { crowd: true } : {}),
@@ -520,7 +569,7 @@ export function peopleAboard(game, place, levelId) {
   const file = lifeFileFor(place);
   const map = mapFor(place);
   const people = peopleOf(game, place);
-  const detour = place === game.location ? detourFor(game, place) : null;
+  const detour = place === game.location ? detoursFor(game, place) : null;
   return file.roster
     .filter((entry) => people[entry.key]?.level === levelId && (!entry.id || atPost(game, entry.id)))
     .map((entry) => seenAs(game, map, entry, people[entry.key], detour))
@@ -537,7 +586,7 @@ export function whereNow(game, id) {
     const state = entry && peopleOf(game, place)[entry.key];
     if (!state) continue;
     const map = mapFor(place);
-    const seen = seenAs(game, map, entry, state);
+    const seen = seenAs(game, map, entry, state, place === game.location ? detoursFor(game, place) : null);
     const away = place === game.location ? "" : `, on ${LOCATIONS[place].name}`;
     return seen ? `${seen.doing}, at ${roomNameAt(map, state).replace(/^The /, "the ")}${away}` : `somewhere out of sight${away}`;
   }

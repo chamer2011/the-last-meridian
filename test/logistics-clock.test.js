@@ -235,6 +235,6 @@ test("the kettle says how much is left in it, an emptied pantry says it's empty,
   const before = JSON.stringify(fresh);
   publicState(fresh);
   assert.equal(JSON.stringify(fresh), before, "the Ship menu's machines and sittings are read without writing");
-  assert.deepEqual(fresh.logistics, { meridian: { at: 8 * 60, machines: {}, meals: { days: {}, carry: 0, dry: false } } }, "a new game's logistics start with its clock");
+  assert.deepEqual(fresh.logistics, { meridian: { at: 8 * 60, machines: {}, meals: { days: {}, carry: 0, dry: false }, errands: {} } }, "a new game's logistics start with its clock");
   assert.deepEqual(advanceLogistics(fresh), [], "and with the clock where it was, there's nothing to catch up");
 });

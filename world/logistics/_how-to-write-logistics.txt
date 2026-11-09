@@ -11,12 +11,12 @@ and saving one there writes its file here.
 
 checks these files too.
 
-It's built in steps, each tried by the owner before the next. So far the game plays the Stores and the
-Machines, and everyone aboard eats: every store is a real thing in a room, full to start with, that the player
-can walk to and open beside their pack; every machine takes from one store and puts into another on the
-clock; the whole ship eats from the kettle at its sittings; and the Ship menu shows all of it. The other parts
-are read and written back, and checked for their shape, and they'll come to life step by step: Errands, then
-Loads, then Refills.
+It's built in steps, each tried by the owner before the next. So far the game plays the Stores, the
+Machines and the Errands, and everyone aboard eats: every store is a real thing in a room, full to start
+with, that the player can walk to and open beside their pack; every machine takes from one store and puts
+into another on the clock; people carry from one store to another when the second runs short; the whole ship
+eats from the kettle at its sittings; and the Ship menu shows all of it. The other parts are read and written
+back, and checked for their shape, and they'll come to life step by step: Loads, then Refills.
 
 
 THE FILE
@@ -108,9 +108,31 @@ anyone you can see eating finds it empty instead, and at midnight the ship's mor
 who went hungry, the way a food shortage does. The Ship menu shows the sittings, and what the kettle gave
 today and yesterday.
 
+ERRANDS
+-------
+
+An errand is someone carrying from one store to another when the second runs short. Each line is who
+carries, a colon, what they carry, from a store, to a store, when the store it goes to is under so many,
+and how many they carry a trip (a number, or a number in words):
+
+    - Quartermaster Brandt: ration crates from the shuttle stores to the pantry when under 4, two at a time
+    - Tech Oona: fuel cells from the shuttle stores to the fuel rack when under 3, two at a time
+    - Cook Imre: produce from the garden bins to the pantry when under 4, four at a time
+
+Who carries is someone with a day in the place's file in world/life: a crowd name as written there (Tech
+Oona, Cook Imre), or the name of someone the game knows (Quartermaster Brandt is Odessa Brandt). Both stores
+have to keep the item on their holds lines, and the store it goes to has to keep at least as many as the
+number after under, or they'd never stop.
+
+When the store they keep up is under that number and they're awake, they leave what they were doing, walk to
+the store they fetch from, stand there a minute, take as many as they carry (or as many as there are, or as
+the other store has room for), walk back, put them in, and go back to their day; and again, while it's still
+short. If there's nothing to fetch, they stand at the store and wait, and their line says so. The Ship menu
+lists every errand with where its person has got to.
+
 THE OTHER PARTS, FOR NOW
 ------------------------
 
-Loads, Errands and Refills are read and written back by the board, and the checker only asks that each
-line starts with - and a space. What each line means is written in the words you'd use; the steps that
-bring them to life will read exactly those words, and this file will say how, step by step.
+Loads and Refills are read and written back by the board, and the checker only asks that each line starts
+with - and a space. What each line means is written in the words you'd use; the steps that bring them to
+life will read exactly those words, and this file will say how, step by step.
