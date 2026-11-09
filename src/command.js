@@ -6,16 +6,18 @@
 
 import { SKILLS } from "./character-data.js";
 import { LOCATIONS } from "./data.js";
-import { isCaptain } from "./role.js";
-import { mapFor, roomsOf } from "./walk.js";
+import { isHurt } from "./deeds.js";
+import { aboardShip, isCaptain, startOf } from "./role.js";
+import { atPost, mapFor, roomsOf } from "./walk.js";
 import { COMMAND_FILE_PROBLEMS, WORLD_CHARACTERS, WORLD_COMMAND, WORLD_LIFE } from "./world.js";
-import { BODIES, THE_CHAIR, readHolderLine, readJobLine, readPostLine, slugOf } from "../public/command-text.js";
+import { BODIES, SPARE, THE_CHAIR, readHolderLine, readJobLine, readPostLine, readWorkersLine, slugOf } from "../public/command-text.js";
 
 // The player, when they hold a post.
 export const YOU = "you";
 
 const plain = (words) => String(words ?? "").toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 const upperFirst = (text) => (text ? text[0].toUpperCase() + text.slice(1) : text);
+const lowerFirst = (text) => (text ? text[0].toLowerCase() + text.slice(1) : text);
 const SMALL_WORDS = new Set(["of", "the", "and"]);
 const titleCase = (words) => String(words).split(" ").map((word, i) => (i && SMALL_WORDS.has(word) ? word : upperFirst(word))).join(" ");
 const listWords = (list) => (list.length > 1 ? `${list.slice(0, -1).join(", ")} and ${list.at(-1)}` : list[0] ?? "");
@@ -193,7 +195,62 @@ function compileCommand(place) {
     model.start[post.id] = { key };
   }
   for (const post of model.posts) if (!model.start[post.id]) at(post.line, `nobody holds the ${post.title}: give it someone under Who holds what`);
+
+  // Who does each job when a game begins, and the spare hands the first officer can put to work. Someone who holds a
+  // post isn't on the watch bill.
+  model.startJob = {};
+  const officers = new Set(Object.values(model.start).map((one) => one.key).filter(Boolean));
+  for (const raw of file.workers ?? []) {
+    const workers = readWorkersLine(raw.text);
+    if (workers.problem) {
+      at(raw.line, workers.problem);
+      continue;
+    }
+    const spare = workers.job === SPARE;
+    const job = spare ? null : jobByWordsIn(model, workers.job);
+    if (!spare && !job) {
+      at(raw.line, `there's no job called ${workers.job} under Jobs`);
+      continue;
+    }
+    for (const words of workers.people) {
+      const key = findHolder(place, words);
+      if (!key) at(raw.line, `nobody called ${words} has a day at ${name} in world/life, to be ${spare ? "a spare hand" : `a ${job.title}`}`);
+      else if (officers.has(key)) at(raw.line, `${words} holds a post, so they aren't on the watch bill`);
+      else if (key in model.startJob) at(raw.line, `${words} is given two jobs`);
+      else model.startJob[key] = spare ? null : job.id;
+    }
+  }
+  // Each job's day: the day in world/life of the first person who starts in it, or a plain one at its room.
+  for (const job of model.jobs) {
+    job.first = Object.keys(model.startJob).find((key) => model.startJob[key] === job.id) ?? null;
+    job.day = (job.first && dayInFile(place, job.first)) || plainDay(job);
+  }
+  const firstSpare = Object.keys(model.startJob).find((key) => model.startJob[key] === null);
+  model.spareDay = firstSpare ? dayInFile(place, firstSpare) : null;
   return model;
+}
+
+// Someone's day as world/life writes it: their own, or their crowd's.
+function dayInFile(place, key) {
+  const life = WORLD_LIFE[place] ?? {};
+  if (life.people?.[key]) return life.people[key];
+  return (life.crowd ?? []).find((group) => group.names.some(([name]) => name === key))?.day ?? null;
+}
+
+// A day for a job nobody starts in: on duty at its room, two meals at the benches, and a bunk at night.
+const plainDay = (job) => [
+  { at: "06:00", doing: `on duty in ${lowerFirst(job.roomName)}`, go: `@${job.room}` },
+  { at: "12:30", doing: "eating", go: "benches" },
+  { at: "13:10", doing: `on duty in ${lowerFirst(job.roomName)}`, go: `@${job.room}` },
+  { at: "18:30", doing: "eating", go: "benches" },
+  { at: "19:10", doing: "off duty" },
+  { at: "22:00", doing: "asleep", go: "racks", asleep: true },
+];
+
+// "cooks", "a cook" or "the techs", among a compiled place's jobs.
+function jobByWordsIn(model, words) {
+  const want = plain(words).replace(/^(a|an|the) /, "").replace(/s$/, "");
+  return model.jobs.find((job) => plain(job.title).replace(/s$/, "") === want) ?? null;
 }
 
 const postTitle = (model, id) => model.posts.find((one) => one.id === id)?.title ?? id;
@@ -223,7 +280,20 @@ export function postByWords(place, words) {
   return null;
 }
 
+// "a cook", "the techs" or "cooks" in a place's other files, to the job's id, from the file's own words in the same way.
+export function jobByWords(place, words) {
+  const file = WORLD_COMMAND[place];
+  if (!file) return null;
+  const want = plain(words).replace(/^(a|an|the) /, "").replace(/s$/, "");
+  for (const raw of file.jobs ?? []) {
+    const job = readJobLine(raw.text);
+    if (!job.problem && plain(job.title).replace(/s$/, "") === want) return slugOf(job.title);
+  }
+  return null;
+}
+
 export const postById = (place, id) => commandOf(place)?.posts.find((one) => one.id === id) ?? null;
+export const jobById = (place, id) => commandOf(place)?.jobs.find((one) => one.id === id) ?? null;
 export const postWords = (place, id) => (postById(place, id) ? `the ${postById(place, id).title}` : id);
 
 // ---- Who holds what, in a game -----------------------------------------------------------------
@@ -275,7 +345,8 @@ export function stillAlive(game, key) {
   return !status || status === "alive";
 }
 
-// The holders a new game starts with: the file's, with the player or the chair's captain in the chair.
+// The holders a new game starts with: the file's, with the player or the chair's captain in the chair; and the watch
+// bill, with the player on it if they're crew aboard.
 export function newCommandState(game) {
   const state = {};
   for (const place of Object.keys(WORLD_COMMAND)) {
@@ -287,9 +358,158 @@ export function newCommandState(game) {
       const key = start?.chair ? chairHolder(game) : start?.key;
       if (key) holders[post.id] = { key, since: null, by: null };
     }
-    state[place] = { holders };
+    state[place] = { holders, jobs: startJobs(game, model), cover: {}, log: [] };
   }
   return state;
+}
+
+// ---- The watch bill ---------------------------------------------------------------------------------
+
+// The player's job when a game begins, if they started as crew aboard: the job done in the room their own work's in.
+function playersJob(game, model) {
+  if (isCaptain(game)) return undefined;
+  const start = startOf(game);
+  if (!start?.job || start.place !== model.place) return undefined;
+  return model.jobs.find((job) => job.room === start.room)?.id;
+}
+function startJobs(game, model) {
+  const jobs = { ...model.startJob };
+  const mine = playersJob(game, model);
+  if (mine) jobs[YOU] = mine;
+  return jobs;
+}
+
+// Who does which job in a game: a job's id, or null for a spare hand. A game from before there was a watch bill reads
+// the file's. Reading changes nothing.
+function jobsOf(game, place) {
+  const model = commandOf(place);
+  if (!model) return {};
+  return stateOf(game, place)?.jobs ?? startJobs(game, model);
+}
+// Someone's job: its id, null for a spare hand, or undefined for someone who isn't on the watch bill.
+export const jobOf = (game, place, key) => jobsOf(game, place)[key];
+// Everyone doing a job, in the watch bill's order: null for the spare hands.
+export const onJob = (game, place, jobId) => Object.entries(jobsOf(game, place)).filter(([, job]) => job === jobId).map(([key]) => key);
+
+// Why someone isn't at their job, or null: dead, being patched up after a beating, or not where their post is.
+export function lostReason(game, place, key) {
+  if (!key || key === YOU) return null;
+  if (!stillAlive(game, key)) return "dead";
+  if (isHurt(game, place, key)) return "being patched up";
+  if (WORLD_CHARACTERS[key] && !atPost(game, key)) return "away";
+  return null;
+}
+
+function commandState(game, place) {
+  const model = commandOf(place);
+  game.command ??= {};
+  game.command[place] ??= { holders: {} };
+  const state = game.command[place];
+  state.jobs ??= startJobs(game, model);
+  state.cover ??= {};
+  state.log ??= [];
+  return state;
+}
+const dayNow = (game) => Math.floor((game.clock?.hours ?? 0) / 24) + 1;
+function logCommand(state, game, text) {
+  state.log.push({ day: dayNow(game), text });
+  if (state.log.length > 20) state.log.splice(0, state.log.length - 20);
+}
+const jobWords = (job) => (job ? `a ${job.title}` : "one of the spare hands");
+
+// The days the watch bill changes: someone doing a job other than the one their group in world/life does takes that
+// job's day, at their own shift, and someone sent to the spare hands takes theirs. Null when nothing's changed.
+export function movedDays(game, place) {
+  const model = commandOf(place);
+  if (!model) return null;
+  let moved = null;
+  for (const [key, job] of Object.entries(jobsOf(game, place))) {
+    if (key === YOU || !(key in model.startJob) || model.startJob[key] === job) continue;
+    const day = job === null ? model.spareDay : model.jobs.find((one) => one.id === job)?.day;
+    if (day) (moved ??= {})[key] = { job, day };
+  }
+  return moved;
+}
+
+// The work a crew member's shift is when the watch bill has moved them from the job their life began in: the same pay,
+// in their new job's room. Null while they're where they started.
+export function shiftOnWatchBill(game, start = startOf(game)) {
+  const model = start ? commandOf(start.place) : null;
+  if (!model || !start?.job) return null;
+  const mine = jobOf(game, start.place, YOU);
+  if (mine === undefined || mine === playersJob(game, model)) return null;
+  if (mine === null) return { name: "Help wherever you're sent", pay: start.job.pay, skill: start.job.skill, done: "You spend a shift doing whatever the first officer needs doing, and nobody says thank you." };
+  const job = model.jobs.find((one) => one.id === mine);
+  return { name: `Work a shift as a ${job.title} in ${lowerFirst(job.roomName)}`, pay: start.job.pay, skill: job.skills[0] ?? start.job.skill, done: `You put in a shift as a ${job.title}, in ${lowerFirst(job.roomName)}.` };
+}
+
+// The captain moving someone on the watch bill: to a job, or to the spare hands. Gives the words for what was done.
+export function assignJob(game, place, key, jobId, { by = YOU } = {}) {
+  const model = commandOf(place);
+  if (!model) throw new Error("Nobody here keeps a watch bill.");
+  const jobs = jobsOf(game, place);
+  if (!(key in jobs) || key === YOU) throw new Error("They aren't on the watch bill.");
+  const job = jobId === null || jobId === "spare" ? null : jobById(place, jobId);
+  if (jobId !== null && jobId !== "spare" && !job) throw new Error("There's no such job.");
+  const to = job?.id ?? null;
+  const who = personCalled(game, key);
+  if (jobs[key] === to) return `${who} is already ${jobWords(job)}.`;
+  const state = commandState(game, place);
+  state.jobs = { ...jobs, [key]: to };
+  // An order of the captain's own takes the place of any cover the first officer had them on.
+  delete state.cover[key];
+  logCommand(state, game, `${by === YOU ? "You" : personCalled(game, by)} put ${who} on as ${jobWords(job)}.`);
+  return `${who} is ${job ? `a ${job.title} now, in ${job.roomName}` : "one of the spare hands now"}.`;
+}
+
+// The Command menu's orders, from the server: only the captain moves people on the watch bill.
+export function commandCommand(game, body) {
+  if (body.action !== "assign") throw new Error("That isn't an order the watch bill takes.");
+  if (!isCaptain(game)) throw new Error("Only the captain moves people on the watch bill. Commander Voss keeps it.");
+  return { message: assignJob(game, body.place ?? "meridian", body.key, body.job ?? null) };
+}
+
+// The first officer covers for anyone lost from their job with a spare hand, and sends the spare hand back once
+// they're back. Called whenever the clock moves; said in the story when the player's aboard.
+export function advanceCommand(game) {
+  const notes = [];
+  for (const place of Object.keys(WORLD_COMMAND)) {
+    const model = commandOf(place);
+    const keeper = model?.posts.find((one) => one.watchBill);
+    const xo = keeper ? holderKey(game, place, keeper.id) : null;
+    if (!xo || xo === YOU || !stillAlive(game, xo)) continue;
+    const jobs = { ...jobsOf(game, place) };
+    const cover = { ...(stateOf(game, place)?.cover ?? {}) };
+    const said = [];
+    for (const [filler, lost] of Object.entries(cover)) {
+      if (lostReason(game, place, lost)) continue;
+      if (jobs[filler] && jobs[filler] === jobs[lost]) {
+        said.push(`${personCalled(game, lost)} is back as ${jobWords(jobById(place, jobs[lost]))}, and ${personCalled(game, filler)} goes back to the spare hands.`);
+        jobs[filler] = null;
+      }
+      delete cover[filler];
+    }
+    for (const [key, job] of Object.entries(jobs)) {
+      if (!job || key === YOU || key in cover || Object.values(cover).includes(key)) continue;
+      const why = lostReason(game, place, key);
+      if (!why) continue;
+      const spare = Object.keys(jobs).find((one) => jobs[one] === null && one !== YOU && !lostReason(game, place, one));
+      if (!spare) continue;
+      jobs[spare] = job;
+      cover[spare] = key;
+      said.push(`${upperFirst(shortName(game, xo))} has put ${personCalled(game, spare)} on as ${jobWords(jobById(place, job))} while ${personCalled(game, key)} is ${why}.`);
+    }
+    const covered = JSON.stringify(cover) !== JSON.stringify(stateOf(game, place)?.cover ?? {});
+    if (!said.length && !covered) continue;
+    const state = commandState(game, place);
+    state.jobs = jobs;
+    state.cover = cover;
+    for (const text of said) {
+      logCommand(state, game, text);
+      if (aboardShip(game)) notes.push(`[COMMAND] ${text}`);
+    }
+  }
+  return notes;
 }
 
 // A new game's chain of command, or an old save's, with everyone in the post they hold now.
@@ -349,5 +569,20 @@ export function commandView(game, place = "meridian") {
     const group = groups.find((one) => one.title === by) ?? groups[groups.push({ title: by, posts: [] }) - 1];
     group.posts.push(card(post));
   }
-  return { place, name: model.name, groups };
+  // The watch bill: each job with who's on it and how many it's short, the spare hands, and what's changed lately.
+  const cover = stateOf(game, place)?.cover ?? {};
+  const keeper = model.posts.find((one) => one.watchBill);
+  const keeperKey = keeper ? holderKey(game, place, keeper.id) : null;
+  const person = (key) => ({ key, name: key === YOU ? `You, ${game.name}` : personCalled(game, key), you: key === YOU, lost: lostReason(game, place, key), covering: cover[key] ? personCalled(game, cover[key]) : null });
+  const watchBill = {
+    keeper: keeperKey ? (keeperKey === YOU ? "you" : personCalled(game, keeperKey)) : null,
+    canMove: isCaptain(game),
+    jobs: model.jobs.map((job) => {
+      const people = onJob(game, place, job.id).map(person);
+      return { id: job.id, title: upperFirst(job.title), plural: upperFirst(plural(job.title)), room: job.roomName, wanted: job.wanted, people, short: Math.max(0, job.wanted - people.filter((one) => !one.lost).length) };
+    }),
+    spare: onJob(game, place, null).map(person),
+    log: (stateOf(game, place)?.log ?? []).slice(-8).reverse().map((one) => `Day ${one.day}: ${one.text}`),
+  };
+  return { place, name: model.name, groups, watchBill };
 }

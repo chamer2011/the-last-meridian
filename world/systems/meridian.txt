@@ -1,7 +1,7 @@
 # CFS Meridian
 draft: the AI's, not yet edited by the owner
-guards: the chief of security
-engineers: the chief engineer, Tech Sami, Tech Oona
+guards: the chief of security, the guards
+engineers: the chief engineer, the techs
 alarm rings: 20
 air goes bad: 25
 repairs take: 2

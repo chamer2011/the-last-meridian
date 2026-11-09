@@ -16,7 +16,7 @@ import { advanceWorld, holdingsOf, itemFactor, newWorld, newsView, placeLine, pl
 import { advanceShip, chairOf, chartEntry, isCharted, jumpCost, newShipState, shipGoingHungry, shipJumped, shipLine, shipOf, shipView } from "./ship.js";
 import { advanceLife, lifeOf } from "./life.js";
 import { advanceLogistics, startLogistics } from "./logistics.js";
-import { commandView, startCommand } from "./command.js";
+import { advanceCommand, commandView, startCommand } from "./command.js";
 import { startingLoreIds } from "./lore.js";
 import { THREAT_LABELS } from "./npc.js";
 import { START_LIST, aboardShip, isCaptain, jobHere, roleBrief, startOf, toOutsider } from "./role.js";
@@ -265,9 +265,11 @@ export function passTime(game, hours, activity = "active") {
   // days, then each day that's gone by (with the ship's machines and sittings run up to its midnight first), then the
   // machines and sittings up to now.
   const systems = advanceSystems(game);
+  // The first officer covers for anyone lost from their job before everyone's days move on.
+  const command = advanceCommand(game);
   advanceLife(game);
   const notes = hoursPass(game, hours, activity);
-  return [...systems, ...notes, ...advanceLogistics(game)];
+  return [...systems, ...command, ...notes, ...advanceLogistics(game)];
 }
 
 // The clock running by itself while the player explores. It moves in moments, and every two hours
@@ -277,6 +279,7 @@ export function clockRuns(game, minutes) {
   const before = Math.floor(game.clock.hours + 1e-6);
   game.clock.hours = Math.round((game.clock.hours + minutes / 60) * 3600) / 3600;
   const notes = advanceSystems(game);
+  notes.push(...advanceCommand(game));
   advanceLife(game);
   for (let hour = before + 1; hour <= Math.floor(game.clock.hours + 1e-6); hour += 1) {
     if (hour % 2 === 0) notes.push(...hoursPass(game, 2, "active"));

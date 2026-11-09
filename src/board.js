@@ -228,7 +228,11 @@ function systemsItem(id) {
     // The posts of the place's chain of command come first, so that a guard or an engineer can be whoever holds one.
     links: {
       place: { id, name: LOCATIONS[id].name }, own, rooms,
-      people: [...(commandOf(id)?.posts ?? []).map((post) => ({ key: `the ${post.title}`, name: `The ${post.title}, whoever holds the post` })), ...placePeople(id)],
+      people: [
+        ...(commandOf(id)?.posts ?? []).map((post) => ({ key: `the ${post.title}`, name: `The ${post.title}, whoever holds the post` })),
+        ...(commandOf(id)?.jobs ?? []).map((job) => ({ key: `the ${job.title}s`, name: `The ${job.title}s, whoever does the job` })),
+        ...placePeople(id),
+      ],
       guards: (model?.guards ?? []).map((ref) => staffWords(id, ref)),
       engineers: (model?.engineers ?? []).map((ref) => staffWords(id, ref)),
     },

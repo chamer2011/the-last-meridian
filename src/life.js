@@ -12,6 +12,7 @@ import { errandDetour, logisticsOf, mealWords } from "./logistics.js";
 import { atPost, canStand, findPath, mapFor, roomOf, seedFrom } from "./walk.js";
 import { detourFor, partSquares } from "./systems.js";
 import { WORLD_LIFE } from "./world.js";
+import { jobOf, movedDays } from "./command.js";
 
 const MINUTES_IN_A_DAY = 1440;
 const SQUARES_A_MINUTE = 18;
@@ -87,6 +88,23 @@ export function clearLife() {
 
 export const livesHere = (place) => Boolean(lifeFileFor(place) && mapFor(place));
 
+// The roster as a game has it: each named person's day is the one their job on the ship's watch bill gives them
+// (src/command.js), where that's been changed from the job their group in the file does. Kept until it changes again.
+const rosters = new WeakMap();
+const rosterSignature = (moved) => (moved ? Object.entries(moved).map(([key, one]) => `${key}=${one.job}`).join("|") : "");
+function rosterFor(game, place) {
+  const file = lifeFileFor(place);
+  if (!file) return [];
+  const moved = movedDays(game, place);
+  if (!moved) return file.roster;
+  const signature = rosterSignature(moved);
+  const kept = rosters.get(game)?.[place];
+  if (kept && kept.file === file && kept.signature === signature) return kept.roster;
+  const roster = file.roster.map((entry) => (moved[entry.key] ? { ...entry, day: moved[entry.key].day, dayTag: moved[entry.key].job ?? "spare", plans: undefined } : entry));
+  rosters.set(game, { ...(rosters.get(game) ?? {}), [place]: { file, signature, roster } });
+  return roster;
+}
+
 // Life goes on in these places wherever the captain is.
 const livingPlaces = () => Object.keys(WORLD_LIFE).filter(livesHere);
 
@@ -124,7 +142,8 @@ function planAt(entry, hours) {
   const elapsed = minute + (current ? 0 : MINUTES_IN_A_DAY) - start;
   const stop = block.rounds ? Math.floor(elapsed / (block.stop ?? ROUND_STOP)) % block.rounds.length : 0;
   const where = block.rounds?.[stop] ?? block.go ?? block.pick?.[seedFrom(`${entry.key}/${startDay}/${index}/pick`) % block.pick.length];
-  return { key: `${startDay}.${index}.${stop}`, block, where };
+  // Someone the watch bill has moved does their new job's day, whose steps are told apart from their old one's.
+  return { key: `${entry.dayTag ? `${entry.dayTag}:` : ""}${startDay}.${index}.${stop}`, block, where };
 }
 
 // The room a plan sends someone to, so the place's systems can turn them aside: the guards to the alarm, an engineer
@@ -168,7 +187,7 @@ export function rosterOf(place) {
 
 // Whether someone's awake and about at a time, as their day has it, and here at all.
 export function isAbout(game, place, key, hours) {
-  const entry = lifeFileFor(place)?.roster.find((one) => one.key === key);
+  const entry = rosterFor(game, place).find((one) => one.key === key);
   if (!entry || (entry.id && !atPost(game, entry.id))) return false;
   const plan = planAt(entry, hours);
   return !plan.block.asleep && !plan.block.hidden;
@@ -196,22 +215,25 @@ function roomOfPlan(map, file, entry, plan) {
 
 // Who's usually in a room at each five minutes of the day, from everyone's days as written: the ship's machines need
 // someone at them, and a long jump of the clock isn't walked through minute by minute, so this is as close as anyone
-// would know, and the same however the jump is cut up. Someone dead or away isn't counted when it's read.
+// would know, and the same however the jump is cut up. Someone dead or away isn't counted when it's read. With a job,
+// only those the watch bill has doing it count: a machine that needs a cook needs someone whose job is cook.
 const USUAL_STEP = 5;
 const usual = new Map();
-export function usuallyIn(game, place, roomId, minuteOfDay) {
-  const key = `${place}/${roomId}`;
+export function usuallyIn(game, place, roomId, minuteOfDay, job = undefined) {
+  const roster = rosterFor(game, place);
+  const key = `${place}/${roomId}/${rosterSignature(movedDays(game, place))}`;
   if (!usual.has(key)) {
+    if (usual.size > 200) usual.clear();
     const file = lifeFileFor(place);
     const map = mapFor(place);
     const buckets = [];
     for (let minute = 0; minute < MINUTES_IN_A_DAY; minute += USUAL_STEP) {
       const here = [];
       if (file && map) {
-        for (const entry of file.roster) {
+        for (const entry of roster) {
           const plan = planAt(entry, minute / 60);
           if (plan.block.asleep || plan.block.hidden) continue;
-          if (roomOfPlan(map, file, entry, plan) === roomId) here.push({ id: entry.id, name: entry.name ?? entry.id });
+          if (roomOfPlan(map, file, entry, plan) === roomId) here.push({ id: entry.id, key: entry.key, name: entry.name ?? entry.id });
         }
       }
       buckets.push(here);
@@ -219,7 +241,9 @@ export function usuallyIn(game, place, roomId, minuteOfDay) {
     usual.set(key, buckets);
   }
   const minute = ((minuteOfDay % MINUTES_IN_A_DAY) + MINUTES_IN_A_DAY) % MINUTES_IN_A_DAY;
-  return usual.get(key)[Math.floor(minute / USUAL_STEP)].filter((one) => !one.id || atPost(game, one.id)).map((one) => one.name);
+  return usual.get(key)[Math.floor(minute / USUAL_STEP)]
+    .filter((one) => (!one.id || atPost(game, one.id)) && (job === undefined || jobOf(game, place, one.key) === job))
+    .map((one) => one.name);
 }
 
 // Everyone whose day has them in a room at a given time, awake and about, by name, as exactly as their days say.
@@ -229,7 +253,7 @@ export function whoIsIn(game, place, roomId, hours) {
   const map = mapFor(place);
   if (!file || !map) return [];
   const names = [];
-  for (const entry of file.roster) {
+  for (const entry of rosterFor(game, place)) {
     if (entry.id && !atPost(game, entry.id)) continue;
     const plan = planAt(entry, hours);
     if (plan.block.asleep || plan.block.hidden) continue;
@@ -367,10 +391,10 @@ const atGoal = (state) => state.level === state.goal.level && state.x === state.
 
 // Everyone exactly where they should be at this moment, as they are after any long gap. Anyone who's
 // still doing the same thing as before keeps the place they already had.
-function settle(place, hours, before = {}, detour = null) {
+function settle(place, hours, before = {}, detour = null, roster = lifeFileFor(place).roster) {
   const file = lifeFileFor(place);
   const map = mapFor(place);
-  const plansNow = file.roster.map((entry) => ({ entry, plan: planFor(map, file, entry, hours, detour) }));
+  const plansNow = roster.map((entry) => ({ entry, plan: planFor(map, file, entry, hours, detour) }));
   const stays = ({ entry, plan }) => before[entry.key]?.task === plan.key;
   const taken = new Set(fixedSquares(file, map));
   for (const one of plansNow.filter(stays)) squaresOf(map, one.entry, before[one.entry.key].goal).forEach((key) => taken.add(key));
@@ -388,11 +412,11 @@ function settle(place, hours, before = {}, detour = null) {
 // A place nobody's in is drawn over and over from the same few moments.
 const settledAt = new Map();
 
-function settledPlace(place, hours) {
-  const key = `${place}@${hours}`;
+function settledPlace(game, place, hours) {
+  const key = `${place}@${hours}@${rosterSignature(movedDays(game, place))}`;
   if (!settledAt.has(key)) {
     if (settledAt.size > 100) settledAt.clear();
-    settledAt.set(key, settle(place, hours));
+    settledAt.set(key, settle(place, hours, {}, null, rosterFor(game, place)));
   }
   return settledAt.get(key);
 }
@@ -403,7 +427,7 @@ function peopleOf(game, place) {
   const saved = game.life?.places[place];
   const map = mapFor(place);
   if (saved && !Object.values(saved).some((state) => !map?.levels[state.level])) return saved;
-  return settledPlace(place, game.clock.hours);
+  return settledPlace(game, place, game.clock.hours);
 }
 
 // The same, for something that's about to move the clock. The save only ever holds the captain's place.
@@ -472,16 +496,16 @@ function walkOn(map, state, steps) {
 // ---- The clock moves ---------------------------------------------------------------
 
 // Everyone moves on to whatever's next, and walks a little of the way there.
-function moveOn(place, people, hours, steps, detour = null) {
+function moveOn(place, people, hours, steps, detour = null, roster = lifeFileFor(place).roster) {
   const file = lifeFileFor(place);
   const map = mapFor(place);
-  for (const entry of file.roster) {
+  for (const entry of roster) {
     const state = people[entry.key];
     if (!state) continue;
     const plan = planFor(map, file, entry, hours, detour);
     if (plan.key !== state.task) {
       // Everyone else's place is taken. Their own isn't, in case what's next happens right there too.
-      const others = file.roster.filter((one) => one !== entry && people[one.key]);
+      const others = roster.filter((one) => one !== entry && people[one.key]);
       const taken = new Set([...fixedSquares(file, map), ...others.flatMap((one) => squaresOf(map, one, people[one.key].goal))]);
       const goal = spotFor(file, map, entry, plan, taken);
       state.task = plan.key;
@@ -526,8 +550,9 @@ export function advanceLife(game) {
   const place = game.location;
   const people = life.places[place];
   const detour = livesHere(place) ? detoursFor(game, place) : null;
-  if (livesHere(place) && people && gap <= LONG_GAP) moveOn(place, people, hours, steps, detour);
-  life.places = livesHere(place) ? { [place]: people && gap <= LONG_GAP ? people : settle(place, hours, people, detour) } : {};
+  const roster = livesHere(place) ? rosterFor(game, place) : [];
+  if (livesHere(place) && people && gap <= LONG_GAP) moveOn(place, people, hours, steps, detour, roster);
+  life.places = livesHere(place) ? { [place]: people && gap <= LONG_GAP ? people : settle(place, hours, people, detour, roster) } : {};
   companyMovesOn(game, hours);
 }
 
@@ -570,7 +595,7 @@ export function peopleAboard(game, place, levelId) {
   const map = mapFor(place);
   const people = peopleOf(game, place);
   const detour = place === game.location ? detoursFor(game, place) : null;
-  return file.roster
+  return rosterFor(game, place)
     .filter((entry) => people[entry.key]?.level === levelId && (!entry.id || atPost(game, entry.id)))
     .map((entry) => seenAs(game, map, entry, people[entry.key], detour))
     .filter(Boolean);
@@ -582,7 +607,7 @@ export function whereNow(game, id) {
   // Someone who's in two places' files is wherever the captain is, if that's one of them.
   for (const place of [game.location, ...livingPlaces()]) {
     if (!livesHere(place)) continue;
-    const entry = lifeFileFor(place).roster.find((one) => one.id === id);
+    const entry = rosterFor(game, place).find((one) => one.id === id || (!one.id && one.key === id));
     const state = entry && peopleOf(game, place)[entry.key];
     if (!state) continue;
     const map = mapFor(place);

@@ -58,9 +58,10 @@ The first line is the place's name. Then, all of them can be left out:
     draft           Anything: the game doesn't read it. Say who wrote the file.
     guards          Who comes running when the alarm rings: people's ids (the file names in
                     world/characters), or the names of the people in the place's crowds in
-                    world/life, or a post in the place's chain of command (world/command),
-                    written with the: the chief of security, and whoever holds it comes. none
-                    for nobody. Left out, it's whoever's day has guard, patrol, security or sentry
+                    world/life, or a post or a job in the place's chain of command
+                    (world/command), written with the: the chief of security is whoever holds
+                    the post, and the guards are whoever the watch bill has guarding. none for
+                    nobody. Left out, it's whoever's day has guard, patrol, security or sentry
                     in it.
     engineers       Who fixes what's broken, in time. The same, and left out it's whoever's day has
                     engine, reactor, repair, pipes and the like in it. A place with no engineers

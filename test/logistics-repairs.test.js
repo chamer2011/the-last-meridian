@@ -106,7 +106,7 @@ test("a cut junction box is fixed with a parts crate from the parts lockers, whi
   // day for this, or he'd have carried a crate down to the lockers first.)
   const model = logisticsOf("meridian");
   const errands = model.errands;
-  model.errands = errands.filter((one) => one.key !== "Tech Sami");
+  model.errands = errands.filter((one) => one.id !== "tech:parts_crate");
   try {
     take(game, "parts_lockers", "parts_crate", 6);
     sys.damagePart(game, "meridian", box.id, "broken", { by: "story" });
@@ -183,7 +183,7 @@ test("Tech Sami keeps the parts lockers up from the shuttle stores, one crate at
   game.clock.hours = 9;
   clockRuns(game, 1);
   take(game, "parts_lockers", "parts_crate", 5);
-  const errand = errandsView(game, "meridian").find((one) => one.who === "Tech Sami");
+  const errand = errandsView(game, "meridian").find((one) => one.id === "tech:parts_crate");
   assert.equal(errand.does, "parts crates from the shuttle stores to the parts lockers when under 2, 1 at a time");
   for (let gone = 0; gone < 90; gone += 5) clockRuns(game, 5);
   assert.equal(count(game, "parts_lockers"), 2, "one trip brings the lockers to two, which is enough");

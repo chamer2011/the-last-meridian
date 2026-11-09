@@ -19,7 +19,7 @@ import { genericKindOf, writtenAtThing } from "./computers.js";
 import { livesHere, peopleAboard } from "./life.js";
 import { dropOrderOf, loadsOf, noPartsWords, powerSupply, repairPartsAboard, repairPartsWords, repairStore, takeRepairParts } from "./logistics.js";
 import { recordFact } from "./record.js";
-import { YOU, holderKey, postByWords } from "./command.js";
+import { YOU, holderKey, jobById, jobByWords, lostReason, onJob, postByWords } from "./command.js";
 import { isCaptain } from "./role.js";
 import { changeStanding, changeStress, hoursNow } from "./rules.js";
 import { holderOf } from "./daily.js";
@@ -309,9 +309,12 @@ function peopleFor(place, map, list, wordsKey, what, at) {
   const known = peopleAt(place, map);
   if (Array.isArray(list)) {
     return list.map((one) => {
-      // A post in the place's chain of command ("the chief engineer"): whoever holds it, at the time.
+      // A post in the place's chain of command ("the chief engineer"): whoever holds it, at the time. A job ("the
+      // techs"): whoever does it.
       const post = postByWords(place, one);
       if (post && /^the\s/i.test(String(one).trim())) return `post:${post}`;
+      const job = jobByWords(place, one);
+      if (job && /^the\s/i.test(String(one).trim())) return `job:${job}`;
       const want = plain(one);
       const found = known.find((person) => plain(person.key) === want || plain(person.name) === want || plain(person.name).split(" ").includes(want));
       if (!found) at(null, `${what}: ${one} isn't anyone with a day or a post at this place`);
@@ -850,11 +853,19 @@ function settleChange(game, place) {
 
 // What the game calls someone: the short name on their post, or their name, or the crowd name they go by.
 const personName = (place, key) => (key === YOU ? "You" : Object.values(mapFor(place)?.levels ?? {}).flatMap((level) => level.homes).find((home) => home.id === key)?.label ?? WORLD_CHARACTERS[key]?.name ?? key);
-// The guards or engineers as they are in a game: someone named by a post is whoever holds it now, and a post nobody
-// holds is nobody.
-export const staffOf = (game, place, list) => (list ?? []).map((ref) => (String(ref).startsWith("post:") ? holderKey(game, place, ref.slice(5)) : ref)).filter(Boolean);
-// "the chief engineer" for a post, as the files and the board write it.
-export const staffWords = (place, ref) => (String(ref).startsWith("post:") ? `the ${String(ref).slice(5).replace(/_/g, " ")}` : ref);
+// The guards or engineers as they are in a game: someone named by a post is whoever holds it now, a post nobody holds
+// is nobody, and a job is everyone the watch bill has doing it who's about (never the player, whose hands are their own).
+export const staffOf = (game, place, list) => [...new Set((list ?? []).flatMap((ref) => {
+  if (String(ref).startsWith("post:")) return [holderKey(game, place, ref.slice(5))];
+  if (String(ref).startsWith("job:")) return onJob(game, place, ref.slice(4)).filter((key) => key !== YOU && !lostReason(game, place, key));
+  return [ref];
+}).filter(Boolean))];
+// "the chief engineer" for a post and "the techs" for a job, as the files and the board write them.
+export const staffWords = (place, ref) => {
+  if (String(ref).startsWith("post:")) return `the ${String(ref).slice(5).replace(/_/g, " ")}`;
+  if (String(ref).startsWith("job:")) return `the ${jobById(place, String(ref).slice(4))?.title ?? String(ref).slice(4)}s`;
+  return ref;
+};
 
 // A repair that's due takes what the place's logistics say a repair of that damage takes, from its stores. Without
 // enough there it waits, which is said once, and starts again within the hour once some comes. Gives the words for

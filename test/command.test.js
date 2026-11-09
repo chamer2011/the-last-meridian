@@ -194,10 +194,10 @@ test("the council's decisions name whoever holds the post, and the council acts 
 
 test("the guards and engineers the systems file names by post are whoever holds it", () => {
   const model = sys.systemsOf("meridian");
-  assert.deepEqual(model.guards, ["post:chief_of_security"]);
-  assert.deepEqual(model.engineers, ["post:chief_engineer", "Tech Sami", "Tech Oona"]);
+  assert.deepEqual(model.guards, ["post:chief_of_security", "job:guard"]);
+  assert.deepEqual(model.engineers, ["post:chief_engineer", "job:tech"]);
   const game = newGame();
-  assert.deepEqual(sys.staffOf(game, "meridian", model.engineers), ["marrow", "Tech Sami", "Tech Oona"]);
+  assert.deepEqual(sys.staffOf(game, "meridian", model.engineers), ["marrow", "Tech Sami", "Tech Oona", "Tech Goran"]);
   assert.deepEqual(sys.staffOf(game, "meridian", model.guards), ["tarrow"]);
   // Hask as chief engineer: he's the one who goes to the vent, and the one who's said to have fixed it.
   cmd.setHolder(game, "meridian", "chief_engineer", "tobin");

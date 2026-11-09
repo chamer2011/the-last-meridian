@@ -12,7 +12,7 @@ import { storeCounts, storePut, storeTake } from "./bag.js";
 import { findCharacter } from "./campaign.js";
 import { hasReached, isAbout, rosterOf, usuallyIn, whoIsIn } from "./life.js";
 import { claimedSquares, damageKinds, floorSpot, roomPowered, systemsOf, waitingForParts } from "./systems.js";
-import { holderKey, postAndName, postByWords } from "./command.js";
+import { YOU, holderKey, jobById, jobByWords, lostReason, onJob, personCalled, postAndName, postByWords } from "./command.js";
 import { mapFor, roomHere, roomsOf, roomsOn, thingsIn } from "./walk.js";
 import { LOGISTICS_FILE_PROBLEMS, WORLD_LOGISTICS } from "./world.js";
 import { everyWords, readErrandLine, readLoadsLine, readMachineLine, readRefillLine, readStoreLine, slugOf } from "../public/logistics-text.js";
@@ -264,7 +264,10 @@ function compileLogistics(place) {
     if (!sound) continue;
     // A machine that gives power and makes nothing else is a generator: it burns what it's given and keeps the place lit.
     const generator = Boolean(m.power) && !gives;
-    model.machines.push({ id, name: m.name, verb: m.verb, room: room.id, roomName: room.name, takes, from: from?.id ?? null, gives, into: into?.id ?? null, every: m.every, needs: m.needs, power: m.power, generator, runs: Boolean(gives) || generator, line, text: raw.text });
+    // A worker the words name by their job ("a cook") has to be someone the watch bill has doing it.
+    const job = m.needs?.worker ? jobByWords(place, m.needs.worker.replace(/s+there$/i, "")) : null;
+    const needs = job ? { ...m.needs, job } : m.needs;
+    model.machines.push({ id, name: m.name, verb: m.verb, room: room.id, roomName: room.name, takes, from: from?.id ?? null, gives, into: into?.id ?? null, every: m.every, needs, power: m.power, generator, runs: Boolean(gives) || generator, line, text: raw.text });
   }
   model.generators = model.machines.filter((m) => m.generator);
   // The loads: what each system draws from the generator, and the order they're let go in when there isn't enough.
@@ -382,9 +385,12 @@ function compileLogistics(place) {
   const roster = rosterOf(place);
   const findPerson = (who) => {
     const key = plain(who);
-    // A post in the place's chain of command ("the quartermaster"): whoever holds it does the carrying.
+    // A post in the place's chain of command ("the quartermaster"): whoever holds it does the carrying. A job ("a
+    // tech"): whoever does it and is free at the time.
     const post = /^the\s/i.test(String(who).trim()) ? postByWords(place, who) : null;
     if (post) return { key: null, post };
+    const job = /^an?\s/i.test(String(who).trim()) ? jobByWords(place, who) : null;
+    if (job) return { key: null, job };
     const crowd = roster.find((one) => one.name && plain(one.name) === key);
     if (crowd) return crowd;
     const person = findCharacter(null, who);
@@ -428,12 +434,12 @@ function compileLogistics(place) {
       sound = false;
     }
     if (!sound) continue;
-    const id = `${person.post ?? slugOf(e.who)}:${item}`;
+    const id = `${person.post ?? person.job ?? slugOf(e.who)}:${item}`;
     if (model.errands.some((one) => one.id === id)) {
       at(line, `${e.who} is given ${e.what} to carry twice`);
       continue;
     }
-    model.errands.push({ id, who: e.who, key: person.key, post: person.post ?? null, item, from: from.id, to: to.id, under: e.under, each: e.each, line, text: raw.text });
+    model.errands.push({ id, who: e.who, key: person.key, post: person.post ?? null, job: person.job ?? null, item, from: from.id, to: to.id, under: e.under, each: e.each, line, text: raw.text });
   }
   return model;
 }
@@ -597,8 +603,14 @@ function errandDoing(model, e, s) {
 // The errands over one piece of the clock. One starts when the store it keeps up is short and its person is awake and
 // about: they go to the store they fetch from, stand there a minute and take what they can carry, or wait there when
 // there's nothing, carry it over and put it in, and go back to their day; and again while the store's still short.
-// Who does an errand in a game: the person it names, or whoever holds the post it names, or nobody.
-const carrierOf = (game, place, e) => (e.post ? holderKey(game, place, e.post) : e.key);
+// Who does an errand in a game: whoever set out on it; or else the person it names, or whoever holds the post it
+// names. An errand that names a job has nobody until someone doing the job is free to go.
+const carrierOf = (game, place, e, s = null) => s?.by ?? (e.post ? holderKey(game, place, e.post) : e.job ? null : e.key);
+// Someone doing a job, awake, at their post and not already carrying something else.
+function freeHand(game, place, state, job, hours) {
+  const busy = new Set(Object.values(state.errands ?? {}).map((one) => one.by).filter(Boolean));
+  return onJob(game, place, job).find((key) => key !== YOU && !busy.has(key) && !lostReason(game, place, key) && isAbout(game, place, key, hours)) ?? null;
+}
 
 function runErrands(game, place, model, state, t) {
   state.errands ??= {};
@@ -606,13 +618,18 @@ function runErrands(game, place, model, state, t) {
     const from = storeById(model, e.from);
     const to = storeById(model, e.to);
     const s = state.errands[e.id];
-    const key = carrierOf(game, place, e);
-    if (!key) continue;
     const have = () => storeCounts(game, to.key, to.holds)[e.item] ?? 0;
     const room = () => Math.max(0, (to.holds[e.item] ?? 0) - have());
     if (!s) {
-      if (have() >= e.under || !isAbout(game, place, key, t / 60)) continue;
-      state.errands[e.id] = { phase: "going", since: t, load: null };
+      if (have() >= e.under) continue;
+      const who = e.job ? freeHand(game, place, state, e.job, t / 60) : carrierOf(game, place, e);
+      if (!who || !isAbout(game, place, who, t / 60)) continue;
+      state.errands[e.id] = { phase: "going", since: t, load: null, by: who };
+      continue;
+    }
+    const key = carrierOf(game, place, e, s);
+    if (!key) {
+      delete state.errands[e.id];
       continue;
     }
     // They've arrived when their walk has got them there, or when a walk's worth of time has gone by since they set
@@ -649,7 +666,7 @@ export function errandDetour(game, place) {
   return (key) => {
     for (const e of model.errands) {
       const s = errands[e.id];
-      if (s && carrierOf(game, place, e) === key) return { where: errandWhere(e, s), doing: errandDoing(model, e, s) };
+      if (s && carrierOf(game, place, e, s) === key) return { where: errandWhere(e, s), doing: errandDoing(model, e, s) };
     }
     return null;
   };
@@ -666,7 +683,7 @@ export function workersIn(game, place, roomId, hours) {
 // everyone's days as written (the same however a jump of the clock is cut up), and the player standing in the room.
 function whyWaiting(game, place, m, from, into, minute, you) {
   if (m.needs.power && !roomPowered(game, place, m.room)) return "no power";
-  if (m.needs.worker && you !== m.room && !usuallyIn(game, place, m.room, minute % 1440).length) return `waiting for ${m.needs.worker}`;
+  if (m.needs.worker && you !== m.room && !usuallyIn(game, place, m.room, minute % 1440, m.needs.job).length) return `waiting for ${m.needs.worker}`;
   if (into) {
     const room = roomFor(game, into, m.gives);
     if (room < m.gives.n) return room > 0 ? `no room in the ${into.name} for ${m.gives.n} ${m.gives.count ? "sittings" : itemWords(m.gives.item, m.gives.n)} yet` : isFull(into);
@@ -999,7 +1016,9 @@ export function errandsView(game, place) {
     const s = errands[e.id] ?? null;
     return {
       id: e.id,
-      who: e.post ? postAndName(game, place, e.post) ?? `Nobody: ${e.who} is nobody's post` : e.who,
+      who: e.post ? postAndName(game, place, e.post) ?? `Nobody: ${e.who} is nobody's post`
+        : e.job ? (s?.by ? personCalled(game, s.by) : `A ${jobById(place, e.job)?.title ?? e.job}`)
+        : e.who,
       does: `${itemWords(e.item, 2)} from the ${from.name} to the ${to.name} when under ${e.under}, ${e.each} at a time`,
       status: s ? errandDoing(model, e, s) : "about their day",
       busy: Boolean(s),

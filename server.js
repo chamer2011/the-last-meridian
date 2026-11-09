@@ -12,6 +12,7 @@ import { checkCommand, startCheck, startChoiceCheck } from "./src/checks.js";
 import { simulatorFollowers } from "./src/combat.js";
 import { buildCharacter, createGameFromDraft, creatorSetup, randomDraft } from "./src/creator.js";
 import { shipCommand } from "./src/ship.js";
+import { commandCommand } from "./src/command.js";
 import { noteLoreSeen } from "./src/lore.js";
 import { openingFor } from "./src/role.js";
 import { migrateGame } from "./src/migrate.js";
@@ -511,6 +512,12 @@ async function handleApi(req, res, route) {
     if (notes.length) log("notice", notes.join("\n"));
     autosave();
     return json(res, 200, { game: publicState(game), message, moved });
+  }
+  // The watch bill: the captain moving someone from one job to another. It's all on this computer.
+  if (route === "/api/command") {
+    const { message } = commandCommand(requireGame(), body);
+    autosave();
+    return json(res, 200, { game: publicState(game), message });
   }
   // Fights happen right here. No request goes to the AI until the player continues the story.
   if (route === "/api/combat") {

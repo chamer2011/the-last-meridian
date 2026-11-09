@@ -4,8 +4,10 @@
 // worked out by src/command.js, which knows the maps. It runs in the browser too, for the Story board.
 // world/command/_how-to-write-command.txt explains the format.
 
-export const COMMAND_PARTS = ["posts", "jobs", "holders"];
-export const COMMAND_TITLES = { posts: "Posts", jobs: "Jobs", holders: "Who holds what" };
+export const COMMAND_PARTS = ["posts", "jobs", "holders", "workers"];
+export const COMMAND_TITLES = { posts: "Posts", jobs: "Jobs", holders: "Who holds what", workers: "Who does which job" };
+// The people the first officer can put to work where a job's short, written under Who does which job.
+export const SPARE = "spare hands";
 
 // The lines at the top of the file. The last three are kept as they're written until the steps that play them.
 export const COMMAND_HEADER = [
@@ -38,7 +40,7 @@ const listOf = (words) => String(words ?? "").split(/\s*,\s*|\s+and\s+/i).map((o
 export function parseCommandText(text, id = "it") {
   const problems = [];
   const problem = (line, message) => problems.push({ line, message });
-  const value = { name: id, numbers: {}, posts: [], jobs: [], holders: [] };
+  const value = { name: id, numbers: {}, posts: [], jobs: [], holders: [], workers: [] };
   const lines = String(text ?? "").replace(/\r\n?/g, "\n").split("\n");
   const header = new Map(COMMAND_HEADER.map((field) => [field.key, field]));
   const headings = new Map(COMMAND_PARTS.map((part) => [COMMAND_TITLES[part].toLowerCase(), part]));
@@ -153,6 +155,20 @@ export function readHolderLine(text) {
   if (!post) return { problem: `"${written}" needs the post before the colon` };
   if (!holder) return { problem: `"${written}" needs who holds it after the colon` };
   return { post, holder };
+}
+
+// ---- The words of who does a job --------------------------------------------------------------
+
+// "cook: Cook Imre, Cook Dessa", "spare hands: Yusuf, Salome", or "guard: nobody".
+export function readWorkersLine(text) {
+  const written = String(text ?? "").trim();
+  const colon = written.indexOf(":");
+  if (colon < 0) return { problem: `"${written}" needs a colon after the job, then who does it` };
+  const job = written.slice(0, colon).trim().toLowerCase().replace(/^the\s+/, "");
+  const who = written.slice(colon + 1).trim();
+  if (!job) return { problem: `"${written}" needs the job before the colon` };
+  if (!who) return { problem: `"${written}" needs who does it after the colon, or nobody` };
+  return { job, people: /^nobody$/i.test(who) ? [] : listOf(who) };
 }
 
 // ---- Writing a file ----------------------------------------------------------------------------

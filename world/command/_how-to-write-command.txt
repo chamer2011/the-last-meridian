@@ -9,11 +9,12 @@ one so far.
 
 checks these files too.
 
-It's built in steps, each tried by the owner before the next. The game plays the posts and who holds them now: the
-Command menu shows each post as a card, and everything in the other files that names someone for a post (the
-council's rations decisions in world/ship.json, the guards and engineers in world/systems, the carriers of the
-errands in world/logistics, and the captain's chair) asks this file who holds it. The jobs and the numbers at the
-top are read, kept and checked, and come to life in the later steps.
+It's built in steps, each tried by the owner before the next. The game plays the posts and who holds them, and the
+watch bill: the Command menu shows each post as a card and each job with who's on it, everything in the other files
+that names someone for a post or a job (the council's rations decisions in world/ship.json, the guards and engineers
+in world/systems, the machines and the carriers of the errands in world/logistics, and the captain's chair) asks
+this file who that is, and everyone on the watch bill lives their job's day. The numbers at the top are read, kept
+and checked, and come to life in the later steps.
 
 
 THE FILE
@@ -37,6 +38,11 @@ THE FILE
     - captain: the chair
     - first officer: voss
     - quartermaster: odessa
+
+    Who does which job:
+    - cook: Cook Imre, Cook Dessa
+    - guard: nobody
+    - spare hands: Yusuf, Salome
 
 The first line is the place's name. The lines after it, before the first part, are the numbers at the top. Then
 come the parts, each a heading with a colon and lines that start with - and a space.
@@ -68,7 +74,8 @@ Each line is the job, in or on, the room it's done in, a colon, how many it want
 
     - cook in The Galley: 2 wanted; skills survival
 
-They're read and checked now, and the watch bill gives people these jobs from the next step.
+How many it wants is how many the watch bill counts it short by, when fewer are doing it. The Command menu shows the
+job's room and the skills are kept for a later step.
 
 
 WHO HOLDS WHAT
@@ -84,15 +91,44 @@ A game keeps who holds what in its save from the moment it begins, so a change h
 games under way keep theirs.
 
 
-NAMING A POST ELSEWHERE
------------------------
+WHO DOES WHICH JOB
+------------------
 
-The other files can name a post instead of a person, as the and the post's name, and whoever holds it is the one:
+Each line is a job, a colon, and who does it when a game begins: people with a day at the place in world/life,
+usually by their crowd name, or nobody. One job each, and nobody who holds a post. The line for spare hands names
+the people the first officer can put to work where a job's short. Anyone not written here isn't on the watch bill
+(the sick on their cots, say).
+
+Each job's day is the day in world/life of the first person who starts in it. Someone moved to another job lives
+that job's day, at their own shift, so they walk to its room and do what it does there; someone sent to the spare
+hands lives the spare hands' day. A job nobody starts in gets a plain day: on duty in its room from six, two meals at
+the benches, and a bunk at ten.
+
+If the player started as crew aboard (the engine hand, the orderly, the marine), they're on the watch bill too, in
+the job done in the room their own work is in, and a move there moves the shift they work.
+
+The captain moves people from the Command menu: a click on someone, then Move here on the job. The first officer
+(the post that keeps the watch bill) covers for anyone lost from their job, dead or being patched up after a
+beating, with a spare hand, and sends the spare hand back once they're back, saying so in the story both times.
+
+A game keeps its watch bill in its save from the moment it begins.
+
+
+NAMING A POST OR A JOB ELSEWHERE
+--------------------------------
+
+The other files can name a post instead of a person, as the and the post's name, and whoever holds it is the one;
+or a job, and whoever the watch bill has doing it is:
 
     world/ship.json, a council decision:     "post": "quartermaster"
-    world/systems/<place>.txt:               guards: the chief of security
-                                             engineers: the chief engineer, Tech Sami, Tech Oona
+    world/systems/<place>.txt:               guards: the chief of security, the guards
+                                             engineers: the chief engineer, the techs
     world/logistics/<place>.txt, an errand:  - the quartermaster: ration crates from the shuttle stores to ...
+                                             - a tech: fuel cells from the shuttle stores to the fuel rack ...
+    world/logistics/<place>.txt, a machine:  ... with power and a cook there
+
+An errand that names a job goes to whoever's doing it, awake and not carrying something else already. A machine
+that names a job needs someone doing that job in its room; one that says someone, anyone.
 
 A council decision says {who} as the post and the holder's name (Quartermaster Brandt), and the council does it
 itself if nobody holds the post, or whoever does has been lost.

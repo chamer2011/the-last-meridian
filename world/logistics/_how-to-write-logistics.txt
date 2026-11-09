@@ -95,7 +95,9 @@ The pieces, in any order after the verb:
     into the garden bins              the same, when the machine makes the one thing it names and uses nothing
     every hour / every 2 hours / every 30 minutes    how often it does that
     with power and a cook there       what it needs: power in its room, and someone there (any words after
-                                      with that aren't power mean someone, and they're shown when nobody is)
+                                      with that aren't power mean someone, and they're shown when nobody is;
+                                      words that name a job on the watch bill, like a cook, mean someone
+                                      doing that job, world/command says who)
     gives 100 power                   a machine that gives power and makes nothing else is the generator: it
                                       starts with one of what it burns in it, takes the next from its store when
                                       that's spent, and stops, with nothing aboard powered, when there's none
@@ -123,13 +125,14 @@ carries, a colon, what they carry, from a store, to a store, when the store it g
 and how many they carry a trip (a number, or a number in words):
 
     - the quartermaster: ration crates from the shuttle stores to the pantry when under 4, two at a time
-    - Tech Oona: fuel cells from the shuttle stores to the fuel rack when under 3, two at a time
-    - Cook Imre: produce from the garden bins to the pantry when under 4, four at a time
-    - Tech Sami: parts crates from the shuttle stores to the parts lockers when under 2, one at a time
+    - a tech: fuel cells from the shuttle stores to the fuel rack when under 3, two at a time
+    - a cook: produce from the garden bins to the pantry when under 4, four at a time
+    - a tech: parts crates from the shuttle stores to the parts lockers when under 2, one at a time
 
 Who carries is someone with a day in the place's file in world/life: a crowd name as written there (Tech
 Oona, Cook Imre), or the name of someone the game knows (Odessa Brandt), or a post in the place's chain of
-command (world/command), written with the: the quartermaster is whoever holds that post at the time. Both stores
+command (world/command), written with the: the quartermaster is whoever holds that post at the time, or a job on
+its watch bill, written with a: a tech is whichever tech is awake and free when it's needed. Both stores
 have to keep the item on their holds lines, and the store it goes to has to keep at least as many as the
 number after under, or they'd never stop.
 

@@ -39,3 +39,14 @@ Who holds what:
 - helm officer: pell
 - sensor officer: lira
 - speaker: halm
+
+Who does which job:
+- cook: Cook Imre, Cook Dessa
+- mess hand: Mess Hand Bao, Mess Hand Lotte
+- gardener: Gardener Odile, Gardener Benno
+- tech: Tech Sami, Tech Oona, Tech Goran
+- nurse: Nurse Haru, Nurse Anton
+- deckhand: Deckhand Kofi, Deckhand Ines, Deckhand Rafe, Deckhand Zuri
+- ensign: Ensign Mirela, Ensign Tadeo, Ensign Nadia
+- guard: nobody
+- spare hands: Yusuf, Salome, Emeka, Ayla, Teo, Petra

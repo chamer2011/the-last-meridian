@@ -763,7 +763,7 @@ initFight({ ui, render, sendChat, openMenu, closeMenu });
 initCheck({ ui, render, sendChat, openMenu, closeMenu });
 initMap({ ui, render, runAction, renderMenus, openMenu, closeMenu });
 initShip({ ui, render, runAction, renderMenus, openMenu, closeMenu });
-initCommand({ ui, closeMenu, openPersonSheet });
+initCommand({ ui, render, runAction, closeMenu, openPersonSheet });
 initWalk({
   ui,
   reading,

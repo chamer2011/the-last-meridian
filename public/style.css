@@ -335,6 +335,17 @@ button.fighter:hover:not(:disabled), button.fighter:focus-visible { background: 
 .post-label { color: var(--muted); }
 .post-since { color: var(--muted); margin-top: 2px; }
 button.post-card:hover:not(:disabled) *, button.post-card:focus-visible * { color: var(--bg); }
+/* The watch bill: a row for each job, with its people as buttons the captain picks and moves. */
+.watch-row { display: grid; grid-template-columns: minmax(14ch, 22ch) 1fr; gap: 2px 14px; align-items: baseline; padding: 5px 0; border-bottom: 1px dotted var(--line); }
+.watch-people { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; min-width: 0; }
+.watch-person { overflow-wrap: anywhere; }
+.watch-person.you { color: var(--bright); }
+.watch-person.lost { color: var(--bad); }
+button.watch-person.moving { background: var(--warn); color: var(--bg); }
+.watch-short { color: var(--bad); }
+.watch-move { color: var(--warn); }
+.watch-moving { color: var(--warn); }
+@media (max-width: 640px) { .watch-row { grid-template-columns: 1fr; } }
 .menu-row { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
 .menu-row strong { color: var(--bright); }
 .menu-entry { display: flex; flex-direction: column; gap: 2px; padding-bottom: 6px; border-bottom: 1px dotted var(--line); min-width: 0; }

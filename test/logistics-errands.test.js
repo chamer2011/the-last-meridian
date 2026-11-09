@@ -56,10 +56,10 @@ test("an errand's line is read into its pieces, numbers in words too, and a bad 
 test("the Meridian's errands name their people, stores and items, and the checker catches a bad one", () => {
   const errands = logisticsOf("meridian").errands;
   assert.deepEqual(errands.map((one) => [one.id, one.key, one.item, one.from, one.to, one.under, one.each]), [
-    ["tech_oona:fuel_cell", "Tech Oona", "fuel_cell", "shuttle_stores", "fuel_rack", 3, 2],
+    ["tech:fuel_cell", null, "fuel_cell", "shuttle_stores", "fuel_rack", 3, 2],
     [BRANDT, null, "ration_crate", "shuttle_stores", "pantry", 4, 2],
-    ["cook_imre:produce", "Cook Imre", "produce", "garden_bins", "pantry", 4, 4],
-    ["tech_sami:parts_crate", "Tech Sami", "parts_crate", "shuttle_stores", "parts_lockers", 2, 1],
+    ["cook:produce", null, "produce", "garden_bins", "pantry", 4, 4],
+    ["tech:parts_crate", null, "parts_crate", "shuttle_stores", "parts_lockers", 2, 1],
   ]);
   assert.ok(rosterOf("meridian").some((one) => one.key === "Tech Oona" && one.name === "Tech Oona") && rosterOf("meridian").some((one) => one.key === "odessa" && one.id === "odessa"));
   try {
@@ -147,7 +147,7 @@ test("nobody runs an errand in their sleep, and the day's other errands go the s
 test("away from the ship, the errands still get done, as everyone's day says, and the Ship menu lists them all", () => {
   const game = newGame();
   const stores = publicState(game).ship.errands;
-  assert.deepEqual(stores.map((one) => [one.who, one.status, one.busy]), [["Tech Oona", "about their day", false], ["Quartermaster Brandt", "about their day", false], ["Cook Imre", "about their day", false], ["Tech Sami", "about their day", false]]);
+  assert.deepEqual(stores.map((one) => [one.who, one.status, one.busy]), [["A tech", "about their day", false], ["Quartermaster Brandt", "about their day", false], ["A cook", "about their day", false], ["A tech", "about their day", false]]);
   assert.equal(stores[1].does, "ration crates from the shuttle stores to the pantry when under 4, 2 at a time");
   const before = JSON.stringify(game);
   publicState(game);
