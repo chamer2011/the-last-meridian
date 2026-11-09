@@ -58,7 +58,8 @@ export function sheetNode({ inMap = false } = {}) {
   const paper = el("div", { class: `sheet-paper${elapsed < FEED_MS ? " feeding" : ""}${state.closing ? " rewinding" : ""}` }, ...printout(g));
   // A redraw while it's still feeding carries on from where it was, instead of starting again.
   if (elapsed < FEED_MS) paper.style.animationDelay = `-${Math.round(elapsed)}ms`;
-  if (inMap) setTimeout(keepClearOfTracker, 0);
+  setTimeout(placeSheet, 0);
+  setTimeout(placeSheet, 350);
   return el("div", { class: `sheet-dock${inMap ? " in-map" : ""}`, id: "sheet" },
     el("div", { class: "sheet-slot" },
       el("span", {}, "REGISTRY PRINTER"),
@@ -66,21 +67,53 @@ export function sheetNode({ inMap = false } = {}) {
     el("div", { class: "sheet-feed" }, paper));
 }
 
-// On a narrow map the quest tracker in the top left corner would be under it, so it hangs below the tracker instead.
-function keepClearOfTracker() {
+// The whole printout is always on show, with no scroll bar: on a narrow map it hangs below the quest tracker in the
+// top left corner instead of over it, it keeps above the "What do you do?" window, and when there isn't the height for
+// it at the usual size its type gets smaller until it fits. If that would make it hard to read, it's printed in two
+// columns side by side instead, whichever leaves the bigger type.
+const SIZES = [12, 11.5, 11, 10.5, 10, 9.5, 9, 8.5, 8, 7.5];
+const READABLE = 10;
+function placeSheet() {
   const dock = document.getElementById("sheet");
-  const map = dock?.parentElement;
-  const tracker = document.getElementById("quest-tracker");
-  if (!dock || !map || !tracker) return;
-  dock.style.top = "";
-  dock.style.maxHeight = "";
-  const d = dock.getBoundingClientRect();
-  const t = tracker.getBoundingClientRect();
-  if (!t.width || t.right <= d.left || t.left >= d.right) return;
-  const m = map.getBoundingClientRect();
-  const top = Math.round(t.bottom - m.top + 6);
-  dock.style.top = `${top}px`;
-  dock.style.maxHeight = `${Math.max(160, Math.min(m.height * 0.48, m.height - top - 10))}px`;
+  if (!dock) return;
+  const inMap = dock.classList.contains("in-map");
+  const tracker = inMap ? document.getElementById("quest-tracker") : null;
+  const bottom = inMap ? document.getElementById("pop-row") : null;
+  watch(inMap ? dock.parentElement : null, tracker, bottom);
+  const one = layout(dock, inMap, tracker, bottom, false);
+  if (one.fits && one.size >= READABLE) return;
+  const two = layout(dock, inMap, tracker, bottom, true);
+  if (two.fits && (!one.fits || two.size > one.size)) return;
+  layout(dock, inMap, tracker, bottom, false);
+}
+const across = (a, b) => a?.width && b && a.right > b.left && a.left < b.right;
+// Tries each type size in one or two columns, and leaves the dock at the first that fits, or the smallest.
+function layout(dock, inMap, tracker, bottom, twoColumns) {
+  dock.classList.toggle("two", twoColumns);
+  const box = inMap ? dock.parentElement.getBoundingClientRect() : { top: 0, height: window.innerHeight };
+  for (const size of SIZES) {
+    dock.style.fontSize = `${size}px`;
+    dock.style.top = "";
+    const t = tracker?.getBoundingClientRect();
+    if (across(t, dock.getBoundingClientRect())) dock.style.top = `${Math.round(t.bottom - box.top + 6)}px`;
+    const placed = dock.getBoundingClientRect();
+    const below = bottom?.getBoundingClientRect();
+    const floor = across(below, placed) ? below.top : box.top + box.height;
+    if (placed.height <= floor - placed.top - 8) return { fits: true, size };
+  }
+  return { fits: false, size: SIZES[SIZES.length - 1] };
+}
+window.addEventListener("resize", () => placeSheet());
+// The map and the quest tracker settle their sizes after the page is drawn, and the tracker grows and shrinks, so it
+// places itself again whenever either changes.
+const watcher = typeof ResizeObserver === "function" ? new ResizeObserver(() => placeSheet()) : null;
+let watching = [];
+function watch(...nodes) {
+  nodes = nodes.filter(Boolean);
+  if (!watcher || (nodes.length === watching.length && nodes.every((node, i) => node === watching[i]))) return;
+  watcher.disconnect();
+  watching = nodes;
+  for (const node of nodes) watcher.observe(node);
 }
 
 // ---- What's printed --------------------------------------------------------------------------------------
@@ -104,8 +137,7 @@ function printout(g) {
     line(dim(`==== FLEET REGISTRY · QUERY ${query} `.padEnd(56, "="))),
     field("NAME", hi(`${g.name}`.toUpperCase()), d.callsign ? ` "${d.callsign}"` : ""),
     field("SPECIES", `${g.species}`, dim(`   ${g.pronouns}, age ${g.age}`)),
-    d.homeworld && field("FROM", d.homeworld),
-    d.upbringing && field("RAISED", d.upbringing),
+    (d.homeworld || d.upbringing) && field("FROM", [d.homeworld, d.upbringing].filter(Boolean).join(" · ")),
     g.background && field("TRADE", g.background),
     g.ideologyTitle && field("BELIEVES", g.ideologyTitle),
     d.drive && field("DRIVEN TO", d.drive),
@@ -162,14 +194,11 @@ function attributes(g) {
 function skills(g) {
   const known = (g.skills ?? []).filter((s) => s.rank > 0).sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name));
   if (!known.length) return line(dim("  None yet."));
-  const shown = known.slice(0, 9);
-  const more = known.length - shown.length;
-  return el("div", {}, el("div", { class: "sheet-skills" }, shown.map((s) => el("button", {
+  return el("div", { class: "sheet-skills" }, known.map((s) => el("button", {
     class: "sheet-skill",
     title: `${s.desc ?? ""} Bonus on checks ${signed(s.bonus)}.`.trim(),
     onclick: () => app.openMenu("skills"),
-  }, `${s.tagged ? "*" : ""}${s.name.toUpperCase()} `.padEnd(15, ".") + String(s.rank).padStart(2)))),
-    more > 0 && el("div", { class: "sheet-more" }, el("button", { class: "sheet-link", onclick: () => app.openMenu("skills") }, `[ ${more} MORE IN SKILLS ]`)));
+  }, `${s.tagged ? "*" : ""}${s.name.toUpperCase()} `.padEnd(15, ".") + String(s.rank).padStart(2))));
 }
 
 function traits(g) {
@@ -260,10 +289,13 @@ const style = document.createElement("style");
 style.textContent = `
 .sheet-dock {
   position: absolute; z-index: 27; top: 6px; right: calc(var(--rail-width, 0px) + 12px);
-  width: min(62ch, calc(100% - 24px)); max-height: min(50vh, calc(100% - 12px));
+  width: min(62ch, calc(100% - 24px));
   display: flex; flex-direction: column; pointer-events: none; font: 12px/1.4 var(--mono);
 }
-.sheet-dock.in-map { right: 8px; top: 34px; max-height: min(48%, calc(100% - 44px)); }
+.sheet-dock.in-map { right: 8px; top: 34px; }
+.sheet-dock.two { width: min(118ch, calc(100% - 16px)); }
+.sheet-dock.two .sheet-paper { columns: 2; column-gap: 4ch; column-rule: 1px dashed #3a2709; }
+.sheet-dock.two .sheet-paper > * { break-inside: avoid; }
 .sheet-slot {
   flex: none; display: flex; justify-content: space-between; align-items: center; gap: 8px;
   background: #1a1206; border: 1px solid #5a3d12; border-bottom: 3px solid #050302;
@@ -272,7 +304,7 @@ style.textContent = `
 }
 .sheet-feed { min-height: 0; overflow: hidden; display: flex; flex-direction: column; margin: 0 6px; }
 .sheet-paper {
-  min-height: 0; overflow: auto; pointer-events: auto; position: relative;
+  overflow: hidden; pointer-events: auto; position: relative;
   background: #120b02; color: #ffb547; padding: 8px 26px 10px; text-shadow: 0 0 5px rgba(255, 160, 40, .3);
   border: 1px solid #3a2709; border-top: 0; box-shadow: 0 6px 14px rgba(0, 0, 0, .55);
   background-image:
@@ -307,7 +339,6 @@ style.textContent = `
 .sheet-btn:focus-visible, .sheet-link:focus-visible, .sheet-skill:focus-visible { background: #ffb547; color: #120b02; text-shadow: none; outline: none; }
 .sheet-btn:disabled { color: #6b4a1d; cursor: default; }
 .sheet-slot .sheet-btn { color: #ffb547; }
-.sheet-more { padding-left: 2ch; }
 .sheet-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; padding: 2px 0; }
 `;
 document.head.append(style);
