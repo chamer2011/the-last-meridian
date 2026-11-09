@@ -16,9 +16,9 @@ every store is a real thing in a room, full to start with, that the player can w
 pack; every machine takes from one store and puts into another on the clock; the generator burns fuel cells
 and gives the power the systems draw, and lets them go in a written order when it hasn't enough; people carry
 from one store to another when the second runs short; the whole ship eats from the kettle at its sittings;
-the refills top a store up from nothing on the hour, the one place anything still comes from nowhere; and the
-Ship menu's count of food, medicine and parts is the count of these stores, nothing else. Trade off the ship,
-which will replace the refills, is a later step.
+the refills top a store up from nothing on the hour, the one place anything still comes from nowhere; the
+engineers' repairs use up spare parts from the stores; and the Ship menu's count of food, medicine and parts is
+the count of these stores, nothing else. Trade off the ship, which will replace the refills, is a later step.
 
 
 THE FILE
@@ -30,6 +30,9 @@ THE FILE
     a crate feeds: 200 sittings                      (how far a ration crate goes: for whoever edits)
     sittings at: 06:00, 07:30, 18:00, 19:30, each 90 minutes   (when the whole ship eats, two sittings to a
                                                      meal; this is what it is when the line is left out)
+    a repair takes: 1 parts crate, from the parts lockers or the shuttle stores, for what's broken, cut, crippled or forced
+                                                     (what the engineers use up each time they fix something:
+                                                     see REPAIRS)
 
     Stores:
     - pantry in The Galley: holds 12 ration crates, 12 produce: Shelves behind a wire door.
@@ -122,6 +125,7 @@ and how many they carry a trip (a number, or a number in words):
     - Quartermaster Brandt: ration crates from the shuttle stores to the pantry when under 4, two at a time
     - Tech Oona: fuel cells from the shuttle stores to the fuel rack when under 3, two at a time
     - Cook Imre: produce from the garden bins to the pantry when under 4, four at a time
+    - Tech Sami: parts crates from the shuttle stores to the parts lockers when under 2, one at a time
 
 Who carries is someone with a day in the place's file in world/life: a crowd name as written there (Tech
 Oona, Cook Imre), or the name of someone the game knows (Quartermaster Brandt is Odessa Brandt). Both stores
@@ -169,6 +173,27 @@ named is brought up to what the store's holds line keeps, or up to the number wr
 has to keep every item named. What came aboard is written in the manifest, which you read by looking at the
 store (the shuttle stores carry it on a clip) or on any of the ship's computers that lists the manifest log,
 and the Ship menu's Refills lines say the last one.
+
+REPAIRS
+-------
+
+The line at the top that starts with a repair takes says what the engineers use up each time they fix
+something that's been damaged: so many of an item, from which stores, first to last, and for which kinds of
+damage:
+
+    a repair takes: 1 parts crate, from the parts lockers or the shuttle stores, for what's broken, cut, crippled or forced
+
+The engineers are the ones the place's systems file names (world/systems). In the last hour before something's
+due to be fixed, an engineer spends the first half fetching what it takes from the first of those stores with
+enough in it, and the second half at the part, and it comes out of the store when the part's fixed. With none
+in any of them, the repair waits: the story says so once, the part's look says what it's waiting for, and the
+Ship menu's Repairs lines list it. Within the hour after some comes aboard, it's fixed.
+
+The kinds of damage are what each kind of part's break line does to it (cut, jammed, sealed, covered, crippled,
+scrambled, broken), and forced, for a door. A kind left out of the line is fixed with nothing, the way a rag
+comes off a camera's lens or a seal off a vent. Leave out from and every store that keeps the item is tried;
+leave out for what's and every kind of damage takes it; write a repair takes: nothing, or leave the line out,
+and repairs take nothing at all. Fixing something yourself takes nothing, and neither does a story's * fix.
 
 THE COUNT ON THE SHIP MENU
 --------------------------

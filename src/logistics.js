@@ -11,7 +11,7 @@ import { ITEMS, LOCATIONS } from "./data.js";
 import { storeCounts, storePut, storeTake } from "./bag.js";
 import { findCharacter } from "./campaign.js";
 import { hasReached, isAbout, rosterOf, usuallyIn, whoIsIn } from "./life.js";
-import { claimedSquares, floorSpot, roomPowered, systemsOf } from "./systems.js";
+import { claimedSquares, damageKinds, floorSpot, roomPowered, systemsOf, waitingForParts } from "./systems.js";
 import { mapFor, roomHere, roomsOf, roomsOn, thingsIn } from "./walk.js";
 import { LOGISTICS_FILE_PROBLEMS, WORLD_LOGISTICS } from "./world.js";
 import { everyWords, readErrandLine, readLoadsLine, readMachineLine, readRefillLine, readStoreLine, slugOf } from "../public/logistics-text.js";
@@ -343,6 +343,38 @@ function compileLogistics(place) {
       continue;
     }
     model.refills.push({ store: store.id, items, every: r.every, upTo: r.upTo, line, text: raw.text });
+  }
+  // What the engineers' repairs take: so many of an item, from which stores first to last, for which kinds of damage.
+  model.repair = null;
+  const r = file.repair;
+  if (r?.n > 0) {
+    const line = r.line ?? null;
+    let sound = true;
+    const item = itemByWords(r.what);
+    if (!item) {
+      at(line, `there's no item called ${r.what} in world/items, for a repair to take`);
+      sound = false;
+    }
+    const from = [];
+    for (const words of r.from ?? []) {
+      const store = findStore(words);
+      if (!store) {
+        at(line, `there's no store called ${words} for a repair's ${r.what} to come from: the stores are ${storeNames()}`);
+        sound = false;
+      } else if (item && (store.count || !(item in store.holds))) {
+        at(line, `the ${store.name} doesn't keep ${r.what}, for a repair to take: add it to the ${store.name}'s holds line`);
+        sound = false;
+      } else from.push(store.id);
+    }
+    const kinds = damageKinds();
+    for (const word of r.damage ?? []) {
+      if (kinds.has(word)) continue;
+      at(line, `nothing is ever ${word}: the kinds of damage are ${[...kinds].join(", ")}`);
+      sound = false;
+    }
+    const keeping = item ? model.stores.filter((store) => !store.count && item in store.holds).map((store) => store.id) : [];
+    if (sound && !from.length && !keeping.length) at(line, `no store keeps ${r.what}, for a repair to take`);
+    else if (sound) model.repair = { item, n: r.n, from: from.length ? from : keeping, damage: r.damage ?? [], line };
   }
   // The errands: who carries what from which store to which, when the store it goes to is short, so many a trip.
   model.errands = [];
@@ -782,6 +814,83 @@ export function refillsView(game, place) {
       last: last ? `${clockWordsAt(last.at)}: ${last.text}` : null,
     };
   });
+}
+
+// ---- The engineers' repairs -----------------------------------------------------------------------
+
+// What a repair of a kind of damage takes at a place, from its file's "a repair takes" line: so many of an item,
+// fetched from its stores first to last. Null where the file doesn't say, or the line leaves that damage out.
+export function repairNeeds(place, damage = "broken") {
+  const r = logisticsOf(place)?.repair;
+  if (!r || (r.damage.length && !r.damage.includes(damage))) return null;
+  return r;
+}
+const partsWords = (r) => (r.n === 1 ? `a ${itemWords(r.item, 1)}` : loadWords(r.item, r.n));
+const listWords = (list) => (list.length > 1 ? `${list.slice(0, -1).join(", ")} or ${list.at(-1)}` : list[0] ?? "");
+const inStores = (game, model, r) => r.from.reduce((sum, id) => {
+  const store = storeById(model, id);
+  return sum + (storeCounts(game, store.key, store.holds)[r.item] ?? 0);
+}, 0);
+// "a parts crate", or "" for a repair that takes nothing.
+export const repairPartsWords = (place, damage) => {
+  const r = repairNeeds(place, damage);
+  return r ? partsWords(r) : "";
+};
+// "there isn't a parts crate in the stores", for the line that says a repair is waiting.
+export const noPartsWords = (place, damage) => {
+  const r = repairNeeds(place, damage);
+  if (!r) return "";
+  return r.n === 1 ? `there isn't ${partsWords(r)} in the stores` : `there aren't ${partsWords(r)} in the stores`;
+};
+// Whether there's enough in the stores for a repair now. A repair that takes nothing always has what it needs.
+export function repairPartsAboard(game, place, damage) {
+  const r = repairNeeds(place, damage);
+  return !r || inStores(game, logisticsOf(place), r) >= r.n;
+}
+// The store an engineer goes to for a repair: the first of the line's with enough in it, or else the first, where
+// they'll find out there isn't any. Null for a repair that takes nothing.
+export function repairStore(game, place, damage) {
+  const r = repairNeeds(place, damage);
+  if (!r) return null;
+  const model = logisticsOf(place);
+  const stores = r.from.map((id) => storeById(model, id));
+  return stores.find((store) => (storeCounts(game, store.key, store.holds)[r.item] ?? 0) >= r.n) ?? stores[0];
+}
+// Takes what a repair needs from the stores, first to last, and writes it in the repairs' log. Gives the words for
+// the line that says it's fixed, "a parts crate from the parts lockers", or "" for a repair that takes nothing. Null,
+// taking nothing, while there isn't enough in the stores.
+export function takeRepairParts(game, place, damage, what) {
+  const r = repairNeeds(place, damage);
+  if (!r) return "";
+  const model = logisticsOf(place);
+  if (inStores(game, model, r) < r.n) return null;
+  let left = r.n;
+  const from = [];
+  for (const id of r.from) {
+    if (left <= 0) break;
+    const store = storeById(model, id);
+    const took = storeTake(game, store.key, store.holds, r.item, left);
+    if (took > 0) from.push(store.name);
+    left -= took;
+  }
+  const words = `${partsWords(r)} from the ${from.join(" and the ")}`;
+  const state = stateOf(game, place);
+  state.repairs ??= { log: [] };
+  state.repairs.log.push({ at: minutesOf(game.clock.hours), text: `${upperFirst(words)}, for ${what}.` });
+  if (state.repairs.log.length > 20) state.repairs.log.splice(0, state.repairs.log.length - 20);
+  return words;
+}
+// For the Ship menu: what a repair takes, what's waiting for it, and the last one made. Reading this changes nothing.
+export function repairsView(game, place) {
+  const model = logisticsOf(place);
+  const r = model?.repair;
+  if (!r) return null;
+  const last = game.logistics?.[place]?.repairs?.log?.at(-1) ?? null;
+  return {
+    does: `${partsWords(r)}, from the ${r.from.map((id) => storeById(model, id).name).join(" or the ")}${r.damage.length ? `, for what's ${listWords(r.damage)}` : ""}`,
+    waiting: waitingForParts(game, place),
+    last: last ? `${clockWordsAt(last.at)}: ${last.text}` : null,
+  };
 }
 
 // The clock in whole minutes.

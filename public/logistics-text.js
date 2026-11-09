@@ -13,6 +13,7 @@ export const LOGISTICS_HEADER = [
   { key: "everyone aboard eats", path: "numbers.eats", type: "number", unit: "sittings a day" },
   { key: "a crate feeds", path: "numbers.crateFeeds", type: "number", unit: "sittings" },
   { key: "sittings at", path: "sittings", type: "sittings" },
+  { key: "a repair takes", path: "repair", type: "repair" },
 ];
 
 // "06:00, 12:00, 18:00, 22:00, each 90 minutes": when the whole ship eats, and how long each sitting lasts.
@@ -99,6 +100,10 @@ export function parseLogisticsText(text, id = "it") {
         const read = readSittings(words);
         if (read.problem) problem(n, read.problem);
         else set(value, known.path, read);
+      } else if (known.type === "repair") {
+        const read = readRepair(words);
+        if (read.problem) problem(n, read.problem);
+        else set(value, known.path, { ...read, line: n });
       } else set(value, known.path, words);
       continue;
     }
@@ -222,6 +227,39 @@ export function readMachineLine(text) {
 const NUMBER_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
 const numberOf = (words) => (/^\d+$/.test(words) ? Number(words) : NUMBER_WORDS[String(words).toLowerCase()] ?? null);
 
+// ---- The words of the repair line --------------------------------------------------------------
+
+// "1 parts crate, from the parts lockers or the shuttle stores, for what's broken, cut, crippled or forced": what the
+// engineers use up each time they fix something, the stores they fetch it from, first to last (every store that keeps
+// it, left out), and the kinds of damage that need it (every kind, left out). "nothing" takes nothing, as does leaving
+// the line out.
+const FOR_WHAT = /,?\s+for\s+what(?:'s|’s|\s+is)(?:\s+|$)/i;
+export function readRepair(words) {
+  const written = String(words ?? "").trim().replace(/\.$/, "");
+  if (/^nothing$/i.test(written)) return { n: 0, what: "", from: [], damage: [] };
+  let text = written;
+  let damage = [];
+  const forAt = text.search(FOR_WHAT);
+  if (forAt >= 0) {
+    damage = text.slice(forAt).replace(FOR_WHAT, "").split(/\s*,\s*|\s+or\s+|\s+and\s+/i).map((one) => one.trim().toLowerCase()).filter(Boolean);
+    text = text.slice(0, forAt);
+    if (!damage.length) return { problem: `"${written}" needs the kinds of damage after for what's, such as for what's broken, cut or forced` };
+  }
+  let from = [];
+  const fromAt = text.search(/,?\s+from\s+/i);
+  if (fromAt >= 0) {
+    from = text.slice(fromAt).replace(/^,?\s+from\s+/i, "").split(/\s*,\s*|\s+or\s+/i).map((one) => one.trim().replace(/^the\s+/i, "")).filter(Boolean);
+    text = text.slice(0, fromAt);
+    if (!from.length) return { problem: `"${written}" needs the stores after from, such as from the parts lockers or the shuttle stores` };
+  }
+  const found = text.trim().match(/^(\S+)\s+(.+)$/);
+  const n = found ? (/^an?$/i.test(found[1]) ? 1 : numberOf(found[1])) : null;
+  if (!found || !(n > 0)) return { problem: `"${written}" needs a number and what a repair takes, such as 1 parts crate, from the parts lockers` };
+  return { n, what: found[2].trim(), from, damage };
+}
+const listWords = (list) => (list.length > 1 ? `${list.slice(0, -1).join(", ")} or ${list.at(-1)}` : list[0] ?? "");
+export const writeRepair = (r) => (!r?.n ? "nothing" : `${r.n} ${r.what}${r.from?.length ? `, from the ${r.from.join(" or the ")}` : ""}${r.damage?.length ? `, for what's ${listWords(r.damage)}` : ""}`);
+
 // "Quartermaster Brandt: ration crates from the shuttle stores to the pantry when under 4, two at a time": who
 // carries, what, from which store to which, when the store it goes to is short of how many, and how many a trip.
 export function readErrandLine(text) {
@@ -297,7 +335,7 @@ export function writeLogisticsText(value) {
   for (const field of LOGISTICS_HEADER) {
     const one = get(value, field.path);
     if (one === undefined || one === null || one === "") continue;
-    out.push(`${field.key}: ${field.type === "sittings" ? writeSittings(one) : one}${field.type === "number" ? ` ${field.unit}` : ""}`);
+    out.push(`${field.key}: ${field.type === "sittings" ? writeSittings(one) : field.type === "repair" ? writeRepair(one) : one}${field.type === "number" ? ` ${field.unit}` : ""}`);
   }
   for (const part of LOGISTICS_PARTS) {
     const lines = value[part] ?? [];

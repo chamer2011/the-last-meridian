@@ -17,7 +17,7 @@ import { LOCATIONS } from "./data.js";
 import { startCheck } from "./checks.js";
 import { genericKindOf, writtenAtThing } from "./computers.js";
 import { livesHere, peopleAboard } from "./life.js";
-import { dropOrderOf, loadsOf, powerSupply } from "./logistics.js";
+import { dropOrderOf, loadsOf, noPartsWords, powerSupply, repairPartsAboard, repairPartsWords, repairStore, takeRepairParts } from "./logistics.js";
 import { recordFact } from "./record.js";
 import { isCaptain } from "./role.js";
 import { changeStanding, changeStress, hoursNow } from "./rules.js";
@@ -47,6 +47,13 @@ export function kindOf(name, system) {
   return D().systems?.[system] ?? D().systems?.other ?? "machine";
 }
 const kindSpec = (kind) => kindsTable()[kind] ?? kindsTable().machine ?? {};
+// Every kind of damage there is: what each kind of part's break line does to it, a forced door, and the story's
+// broken. The logistics file's repair line names some of these.
+export function damageKinds() {
+  const kinds = new Set(["broken", "forced"]);
+  for (const spec of Object.values(kindsTable())) if (spec.break?.damage) kinds.add(spec.break.damage);
+  return kinds;
+}
 const wordFor = (kind, state) => kindSpec(kind).words?.[state] ?? state;
 
 function numbersOf(file) {
@@ -711,6 +718,7 @@ export function repairPart(game, place, id) {
   if (s) {
     delete s.damage;
     delete s.fixAt;
+    delete s.noParts;
   }
   return settleChange(game, place);
 }
@@ -744,6 +752,7 @@ export function setDoor(game, place, room, how, { by = "player" } = {}) {
   } else if (how === "fixed") {
     delete s.forced;
     delete s.fixAt;
+    delete s.noParts;
   }
   // A story door that's opened stays open for the story too.
   if (how === "opened" || (how === "unlocked" && door.story)) {
@@ -838,6 +847,21 @@ function settleChange(game, place) {
 // What the game calls someone: the short name on their post, or their name, or the crowd name they go by.
 const personName = (place, key) => Object.values(mapFor(place)?.levels ?? {}).flatMap((level) => level.homes).find((home) => home.id === key)?.label ?? WORLD_CHARACTERS[key]?.name ?? key;
 
+// A repair that's due takes what the place's logistics say a repair of that damage takes, from its stores. Without
+// enough there it waits, which is said once, and starts again within the hour once some comes. Gives the words for
+// what it took ("a parts crate from the parts lockers", or "" for a repair that takes nothing), or null while it waits.
+function repairWith(game, place, model, s, damage, what, say) {
+  const took = takeRepairParts(game, place, damage, what);
+  if (took !== null) {
+    delete s.noParts;
+    return took;
+  }
+  delete s.fixAt;
+  if (!s.noParts) say(`[SYSTEMS] ${personName(place, model.engineers[0] ?? "Someone")} can't fix ${what}: ${noPartsWords(place, damage)}.`);
+  s.noParts = true;
+  return null;
+}
+
 // Called whenever the clock moves. Only places where something isn't normal have anything to do.
 export function advanceSystems(game) {
   const lines = [];
@@ -862,10 +886,19 @@ export function advanceSystems(game) {
         continue;
       }
       const where = roomNameOf(place, part.room);
+      const what = `the ${part.name} in ${where}`;
+      // What it was waiting for has come aboard: an engineer fetches it and fixes it within the hour.
+      if (s.noParts && s.damage && !s.fixAt && repairPartsAboard(game, place, s.damage)) {
+        delete s.noParts;
+        s.fixAt = t + 1;
+      }
       if (s.fixAt && s.fixAt <= t) {
-        delete s.damage;
-        delete s.fixAt;
-        say(`[SYSTEMS] ${personName(place, model.engineers[0] ?? "Someone")} has fixed the ${part.name} in ${where}.`);
+        const took = repairWith(game, place, model, s, s.damage, what, say);
+        if (took !== null) {
+          delete s.damage;
+          delete s.fixAt;
+          say(`[SYSTEMS] ${personName(place, model.engineers[0] ?? "Someone")} has fixed ${what}${took ? `, with ${took}` : ""}.`);
+        }
       }
       if (s.backAt && s.backAt <= t) {
         delete s.on;
@@ -874,10 +907,18 @@ export function advanceSystems(game) {
       }
     }
     for (const [room, s] of Object.entries(state.doors)) {
+      const what = `the door to ${roomNameOf(place, room)}`;
+      if (s.noParts && s.forced && !s.fixAt && repairPartsAboard(game, place, "forced")) {
+        delete s.noParts;
+        s.fixAt = t + 1;
+      }
       if (s.fixAt && s.fixAt <= t) {
-        delete s.forced;
-        delete s.fixAt;
-        say(`[SYSTEMS] ${personName(place, model.engineers[0] ?? "Someone")} has fixed the door to ${roomNameOf(place, room)}.`);
+        const took = repairWith(game, place, model, s, "forced", what, say);
+        if (took !== null) {
+          delete s.forced;
+          delete s.fixAt;
+          say(`[SYSTEMS] ${personName(place, model.engineers[0] ?? "Someone")} has fixed ${what}${took ? `, with ${took}` : ""}.`);
+        }
       }
       if (s.backAt && s.backAt <= t) {
         delete s.locked;
@@ -959,9 +1000,9 @@ export function detourFor(game, place) {
   const ringing = state.alarm?.ringing?.room && commsUp(game, place) ? state.alarm.ringing.room : null;
   const due = Object.entries(state.parts).filter(([id, s]) => s.fixAt && s.fixAt - t <= 1 && model.parts[id]).sort((a, b) => a[1].fixAt - b[1].fixAt);
   const fixing = {};
-  due.forEach(([id], i) => {
+  due.forEach(([id, s], i) => {
     const key = model.engineers[i % Math.max(1, model.engineers.length)];
-    if (key && !fixing[key]) fixing[key] = model.parts[id];
+    if (key && !fixing[key]) fixing[key] = { part: model.parts[id], s };
   });
   const map = mapFor(place);
   const goodAirFrom = (room) => {
@@ -980,7 +1021,13 @@ export function detourFor(game, place) {
   };
   return (key, room, asleep) => {
     if (ringing && model.guards.includes(key)) return { where: `@${ringing}`, doing: `answering the alarm in ${lowerFirst(roomNameOf(place, ringing))}` };
-    if (fixing[key]) return { where: `@${fixing[key].room}`, doing: `fixing the ${fixing[key].name}` };
+    if (fixing[key]) {
+      const { part, s } = fixing[key];
+      // A repair that takes parts spends the first half of its hour fetching them from the stores.
+      const store = s.fixAt - t > 0.5 ? repairStore(game, place, s.damage) : null;
+      if (store) return { where: `store:${store.id}`, doing: `fetching ${repairPartsWords(place, s.damage)} from the ${store.name} for the ${part.name}` };
+      return { where: `@${part.room}`, doing: `fixing the ${part.name}` };
+    }
     const q = room ? state.air[room] ?? 100 : 100;
     if (q >= limits.thin || (asleep && q >= limits.bad)) return null;
     const away = goodAirFrom(room);
@@ -1104,7 +1151,29 @@ export function lookAt(game, place, part) {
   const s = partState(game, place, part.id);
   const works = partWorks(game, place, part);
   const state = s.damage ? spec.damaged ?? "It's broken." : s.on === false ? spec.off ?? "It's off." : !works ? deadWords(game, place, part) : ringingNow(game, place, part) ? "It's ringing." : spec.on ?? "It's working.";
-  return `${part.look ?? spec.look ?? `The ${part.name}.`} ${state}`;
+  return `${part.look ?? spec.look ?? `The ${part.name}.`} ${state}${s.damage ? repairWords(game, place, s) : ""}`;
+}
+
+// What a broken part's repair is waiting on, where it takes parts: " Chief Marrow will fix it with a parts crate from
+// the stores.", or " Chief Marrow can't fix it until there's a parts crate in the stores."
+function repairWords(game, place, s) {
+  const parts = repairPartsWords(place, s.damage);
+  const model = systemsOf(place);
+  if (!parts || !model?.engineers.length) return "";
+  const who = personName(place, model.engineers[0]);
+  if (s.noParts) return ` ${who} can't fix it until there's ${parts} in the stores.`;
+  return s.fixAt ? ` ${who} will fix it with ${parts} from the stores.` : "";
+}
+
+// What the engineers can't fix for want of parts, in words: "the junction box in Engineering", "the door to Medbay".
+export function waitingForParts(game, place) {
+  const model = systemsOf(place);
+  const state = game.systems?.[place];
+  if (!model || !state) return [];
+  return [
+    ...Object.entries(state.parts).filter(([id, s]) => s.noParts && model.parts[id]).map(([id]) => `the ${model.parts[id].name} in ${roomNameOf(place, model.parts[id].room)}`),
+    ...Object.entries(state.doors).filter(([, s]) => s.noParts).map(([room]) => `the door to ${roomNameOf(place, room)}`),
+  ];
 }
 
 // Why a part that's on and whole does nothing: the generator's stopped, its system was let go, or its room's cut off.

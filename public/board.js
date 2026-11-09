@@ -9,7 +9,7 @@ import { el } from "./dom.js";
 import { writeStoryText } from "./story-text.js";
 import { LINE_PHRASES, PERK_NUMBERS, SPECS, writeWorldText } from "./world-text.js";
 import { KNOWN_SYSTEMS, readComputerLine, systemIdOf, writeSystemsText } from "./systems-text.js";
-import { LOGISTICS_PARTS, PART_TITLES, readErrandLine, readLoadsLine, readMachineLine, readRefillLine, readSittings, readStoreLine, writeLogisticsText, writeSittings } from "./logistics-text.js";
+import { LOGISTICS_PARTS, PART_TITLES, readErrandLine, readLoadsLine, readMachineLine, readRefillLine, readRepair, readSittings, readStoreLine, writeLogisticsText, writeRepair, writeSittings } from "./logistics-text.js";
 
 const state = {
   kind: "story", id: null, lists: {},
@@ -415,7 +415,7 @@ function logisticsGraph() {
   const list = [], ws = [];
   const add = (node) => { list.push(node); return node.id; };
   const numbers = P.numbers ?? {};
-  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${numbers.eats ? `Everyone aboard eats ${numbers.eats} sittings a day. ` : ""}${numbers.crateFeeds ? `A crate feeds ${numbers.crateFeeds} sittings. ` : ""}${P.sittings ? `Sittings at ${writeSittings(P.sittings)}. ` : "Four sittings a day unless this says otherwise. "}The stores and the machines are played; the loads, errands and refills are read, kept and checked for their shape.`, label: "The numbers at the top" });
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${numbers.eats ? `Everyone aboard eats ${numbers.eats} sittings a day. ` : ""}${numbers.crateFeeds ? `A crate feeds ${numbers.crateFeeds} sittings. ` : ""}${P.sittings ? `Sittings at ${writeSittings(P.sittings)}. ` : "Four sittings a day unless this says otherwise. "}${P.repair?.n ? `A repair takes ${writeRepair(P.repair)}.` : "A repair takes nothing."}`, label: "The numbers at the top" });
   const stores = (P.stores ?? []).map((one, i) => {
     const read = readStoreLine(one.text ?? one);
     const placed = (L.stores ?? []).find((s) => s.name === read.name);
@@ -1244,6 +1244,7 @@ function inspectLogisticsAbout(inspector) {
   const eats = numberBox("edit-eats", P.numbers?.eats ?? "");
   const feeds = numberBox("edit-feeds", P.numbers?.crateFeeds ?? "");
   const sittings = textBox("edit-sittings", P.sittings ? writeSittings(P.sittings) : "");
+  const repair = textBox("edit-repair", P.repair ? writeRepair(P.repair) : "");
   const trouble = el("div", { class: "hint tone-bad" });
   fill(inspector, h2("The numbers at the top"),
     el("label", { for: "edit-title" }, "The place's name"), name,
@@ -1251,11 +1252,17 @@ function inspectLogisticsAbout(inspector) {
     row(el("label", { for: "edit-eats" }, "everyone aboard eats, in sittings a day"), eats),
     row(el("label", { for: "edit-feeds" }, "a crate feeds, in sittings"), feeds),
     el("label", { for: "edit-sittings" }, "sittings at: the times the whole ship eats, and how long each lasts (empty for four of 90 minutes, at 06:00, 07:30, 18:00 and 19:30)"), sittings,
+    el("label", { for: "edit-repair" }, "a repair takes: what the engineers use up each time they fix something, the stores they fetch it from, and the kinds of damage that need it (empty for nothing)"), repair,
     trouble,
     row(button("Keep", () => {
       const read = sittings.value.trim() ? readSittings(sittings.value) : null;
       if (read?.problem) {
         trouble.textContent = read.problem;
+        return;
+      }
+      const fix = repair.value.trim() ? readRepair(repair.value) : null;
+      if (fix?.problem) {
+        trouble.textContent = fix.problem;
         return;
       }
       P.name = name.value.trim() || P.name;
@@ -1266,9 +1273,11 @@ function inspectLogisticsAbout(inspector) {
       if (feeds.value !== "") P.numbers.crateFeeds = Number(feeds.value);
       if (read) P.sittings = read;
       else delete P.sittings;
+      if (fix) P.repair = fix;
+      else delete P.repair;
       changed();
     }), button("Undo", () => inspect())),
-    hint(`The file is world/logistics/${state.id}.txt. The stores and the machines are played, and the whole ship eats at the sittings; the other parts come to life step by step, and the how-to there says how.`));
+    hint(`The file is world/logistics/${state.id}.txt. Every part of it is played: the stores, the machines, the sittings, the loads, the errands, the refills and the repairs. The how-to there says how each is written.`));
 }
 // A store: its line, with the room and what it holds picked from lists to write it.
 function inspectStoreLine(inspector, node) {
