@@ -1,0 +1,68 @@
+# The Delegation
+// When a mutiny has been brewing long enough (world/command/meridian.txt says how long), the officers come to the
+// captain together. {ringleader} is whoever leads them and {captain} the captain, both filled in by the game. Each
+// ending is a * mutiny line: give ground, calmed, arrest (offered only while the chief of security is still loyal),
+// step down, crushed, taken or refused. The fight is a fight like any other, with talking, threatening, paying and
+// lying in it. Draft by the AI (Claude), 2026-11-09, not yet edited by the owner.
+start: start
+
+== start
+They come together, which is the point of it. {ringleader} first, and four officers behind, standing the way people stand when they've agreed on something in a corridor an hour ago.
+@{ringleader}: "Captain. We're here about how this ship is being run. All of us, so you know it isn't just me."
+> Hear them out -> demands
+> [! security] Have the chief of security take {ringleader} away -> arrest ? mutiny can arrest
+> Tell them to get back to their posts -> refuse
+
+== demands
+@{ringleader}: "Full rations, before anyone else goes to sleep hungry. Stop moving people about like crates. And talk to us before you decide things, not after."
+> Give them what they want -> give_ground
+> [persuasion:hard:{ringleader}] Talk them round -> talked | refuse
+> [! security] Have {ringleader} arrested -> arrest ? mutiny can arrest
+> Step down, and let {ringleader} have the chair -> step_down
+> [! fight] Throw them out yourself -> fight
+
+== give_ground
+* mutiny give ground: The captain heard the delegation out and gave them what they asked for
+@{ringleader}: "That's all we wanted, Captain." The others file out after them, and nobody quite looks at you.
+END
+
+== talked
+* mutiny calmed: The captain talked the delegation round
+@{ringleader}: "All right. We'll give it a week, Captain. One week."
+END
+
+== arrest
+* mutiny arrest: Arrested at the captain's word, with the delegation watching
+The chief of security's people are in the doorway before {ringleader} has finished turning round. Nobody else moves.
+END
+
+== step_down
+* mutiny step down: The captain stepped down rather than split the ship
+You take the insignia off and put it on the table between you. {ringleader} looks at it for a long moment before picking it up.
+END
+
+== fight
+FIGHT {ringleader}
+  lead_in: You come round the table. {ringleader} doesn't step back.
+  why: cause
+  reason: They believe the ship will die under you, and they've said so in front of witnesses.
+  won -> crushed
+  lost -> taken
+  talked -> talked
+
+== crushed
+* mutiny crushed: The captain put the delegation down
+When it's over, the others are already backing out of the door. {ringleader} goes to the brig without another word.
+END
+
+== taken
+* mutiny taken: The officers took the ship
+* time 72 hours rest: Three days under guard in the brig
+They take you down to the brig, and the door stays shut for three days. On the fourth morning it opens, and nobody salutes.
+* mutiny released: Let out of the brig, as crew
+END
+
+== refuse
+* mutiny refused: The captain sent the delegation away
+@{ringleader}: "Then we'll do it without you, Captain." They leave the door open behind them.
+END

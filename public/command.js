@@ -1,7 +1,8 @@
 // The Command menu: the Meridian's chain of command, every post as a card with who holds it, where they're kept,
 // who chose them, their skills for it, since when and what they remember, grouped by who chooses whoever holds them;
 // and the watch bill, with everyone's job, which the captain changes with two clicks. The captain also answers the
-// first officer's recommendations, gives a post to someone else with two clicks, and can hold the reviews. It's drawn
+// first officer's recommendations, gives a post to someone else with two clicks, and can hold the reviews. At the top,
+// how things stand aboard: the officers' loyalty, the council's confidence, and how far a mutiny has got. It's drawn
 // from the game's state (src/command.js), and nothing here calls the AI. A card for one of the story's people opens
 // their registry printout.
 
@@ -36,12 +37,23 @@ const order = (body) => app.runAction(async () => {
   if (message) app.ui.menuMessage = { ok: true, text: message };
 })();
 
+// How loyal the holder is to the captain, and what's moved it.
+function loyalty(post) {
+  const l = post.loyalty;
+  if (!l) return null;
+  return [
+    el("div", { class: "post-duty small" }, meter("LOYALTY", l.score, 100)),
+    l.why && el("div", { class: "post-since small" }, `${l.why[0].toUpperCase()}${l.why.slice(1)}`),
+  ];
+}
+
 function card(post) {
   const holder = post.holder;
   const body = [
     el("div", { class: "post-title" }, post.title),
     el("div", { class: `post-who${holder && !holder.alive ? " lost" : ""}` }, holder ? holder.name : "Nobody"),
     duty(post),
+    loyalty(post),
     line("At", post.station),
     line("Chosen by", post.chooser ? `${post.chosenBy}, ${post.chooser}` : post.chosenBy),
     line("Skills", post.skills),
@@ -89,6 +101,23 @@ function givePost(post) {
       replacing = null;
       app.render();
     } }, "Cancel"));
+}
+
+// ---- How things stand aboard --------------------------------------------------------------------------
+
+const STAGE_LINES = ["Calm.", "Grumbling in the mess.", "Orders going astray.", "A delegation's coming.", "The ship's been taken."];
+
+function mood(m) {
+  if (!m) return null;
+  const rule = m.brews.morale !== null ? `A mutiny brews while morale is under ${m.brews.morale} and the officers' loyalty is under ${m.brews.loyalty}.` : "";
+  return el("div", { class: "command-mood small" },
+    m.deposed && el("div", { class: "command-deposed" }, m.deposed),
+    el("div", { class: "command-meters" },
+      m.officers !== null && el("span", { class: "post-duty", title: "The officers' loyalty to the captain, on average" }, meter("OFFICERS", m.officers, 100)),
+      el("span", { class: "post-duty", title: "The council's confidence in the captain" }, meter("COUNCIL", m.confidence, 100))),
+    el("div", { title: rule }, el("span", { class: "post-label" }, "Aboard: "), STAGE_LINES[m.stage] ?? m.words),
+    m.due && el("div", { class: "command-due" }, m.due),
+    m.brig.length ? el("div", {}, el("span", { class: "post-label" }, "In the brig: "), m.brig.join("; ")) : null);
 }
 
 // ---- The reviews, and what's waiting on the captain ------------------------------------------------
@@ -157,6 +186,7 @@ export function commandMenu() {
   if (!command) return el("div", { class: "muted small" }, "Nobody here keeps a chain of command.");
   if (replacing && !command.groups.some((group) => group.posts.some((post) => post.id === replacing && post.candidates))) replacing = null;
   return el("div", { class: "command-page" },
+    mood(command.mood),
     reviews(command.reviews),
     waiting(command.waiting),
     command.groups.map((group) => section(group.title, el("div", { class: "post-grid" }, group.posts.map(card)))),

@@ -1,0 +1,16 @@
+# Under Guard
+// When the officers take the ship from the player without the delegation being met, and the player was aboard: the
+// days in the brig, then out as crew. {ringleader} is whoever led it, filled in by the game. Draft by the AI (Claude),
+// 2026-11-09, not yet edited by the owner.
+start: start
+
+== start
+WITH: nobody
+They came in the middle of the night watch, and they didn't knock. There's a guard on the brig door now who won't meet your eye, and {ringleader} has the chair.
+> Wait it out -> out
+
+== out
+* time 72 hours rest: Three days under guard in the brig
+Three days. Meals come through the slot, more or less on time. On the fourth morning the door opens, and nobody salutes.
+* mutiny released: Let out of the brig, as crew
+END

@@ -47,7 +47,7 @@ test("each post's duty words are what it's measured by, and a word the game can'
   const post = (id) => cmd.commandOf("meridian").posts.find((one) => one.id === id);
   assert.deepEqual(post("quartermaster").measures, ["sittings missed", "stores run dry"]);
   assert.deepEqual(post("chief_engineer").measures, ["power short", "repairs waiting", "hull worn"]);
-  assert.deepEqual(post("speaker").measures, [], "the council's confidence is measured in a later step");
+  assert.deepEqual(post("speaker").measures, ["the council's confidence"], "the speaker is marked on the council's confidence in the captain");
   assert.deepEqual(cmd.commandProblems(), []);
   withFile(FILE.replace("duty: sittings missed, stores run dry", "duty: sittings missed, cheerfulness"), () => {
     assert.match(cmd.commandProblems().join(" | "), /cheerfulness isn't something a post's duty can be measured by: the measures are morale, shortages/);
@@ -117,7 +117,7 @@ test("each post's duty is settled at midnight from the day's numbers, and kept a
   assert.equal(quartermaster.duty.score, 100);
   assert.equal(quartermaster.duty.last, "sittings missed 100/100, stores run dry 100/100");
   assert.equal(card(game, "first_officer").duty.last, "stations staffed 90/100", "the guards are two short of the twenty the watch bill wants");
-  assert.equal(card(game, "speaker").duty, null, "nothing to measure the speaker by yet");
+  assert.match(card(game, "speaker").duty.last, /^the council's confidence \d+\/100$/, "the speaker is marked on the council's confidence");
   passTime(game, 24 * 8, "routine");
   assert.equal(game.command.meridian.duty.quartermaster.length, 7);
   assert.equal(card(game, "quartermaster").duty.days, 7);

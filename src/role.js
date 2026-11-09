@@ -2,7 +2,7 @@
 // someone else has the chair, and the ship goes on without them. world/starts.json has the choices.
 
 import { LOCATIONS } from "./data.js";
-import { shiftOnWatchBill } from "./command.js";
+import { deposedStart, shiftOnWatchBill } from "./command.js";
 import { STARTS } from "./world.js";
 
 export const START_LIST = STARTS.starts ?? {};
@@ -17,9 +17,9 @@ export const startOf = (game) => START_LIST[game.role?.id] ?? null;
 export const aboardShip = (game) => isCaptain(game) || game.location === "meridian" || (Boolean(game.ship?.at) && game.location === game.ship.at);
 
 // The work they do, if this is where they do it. Crew aboard the Meridian do the job the watch bill has them on, so a
-// move there moves their shifts too.
+// move there moves their shifts too, and a captain the officers relieved is crew aboard too.
 export function jobHere(game) {
-  const start = startOf(game);
+  const start = startOf(game)?.job ? startOf(game) : deposedStart(game);
   if (isCaptain(game) || !start?.job || start.place !== game.location) return null;
   return shiftOnWatchBill(game, start) ?? start.job;
 }

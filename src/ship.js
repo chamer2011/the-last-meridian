@@ -13,7 +13,7 @@ import { inTrouble, levelName, noneLeft, placeNow, supplyFactor, tellNews, trade
 import { aboardShip, isCaptain } from "./role.js";
 import { addCondition, buyPrice, changeStress, clamp, clockLabel, jumpHours, passTime, sellPrice, travel } from "./rules.js";
 import { navigationDown } from "./systems.js";
-import { YOU, commandOf, holderKey, officerNames, postAndName, setHolder, stillAlive, tallyDuty } from "./command.js";
+import { YOU, commandOf, councilRefuses, holderKey, officerName, officerNames, postAndName, riskyJump, setHolder, stillAlive, tallyDuty } from "./command.js";
 import { countAboard, errandsView, foodADay, machinesView, mealsOfDay, mealsView, putAboard, refilledADay, refillsView, repairsView, storesView, takeAboard } from "./logistics.js";
 import { SHIP_DATA, STAR_MAP } from "./world.js";
 
@@ -104,7 +104,12 @@ export function newChair(game) {
 // says how they run her.
 const captainPost = () => commandOf(SHIP_ID)?.chairPost ?? null;
 const chairKey = (game) => (game.ship?.chair ? (captainPost() ? holderKey(game, SHIP_ID, captainPost()) : null) ?? game.ship.chair.id : null);
-const chairFile = (game) => (chairKey(game) ? CHAIR.captains[chairKey(game)] ?? null : null);
+// Someone aboard who's taken the chair runs her the way the file's anyone says, under their post's name.
+const chairFile = (game) => {
+  const key = chairKey(game);
+  if (!key) return null;
+  return CHAIR.captains[key] ?? (CHAIR.anyone ? { ...CHAIR.anyone, name: officerName(game, SHIP_ID, captainPost()) } : null);
+};
 
 export function chairOf(game) {
   const file = chairFile(game);
@@ -602,6 +607,9 @@ function setRations(game, id) {
   const ship = shipOf(game);
   if (!RATIONS[id]) throw new Error("There's no such ration level.");
   if (ship.rations === id) return { message: null, notes: [] };
+  // While orders are going astray, the council won't put a cut through for the captain.
+  const refused = councilRefuses(game);
+  if (refused && RATIONS[id].food < (RATIONS[ship.rations]?.food ?? 1)) throw new Error(refused);
   ship.rations = id;
   councilOf(ship).ordered.rations = ship.day;
   councilOf(ship).setRations = null;
@@ -642,7 +650,10 @@ function setCourse(game, id) {
     if (cost.fare > game.credits) throw new Error(`Passage to ${place.name} costs ${cost.fare} credits, and you have ${game.credits}.`);
     game.credits -= cost.fare;
   }
+  // A captain's jump somewhere risky costs the officers' loyalty, the more the riskier.
+  const danger = isCaptain(game) && jumped ? chartEntry(game, id).danger : 0;
   const { message, notes } = travel(game, id);
+  if (danger >= 2 && from !== game.location) riskyJump(game, danger);
   if (from !== game.location) {
     // The written story can have an arrival for this place, played when the player continues.
     game.arrived = game.location;
@@ -896,6 +907,32 @@ export function changeCommand(game, { takes, reason }) {
   if (captainPost()) setHolder(game, SHIP_ID, captainPost(), ship.chair.id);
   const chair = chairOf(game);
   return { summary: `They aren't the captain any more. ${chair.name} (id ${chair.id}) is, and you play them. The ship goes on by itself from here, and the player goes where they like.`, notice: `[SHIP] ${chair.name} has command of the Meridian now: ${reason}`, notes: [] };
+}
+
+// The chair changing hands by the chain of command (src/command.js): back to the player, or to someone aboard, who
+// runs the ship from then on as the chair's captains do. The ship's funds and the chair's habits go with it.
+export function handChair(game, key) {
+  const ship = shipOf(game);
+  game.role ??= { id: "captain", captain: true };
+  if (key === YOU) {
+    game.role.captain = true;
+    ship.chair = null;
+  } else {
+    game.role.captain = false;
+    ship.chair = { id: key, funds: ship.chair?.funds ?? CHAIR.funds, lastJump: ship.chair?.lastJump ?? -99, lastBuy: ship.chair?.lastBuy ?? -99 };
+  }
+  if (captainPost()) setHolder(game, SHIP_ID, captainPost(), key);
+}
+
+// The rations going up to at least a level, as an answer to the officers, and never down. Gives what's said, or null if
+// they were there already.
+export function raiseRations(game, id) {
+  const ship = shipOf(game);
+  if (!RATIONS[id] || (RATIONS[ship.rations]?.food ?? 1) >= RATIONS[id].food) return null;
+  ship.rations = id;
+  councilOf(ship).ordered.rations = ship.day;
+  councilOf(ship).setRations = null;
+  return `Rations aboard are now ${RATIONS[id].name.toLowerCase()}.`;
 }
 
 // Lets a test, or the checker, see the names a stage's fleet line may carry that the ship no longer reads.

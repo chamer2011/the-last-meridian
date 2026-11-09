@@ -7,13 +7,16 @@ the captain's choices stand: 10 days
 memories fade: by half every 30 days
 everyone else: ambition 2, temper 2, loyalty 60
 mutiny brews: morale under 30, loyalty under 35
+the mutiny builds: grumbling after 1 day, orders refused after 4, a delegation after 7, the mutiny after 10
+the council's confidence: 60 to begin with
+the brig: The Brig, for 7 days
 
 Posts:
 - captain on The Bridge: chosen by the council; skills leadership, tactics; duty: morale, shortages, deaths aboard
 - first officer on The Bridge: chosen by the captain; keeps the watch bill; picked from the chief of security, the deck chief, the comms officer, the helm officer, the sensor officer; skills leadership, composure; duty: stations staffed
 - quartermaster in The Long Mess: chosen by the captain; heads cooks, mess hands, gardeners; picked from cooks, mess hands, gardeners, the deck chief; skills commerce; duty: sittings missed, stores run dry
 - chief engineer in Engineering: chosen by the captain; heads techs; picked from techs, the deck chief; skills engineering; duty: power short, repairs waiting, hull worn
-- chief of security in The Aft Holds: chosen by the captain; heads guards; picked from guards, ensigns, deckhands; skills firearms, tactics; duty: alarms, tampering seen, thefts
+- chief of security in The Aft Holds: chosen by the captain; heads guards; keeps the brig; picked from guards, ensigns, deckhands; skills firearms, tactics; duty: alarms, tampering seen, thefts
 - chief medical officer in Medbay: chosen by the captain; heads nurses; picked from nurses; skills medicine; duty: medicine out, deaths aboard
 - deck chief in Engineering: chosen by the captain; heads deckhands; picked from deckhands, techs; skills void ops, leadership; duty: errands left waiting
 - comms officer on The Bridge: chosen by the first officer; picked from ensigns; skills hacking, science

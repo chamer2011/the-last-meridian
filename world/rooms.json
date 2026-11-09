@@ -1028,7 +1028,7 @@
         "{name} shrugs. {desc}",
         "{name} doesn't answer straight away. {desc}"
       ],
-      "_grudge": "What someone says first, before anything else, while something done to them in the chain of command is fresh in their mind (src/command.js), for anyone, with a conversation of their own or not. By what it was (relieved, passed over, refused, warned, promoted, restored to a post they lost, kept on against advice), with _by_you for when the player did it. {title} is the post's name (quartermaster), {post} is the quartermaster's post, {by} is who did it and {who} is who it was for. Each person says the same line about the same thing.",
+      "_grudge": "What someone says first, before anything else, while something done to them in the chain of command is fresh in their mind (src/command.js), for anyone, with a conversation of their own or not. grumbling is for while a mutiny's brewing, said by officers whose loyalty is low and about half of everyone else. By what it was (relieved, passed over, refused, warned, promoted, restored to a post they lost, kept on against advice, arrested, heard out by a captain who gave ground, saw the captain step down, joined by the player in a mutiny, betrayed by the player to the captain, warned of a mutiny by the player), with _by_you for when the player did it. {title} is the post's name (quartermaster), {post} is the quartermaster's post, {by} is who did it and {who} is who it was for. Each person says the same line about the same thing.",
       "grudge": {
         "relieved_by_you": [
           "You took {post} off me and gave it to {who}. I hope you counted what that cost, Captain.",
@@ -1082,6 +1082,42 @@
         "kept_by_you": [
           "I heard what they wanted to do with me, Captain, and I heard you said no. Thank you.",
           "I know you stood up for me. It won't happen again, the week I had."
+        ],
+        "arrested_by_you": [
+          "You'll want to keep that door locked, Captain.",
+          "Come to look at me? Look, then."
+        ],
+        "arrested": [
+          "{by} put me in here. Ask them why.",
+          "I'd stand up, but there isn't the room."
+        ],
+        "heard_by_you": [
+          "You listened, Captain. Not everyone would have.",
+          "We'll see if it holds. But you listened."
+        ],
+        "heard": [
+          "{by} heard us out. That's more than I expected."
+        ],
+        "stood_down_by_you": [
+          "You could have fought it. I won't forget that you didn't.",
+          "Not many would have handed it over without a fight."
+        ],
+        "joined_by_you": [
+          "We'll not forget you stood with us.",
+          "You picked the right side. Don't make me sorry for it."
+        ],
+        "betrayed_by_you": [
+          "I know it was you. Everyone knows it was you.",
+          "You'd have done better to keep your mouth shut."
+        ],
+        "informed_by_you": [
+          "I owe you for the warning. I don't forget what I owe."
+        ],
+        "grumbling": [
+          "Half a bowl again. You'd think the people in charge ate with us.",
+          "People are talking. Not to you, mind.",
+          "There's a lot said in the mess these days. I'm not saying I agree with all of it.",
+          "Ask the kettle how things are going. It's got more in it than I have."
         ]
       }
     }

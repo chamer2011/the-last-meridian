@@ -14,8 +14,8 @@ post's duty, skill in the work, the watch bill, and the officers' reviews: the C
 card and each job with who's on it, everything in the other files that names someone for a post or a job (the
 council's rations decisions in world/ship.json, the guards and engineers in world/systems, the machines and the
 carriers of the errands in world/logistics, the ship's own lines in world/ship.json, and the captain's chair) asks
-this file who that is, everyone on the watch bill lives their job's day, and whoever does badly in a post is warned,
-relieved and replaced. The mutiny's line at the top is kept, and comes to life in a later step.
+this file who that is, everyone on the watch bill lives their job's day, whoever does badly in a post is warned,
+relieved and replaced, and when the officers' loyalty and the ship's morale run low, a mutiny builds.
 
 
 THE FILE
@@ -32,7 +32,12 @@ THE FILE
                                                      one, isn't reviewed)
     memories fade: by half every 30 days             (how fast people forget what was done to them)
     everyone else: ambition 2, temper 2, loyalty 60  (the numbers of whoever has none in their own file)
-    mutiny brews: morale under 30, loyalty under 35  (kept for a later step: when trouble starts)
+    mutiny brews: morale under 30, loyalty under 35  (when a mutiny brews: see LOYALTY AND MUTINY)
+    the mutiny builds: grumbling after 1 day, orders refused after 4, a delegation after 7, the mutiny after 10
+                                                     (all on one line: after how many days of brewing each stage
+                                                     comes)
+    the council's confidence: 60 to begin with       (the council's confidence in the captain when a game begins)
+    the brig: The Brig, for 7 days                   (the room whoever's arrested is kept in, and for how long)
 
     Posts:
     - captain on The Bridge: chosen by the council; skills leadership, tactics
@@ -68,6 +73,7 @@ after a semicolon:
                                    chooses whom has to end at the council or the civilians.
     keeps the watch bill           the post that gives everyone their job, covers for anyone lost, and speaks for
                                    the captain in the reviews
+    keeps the brig                 the post that arrests whoever's leading a mutiny, if they're loyal enough
     heads cooks, mess hands        the jobs it answers for, by their names in the Jobs part
     picked from cooks, the deck    who a new holder is picked from: jobs by their names in the Jobs part, and
     chief                          other posts. Without it, the jobs it heads. Never the post itself, nor the chair
@@ -147,8 +153,9 @@ last day's marks. Someone new in a post starts with a clean record. The measures
     thefts                  25 off for each pocket picked aboard
     medicine out            nothing while the medicine's out, and full marks otherwise
     errands left waiting    10 off for each hour errands stood waiting at an empty store
+    the council's confidence  the council's confidence in the captain: see LOYALTY AND MUTINY
 
-The council's confidence is measured in a later step. Any other word is a problem the checker names.
+Any other word is a problem the checker names.
 
 
 SKILL
@@ -197,6 +204,65 @@ to while it's fresh: the lines are in world/rooms.json, under talk, stock, grudg
 
 Ambition, temper and loyalty come from each person's file in world/characters (ambition: 4, temper: 2, loyalty: 70;
 the first two go from 1 to 5, and loyalty from 0 to 100), or from the line everyone else at the top.
+
+
+LOYALTY AND MUTINY
+------------------
+
+Everyone who holds a post but the captain has a loyalty to the captain, from 0 to 100: their file's loyalty to begin
+with (or the line everyone else), what they remember of the captain, and what's moved it lately. Each of these moves a
+little every day, within its bounds, and settles back once what moved it stops:
+
+    the rations                 half rations take 1.5 a day, reduced 0.5, generous give 0.5 (from -20 to +10)
+    going hungry                a day of empty kettles takes up to 4, by how many went hungry (down to -20)
+    the mood aboard             a day with morale under 30 takes 1 (down to -10)
+    risky jumps                 the captain jumping somewhere risky takes 2, dangerous 4, deadly 6 (down to -15)
+    the sides the captain takes the captain's standing with a faction changing moves it by as much as the person's
+                                beliefs agree with the faction's, and more if it's their own (from -20 to +20)
+
+The council's confidence in the captain, from 0 to 100, follows the ship's morale, 25 less on half rations, 10 less on
+reduced and 10 more on generous, less for empty kettles and for each supply that's run out, a fifth of the way a day.
+It's the speaker's duty, if their line says so.
+
+A mutiny brews on a day when morale and the officers' loyalty on average (the officers are whoever holds a post another
+post chooses for) are both under the line mutiny brews; each such day adds a day of pressure, and any other takes one
+away. The line the mutiny builds says after how many days each stage comes:
+
+    grumbling          the officers whose loyalty is under the line, and about half of everyone else, grumble when the
+                       player talks to them (the lines are in world/rooms.json, talk, stock, grudge, grumbling), and
+                       people eating at the benches are "grumbling about the captain"
+    orders refused     the council won't put a cut in the rations through for the captain while its confidence is under
+                       the line, and a first officer whose loyalty is under it won't move anyone on the watch bill
+    a delegation       the least loyal officer with a file leads it. With the player as captain, the officers come to
+                       them together: command_delegation.txt in world/scenes, played when they carry on the story.
+                       With someone else in the chair and the player aboard, whoever leads it asks them in:
+                       command_conspiracy.txt. With the player away, the captain gives ground if the rations are under
+                       standard, and otherwise it goes on.
+    the mutiny         whoever leads it takes the chair, and their post is filled in turn. A player who was captain is
+                       crew from then on, one of the spare hands with shifts to work, and, if they were aboard, under
+                       guard in the brig first: command_brig.txt. An officer who'd had the chair goes to the brig.
+
+The scenes end each way with a * mutiny line:
+
+    give ground        the rations go up to standard, everyone remembers being heard out, the council's confidence
+                       goes up 15, and the mutiny's over, with a week's calm
+    calmed             the mutiny's over, with a week's calm, and nothing given
+    arrest             whoever's leading it goes to the brig, if whoever keeps the brig is loyal (50 or more), and the
+                       pressure halves; if they aren't, nobody moves, and the ship will be taken
+    crushed            whoever's leading it goes to the brig, and the mutiny's over, with a week's calm
+    step down          the player hands the chair to whoever's leading it, and is crew, with no brig
+    refused            the delegation's sent away: the ship's taken the next day it brews
+    taken              the ship's taken now, the brig included; the scene says what the days there were like
+    released           the player's let out of the brig, as crew
+    join               the player joins whoever's leading it, who takes the chair; or, if the officers would have
+                       the player back as captain, they take the chair themselves
+    stay out           nothing: it goes on without the player
+    warn               the player tells the captain, who has whoever's leading it arrested if security's loyal; if not,
+                       the ship's taken the next day it brews. Either way, whoever was leading it knows.
+
+Whoever's put in the brig stays for the line the brig's days, off their post and the watch bill, and comes out one of
+the spare hands. The officers would have the player back as captain when they were relieved of it once, and the
+officers' feeling for them (their own loyalty, and what they remember of the player) is 50 or more on average.
 
 
 NAMING A POST OR A JOB ELSEWHERE

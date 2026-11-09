@@ -1,0 +1,41 @@
+# A Quiet Word
+// When a mutiny has been brewing against a captain who isn't the player, and the player's aboard, whoever leads it
+// asks them in. {ringleader} is whoever leads it and {captain} the captain, both filled in by the game. If the officers
+// relieved the player once and would have them back, it's the chair they're offered. Each ending is a * mutiny line:
+// join, stay out or warn. Draft by the AI (Claude), 2026-11-09, not yet edited by the owner.
+start: start
+
+== start
+? mutiny offers the chair -> offer
+{ringleader} steers you into a doorway, out of the traffic, and waits until the corridor's empty.
+@{ringleader}: "The officers have had enough of {captain}. It happens in the next day or two, with you or around you. I'd rather it was with you."
+> Join them -> join
+> Stay out of it -> stay_out
+> [! betrayal] Warn {captain} -> warn
+
+== offer
+{ringleader} steers you into a doorway, out of the traffic, and waits until the corridor's empty.
+@{ringleader}: "We've had enough of {captain}, and half this ship remembers how it was with you in the chair. Say the word, and it's yours again."
+> Take the chair back -> take_back
+> Stay out of it -> stay_out
+> [! betrayal] Warn {captain} -> warn
+
+== join
+* mutiny join: You joined the officers against the captain
+@{ringleader}: "Good. Stay close to me tomorrow."
+END
+
+== take_back
+* mutiny join: The officers gave you back the chair
+@{ringleader}: "Then it's done. Welcome back, Captain."
+END
+
+== stay_out
+* mutiny stay out: You kept out of the officers' business
+@{ringleader}: "Then you didn't hear any of this."
+END
+
+== warn
+* mutiny warn: You warned the captain
+You find {captain} before the next watch, and tell them what you heard, and from whom.
+END

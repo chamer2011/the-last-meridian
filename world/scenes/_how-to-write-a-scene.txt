@@ -149,6 +149,9 @@ Lines starting with * happen when the part begins, and the player sees each as a
     * alarm ringing in The Docks             engines, navigation, docking, door locked or unlocked, fix and
     * door locked The Hook                   break. world/systems/_how-to-write-systems.txt has them all, and
     * fix everything                         what each one does)
+    * mutiny give ground: The reason      (the ship's chain of command, for the scenes it plays: give ground,
+                                          calmed, arrest, crushed, step down, refused, taken, released, join,
+                                          stay out or warn; world/command/_how-to-write-command.txt says what each does)
     * raw add_lore {"term": "The Rim", "kind": "place", "text": "What the player would know."}
 
 The last one does anything the AI can do, with the fields from src/tools.js. The rules are the
@@ -183,8 +186,25 @@ and join several with "and":
                                      here, or in and a room, and at and a place. world/systems has the rest.
     act < 2                          The main story's act, with the same comparisons as credits.
     chance 30                        True 30 times in 100, at random.
+    mutiny brewing                   A mutiny's brewing aboard the Meridian. Also mutiny can arrest (the
+                                     chief of security would lock up whoever's leading it) and mutiny
+                                     offers the chair (the officers would have the player back as captain).
 
 A condition with a mistake in it is never true, and check-story points it out.
+
+
+STAND-INS
+---------
+
+A scene the game starts by itself can leave a person for the game to fill in, in curly brackets:
+
+    {ringleader}     whoever leads the officers against the captain, or led them when they took the ship
+    {captain}        whoever has the chair: "you" in the words when it's the player
+
+In what's said and read it's their name, so @{ringleader}: "Captain." is them speaking; in a FIGHT, a WITH
+line and a check's audience it's their id, so FIGHT {ringleader} fights them. check-story reads a scene as if
+Kara Tarrow and Captain Reddick stood in, and says so if a word in curly brackets isn't one of these.
+command_delegation.txt, command_conspiracy.txt and command_brig.txt use them.
 
 
 RULES: GOING SOMEWHERE ELSE

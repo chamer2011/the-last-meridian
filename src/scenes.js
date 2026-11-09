@@ -24,7 +24,7 @@ import { parseNarration } from "../public/story.js";
 import { computerProblems, enterComputer } from "./computers.js";
 import { applySystemsEffect, placesWithSystems, systemsProblems } from "./systems.js";
 import { logisticsProblems, placesWithLogistics } from "./logistics.js";
-import { commandProblems } from "./command.js";
+import { SAMPLE_STAND_INS, commandProblems, commandSceneDue, commandSceneStarted, mutinyOutcome, standIns } from "./command.js";
 import { storyHitsShip } from "./ship.js";
 import { FACT_LINES, MAP_FILE_PROBLEMS, SET_ASIDE, STORIES_DIR, STORY_CLOCK, STORY_FILE_PROBLEMS, WORLD_COMMAND, WORLD_COMPUTERS, WORLD_FILE_PROBLEMS, WORLD_MAPS, WORLD_THREADS, endingsOf } from "./world.js";
 
@@ -217,6 +217,8 @@ function waitsAt(part) {
 // The quest a scene belongs to: the one it adds or changes first, or for a story's own scene, that story. An opening
 // belongs to the main quest.
 export function sceneQuest(game, id, scene) {
+  // The ship's chain of command isn't a quest of its own.
+  if (String(id).startsWith("command_")) return null;
   for (const part of Object.values(scene?.parts ?? {})) for (const step of part.do ?? []) if ((step.tool === "add_quest" || step.tool === "update_quest") && step.id) return step.id;
   if (String(id).startsWith("thread_")) return id.slice("thread_".length);
   return game.quests?.find((quest) => quest.main)?.id ?? null;
@@ -280,7 +282,42 @@ export function failForDeath(game, scene, emit = () => {}) {
 
 // ---- Playing ------------------------------------------------------------
 
-const sceneFor = (game, scenes) => (game.scene ? scenes[game.scene.id] ?? null : null);
+// ---- Stand-ins -----------------------------------------------------------
+
+// A scene can leave a person for the game to fill in, in curly brackets: {ringleader} is whoever leads the officers
+// against the captain, and {captain} whoever has the chair (src/command.js says who). In what's said and read it's
+// their name; in a FIGHT, a WITH line and a check's audience, their id. One with nobody standing in is "someone" in the
+// words. A scene with none is itself, and a filled one is remembered for as long as the same people stand in.
+const STAND_IN = /\{([a-z_]+)\}/g;
+const ID_FIELDS = new Set(["with", "enemy", "allies", "enemy_followers", "check"]);
+function fillStandIns(value, values, field = null) {
+  if (typeof value === "string") {
+    return value.replace(STAND_IN, (all, name) => {
+      if (!(name in values)) return all;
+      if (ID_FIELDS.has(field)) return values[name]?.id ?? all;
+      return values[name]?.name ?? "someone";
+    });
+  }
+  if (Array.isArray(value)) return value.map((one) => fillStandIns(one, values, field));
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, one]) => [key, fillStandIns(one, values, key)]));
+  return value;
+}
+const leavesStandIns = new WeakMap();
+const filledScenes = new WeakMap();
+function withStandIns(game, scene) {
+  if (!scene) return scene;
+  if (!leavesStandIns.has(scene)) leavesStandIns.set(scene, /\{[a-z_]+\}/.test(JSON.stringify(scene)));
+  if (!leavesStandIns.get(scene)) return scene;
+  const values = standIns(game);
+  const key = JSON.stringify(values);
+  const kept = filledScenes.get(scene);
+  if (kept?.key === key) return kept.filled;
+  const filled = fillStandIns(scene, values);
+  filledScenes.set(scene, { key, filled });
+  return filled;
+}
+
+const sceneFor = (game, scenes) => (game.scene ? withStandIns(game, scenes[game.scene.id] ?? null) : null);
 
 function partOf(scene, id, sceneId) {
   const part = scene.parts?.[id];
@@ -344,6 +381,11 @@ function enterPart(game, scene, id, { emit, turn }, hops = 0) {
       const changes = Object.entries(step.stores).map(([what, amount]) => `${what[0].toUpperCase()}${what.slice(1)} ${amount > 0 ? "+" : ""}${amount}`).join(", ");
       emit({ type: "notice", text: `[SHIP] ${changes}: ${step.reason}` });
       for (const text of notes) emit({ type: "notice", text });
+      continue;
+    }
+    if (step.mutiny) {
+      // The ship's chain of command: a delegation, a quiet word or a captain's days in the brig, ending one way.
+      for (const text of mutinyOutcome(game, step.mutiny, step.reason)) emit({ type: "notice", text });
       continue;
     }
     if (step.password) {
@@ -443,7 +485,7 @@ function pickUp(game, scene, context) {
 }
 
 function startScene(game, id, scenes, context) {
-  const scene = scenes[id];
+  const scene = withStandIns(game, scenes[id]);
   if (!scene) throw new StoryError("That part of the story hasn't been written yet.");
   // A story taken up again goes on from wherever it was waiting.
   if (game.parked?.[id]) {
@@ -509,6 +551,14 @@ function carryOn(game, scenes, context) {
     const place = game.arrived;
     game.arrived = null;
     if (scenes[`arrive_${place}`] && !game.scene) return startScene(game, `arrive_${place}`, scenes, context);
+  }
+  // The ship's chain of command has someone for the player: the officers' delegation, a quiet word, or the guards. It
+  // comes before the story under way, unless that's waiting on a check or a fight.
+  const due = commandSceneDue(game);
+  const settled = !game.scene?.pending && !(game.lastCheck && !game.lastCheck.used) && !(game.lastFight && !game.lastFight.used);
+  if (due && scenes[due] && settled) {
+    commandSceneStarted(game);
+    return startScene(game, due, scenes, context);
   }
   const scene = sceneFor(game, scenes);
   // A part that hasn't been played yet plays once the player is with whoever it's waiting on, and not before.
@@ -641,6 +691,7 @@ export function storyTurnKind(game, { playerText, event, threadId }, loaded = lo
   if (event === "continue") {
     if (game.lastCheck && !game.lastCheck.used && game.lastCheck.source === "door" && game.doorAsked) return "written";
     if (game.arrived && scenes[`arrive_${game.arrived}`] && !game.scene) return "written";
+    if (commandSceneDue(game) && scenes[commandSceneDue(game)]) return "written";
     // A written part waiting on someone the player isn't with leaves the AI to say what happens meanwhile.
     if (game.scene && game.scene.told === false && !personWhere(game, game.scene.with)?.here) return "ai";
     return game.scene ? "written" : "ai";
@@ -696,6 +747,10 @@ function checkProblem(text) {
 // has no checks or fights, and a part with nothing more to say is where it ends.
 export function sceneProblems(scene, id = "the scene", { talk = false } = {}) {
   const problems = [];
+  // A scene's stand-ins are checked as if real people stood in them, and one the game doesn't fill in is a mistake.
+  const unknown = [...new Set([...JSON.stringify(scene ?? {}).matchAll(/\{([a-z_]+)\}/g)].map((one) => one[1]).filter((name) => !SAMPLE_STAND_INS[name]))];
+  for (const name of unknown) problems.push(`${id}: {${name}} isn't a stand-in the game fills in: the stand-ins are ${Object.keys(SAMPLE_STAND_INS).map((one) => `{${one}}`).join(" and ")}`);
+  scene = fillStandIns(scene, SAMPLE_STAND_INS);
   const parts = scene?.parts ?? {};
   const at = (holder, where) => (holder?.line ? `${where} (line ${holder.line})` : where);
   if (!scene?.start) problems.push(`${id} doesn't say which part it starts at`);
@@ -758,7 +813,7 @@ export function sceneProblems(scene, id = "the scene", { talk = false } = {}) {
       }
       // The effects the game plays itself, with no tool behind them: a door, the place's systems, a password, a
       // computer, and the ship's stores. The parser has already said what's wrong with their words.
-      if (input.door !== undefined || input.systems || input.password || input.computer) continue;
+      if (input.door !== undefined || input.systems || input.password || input.computer || input.mutiny) continue;
       if (input.stores) {
         for (const [what, amount] of Object.entries(input.stores)) if (!["food", "medicine", "parts"].includes(what) || !Number.isFinite(amount)) problems.push(`${at(step, `${where}, effect ${i + 1}`)}: stores can change food, medicine or parts by a number, not ${what}`);
         continue;

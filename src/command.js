@@ -3,20 +3,25 @@
 // kept in the save as game.command[place] once a game begins. Everything that names someone for a post (the council's
 // decisions, the systems' engineers and guards, the errands, the captain's chair) asks here who holds it. The officers
 // review their people every so often, warn and relieve whoever's done badly, and fill the posts left empty; people
-// remember what was done to them, and the ambitious ask for their boss's post. Nothing here calls an AI, and reading
-// it changes nothing.
+// remember what was done to them, and the ambitious ask for their boss's post. Their loyalty to the captain moves with
+// the days, the council has a confidence of its own, and when both run low a mutiny builds, from grumbling to a
+// delegation to the ship being taken. Nothing here calls an AI, and reading it changes nothing.
 
-import { SKILLS } from "./character-data.js";
-import { LOCATIONS } from "./data.js";
+import { FACTION_BELIEFS, SKILLS } from "./character-data.js";
+import { FACTIONS, LOCATIONS } from "./data.js";
 import { isHurt } from "./deeds.js";
 import { aboardShip, isCaptain, startOf } from "./role.js";
+import { beliefAffinity } from "./rules.js";
+import { handChair, raiseRations } from "./ship.js";
 import { waitingForParts } from "./systems.js";
-import { atPost, mapFor, roomsOf, seedFrom } from "./walk.js";
+import { atPost, mapFor, roomsOf, seedFrom, walkCommand } from "./walk.js";
 import { COMMAND_FILE_PROBLEMS, ROOM_TALK, WORLD_CHARACTERS, WORLD_COMMAND, WORLD_LIFE } from "./world.js";
 import { BODIES, SPARE, THE_CHAIR, readHolderLine, readJobLine, readPostLine, readWorkersLine, slugOf } from "../public/command-text.js";
 
 // The player, when they hold a post.
 export const YOU = "you";
+// The ship, whose chain of command the mutiny and the menus are about.
+const SHIP_PLACE = "meridian";
 
 const plain = (words) => String(words ?? "").toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 const upperFirst = (text) => (text ? text[0].toUpperCase() + text.slice(1) : text);
@@ -48,9 +53,10 @@ export const DUTY_MEASURES = {
   "thefts": (c) => 100 - 25 * c.tally.thefts,
   "medicine out": (c) => (c.ship.out?.medicine ? 0 : 100),
   "errands left waiting": (c) => 100 - c.tally.errandsWaiting / 6,
+  "the council's confidence": (c) => c.confidence,
 };
 // Words a post's duty may carry that a later step measures.
-export const DUTY_LATER = ["the council's confidence"];
+export const DUTY_LATER = [];
 
 // The numbers a person has for the chain of command, and what they go between: ambition and temper from 1 to 5, and
 // loyalty to the captain to begin with from 0 to 100. EVERYONE is what someone has without them in their file, unless
@@ -171,7 +177,7 @@ function compileCommand(place) {
       if (!DUTY_LATER.includes(words.toLowerCase())) at(raw.line, `${words} isn't something a post's duty can be measured by: the measures are ${Object.keys(DUTY_MEASURES).join(", ")}`);
       return false;
     }).map((words) => words.toLowerCase());
-    model.posts.push({ id, title: post.title, room: room.id, roomName: room.name, chosenBy: post.chosenBy, watchBill: post.watchBill, heads, poolWords: post.pool, skills: readSkills(post.skills, raw.line, `the ${post.title}`), duty: post.duty, measures, line: raw.line });
+    model.posts.push({ id, title: post.title, room: room.id, roomName: room.name, chosenBy: post.chosenBy, watchBill: post.watchBill, brig: post.brig, heads, poolWords: post.pool, skills: readSkills(post.skills, raw.line, `the ${post.title}`), duty: post.duty, measures, line: raw.line });
   }
 
   // Who chooses whoever holds each post: another post, or the council, or the civilians. Nobody chooses themselves.
@@ -258,6 +264,14 @@ function compileCommand(place) {
   // hold a post here.
   model.reviews = readReviews(file.numbers ?? {}, (message) => at(null, message));
   model.crew = readEveryone(file.numbers?.crew, (message) => at(null, message));
+  model.mutiny = readMutiny(file.numbers ?? {}, (message) => at(null, message));
+  // The brig: the room whoever's arrested is kept in, and for how long.
+  const brig = file.numbers?.brig ? String(file.numbers.brig).match(/^(.+?),\s*for\s+(\d+)\s+days?$/i) : null;
+  if (file.numbers?.brig && !brig) at(null, `the brig is written like The Brig, for 7 days: the room, and how long someone's kept there, not "${file.numbers.brig}"`);
+  const brigRoom = brig ? findRoom(brig[1]) : null;
+  if (brig && !brigRoom) at(null, `${name} has no room called ${brig[1]}, for the brig`);
+  model.brig = brigRoom ? { room: brigRoom.id, roomName: brigRoom.name, days: Math.max(1, Number(brig[2])) } : null;
+  if (model.posts.filter((post) => post.brig).length > 1) at(null, "only one post keeps the brig");
   for (const one of peopleOf(place)) {
     const person = one.id ? WORLD_CHARACTERS[one.id] : null;
     for (const [what, [lo, hi]] of Object.entries(NATURE)) {
@@ -480,10 +494,12 @@ export const jobOf = (game, place, key) => jobsOf(game, place)[key];
 // Everyone doing a job, in the watch bill's order: null for the spare hands.
 export const onJob = (game, place, jobId) => Object.entries(jobsOf(game, place)).filter(([, job]) => job === jobId).map(([key]) => key);
 
-// Why someone isn't at their job, or null: dead, being patched up after a beating, or not where their post is.
+// Why someone isn't at their job, or null: dead, in the brig, being patched up after a beating, or not where their
+// post is.
 export function lostReason(game, place, key) {
   if (!key || key === YOU) return null;
   if (!stillAlive(game, key)) return "dead";
+  if (stateOf(game, place)?.brig?.[key]) return "in the brig";
   if (isHurt(game, place, key)) return "being patched up";
   if (WORLD_CHARACTERS[key] && !atPost(game, key)) return "away";
   return null;
@@ -518,13 +534,23 @@ export function movedDays(game, place) {
   const jobs = jobsOf(game, place);
   const holders = stateOf(game, place)?.holders ?? null;
   const kept = movedKept.get(jobs);
-  if (kept && kept.model === model && kept.holders === holders) return kept.moved;
+  if (kept && kept.model === model && kept.holders === holders && kept.brig === (stateOf(game, place)?.brig ?? null) && kept.chair === (game.ship?.chair?.id ?? null)) return kept.moved;
   let moved = null;
+  // Whoever's in the brig spends the day there.
+  for (const key of Object.keys(stateOf(game, place)?.brig ?? {})) {
+    if (model.brig) (moved ??= {})[key] = { job: "brig", day: [{ at: "00:00", doing: "locked in the brig", go: `@${model.brig.room}`, stays: true }] };
+  }
   for (const post of model.posts) {
-    if (post.id === model.chairPost) continue;
-    const start = model.start[post.id]?.key;
     const key = holderKey(game, place, post.id);
-    if (!key || key === YOU || key === start) continue;
+    if (!key || key === YOU || moved?.[key]) continue;
+    // Someone aboard who's taken the chair lives the day of the chair's own captain, at their place on the bridge.
+    if (post.id === model.chairPost) {
+      const captain = chairCaptainOf(place);
+      if (captain && key !== captain && !WORLD_CHARACTERS[key]?.chair) (moved ??= {})[key] = { job: `post:${post.id}`, day: dayInFile(place, captain), home: captain };
+      continue;
+    }
+    const start = model.start[post.id]?.key;
+    if (key === start) continue;
     const day = start ? dayInFile(place, start) : null;
     if (day) (moved ??= {})[key] = { job: `post:${post.id}`, day, home: start };
   }
@@ -533,8 +559,18 @@ export function movedDays(game, place) {
     const day = job === null ? model.spareDay : model.jobs.find((one) => one.id === job)?.day;
     if (day) (moved ??= {})[key] = { job, day };
   }
-  movedKept.set(jobs, { model, holders, moved });
+  movedKept.set(jobs, { model, holders, moved, brig: stateOf(game, place)?.brig ?? null, chair: game.ship?.chair?.id ?? null });
   return moved;
+}
+
+// One of the chair's own captains, with a day at the place: whoever takes the chair lives that day.
+const chairCaptainOf = (place) => Object.keys(WORLD_LIFE[place]?.people ?? {}).find((id) => WORLD_CHARACTERS[id]?.chair) ?? null;
+
+// A captain the officers have relieved works aboard as crew, wherever the watch bill has them.
+const DEPOSED_WORK = { name: "Work a shift where you're sent", pay: 10, skill: "athletics", done: "You put in a shift wherever you're sent, and the crew watch you do it." };
+export function deposedStart(game, place = SHIP_PLACE) {
+  if (isCaptain(game) || !stateOf(game, place)?.deposed) return null;
+  return { place, job: DEPOSED_WORK, room: null };
 }
 
 // The work a crew member's shift is when the watch bill has moved them from the job their life began in: the same pay,
@@ -557,6 +593,9 @@ export function assignJob(game, place, key, jobId, { by = YOU } = {}) {
   if (!(key in jobs) || key === YOU) throw new Error("They aren't on the watch bill.");
   const job = jobId === null || jobId === "spare" ? null : jobById(place, jobId);
   if (jobId !== null && jobId !== "spare" && !job) throw new Error("There's no such job.");
+  // While orders are going astray, a first officer who's lost faith in the captain won't move anyone for them.
+  const refused = by === YOU ? watchBillRefuses(game, place) : null;
+  if (refused) throw new Error(refused);
   const to = job?.id ?? null;
   const who = personCalled(game, key);
   if (jobs[key] === to) return `${who} is already ${jobWords(job)}.`;
@@ -710,6 +749,14 @@ const MEMORY = {
   passed_over: { weight: -12, words: "passed over for {title} by {by}, who chose {who}" },
   refused: { weight: -10, words: "refused the post of {title} by {by}" },
   asked: { weight: 0, words: "asked {by} for the post of {title}" },
+  arrested: { weight: -40, words: "put in the brig by {by}" },
+  heard: { weight: 10, words: "heard out by {by}, and given what the officers asked" },
+  stood_down: { weight: 8, words: "saw {by} step down rather than split the ship" },
+  joined: { weight: 20, words: "had {by} join them against the captain" },
+  betrayed: { weight: -30, words: "given away to the captain by {by}" },
+  informed: { weight: 15, words: "warned of a mutiny by {by}" },
+  sided_with: { weight: 0, words: "saw {by} side with {faction}" },
+  sided_against: { weight: 0, words: "saw {by} side against {faction}" },
 };
 const memoriesOf = (game, place, key) => stateOf(game, place)?.memory?.[key] ?? [];
 const fadeOf = (place) => commandOf(place)?.reviews?.fade || 30;
@@ -735,11 +782,13 @@ export function regardFor(game, place, key, other) {
   return Math.round(sum);
 }
 
-// Someone's loyalty to whoever's in the chair now: their own to begin with, and what they remember of them.
+// Someone's loyalty to whoever's in the chair now: their own to begin with, what's moved it lately (the rations, going
+// hungry, the mood aboard, risky jumps and the sides the captain takes), and what they remember of the captain.
 export function loyaltyOf(game, place, key) {
   const model = commandOf(place);
   const captain = model?.chairPost ? holderKey(game, place, model.chairPost) : null;
-  return Math.max(0, Math.min(100, natureOf(place, key).loyalty + regardFor(game, place, key, captain)));
+  const lately = Object.values(causesOf(game, place, key) ?? {}).reduce((sum, n) => sum + n, 0);
+  return Math.round(Math.max(0, Math.min(100, natureOf(place, key).loyalty + lately + regardFor(game, place, key, captain))));
 }
 
 // Everyone a post could be given to: whoever does the jobs it's picked from and whoever holds the posts it's picked
@@ -827,6 +876,11 @@ export function officerName(game, place, postId) {
 // Every post's officerName, by the post's id, for the ship's lines to fill in: {quartermaster}, {chief_engineer}.
 export function officerNames(game, place) {
   return Object.fromEntries((commandOf(place)?.posts ?? []).map((post) => [post.id, officerName(game, place, post.id)]));
+}
+
+// Puts the player in a room of the ship's map, as the walk does.
+function walkToRoom(game, room) {
+  walkCommand(game, { action: "room", to: room });
 }
 
 // What the ship calls someone in passing: by their post if they hold one; by the title in their file if they never
@@ -1185,15 +1239,17 @@ export function holdReviews(game, place, held) {
 export function grudgeLine(game, key) {
   const lines = ROOM_TALK.stock?.grudge;
   if (!lines || !key) return null;
+  const linesFor = (one) => (one.by === YOU && lines[`${one.kind}_by_you`]) || lines[one.kind];
   for (const place of Object.keys(WORLD_COMMAND)) {
-    const fresh = memoriesOf(game, place, key).filter((one) => one.kind !== "asked" && strengthOf(game, place, one) >= 0.5).at(-1);
+    const fresh = memoriesOf(game, place, key).filter((one) => one.kind !== "asked" && strengthOf(game, place, one) >= 0.5 && Array.isArray(linesFor(one)) && linesFor(one).length).at(-1);
     if (!fresh) continue;
-    const list = (fresh.by === YOU && lines[`${fresh.kind}_by_you`]) || lines[fresh.kind];
-    if (!Array.isArray(list) || !list.length) return null;
+    const list = linesFor(fresh);
     const post = postById(place, fresh.post);
     const values = { title: post?.title ?? "", post: post ? `the ${post.title}'s post` : "the post", by: calledBy(game, place, fresh.by), who: calledBy(game, place, fresh.about) };
     return list[seedFrom(`${key}/${fresh.day}/${fresh.kind}`) % list.length].replace(/\{(\w+)\}/g, (_, name) => values[name] ?? "");
   }
+  // While a mutiny's brewing, the discontented grumble instead.
+  if (Array.isArray(lines.grumbling) && lines.grumbling.length && grumbles(game, key)) return lines.grumbling[seedFrom(`${key}/grumbling`) % lines.grumbling.length];
   return null;
 }
 
@@ -1202,7 +1258,545 @@ function memoryLines(game, place, key, kinds = null) {
   return memoriesOf(game, place, key)
     .filter((one) => (!kinds || kinds.includes(one.kind)) && strengthOf(game, place, one) >= 0.25 && MEMORY[one.kind])
     .slice(-3).reverse()
-    .map((one) => `Day ${one.day}: ${MEMORY[one.kind].words.replace(/\{(\w+)\}/g, (_, name) => ({ title: postById(place, one.post)?.title ?? "a post", by: calledBy(game, place, one.by), who: calledBy(game, place, one.about) })[name] ?? "")}`);
+    .map((one) => `Day ${one.day}: ${MEMORY[one.kind].words.replace(/\{(\w+)\}/g, (_, name) => ({ title: postById(place, one.post)?.title ?? "a post", by: calledBy(game, place, one.by), who: calledBy(game, place, one.about), faction: FACTIONS[one.about]?.name ?? one.about })[name] ?? "")}`);
+}
+
+// ---- Loyalty, the council's confidence, and mutiny ------------------------------------------------
+
+// The file's numbers for a mutiny: when it brews (morale and the officers' loyalty both under theirs), after how many
+// days of brewing each stage comes, and the council's confidence to begin with.
+function readMutiny(numbers, problem) {
+  const brews = numbers.mutiny ? String(numbers.mutiny).match(/^morale\s+under\s+(\d+),?\s+(?:and\s+)?loyalty\s+under\s+(\d+)$/i) : null;
+  if (numbers.mutiny && !brews) problem(`mutiny brews is written like morale under 30, loyalty under 35, not "${numbers.mutiny}"`);
+  const builds = numbers.builds ? String(numbers.builds).match(/^grumbling\s+after\s+(\d+)\s+days?,\s*orders\s+refused\s+after\s+(\d+),\s*a\s+delegation\s+after\s+(\d+),\s*(?:and\s+)?the\s+mutiny\s+after\s+(\d+)$/i) : null;
+  if (numbers.builds && !builds) problem(`the mutiny builds is written like grumbling after 1 day, orders refused after 4, a delegation after 7, the mutiny after 10, not "${numbers.builds}"`);
+  const stages = builds ? builds.slice(1, 5).map(Number) : [1, 4, 7, 10];
+  if (stages.some((n, i) => n < 1 || (i > 0 && n <= stages[i - 1]))) problem("the mutiny's stages come one after another: each after more days than the one before, and the first after a day at least");
+  const confidence = numbers.confidence ? String(numbers.confidence).match(/^(\d+)(?:\s+to\s+begin\s+with)?$/i) : null;
+  if (numbers.confidence && (!confidence || Number(confidence[1]) > 100)) problem(`the council's confidence is a number from 0 to 100, like 60 to begin with, not "${numbers.confidence}"`);
+  return { morale: brews ? Number(brews[1]) : null, loyalty: brews ? Number(brews[2]) : null, stages, confidence: confidence ? Math.min(100, Number(confidence[1])) : 60 };
+}
+
+// What moves someone's loyalty to the captain besides what they remember, each a running number kept in the save and
+// moved a little every day, never past its bounds: the rations, going hungry, the mood aboard, risky jumps, and the
+// sides the captain takes in the world.
+const CAUSES = {
+  rations: { words: "the rations", low: -20, high: 10 },
+  hunger: { words: "going hungry", low: -20, high: 0 },
+  morale: { words: "the mood aboard", low: -10, high: 0 },
+  jumps: { words: "risky jumps", low: -15, high: 0 },
+  sides: { words: "the sides the captain takes", low: -20, high: 20 },
+};
+const RATION_PULL = { half: -1.5, reduced: -0.5, standard: 0, generous: 0.5 };
+const RATION_TRUST = { half: -25, reduced: -10, standard: 0, generous: 10 };
+const toward = (value, target, step) => (value < target ? Math.min(target, value + step) : Math.max(target, value - step));
+const tenths = (n) => Math.round(n * 10) / 10;
+const causesOf = (game, place, key) => stateOf(game, place)?.loyalty?.[key] ?? null;
+function bounded(c) {
+  for (const [cause, { low, high }] of Object.entries(CAUSES)) c[cause] = tenths(Math.max(low, Math.min(high, c[cause] ?? 0)));
+  return c;
+}
+
+// The share of a day's sittings that went hungry, by the day's number from 0.
+function missedOn(game, place, index) {
+  const meals = game.logistics?.[place]?.meals?.days?.[index];
+  return meals && meals.served + meals.missed > 0 ? meals.missed / (meals.served + meals.missed) : 0;
+}
+
+// Someone's causes after one more day: half or reduced rations pull loyalty down a little each day and generous ones
+// up, a day of empty kettles pulls it down by how many went hungry, morale under 30 pulls it down, and each settles
+// back when what moved it has stopped.
+function causesAfterDay(game, place, was, index) {
+  const c = { rations: 0, hunger: 0, morale: 0, jumps: 0, sides: 0, ...(was ?? {}) };
+  const pull = RATION_PULL[game.ship?.rations] ?? 0;
+  c.rations = pull ? c.rations + pull : toward(c.rations, 0, 1);
+  const missed = missedOn(game, place, index);
+  c.hunger = missed > 0 ? c.hunger - 4 * missed : toward(c.hunger, 0, 1);
+  c.morale = (game.ship?.morale ?? 50) < 30 ? c.morale - 1 : toward(c.morale, 0, 1);
+  c.jumps = toward(c.jumps, 0, 0.5);
+  c.sides = toward(c.sides, 0, 0.2);
+  return bounded(c);
+}
+
+// Everyone whose loyalty moves: whoever holds a post, but the captain.
+function trackedOf(game, place) {
+  const model = commandOf(place);
+  return model.posts.filter((post) => post.id !== model.chairPost).map((post) => holderKey(game, place, post.id)).filter((key) => key && key !== YOU);
+}
+
+// The officers a mutiny counts: whoever holds a post another post chooses for, here, well and free.
+function officersOf(game, place) {
+  const model = commandOf(place);
+  return model.posts
+    .filter((post) => post.chooser.post && post.id !== model.chairPost)
+    .map((post) => holderKey(game, place, post.id))
+    .filter((key) => key && key !== YOU && stillAlive(game, key) && !stateOf(game, place)?.brig?.[key]);
+}
+export function officersLoyalty(game, place = SHIP_PLACE) {
+  const officers = officersOf(game, place);
+  return officers.length ? Math.round(officers.reduce((sum, key) => sum + loyaltyOf(game, place, key), 0) / officers.length) : null;
+}
+
+// The council's confidence in the captain, from 0 to 100: it follows the ship's morale, less for poor rations, empty
+// kettles and shortages, a fifth of the way a day.
+export const confidenceOf = (game, place = SHIP_PLACE) => Math.round(stateOf(game, place)?.confidence ?? commandOf(place)?.mutiny?.confidence ?? 60);
+function confidenceAfterDay(game, place, index) {
+  const now = stateOf(game, place)?.confidence ?? commandOf(place)?.mutiny?.confidence ?? 60;
+  const shortages = Object.values(game.ship?.out ?? {}).filter((n) => n > 0).length;
+  const target = Math.max(0, Math.min(100, (game.ship?.morale ?? 50) + (RATION_TRUST[game.ship?.rations] ?? 0) - 30 * missedOn(game, place, index) - 10 * shortages));
+  return tenths(now + (target - now) / 5);
+}
+
+// Why someone's loyalty is where it is, in words for their card: what's pulled it down and what's raised it.
+function loyaltyWhy(game, place, key) {
+  const model = commandOf(place);
+  const captain = model?.chairPost ? holderKey(game, place, model.chairPost) : null;
+  const c = causesOf(game, place, key) ?? {};
+  const down = Object.entries(CAUSES).filter(([cause]) => (c[cause] ?? 0) <= -2).map(([, one]) => one.words);
+  const up = Object.entries(CAUSES).filter(([cause]) => (c[cause] ?? 0) >= 2).map(([, one]) => one.words);
+  const regard = regardFor(game, place, key, captain);
+  const remembered = captain === YOU ? "what you've done to them" : "what the captain's done to them";
+  if (regard <= -5) down.push(remembered);
+  if (regard >= 5) up.push(captain === YOU ? "what you've done for them" : "what the captain's done for them");
+  return [down.length ? `down for ${listWords(down)}` : null, up.length ? `up for ${listWords(up)}` : null].filter(Boolean).join("; ") || null;
+}
+
+// The captain jumping the ship somewhere risky: every officer likes it less the more dangerous it is. danger is the
+// star map's, from 0 for safe to 4 for deadly.
+export function riskyJump(game, danger, place = SHIP_PLACE) {
+  if (!commandOf(place)?.mutiny || !game.command?.[place] || danger < 2) return;
+  const state = commandState(game, place);
+  const loyalty = { ...(state.loyalty ?? {}) };
+  for (const key of trackedOf(game, place)) loyalty[key] = bounded({ ...(loyalty[key] ?? {}), jumps: (loyalty[key]?.jumps ?? 0) - 2 * (danger - 1) });
+  state.loyalty = loyalty;
+}
+
+// The captain's standing with a faction changing: each officer with beliefs of their own likes it as much as their
+// beliefs agree with the faction's, and more if it's their own faction. A big change is remembered, for their card.
+export function sidesTaken(game, faction, amount, place = SHIP_PLACE) {
+  if (!amount || !isCaptain(game) || !commandOf(place)?.mutiny || !game.command?.[place] || !FACTIONS[faction]) return;
+  const state = commandState(game, place);
+  const loyalty = { ...(state.loyalty ?? {}) };
+  for (const key of trackedOf(game, place)) {
+    const file = WORLD_CHARACTERS[key];
+    if (!file) continue;
+    const affinity = Math.max(-1, Math.min(1, beliefAffinity(file.beliefs ?? {}, FACTION_BELIEFS[faction] ?? {}) + (file.faction === faction ? 0.5 : 0)));
+    const change = Math.max(-6, Math.min(6, amount * affinity));
+    if (Math.abs(change) < 0.1) continue;
+    loyalty[key] = bounded({ ...(loyalty[key] ?? {}), sides: (loyalty[key]?.sides ?? 0) + change });
+    if (Math.abs(change) >= 3) remember(game, place, key, amount > 0 ? "sided_with" : "sided_against", { by: YOU, about: faction });
+  }
+  state.loyalty = loyalty;
+}
+
+// The stages a mutiny builds through, by how many days it's been brewing: the file's thresholds.
+const STAGE_WORDS = ["calm", "grumbling", "orders going astray", "a delegation", "the ship taken"];
+export const mutinyStage = (game, place = SHIP_PLACE) => stateOf(game, place)?.mutiny?.stage ?? 0;
+const stageFor = (pressure, stages) => stages.filter((n) => pressure >= n).length;
+const mutinyOf = (state) => (state.mutiny ??= { pressure: 0, stage: 0, ringleader: null, due: null, calmUntil: 0 });
+
+// The captain, in words for a line: you, or their post and name.
+const captainWords = (game, place) => {
+  const model = commandOf(place);
+  const key = holderKey(game, place, model.chairPost);
+  return key === YOU ? "you" : officerName(game, place, model.chairPost);
+};
+
+// Who leads the officers against the captain: the least loyal of them, a person with a file if there's one, the more
+// ambitious and short-tempered first when it's close.
+function chooseRingleader(game, place) {
+  const officers = officersOf(game, place);
+  const named = officers.filter((key) => WORLD_CHARACTERS[key]);
+  return (named.length ? named : officers)
+    .map((key) => ({ key, loyalty: loyaltyOf(game, place, key), nature: natureOf(place, key) }))
+    .sort((a, b) => a.loyalty - b.loyalty || b.nature.ambition + b.nature.temper - (a.nature.ambition + a.nature.temper) || String(a.key).localeCompare(String(b.key)))[0]?.key ?? null;
+}
+
+// Whoever keeps the brig, and whether they'd lock someone up for the captain: loyal enough, and not leading it.
+function securityLoyal(game, place) {
+  const model = commandOf(place);
+  const post = model.posts.find((one) => one.brig);
+  const key = post ? holderKey(game, place, post.id) : null;
+  const m = stateOf(game, place)?.mutiny;
+  return Boolean(key && key !== YOU && key !== m?.ringleader && stillAlive(game, key) && loyaltyOf(game, place, key) >= 50);
+}
+
+// How the officers feel about the player, whoever has the chair: their own loyalty to a captain, and what they
+// remember of the player. A captain the officers relieved can be asked back when it's high.
+function feelingForYou(game, place) {
+  const officers = officersOf(game, place);
+  if (!officers.length) return 0;
+  return officers.reduce((sum, key) => sum + Math.max(0, Math.min(100, natureOf(place, key).loyalty + regardFor(game, place, key, YOU))), 0) / officers.length;
+}
+
+// The mutiny over for now: no pressure, no stage, nobody leading it, and calm for a week if it ended well.
+function calmDown(state, today, { due = null, calm = 7 } = {}) {
+  state.mutiny = { pressure: 0, stage: 0, ringleader: null, due, calmUntil: today + calm };
+}
+
+// The written scenes the chain of command starts when the player carries on: the officers' delegation, a quiet word
+// against a captain who isn't the player, or a deposed captain under guard.
+export const COMMAND_SCENES = { delegation: "command_delegation", conspiracy: "command_conspiracy", brig: "command_brig" };
+export function commandSceneDue(game, place = SHIP_PLACE) {
+  const due = stateOf(game, place)?.mutiny?.due;
+  return due ? COMMAND_SCENES[due] ?? null : null;
+}
+export function commandSceneStarted(game, place = SHIP_PLACE) {
+  const m = stateOf(game, place)?.mutiny;
+  if (m) m.due = null;
+}
+// A delegation or a quiet word that was under way is over once the ship's been taken.
+function dropCommandScenes(game) {
+  const ids = Object.values(COMMAND_SCENES);
+  if (ids.includes(game.scene?.id)) game.scene = null;
+  for (const id of ids) if (game.parked?.[id]) delete game.parked[id];
+}
+
+// What a written scene's stand-ins are in this game: {ringleader} is whoever leads the officers against the captain,
+// or led them when they took the ship from the player, and {captain} whoever has the chair. Each is a person's id, for
+// a FIGHT or a check, and their name, for the words.
+export function standIns(game, place = SHIP_PLACE) {
+  const model = commandOf(place);
+  const state = stateOf(game, place);
+  const leader = state?.mutiny?.ringleader ?? state?.deposed?.by ?? null;
+  const captain = model?.chairPost ? holderKey(game, place, model.chairPost) : null;
+  return {
+    ringleader: leader ? { id: leader, name: personCalled(game, leader) } : null,
+    captain: captain ? { id: captain, name: captain === YOU ? "you" : officerName(game, place, model.chairPost) } : null,
+  };
+}
+// Real people to check a scene's stand-ins with.
+export const SAMPLE_STAND_INS = { ringleader: { id: "tarrow", name: "Kara Tarrow" }, captain: { id: "reddick", name: "Captain Reddick" } };
+
+// What a scene's "? mutiny" conditions ask: whether one's brewing, whether security would arrest the ringleader, and
+// whether the officers would have the player back in the chair.
+export const MUTINY_CONDITIONS = ["brewing", "can arrest", "offers the chair"];
+export function mutinyHolds(game, words, place = SHIP_PLACE) {
+  const state = stateOf(game, place);
+  if (!state || !commandOf(place)?.mutiny) return false;
+  if (words === "brewing") return mutinyStage(game, place) >= 1;
+  if (words === "can arrest") return securityLoyal(game, place);
+  if (words === "offers the chair") return Boolean(state.deposed) && !isCaptain(game) && feelingForYou(game, place) >= 50;
+  return false;
+}
+
+// Whether someone grumbles about the captain while a mutiny's brewing: an officer whose loyalty is under the file's
+// mark, or about half of everyone else.
+export function grumbles(game, key, place = SHIP_PLACE) {
+  const model = commandOf(place);
+  if (!model?.mutiny || !key || key === YOU || mutinyStage(game, place) < 1) return false;
+  if (postOf(game, place, key)) return loyaltyOf(game, place, key) < (model.mutiny.loyalty ?? 35);
+  return seedFrom(`${key}/grumbles`) % 2 === 0;
+}
+
+// While orders are going astray, the council won't put through a cut in the rations the captain orders. The words for
+// it, or null.
+export function councilRefuses(game, place = SHIP_PLACE) {
+  const model = commandOf(place);
+  if (!model?.mutiny || !isCaptain(game) || mutinyStage(game, place) < 2) return null;
+  return confidenceOf(game, place) < (model.mutiny.loyalty ?? 35) ? "The council won't put a cut through for you: they've stopped taking your word on the rations." : null;
+}
+// And the first officer won't move anyone on the watch bill for a captain they've lost faith in.
+function watchBillRefuses(game, place) {
+  const model = commandOf(place);
+  if (!model?.mutiny || mutinyStage(game, place) < 2) return null;
+  const keeper = keeperOf(game, place);
+  return keeper && loyaltyOf(game, place, keeper) < (model.mutiny.loyalty ?? 35) ? `${upperFirst(calledBy(game, place, keeper))} won't move anyone for you while the ship's like this.` : null;
+}
+
+// Someone locked in the brig, for the file's days: off their post, which is filled in turn, and off the watch bill.
+function arrest(game, place, key, { by = null, today = dayNow(game), notes = [] } = {}) {
+  const model = commandOf(place);
+  const state = commandState(game, place);
+  const post = postOf(game, place, key);
+  state.brig = { ...(state.brig ?? {}), [key]: { until: today + (model.brig?.days ?? 7), by } };
+  const jobs = { ...state.jobs };
+  delete jobs[key];
+  state.jobs = jobs;
+  state.cover = Object.fromEntries(Object.entries(state.cover).filter(([filler, lost]) => filler !== key && lost !== key));
+  remember(game, place, key, "arrested", { by, post, day: today });
+  if (post && post !== model.chairPost) {
+    setHolder(game, place, post, null, { day: today });
+    fillPost(game, place, post, { day: today, notes });
+  }
+}
+
+// The brig's door opening for whoever's done their days: they're one of the spare hands now.
+function releaseFromBrig(game, place, state, today, notes) {
+  const brig = { ...(state.brig ?? {}) };
+  let jobs = null;
+  for (const [key, held] of Object.entries(brig)) {
+    if (held.until > today) continue;
+    delete brig[key];
+    (jobs ??= { ...state.jobs })[key] = null;
+    tell(game, place, notes, `${upperFirst(calledBy(game, place, key))} has been let out of the brig, and is one of the spare hands now.`, today);
+  }
+  if (jobs) {
+    state.brig = brig;
+    state.jobs = jobs;
+  }
+}
+
+// The chair changing hands: to someone aboard, whose post is filled in turn by whoever chooses for it, or back to the
+// player. Loyalty starts again with a new captain, and so does the council's confidence. Gives who had it.
+function handOver(game, place, to, today, notes) {
+  const model = commandOf(place);
+  const state = commandState(game, place);
+  const old = holderKey(game, place, model.chairPost);
+  const leftPost = to === YOU ? null : postOf(game, place, to);
+  handChair(game, to);
+  const jobs = { ...state.jobs };
+  if (to === YOU) delete jobs[YOU];
+  else delete jobs[to];
+  state.jobs = jobs;
+  if (leftPost && leftPost !== model.chairPost) {
+    setHolder(game, place, leftPost, null, { day: today });
+    fillPost(game, place, leftPost, { day: today, notes });
+  }
+  state.loyalty = {};
+  state.confidence = model.mutiny?.confidence ?? 60;
+  state.pending = {};
+  return old;
+}
+
+// The officers take the ship from the player: whoever led them has the chair, the player is crew, one of the spare
+// hands, and, if they were aboard, under guard in the brig, with the written scene of it to play when they carry on.
+function takeShip(game, place, today, notes, { scene = true } = {}) {
+  const model = commandOf(place);
+  const state = commandState(game, place);
+  const leader = state.mutiny?.ringleader ?? chooseRingleader(game, place);
+  if (!leader) return;
+  const name = calledBy(game, place, leader);
+  const aboard = game.location === place;
+  dropCommandScenes(game);
+  handOver(game, place, leader, today, notes);
+  state.deposed = { day: today, by: leader };
+  state.jobs = { ...state.jobs, [YOU]: null };
+  if (aboard && model.brig) {
+    try {
+      walkToRoom(game, model.brig.room);
+    } catch {
+      // Somewhere the walk can't take them from: the story says where they are.
+    }
+  }
+  const due = scene && aboard ? "brig" : null;
+  calmDown(state, today, { due });
+  if (due) game.pendingEvents?.push("The officers have taken the ship, and the captain is under guard.");
+  tell(game, place, notes, `The officers have taken the ship. ${upperFirst(name)} has the chair now${aboard ? ", and you're under guard in the brig" : ", and you aren't the captain any more"}.`, today);
+}
+
+// The officers take the ship from a captain who isn't the player: whoever led them has the chair. An officer who'd
+// had it goes to the brig; one of the chair's own captains is gone from the story.
+function takenFromCaptain(game, place, leader, today, notes) {
+  const model = commandOf(place);
+  const state = commandState(game, place);
+  const oldName = officerName(game, place, model.chairPost);
+  const name = calledBy(game, place, leader);
+  const old = handOver(game, place, leader, today, notes);
+  if (old && old !== YOU && WORLD_CHARACTERS[old] && !WORLD_CHARACTERS[old].chair) arrest(game, place, old, { by: leader, today, notes });
+  calmDown(state, today);
+  tell(game, place, notes, `The officers have taken the ship from ${oldName}. ${upperFirst(name)} has the chair now.`, today);
+}
+
+// The officers give the chair back to the player, a captain they'd relieved: whoever had it goes to the brig.
+function restore(game, place, today, notes) {
+  const model = commandOf(place);
+  const state = commandState(game, place);
+  const oldName = officerName(game, place, model.chairPost);
+  const old = handOver(game, place, YOU, today, notes);
+  state.deposed = null;
+  if (old && old !== YOU && WORLD_CHARACTERS[old] && !WORLD_CHARACTERS[old].chair) arrest(game, place, old, { by: YOU, today, notes });
+  calmDown(state, today);
+  tell(game, place, notes, `The officers have taken the ship back from ${oldName}, and given it to you. You have the chair again.`, today);
+}
+
+// A delegation's time has come. To the player as captain, it's the officers at the door; to the player as crew aboard,
+// a quiet word from whoever's leading it; and with the player away, the captain gives ground if the rations can go up.
+function startDelegation(game, place, state, today, notes) {
+  const m = mutinyOf(state);
+  m.ringleader = chooseRingleader(game, place);
+  if (!m.ringleader) return;
+  const name = upperFirst(calledBy(game, place, m.ringleader));
+  if (isCaptain(game)) {
+    m.due = "delegation";
+    game.pendingEvents?.push(`${name} and some of the officers are asking to see the captain, together.`);
+    tell(game, place, notes, `${name} and some of the officers are asking to see you, together. Carry on with the story to hear them.`, today);
+  } else if (aboardShip(game)) {
+    m.due = "conspiracy";
+    game.pendingEvents?.push(`${name} wants a quiet word with the player, away from the captain.`);
+    tell(game, place, notes, `${name} wants a quiet word with you, away from ${captainWords(game, place)}. Carry on with the story to hear it.`, today);
+  } else {
+    const raised = raiseRations(game, "standard");
+    if (!raised) return;
+    calmDown(state, today);
+    tell(game, place, notes, `${upperFirst(captainWords(game, place))} met the officers, and gave ground: ${lowerFirst(raised)}`, today);
+  }
+}
+
+// The mutiny risen: the ship taken from whoever has the chair.
+function rise(game, place, state, today, notes) {
+  const m = mutinyOf(state);
+  if (!m.ringleader || !officersOf(game, place).includes(m.ringleader)) m.ringleader = chooseRingleader(game, place);
+  if (!m.ringleader) return calmDown(state, today, { calm: 0 });
+  if (isCaptain(game)) takeShip(game, place, today, notes);
+  else takenFromCaptain(game, place, m.ringleader, today, notes);
+}
+
+// What brews it and how far it's got, a day at a time: a day with morale and the officers' loyalty both under the
+// file's marks adds a day of pressure, and any other takes one away; crossing a stage says so, and its time comes.
+function pressureDay(game, place, state, today, notes) {
+  const model = commandOf(place);
+  const { morale, loyalty, stages } = model.mutiny;
+  const m = mutinyOf(state);
+  if (morale === null || loyalty === null) return;
+  const average = officersLoyalty(game, place) ?? 100;
+  const brewing = (game.ship?.morale ?? 100) < morale && average < loyalty && !(m.calmUntil > today);
+  m.pressure = Math.max(0, Math.min(stages[3], (m.pressure ?? 0) + (brewing ? 1 : -1)));
+  const was = m.stage ?? 0;
+  const now = stageFor(m.pressure, stages);
+  m.stage = now;
+  const captain = captainWords(game, place);
+  if (now > was) {
+    if (was < 1 && now >= 1) {
+      const worst = Object.entries(CAUSES).map(([cause]) => [cause, officersOf(game, place).reduce((sum, key) => sum + (causesOf(game, place, key)?.[cause] ?? 0), 0)]).sort((a, b) => a[1] - b[1])[0];
+      const about = worst && worst[1] < 0 ? { hunger: "empty kettles", rations: "the rations", morale: "how things are", jumps: "risky jumps", sides: "the company the ship keeps" }[worst[0]] : "how things are";
+      tell(game, place, notes, `There's grumbling in the mess, about ${about}, and about ${captain}.`, today);
+    }
+    if (was < 2 && now >= 2) {
+      const astray = [];
+      if (watchBillRefuses(game, place)) astray.push(`${calledBy(game, place, keeperOf(game, place))} is slow to move anyone on the watch bill`);
+      if (isCaptain(game) && councilRefuses(game, place)) astray.push("the council has stopped taking your word on the rations");
+      tell(game, place, notes, astray.length ? `Orders have started going astray: ${listWords(astray)}.` : `The officers are carrying out ${captain === "you" ? "your" : "the captain's"} orders, slowly.`, today);
+    }
+    if (was < 3 && now >= 3) startDelegation(game, place, state, today, notes);
+    if (was < 4 && now >= 4) rise(game, place, state, today, notes);
+  } else if (now < was) {
+    if (now === 0) tell(game, place, notes, "The grumbling in the mess has died down.", today);
+    if (now < 3 && m.due && m.due !== "brig") m.due = null;
+    if (now < 3) m.ringleader = null;
+  }
+}
+
+// At each midnight, after the reviews: everyone's loyalty and the council's confidence move with the day that's ended,
+// whoever's done their days in the brig is let out, and the mutiny's pressure builds or eases. Called from the day's
+// loop.
+export function moodDay(game, day) {
+  const notes = [];
+  for (const place of Object.keys(WORLD_COMMAND)) {
+    const model = commandOf(place);
+    if (!model?.mutiny || !game.ship || !game.command?.[place]) continue;
+    const state = commandState(game, place);
+    if ((state.moodAt ?? -1) >= day) continue;
+    state.moodAt = day;
+    if (day <= 0) continue;
+    const today = day + 1;
+    const loyalty = { ...(state.loyalty ?? {}) };
+    for (const key of trackedOf(game, place)) loyalty[key] = causesAfterDay(game, place, loyalty[key], day - 1);
+    state.loyalty = loyalty;
+    state.confidence = confidenceAfterDay(game, place, day - 1);
+    releaseFromBrig(game, place, state, today, notes);
+    pressureDay(game, place, state, today, notes);
+  }
+  return notes;
+}
+
+// How the written scenes end a delegation, a quiet word or a captain's days in the brig: "* mutiny give ground",
+// "* mutiny arrest" and the rest. Gives the lines the player reads.
+export const MUTINY_OUTCOMES = ["give ground", "calmed", "arrest", "crushed", "step down", "refused", "taken", "released", "join", "stay out", "warn"];
+export function mutinyOutcome(game, word, reason, place = SHIP_PLACE) {
+  const notes = [];
+  const model = commandOf(place);
+  if (!model?.mutiny || !game.command?.[place]) return notes;
+  const state = commandState(game, place);
+  const m = mutinyOf(state);
+  const today = dayNow(game);
+  const leader = m.ringleader;
+  const name = leader ? calledBy(game, place, leader) : "the officers";
+  const captain = holderKey(game, place, model.chairPost);
+  switch (word) {
+    case "give ground": {
+      const raised = raiseRations(game, "standard");
+      for (const key of trackedOf(game, place)) remember(game, place, key, "heard", { by: captain, day: today });
+      state.confidence = Math.min(100, (state.confidence ?? model.mutiny.confidence) + 15);
+      calmDown(state, today);
+      tell(game, place, notes, `You've given the officers what they asked for${raised ? `: ${lowerFirst(raised)}` : "."} ${upperFirst(name)} takes it as a promise.`, today);
+      break;
+    }
+    case "calmed":
+      calmDown(state, today);
+      tell(game, place, notes, `${upperFirst(name)} and the officers have gone back to their posts, talked round, for now.`, today);
+      break;
+    case "arrest":
+    case "crushed": {
+      if (!leader) break;
+      if (word === "arrest" && !securityLoyal(game, place)) {
+        m.pressure = model.mutiny.stages[3];
+        m.due = null;
+        tell(game, place, notes, `Nobody moves to take ${name} anywhere. The officers leave together, and it'll come to the ship being taken.`, today);
+        break;
+      }
+      arrest(game, place, leader, { by: captain, today, notes });
+      if (word === "crushed") calmDown(state, today);
+      else {
+        m.pressure = Math.floor((m.pressure ?? 0) / 2);
+        m.stage = stageFor(m.pressure, model.mutiny.stages);
+        m.ringleader = null;
+        m.due = null;
+      }
+      tell(game, place, notes, word === "crushed" ? `You've put the delegation down. ${upperFirst(name)} is in the brig.` : `${upperFirst(name)} is in the brig, at your word. The rest of the officers have gone back to their posts, for now.`, today);
+      break;
+    }
+    case "step down":
+      if (!leader || !isCaptain(game)) break;
+      for (const key of trackedOf(game, place)) remember(game, place, key, "stood_down", { by: YOU, day: today });
+      handOver(game, place, leader, today, notes);
+      state.deposed = { day: today, by: leader, stepped: true };
+      state.jobs = { ...state.jobs, [YOU]: null };
+      calmDown(state, today);
+      tell(game, place, notes, `You've stepped down. ${upperFirst(name)} has the chair now, and you're crew, one of the spare hands.`, today);
+      break;
+    case "refused":
+      m.pressure = model.mutiny.stages[3] - 1;
+      m.due = null;
+      tell(game, place, notes, `${upperFirst(name)} and the officers have gone. If nothing changes, they'll take the ship.`, today);
+      break;
+    case "taken":
+      if (isCaptain(game)) takeShip(game, place, today, notes, { scene: false });
+      break;
+    case "released":
+      if (state.deposed) state.deposed.released = today;
+      tell(game, place, notes, "You're out of the brig, and crew now: one of the spare hands on the watch bill.", today);
+      break;
+    case "join":
+      if (isCaptain(game) || !leader) break;
+      if (mutinyHolds(game, "offers the chair", place)) restore(game, place, today, notes);
+      else {
+        remember(game, place, leader, "joined", { by: YOU, day: today });
+        takenFromCaptain(game, place, leader, today, notes);
+      }
+      break;
+    case "stay out":
+      m.due = null;
+      break;
+    case "warn": {
+      if (isCaptain(game) || !leader) break;
+      remember(game, place, leader, "betrayed", { by: YOU, day: today });
+      m.due = null;
+      if (securityLoyal(game, place)) {
+        remember(game, place, captain, "informed", { by: YOU, day: today });
+        arrest(game, place, leader, { by: captain, today, notes });
+        calmDown(state, today);
+        tell(game, place, notes, `${upperFirst(captainWords(game, place))} heard you out, and ${name} is in the brig.`, today);
+      } else {
+        m.pressure = model.mutiny.stages[3] - 1;
+        tell(game, place, notes, `${upperFirst(captainWords(game, place))} heard you out, but there's nobody left who'd lock ${name} up.`, today);
+      }
+      break;
+    }
+    default:
+      break;
+  }
+  return notes;
 }
 
 // ---- Skill in the work ------------------------------------------------------------------------------
@@ -1288,6 +1882,7 @@ export function dutyDay(game, day) {
       staffed: staffedScore(game, place, model),
       sittings: meals && meals.served + meals.missed > 0 ? (100 * meals.served) / (meals.served + meals.missed) : null,
       waitingParts: waitingForParts(game, place).length,
+      confidence: confidenceOf(game, place),
     };
     state.duty ??= {};
     for (const post of model.posts) {
@@ -1371,6 +1966,7 @@ export function commandView(game, place = "meridian") {
       watchBill: post.watchBill,
       duty: key ? dutyOf(game, place, post, key) : null,
       memories: key && key !== YOU ? memoryLines(game, place, key) : [],
+      loyalty: key && key !== YOU && post.id !== model.chairPost && model.mutiny ? { score: loyaltyOf(game, place, key), why: loyaltyWhy(game, place, key) } : null,
       rival: rival ? calledBy(game, place, rival) : null,
       candidates: givable ? ranked(game, place, post, YOU).slice(0, 8).map((one) => ({ key: one.key, name: calledBy(game, place, one.key), skills: skillWords(game, place, one.key, post.skills) ?? "" })) : null,
     };
@@ -1407,5 +2003,18 @@ export function commandView(game, place = "meridian") {
     candidate: shortName(game, one.candidate),
     by: one.by ? shortName(game, one.by) : null,
   })) : [];
-  return { place, name: model.name, groups, watchBill, reviews, waiting };
+  // How things stand aboard: the mutiny's stage, the officers' loyalty, the council's confidence, who's in the brig,
+  // and whether the player was relieved of command.
+  const m = state?.mutiny;
+  const mood = model.mutiny ? {
+    stage: m?.stage ?? 0,
+    words: STAGE_WORDS[m?.stage ?? 0],
+    officers: officersLoyalty(game, place),
+    confidence: confidenceOf(game, place),
+    brews: { morale: model.mutiny.morale, loyalty: model.mutiny.loyalty },
+    due: m?.due && m.due !== "brig" && m.ringleader ? `${upperFirst(calledBy(game, place, m.ringleader))} ${m.due === "delegation" ? "and some of the officers are asking to see you, together" : "wants a quiet word with you"}: carry on with the story.` : null,
+    brig: Object.entries(state?.brig ?? {}).map(([key, held]) => `${personCalled(game, key)}, until day ${held.until}`),
+    deposed: state?.deposed && !captain ? `You were relieved of command on day ${state.deposed.day}, when ${personCalled(game, state.deposed.by)} ${state.deposed.stepped ? "took the chair you gave up" : "and the officers took the ship"}.` : null,
+  } : null;
+  return { place, name: model.name, groups, watchBill, reviews, waiting, mood };
 }

@@ -9,6 +9,7 @@ import { endedWith } from "./record.js";
 import { DIFFICULTY, attr, maxHp, skillRank } from "./rules.js";
 import { WORLD_THREADS, endingsOf } from "./world.js";
 import { systemHolds } from "./systems.js";
+import { MUTINY_CONDITIONS, MUTINY_OUTCOMES, mutinyHolds } from "./command.js";
 import { systemIdOf } from "../public/systems-text.js";
 
 // The place's systems, in conditions and effects: "power off in The Docks", "alarm ringing at haven", "door locked
@@ -167,6 +168,14 @@ export function parseCondition(text) {
         else Object.assign(term, found, { kind: "system" });
         break;
       }
+      case "mutiny": {
+        // The ship's chain of command: whether a mutiny's brewing, whether security would arrest its ringleader, and
+        // whether the officers would have the player back in the chair.
+        const words = rest.join(" ").toLowerCase();
+        if (!MUTINY_CONDITIONS.includes(words)) problems.push(`"mutiny" is followed by one of ${MUTINY_CONDITIONS.join(", ")}: "${raw.trim()}"`);
+        term.id = words;
+        break;
+      }
       default:
         problems.push(`"${raw.trim()}" isn't a condition the game knows`);
     }
@@ -209,6 +218,7 @@ function termHolds(game, term, helpers) {
     case "life": result = (game.role?.id ?? "captain") === term.id; break;
     case "at": result = game.location === term.id; break;
     case "system": result = systemHolds(game, term); break;
+    case "mutiny": result = mutinyHolds(game, term.id); break;
     case "quest": {
       const quest = game.quests?.find((one) => one.id === term.id);
       result = term.state === "none" ? !quest : quest?.status === term.state;
@@ -320,6 +330,11 @@ export function parseEffect(text) {
     case "fuel": {
       const amount = signed(words[1] ?? "");
       return amount !== null && amount !== 0 && after ? { do: { tool: "change_ship", hull: 0, fuel: amount, morale: 0, reason: after } } : { problem: "fuel needs a number, with - to burn it, then a colon and the reason: * fuel 6: Mother Quill's depot" };
+    }
+    case "mutiny": {
+      // How a delegation, a quiet word or a captain's days in the brig end: src/command.js plays each.
+      const word = words.slice(1).join(" ").toLowerCase();
+      return MUTINY_OUTCOMES.includes(word) && after ? { do: { mutiny: word, reason: after } } : { problem: `mutiny needs what happens, one of ${MUTINY_OUTCOMES.join(", ")}, then a colon and the reason: * mutiny give ground: The captain heard them out` };
     }
     case "act": {
       const act = Number(words[1]);

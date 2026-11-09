@@ -67,6 +67,7 @@
     "fuelLow": 3,
     "desperate": 3,
     "ports": ["haven", "kessara", "graveyard", "frontier", "cinder", "deepyards", "korrath", "lumen", "maris", "wheel", "ghostlight"],
+    "anyone": { "moveAt": 10, "stockTo": 22, "restDays": 10, "risk": 2 },
     "captains": {
       "reddick": { "name": "Captain Reddick", "moveAt": 12, "stockTo": 25, "restDays": 9, "risk": 1 },
       "marchetti": { "name": "Captain Marchetti", "moveAt": 8, "stockTo": 22, "restDays": 11, "risk": 3 },

@@ -16,7 +16,7 @@ import { advanceWorld, holdingsOf, itemFactor, newWorld, newsView, placeLine, pl
 import { advanceShip, chairOf, chartEntry, isCharted, jumpCost, newShipState, shipGoingHungry, shipJumped, shipLine, shipOf, shipView } from "./ship.js";
 import { advanceLife, lifeOf } from "./life.js";
 import { advanceLogistics, startLogistics } from "./logistics.js";
-import { advanceCommand, commandView, dutyDay, reviewDay, startCommand } from "./command.js";
+import { advanceCommand, commandView, dutyDay, moodDay, reviewDay, sidesTaken, startCommand } from "./command.js";
 import { startingLoreIds } from "./lore.js";
 import { THREAT_LABELS } from "./npc.js";
 import { START_LIST, aboardShip, isCaptain, jobHere, roleBrief, startOf, toOutsider } from "./role.js";
@@ -47,6 +47,8 @@ export const hoursNow = (game) => game.clock?.hours ?? 0;
 export function changeStanding(game, faction, amount, why) {
   if (!amount || !FACTIONS[faction] || !game.factions) return null;
   game.factions[faction] = clamp((game.factions[faction] ?? 0) + amount, -100, 100);
+  // The captain's officers see whose side they've taken.
+  sidesTaken(game, faction, amount);
   return `[FACTION] ${FACTIONS[faction].name} ${amount > 0 ? "+" : ""}${amount}: ${why}`;
 }
 
@@ -321,8 +323,8 @@ function hoursPass(game, hours, activity) {
   for (let day = Math.min(shipOf(game).day, worldOf(game).day, clockOf(game).day) + 1; day <= today; day += 1) {
     // The ship's machines and sittings run up to this midnight first, so that the day's hunger is counted before her day.
     // Each post's duty for the day is settled once the ship's own day has had it, and on a review day the officers
-    // review their people after that.
-    notes.push(...advanceLogistics(game, day * 24), ...advanceShip(game, day), ...dutyDay(game, day), ...reviewDay(game, day), ...advanceWorld(game, day), ...advanceStories(game, day, told));
+    // review their people after that; then loyalty, the council's confidence and any mutiny move on.
+    notes.push(...advanceLogistics(game, day * 24), ...advanceShip(game, day), ...dutyDay(game, day), ...reviewDay(game, day), ...moodDay(game, day), ...advanceWorld(game, day), ...advanceStories(game, day, told));
   }
   syncVitals(game);
   return notes;

@@ -341,6 +341,10 @@ button.fighter:hover:not(:disabled), button.fighter:focus-visible { background: 
 .post-candidates { display: flex; flex-direction: column; gap: 3px; padding: 4px 6px; border: 1px dotted var(--line); min-width: 0; }
 .post-candidate { text-align: left; overflow-wrap: anywhere; }
 .command-reviews { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin-bottom: 10px; }
+.command-mood { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dotted var(--line); }
+.command-meters { display: flex; flex-wrap: wrap; gap: 2px 18px; }
+.command-deposed { color: var(--bad); }
+.command-due { color: var(--warn); }
 .command-waiting { padding: 6px 0; border-bottom: 1px dotted var(--line); }
 .command-answers { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 button.post-card:hover:not(:disabled) *, button.post-card:focus-visible * { color: var(--bg); }

@@ -48,7 +48,7 @@ const card = (game, id) => cmd.commandView(game).groups.flatMap((group) => group
 
 test("a post's, a job's and a holder's lines are read into their pieces, the file writes back the same, and a bad line says what's wrong", () => {
   assert.deepEqual(readPostLine("quartermaster in The Long Mess: chosen by the captain; heads cooks, mess hands, gardeners; skills commerce; duty: sittings missed, stores run dry"),
-    { title: "quartermaster", prep: "in", room: "The Long Mess", chosenBy: "captain", watchBill: false, heads: ["cooks", "mess hands", "gardeners"], pool: [], skills: ["commerce"], duty: ["sittings missed", "stores run dry"] });
+    { title: "quartermaster", prep: "in", room: "The Long Mess", chosenBy: "captain", watchBill: false, brig: false, heads: ["cooks", "mess hands", "gardeners"], pool: [], skills: ["commerce"], duty: ["sittings missed", "stores run dry"] });
   assert.equal(readPostLine("first officer on The Bridge: chosen by the captain; keeps the watch bill").watchBill, true);
   assert.deepEqual(readPostLine("deck chief in Engineering: chosen by the captain; picked from deckhands, the comms officer").pool, ["deckhands", "the comms officer"]);
   assert.deepEqual(readJobLine("cook in The Galley: 2 wanted; skills survival"), { title: "cook", prep: "in", room: "The Galley", wanted: 2, skills: ["survival"] });
@@ -92,7 +92,7 @@ test("the Meridian's chain of command knows its posts, rooms, jobs and holders, 
     .replace("- speaker: halm", "- speaker: halm\n- speaker: lira\n- quarterback: odessa");
   withFile(bad, () => {
     const problems = cmd.commandProblems().join(" | ");
-    for (const want of [/line 14.*no room called The Pub/, /deck chief is chosen by bosun, which isn't another post/, /no job called dockers under Jobs/, /no skill called juggling/, /nobody called Mott Jessup has a day at CFS Meridian/, /voss already holds the first officer: one post each/, /the speaker is given twice/, /no post called quarterback/, /nobody holds the comms officer/]) {
+    for (const want of [/line 17.*no room called The Pub/, /deck chief is chosen by bosun, which isn't another post/, /no job called dockers under Jobs/, /no skill called juggling/, /nobody called Mott Jessup has a day at CFS Meridian/, /voss already holds the first officer: one post each/, /the speaker is given twice/, /no post called quarterback/, /nobody holds the comms officer/]) {
       assert.match(problems, want);
     }
   });

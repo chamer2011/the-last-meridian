@@ -9,8 +9,7 @@ export const COMMAND_TITLES = { posts: "Posts", jobs: "Jobs", holders: "Who hold
 // The people the first officer can put to work where a job's short, written under Who does which job.
 export const SPARE = "spare hands";
 
-// The lines at the top of the file, kept as words for src/command.js to read. The mutiny is kept as it's written until
-// the step that plays it.
+// The lines at the top of the file, kept as words for src/command.js to read.
 export const COMMAND_HEADER = [
   { key: "draft", path: "draft" },
   { key: "each point of skill", path: "numbers.skill" },
@@ -20,6 +19,9 @@ export const COMMAND_HEADER = [
   { key: "memories fade", path: "numbers.fade" },
   { key: "everyone else", path: "numbers.crew" },
   { key: "mutiny brews", path: "numbers.mutiny" },
+  { key: "the mutiny builds", path: "numbers.builds" },
+  { key: "the council's confidence", path: "numbers.confidence" },
+  { key: "the brig", path: "numbers.brig" },
 ];
 
 // Who chooses a post when it isn't another post: the civil council, or the civilians themselves.
@@ -114,16 +116,17 @@ export function readPostLine(text) {
   const head = written.slice(0, colon).trim();
   const where = head.match(/^(.+?)\s+(in|on|at)\s+(.+)$/i);
   if (!where) return { problem: `"${head}" needs the room the post is kept in, such as quartermaster in The Long Mess` };
-  const post = { title: where[1].trim().toLowerCase(), prep: where[2].toLowerCase(), room: where[3].trim(), chosenBy: null, watchBill: false, heads: [], pool: [], skills: [], duty: [] };
+  const post = { title: where[1].trim().toLowerCase(), prep: where[2].toLowerCase(), room: where[3].trim(), chosenBy: null, watchBill: false, brig: false, heads: [], pool: [], skills: [], duty: [] };
   for (const piece of written.slice(colon + 1).split(";").map((one) => one.trim()).filter(Boolean)) {
     let found;
     if ((found = piece.match(/^chosen\s+by\s+(?:the\s+)?(.+)$/i))) post.chosenBy = found[1].trim().toLowerCase();
     else if (/^keeps\s+the\s+watch\s+bill$/i.test(piece)) post.watchBill = true;
+    else if (/^keeps\s+the\s+brig$/i.test(piece)) post.brig = true;
     else if ((found = piece.match(/^heads\s+(.+)$/i))) post.heads = listOf(found[1]).map((one) => one.toLowerCase());
     else if ((found = piece.match(/^picked\s+from\s+(.+)$/i))) post.pool = listOf(found[1]).map((one) => one.toLowerCase());
     else if ((found = piece.match(/^skills?\s+(.+)$/i))) post.skills = listOf(found[1]).map((one) => one.toLowerCase());
     else if ((found = piece.match(/^duty:?\s+(.+)$/i))) post.duty = listOf(found[1]);
-    else return { problem: `"${piece}" isn't something a post's line says: it says chosen by, keeps the watch bill, heads, picked from, skills or duty, each after a semicolon` };
+    else return { problem: `"${piece}" isn't something a post's line says: it says chosen by, keeps the watch bill, keeps the brig, heads, picked from, skills or duty, each after a semicolon` };
   }
   if (!post.chosenBy) return { problem: `"${written}" needs to say who chooses whoever holds it, such as chosen by the captain` };
   return post;

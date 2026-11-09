@@ -12,7 +12,7 @@ import { storeCounts, storePut, storeTake } from "./bag.js";
 import { findCharacter } from "./campaign.js";
 import { hasReached, isAbout, rosterOf, usuallyIn, whoIsIn } from "./life.js";
 import { claimedSquares, damageKinds, floorSpot, powerBalance, roomPowered, systemsOf, waitingForParts } from "./systems.js";
-import { YOU, holderKey, jobById, jobByWords, lostReason, onJob, personCalled, postAndName, postByWords, speedOf, tallyDuty } from "./command.js";
+import { YOU, holderKey, jobById, jobByWords, lostReason, mutinyStage, onJob, personCalled, postAndName, postByWords, speedOf, tallyDuty } from "./command.js";
 import { mapFor, roomHere, roomsOf, roomsOn, thingsIn } from "./walk.js";
 import { LOGISTICS_FILE_PROBLEMS, WORLD_LOGISTICS } from "./world.js";
 import { everyWords, readErrandLine, readLoadsLine, readMachineLine, readRefillLine, readStoreLine, slugOf } from "../public/logistics-text.js";
@@ -1086,7 +1086,9 @@ export function mealWords(game, place, doing) {
   if (!/\beating\b/i.test(doing ?? "")) return doing;
   const model = logisticsOf(place);
   if (!model?.kettles.length) return doing;
-  return model.kettles.every((kettle) => countOf(game, kettle) <= 0) ? "finding the kettle empty" : doing;
+  if (model.kettles.every((kettle) => countOf(game, kettle) <= 0)) return "finding the kettle empty";
+  // While a mutiny's brewing, the mess is where it's talked about.
+  return mutinyStage(game, place) >= 1 ? `${doing}, and grumbling about the captain` : doing;
 }
 
 // A store's words with how it stands now: a kettle says how much is left in it, an emptied store says so, and one
