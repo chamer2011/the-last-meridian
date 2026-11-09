@@ -32,6 +32,19 @@ const storeOf = (id) => logisticsOf("meridian").stores.find((one) => one.id === 
 const kettleCount = (game) => storesView(game, "meridian").find((one) => one.id === "soup_kettle").count.n;
 const setKettle = (game, n) => { game.stores ??= {}; game.stores[storeOf("soup_kettle").key] = { count: n }; };
 const emptyPantry = (game) => { const pantry = storeOf("pantry"); for (const id of Object.keys(pantry.holds)) bag.storeTake(game, pantry.key, pantry.holds, id, 99); };
+// And the stores the errands would refill it from, so that it stays empty.
+const emptySources = (game) => { for (const [id, item] of [["shuttle_stores", "ration_crate"], ["garden_bins", "produce"]]) bag.storeTake(game, storeOf(id).key, storeOf(id).holds, item, 99); };
+// The garden is the one thing aboard that makes food from nothing, so a test that wants the pantry to stay empty
+// stops it for a while.
+const withoutTheGarden = (run) => {
+  const garden = logisticsOf("meridian").machines.find((one) => one.id === "garden");
+  garden.runs = false;
+  try {
+    return run();
+  } finally {
+    garden.runs = true;
+  }
+};
 const status = (game, id) => machinesView(game, "meridian").find((one) => one.id === id).status;
 const atHour = (game, hours) => { game.clock.hours = hours; clockRuns(game, 1); };
 
@@ -118,24 +131,27 @@ test("the galley cooks the pantry into the kettle while a cook's there, and says
   assert.equal(kettleCount(game), 300);
   assert.deepEqual(storesView(game, "meridian").find((one) => one.id === "pantry").items.map((one) => `${one.id} ${one.n}`), ["ration_crate 12", "produce 10"]);
   assert.match(status(game, "galley"), /at work, \d+ minutes to the next/);
-  // Nothing to cook from.
-  emptyPantry(game);
-  setKettle(game, 0);
-  clockRuns(game, 60);
-  assert.equal(status(game, "galley"), "the pantry has no produce or ration crates");
-  assert.equal(kettleCount(game), 0);
-  // No power in the galley.
-  bag.storePut(game, storeOf("pantry").key, storeOf("pantry").holds, "produce", 2);
-  switchPart(game, "meridian", systemsOf("meridian").circuits.galley, false, { by: "player" });
-  clockRuns(game, 5);
-  assert.equal(status(game, "galley"), "no power");
-  assert.equal(kettleCount(game), 0);
-  switchPart(game, "meridian", systemsOf("meridian").circuits.galley, true, { by: "player" });
-  clockRuns(game, 5);
-  assert.equal(kettleCount(game), 200, "and it cooks again the moment the power's back");
-  // Nobody at the kettle at night.
-  atHour(game, 24 + 2);
-  assert.equal(status(game, "galley"), "waiting for a cook there");
+  // Nothing to cook from, nothing anyone could fetch, and the garden stopped.
+  withoutTheGarden(() => {
+    emptyPantry(game);
+    emptySources(game);
+    setKettle(game, 0);
+    clockRuns(game, 60);
+    assert.equal(status(game, "galley"), "the pantry has no produce or ration crates");
+    assert.equal(kettleCount(game), 0);
+    // No power in the galley.
+    bag.storePut(game, storeOf("pantry").key, storeOf("pantry").holds, "produce", 2);
+    switchPart(game, "meridian", systemsOf("meridian").circuits.galley, false, { by: "player" });
+    clockRuns(game, 5);
+    assert.equal(status(game, "galley"), "no power");
+    assert.equal(kettleCount(game), 0);
+    switchPart(game, "meridian", systemsOf("meridian").circuits.galley, true, { by: "player" });
+    clockRuns(game, 5);
+    assert.equal(kettleCount(game), 200, "and it cooks again the moment the power's back");
+    // Nobody at the kettle at night.
+    atHour(game, 24 + 2);
+    assert.equal(status(game, "galley"), "waiting for a cook there");
+  });
 });
 
 test("the garden fills its bins, one produce every two hours while someone tends it, and stops when they're full", () => {
@@ -168,8 +184,9 @@ test("the whole ship eats at the sittings, 450 a sitting from the kettle, and wh
   // and whoever you can see eating has found the kettle empty.
   game.clock.hours = 18;
   emptyPantry(game);
+  emptySources(game);
   setKettle(game, 0);
-  const notes = clockRuns(game, 45);
+  const notes = withoutTheGarden(() => clockRuns(game, 45));
   meals = mealsView(game, "meridian");
   assert.equal(meals.today.served, morning);
   assert.ok(meals.today.missed >= 220 && meals.today.missed <= 230, `${meals.today.missed} went without`);
@@ -183,7 +200,7 @@ test("the whole ship eats at the sittings, 450 a sitting from the kettle, and wh
   // Soup again, and the rest of the sitting is served, with nothing more said.
   setKettle(game, 400);
   assert.equal(mealWords(game, "meridian", "eating"), "eating", "with anything in the kettle, people eat");
-  const later = clockRuns(game, 45);
+  const later = withoutTheGarden(() => clockRuns(game, 45));
   meals = mealsView(game, "meridian");
   assert.ok(meals.today.served >= morning + 220, `${meals.today.served} served by the end of the sitting`);
   assert.ok(!later.some((one) => /kettle has run dry/.test(one)));
@@ -193,14 +210,17 @@ test("the ship's morale feels a hungry day at midnight, through the food shortag
   const fed = newGame();
   const starved = newGame();
   emptyPantry(starved);
+  emptySources(starved);
   setKettle(starved, 0);
-  for (const game of [fed, starved]) passTime(game, 24, "routine");
+  passTime(fed, 24, "routine");
+  withoutTheGarden(() => passTime(starved, 24, "routine"));
   assert.equal(mealsOfDay(fed, "meridian", 0).missed, 0);
   const hungry = mealsOfDay(starved, "meridian", 0);
   assert.ok(hungry.missed > 800 && hungry.served === 0, JSON.stringify(hungry));
   assert.ok(starved.ship.log.some((entry) => /kettle ran dry yesterday: \d[\d,]* of \d[\d,]* sittings went unserved/.test(entry.text)), JSON.stringify(starved.ship.log));
   assert.ok(!fed.ship.log.some((entry) => /kettle ran dry/.test(entry.text)));
-  for (const game of [fed, starved]) passTime(game, 24, "routine");
+  passTime(fed, 24, "routine");
+  withoutTheGarden(() => passTime(starved, 24, "routine"));
   assert.ok(starved.ship.morale < fed.ship.morale, `${starved.ship.morale} hungry against ${fed.ship.morale} fed`);
   assert.ok(fed.ship.food > 0 && starved.ship.food > 0, "the old daily count in tonnes still runs on its own until step 5");
 });

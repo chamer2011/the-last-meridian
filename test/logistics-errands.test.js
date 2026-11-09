@@ -122,9 +122,10 @@ test("nobody runs an errand in their sleep, and the day's other errands go the s
   take(asleep, "pantry", "ration_crate", 12);
   watch(asleep, 15);
   assert.equal(errand(asleep, BRANDT).status, "about their day", "Brandt sleeps until five");
-  asleep.clock.hours = 24 + 5 + 20 / 60;
-  watch(asleep, 10);
-  assert.notEqual(errand(asleep, BRANDT).status, "about their day", "and goes once she's up");
+  assert.equal(count(asleep, "pantry", "ration_crate"), 0);
+  asleep.clock.hours = 24 + 6;
+  watch(asleep, 5);
+  assert.ok(count(asleep, "pantry", "ration_crate") >= 2, "and goes once she's up");
   // Imre fetches produce from the garden bins when the pantry's low on it.
   const produce = newGame();
   take(produce, "pantry", "produce", 12);

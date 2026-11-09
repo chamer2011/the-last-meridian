@@ -27,6 +27,8 @@ const DEFAULT_SITTINGS = { at: [6 * 60, 7 * 60 + 30, 18 * 60, 19 * 60 + 30], min
 // The clock is stepped through in pieces this long, so that who's at a machine and whether there's a sitting on are
 // looked at often enough, however far the clock jumps at once.
 const CHUNK = 5;
+// How long a walk across the ship is allowed to take before an errand counts its person as arrived anyway.
+const WALK_MINUTES = 15;
 const ORDINALS = ["first", "second", "third", "fourth", "fifth", "sixth"];
 const clockWords = (minutes) => `${String(Math.floor(minutes / 60) % 24).padStart(2, "0")}:${String(Math.round(minutes) % 60).padStart(2, "0")}`;
 
@@ -426,7 +428,9 @@ function runErrands(game, place, model, state, t) {
       state.errands[e.id] = { phase: "going", since: t, load: null };
       continue;
     }
-    const there = hasReached(game, place, e.key, errandWhere(e, s));
+    // They've arrived when their walk has got them there, or when a walk's worth of time has gone by since they set
+    // out: over a long jump of the clock nobody is walked minute by minute, and the errand still has to get done.
+    const there = hasReached(game, place, e.key, errandWhere(e, s)) || t - s.since >= WALK_MINUTES;
     if (s.phase === "going") {
       if (there) Object.assign(s, { phase: "loading", since: t });
     } else if (s.phase === "loading" || s.phase === "waiting") {
