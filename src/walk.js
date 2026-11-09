@@ -827,6 +827,16 @@ function takeExit(game, walk, map, exit) {
   enterLevel(game, walk, map, exit.to, exit.via);
 }
 
+// Someone in the player's room by their key, as the room shows them, for the registry printout. It writes nothing.
+export function personHere(game, key) {
+  const walk = game.walk;
+  const map = walk ? mapFor(game.location) : null;
+  if (!map) return null;
+  const level = levelOf(game, walk, map);
+  const entry = peopleOnLevel(game, walk, level).find((one) => keyOf(one) === key);
+  return entry ? { entry, view: personView(game, entry) } : null;
+}
+
 // Everything the player can do by walking. It's all free, and it can't change anything else.
 export function walkCommand(game, body) {
   const walk = walkOf(game);

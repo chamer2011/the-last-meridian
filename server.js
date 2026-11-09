@@ -22,6 +22,7 @@ import { dataDir, projectDir } from "./src/paths.js";
 import {
   buy, buyPerk, captainSheet, clockFor, combatAction, equip, notePeopleSeen, publicState, raiseSkill, raiseStat, rest, sell, setDifficulty, startCombat, useItem, workShift,
 } from "./src/rules.js";
+import { personSheet } from "./src/person-sheet.js";
 import { closeTalk, talkBrief, talkCommand, talkHeard, talkLineOver, talkSaid, walkCommand, walkTick } from "./src/walk.js";
 import { enterAfterHack, enterDoorPanel } from "./src/computers.js";
 import { airBadHere, controlSystem, settlePart, systemsOf } from "./src/systems.js";
@@ -458,6 +459,8 @@ async function handleApi(req, res, route) {
     return json(res, 200, { settings: await settingsView(), game: game ? publicState(game) : null });
   }
 
+  // Someone's registry printout, opened from the right-click menu. It only reads.
+  if (route === "/api/person-sheet") return json(res, 200, personSheet(requireGame(), body.key));
   if (route === "/api/creator/preview") return json(res, 200, buildCharacter(body.draft).view);
   if (route === "/api/creator/random") {
     const draft = randomDraft({ archetype: body.archetype, keep: body.keep ?? {}, anyone: Boolean(body.anyone) });

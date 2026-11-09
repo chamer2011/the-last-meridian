@@ -2,13 +2,15 @@
 // out of a printer slot at the top of the map, and goes back up into it when it's torn off. It opens from the
 // Character button, /char or C, takes only a corner of the room, and the clock runs on behind it. The owner picked it
 // from five examples on 2026-11-08 ("the registry printout", in the map and not a menu on the right). Everything on it
-// comes from the game view the menus used; the buttons do what the old Character menu's did.
+// comes from the game view the menus used; the buttons do what the old Character menu's did. Anyone else's printout
+// opens from the right-click menu on them (Registry), from the server's /api/person-sheet (src/person-sheet.js).
 
-import { el, signed } from "./dom.js";
+import { api, el, signed } from "./dom.js";
 
 const FEED_MS = 520;
 const RULE = "-".repeat(56);
-const state = { open: false, openedAt: 0, closing: false };
+// subject is null for the player's own printout, or { key, data } for someone else's.
+const state = { open: false, openedAt: 0, closing: false, subject: null };
 let app;
 
 export function initSheet(hooks) {
@@ -18,9 +20,10 @@ export function initSheet(hooks) {
 
 export const sheetOpen = () => state.open && Boolean(app?.ui.game);
 export function resetSheet() {
-  Object.assign(state, { open: false, openedAt: 0, closing: false });
+  Object.assign(state, { open: false, openedAt: 0, closing: false, subject: null });
 }
-export function openSheet() {
+export function openSheet(subject = null) {
+  state.subject = subject;
   state.open = true;
   state.closing = false;
   state.openedAt = performance.now();
@@ -36,6 +39,7 @@ export function closeSheet() {
     if (!state.closing) return;
     state.open = false;
     state.closing = false;
+    state.subject = null;
     app.render();
   };
   if (!paper || matchMedia("(prefers-reduced-motion: reduce)").matches) return done();
@@ -43,7 +47,15 @@ export function closeSheet() {
   paper.addEventListener("animationend", done, { once: true });
   setTimeout(done, FEED_MS + 200);
 }
-export const toggleSheet = () => (state.open && !state.closing ? closeSheet() : openSheet());
+// C and the Character button: the player's own printout, or put away. Over someone else's, it prints the player's.
+export const toggleSheet = () => (state.open && !state.closing && !state.subject ? closeSheet() : openSheet());
+
+// The right-click menu's Registry: someone else's printout, or put away if it's theirs already showing.
+export async function openPersonSheet(key) {
+  if (state.open && !state.closing && state.subject?.key === key) return closeSheet();
+  const data = await api("/api/person-sheet", { key });
+  openSheet({ key, data });
+}
 
 // Drawn inside the map when there's a room on screen, and over the top of the story otherwise.
 export function sheetNode({ inMap = false } = {}) {
@@ -55,7 +67,7 @@ export function sheetNode({ inMap = false } = {}) {
     return null;
   }
   const elapsed = performance.now() - state.openedAt;
-  const paper = el("div", { class: `sheet-paper${elapsed < FEED_MS ? " feeding" : ""}${state.closing ? " rewinding" : ""}` }, ...printout(g));
+  const paper = el("div", { class: `sheet-paper${elapsed < FEED_MS ? " feeding" : ""}${state.closing ? " rewinding" : ""}` }, ...(state.subject ? personPrintout(state.subject.data) : printout(g)));
   // A redraw while it's still feeding carries on from where it was, instead of starting again.
   if (elapsed < FEED_MS) paper.style.animationDelay = `-${Math.round(elapsed)}ms`;
   setTimeout(placeSheet, 0);
@@ -147,11 +159,9 @@ function printout(g) {
     field("LEVEL", hi(String(g.level)), `   XP ${bar(g.xp, g.xpToNext, 14)} ${g.xp}/${g.xpToNext}`),
     pointsLine(g),
     rule(),
-    line(hi("ATTRIBUTES"), g.statPoints > 0 ? dim(`   ${g.statPoints} point${g.statPoints === 1 ? "" : "s"} to spend`) : ""),
-    ...attributes(g),
+    el("div", {}, line(hi("ATTRIBUTES"), g.statPoints > 0 ? dim(`   ${g.statPoints} point${g.statPoints === 1 ? "" : "s"} to spend`) : ""), ...attributes(g)),
     rule(),
-    line(hi("SKILLS"), dim("   click one to train it")),
-    skills(g),
+    el("div", {}, line(hi("SKILLS"), dim("   click one to train it")), skills(g)),
     rule(),
     ...traits(g),
     ...condition(g),
@@ -262,6 +272,47 @@ function actions(g) {
     parts.push(button("SLEEP ROUGH, 8H", app.act({ action: "rest", rough: true }), { disabled: busy, title: "Free, but you won't wake up much better for it" }));
   }
   return el("div", { class: "sheet-actions" }, g.clock?.label ? dim(`${g.clock.label}  `) : "", ...parts);
+}
+
+// ---- Someone else's printout ------------------------------------------------------------------------------
+
+function personPrintout(p) {
+  const query = String([...String(p.key)].reduce((sum, ch) => (sum * 31 + ch.charCodeAt(0)) % 10000, 7)).padStart(4, "0");
+  const who = [p.pronouns, p.age !== null && p.age !== undefined ? `age ${p.age}` : null].filter(Boolean).join(", ");
+  const f = p.fight;
+  return [
+    line(dim(`==== FLEET REGISTRY · QUERY ${query} `.padEnd(56, "="))),
+    field("NAME", hi(String(p.name).toUpperCase())),
+    p.aliases?.length && field("ALSO KNOWN", p.aliases.join(", ")),
+    field("SPECIES", p.species ?? "Not recorded", who ? dim(`   ${who}`) : ""),
+    field("POST", p.post ?? dim("None on file")),
+    p.faction && field("FACTION", p.faction),
+    p.based && field("BASED AT", p.based),
+    p.status && field("STATUS", red(String(p.status).toUpperCase())),
+    p.attitude && field("TOWARD YOU", p.attitude),
+    p.seen && field("LAST SEEN", p.seen),
+    rule(),
+    el("div", {}, line(hi("ATTRIBUTES")), ...p.attributes.map((a) => el("div", { class: "sheet-attr" },
+      el("span", {}, `  ${a.label.toUpperCase().padEnd(11)}`),
+      hi(String(a.value).padStart(2)),
+      el("span", { class: "sheet-bar" }, `  ${bar(a.value, 10, 16)}  `),
+      el("span", {}, signed(a.value - 3).padStart(3))))),
+    rule(),
+    el("div", {}, line(hi("SKILLS")), p.skills.length
+      ? el("div", { class: "sheet-skills" }, p.skills.map((s) => el("span", { class: "sheet-skill" }, `${s.name.toUpperCase()} `.padEnd(15, ".") + String(s.rank).padStart(2))))
+      : line(dim("  None recorded."))),
+    rule(),
+    p.looks && field("LOOKS", p.looks),
+    f && field("ARMED", `${f.weapon ?? "Bare hands"}  ${signed(f.attack ?? 0)}${f.damage ? `, ${f.damage[0]}-${f.damage[1]} dmg` : ""}`),
+    f && field("IN A FIGHT", [f.defense !== null ? `defense ${f.defense}` : null, f.hp ? `health ${f.hp}` : null].filter(Boolean).join("   ")),
+    p.pocket && field("POCKETS", p.pocket),
+    rule(),
+    p.thin
+      ? field("REMARKS", dim("No full record on file. Filled in from the general roll."))
+      : p.note && field("REMARKS", p.note),
+    el("div", { class: "sheet-actions" }, button("YOUR OWN RECORD", () => openSheet(), { title: "Print your own (C)" })),
+    line(dim("==== END OF RECORD ".padEnd(56, "="))),
+  ].filter(Boolean);
 }
 
 // ---- Keys ----------------------------------------------------------------------------------------------

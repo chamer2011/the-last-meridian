@@ -12,7 +12,7 @@ import { choicesFor, dropStaleTooltip, initStory, loreCatalog, optionContent, se
 import { focusTalk, initTalk, resetTalk, startTalk, talkNode, talkOpen } from "./talk.js";
 import { computerNode, computerOpen, focusComputer, initComputer, resetComputer } from "./computer.js";
 import { bagNode, bagOpen, initBag, openBag, resetBag, toggleBag } from "./bag.js";
-import { initSheet, resetSheet, sheetNode, toggleSheet } from "./sheet.js";
+import { initSheet, openPersonSheet, resetSheet, sheetNode, toggleSheet } from "./sheet.js";
 import { drawQuests, initQuests, questTrackerNode, questsOpen, resetQuests, toggleQuests } from "./quests.js";
 import { beginScene, initPopups, openPopups, popupDrawn, popupNext, popupsAttached, updatePopups } from "./popups.js";
 import { INTERFACE_SIZES, interfaceZoom } from "./scene.js";
@@ -776,6 +776,7 @@ initWalk({
   startTyping,
   questTracker: questTrackerNode,
   sheet: () => sheetNode({ inMap: true }),
+  openPersonSheet,
   questsOpen,
   // A number key picks one of the story's choices, when there's nothing to type it into.
   pickOption: (n) => {

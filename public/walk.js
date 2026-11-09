@@ -837,6 +837,7 @@ function personChoices(thing) {
   }
   return [
     ["Talk", "", () => go({ action: "go", to })],
+    ["Registry", "print their record", () => registry(person.key)],
     ["Pickpocket", person.wary ? "they're watching their pockets" : person.pocket, () => go({ action: "go", to }, () => deed("pickpocket", person.key)), person.wary],
     ["Attack", "starts a fight", asking(true)],
     ["Close", "", closeWindow],
@@ -947,6 +948,7 @@ function menuFor(target) {
       items: [
         { label: "Talk", run: () => go({ action: "go", to }) },
         { label: "Look", run: () => lookAtPerson(person) },
+        { label: "Registry", detail: "print their record", run: () => registry(person.key) },
         { label: "Pickpocket", detail: person.wary ? "they're watching their pockets" : person.pocket, disabled: Boolean(person.wary), run: () => go({ action: "go", to }, () => deed("pickpocket", person.key)) },
         { label: "Attack", detail: "starts a fight", ask: `Attack ${person.short}? It starts a fight, and everyone here sees it.`, run: () => go({ action: "go", to }, () => deed("attack", person.key)) },
       ],
@@ -1028,6 +1030,16 @@ function lookAtPerson(person) {
   walk.thing = { person: true, key: person.key, name: person.short, color: person.color, look: [person.look, now].filter(Boolean).join("\n") || person.name, confirm: false };
   walk.looked = true;
   app.render();
+}
+
+// Their registry printout, fed down from the printer in the map's corner. Nobody has to walk over for it.
+async function registry(key) {
+  try {
+    await app.openPersonSheet(key);
+  } catch (err) {
+    walk.message = err.message;
+    app.render();
+  }
 }
 
 // Picking a pocket or starting a fight, once the player's next to them. Each opens its own window, or says why not.
