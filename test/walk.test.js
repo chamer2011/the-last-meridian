@@ -1320,7 +1320,7 @@ test("the AI can't move the clock from inside a talk, so a talk can never use up
   talkCommand(game, { action: "open", person: "voss" });
   game.clock.hours = 23;
   game.ship.day = 0;
-  const food = game.ship.food;
+  const stores = JSON.stringify(game.stores ?? null);
   const fatigue = game.needs.fatigue;
   const hours = game.clock.hours;
   for (let i = 0; i < 5; i += 1) {
@@ -1331,7 +1331,7 @@ test("the AI can't move the clock from inside a talk, so a talk can never use up
   }
   assert.equal(game.clock.hours, hours);
   assert.equal(game.ship.day, 0);
-  assert.equal(game.ship.food, food);
+  assert.equal(JSON.stringify(game.stores ?? null), stores, "nothing in the stores moved");
   assert.equal(game.needs.fatigue, fatigue);
   assert.equal(game.location, "meridian");
   assert.equal(walkView(game).here.id, "bridge");
@@ -1599,7 +1599,7 @@ test("a save from any older version gets here too", () => {
   delete save.fleet;
   const game = migrateGame(save);
   assert.equal(game.version, 17);
-  assert.ok(game.ship.day !== undefined && game.ship.food > 0, "the ship's stores are there");
+  assert.ok(game.ship.day !== undefined && game.ship.aboard > 0, "the ship's own numbers are there");
   assert.doesNotThrow(() => publicState(game));
   assert.equal(newGame().version, 17);
 });

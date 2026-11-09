@@ -17,6 +17,7 @@ air_plant.txt: The air plant's numbers, by deck. Nine hundred people breathing o
 
 Logs:
 - readouts
+- manifest
 - news
 
 Programs:

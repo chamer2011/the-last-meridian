@@ -34,15 +34,19 @@ const setKettle = (game, n) => { game.stores ??= {}; game.stores[storeOf("soup_k
 const emptyPantry = (game) => { const pantry = storeOf("pantry"); for (const id of Object.keys(pantry.holds)) bag.storeTake(game, pantry.key, pantry.holds, id, 99); };
 // And the stores the errands would refill it from, so that it stays empty.
 const emptySources = (game) => { for (const [id, item] of [["shuttle_stores", "ration_crate"], ["garden_bins", "produce"]]) bag.storeTake(game, storeOf(id).key, storeOf(id).holds, item, 99); };
-// The garden is the one thing aboard that makes food from nothing, so a test that wants the pantry to stay empty
-// stops it for a while.
+// The garden makes food from nothing, and the refills bring crates from nothing, so a test that wants the pantry to
+// stay empty stops both for a while.
 const withoutTheGarden = (run) => {
-  const garden = logisticsOf("meridian").machines.find((one) => one.id === "garden");
+  const model = logisticsOf("meridian");
+  const garden = model.machines.find((one) => one.id === "garden");
+  const refills = model.refills;
   garden.runs = false;
+  model.refills = [];
   try {
     return run();
   } finally {
     garden.runs = true;
+    model.refills = refills;
   }
 };
 const status = (game, id) => machinesView(game, "meridian").find((one) => one.id === id).status;
@@ -122,7 +126,7 @@ test("the galley cooks the pantry into the kettle while a cook's there, and says
   // there's only room for 100 more, so the next potful waits, ready.
   game.clock.hours = 10;
   clockRuns(game, 60);
-  assert.equal(status(game, "galley"), "the soup kettle is full", "a nearly full kettle has no room for another 200");
+  assert.equal(status(game, "galley"), "no room in the soup kettle for 200 sittings yet", "a nearly full kettle has no room for another 200");
   assert.equal(kettleCount(game), 300);
   assert.deepEqual(storesView(game, "meridian").find((one) => one.id === "pantry").items.map((one) => `${one.id} ${one.n}`), ["ration_crate 12", "produce 11"], "produce goes first, as the line has it first");
   // Room in the kettle, and the potful it's had ready goes in at once.
@@ -222,7 +226,6 @@ test("the ship's morale feels a hungry day at midnight, through the food shortag
   passTime(fed, 24, "routine");
   withoutTheGarden(() => passTime(starved, 24, "routine"));
   assert.ok(starved.ship.morale < fed.ship.morale, `${starved.ship.morale} hungry against ${fed.ship.morale} fed`);
-  assert.ok(fed.ship.food > 0 && starved.ship.food > 0, "the old daily count in tonnes still runs on its own until step 5");
 });
 
 test("an old save comes up at version 17 with its stores full and its machines about to start", () => {

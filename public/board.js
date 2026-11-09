@@ -9,7 +9,7 @@ import { el } from "./dom.js";
 import { writeStoryText } from "./story-text.js";
 import { LINE_PHRASES, PERK_NUMBERS, SPECS, writeWorldText } from "./world-text.js";
 import { KNOWN_SYSTEMS, readComputerLine, systemIdOf, writeSystemsText } from "./systems-text.js";
-import { LOGISTICS_PARTS, PART_TITLES, readErrandLine, readLoadsLine, readMachineLine, readSittings, readStoreLine, writeLogisticsText, writeSittings } from "./logistics-text.js";
+import { LOGISTICS_PARTS, PART_TITLES, readErrandLine, readLoadsLine, readMachineLine, readRefillLine, readSittings, readStoreLine, writeLogisticsText, writeSittings } from "./logistics-text.js";
 
 const state = {
   kind: "story", id: null, lists: {},
@@ -423,11 +423,11 @@ function logisticsGraph() {
   });
   const cols = { machines: 2, errands: 3, loads: 4, refills: 2 };
   const kinds = { machines: "route", errands: "fact", loads: "clock", refills: "consequence" };
-  const labels = { machines: "A machine", errands: "An errand", loads: "What draws power", refills: "A refill (from step 5)" };
+  const labels = { machines: "A machine", errands: "An errand", loads: "What draws power", refills: "A refill, from nothing" };
   for (const part of ["machines", "errands", "loads", "refills"]) {
     (P[part] ?? []).forEach((one, i) => {
       const words = one.text ?? one;
-      const read = part === "machines" ? readMachineLine(words) : part === "errands" ? readErrandLine(words) : part === "loads" ? readLoadsLine(words) : null;
+      const read = part === "machines" ? readMachineLine(words) : part === "errands" ? readErrandLine(words) : part === "loads" ? readLoadsLine(words) : part === "refills" ? readRefillLine(words) : null;
       const id = add({ id: `${part}${i}`, kind: kinds[part], col: cols[part], name: read?.drop ? "When short, drop" : words.split(":")[0].trim().slice(0, 40), text: read?.problem ?? words, label: read && !read.gives && read.power ? "The generator" : read?.drop ? "The order they're let go in" : labels[part], bind: { logLine: [part, i] }, problem: Boolean(read?.problem) });
       const lower = plainWords(words);
       for (const store of stores) {
@@ -1314,7 +1314,7 @@ function inspectLogisticsLine(inspector, node) {
         ? hint("An errand: who carries, by their name in the place's life file (a crowd name, or someone's name), a colon, what they carry, from a store, to a store, when the store it goes to is under so many, and how many a trip: Quartermaster Brandt: ration crates from the shuttle stores to the pantry when under 4, two at a time.")
         : part === "loads"
           ? hint("The loads: each system and what it draws from the generator, with a room or each to count them, and while under way for what only draws on a jump: air plant 20, engines 30 while under way, lights 1 a room, computers 2 each. Another line says the order they're let go in when the generator hasn't enough: when short, drop: cameras, comms, lights, doors, navigation, air.")
-          : hint("Written in the words you'd use. The game keeps it, and reads it when its step is built; the how-to in world/logistics says what each step will read."),
+          : hint("A refill: the store, a colon, what comes into it, from nothing (the one source left until trade off the ship is built), how often, and how far it's filled: the shuttle stores: ration crates and fuel cells from nothing for now, every 6 hours, up to full. Each refill is written in the manifest."),
     row(button("Keep", () => { P[part][i] = { text: box.value.trim().replace(/\n+/g, " ") }; changed(); }), button("Undo", () => inspect())),
     row(button(`+ another under ${PART_TITLES[part]}`, () => addLogisticsLine(part)), button("Remove", () => remove(node), { class: "danger" })));
 }

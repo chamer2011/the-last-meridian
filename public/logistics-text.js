@@ -267,6 +267,30 @@ export function readLoadsLine(text) {
   return loads.length ? { loads } : { problem: `"${text}" names no load: write a system and a number, such as air plant 20` };
 }
 
+// ---- The words of a refill line -------------------------------------------------------------------
+
+// "the shuttle stores: ration crates and fuel cells from nothing for now, every 6 hours, up to full": the store, what
+// comes into it, from where (only nothing, until trade off the ship is built), how often, and how far it's filled.
+export function readRefillLine(text) {
+  const colon = String(text).indexOf(":");
+  if (colon < 0) return { problem: `"${text}" needs a colon after the store, then what comes into it` };
+  const store = String(text).slice(0, colon).trim().replace(/^the\s+/i, "");
+  let body = String(text).slice(colon + 1).trim();
+  if (!store) return { problem: `"${text}" needs the store's name before the colon` };
+  let upTo = "full";
+  body = body.replace(/,?\s*up\s+to\s+(full|\d+)\s*$/i, (_, n) => { upTo = /^\d+$/.test(n) ? Number(n) : "full"; return ""; }).trim();
+  let every = null;
+  body = body.replace(PERIOD, (_, n, unit) => { every = (Number(n) || 1) * (/^min/i.test(unit) ? 1 : /^hour/i.test(unit) ? 60 : 1440); return ""; }).trim().replace(/,\s*$/, "");
+  if (!every) return { problem: `"${text}" needs to say how often, such as every 6 hours` };
+  const fromAt = body.search(/\s+from\s+/i);
+  if (fromAt < 0) return { problem: `"${text}" needs to say where it comes from: from nothing, until trade off the ship is built` };
+  const from = body.slice(fromAt).replace(/^\s+from\s+/i, "").replace(/\s+for\s+now\s*$/i, "").trim().toLowerCase();
+  if (from !== "nothing") return { problem: `"${text}": only from nothing is played until trade off the ship is built` };
+  const what = body.slice(0, fromAt).split(/\s*,\s*|\s+and\s+/i).map((one) => one.trim()).filter(Boolean);
+  if (!what.length) return { problem: `"${text}" names nothing to come in: write ration crates and fuel cells from nothing` };
+  return { store, what, from, every, upTo };
+}
+
 // ---- Writing a file ----------------------------------------------------------------------------
 export function writeLogisticsText(value) {
   const out = [`# ${value.name ?? ""}`];

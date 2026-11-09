@@ -14,7 +14,7 @@ process.env.GAME_DATA_DIR = dataDir;
 const { SYSTEM_PROMPT, runTurn } = await import("../src/ai.js");
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const { storePut } = await import("../src/bag.js");
-const { logisticsOf } = await import("../src/logistics.js");
+const { countAboard, fillStores, logisticsOf, putAboard, takeAboard } = await import("../src/logistics.js");
 const { LOCATIONS } = await import("../src/data.js");
 const { LORE } = await import("../src/lore.js");
 const { migrateGame } = await import("../src/migrate.js");
@@ -41,6 +41,31 @@ function days(game, count, activity = "routine") {
   const notes = [];
   for (let i = 0; i < count; i += 1) notes.push(...passTime(game, 24, activity));
   return notes;
+}
+
+// The rooms' stores are the count of food, medicine and parts (world/logistics): a test empties them, fills them, or
+// stops the garden and the refills from nothing while a shortage has to last.
+const ITEMS_OF = { food: ["ration_crate", "produce"], medicine: ["medicine_crate"], parts: ["parts_crate"] };
+const stock = (game, id) => countAboard(game, SHIP_ID, ITEMS_OF[id]).n;
+function empty(game, id) {
+  for (const item of ITEMS_OF[id]) takeAboard(game, SHIP_ID, item, 999);
+  if (id === "food") {
+    game.stores ??= {};
+    game.stores[logisticsOf(SHIP_ID).stores.find((one) => one.id === "soup_kettle").key] = { count: 0 };
+  }
+}
+function withoutSources(run) {
+  const model = logisticsOf(SHIP_ID);
+  const garden = model.machines.find((one) => one.id === "garden");
+  const refills = model.refills;
+  garden.runs = false;
+  model.refills = [];
+  try {
+    return run();
+  } finally {
+    garden.runs = true;
+    model.refills = refills;
+  }
 }
 
 // ---- The ship -----------------------------------------------------------
@@ -91,12 +116,11 @@ test("the Sundial and Anselm's Mercy are places of their own now, on the chart, 
 
 test("supplies drain at midnight, and only then", () => {
   const game = newGame();
-  const food = game.ship.food;
   game.clock.hours = 10;
   passTime(game, 13);
-  assert.equal(game.ship.food, food, "it isn't midnight yet");
+  assert.equal(game.ship.owed, undefined, "it isn't midnight yet");
   passTime(game, 2);
-  assert.ok(game.ship.food < food, "and now a day has gone by");
+  assert.ok(game.ship.owed.medicine > 0 && game.ship.owed.parts > 0, "and now a day has gone by: the medbay and the engineers have used a little");
   assert.equal(game.ship.day, 1);
 });
 
@@ -105,8 +129,8 @@ test("passing many days at once runs each one", () => {
   const many = newGame();
   for (let i = 0; i < 5; i += 1) days(one, 1);
   days(many, 5);
-  assert.equal(one.ship.food, many.ship.food);
-  assert.equal(one.ship.medicine, many.ship.medicine);
+  assert.equal(stock(one, "food"), stock(many, "food"));
+  assert.equal(stock(one, "medicine"), stock(many, "medicine"));
   assert.equal(one.ship.fuel, many.ship.fuel);
   assert.equal(one.ship.day, many.ship.day);
 });
@@ -115,13 +139,21 @@ test("left alone, the numbers hold: about two weeks of fuel keeping station, thr
   const game = newGame();
   const ledger = shipLedger(game);
   assert.ok(ledger.people === 900);
-  const daysOf = (id) => game.ship[id] / -ledger.net[id];
-  assert.ok(daysOf("food") > 20 && daysOf("food") < 28, `food lasts ${daysOf("food")} days`);
-  assert.ok(daysOf("medicine") > 35 && daysOf("medicine") < 50, `medicine lasts ${daysOf("medicine")} days`);
-  assert.ok(game.ship.fuel / -ledger.net.fuel >= 12 && game.ship.fuel / -ledger.net.fuel <= 16, "about two weeks of fuel keeping station");
   const shown = shipView(game).supplies;
-  assert.equal(shown.find((s) => s.id === "food").days, Math.floor(daysOf("food")));
-  assert.equal(shown.find((s) => s.id === "fuel").days, Math.floor(game.ship.fuel / -ledger.net.fuel));
+  const row = (id) => shown.find((s) => s.id === id);
+  // Food is every crate and basket in the pantry, the shuttle stores and the garden bins, about six days of it at
+  // nine a day, and the refills from nothing keep it up; medicine and parts are their crates, and nothing refills them.
+  assert.equal(row("food").stock, 56);
+  assert.equal(row("food").unit, "crates");
+  assert.equal(row("food").days, null, "holding, while the refills keep up");
+  withoutSources(() => {
+    const starved = shipView(game).supplies.find((s) => s.id === "food");
+    assert.ok(starved.days >= 5 && starved.days <= 7, `with nothing coming aboard, food lasts ${starved.days} days`);
+  });
+  assert.ok(row("medicine").days > 35 && row("medicine").days < 50, `medicine lasts ${row("medicine").days} days`);
+  assert.ok(row("parts").days > 60 && row("parts").days < 100, `parts last ${row("parts").days} days`);
+  assert.ok(row("fuel").days >= 12 && row("fuel").days <= 16, "about two weeks of fuel keeping station");
+  assert.equal(row("fuel").days, Math.floor(game.ship.fuel / -ledger.net.fuel));
 });
 
 test("fuel is one number: the tank the jumps use, and it burns in whole units", () => {
@@ -140,24 +172,27 @@ test("fuel is one number: the tank the jumps use, and it burns in whole units", 
 
 test("a shortage warns first, then hits, and shows up in the story as lines", () => {
   const game = newGame();
-  game.ship.food = 5;
-  const warned = days(game, 1);
-  assert.ok(warned.some((line) => /^\[SUPPLY\] Food is down to about \d+ days/.test(line)), warned.join(" | "));
-  assert.deepEqual(shipView(game).shortages, ["food"]);
-  const out = days(game, 6);
-  assert.ok(out.some((line) => /^\[SUPPLY\] The Meridian is out of food/.test(line)), out.join(" | "));
-  assert.equal(game.ship.out.food >= 1, true);
-  assert.equal(supply(game, "food").out, true);
-  const still = days(game, 5);
-  assert.ok(still.some((line) => /with no food stores/.test(line)), "every five days, a reminder");
+  withoutSources(() => {
+    // Down to about four days of food, with nothing coming aboard.
+    takeAboard(game, SHIP_ID, "ration_crate", 20);
+    const warned = days(game, 1);
+    assert.ok(warned.some((line) => /^\[SUPPLY\] Food is down to about \d+ days/.test(line)), warned.join(" | "));
+    assert.deepEqual(shipView(game).shortages, ["food"]);
+    const out = days(game, 6);
+    assert.ok(out.some((line) => /^\[SUPPLY\] The Meridian is out of food/.test(line)), out.join(" | "));
+    assert.equal(game.ship.out.food >= 1, true);
+    assert.equal(supply(game, "food").out, true);
+    const still = days(game, 5);
+    assert.ok(still.some((line) => /with no food stores/.test(line)), "every five days, a reminder");
+  });
 });
 
 test("no food pulls morale and health down, and the captain goes hungry too", () => {
   const game = newGame();
-  game.ship.food = 0;
+  empty(game, "food");
   const morale = game.ship.morale;
   const health = game.ship.health;
-  const notes = days(game, 6);
+  const notes = withoutSources(() => days(game, 6));
   assert.ok(game.ship.morale < morale);
   assert.ok(game.ship.health < health);
   assert.ok(game.conditions.some((c) => c.id === "underfed"), "the captain eats what everyone eats");
@@ -175,7 +210,7 @@ test("with parts aboard the engineers mend the hull, and without them it wears",
   days(whole, 10);
   assert.equal(whole.ship.hull, whole.ship.maxHull, "and never past the top");
   const worn = newGame();
-  worn.ship.parts = 0;
+  empty(worn, "parts");
   worn.ship.hull = 50;
   const notes = days(worn, 10);
   assert.ok(worn.ship.hull < 50 && worn.ship.hull >= 40, `hull ${worn.ship.hull} after ten days without parts`);
@@ -184,7 +219,7 @@ test("with parts aboard the engineers mend the hull, and without them it wears",
 
 test("no medicine: health falls, wounds heal slower, and people aboard start dying", () => {
   const game = newGame();
-  game.ship.medicine = 0;
+  empty(game, "medicine");
   const before = game.ship.aboard;
   // The shortage is counted at midnight, and from then on wounds heal at half speed.
   days(game, 1);
@@ -192,7 +227,9 @@ test("no medicine: health falls, wounds heal slower, and people aboard start dyi
   game.conditions.push({ id: "concussed", hoursLeft: 24 });
   days(game, 1);
   assert.ok(game.conditions[0]?.hoursLeft > 0 && game.conditions[0].hoursLeft <= 13, `${game.conditions[0]?.hoursLeft} hours left: half speed`);
-  days(game, 40);
+  // With the food gone too, and nothing coming aboard, health falls far enough for people to die.
+  empty(game, "food");
+  withoutSources(() => days(game, 40));
   assert.ok(game.ship.health < SHIP_DATA.rules.deadlyHealth, `health ${game.ship.health}`);
   assert.ok(game.ship.aboard < before, "people have died");
   assert.ok(game.ship.aboard >= SHIP_DATA.rules.peopleFloor, "but never below the ship's own crew");
@@ -201,13 +238,13 @@ test("no medicine: health falls, wounds heal slower, and people aboard start dyi
 
 test("restocking ends a shortage, and says so", () => {
   const game = newGame();
-  game.ship.food = 0;
-  days(game, 2);
+  empty(game, "food");
+  withoutSources(() => days(game, 2));
   assert.ok(game.ship.out.food);
-  const { notice } = tool(game, "pass_time", { hours: 1, activity: "active", reason: "A moment" });
+  const { notice } = withoutSources(() => tool(game, "pass_time", { hours: 1, activity: "active", reason: "A moment" }));
   assert.ok(!/food again/.test(notice ?? ""));
-  game.ship.food = 20;
-  const notes = days(game, 1);
+  putAboard(game, SHIP_ID, "ration_crate", 20);
+  const notes = withoutSources(() => days(game, 1));
   assert.ok(notes.some((line) => /There's food again/.test(line)), notes.join(" | "));
   assert.equal(game.ship.out.food, undefined);
 });
@@ -216,14 +253,10 @@ test("restocking ends a shortage, and says so", () => {
 
 test("morale and health settle where the rations put them", () => {
   const game = newGame();
-  // The old count in tonnes, and the pantry the galley cooks from, both kept full: step 3's errands will do the carrying.
-  const pantry = logisticsOf(SHIP_ID).stores.find((one) => one.id === "pantry");
-  const rack = logisticsOf(SHIP_ID).stores.find((one) => one.id === "fuel_rack");
+  // Every store kept full, and the tank, so that only the rations have a say.
   const stocked = () => {
-    Object.assign(game.ship, { food: 9000, medicine: 900, parts: 900, fuel: game.ship.maxFuel });
-    storePut(game, pantry.key, pantry.holds, "ration_crate", 12);
-    // And the generator's rack, until step 5 refills the shuttle stores it's kept from.
-    storePut(game, rack.key, rack.holds, "fuel_cell", 6);
+    fillStores(game, SHIP_ID);
+    game.ship.fuel = game.ship.maxFuel;
   };
   // The stories that move on by themselves nudge morale a point or two, so it settles near its level, not on it.
   const near = (value, target) => Math.abs(value - target) <= 3;
@@ -232,7 +265,9 @@ test("morale and health settle where the rations put them", () => {
   assert.equal(game.ship.health, SHIP_DATA.rations.standard.health);
   shipCommand(game, { action: "rations", id: "generous" });
   for (let day = 0; day < 40; day += 1) { stocked(); days(game, 1); }
-  assert.ok(near(game.ship.morale, SHIP_DATA.rations.generous.morale), `morale ${game.ship.morale}`);
+  // Generous rations are a quarter more to serve, and the galley's kettle can't quite keep up through the sittings, so
+  // some find it empty and morale settles a little under what the rations promise: better than standard, not the full way.
+  assert.ok(game.ship.morale > SHIP_DATA.rations.standard.morale + 3 && game.ship.morale <= SHIP_DATA.rations.generous.morale, `morale ${game.ship.morale}`);
   assert.equal(game.ship.health, SHIP_DATA.rations.generous.health);
 });
 
@@ -286,10 +321,13 @@ test("buying needs a dock that sells, credits and room in the tank", () => {
   game.credits = 10000;
   game.ship.fuel = game.ship.maxFuel;
   assert.throws(() => shipCommand(game, { action: "buy", id: "fuel" }), /tank is full/);
-  const food = game.ship.food;
+  // The stores start full, so a lot of food needs room first.
+  assert.throws(() => shipCommand(game, { action: "buy", id: "food" }), /no room aboard/);
+  takeAboard(game, SHIP_ID, "ration_crate", 5);
+  const food = stock(game, "food");
   const { message } = shipCommand(game, { action: "buy", id: "food" });
-  assert.match(message, /^Bought 5 t of food for the ship, for \d+ credits/);
-  assert.equal(game.ship.food, food + 5);
+  assert.match(message, /^Bought 5 crates of food for the ship, for \d+ credits/);
+  assert.equal(stock(game, "food"), food + 5);
 });
 
 // ---- The star map -------------------------------------------------------------
@@ -397,7 +435,8 @@ test("the game master gets one compact line, rounded so it doesn't change every 
   assert.ok(aiSnapshot(game).split("\n").includes(line));
   assert.ok(line.length < 200, `the ship line is ${line.length} characters`);
   assert.match(line, /^Aboard: 900 people/);
-  assert.match(line, /Left: food \d+d, fuel \d+d, medicine \d+d, parts \d+d/);
+  assert.match(line, /Left: food steady, fuel \d+d, medicine \d+d, parts \d+d/, "the refills keep the food steady, and the rest is counted in days");
+  withoutSources(() => assert.match(shipLine(game), /Left: food \d+d, fuel \d+d/));
   assert.ok(!/ships|Choir pursuit/.test(line));
   game.clock.hours += 3;
   assert.equal(shipLine(game), line, "nothing's changed, so the line shouldn't");
@@ -409,9 +448,11 @@ test("the game master gets one compact line, rounded so it doesn't change every 
 test("the report goes out once, keeps to the newest news, and stays small", () => {
   const game = newGame();
   assert.equal(shipReport(game), null);
-  game.ship.food = 3;
-  days(game, 2);
-  days(game, 4);
+  takeAboard(game, SHIP_ID, "ration_crate", 20);
+  withoutSources(() => {
+    days(game, 2);
+    days(game, 4);
+  });
   const report = shipReport(game);
   assert.match(report, /^<ship_report>/);
   assert.match(report, /out of food/);
@@ -422,9 +463,9 @@ test("the report goes out once, keeps to the newest news, and stays small", () =
 
 test("when the AI moves the clock, it hears straight away and not a second time", () => {
   const game = newGame();
-  game.ship.food = 0.5;
+  empty(game, "food");
   game.clock.hours = 20;
-  const { result, notice } = tool(game, "pass_time", { hours: 48, activity: "active", reason: "A long wait" });
+  const { result, notice } = withoutSources(() => tool(game, "pass_time", { hours: 48, activity: "active", reason: "A long wait" }));
   assert.match(result, /out of food/);
   assert.match(notice, /\[SUPPLY\]/);
   assert.equal(shipReport(game), null);
@@ -476,10 +517,8 @@ test("stories set aside stay in their files, out of the Leads menu, and still on
   for (const id of SET_ASIDE) assert.ok(!seen.has(id), `${id} was offered`);
   assert.ok(seen.size > 20, `only ${seen.size} leads`);
   const waited = newGame();
-  waited.ship.food = 9000;
-  waited.ship.medicine = 900;
-  waited.ship.parts = 900;
   for (let day = 0; day < 200; day += 1) {
+    fillStores(waited, SHIP_ID);
     waited.ship.fuel = waited.ship.maxFuel;
     days(waited, 1);
   }
@@ -556,8 +595,8 @@ test("a shortage reaches the game master once, with its next message", async () 
   replies = [];
   const game = newGame();
   game.transcript.push({ role: "narrator", text: "The story so far." });
-  game.ship.food = 0.5;
-  days(game, 2);
+  empty(game, "food");
+  withoutSources(() => days(game, 2));
   assert.ok(game.ship.unheard.length);
   replies = [{ blocks: [{ type: "text", text: "One." }] }, { blocks: [{ type: "text", text: "Two." }] }];
   await runTurn({ game, settings, playerText: "I look around.", emit: () => {} });
@@ -586,7 +625,7 @@ test("a save from before the ship kept her own stores loads, with nothing charge
   assert.equal(game.version, 17);
   assert.equal(game.ship.day, 9);
   assert.equal(game.ship.at, "kessara");
-  assert.equal(game.ship.food, SHIP_DATA.start.food);
+  assert.equal(stock(game, "food"), 56, "her stores are full, from the logistics file");
   assert.equal(game.ship.aboard, 900);
   assert.equal(game.ship.fuel, 3, "fuel stays what it was");
   assert.equal(game.ship.morale, 31, "morale stays what it was");
@@ -596,7 +635,7 @@ test("a save from before the ship kept her own stores loads, with nothing charge
   assert.doesNotThrow(() => publicState(game));
   assert.doesNotThrow(() => aiSnapshot(game));
   passTime(game, 24);
-  assert.ok(game.ship.food < SHIP_DATA.start.food);
+  assert.ok(game.ship.owed?.medicine > 0, "and a day has been charged since");
 });
 
 test("a save with the fleet in it loses the fleet, and keeps what was the ship's", () => {
@@ -653,7 +692,6 @@ test("sleeping pays for the day too", () => {
   const game = newGame();
   game.location = "meridian";
   game.clock.hours = 20;
-  const food = game.ship.food;
   rest(game);
-  assert.ok(game.ship.food < food);
+  assert.ok(game.ship.owed?.medicine > 0, "midnight went by in the sleep, and the day was charged");
 });

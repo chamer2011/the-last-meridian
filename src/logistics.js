@@ -14,8 +14,9 @@ import { hasReached, isAbout, rosterOf, usuallyIn, whoIsIn } from "./life.js";
 import { claimedSquares, floorSpot, roomPowered, systemsOf } from "./systems.js";
 import { mapFor, roomHere, roomsOf, roomsOn, thingsIn } from "./walk.js";
 import { LOGISTICS_FILE_PROBLEMS, WORLD_LOGISTICS } from "./world.js";
-import { everyWords, readErrandLine, readLoadsLine, readMachineLine, readStoreLine, slugOf } from "../public/logistics-text.js";
+import { everyWords, readErrandLine, readLoadsLine, readMachineLine, readRefillLine, readStoreLine, slugOf } from "../public/logistics-text.js";
 import { KNOWN_SYSTEMS, SYSTEM_TITLES } from "../public/systems-text.js";
+import { SHIP_DATA } from "./world.js";
 
 const plain = (words) => String(words ?? "").toLowerCase().replace(/['’]/g, "").replace(/^the\s+/, "").replace(/\s+/g, " ").trim();
 const upperFirst = (text) => (text ? text[0].toUpperCase() + text.slice(1) : "");
@@ -305,6 +306,44 @@ function compileLogistics(place) {
       model.loads.push({ system: id, amount: one.amount, per: one.per, underWay: Boolean(one.while), words: one.system });
     }
   }
+  // The refills: what comes into a store from outside, how often and how far. From nothing, until trade off the ship
+  // is built, which is the one place something still comes from nowhere.
+  model.refills = [];
+  for (const raw of file.refills ?? []) {
+    const line = raw.line ?? null;
+    const r = readRefillLine(raw.text);
+    if (r.problem) {
+      at(line, r.problem);
+      continue;
+    }
+    const store = findStore(r.store);
+    if (!store) {
+      at(line, `there's no store called ${r.store} to refill: the stores are ${storeNames()}`);
+      continue;
+    }
+    if (store.count) {
+      at(line, `the ${store.name} holds ${store.count.unit}, not things that come aboard: a refill names a store of things`);
+      continue;
+    }
+    const items = [];
+    let sound = true;
+    for (const words of r.what) {
+      const item = itemByWords(words);
+      if (!item) {
+        at(line, `there's no item called ${words} in world/items to come into the ${store.name}`);
+        sound = false;
+      } else if (!(item in store.holds)) {
+        at(line, `the ${store.name} doesn't keep ${words}: add it to the ${store.name}'s holds line`);
+        sound = false;
+      } else items.push(item);
+    }
+    if (!sound) continue;
+    if (model.refills.some((one) => one.store === store.id)) {
+      at(line, `the ${store.name} is refilled twice: write what comes into it on one line`);
+      continue;
+    }
+    model.refills.push({ store: store.id, items, every: r.every, upTo: r.upTo, line, text: raw.text });
+  }
   // The errands: who carries what from which store to which, when the store it goes to is short, so many a trip.
   model.errands = [];
   const roster = rosterOf(place);
@@ -387,6 +426,113 @@ function pickTake(game, store, takes) {
 const takesWords = (takes) => takes.map((one) => itemWords(one.item, 2)).join(" or ");
 // "the pantry is full", "the garden bins are full".
 const isFull = (store) => `the ${store.name} ${/s$/i.test(store.name) ? "are" : "is"} full`;
+
+// ---- Everything aboard of a kind -----------------------------------------------------------------------
+
+// How many of some items are aboard a place, over every store that keeps them, and how many those stores hold in
+// all: for the Ship menu's count of food, medicine and parts, which is the same count as the stores. Null where the
+// place has no logistics, so the ship can fall back on her old numbers.
+export function countAboard(game, place, items) {
+  const model = logisticsOf(place);
+  if (!model) return null;
+  const wanted = Array.isArray(items) ? items : [items];
+  let n = 0;
+  let of = 0;
+  for (const store of model.stores) {
+    if (store.count) continue;
+    const counts = storeCounts(game, store.key, store.holds);
+    for (const item of wanted) {
+      if (!(item in store.holds)) continue;
+      n += counts[item] ?? 0;
+      of += store.holds[item];
+    }
+  }
+  return { n, of };
+}
+
+// The stores that keep an item, in the file's order, or in the order of the ids given.
+function storesKeeping(model, item, order = null) {
+  const keeping = model.stores.filter((store) => !store.count && item in store.holds);
+  if (!order) return keeping;
+  return [...order.map((id) => keeping.find((store) => store.id === id)).filter(Boolean), ...keeping.filter((store) => !order.includes(store.id))];
+}
+
+// Puts so many of an item into the place's stores that keep it, the first with room first. Says how many went in.
+export function putAboard(game, place, item, n, order = null) {
+  const model = logisticsOf(place);
+  if (!model) return 0;
+  let left = n;
+  for (const store of storesKeeping(model, item, order)) {
+    if (left <= 0) break;
+    left -= storePut(game, store.key, store.holds, item, left);
+  }
+  return n - left;
+}
+
+// Takes so many of an item from the place's stores that keep it, in the file's order or the order given. Says how
+// many came out.
+export function takeAboard(game, place, item, n, order = null) {
+  const model = logisticsOf(place);
+  if (!model) return 0;
+  let left = n;
+  for (const store of storesKeeping(model, item, order)) {
+    if (left <= 0) break;
+    left -= storeTake(game, store.key, store.holds, item, left);
+  }
+  return n - left;
+}
+
+// Every store of things filled to what it holds: for tests, and for a game that wants to start from full.
+export function fillStores(game, place) {
+  const model = logisticsOf(place);
+  if (!model) return;
+  for (const store of model.stores) {
+    if (store.count) {
+      setCount(game, store, store.count.n);
+      continue;
+    }
+    for (const [item, holds] of Object.entries(store.holds)) {
+      const have = storeCounts(game, store.key, store.holds)[item] ?? 0;
+      if (have < holds) storePut(game, store.key, store.holds, item, holds - have);
+    }
+  }
+}
+
+// How much the rations stretch or cut what everyone eats: standard is one.
+const rationsFactor = (game) => SHIP_DATA.rations?.[game.ship?.rations]?.food ?? 1;
+
+// How many sittings a crate or a basket makes, from the file's numbers at the top, or the galley's own line.
+function sittingsAUnit(model) {
+  if (model.numbers?.crateFeeds) return model.numbers.crateFeeds;
+  const galley = model.machines.find((m) => m.gives?.count);
+  return galley?.gives.n ?? 200;
+}
+
+// How many of some items the refills from nothing can bring aboard in a day: a store topped up to full every so often
+// can give its whole capacity each time. Zero where nothing refills them.
+export function refilledADay(game, place, items) {
+  const model = logisticsOf(place);
+  if (!model) return 0;
+  const wanted = Array.isArray(items) ? items : [items];
+  let aDay = 0;
+  for (const r of model.refills) {
+    const store = storeById(model, r.store);
+    for (const item of r.items) {
+      if (!wanted.includes(item)) continue;
+      const upTo = r.upTo === "full" ? store.holds[item] : Math.min(store.holds[item], r.upTo);
+      aDay += (upTo * 1440) / r.every;
+    }
+  }
+  return aDay;
+}
+
+// How many crates or baskets the whole ship eats in a day, with the rations as they are, or as they might be. Null
+// where there are no sittings.
+export function foodADay(game, place, factor = rationsFactor(game)) {
+  const model = logisticsOf(place);
+  if (!model?.kettles.length) return null;
+  return ((game.ship?.aboard ?? 0) * model.eats * factor) / sittingsAUnit(model);
+}
 
 // ---- The clock -----------------------------------------------------------------------------------
 
@@ -480,7 +626,10 @@ export function workersIn(game, place, roomId, hours) {
 function whyWaiting(game, place, m, from, into, minute, you) {
   if (m.needs.power && !roomPowered(game, place, m.room)) return "no power";
   if (m.needs.worker && you !== m.room && !usuallyIn(game, place, m.room, minute % 1440).length) return `waiting for ${m.needs.worker}`;
-  if (into && roomFor(game, into, m.gives) < m.gives.n) return isFull(into);
+  if (into) {
+    const room = roomFor(game, into, m.gives);
+    if (room < m.gives.n) return room > 0 ? `no room in the ${into.name} for ${m.gives.n} ${m.gives.count ? "sittings" : itemWords(m.gives.item, m.gives.n)} yet` : isFull(into);
+  }
   if (from && !pickTake(game, from, m.takes)) return `the ${from.name} ${/s$/i.test(from.name) ? "have" : "has"} no ${takesWords(m.takes)}`;
   return null;
 }
@@ -551,15 +700,17 @@ function serveMeals(game, place, model, state, t, minutes, notes) {
   const day = Math.floor(t / 1440);
   const meals = state.meals;
   const today = meals.days[day] ??= { served: 0, missed: 0 };
-  // Old days are let go once the ship's own day has had them, a few days on.
-  if (t % 1440 === 0) {
+  // Old days are let go once the ship's own day has had them, a few days on: once a day, whenever the day turns.
+  if (meals.pruned !== day) {
+    meals.pruned = day;
     const keep = Math.min(day, game.ship?.day ?? day) - 3;
     for (const key of Object.keys(meals.days)) if (Number(key) < keep) delete meals.days[key];
   }
   const index = sittingAt(model.sittings, t - day * 1440);
   if (index < 0) return;
   const aboard = game.ship?.aboard ?? 0;
-  const aSitting = (aboard * model.eats) / model.sittings.at.length;
+  // The rations stretch or cut what each sitting takes from the kettle.
+  const aSitting = (aboard * model.eats * rationsFactor(game)) / model.sittings.at.length;
   meals.carry = (meals.carry ?? 0) + (aSitting / model.sittings.minutes) * minutes;
   let people = Math.floor(meals.carry);
   meals.carry -= people;
@@ -582,6 +733,57 @@ function serveMeals(game, place, model, state, t, minutes, notes) {
   }
 }
 
+// The refills over one piece of the clock: on the hour the file says, every store written is topped up from nothing,
+// and the manifest says what came aboard.
+const clockWordsAt = (t) => `Day ${Math.floor(t / 1440) + 1}, ${clockWords(t % 1440)}`;
+function runRefills(game, place, model, state, t) {
+  if (!model.refills.length) return;
+  state.refills ??= { log: [] };
+  for (const r of model.refills) {
+    // The hour's mark that falls in this piece of the clock, if one does. In play the clock runs by the second, so
+    // the pieces don't start on the minute, let alone on the hour.
+    const mark = Math.ceil(t / r.every) * r.every;
+    if (mark >= t + CHUNK) continue;
+    const store = storeById(model, r.store);
+    const came = [];
+    for (const item of r.items) {
+      const have = storeCounts(game, store.key, store.holds)[item] ?? 0;
+      const upTo = r.upTo === "full" ? store.holds[item] : Math.min(store.holds[item], r.upTo);
+      if (upTo - have <= 0) continue;
+      const put = storePut(game, store.key, store.holds, item, upTo - have);
+      if (put > 0) came.push(loadWords(item, put));
+    }
+    if (!came.length) continue;
+    state.refills.log.push({ at: mark, text: `${came.length > 1 ? `${came.slice(0, -1).join(", ")} and ${came.at(-1)}` : came[0]} came aboard into the ${store.name}.` });
+    if (state.refills.log.length > 20) state.refills.log.splice(0, state.refills.log.length - 20);
+  }
+}
+
+// The manifest: what's come aboard lately, newest first, for the lighter bay's clip and the ship's computers.
+export function manifestLines(game, place) {
+  const model = logisticsOf(place);
+  if (!model?.refills.length) return [];
+  const log = game.logistics?.[place]?.refills?.log ?? [];
+  return [...log].reverse().map((entry) => `${clockWordsAt(entry.at)}: ${entry.text}`);
+}
+
+// Every refill with its store, what comes, how often, and the last time it did. Reading this changes nothing.
+export function refillsView(game, place) {
+  const model = logisticsOf(place);
+  if (!model) return [];
+  const log = game.logistics?.[place]?.refills?.log ?? [];
+  return model.refills.map((r) => {
+    const store = storeById(model, r.store);
+    const last = [...log].reverse().find((entry) => entry.text.endsWith(`into the ${store.name}.`)) ?? null;
+    return {
+      id: r.store,
+      store: upperFirst(store.name),
+      does: `${r.items.map((item) => itemWords(item, 2)).join(" and ")} from nothing, every ${everyWords(r.every)}, up to ${r.upTo === "full" ? "full" : r.upTo}`,
+      last: last ? `${clockWordsAt(last.at)}: ${last.text}` : null,
+    };
+  });
+}
+
 // The clock in whole minutes.
 const minutesOf = (hours) => Math.floor(hours * 60 + 1e-6);
 
@@ -602,7 +804,7 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
   const until = minutesOf(untilHours);
   for (const place of Object.keys(WORLD_LOGISTICS)) {
     const model = logisticsOf(place);
-    if (!model || (!model.kettles.length && !model.machines.some((m) => m.runs) && !model.errands.length)) continue;
+    if (!model || (!model.kettles.length && !model.machines.some((m) => m.runs) && !model.errands.length && !model.refills.length)) continue;
     const state = stateOf(game, place);
     if (state.at === null) {
       state.at = until;
@@ -617,6 +819,7 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
         else if (m.runs) runMachine(game, place, model, m, state, t, CHUNK, you);
       }
       serveMeals(game, place, model, state, t, CHUNK, notes);
+      runRefills(game, place, model, state, t);
       runErrands(game, place, model, state, t);
       t += CHUNK;
     }
@@ -701,7 +904,7 @@ export function mealsView(game, place) {
   const days = game.logistics?.[place]?.meals?.days ?? {};
   return {
     sittings: at.length,
-    aSitting,
+    aSitting: Math.round(aSitting * rationsFactor(game)),
     eats: model.eats,
     now: index >= 0 ? `the ${ORDINALS[index] ?? `${index + 1}th`} sitting is on, ${aSitting} people over ${length} minutes, ${Math.max(1, Math.ceil(at[index] + length - minute))} to go` : `between sittings, the next at ${clockWords(next)}`,
     today: { ...(days[day] ?? { served: 0, missed: 0 }) },
@@ -720,10 +923,12 @@ export function mealWords(game, place, doing) {
   return model.kettles.every((kettle) => countOf(game, kettle) <= 0) ? "finding the kettle empty" : doing;
 }
 
-// A store's words with how it stands now: a kettle says how much is left in it, and an emptied store says so.
+// A store's words with how it stands now: a kettle says how much is left in it, an emptied store says so, and one
+// that's refilled from outside carries its manifest, the last few things that came aboard.
 export function storeLook(game, place, thing, look) {
   if (!thing?.store) return look;
-  const store = logisticsOf(place)?.stores.find((one) => one.id === thing.store);
+  const model = logisticsOf(place);
+  const store = model?.stores.find((one) => one.id === thing.store);
   if (!store) return look;
   if (store.count) {
     const n = countOf(game, store);
@@ -732,7 +937,12 @@ export function storeLook(game, place, thing, look) {
     return `${look ?? ""} ${words}`.trim();
   }
   const counts = storeCounts(game, store.key, store.holds);
-  return Object.values(counts).some((n) => n > 0) ? look : `${look ?? ""} It's empty now.`.trim();
+  let words = Object.values(counts).some((n) => n > 0) ? look ?? "" : `${look ?? ""} It's empty now.`.trim();
+  if (model.refills.some((r) => r.store === store.id)) {
+    const lately = manifestLines(game, place).filter((line) => line.endsWith(`into the ${store.name}.`)).slice(0, 3);
+    words = `${words} The manifest says: ${lately.length ? lately.join(" ") : "nothing has come aboard yet."}`.trim();
+  }
+  return words;
 }
 
 // ---- For the checker --------------------------------------------------------------------------------

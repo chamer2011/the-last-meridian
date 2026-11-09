@@ -66,7 +66,7 @@ export function mailOf(entry) {
   return { from: found ? found[1].trim() : String(entry.name).trim(), to: found ? found[2].trim() : null, subject: found ? null : String(entry.name).trim(), text: String(entry.desc ?? "").trim() };
 }
 
-const LOG_KINDS = { berths: "The berth log", prices: "Today's prices", people: "Who's here", news: "What's been heard", readouts: "The ship's readouts" };
+const LOG_KINDS = { berths: "The berth log", prices: "Today's prices", people: "Who's here", news: "What's been heard", readouts: "The ship's readouts", manifest: "The lighter's manifest" };
 const logOf = (text, i) => {
   const key = String(text).trim().toLowerCase();
   return LOG_KINDS[key] ? { id: key, name: LOG_KINDS[key], kind: key } : { id: `log_${i + 1}`, name: String(text).trim().slice(0, 48), kind: "text", text: String(text).trim() };

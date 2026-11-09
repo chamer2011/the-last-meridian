@@ -23,6 +23,32 @@ const { migrateGame } = await import("../src/migrate.js");
 const { projectDir } = await import("../src/paths.js");
 const { START_LIST, aboardShip, isCaptain, jobHere, openingFor, startOf } = await import("../src/role.js");
 const { aiDossier, aiSnapshot, passTime, publicState, rest, restCost, travel, workShift } = await import("../src/rules.js");
+const { countAboard, logisticsOf, takeAboard } = await import("../src/logistics.js");
+
+// The ship's food, medicine and parts are what's in her rooms' stores (world/logistics): a test counts them, empties
+// them, or stops the garden and the refills from nothing while a shortage has to last.
+const ITEMS_OF = { food: ["ration_crate", "produce"], medicine: ["medicine_crate"], parts: ["parts_crate"] };
+const stockOf = (game, id) => countAboard(game, "meridian", ITEMS_OF[id]).n;
+function empty(game, id) {
+  for (const item of ITEMS_OF[id]) takeAboard(game, "meridian", item, 999);
+  if (id === "food") {
+    game.stores ??= {};
+    game.stores[logisticsOf("meridian").stores.find((one) => one.id === "soup_kettle").key] = { count: 0 };
+  }
+}
+function withoutSources(run) {
+  const model = logisticsOf("meridian");
+  const garden = model.machines.find((one) => one.id === "garden");
+  const refills = model.refills;
+  garden.runs = false;
+  model.refills = [];
+  try {
+    return run();
+  } finally {
+    garden.runs = true;
+    model.refills = refills;
+  }
+}
 const { arcBrief, leadsHere, storyView, threadNotes } = await import("../src/story-library.js");
 const { hasMovedOn, leadNow } = await import("../src/story-clock.js");
 const { newTurnLimits, runTool } = await import("../src/tools.js");
@@ -392,16 +418,16 @@ test("the ship goes on by itself: whoever has the chair moves her when she needs
   assert.ok(places.size >= 1, "she went somewhere for what she needed");
   assert.ok(bought, `she never bought anything: ${funds}`);
   for (const place of places) assert.ok(CHAIR.ports.includes(place), place);
-  assert.ok(game.ship.food > 0 && game.ship.medicine > 0, "and she's kept fed");
+  assert.ok(stockOf(game, "food") > 0 && stockOf(game, "medicine") > 0, "and she's kept fed");
 });
 
 test("someone away from the Meridian doesn't go hungry with her, or hear her troubles, or heal slower for them", () => {
   const away = newGame("docker");
-  away.ship.food = 0;
-  away.ship.medicine = 0;
+  empty(away, "food");
+  empty(away, "medicine");
   away.ship.fuel = 0;
   away.ship.chair.funds = 0;
-  const notes = days(away, 6);
+  const notes = withoutSources(() => days(away, 6));
   assert.ok(!away.conditions.some((condition) => condition.id === "underfed"));
   assert.ok(!notes.some((line) => line.startsWith("[SUPPLY]") || line.startsWith("[COUNCIL]")), notes.join(" | "));
   assert.ok(away.ship.log.length > 0, "it's still happening, and it's in the ship's own log");
@@ -409,10 +435,10 @@ test("someone away from the Meridian doesn't go hungry with her, or hear her tro
   assert.match(shipLine(away), /only know what's got around/);
   assert.ok(!shipLine(away).includes("Left:"), "and the game master isn't reminded of what they can't know");
   const aboard = newGame("engine_hand");
-  aboard.ship.food = 0;
+  empty(aboard, "food");
   aboard.ship.chair.funds = 0;
   aboard.ship.rations = "half";
-  const heard = days(aboard, 6);
+  const heard = withoutSources(() => days(aboard, 6));
   assert.ok(aboard.conditions.some((condition) => condition.id === "underfed"), "aboard, they eat what everyone eats");
   assert.ok(heard.some((line) => line.startsWith("[SUPPLY]")));
   assert.match(shipLine(aboard), /isn't the player's to command: \d+ people/);
@@ -421,12 +447,16 @@ test("someone away from the Meridian doesn't go hungry with her, or hear her tro
 test("whoever's on the dock sees the Meridian come and go", () => {
   const game = newGame("docker");
   game.ship.at = "haven";
-  game.ship.food = 1;
+  // Down to a day or so of food, with nothing coming aboard from nothing meanwhile.
+  takeAboard(game, "meridian", "ration_crate", 32);
+  takeAboard(game, "meridian", "produce", 14);
   game.ship.chair.id = "reddick";
   game.ship.chair.funds = 0;
   game.world.places.haven.goods.food = 0;
   let notes = [];
-  for (let day = 0; day < 12 && game.ship.at === "haven"; day += 1) notes = days(game, 1);
+  withoutSources(() => {
+    for (let day = 0; day < 12 && game.ship.at === "haven"; day += 1) notes = days(game, 1);
+  });
   assert.notEqual(game.ship.at, "haven", "she should have gone looking for food");
   assert.ok(notes.some((line) => /The Meridian has left Haven Station/.test(line)), notes.join(" | "));
   assert.equal(game.location, "haven");

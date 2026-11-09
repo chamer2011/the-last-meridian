@@ -14,6 +14,7 @@ process.env.GAME_DATA_DIR = dataDir;
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const { clearFact, endStory, endingOf, recordFact } = await import("../src/record.js");
 const { passTime } = await import("../src/rules.js");
+const { fillStores } = await import("../src/logistics.js");
 const { allStoryProblems } = await import("../src/scenes.js");
 const { clockFacts, clockProblems, hasMovedOn, leadNow, whatHappened } = await import("../src/story-clock.js");
 const { STORY_CLOCK, WORLD_THREADS } = await import("../src/world.js");
@@ -31,9 +32,8 @@ const newGame = (seed = 21) => {
 const days = (game, count) => passTime(game, 24 * count, "routine");
 // Keeps the ship out of trouble, so that only what's being tested gets a say.
 function comfortable(game) {
-  game.ship.food = 9000;
-  game.ship.medicine = 900;
-  game.ship.parts = 900;
+  // Every store in her rooms full (food, medicine, parts and the generator's cells), the tank full, and morale steady.
+  fillStores(game, "meridian");
   game.ship.fuel = game.ship.maxFuel;
   game.ship.morale = 60;
 }

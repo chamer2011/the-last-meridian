@@ -18,6 +18,7 @@ const { chartEntry, shipCommand, shipView } = await import("../src/ship.js");
 const { migrateGame } = await import("../src/migrate.js");
 const { projectDir } = await import("../src/paths.js");
 const { aiSnapshot, buy, buyPrice, passTime, publicState, sell, sellPrice } = await import("../src/rules.js");
+const { countAboard, takeAboard } = await import("../src/logistics.js");
 const { rumorsHere } = await import("../src/story-library.js");
 const { TOOL_DEFS, newTurnLimits, runTool } = await import("../src/tools.js");
 const { DAILY, STAR_MAP } = await import("../src/world.js");
@@ -300,13 +301,14 @@ test("the ship can sell what it has, for more where it's short, and that eases t
   assert.ok(dear > usual * 1.5, `${dear} against ${usual}`);
   assert.ok(row("medicine").price > dear, "buying always costs more than selling pays");
   const credits = game.credits;
-  const stock = game.ship.medicine;
+  // Medicine is the crates in the medbay's cabinet, and a sale takes one out.
+  const stock = countAboard(game, "meridian", ["medicine_crate"]).n;
   const reply = shipCommand(game, { action: "sell", id: "medicine" });
   assert.equal(game.credits, credits + dear);
-  assert.equal(game.ship.medicine, stock - 1);
+  assert.equal(countAboard(game, "meridian", ["medicine_crate"]).n, stock - 1);
   assert.ok(goods.medicine > 30);
   assert.match(reply.message, /Sold 1 crate of the ship's medicine/);
-  game.ship.parts = 0.5;
+  takeAboard(game, "meridian", "parts_crate", 999);
   assert.throws(() => shipCommand(game, { action: "sell", id: "parts" }), /hasn't got/);
   game.ship.fuel = 0;
   assert.throws(() => shipCommand(game, { action: "sell", id: "fuel" }), /hasn't got/);
@@ -504,12 +506,14 @@ test("over the real server: the clock runs away from the Meridian, trading moves
   const start = (await (await fetch(`http://127.0.0.1:${port}/api/state`)).json()).game;
   const fuel = start.ship.trade.find((one) => one.id === "fuel");
   assert.equal(fuel.level, "normal");
-  const bought = await post("/api/ship", { action: "buy", id: "parts" });
-  assert.equal(bought.status, 200);
-  assert.ok(bought.game.ship.trade.find((one) => one.id === "parts").price > start.ship.trade.find((one) => one.id === "parts").price);
+  // The parts lockers start full, so a crate goes to the dock first, and then one comes back aboard, dearer.
   const sold = await post("/api/ship", { action: "sell", id: "parts" });
   assert.equal(sold.status, 200);
-  assert.ok(sold.game.credits > bought.game.credits);
+  assert.ok(sold.game.credits > start.credits);
+  const bought = await post("/api/ship", { action: "buy", id: "parts" });
+  assert.equal(bought.status, 200);
+  assert.ok(bought.game.ship.trade.find((one) => one.id === "parts").price >= sold.game.ship.trade.find((one) => one.id === "parts").price);
+  assert.ok(bought.game.credits < sold.game.credits, "buying costs more than selling paid");
 
   const waited = await post("/api/ship", { action: "wait", days: 3 });
   assert.equal(waited.status, 200);

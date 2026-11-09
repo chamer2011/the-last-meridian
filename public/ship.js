@@ -47,7 +47,7 @@ function supplyLine(s) {
     muted(`Makes ${s.made}, uses ${s.used}, so ${signed(s.net)} a day.`));
 }
 
-const suppliesSection = (s) => section("Stores", s.supplies.map(supplyLine), muted("Counted every midnight, in whatever way the day passes. With parts aboard the engineers mend the hull a little each day; without them, she wears."));
+const suppliesSection = (s) => section("Stores", s.supplies.map(supplyLine), muted("Food, medicine and parts are what's in the rooms' stores below, counted together, and fuel is the tank. The medbay and the engineers take a crate when they've used one up, at midnight, and the kettle feeds everyone through the day. With parts aboard the engineers mend the hull a little each day; without them, she wears."));
 
 // What's kept where, room by room, from world/logistics: each store is a thing in a room you can walk to and open,
 // each machine takes from one and puts into another on the clock, and the whole ship eats from the kettle.
@@ -66,6 +66,9 @@ function storesSection(s) {
   const errand = (e) => el("div", { class: "menu-row small" },
     el("span", {}, e.who, el("span", { class: "muted" }, `: ${e.does}`)),
     el("span", { class: e.waiting ? "tone-bad" : e.busy ? "" : "muted" }, e.status));
+  const refill = (r) => el("div", { class: "stack gap-small" },
+    el("div", { class: "small" }, r.store, el("span", { class: "muted" }, `: ${r.does}`)),
+    muted(r.last ? `Last: ${r.last}` : "Nothing has come aboard yet."));
   const meals = s.meals && el("div", { class: "stack gap-small" },
     small(`${s.meals.sittings} sittings a day, ${count(s.meals.aSitting)} people at each: ${s.meals.now}.`),
     el("div", { class: `small${s.meals.today.missed ? " tone-bad" : ""}` }, `Today ${count(s.meals.today.served)} served${s.meals.today.missed ? `, ${count(s.meals.today.missed)} found the kettle empty` : ""}.${s.meals.yesterday ? ` Yesterday ${count(s.meals.yesterday.served)} served${s.meals.yesterday.missed ? `, ${count(s.meals.yesterday.missed)} went without` : ""}.` : ""}`));
@@ -73,6 +76,7 @@ function storesSection(s) {
     muted("Walk up to any of them and open it beside your pack. What's taken out and put back is kept, and the count here follows it."),
     s.machines?.length ? [el("h4", { class: "small" }, "Machines"), s.machines.map(machine), muted("Each runs on the clock while its room has power and someone's at it, and nothing runs while the clock is paused.")] : null,
     s.errands?.length ? [el("h4", { class: "small" }, "Errands"), s.errands.map(errand), muted("Each goes when the store they keep up runs short: to the store they fetch from, a minute there, and back with the load. With nothing to fetch, they stand at it and wait.")] : null,
+    s.refills?.length ? [el("h4", { class: "small" }, "Refills"), s.refills.map(refill), muted("The one place things still come from nowhere, until trade off the ship is built. The manifest on the clip in the lighter bay, and the ship's computers, say what came and when.")] : null,
     meals ? [el("h4", { class: "small" }, "The sittings"), meals, muted("Everyone aboard eats from the kettle at the sittings. Whoever finds it empty goes without, and the ship's morale feels that at midnight.")] : null);
 }
 
@@ -87,7 +91,7 @@ function rationsSection(s) {
     name: r.name,
     desc: r.desc,
     disabled: cannotAct(),
-    detail: el("div", { class: "effects small" }, `Uses ${r.foodUsed} t of food a day. Morale settles at ${r.moraleTarget}, health at ${r.healthTarget}.`),
+    detail: el("div", { class: "effects small" }, `Uses about ${r.foodUsed} crates of food a day. Morale settles at ${r.moraleTarget}, health at ${r.healthTarget}.`),
     onclick: shipOrder({ action: "rations", id: r.id }),
   })));
 }

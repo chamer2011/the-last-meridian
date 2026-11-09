@@ -115,6 +115,18 @@ test("the generator burns a cell every eight hours from the rack, starting with 
 
 test("with no cells left anywhere the generator stops, the ship goes dark and airless, the galley waits, and a cell brings it all back", () => {
   const game = newGame();
+  // Nothing comes aboard from nothing while this runs, or the shuttle stores would have cells again by noon.
+  const model = logisticsOf("meridian");
+  const refills = model.refills;
+  model.refills = [];
+  try {
+    noCells(game);
+  } finally {
+    model.refills = refills;
+  }
+});
+
+function noCells(game) {
   take(game, "fuel_rack", "fuel_cell", 6);
   take(game, "shuttle_stores", "fuel_cell", 12);
   walkCommand(game, { action: "room", to: "galley" });
@@ -141,7 +153,7 @@ test("with no cells left anywhere the generator stops, the ship goes dark and ai
   assert.equal(sys.roomDark(game, "meridian", "galley"), false);
   assert.equal(sys.airFlows(game, "meridian", "galley"), true);
   assert.equal(sys.jumpBlocked(game), null);
-});
+}
 
 test("the reactor gauges and the Ship menu read the generator against the loads, and an old save's generator is running", () => {
   const game = newGame();

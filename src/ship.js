@@ -13,7 +13,7 @@ import { inTrouble, levelName, noneLeft, placeNow, supplyFactor, tellNews, trade
 import { aboardShip, isCaptain } from "./role.js";
 import { addCondition, buyPrice, changeStress, clamp, clockLabel, jumpHours, passTime, sellPrice, travel } from "./rules.js";
 import { navigationDown } from "./systems.js";
-import { errandsView, machinesView, mealsOfDay, mealsView, storesView } from "./logistics.js";
+import { countAboard, errandsView, foodADay, machinesView, mealsOfDay, mealsView, putAboard, refilledADay, refillsView, storesView, takeAboard } from "./logistics.js";
 import { SHIP_DATA, STAR_MAP } from "./world.js";
 
 const { rules: RULES, rations: RATIONS, supplies: SUPPLIES, text: TEXT, council: COUNCIL, chair: CHAIR, ship: SHIP } = SHIP_DATA;
@@ -21,8 +21,16 @@ const { rules: RULES, rations: RATIONS, supplies: SUPPLIES, text: TEXT, council:
 // The player's own ship. She's a place too, with this id.
 export const SHIP_ID = "meridian";
 const SUPPLY_IDS = Object.keys(SUPPLIES);
-// Fuel lives in the ship's tank, with the jumps it pays for. The other stores live here.
+// Fuel lives in the ship's tank, with the jumps it pays for. The others are what's in her rooms' stores (world/logistics):
+// food is every ration crate and basket of produce aboard, counted as crates. A game whose world has no logistics
+// falls back on the old counts kept here.
 const STORES = SUPPLY_IDS.filter((id) => id !== "fuel");
+const STORE_ITEMS = { food: ["ration_crate", "produce"], medicine: ["medicine_crate"], parts: ["parts_crate"] };
+// The stores a bought lot goes into first, and a sold or used one comes out of first.
+const FIRST = { food: ["shuttle_stores", "pantry"], medicine: ["medicine_cabinet"], parts: ["parts_lockers", "shuttle_stores"] };
+// A story's unit of food is about a day's eating, ten crates; its medicine and parts are crates already.
+const STORY_FOOD_CRATES = 10;
+const aboardCount = (game, id) => (id === "fuel" ? null : countAboard(game, SHIP_ID, STORE_ITEMS[id]));
 const MAX_LOG = 40;
 const MAX_REPORT_LINES = 5;
 
@@ -114,11 +122,15 @@ export function shipLedger(game, change = {}) {
   const people = ship.aboard;
   const made = Object.fromEntries(SUPPLY_IDS.map((id) => [id, 0]));
   const used = Object.fromEntries(SUPPLY_IDS.map((id) => [id, 0]));
-  used.food = people * SUPPLIES.food.perPerson * rations.food;
+  // What the whole ship eats at the kettle in a day, in crates, or the old tonnes where there are no sittings.
+  used.food = foodADay(game, SHIP_ID, rations.food) ?? people * SUPPLIES.food.perPerson * rations.food;
   // Sick people need more medicine, so a medicine shortage feeds itself.
   used.medicine = people * SUPPLIES.medicine.perPerson * (1 + (100 - ship.health) / 100);
   for (const [id, amount] of Object.entries(SHIP.uses ?? {})) used[id] += amount;
   for (const [id, amount] of Object.entries(SHIP.produces ?? {})) made[id] += amount;
+  // What the refills from nothing bring to the stores counts as made, up to what's used: while they keep up, a store
+  // is holding, and nobody counts the days it has left.
+  for (const id of STORES) if (aboardCount(game, id)) made[id] += Math.min(used[id], refilledADay(game, SHIP_ID, STORE_ITEMS[id]));
   const net = Object.fromEntries(SUPPLY_IDS.map((id) => [id, made[id] - used[id]]));
   let moraleTarget = rations.morale;
   let healthTarget = rations.health;
@@ -139,8 +151,18 @@ export function shipLedger(game, change = {}) {
   };
 }
 
-const stockOf = (game, id) => (id === "fuel" ? Math.max(0, game.ship.fuel + game.ship.fuelBurn) : game.ship[id]);
-const isOut = (game, id) => (id === "fuel" ? game.ship.fuel < 1 : game.ship[id] <= 0);
+function stockOf(game, id) {
+  if (id === "fuel") return Math.max(0, game.ship.fuel + game.ship.fuelBurn);
+  const counted = aboardCount(game, id);
+  return counted ? counted.n : game.ship[id] ?? 0;
+}
+// How much the ship can hold of a kind: what its stores keep between them, or the old guess.
+function capacityOf(game, id) {
+  if (id === "fuel") return game.ship.maxFuel;
+  const counted = aboardCount(game, id);
+  return counted ? counted.of : Math.max(SHIP_DATA.start[id] * 1.5, game.ship[id] ?? 0);
+}
+const isOut = (game, id) => (id === "fuel" ? game.ship.fuel < 1 : stockOf(game, id) <= 0);
 
 function daysLeft(game, id, ledger) {
   const net = ledger.net[id];
@@ -179,7 +201,24 @@ const moveToward = (value, target, step) => (value < target ? Math.min(target, v
 
 function payForDay(game, ledger) {
   const ship = game.ship;
-  for (const id of STORES) ship[id] = Math.max(0, round1(ship[id] + ledger.net[id]));
+  ship.owed ??= {};
+  for (const id of STORES) {
+    // Without the rooms' stores, the old counts drain as they did.
+    if (!aboardCount(game, id)) {
+      ship[id] = Math.max(0, round1((ship[id] ?? 0) + ledger.net[id]));
+      continue;
+    }
+    // Food is eaten at the kettle through the day. Medicine and parts are used a little at a time, and a crate comes
+    // out of the stores each time a whole one's been used up. With none left, nothing's used and nothing's owed: the
+    // shortage shows instead, and the first crates to come aboard last their whole time.
+    if (id === "food") continue;
+    if (isOut(game, id)) {
+      ship.owed[id] = 0;
+      continue;
+    }
+    ship.owed[id] = round2((ship.owed[id] ?? 0) - ledger.net[id]);
+    while (ship.owed[id] >= 1 && takeAboard(game, SHIP_ID, STORE_ITEMS[id][0], 1, FIRST[id])) ship.owed[id] = round2(ship.owed[id] - 1);
+  }
   // The tank holds whole units, and the fractions wait here until they add up to one.
   ship.fuelBurn = round2(ship.fuelBurn + ledger.net.fuel);
   while (ship.fuelBurn <= -1 && ship.fuel > 0) {
@@ -262,7 +301,8 @@ function runDay(game) {
   const hungry = meals && meals.missed > 0 ? meals.missed / (meals.served + meals.missed) : 0;
   ship.hungry = hungry > 0 ? (ship.hungry ?? 0) + 1 : 0;
   if (hungry > 0) {
-    ledger.moraleTarget = clamp(ledger.moraleTarget + Math.round(hungry * (RULES.shortage.food?.morale ?? -25)), 5, 100);
+    // With the food itself run out, the shortage rule already has morale; this is for a kettle nobody kept up.
+    if (!ship.out.food) ledger.moraleTarget = clamp(ledger.moraleTarget + Math.round(hungry * (RULES.shortage.food?.morale ?? -25)), 5, 100);
     // Said when it starts, and every few days while it goes on, like the other shortages.
     if (ship.hungry === 1 || ship.hungry % 5 === 0) note(game, notes, "SHIP", `The kettle ran dry ${ship.hungry === 1 ? "yesterday" : `again yesterday, the ${ship.hungry}th day running`}: ${meals.missed.toLocaleString("en-US")} of ${(meals.served + meals.missed).toLocaleString("en-US")} sittings went unserved, and people are saying so.`);
   }
@@ -305,10 +345,10 @@ function chairBuys(game, chair, notes) {
       const price = Math.round(prices[id] * supplyFactor(game, ship.at, id) * SUPPLIES[id].lot);
       // A ship with fuel can go and get anything else, so nobody sails with less than this if they can help it.
       const wanted = id === "fuel" ? ship.fuel < CHAIR.fuelReserve || days < chair.stockTo : days < chair.stockTo;
-      if (!wanted || ship.chair.funds < price || (id === "fuel" && ship.fuel >= ship.maxFuel)) break;
+      if (!wanted || ship.chair.funds < price || (id === "fuel" && ship.fuel >= ship.maxFuel) || roomFor(game, id) < SUPPLIES[id].lot) break;
       ship.chair.funds -= price;
       if (id === "fuel") ship.fuel = Math.min(ship.maxFuel, ship.fuel + SUPPLIES[id].lot);
-      else ship[id] = round1(ship[id] + SUPPLIES[id].lot);
+      else stow(game, id, SUPPLIES[id].lot);
       tradedAt(game, ship.at, id);
       lots += 1;
     }
@@ -406,7 +446,7 @@ function councilSees(game, ledger, council) {
     foodAbove: (n) => left("food") > n,
     foodAtStandard: (n) => {
       const { net } = shipLedger(game, { rations: "standard" });
-      return net.food >= 0 || ship.food / -net.food > n;
+      return net.food >= 0 || stockOf(game, "food") / -net.food > n;
     },
     medicineBelow: (n) => left("medicine") <= n,
     medicineAbove: (n) => left("medicine") > n,
@@ -473,7 +513,13 @@ function councilDay(game, notes) {
 export function storyHitsShip(game, { morale = 0, food = 0, medicine = 0, parts = 0, fuel = 0 } = {}, notes = []) {
   const ship = shipOf(game);
   ship.morale = clamp(ship.morale + morale, 0, 100);
-  for (const [id, amount] of Object.entries({ food, medicine, parts })) ship[id] = Math.max(0, round1(ship[id] + amount));
+  // A story's food is in days' worth, which is crates by the ten in the rooms' stores; medicine and parts are crates.
+  for (const [id, amount] of Object.entries({ food, medicine, parts })) {
+    if (!amount) continue;
+    const crates = Math.round(Math.abs(amount) * (id === "food" ? STORY_FOOD_CRATES : 1));
+    if (amount > 0) stow(game, id, crates);
+    else unstow(game, id, crates);
+  }
   ship.fuel = clamp(ship.fuel + fuel, 0, ship.maxFuel);
   for (const id of SUPPLY_IDS) noteRestocked(game, id, notes);
 }
@@ -603,9 +649,10 @@ function buySupply(game, id) {
   const price = buyPrice(game, { price: prices[id] * supplyFactor(game, ship.at, id) * supply.lot });
   if (game.credits < price) throw new Error("You can't afford that.");
   if (id === "fuel" && ship.fuel >= ship.maxFuel) throw new Error("The tank is full.");
+  if (id !== "fuel" && roomFor(game, id) < supply.lot) throw new Error(`There's no room aboard for ${lotText(supply)} more of ${supply.name.toLowerCase()}: the stores that keep it are full.`);
   game.credits -= price;
   if (id === "fuel") ship.fuel = Math.min(ship.maxFuel, ship.fuel + supply.lot);
-  else ship[id] = round1(ship[id] + supply.lot);
+  else stow(game, id, supply.lot);
   tradedAt(game, ship.at, id);
   const notes = [];
   const amount = lotText(supply);
@@ -615,6 +662,32 @@ function buySupply(game, id) {
   return { message, notes };
 }
 
+// Room aboard for more of a kind, what can be sold of it (crates, not baskets), and putting a lot in or taking one out:
+// through the rooms' stores where there are any, and the old counts where there aren't.
+function roomFor(game, id) {
+  const counted = aboardCount(game, id);
+  return counted ? counted.of - counted.n : Infinity;
+}
+function sellable(game, id) {
+  const counted = id === "food" ? countAboard(game, SHIP_ID, ["ration_crate"]) : aboardCount(game, id);
+  return counted ? counted.n : game.ship[id] ?? 0;
+}
+function stow(game, id, n) {
+  if (!aboardCount(game, id)) {
+    game.ship[id] = round1((game.ship[id] ?? 0) + n);
+    return n;
+  }
+  return putAboard(game, SHIP_ID, STORE_ITEMS[id][0], n, FIRST[id]);
+}
+function unstow(game, id, n) {
+  if (!aboardCount(game, id)) {
+    const took = Math.min(n, game.ship[id] ?? 0);
+    game.ship[id] = round1((game.ship[id] ?? 0) - took);
+    return took;
+  }
+  return takeAboard(game, SHIP_ID, STORE_ITEMS[id][0], n, FIRST[id]);
+}
+
 // Where something's short, it can be worth more there than the ship needs it. It's the player's call.
 function sellSupply(game, id) {
   const ship = shipOf(game);
@@ -622,11 +695,11 @@ function sellSupply(game, id) {
   const prices = mapSpot(ship.at)?.trade;
   if (!supply || !prices?.[id]) throw new Error("Nobody here is buying that from the ship.");
   const amount = lotText(supply);
-  if ((id === "fuel" ? ship.fuel : ship[id]) < supply.lot) throw new Error(`The ship hasn't got ${amount} of ${supply.name.toLowerCase()} to sell.`);
+  if ((id === "fuel" ? ship.fuel : sellable(game, id)) < supply.lot) throw new Error(`The ship hasn't got ${amount} of ${supply.name.toLowerCase()} to sell.`);
   const price = sellPrice(game, { price: prices[id] * supplyFactor(game, ship.at, id) * supply.lot });
   game.credits += price;
   if (id === "fuel") ship.fuel -= supply.lot;
-  else ship[id] = round1(ship[id] - supply.lot);
+  else unstow(game, id, supply.lot);
   tradedAt(game, ship.at, id, true);
   const notes = [];
   const message = say("sold", { amount, supply: supply.name.toLowerCase(), price });
@@ -658,8 +731,8 @@ function supplyRow(game, id, ledger) {
     id,
     name: supply.name,
     unit: supply.unit,
-    stock: id === "fuel" ? game.ship.fuel : round1(game.ship[id]),
-    max: id === "fuel" ? game.ship.maxFuel : Math.max(SHIP_DATA.start[id] * 1.5, game.ship[id]),
+    stock: id === "fuel" ? game.ship.fuel : round1(stockOf(game, id)),
+    max: capacityOf(game, id),
     made: round2(ledger.made[id]),
     used: round2(ledger.used[id]),
     net: round2(ledger.net[id]),
@@ -701,6 +774,7 @@ export function shipView(game) {
     machines: machinesView(game, SHIP_ID),
     meals: mealsView(game, SHIP_ID),
     errands: errandsView(game, SHIP_ID),
+    refills: refillsView(game, SHIP_ID),
     shortages: SUPPLY_IDS.filter((id) => isOut(game, id) || (daysLeft(game, id, ledger) ?? Infinity) <= RULES.warnAtDays),
     trade: Object.entries(spot?.trade ?? {}).map(([id, each]) => {
       const supply = SUPPLIES[id];

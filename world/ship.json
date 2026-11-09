@@ -12,7 +12,7 @@
   "start": { "food": 22, "medicine": 5, "parts": 6, "health": 70 },
 
   "supplies": {
-    "food": { "name": "Food", "unit": "t", "lot": 5, "perPerson": 0.001 },
+    "food": { "name": "Food", "unit": "crates", "lot": 5, "perPerson": 0.001 },
     "fuel": { "name": "Fuel", "unit": "", "lot": 1 },
     "medicine": { "name": "Medicine", "unit": "crates", "lot": 1, "perPerson": 0.0001 },
     "parts": { "name": "Parts", "unit": "crates", "lot": 1 }

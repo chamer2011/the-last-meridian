@@ -20,6 +20,7 @@ const { councilOf, shipCommand, shipLedger, shipView } = await import("../src/sh
 const { migrateGame } = await import("../src/migrate.js");
 const { projectDir } = await import("../src/paths.js");
 const { passTime, publicState } = await import("../src/rules.js");
+const { countAboard, fillStores, logisticsOf, putAboard, takeAboard } = await import("../src/logistics.js");
 const { clockOf, hasMovedOn, leadNow, ranItsCourse, whatHappened } = await import("../src/story-clock.js");
 const { arcBriefIfNew, leadsHere, storyView, threadNotes } = await import("../src/story-library.js");
 const { newTurnLimits, runTool } = await import("../src/tools.js");
@@ -35,9 +36,8 @@ const tool = (game, name, input) => runTool(game, name, input, newTurnLimits());
 const days = (game, count) => passTime(game, 24 * count, "routine");
 // Keeps the ship out of trouble, so that only what's being tested gets a say.
 function comfortable(game) {
-  game.ship.food = 9000;
-  game.ship.medicine = 900;
-  game.ship.parts = 900;
+  // Every store in her rooms full (food, medicine, parts and the generator's cells), the tank full, and morale steady.
+  fillStores(game, "meridian");
   game.ship.fuel = game.ship.maxFuel;
   game.ship.morale = 60;
 }
@@ -414,19 +414,41 @@ test("the game master is told that stories don't wait, and the instructions stay
 
 // ---- The officers and the council ---------------------------------------------------------
 
-// How long a supply's got left, in days.
+// How long a supply's got left, in days: its stores in the rooms filled, then taken down to the count in whole crates.
+// A shortage only shows while nothing's coming aboard, so the tests that need one run withoutSources.
+const ITEMS_OF = { food: ["ration_crate", "produce"], medicine: ["medicine_crate"], parts: ["parts_crate"] };
 function left(game, id, count) {
-  const net = Math.abs(shipLedger(game).net[id] ?? 0) || 1;
-  game.ship[id] = net * count;
+  for (const item of ITEMS_OF[id]) putAboard(game, "meridian", item, 999);
+  const aDay = shipLedger(game).used[id] || 1;
+  let over = countAboard(game, "meridian", ITEMS_OF[id]).n - aDay * count;
+  for (const item of ITEMS_OF[id]) {
+    if (over < 1) break;
+    over -= takeAboard(game, "meridian", item, Math.floor(over));
+  }
+}
+// The garden and the shuttle stores' refills from nothing stopped, so that a shortage can last.
+function withoutSources(run) {
+  const model = logisticsOf("meridian");
+  const garden = model.machines.find((one) => one.id === "garden");
+  const refills = model.refills;
+  garden.runs = false;
+  model.refills = [];
+  try {
+    return run();
+  } finally {
+    garden.runs = true;
+    model.refills = refills;
+  }
 }
 
-// Each decision, with how things have to stand for it to happen.
+// Each decision, with how things have to stand for it to happen. The ones about running short need the food to
+// stop coming aboard; the others happen on a ship that's fed.
 const SCENES = {
-  half_rations: (game) => { game.ship.rations = "standard"; left(game, "food", 2.5); },
-  cut_rations: (game) => { game.ship.rations = "standard"; left(game, "food", 6); },
-  feast: (game) => { game.ship.rations = "standard"; game.ship.morale = 20; },
-  feast_over: (game) => { game.ship.rations = "generous"; councilOf(game.ship).setRations = "generous"; game.ship.morale = 70; },
-  more_food: (game) => { game.ship.rations = "reduced"; game.ship.morale = 40; },
+  half_rations: { starved: true, set: (game) => { game.ship.rations = "standard"; left(game, "food", 2.5); } },
+  cut_rations: { starved: true, set: (game) => { game.ship.rations = "standard"; left(game, "food", 6); } },
+  feast: { set: (game) => { game.ship.rations = "standard"; game.ship.morale = 20; } },
+  feast_over: { set: (game) => { game.ship.rations = "generous"; councilOf(game.ship).setRations = "generous"; game.ship.morale = 70; } },
+  more_food: { set: (game) => { game.ship.rations = "reduced"; game.ship.morale = 40; } },
 };
 
 for (const [id, scene] of Object.entries(SCENES)) {
@@ -435,9 +457,13 @@ for (const [id, scene] of Object.entries(SCENES)) {
     assert.ok(decision);
     const game = newGame();
     comfortable(game);
-    scene(game);
     const notes = [];
-    for (let day = 0; day < 8 && !notes.some((line) => line.startsWith("[COUNCIL]")); day += 1) notes.push(...passTime(game, 24, "routine"));
+    const run = () => {
+      scene.set(game);
+      for (let day = 0; day < 8 && !notes.some((line) => line.startsWith("[COUNCIL]")); day += 1) notes.push(...passTime(game, 24, "routine"));
+    };
+    if (scene.starved) withoutSources(run);
+    else run();
     const said = notes.filter((line) => line.startsWith("[COUNCIL]"));
     assert.ok(said.length >= 1, `nothing happened: ${notes.join(" | ")}`);
     assert.ok(said[0].includes(decision.text.split("{who}").at(-1)), said[0]);
@@ -479,8 +505,10 @@ test("they give the captain time first", () => {
   const game = newGame();
   comfortable(game);
   game.ship.rations = "standard";
-  left(game, "food", 6);
-  const first = passTime(game, 24, "routine");
+  const first = withoutSources(() => {
+    left(game, "food", 6);
+    return passTime(game, 24, "routine");
+  });
   assert.ok(!first.some((line) => line.startsWith("[COUNCIL]")), "not on the first day");
   assert.equal(game.ship.rations, "standard");
   assert.equal(game.ship.council.waiting.cut_rations !== undefined, true);
@@ -497,16 +525,18 @@ test("an order of the captain's own stands for a while before they'd change it",
   const ordered = game.ship.council.ordered.rations;
   assert.ok(Number.isFinite(ordered));
   const notes = [];
-  for (let day = 0; day < COUNCIL.respect - 1; day += 1) {
-    left(game, "food", 6);
-    notes.push(...passTime(game, 24, "routine"));
-  }
-  assert.ok(!notes.some((line) => line.startsWith("[COUNCIL]")), notes.join(" | "));
-  assert.equal(game.ship.rations, "generous");
-  for (let day = 0; day < 4; day += 1) {
-    left(game, "food", 6);
-    passTime(game, 24, "routine");
-  }
+  withoutSources(() => {
+    for (let day = 0; day < COUNCIL.respect - 1; day += 1) {
+      left(game, "food", 6);
+      notes.push(...passTime(game, 24, "routine"));
+    }
+    assert.ok(!notes.some((line) => line.startsWith("[COUNCIL]")), notes.join(" | "));
+    assert.equal(game.ship.rations, "generous");
+    for (let day = 0; day < 4; day += 1) {
+      left(game, "food", 6);
+      passTime(game, 24, "routine");
+    }
+  });
   assert.notEqual(game.ship.rations, "generous", "but not for ever, if it's going to starve everyone");
 });
 
@@ -519,37 +549,41 @@ test("told to wait, they wait, whatever happens, and they can be let go again", 
   game.ship.rations = "standard";
   game.ship.morale = 20;
   const notes = [];
-  for (let day = 0; day < 10; day += 1) {
-    left(game, "food", 2);
-    left(game, "medicine", 2);
-    left(game, "parts", 2);
-    notes.push(...passTime(game, 24, "routine"));
-  }
-  assert.ok(!notes.some((line) => line.startsWith("[COUNCIL]")), notes.join(" | "));
-  assert.equal(game.ship.rations, "standard");
-  const second = shipCommand(game, { action: "council", on: false });
-  assert.equal(second.message, null, "saying it twice doesn't say it twice");
-  shipCommand(game, { action: "council", on: true });
-  assert.equal(shipView(game).council.off, false);
-  const later = [];
-  for (let day = 0; day < 4; day += 1) {
-    left(game, "food", 2);
-    later.push(...passTime(game, 24, "routine"));
-  }
-  assert.ok(later.some((line) => line.startsWith("[COUNCIL]")));
+  withoutSources(() => {
+    for (let day = 0; day < 10; day += 1) {
+      left(game, "food", 2);
+      left(game, "medicine", 2);
+      left(game, "parts", 2);
+      notes.push(...passTime(game, 24, "routine"));
+    }
+    assert.ok(!notes.some((line) => line.startsWith("[COUNCIL]")), notes.join(" | "));
+    assert.equal(game.ship.rations, "standard");
+    const second = shipCommand(game, { action: "council", on: false });
+    assert.equal(second.message, null, "saying it twice doesn't say it twice");
+    shipCommand(game, { action: "council", on: true });
+    assert.equal(shipView(game).council.off, false);
+    const later = [];
+    for (let day = 0; day < 4; day += 1) {
+      left(game, "food", 2);
+      later.push(...passTime(game, 24, "routine"));
+    }
+    assert.ok(later.some((line) => line.startsWith("[COUNCIL]")));
+  });
 });
 
 test("one decision a day, because whatever else is wrong will still be wrong tomorrow", () => {
   const game = newGame();
   comfortable(game);
   game.ship.rations = "standard";
-  for (let day = 0; day < 8; day += 1) {
-    left(game, "food", 2.5);
-    left(game, "medicine", 3);
-    left(game, "parts", 3);
-    const said = passTime(game, 24, "routine").filter((line) => line.startsWith("[COUNCIL]"));
-    assert.ok(said.length <= 1, said.join(" | "));
-  }
+  withoutSources(() => {
+    for (let day = 0; day < 8; day += 1) {
+      left(game, "food", 2.5);
+      left(game, "medicine", 3);
+      left(game, "parts", 3);
+      const said = passTime(game, 24, "routine").filter((line) => line.startsWith("[COUNCIL]"));
+      assert.ok(said.length <= 1, said.join(" | "));
+    }
+  });
   assert.ok(game.ship.council.recent.length >= 1);
 });
 
@@ -560,12 +594,13 @@ test("someone who's gone can't decide anything, so the council does it instead",
   assert.ok(person, "Quartermaster Brandt is in the story");
   game.contacts.push({ name: person.name, status: "dead", attitude: "friendly", note: "" });
   game.ship.rations = "standard";
-  left(game, "food", 6);
   const notes = [];
-  for (let day = 0; day < 4 && game.ship.rations === "standard"; day += 1) {
-    left(game, "food", 6);
-    notes.push(...passTime(game, 24, "routine"));
-  }
+  withoutSources(() => {
+    for (let day = 0; day < 4 && game.ship.rations === "standard"; day += 1) {
+      left(game, "food", 6);
+      notes.push(...passTime(game, 24, "routine"));
+    }
+  });
   const line = notes.find((one) => one.startsWith("[COUNCIL]"));
   assert.ok(line, notes.join(" | "));
   assert.ok(line.includes(`${COUNCIL.anyone} has checked`), line);
@@ -587,18 +622,33 @@ test("everything they decide is something the ship can really do", () => {
 });
 
 test("a ship left to itself doesn't flip back and forth", () => {
+  // With nothing coming aboard she runs short within the week, and the council deals with it a few times, not daily.
   for (const seed of [3, 21, 77]) {
     const game = newGame(seed);
     const said = [];
-    for (let day = 0; day < 365; day += 1) {
-      said.push(...days(game, 1).filter((line) => line.startsWith("[COUNCIL]")));
-      game.pendingEvents = [];
-      assert.ok(SHIP_DATA.rations[game.ship.rations]);
-      assert.ok(game.ship.fuel >= 0);
-    }
+    withoutSources(() => {
+      for (let day = 0; day < 365; day += 1) {
+        said.push(...days(game, 1).filter((line) => line.startsWith("[COUNCIL]")));
+        game.pendingEvents = [];
+        assert.ok(SHIP_DATA.rations[game.ship.rations]);
+        assert.ok(game.ship.fuel >= 0);
+      }
+    });
     assert.ok(said.length >= 2, `seed ${seed}: they only did ${said.length} things in a year`);
     assert.ok(said.length < 120, `seed ${seed}: ${said.length} decisions in a year is too many`);
   }
+  // Fed by the shuttle stores' refills, the food's holding: no days left to count, and nothing for them to decide.
+  const fed = newGame(21);
+  const said = [];
+  for (let day = 0; day < 40; day += 1) {
+    said.push(...days(fed, 1).filter((line) => line.startsWith("[COUNCIL]")));
+    fed.pendingEvents = [];
+  }
+  assert.deepEqual(said, []);
+  const food = shipView(fed).supplies.find((one) => one.id === "food");
+  assert.equal(food.days, null, "holding");
+  // The shuttle stores stay full and Brandt keeps the pantry at about four crates; the produce goes as fast as it grows.
+  assert.ok(food.stock > 20, `${food.stock} crates aboard`);
 });
 
 test("a well-supplied ship with nobody following up its stories feels them, but it isn't worn down", () => {
@@ -606,9 +656,7 @@ test("a well-supplied ship with nobody following up its stories feels them, but 
     const game = newGame(seed);
     let lowest = 100;
     for (let day = 0; day < 100; day += 1) {
-      game.ship.food = Math.max(game.ship.food, 90);
-      game.ship.medicine = Math.max(game.ship.medicine, 20);
-      game.ship.parts = Math.max(game.ship.parts, 20);
+      fillStores(game, "meridian");
       game.ship.fuel = Math.max(game.ship.fuel, 10);
       days(game, 1);
       game.pendingEvents = [];

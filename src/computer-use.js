@@ -13,6 +13,7 @@ import { startCheck } from "./checks.js";
 import { closest } from "./check-games/kit.js";
 import { WORLD_COMPUTERS } from "./world.js";
 import { applySystemsEffect, controlSystem, controlsView, powerNote, roomPowered } from "./systems.js";
+import { manifestLines } from "./logistics.js";
 import { untagged } from "../public/story.js";
 import { MAX_LOG, MINUTES_PER_ACTION, classKeys, contentOf, knowsPassword, levelNamed, line, memoryOf, openSession, peopleAt, programOffered, sameName, slug, writtenContent } from "./computers.js";
 
@@ -110,6 +111,11 @@ function logLines(game, session, content, log) {
     case "news": {
       const entries = (game.world?.news ?? []).filter((entry) => entry.place === place).slice(-8).reverse();
       return entries.length ? entries.map((entry) => line(`Day ${entry.day + 1}: ${entry.text}`, "info")) : [line(`Nothing's been heard of ${placeName} lately.`, "dim")];
+    }
+    case "manifest": {
+      // What's come aboard lately, from the ship's logistics: the refills of the shuttle stores, newest first.
+      const lines = manifestLines(game, place).slice(0, 10);
+      return lines.length ? lines.map((text) => line(text, "info")) : [line("Nothing has come aboard since the manifest was started.", "dim")];
     }
     case "readouts": {
       const ship = game.ship;

@@ -193,7 +193,7 @@ test("the Ship menu lists every store with what's in it, the kettle by its sitti
   passTime(game, 24 * 3, "routine");
   const later = publicState(game).ship.stores;
   assert.ok(later.find((one) => one.id === "pantry").items.reduce((sum, one) => sum + one.n, 0) < 24, "the pantry has been cooked from");
-  assert.ok(!later.find((one) => one.id === "shuttle_stores").full, "and the errands have drawn on the shuttle stores to keep it up");
+  assert.ok(game.logistics.meridian.refills.log.length > 0, "and the shuttle stores have been refilled behind the errands");
 });
 
 test("the new items for the stores have sizes, weights and stacks, and the four of them are in the item files", () => {
