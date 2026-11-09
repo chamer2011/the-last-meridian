@@ -9,13 +9,16 @@ export const COMMAND_TITLES = { posts: "Posts", jobs: "Jobs", holders: "Who hold
 // The people the first officer can put to work where a job's short, written under Who does which job.
 export const SPARE = "spare hands";
 
-// The lines at the top of the file. The reviews, the bad stretch and the mutiny are kept as they're written until the
-// steps that play them.
+// The lines at the top of the file, kept as words for src/command.js to read. The mutiny is kept as it's written until
+// the step that plays it.
 export const COMMAND_HEADER = [
   { key: "draft", path: "draft" },
   { key: "each point of skill", path: "numbers.skill" },
   { key: "reviews every", path: "numbers.reviews" },
   { key: "a bad stretch", path: "numbers.stretch" },
+  { key: "the captain's choices stand", path: "numbers.stands" },
+  { key: "memories fade", path: "numbers.fade" },
+  { key: "everyone else", path: "numbers.crew" },
   { key: "mutiny brews", path: "numbers.mutiny" },
 ];
 
@@ -76,8 +79,8 @@ export function parseCommandText(text, id = "it") {
       continue;
     }
     if (section === null) {
-      const field = line.match(/^([a-z][a-z ]{0,30}):\s*(.*)$/i);
-      const known = field && header.get(field[1].trim().toLowerCase());
+      const field = line.match(/^([a-z][a-z'’ ]{0,40}):\s*(.*)$/i);
+      const known = field && header.get(field[1].trim().toLowerCase().replace(/’/g, "'"));
       if (!known) {
         problem(n, `before the first part, each line is one of ${COMMAND_HEADER.map((one) => one.key).join(", ")}, then a colon and its value`);
         continue;
@@ -102,7 +105,8 @@ export function parseCommandText(text, id = "it") {
 // "quartermaster in The Long Mess: chosen by the captain; heads cooks, mess hands, gardeners; skills commerce; duty:
 // sittings missed, stores run dry". The post, the room it's kept in, then what's said about it, each part after a
 // semicolon: who chooses whoever holds it (another post, or the council, or the civilians), whether they keep the
-// watch bill, the jobs they head, the skills that count for it, and what their duty is measured by.
+// watch bill, the jobs they head, who a new holder is picked from (jobs and posts), the skills that count for it,
+// and what their duty is measured by.
 export function readPostLine(text) {
   const written = String(text ?? "").trim();
   const colon = written.indexOf(":");
@@ -110,15 +114,16 @@ export function readPostLine(text) {
   const head = written.slice(0, colon).trim();
   const where = head.match(/^(.+?)\s+(in|on|at)\s+(.+)$/i);
   if (!where) return { problem: `"${head}" needs the room the post is kept in, such as quartermaster in The Long Mess` };
-  const post = { title: where[1].trim().toLowerCase(), prep: where[2].toLowerCase(), room: where[3].trim(), chosenBy: null, watchBill: false, heads: [], skills: [], duty: [] };
+  const post = { title: where[1].trim().toLowerCase(), prep: where[2].toLowerCase(), room: where[3].trim(), chosenBy: null, watchBill: false, heads: [], pool: [], skills: [], duty: [] };
   for (const piece of written.slice(colon + 1).split(";").map((one) => one.trim()).filter(Boolean)) {
     let found;
     if ((found = piece.match(/^chosen\s+by\s+(?:the\s+)?(.+)$/i))) post.chosenBy = found[1].trim().toLowerCase();
     else if (/^keeps\s+the\s+watch\s+bill$/i.test(piece)) post.watchBill = true;
     else if ((found = piece.match(/^heads\s+(.+)$/i))) post.heads = listOf(found[1]).map((one) => one.toLowerCase());
+    else if ((found = piece.match(/^picked\s+from\s+(.+)$/i))) post.pool = listOf(found[1]).map((one) => one.toLowerCase());
     else if ((found = piece.match(/^skills?\s+(.+)$/i))) post.skills = listOf(found[1]).map((one) => one.toLowerCase());
     else if ((found = piece.match(/^duty:?\s+(.+)$/i))) post.duty = listOf(found[1]);
-    else return { problem: `"${piece}" isn't something a post's line says: it says chosen by, keeps the watch bill, heads, skills or duty, each after a semicolon` };
+    else return { problem: `"${piece}" isn't something a post's line says: it says chosen by, keeps the watch bill, heads, picked from, skills or duty, each after a semicolon` };
   }
   if (!post.chosenBy) return { problem: `"${written}" needs to say who chooses whoever holds it, such as chosen by the captain` };
   return post;

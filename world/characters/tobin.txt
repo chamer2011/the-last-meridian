@@ -9,6 +9,9 @@ role: Deck chief of the Meridian
 place: meridian
 color: #b69a6c
 listed: no
+ambition: 2
+temper: 1
+loyalty: 65
 
 In a line:
 An old Korrun who puts every order on a pocket scale, and tells you what it came to.

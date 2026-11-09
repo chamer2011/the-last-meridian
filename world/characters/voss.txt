@@ -9,6 +9,9 @@ role: Your executive officer
 place: meridian
 crew: yes
 color: #8ec5ff
+ambition: 1
+temper: 3
+loyalty: 85
 
 In a line:
 Your XO. Blunt and loyal, and doesn't talk about how she got out of the Fall.

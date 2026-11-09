@@ -335,6 +335,14 @@ button.fighter:hover:not(:disabled), button.fighter:focus-visible { background: 
 .post-label { color: var(--muted); }
 .post-since { color: var(--muted); margin-top: 2px; }
 .post-duty { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; }
+.post-memory { color: var(--muted); overflow-wrap: anywhere; }
+.post-cell { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.post-replace { align-self: flex-start; color: var(--warn); }
+.post-candidates { display: flex; flex-direction: column; gap: 3px; padding: 4px 6px; border: 1px dotted var(--line); min-width: 0; }
+.post-candidate { text-align: left; overflow-wrap: anywhere; }
+.command-reviews { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin-bottom: 10px; }
+.command-waiting { padding: 6px 0; border-bottom: 1px dotted var(--line); }
+.command-answers { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 button.post-card:hover:not(:disabled) *, button.post-card:focus-visible * { color: var(--bg); }
 /* The watch bill: a row for each job, with its people as buttons the captain picks and moves. */
 .watch-row { display: grid; grid-template-columns: minmax(14ch, 22ch) 1fr; gap: 2px 14px; align-items: baseline; padding: 5px 0; border-bottom: 1px dotted var(--line); }

@@ -9,6 +9,9 @@ role: Comms officer of the Meridian
 place: meridian
 color: #2ba9c2
 listed: no
+ambition: 3
+temper: 2
+loyalty: 60
 
 In a line:
 Polite, quick and very good at his job, and he looks like he hasn't slept in weeks.

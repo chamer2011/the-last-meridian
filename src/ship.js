@@ -13,7 +13,7 @@ import { inTrouble, levelName, noneLeft, placeNow, supplyFactor, tellNews, trade
 import { aboardShip, isCaptain } from "./role.js";
 import { addCondition, buyPrice, changeStress, clamp, clockLabel, jumpHours, passTime, sellPrice, travel } from "./rules.js";
 import { navigationDown } from "./systems.js";
-import { YOU, commandOf, holderKey, postAndName, setHolder, stillAlive, tallyDuty } from "./command.js";
+import { YOU, commandOf, holderKey, officerNames, postAndName, setHolder, stillAlive, tallyDuty } from "./command.js";
 import { countAboard, errandsView, foodADay, machinesView, mealsOfDay, mealsView, putAboard, refilledADay, refillsView, repairsView, storesView, takeAboard } from "./logistics.js";
 import { SHIP_DATA, STAR_MAP } from "./world.js";
 
@@ -196,7 +196,7 @@ function noteRestocked(game, id, notes) {
   if (game.ship.out[id] && !isOut(game, id)) {
     delete game.ship.out[id];
     delete game.ship.warned[id];
-    note(game, notes, "SUPPLY", say(`${id}Back`), { about: id });
+    note(game, notes, "SUPPLY", say(`${id}Back`, officerNames(game, SHIP_ID)), { about: id });
   }
 }
 
@@ -251,7 +251,7 @@ function checkShortages(game, notes) {
     const days = daysLeft(game, id, ledger);
     if (days !== null && days <= RULES.warnAtDays && !ship.warned[id]) {
       ship.warned[id] = true;
-      note(game, notes, "SUPPLY", say(`${id}Low`, { days: Math.ceil(days) }), { about: id });
+      note(game, notes, "SUPPLY", say(`${id}Low`, { days: Math.ceil(days), ...officerNames(game, SHIP_ID) }), { about: id });
     } else if (days === null || days > RULES.warnAtDays + 3) {
       delete ship.warned[id];
     }

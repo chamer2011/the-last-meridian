@@ -634,9 +634,10 @@ function runErrands(game, place, model, state, t) {
     }
     // They've arrived when their walk has got them there, or when a walk's worth of time has gone by since they set
     // out: over a long jump of the clock nobody is walked minute by minute, and the errand still has to get done.
-    const there = hasReached(game, place, key, errandWhere(e, s)) || t - s.since >= WALK_MINUTES;
+    // Only asked on the way there and back, since it's asked every five minutes.
+    const there = () => t - s.since >= WALK_MINUTES || hasReached(game, place, key, errandWhere(e, s));
     if (s.phase === "going") {
-      if (there) Object.assign(s, { phase: "loading", since: t });
+      if (there()) Object.assign(s, { phase: "loading", since: t });
     } else if (s.phase === "loading" || s.phase === "waiting") {
       if (s.phase === "loading" && t - s.since < CHUNK) continue;
       const want = Math.min(e.each, room());
@@ -650,7 +651,7 @@ function runErrands(game, place, model, state, t) {
         continue;
       }
       Object.assign(s, { phase: "carrying", since: t, load: { item: e.item, n: took } });
-    } else if (there) {
+    } else if (there()) {
       s.load.n -= storePut(game, to.key, to.holds, s.load.item, s.load.n);
       if (s.load.n > 0) s.phase = "unloading";
       else delete state.errands[e.id];
@@ -957,6 +958,9 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
     let supplyWas = undefined;
     let balanceAt = -Infinity;
     let dropping = false;
+    // What the posts' duty counts is added up through each day here, and handed over when the day turns or this ends.
+    let counted = { day: Math.floor(t / 1440), powerShort: 0, errandsWaiting: 0 };
+    const handOver = () => tallyDuty(game, place, counted.day, { powerShort: counted.powerShort, errandsWaiting: counted.errandsWaiting });
     while (t + CHUNK <= until) {
       for (const m of model.machines) {
         if (m.generator) runGenerator(game, model, m, state, CHUNK);
@@ -974,9 +978,15 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
         balanceAt = t;
       }
       const waiting = Object.values(state.errands ?? {}).filter((one) => one.phase === "waiting").length;
-      tallyDuty(game, place, Math.floor(t / 1440), { powerShort: (supply !== null && supply <= 0) || dropping ? CHUNK : 0, errandsWaiting: waiting * CHUNK });
+      if (Math.floor(t / 1440) !== counted.day) {
+        handOver();
+        counted = { day: Math.floor(t / 1440), powerShort: 0, errandsWaiting: 0 };
+      }
+      if ((supply !== null && supply <= 0) || dropping) counted.powerShort += CHUNK;
+      counted.errandsWaiting += waiting * CHUNK;
       t += CHUNK;
     }
+    handOver();
     state.at = t;
   }
   return notes;

@@ -9,6 +9,9 @@ role: Chief engineer of the Meridian
 place: meridian
 crew: yes
 color: #ffb86b
+ambition: 1
+temper: 4
+loyalty: 65
 
 In a line:
 Keeps the ship running through profanity. Thinks synthetics got a raw deal.

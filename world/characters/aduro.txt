@@ -9,6 +9,9 @@ role: Chief medical officer
 place: meridian
 crew: yes
 color: #7fe0c3
+ambition: 2
+temper: 2
+loyalty: 60
 
 In a line:
 Exhausted, kind, and the conscience of the ship whether you want one or not.

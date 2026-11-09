@@ -10,11 +10,12 @@ one so far.
 checks these files too.
 
 It's built in steps, each tried by the owner before the next. The game plays the posts and who holds them, each
-post's duty, skill in the work, and the watch bill: the Command menu shows each post as a card and each job with who's on it, everything in the other files
-that names someone for a post or a job (the council's rations decisions in world/ship.json, the guards and engineers
-in world/systems, the machines and the carriers of the errands in world/logistics, and the captain's chair) asks
-this file who that is, and everyone on the watch bill lives their job's day. The numbers at the top are read, kept
-and checked, and come to life in the later steps.
+post's duty, skill in the work, the watch bill, and the officers' reviews: the Command menu shows each post as a
+card and each job with who's on it, everything in the other files that names someone for a post or a job (the
+council's rations decisions in world/ship.json, the guards and engineers in world/systems, the machines and the
+carriers of the errands in world/logistics, the ship's own lines in world/ship.json, and the captain's chair) asks
+this file who that is, everyone on the watch bill lives their job's day, and whoever does badly in a post is warned,
+relieved and replaced. The mutiny's line at the top is kept, and comes to life in a later step.
 
 
 THE FILE
@@ -24,14 +25,20 @@ THE FILE
     draft: the AI's, not yet edited by the owner      (the game doesn't read this: it's for whoever edits)
     each point of skill: 8% quicker or slower        (how much each point of a worker's skill either side of 5
                                                      speeds the work or slows it: see SKILL)
-    reviews every: 7 days                            (kept for a later step: how often the officers review)
-    a bad stretch: duty under 40 for 5 days          (kept for a later step: when someone's replaced)
+    reviews every: 7 days                            (how often the officers review their people: see RISING AND
+                                                     FALLING)
+    a bad stretch: duty under 60 for 5 days          (when someone's warned, and then relieved at a review)
+    the captain's choices stand: 10 days             (how long someone the captain put in a post, or kept on in
+                                                     one, isn't reviewed)
+    memories fade: by half every 30 days             (how fast people forget what was done to them)
+    everyone else: ambition 2, temper 2, loyalty 60  (the numbers of whoever has none in their own file)
     mutiny brews: morale under 30, loyalty under 35  (kept for a later step: when trouble starts)
 
     Posts:
     - captain on The Bridge: chosen by the council; skills leadership, tactics
     - first officer on The Bridge: chosen by the captain; keeps the watch bill; skills leadership, composure
-    - quartermaster in The Long Mess: chosen by the captain; heads cooks, mess hands, gardeners; skills commerce
+    - quartermaster in The Long Mess: chosen by the captain; heads cooks, mess hands, gardeners; picked from cooks,
+      mess hands, gardeners, the deck chief; skills commerce            (all on one line in the file)
 
     Jobs:
     - cook in The Galley: 2 wanted; skills survival
@@ -59,8 +66,11 @@ after a semicolon:
     chosen by the captain          who chooses whoever holds it: another post, or the council, or the
                                    civilians. Every post has one. Nobody chooses themselves, and following who
                                    chooses whom has to end at the council or the civilians.
-    keeps the watch bill           the post that gives everyone their job (played from a later step)
+    keeps the watch bill           the post that gives everyone their job, covers for anyone lost, and speaks for
+                                   the captain in the reviews
     heads cooks, mess hands        the jobs it answers for, by their names in the Jobs part
+    picked from cooks, the deck    who a new holder is picked from: jobs by their names in the Jobs part, and
+    chief                          other posts. Without it, the jobs it heads. Never the post itself, nor the chair
     skills commerce, persuasion    the skills that count for it: the Command menu shows the holder's numbers
                                    in them, from their file in world/characters
     duty: sittings missed          what its holder is marked on each day: see DUTY
@@ -153,6 +163,42 @@ its numbers, the player has their own, and someone without a file is a 5 in the 
 them in and a 2 in everything else. Leave the line out, and skill doesn't change the pace of anything.
 
 
+RISING AND FALLING
+------------------
+
+Every review day (every 7 days, from the start of the game), the officers review their people. Whoever chooses for
+a post does it: the captain for the heads of the ship's departments, the first officer for the bridge officers. The
+captain's own post and the speaker's aren't reviewed this way.
+
+- A holder with a bad stretch (as many of their days on record under the mark as the line a bad stretch says) is
+  warned at the midnight it shows, and relieved at the next review if it's gone on. The best of those the post is
+  picked from takes it. The one relieved takes the job the new holder left, or a job that's short of hands, or goes
+  to the spare hands; and a post the new holder leaves is filled in its turn.
+- If whoever took over has the same trouble, whoever chooses decides it isn't the post's doing, says so once, and
+  nobody's relieved over it until it's over (a day marked at the bad stretch's mark or better).
+- Someone the post is picked from with two points more skill for it than whoever holds it, and an ambition of 4 or
+  5, asks for it. They get it if whoever chooses thinks they'd do better. If they're told no and their temper is 4
+  or 5, they work against whoever holds it: ten off each day's duty, until the memory fades. Someone passed over who
+  wanted the post, with an ambition and a temper of 4 or more, does the same.
+- Whoever chooses picks by ten for each point of the best skill for the post, three for each point of ambition, a
+  tenth of their loyalty to the captain, half of how they feel about whoever chooses, and a little more for having
+  asked or been passed over lately.
+
+With the player as captain, it all comes to them as the first officer's recommendations, on the Command menu: do it,
+keep whoever holds the post (or tell whoever asked no), or leave it to the first officer. What isn't answered by the
+next review, the first officer acts on in the captain's name. The captain can also give any post the first officer or
+the captain chooses for to anyone it's picked from, and hold the reviews so that nothing happens until they say so.
+Someone the captain chose or kept on isn't reviewed for as many days as the captain's choices stand.
+
+People remember being relieved, warned, passed over, told no, given a post, given one back, or kept on, by whom and for
+whom, and it counts for or against whoever did it, fading by half every so many days (memories fade). The Command menu
+shows it on their card, the watch bill says who was relieved, and it's the first thing they say when they're talked
+to while it's fresh: the lines are in world/rooms.json, under talk, stock, grudge.
+
+Ambition, temper and loyalty come from each person's file in world/characters (ambition: 4, temper: 2, loyalty: 70;
+the first two go from 1 to 5, and loyalty from 0 to 100), or from the line everyone else at the top.
+
+
 NAMING A POST OR A JOB ELSEWHERE
 --------------------------------
 
@@ -171,3 +217,7 @@ that names a job needs someone doing that job in its room; one that says someone
 
 A council decision says {who} as the post and the holder's name (Quartermaster Brandt), and the council does it
 itself if nobody holds the post, or whoever does has been lost.
+
+The ship's own lines in world/ship.json can name whoever holds a post by its name with underscores in curly brackets,
+such as {quartermaster}, {chief_engineer} or {chief_medical_officer}: that's their own title and name while they hold
+the post the game began them in (Dr. Aduro), and the post's name and theirs otherwise (Quartermaster Benno).

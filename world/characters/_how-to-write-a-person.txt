@@ -23,6 +23,10 @@ A file starts with the name, then a few lines about them, then parts under headi
     prominent: yes                      (one of the few the character creator mentions; leave it out if not)
     chair: yes                          (they chair the council; leave it out if not)
     voice style: comm                   (comm, choir or machine, for how their words look; leave it out for a plain voice)
+    ambition: 2                         (1 to 5: how much they want a better post aboard, and ask for it; leave it out
+                                        for the chain of command's everyone else, in world/command)
+    temper: 2                           (1 to 5: how they take being relieved or told no; 4 or 5 makes a rival)
+    loyalty: 60                         (0 to 100: how loyal they are to the captain to begin with)
 
     In a line:
     Exhausted, kind, and the conscience of the ship whether you want one or not.

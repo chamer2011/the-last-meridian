@@ -12,7 +12,7 @@ import { errandDetour, logisticsOf, mealWords } from "./logistics.js";
 import { atPost, canStand, findPath, mapFor, roomOf, seedFrom } from "./walk.js";
 import { detourFor, partSquares } from "./systems.js";
 import { WORLD_LIFE } from "./world.js";
-import { jobOf, movedDays } from "./command.js";
+import { jobsOf, movedDays } from "./command.js";
 
 const MINUTES_IN_A_DAY = 1440;
 const SQUARES_A_MINUTE = 18;
@@ -89,7 +89,9 @@ export function clearLife() {
 export const livesHere = (place) => Boolean(lifeFileFor(place) && mapFor(place));
 
 // The roster as a game has it: each named person's day is the one their job on the ship's watch bill gives them
-// (src/command.js), where that's been changed from the job their group in the file does. Kept until it changes again.
+// (src/command.js), where that's been changed from the job their group in the file does; and someone in a post the
+// game didn't begin them in has the day of whoever it began with, and goes to that one's place at the post (home).
+// Kept until it changes again.
 const rosters = new WeakMap();
 const signatures = new WeakMap();
 function rosterSignature(moved) {
@@ -105,7 +107,7 @@ function rosterFor(game, place) {
   const signature = rosterSignature(moved);
   const kept = rosters.get(game)?.[place];
   if (kept && kept.file === file && kept.signature === signature) return kept.roster;
-  const roster = file.roster.map((entry) => (moved[entry.key] ? { ...entry, day: moved[entry.key].day, dayTag: moved[entry.key].job ?? "spare", plans: undefined } : entry));
+  const roster = file.roster.map((entry) => (moved[entry.key] ? { ...entry, day: moved[entry.key].day, dayTag: moved[entry.key].job ?? "spare", home: moved[entry.key].home, plans: undefined } : entry));
   rosters.set(game, { ...(rosters.get(game) ?? {}), [place]: { file, signature, roster } });
   return roster;
 }
@@ -157,7 +159,7 @@ function planAt(entry, hours) {
 function levelOfPlan(map, file, entry, plan) {
   const where = plan.where;
   if (!where) return null;
-  if (where === "post") return postOf(map, entry.id)?.level ?? null;
+  if (where === "post") return postOf(map, entry.home ?? entry.id)?.level ?? null;
   if (/^[@>]/.test(where)) return where.slice(1);
   return file.spots[where]?.level ?? file.groups[where]?.[0]?.level ?? null;
 }
@@ -212,7 +214,7 @@ function roomOfPlan(map, file, entry, plan) {
   const where = plan.where;
   if (!where) return null;
   if (/^[@>]/.test(where)) return where.slice(1);
-  const spot = where === "post" ? postOf(map, entry.id) : file.spots[where] ?? file.groups[where]?.[0] ?? null;
+  const spot = where === "post" ? postOf(map, entry.home ?? entry.id) : file.spots[where] ?? file.groups[where]?.[0] ?? null;
   const level = spot && map.levels[spot.level];
   if (!level) return null;
   return level.areas?.length ? level.roomAt(spot.x, spot.y) : level.id;
@@ -225,10 +227,10 @@ function roomOfPlan(map, file, entry, plan) {
 const USUAL_STEP = 5;
 const usual = new Map();
 export function usuallyIn(game, place, roomId, minuteOfDay, job = undefined) {
-  const roster = rosterFor(game, place);
   const key = `${place}/${roomId}/${rosterSignature(movedDays(game, place))}`;
   if (!usual.has(key)) {
     if (usual.size > 200) usual.clear();
+    const roster = rosterFor(game, place);
     const file = lifeFileFor(place);
     const map = mapFor(place);
     const buckets = [];
@@ -246,8 +248,9 @@ export function usuallyIn(game, place, roomId, minuteOfDay, job = undefined) {
     usual.set(key, buckets);
   }
   const minute = ((minuteOfDay % MINUTES_IN_A_DAY) + MINUTES_IN_A_DAY) % MINUTES_IN_A_DAY;
+  const jobs = job === undefined ? null : jobsOf(game, place);
   return usual.get(key)[Math.floor(minute / USUAL_STEP)]
-    .filter((one) => (!one.id || atPost(game, one.id)) && (job === undefined || jobOf(game, place, one.key) === job))
+    .filter((one) => (!one.id || atPost(game, one.id)) && (!jobs || jobs[one.key] === job))
     .map((one) => one.name);
 }
 
@@ -375,7 +378,7 @@ function closeTo(map, entry, spot, taken) {
 
 // Where this person goes for what they're doing now. In a group, they take the next place that's free.
 function spotFor(file, map, entry, plan, taken) {
-  if (plan.where === "post") return postOf(map, entry.id);
+  if (plan.where === "post") return postOf(map, entry.home ?? entry.id);
   // A room that isn't on the map leaves them where they are, so a typing mistake in the file can't stop the game.
   if (/^[@>]/.test(plan.where) && !roomOf(map, plan.where.slice(1))) return null;
   if (plan.where.startsWith("@")) return somewhereOn(map, entry, plan, plan.where.slice(1), taken);

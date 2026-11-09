@@ -9,6 +9,9 @@ role: Chief of security
 place: meridian
 crew: yes
 color: #ff8a80
+ambition: 4
+temper: 4
+loyalty: 45
 
 In a line:
 Lost everyone in the Fall. Wants every machine in the galaxy scrapped.

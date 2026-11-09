@@ -1027,7 +1027,63 @@
         "{name} looks round at the place, as if seeing it for the first time in a while. {desc}",
         "{name} shrugs. {desc}",
         "{name} doesn't answer straight away. {desc}"
-      ]
+      ],
+      "_grudge": "What someone says first, before anything else, while something done to them in the chain of command is fresh in their mind (src/command.js), for anyone, with a conversation of their own or not. By what it was (relieved, passed over, refused, warned, promoted, restored to a post they lost, kept on against advice), with _by_you for when the player did it. {title} is the post's name (quartermaster), {post} is the quartermaster's post, {by} is who did it and {who} is who it was for. Each person says the same line about the same thing.",
+      "grudge": {
+        "relieved_by_you": [
+          "You took {post} off me and gave it to {who}. I hope you counted what that cost, Captain.",
+          "Captain. Come to see how {who} is managing my work?",
+          "I did that job for years. You took it away in a morning."
+        ],
+        "relieved": [
+          "{by} gave my post to {who}. You'll have heard. Everyone's heard.",
+          "I'm not the {title} any more. Ask {who}, since {by} thinks so much of them.",
+          "If you've come about the {title}, you want {who} now. {by} saw to that."
+        ],
+        "passed_over_by_you": [
+          "You gave {post} to {who}. I'd have done it better, and you know it.",
+          "Captain. I'll keep doing my job, since nobody's offering me a better one."
+        ],
+        "passed_over": [
+          "{by} gave {post} to {who}. Don't ask me how I feel about it.",
+          "Apparently {who} is the better choice for {title}. Apparently."
+        ],
+        "refused_by_you": [
+          "You told me no, Captain. I heard you. I haven't changed my mind.",
+          "I asked you for {post} and you said no. I'm still here, aren't I?"
+        ],
+        "refused": [
+          "I asked {by} for {post}. You can guess the answer.",
+          "{by} says I'm not ready to be {title}. We'll see."
+        ],
+        "warned_by_you": [
+          "I've had the word about my work, Captain. I'm on it."
+        ],
+        "warned": [
+          "{by} has had words with me about my work. I'm aware, thank you.",
+          "I know how the week's looked. {by} made sure I know."
+        ],
+        "promoted_by_you": [
+          "Captain. I won't forget you gave me this. I'll make it worth it.",
+          "{title}. I keep saying it to myself. Thank you, Captain."
+        ],
+        "promoted": [
+          "{by} made me {title}. I'm still finding where everything's kept.",
+          "You'll want the {title}, and that's me now. Strange to say it."
+        ],
+        "restored_by_you": [
+          "You gave me my post back, Captain. I won't make you sorry for it.",
+          "Back where I belong. Thank you, Captain. I mean that."
+        ],
+        "restored": [
+          "{by} gave me my post back. I'd like to know what took so long.",
+          "I'm the {title} again. Don't ask me to say I enjoyed the time off."
+        ],
+        "kept_by_you": [
+          "I heard what they wanted to do with me, Captain, and I heard you said no. Thank you.",
+          "I know you stood up for me. It won't happen again, the week I had."
+        ]
+      }
     }
   }
 }

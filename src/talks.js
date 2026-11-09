@@ -12,6 +12,7 @@ import { newTurnLimits, runTool } from "./tools.js";
 import { seedFrom, talkHeard, walkView } from "./walk.js";
 import { ROOM_TALK } from "./world.js";
 import { systemsTalk } from "./systems.js";
+import { grudgeLine } from "./command.js";
 
 const helpersFor = (talk) => ({ ...HELPERS, seen: talk.written?.seen ?? [] });
 
@@ -102,11 +103,19 @@ export function openWrittenTalk(game, { filesOnly = false } = {}) {
   if (filesOnly && !own) return false;
   talk.written = { id: own ? id : null, part: null, seen: [], stock: own ? null : stockTalk(game, talk) };
   if (id && broken[id]) talkHeard(game, `[STORY] The conversation file ${id} can't be read: ${broken[id]}. Stock lines are used instead.`, "notice");
+  // Being relieved, passed over or promoted is the first thing on someone's mind while it's fresh. It's said with
+  // their first words, so that the pane by their head, which shows the newest thing said, has both.
+  const grudge = grudgeLine(game, talk.personId ?? talk.name);
+  let first = grudge ? `@${talk.name}: "${grudge}"` : null;
   const emit = (e) => {
-    if (e.type === "text") talkHeard(game, e.text);
+    if (e.type === "text") {
+      talkHeard(game, first ? `${first}\n${e.text}` : e.text);
+      first = null;
+    }
     if (e.type === "notice") talkHeard(game, e.text, "notice");
   };
   enterTalkPart(game, talk, own ?? talk.written.stock, (own ?? talk.written.stock).start, emit);
+  if (first) talkHeard(game, first);
   return true;
 }
 

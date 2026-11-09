@@ -9,6 +9,9 @@ role: The Meridian's helm officer
 place: meridian
 crew: yes
 color: #a8e6a1
+ambition: 4
+temper: 2
+loyalty: 70
 
 In a line:
 The youngest officer on the bridge, and the best pilot left in the fleet.

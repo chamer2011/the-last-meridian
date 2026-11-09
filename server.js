@@ -513,9 +513,11 @@ async function handleApi(req, res, route) {
     autosave();
     return json(res, 200, { game: publicState(game), message, moved });
   }
-  // The watch bill: the captain moving someone from one job to another. It's all on this computer.
+  // The Command menu's orders: the captain moving someone on the watch bill, putting someone in a post, answering the
+  // first officer, or holding the reviews. It's all on this computer.
   if (route === "/api/command") {
-    const { message } = commandCommand(requireGame(), body);
+    const { message, notes = [] } = commandCommand(requireGame(), body);
+    if (notes.length) log("notice", notes.join("\n"));
     autosave();
     return json(res, 200, { game: publicState(game), message });
   }

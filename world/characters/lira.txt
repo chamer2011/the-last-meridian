@@ -9,6 +9,9 @@ role: Sensor officer of the Meridian
 place: meridian
 color: #f4acc7
 listed: no
+ambition: 2
+temper: 2
+loyalty: 65
 
 In a line:
 An Ilari whose skin tells the whole bridge what she's found before she can open her mouth.

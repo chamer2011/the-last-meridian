@@ -1,7 +1,9 @@
 // The Command menu: the Meridian's chain of command, every post as a card with who holds it, where they're kept,
-// who chose them, their skills for it and since when, grouped by who chooses whoever holds them; and the watch bill,
-// with everyone's job, which the captain changes with two clicks. It's drawn from the game's state (src/command.js),
-// and nothing here calls the AI. A card for one of the story's people opens their registry printout.
+// who chose them, their skills for it, since when and what they remember, grouped by who chooses whoever holds them;
+// and the watch bill, with everyone's job, which the captain changes with two clicks. The captain also answers the
+// first officer's recommendations, gives a post to someone else with two clicks, and can hold the reviews. It's drawn
+// from the game's state (src/command.js), and nothing here calls the AI. A card for one of the story's people opens
+// their registry printout.
 
 import { api, el, folded, meter } from "./dom.js";
 
@@ -26,6 +28,14 @@ function duty(post) {
   ];
 }
 
+// Every order the menu gives goes the same way: to the server, and the menu drawn again with what it says. It's given
+// as soon as it's called.
+const order = (body) => app.runAction(async () => {
+  const { game, message } = await api("/api/command", body);
+  app.ui.game = game;
+  if (message) app.ui.menuMessage = { ok: true, text: message };
+})();
+
 function card(post) {
   const holder = post.holder;
   const body = [
@@ -37,17 +47,72 @@ function card(post) {
     line("Skills", post.skills),
     line("Heads", post.heads),
     post.watchBill && el("div", { class: "post-line small" }, "Keeps the watch bill"),
+    line("Rival", post.rival && `${post.rival}, working against them`),
     el("div", { class: "post-since small" }, post.since),
+    post.memories?.length ? post.memories.map((words) => el("div", { class: "post-memory small" }, words)) : null,
   ];
-  if (!holder?.sheet) return el("div", { class: "card post-card" }, body);
-  return el("button", {
-    class: "card post-card",
-    title: `${holder.name}'s registry printout`,
-    onclick: () => {
-      app.closeMenu();
-      app.openPersonSheet(holder.key);
-    },
-  }, body);
+  const face = holder?.sheet
+    ? el("button", {
+      class: "card post-card",
+      title: `${holder.name}'s registry printout`,
+      onclick: () => {
+        app.closeMenu();
+        app.openPersonSheet(holder.key);
+      },
+    }, body)
+    : el("div", { class: "card post-card" }, body);
+  if (!post.candidates) return face;
+  return el("div", { class: "post-cell" }, face, givePost(post));
+}
+
+// ---- Giving a post to someone else ----------------------------------------------------------------
+
+// The post whose candidates are open, between the click on Replace and the click on who gets it.
+let replacing = null;
+
+function givePost(post) {
+  if (replacing !== post.id) {
+    return el("button", { class: "post-replace small", title: `Relieve whoever holds it, and give the post of ${post.title.toLowerCase()} to someone else`, onclick: () => {
+      replacing = post.id;
+      app.render();
+    } }, "Replace...");
+  }
+  return el("div", { class: "post-candidates" },
+    el("div", { class: "post-label small" }, `Give the post of ${post.title.toLowerCase()} to:`),
+    post.candidates.length
+      ? post.candidates.map((one) => el("button", { class: "post-candidate small", title: `Relieve ${post.holder?.name ?? "nobody"}, and give the post to ${one.name}`, onclick: () => {
+        replacing = null;
+        order({ action: "replace", post: post.id, key: one.key });
+      } }, one.skills ? `${one.name}: ${one.skills}` : one.name))
+      : el("span", { class: "muted small" }, "nobody who could take it just now"),
+    el("button", { class: "post-replace small", title: "Leave the post as it is", onclick: () => {
+      replacing = null;
+      app.render();
+    } }, "Cancel"));
+}
+
+// ---- The reviews, and what's waiting on the captain ------------------------------------------------
+
+function reviews(r) {
+  if (!r) return null;
+  const words = r.held ? "The reviews are held, at your word: nobody's warned, relieved or given a post unless you do it." : `The officers review their people every ${r.every} days. The next review is on day ${r.next}.`;
+  return el("div", { class: "command-reviews small" },
+    el("span", {}, words),
+    r.canHold && el("button", {
+      class: "watch-move",
+      title: r.held ? "Let the officers warn, relieve and promote people again" : "Stop anyone being warned, relieved or given a post unless you do it",
+      onclick: () => order({ action: "hold", held: !r.held }),
+    }, r.held ? "Let them go on" : "Hold the reviews"));
+}
+
+function waiting(list) {
+  if (!list?.length) return null;
+  return section("Waiting on you", list.map((one) => el("div", { class: "command-waiting" },
+    el("div", { class: "small" }, `Day ${one.day}. ${one.text}`),
+    el("div", { class: "command-answers" },
+      el("button", { title: one.kind === "asks" ? `Give the post to ${one.candidate}` : `Relieve ${one.holder}, and give the post to ${one.candidate}`, onclick: () => order({ action: "answer", post: one.post, answer: "accept" }) }, one.kind === "asks" ? `Give it to ${one.candidate}` : "Do it"),
+      el("button", { title: one.kind === "asks" ? `Tell ${one.candidate} no` : `Keep ${one.holder} in the post, and your choice stands a while`, onclick: () => order({ action: "answer", post: one.post, answer: "keep" }) }, one.kind === "asks" ? "Refuse" : `Keep ${one.holder}`),
+      one.by && el("button", { title: `Let ${one.by} decide, now`, onclick: () => order({ action: "answer", post: one.post, answer: "leave" }) }, `Leave it to ${one.by}`)))));
 }
 
 // ---- The watch bill -----------------------------------------------------------------------------
@@ -58,20 +123,18 @@ const choose = (key) => () => {
   moving = moving === key ? null : key;
   app.render();
 };
-const move = (job) => app.runAction(async () => {
+const move = (job) => () => {
   const key = moving;
   moving = null;
-  const { game, message } = await api("/api/command", { action: "assign", key, job });
-  app.ui.game = game;
-  if (message) app.ui.menuMessage = { ok: true, text: message };
-});
+  order({ action: "assign", key, job });
+};
 
 function watchBill(bill) {
   const everyone = [...bill.jobs.flatMap((job) => job.people), ...bill.spare];
   if (moving && !everyone.some((one) => one.key === moving)) moving = null;
   const mover = everyone.find((one) => one.key === moving);
   const person = (one) => {
-    const words = `${one.name}${one.lost ? `, ${one.lost}` : ""}${one.covering ? `, for ${one.covering}` : ""}`;
+    const words = `${one.name}${one.lost ? `, ${one.lost}` : ""}${one.covering ? `, for ${one.covering}` : ""}${one.past ? ` (${one.past})` : ""}`;
     if (!bill.canMove || one.you) return el("span", { class: `watch-person${one.lost ? " lost" : ""}${one.you ? " you" : ""}` }, words);
     return el("button", { class: `watch-person${one.key === moving ? " moving" : ""}${one.lost ? " lost" : ""}`, title: one.key === moving ? "Don't move them after all" : `Move ${one.name} to another job`, "aria-pressed": String(one.key === moving), onclick: choose(one.key) }, words);
   };
@@ -92,7 +155,10 @@ function watchBill(bill) {
 export function commandMenu() {
   const command = app.ui.game.command;
   if (!command) return el("div", { class: "muted small" }, "Nobody here keeps a chain of command.");
+  if (replacing && !command.groups.some((group) => group.posts.some((post) => post.id === replacing && post.candidates))) replacing = null;
   return el("div", { class: "command-page" },
+    reviews(command.reviews),
+    waiting(command.waiting),
     command.groups.map((group) => section(group.title, el("div", { class: "post-grid" }, group.posts.map(card)))),
     command.watchBill && watchBill(command.watchBill));
 }

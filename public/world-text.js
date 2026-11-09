@@ -34,6 +34,9 @@ export const PERSON = {
     { path: "role", key: "role", type: "string" }, { path: "location", key: "place", type: "name" }, { path: "crew", key: "crew", type: "flag" },
     { path: "color", key: "color", type: "string" }, { path: "listed", key: "listed", type: "flag" }, { path: "prominent", key: "prominent", type: "flag" },
     { path: "chair", key: "chair", type: "flag" }, { path: "voice_style", key: "voice style", type: "string" },
+    // For the ship's chain of command (src/command.js): ambition and temper from 1 to 5, and loyalty to the captain to
+    // start with, from 0 to 100. Someone without them has the command file's everyone else.
+    { path: "ambition", key: "ambition", type: "number" }, { path: "temper", key: "temper", type: "number" }, { path: "loyalty", key: "loyalty", type: "number" },
   ],
   sections: [
     { path: "note", phrase: "In a line", type: "text" }, { path: "appearance", phrase: "Appearance", type: "text" }, { path: "personality", phrase: "Personality", type: "text" },

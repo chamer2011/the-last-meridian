@@ -183,7 +183,7 @@ test("the techs are the engineers and the guards are whoever guards, as the watc
 
 test("only the captain moves people on the watch bill, and never themselves", () => {
   const game = newGame();
-  assert.deepEqual(cmd.commandCommand(game, { action: "assign", key: "Petra", job: "nurse" }), { message: "Petra is a nurse now, in Medbay." });
+  assert.deepEqual(cmd.commandCommand(game, { action: "assign", key: "Petra", job: "nurse" }), { message: "Petra is a nurse now, in Medbay.", notes: [] });
   assert.equal(cmd.commandCommand(game, { action: "assign", key: "Petra", job: "nurse" }).message, "Petra is already a nurse.");
   assert.equal(cmd.commandCommand(game, { action: "assign", key: "Petra", job: "spare" }).message, "Petra is one of the spare hands now.");
   assert.throws(() => cmd.commandCommand(game, { action: "assign", key: "odessa", job: "cook" }), /aren't on the watch bill/);

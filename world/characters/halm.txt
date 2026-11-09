@@ -9,6 +9,9 @@ role: Head of the fleet's civil council
 place: meridian
 color: #e6d9a8
 prominent: yes
+ambition: 5
+temper: 3
+loyalty: 35
 
 In a line:
 The last Concord senator anyone can find. Speaks for the civilians, and believes the fleet should answer to them.

@@ -9,6 +9,9 @@ role: Quartermaster of the Meridian
 place: meridian
 color: #cab1ab
 listed: no
+ambition: 2
+temper: 2
+loyalty: 60
 
 In a line:
 If it's aboard, she knows how many are left, and she'd like you to ask in writing.
