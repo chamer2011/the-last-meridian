@@ -84,8 +84,8 @@ input:focus { border-bottom-color: var(--text); }
 .field-label { font-weight: 700; color: var(--bright); margin-bottom: 4px; display: block; }
 .field-label::before { content: "> "; }
 
-/* Main game layout: the story takes all the room, with a narrow strip of menu buttons down the right edge. */
-.game { --rail-width: 60px; display: flex; height: 100%; position: relative; overflow: hidden; }
+/* Main game layout: the story takes all the room, with the menu buttons down the right edge. */
+.game { --rail-width: 124px; display: flex; height: 100%; position: relative; overflow: hidden; }
 .story { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
 .statusbar {
   display: flex; flex-wrap: wrap; gap: 2px 18px; padding: 6px 16px; align-items: center;
@@ -268,42 +268,25 @@ button.fighter:hover:not(:disabled), button.fighter:focus-visible { background: 
 .fight-result { padding: 8px 12px 10px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
 .fight-result-title { font-size: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
 
-/* The strip of menu buttons down the right edge: one button for each group, its picture over its short name, with a
-   dot when something in it wants you. A click opens the group's menus beside it, over everything else, in the console
-   look; a menu that's open lights its group. */
+/* The buttons that open each menu */
 .rail {
-  flex: 0 0 auto; width: var(--rail-width); position: relative; z-index: 32;
-  display: flex; flex-direction: column; font-size: 13px;
+  flex: 0 0 auto; width: var(--rail-width); position: relative; z-index: 32; overflow-y: auto;
+  display: flex; flex-direction: column; padding: 6px 0; gap: 1px; font-size: 13px;
   border-left: 1px solid var(--line); background: var(--panel);
 }
 .rail button, .drawer-tabs button { color: var(--muted); text-transform: uppercase; }
+.rail button { padding: 2px 10px; white-space: nowrap; }
 .rail button::before, .rail button::after, .drawer-tabs button::before, .drawer-tabs button::after { content: none; }
 .rail button.active, .drawer-tabs button.active { background: var(--text); color: var(--bg); }
-.rail-slot { position: relative; }
-.rail .rail-group-button {
-  position: relative; width: 100%; height: 58px; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  border-bottom: 1px solid var(--line); text-align: center; font-size: 10px; letter-spacing: .08em;
-}
-.rail-group-button svg { display: block; }
-.rail-dot { position: absolute; top: 9px; right: 13px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
-.rail-flyout {
-  position: absolute; top: 0; right: calc(100% + 1px); min-width: 210px; padding: 4px 0 6px; display: flex; flex-direction: column;
-  background: var(--panel); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0, 0, 0, .55); animation: rail-flyout-in .14s ease-out;
-}
-@keyframes rail-flyout-in { from { opacity: 0; transform: translateX(8px); } }
-@media (prefers-reduced-motion: reduce) { .rail-flyout { animation: none; } }
-.rail-flyout-head { padding: 4px 14px 6px; margin-bottom: 2px; border-bottom: 1px dotted var(--line); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
-.rail-flyout-head::before { content: "-- "; }
-.rail-flyout-head::after { content: " --"; }
-.rail-flyout button { padding: 4px 14px; white-space: nowrap; text-align: left; color: var(--text); }
 .badge { margin-left: 4px; color: var(--warn); font-weight: 700; }
 .rail button:hover .badge, .rail button.active .badge, .drawer-tabs button:hover .badge, .drawer-tabs button.active .badge { color: var(--bg); }
 .badge::before { content: "("; }
 .badge::after { content: ")"; }
-/* On the tabs of a phone-sized window, the menus sit in their groups, each under its own heading. */
+/* The menus sit in groups on the rail, each under its own heading, and on the tabs when the window's narrow. */
 .rail-group { padding: 10px 10px 2px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
 .rail-group::before { content: "-- "; }
 .rail-group::after { content: " --"; }
+.rail .rail-group:first-child { padding-top: 2px; }
 .drawer-tabs .rail-group { padding: 0 2px 0 0; }
 /* A part of a page that folds away behind its own line, and slides open and shut in place. */
 .fold { gap: 0; }
@@ -1127,19 +1110,14 @@ body:has(#bag) .pop-notes { visibility: hidden; }
   .fight-hint { display: none; }
 }
 
-/* On a phone the menu buttons move inside the menu, which covers the whole screen. */
-@media (max-width: 560px) {
+@media (max-width: 860px) {
+  /* On a phone the menu buttons move inside the menu, which covers the whole screen. */
   .game { --rail-width: 0px; }
   .fight-title .mobile-toggle { color: var(--bg); }
   .rail { display: none; }
-  .drawer { border-left: 0; }
+  .drawer { width: 100%; border-left: 0; }
   .drawer-tabs { display: flex; }
   .mobile-toggle { display: inline-block; margin-left: auto; }
-}
-
-@media (max-width: 860px) {
-  /* A narrow window's menu covers everything but the strip. */
-  .drawer { width: calc(100% - var(--rail-width)); }
   .menu-body { padding: 12px 16px; }
   .drawer-head { padding: 6px 16px; }
   .drawer-tabs { padding: 4px 16px; }
