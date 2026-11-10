@@ -5,7 +5,7 @@
 // everyone has got to.
 
 import { api, el, zoom } from "./dom.js";
-import { isoFrameNode, isoKeepClear, isoMark } from "./iso.js";
+import { isoCover, isoFrameNode, isoKeepClear, isoMark } from "./iso.js";
 import { paneNode, putPane } from "./pane.js";
 import { untagged } from "./story.js";
 import { closePopups, popsNode, popupDrawn, popupNext, popupPressed, popupReading, resetPopups } from "./popups.js";
@@ -19,7 +19,16 @@ const SPEEDS = {
   Faster: { rate: 300, title: "A day in the game takes about 5 minutes" },
 };
 
-const walk = { sending: false, message: null, thing: null, looked: false, plan: false, fullStory: false, shownLevel: null, marks: new Map(), listed: "", speed: "Normal", stopped: null, ticking: false, shownClock: "", behindMenu: false };
+const walk = { sending: false, message: null, thing: null, looked: false, plan: false, fullStory: false, shownLevel: null, marks: new Map(), listed: "", speed: "Normal", stopped: null, ticking: false, shownClock: "", behindMenu: false, hereFolded: false, hereAbout: false };
+
+// Whether the room's panel is folded, and whether its words about the room are open, the way this player left them.
+try {
+  const kept = JSON.parse(localStorage.getItem("meridian-here") ?? "{}") ?? {};
+  walk.hereFolded = Boolean(kept.folded);
+  walk.hereAbout = Boolean(kept.about);
+} catch {
+  // Nothing kept, or nowhere to keep it: it starts open, with the room's words folded.
+}
 
 // What the view needs from the main screen. Set once, when the page loads.
 let app;
@@ -37,6 +46,7 @@ export function initWalk(hooks) {
   document.addEventListener("pointerdown", (event) => {
     if (walk.menu && !event.target.closest?.("#walk-menu")) closeMenu();
   }, true);
+  window.addEventListener("resize", () => requestAnimationFrame(placeHere));
   startMoving({
     view: () => (app.ui.screen === "game" && app.ui.game?.walk && walkShown() && !walk.fullStory ? app.ui.game.walk : null),
     canMove: () => !cannotWalk() && !walk.sending && !app.ui.sideOpen && !walk.fullStory && !document.getElementById("board"),
@@ -336,18 +346,20 @@ function frameNode() {
     el("div", { class: "walk-captain", id: "walk-captain", "data-mark": "person:you", style: spotStyle(spot.x, spot.y), title: "You" }, "@")));
 }
 
-function hereList(label, entries) {
-  return entries.length > 0 && el("div", { class: "walk-here-list small" }, el("span", { class: "muted" }, label), entries);
+// A part of the room's panel, under a small heading with how many there are.
+function hereSection(title, count, rows) {
+  return el("div", { class: "walk-here-section" }, el("div", { class: "walk-here-head" }, el("span", {}, title), count ? el("span", {}, String(count)) : null), rows);
 }
 
-// On a deck drawn in characters, the frame scrolls so the player stays in the middle of it.
+// On a deck drawn in characters, the frame scrolls so the player stays in the middle of what the room's panel leaves.
 export function keepCaptainInView() {
   const frame = document.getElementById("walk-frame");
   const you = document.getElementById("walk-captain");
   if (!frame?.classList.contains("scrolls") || !you) return;
   const box = frame.getBoundingClientRect();
   const mine = you.getBoundingClientRect();
-  frame.scrollLeft += mine.left + mine.width / 2 - (box.left + box.width / 2);
+  const covered = (parseFloat(getComputedStyle(frame).paddingRight) || 0) * (box.width / (frame.offsetWidth || box.width));
+  frame.scrollLeft += mine.left + mine.width / 2 - (box.left + (box.width - covered) / 2);
   frame.scrollTop += mine.top + mine.height / 2 - (box.top + box.height / 2);
 }
 
@@ -363,23 +375,39 @@ function roomNote(room) {
   return notes.length ? el("div", { class: `walk-room-note small${room.alarm || room.air < 30 ? " bad" : ""}` }, notes.join(" ")) : null;
 }
 
-// Who's listed beside the level, and what they're doing. It's only redrawn when this changes.
+// Who's listed in the room's panel, and what they're doing. It's only redrawn when this changes.
 const listOf = (view) => JSON.stringify(view.people.map((person) => (person.crowd ? 0 : [person.key, person.doing])));
 
-function peopleList(view, button) {
-  const named = view.people.filter((person) => !person.crowd);
-  const others = view.people.length - named.length;
-  const rest = others === 1 && !named.length ? "One other person" : others && !named.length ? `${others} other people` : others === 1 ? "and one other" : `and ${others} others`;
-  return [
-    ...named.map((person) => button(person.doing ? `${person.short}: ${person.doing}` : person.short, `person:${person.key}`, { class: "walk-here-person", style: `--speaker:${person.color}` })),
-    ...(others ? [el("span", { class: "muted" }, rest)] : []),
-  ];
+// A system in the room, as a small tag that walks you over to it: teal when it works, amber when it's off or broken,
+// red when it's ringing, with its state when it isn't the usual one.
+function partChip(thing, button) {
+  const { part } = thing;
+  const usual = ["on", "open", "watching", "released"].includes(part.word);
+  const state = part.ringing ? " ringing" : part.works ? "" : " down";
+  return button([el("span", { class: "walk-here-dot", "aria-hidden": "true" }), `${PART_WORDS[part.kind] ?? "part"}${usual ? "" : ` (${part.word})`}`], `thing:${thing.id}`, { class: `walk-here-part${state}`, title: `${thing.name}, ${part.word}` });
 }
 
+// Folding the room's panel, or opening its words about the room, is kept for next time.
+function keepHere(change) {
+  if ("folded" in change) walk.hereFolded = change.folded;
+  if ("about" in change) walk.hereAbout = change.about;
+  try {
+    localStorage.setItem("meridian-here", JSON.stringify({ folded: walk.hereFolded, about: walk.hereAbout }));
+  } catch {
+    // It still works, just without being remembered.
+  }
+  drawHere();
+}
+
+// What's here floats over the right side of the room, in a pane with four corners and a tag, like the panes by people's
+// heads: who's here and what they're doing, the room's systems, and the ways out. The things in the room aren't
+// listed, since they're the ? marks in it. The tag folds it down to one line of what's here, and it stays the way the
+// player left it.
 function hereNode() {
   const view = app.ui.game.walk;
+  const { role, credits } = app.ui.game;
   walk.listed = listOf(view);
-  const button = (text, to, props = {}) => el("button", {
+  const button = (content, to, props = {}) => el("button", {
     disabled: cannotWalk(),
     onclick: () => go({ action: "go", to }),
     oncontextmenu: (event) => {
@@ -387,33 +415,63 @@ function hereNode() {
       openMenu(to, { x: event.clientX, y: event.clientY });
     },
     ...props,
-  }, text);
-  // On a deck, the lists are the room the player's in, not the whole deck.
+  }, content);
+  // On a deck, it's the room the player's in, not the whole deck.
   const inRoom = (one) => !view.here.deck || one.room === view.here.id;
-  const ways = (view.ways ?? []).map((way) => button(way.locked ? `${way.name} (locked)` : way.name, way.locked ? `exit:door:${way.x},${way.y}` : `room:${way.to}`, { oncontextmenu: (event) => event.preventDefault() }));
-  return el("div", { class: "walk-here", id: "walk-here" },
-    el("div", { class: "walk-here-name" }, view.here.name),
-    view.here.deck && el("div", { class: "muted small walk-here-deck" }, view.here.deck.name),
-    view.here.desc && el("div", { class: "muted small" }, view.here.desc),
-    view.overview && el("div", {}, el("button", {
-      disabled: cannotWalk(),
-      onclick: () => {
-        walk.plan = true;
-        app.render();
-      },
-    }, view.overview.title)),
-    hereList("People:", peopleList({ ...view, people: view.people.filter(inRoom) }, button)),
-    hereList("Things:", view.things.filter((thing) => !thing.part && inRoom(thing)).map((thing) => button(thing.name, `thing:${thing.id}`))),
-    hereList("Systems:", view.things.filter((thing) => thing.part && inRoom(thing)).map((thing) => button(`${PART_WORDS[thing.part.kind] ?? "part"}${["on", "open", "watching", "released"].includes(thing.part.word) ? "" : ` (${thing.part.word})`}`, `thing:${thing.id}`, { class: `walk-here-part${thing.part.works ? "" : " down"}`, title: `${thing.name}, ${thing.part.word}` }))),
-    roomNote(view.room),
-    hereList("Ways out:", [...ways, ...view.exits.filter(inRoom).map((exit) => button(exit.closed ? `${exit.label} (closed)` : exit.label, `exit:${exit.key}`))]),
-    !app.ui.game.role.captain && hereList("You can:", [
-      app.ui.game.role.job && el("button", { disabled: cannotWalk(), onclick: app.act({ action: "work" }) }, app.ui.game.role.job.name),
-      app.ui.game.role.rest === 0 && el("button", { disabled: cannotWalk(), onclick: app.act({ action: "rest" }) }, "Sleep (8 hours)"),
-      app.ui.game.role.rest > 0 && el("button", { disabled: cannotWalk() || app.ui.game.credits < app.ui.game.role.rest, onclick: app.act({ action: "rest" }) }, `Rent a bunk (${app.ui.game.role.rest} cr)`),
-      app.ui.game.role.rest > 0 && el("button", { disabled: cannotWalk(), onclick: app.act({ action: "rest", rough: true }) }, "Sleep rough"),
-    ].filter(Boolean)),
-    walk.message && el("div", { class: "notice-inline fail" }, walk.message));
+  const people = view.people.filter(inRoom);
+  const named = people.filter((person) => !person.crowd);
+  const others = people.length - named.length;
+  const crowd = others === 1 && !named.length ? "One other person" : others && !named.length ? `${others} other people` : others === 1 ? "and one other" : `and ${others} others`;
+  const parts = view.things.filter((thing) => thing.part && inRoom(thing));
+  const ways = [
+    ...(view.ways ?? []).map((way) => ({ label: way.name, shut: way.locked ? "locked" : null, to: way.locked ? `exit:door:${way.x},${way.y}` : `room:${way.to}`, menu: false })),
+    ...view.exits.filter(inRoom).map((exit) => ({ label: exit.label, shut: exit.closed ? "closed" : null, to: `exit:${exit.key}`, menu: true })),
+  ];
+  const acts = role.captain ? [] : [
+    role.job && el("button", { disabled: cannotWalk(), onclick: app.act({ action: "work" }) }, role.job.name),
+    role.rest === 0 && el("button", { disabled: cannotWalk(), onclick: app.act({ action: "rest" }) }, "Sleep (8 hours)"),
+    role.rest > 0 && el("button", { disabled: cannotWalk() || credits < role.rest, onclick: app.act({ action: "rest" }) }, `Rent a bunk (${role.rest} cr)`),
+    role.rest > 0 && el("button", { disabled: cannotWalk(), onclick: app.act({ action: "rest", rough: true }) }, "Sleep rough"),
+  ].filter(Boolean);
+  const folded = walk.hereFolded;
+  const counted = (n, one, many) => (n ? `${n} ${n === 1 ? one : many}` : null);
+  const summary = [counted(people.length, "person", "people"), counted(parts.length, "system", "systems"), counted(ways.length, "way out", "ways out")].filter(Boolean).join(" · ");
+  return el("section", { class: `walk-here${folded ? " folded" : ""}`, id: "walk-here", "aria-label": "What's here" },
+    ["tl", "tr", "bl", "br"].map((corner) => el("span", { class: `walk-here-corner ${corner}`, "aria-hidden": "true" })),
+    el("button", { class: "walk-here-tag", "aria-expanded": String(!folded), title: folded ? "Show what's here" : "Fold this away", onclick: () => keepHere({ folded: !folded }) },
+      el("span", { class: "walk-here-name" }, view.here.name),
+      view.here.deck && el("span", { class: "walk-here-deck" }, view.here.deck.name),
+      el("span", { class: "walk-here-fold" }, folded ? "[+]" : "[-]")),
+    folded
+      ? el("div", { class: "walk-here-summary" }, summary || "Nobody here, and no way out")
+      : el("div", { class: "walk-here-body" },
+        (view.here.desc || view.overview) && el("div", { class: "walk-here-top" },
+          view.here.desc && el("button", { "aria-expanded": String(walk.hereAbout), onclick: () => keepHere({ about: !walk.hereAbout }) }, `${walk.hereAbout ? "-" : "+"} About this room`),
+          view.overview && el("button", {
+            disabled: cannotWalk(),
+            onclick: () => {
+              walk.plan = true;
+              app.render();
+            },
+          }, view.overview.title)),
+        walk.hereAbout && view.here.desc && el("p", { class: "walk-here-desc" }, view.here.desc),
+        people.length > 0 && hereSection("People", people.length, [
+          named.map((person) => button([
+            el("span", { class: "walk-here-badge" }, person.short[0].toUpperCase()),
+            el("span", { class: "walk-here-who" }, person.short),
+            person.doing && el("span", { class: "walk-here-doing" }, person.doing),
+          ], `person:${person.key}`, { class: "walk-here-row walk-here-person", style: `--speaker:${person.color}`, title: `${person.name}${person.doing ? `, ${person.doing}` : ""}` })),
+          others > 0 && el("div", { class: "walk-here-crowd" }, crowd),
+        ]),
+        parts.length > 0 && hereSection("Systems", parts.length, el("div", { class: "walk-here-chips" }, parts.map((thing) => partChip(thing, button)))),
+        roomNote(view.room),
+        ways.length > 0 && hereSection("Ways out", ways.length, ways.map((way) => button([
+          el("span", { class: "walk-here-arrow", "aria-hidden": "true" }, "→"),
+          way.label,
+          way.shut && el("span", { class: "walk-here-note" }, ` (${way.shut})`),
+        ], way.to, { class: `walk-here-row walk-here-way${way.shut ? " shut" : ""}`, ...(way.menu ? {} : { oncontextmenu: (event) => event.preventDefault() }) }))),
+        acts.length > 0 && hereSection("You can", 0, el("div", { class: "walk-here-acts" }, acts)),
+        walk.message && el("div", { class: "notice-inline fail" }, walk.message)));
 }
 
 // The whole story, in place of the room, for going back over it.
@@ -437,9 +495,8 @@ function storyBar() {
 export function walkViewNode(logNode, composerNode) {
   if (walk.fullStory) return el("div", { class: "walk-full" }, storyBar(), logNode());
   const popped = popupsShown();
-  const legend = el("div", { class: "muted walk-legend" }, isoShown()
-    ? `${app.ui.game.walk.things.length ? "? something to look at   " : ""}Walk with WASD or a click   Click anyone or anything   Right-click for more   Space pauses   The wheel zooms`
-    : `@ you   ${app.ui.game.walk.things.length ? "? something to look at   " : ""}Walk with WASD or a click   Right-click for more   Space pauses`);
+  // The classic plan says what its marks are. The isometric room has nothing written over it.
+  const legend = isoShown() ? null : el("div", { class: "muted walk-legend" }, `@ you   ${app.ui.game.walk.things.length ? "? something to look at   " : ""}Walk with WASD or a click   Right-click for more   Space pauses`);
   return el("div", { class: `walk-view${isoShown() ? " iso" : ""}${popped ? " pops-on" : ""}`, id: "walk-view" },
     el("div", { class: "walk-map" },
       frameNode(),
@@ -457,9 +514,40 @@ function drawHere() {
   const old = document.getElementById("walk-here");
   if (!old) return;
   const node = hereNode();
-  const top = old.scrollTop;
+  const top = old.querySelector(".walk-here-body")?.scrollTop ?? 0;
+  // Where it was put last time, so it doesn't jump before it's put there again.
+  node.style.top = old.style.top;
+  node.style.maxHeight = old.style.maxHeight;
   old.replaceWith(node);
-  node.scrollTop = top;
+  const body = node.querySelector(".walk-here-body");
+  if (body) body.scrollTop = top;
+  placeHere();
+}
+
+// The room's panel goes under the clock over the room, and stops short of the typing window at the bottom. What it
+// covers on the right is kept clear while it's open: the isometric camera moves over, the classic plan stands aside,
+// and the story's words over the room keep to the left of it (--here-room). On a phone it's under the room instead.
+export function placeHere() {
+  const here = document.getElementById("walk-here");
+  const view = document.getElementById("walk-view");
+  const map = view?.querySelector(".walk-map");
+  if (!here || !map) {
+    isoCover(0);
+    return;
+  }
+  let cover = 0;
+  if (getComputedStyle(here).position === "absolute") {
+    const clock = popupsShown() ? document.getElementById("walk-clock") : null;
+    const top = clock?.offsetHeight ? clock.offsetTop + clock.offsetHeight + 14 : 18;
+    here.style.top = `${top}px`;
+    here.style.maxHeight = `${Math.max(90, map.clientHeight - top - (popupsShown() ? 84 : 18))}px`;
+    if (!walk.hereFolded) cover = Math.max(0, map.clientWidth - here.offsetLeft + 8);
+  } else {
+    here.style.top = "";
+    here.style.maxHeight = "";
+  }
+  view.style.setProperty("--here-room", `${cover}px`);
+  isoCover(isoShown() ? cover : 0);
 }
 
 // Redraws the level in place, leaving the story and what's being typed alone.
@@ -521,7 +609,13 @@ function clockBar() {
 
 function drawClock() {
   const old = document.getElementById("walk-clock");
-  if (old && walk.shownClock !== `${app.ui.game.clock.label}|${clockHeld()}|${walk.speed}`) old.replaceWith(clockBar());
+  const why = clockHeld();
+  if (old && walk.shownClock !== `${app.ui.game.clock.label}|${why}|${walk.speed}`) {
+    const whyBefore = walk.shownClock.split("|")[1];
+    old.replaceWith(clockBar());
+    // Why it's stopped makes it wider, and on a narrow room taller, and the room's panel goes under it.
+    if (String(why) !== whyBefore) placeHere();
+  }
 }
 
 function applyTick(reply) {

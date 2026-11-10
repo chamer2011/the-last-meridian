@@ -2391,6 +2391,8 @@ const iso = {
   calm: false,
   focus: null,
   covered: 0,
+  // How much of the room's right side the room's own panel covers: the camera keeps the player in what's left.
+  coverRight: 0,
   // A floating window that's about something in the room, and how far the room has slid to keep it clear of the window.
   clear: null,
   nudge: { x: 0, y: 0 },
@@ -2497,10 +2499,12 @@ function sizeCanvas() {
 }
 
 // The whole room if it fits at a sensible size. If not, the camera stays with the player, and with
-// whoever's talking to them. Anything the popups cover at the bottom doesn't count as room.
+// whoever's talking to them. Anything the popups cover at the bottom doesn't count as room, and nor does what the
+// room's own panel covers on the right: the camera keeps to the rest, without the size changing.
 function aim(width, height, dt) {
   const { bounds } = iso.scene;
   const seen = height - Math.min(iso.covered, height * 0.75);
+  const across = width - Math.min(iso.coverRight, width * 0.5);
   const spanU = bounds.maxU - bounds.minU;
   const spanV = bounds.maxV - bounds.minV;
   const fit = Math.min(width / (spanU + 1), height / (spanV + 1));
@@ -2515,7 +2519,7 @@ function aim(width, height, dt) {
   if (them) {
     const spot = cellCentre(them.x, them.y);
     const there = project(spot.wx, spot.wy);
-    const both = Math.abs(there.u - here.u) * unit < width * 0.85 && Math.abs(there.v - here.v) * unit < seen * 0.8;
+    const both = Math.abs(there.u - here.u) * unit < across * 0.85 && Math.abs(there.v - here.v) * unit < seen * 0.8;
     here = both ? { u: (here.u + there.u) / 2, v: (here.v + there.v) / 2 } : there;
   }
   const onAxis = (at, low, span, room) => {
@@ -2523,7 +2527,7 @@ function aim(width, height, dt) {
     if (span + 1 <= size) return low + span / 2;
     return Math.max(low - 0.5 + size / 2, Math.min(low + span + 0.5 - size / 2, at));
   };
-  const goal = { u: onAxis(here.u, bounds.minU, spanU, width), v: onAxis(here.v, bounds.minV, spanV, seen) };
+  const goal = { u: onAxis(here.u, bounds.minU, spanU, across), v: onAxis(here.v, bounds.minV, spanV, seen) };
   if (!iso.camera || iso.calm) iso.camera = { ...goal };
   const by = 1 - Math.exp(-dt / 160);
   iso.camera.u += (goal.u - iso.camera.u) * by;
@@ -2537,7 +2541,7 @@ function aim(width, height, dt) {
   else iso.redraw = true;
   iso.drawnNudge = { x: Math.round(iso.nudge.x), y: Math.round(iso.nudge.y) };
   // Whole pixels, so that the texture on the floor stays crisp while the camera moves.
-  return { ox: Math.round(width / 2 - iso.camera.u * unit) + iso.drawnNudge.x, oy: Math.round(seen / 2 - iso.camera.v * unit) + iso.drawnNudge.y };
+  return { ox: Math.round(across / 2 - iso.camera.u * unit) + iso.drawnNudge.x, oy: Math.round(seen / 2 - iso.camera.v * unit) + iso.drawnNudge.y };
 }
 
 // How far to slide the room so that what a floating window is about shows beside it, not under it: the least of down,
@@ -2889,6 +2893,15 @@ export function isoLook({ person = null, bottom = 0 } = {}) {
   if (iso.focus === person && iso.covered === bottom) return;
   iso.focus = person;
   iso.covered = bottom;
+  iso.redraw = true;
+}
+
+// How much of the room's right side the room's own panel covers, in the canvas's own measure: the camera moves over to
+// keep the player in the part that's left. Nothing, and it moves back.
+export function isoCover(right = 0) {
+  const covered = Math.max(0, Math.round(right));
+  if (iso.coverRight === covered) return;
+  iso.coverRight = covered;
   iso.redraw = true;
 }
 

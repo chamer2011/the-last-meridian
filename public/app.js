@@ -17,7 +17,7 @@ import { initSheet, openPersonSheet, resetSheet, sheetNode, toggleSheet } from "
 import { drawQuests, initQuests, questTrackerNode, questsOpen, resetQuests, toggleQuests } from "./quests.js";
 import { beginScene, initPopups, openPopups, popupDrawn, popupNext, popupsAttached, updatePopups } from "./popups.js";
 import { INTERFACE_SIZES, interfaceZoom } from "./scene.js";
-import { focusThing, initWalk, keepClear, markPoint, newsBehindMenu, popupsShown, putAwayRoomWindows, renderWalk, resetWalk, showWholeStory, thingNode, thingOpen, toggleClock, walkShown, walkViewNode } from "./walk.js";
+import { focusThing, initWalk, keepClear, markPoint, newsBehindMenu, placeHere, popupsShown, putAwayRoomWindows, renderWalk, resetWalk, showWholeStory, thingNode, thingOpen, toggleClock, walkShown, walkViewNode } from "./walk.js";
 import { aimWith } from "./float.js";
 import { WRITING_SPEEDS } from "./writer.js";
 
@@ -31,6 +31,8 @@ const ui = {
   screen: "title",
   tab: "skills",
   sideOpen: false,
+  // The group on the strip whose menus are showing beside it, by its title, or none.
+  railOpen: null,
   streaming: false,
   waiting: false,
   // Over the room, the typing line only comes up when Enter is pressed.
@@ -513,7 +515,8 @@ const act = (body) => runAction(async () => {
 
 const menuAlerts = (g) => ({ character: g.statPoints, skills: g.skillPoints, perks: g.perkPoints, ship: g.role.captain ? g.ship.shortages.length : 0 });
 
-// The menus, in their groups, each group under its own heading. What a menu holds is on its tooltip, not on the screen.
+// The menus, in their groups, each group under its own heading, for the tabs of a phone-sized window. What a menu holds
+// is on its tooltip, not on the screen.
 function menuButtons(g) {
   const alerts = menuAlerts(g);
   return MENU_GROUPS.flatMap((group) => {
@@ -528,7 +531,63 @@ function menuButtons(g) {
   });
 }
 
-const railNode = () => el("nav", { class: "rail", id: "rail", "aria-label": "Menus" }, menuButtons(ui.game));
+// A small line drawing for a group of menus, from the shapes its entry in MENU_GROUPS gives.
+const SVG = "http://www.w3.org/2000/svg";
+function iconNode(shapes = []) {
+  const svg = document.createElementNS(SVG, "svg");
+  const look = { width: 20, height: 20, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": 1.6, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" };
+  for (const [name, value] of Object.entries(look)) svg.setAttribute(name, value);
+  for (const [tag, attrs] of shapes) {
+    const shape = document.createElementNS(SVG, tag);
+    for (const [name, value] of Object.entries(attrs)) shape.setAttribute(name, value);
+    svg.append(shape);
+  }
+  return svg;
+}
+
+// The strip down the right edge: a button for each group of menus, its picture over its short name, with a dot when
+// something in it wants you. A click opens the group's menus beside it, and picking one opens that menu. A menu that's
+// open lights its group. What a group holds is on its tooltip.
+function railNode() {
+  const g = ui.game;
+  const alerts = menuAlerts(g);
+  return el("nav", { class: "rail", id: "rail", "aria-label": "Menus" }, MENU_GROUPS.flatMap((group) => {
+    const entries = group.ids.map((id) => [id, MENUS[id]]).filter(([, menu]) => !menu.captainOnly || g.role.captain);
+    if (!entries.length) return [];
+    const open = ui.railOpen === group.title;
+    const lit = open || (ui.sideOpen && group.ids.includes(ui.tab));
+    return [el("div", { class: "rail-slot" },
+      el("button", {
+        class: `rail-group-button${lit ? " active" : ""}`,
+        "aria-expanded": String(open),
+        title: entries.map(([, menu]) => menu.label).join(", "),
+        onclick: () => {
+          ui.railOpen = open ? null : group.title;
+          renderRail();
+        },
+      }, iconNode(group.icon), el("span", {}, group.short), entries.some(([id]) => alerts[id] > 0) && el("span", { class: "rail-dot", "aria-hidden": "true" })),
+      open && el("div", { class: "rail-flyout" },
+        el("div", { class: "rail-flyout-head" }, group.title),
+        entries.map(([id, menu]) => el("button", {
+          class: ui.sideOpen && id === ui.tab ? "active" : "",
+          "aria-pressed": String(ui.sideOpen && id === ui.tab),
+          title: menu.about,
+          onclick: () => {
+            ui.railOpen = null;
+            toggleMenu(id);
+            renderRail();
+          },
+        }, menu.label, alerts[id] > 0 && el("span", { class: "badge" }, String(alerts[id]))))))];
+  }));
+}
+
+// The strip's open group closes with a click anywhere else, or Esc. Says whether there was one to close.
+function shutRail() {
+  if (!ui.railOpen) return false;
+  ui.railOpen = null;
+  renderRail();
+  return true;
+}
 
 function drawerNode() {
   const menu = MENUS[ui.tab];
@@ -684,8 +743,9 @@ function render() {
     drawerNode(),
   ));
   if (!popupsShown()) updateLive();
-  // The tracker first, since the story's panes keep out of its way.
+  // The tracker first, since the story's panes keep out of its way, and then the room's panel, for the same reason.
   drawQuests();
+  placeHere();
   popupsAttached();
   dropStaleTooltip();
   if (!ui.streaming) placeLog(previousTop, isNew);
@@ -726,6 +786,16 @@ document.addEventListener("keydown", (e) => {
   // That's all this press of Esc was for.
   e.preventDefault();
 });
+// The strip's open group goes first: Esc puts it away and does nothing else, and so does a click anywhere but the strip.
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && shutRail()) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+}, true);
+document.addEventListener("pointerdown", (e) => {
+  if (ui.railOpen && !e.target.closest?.("#rail")) shutRail();
+}, true);
 window.addEventListener("resize", applyInterface);
 document.addEventListener("fullscreenchange", () => renderMenus());
 

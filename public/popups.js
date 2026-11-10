@@ -390,7 +390,7 @@ function placePane(node, key, { choices = false, anywhere = false } = {}) {
   const tracker = document.querySelector(".walk-map > #quest-tracker:not([hidden]):not(.open)");
   const pane = node.querySelector(".pop-pane");
   if (pane) pane.style.maxHeight = "";
-  const width = box.clientWidth;
+  const width = box.clientWidth - hereCover(box);
   const floor = box.clientHeight - (row?.offsetHeight ?? 0) - 12;
   const wide = node.offsetWidth;
   const head = spot ? { x: spot.x + spot.w / 2, y: spot.y + 2 } : { x: width / 2, y: floor / 2 };
@@ -406,8 +406,11 @@ function placePane(node, key, { choices = false, anywhere = false } = {}) {
     left = head.x + 28;
   }
   left = Math.max(6, Math.min(width - wide - 6, left));
-  // It stays out from under the clock and the notes, which are at the top.
-  const under = (other) => (other && other.offsetHeight && left + wide > other.offsetLeft && left < other.offsetLeft + other.offsetWidth ? other.offsetTop + other.offsetHeight + 5 : 6);
+  // It stays out from under the clock and the notes, which are at the top. So does a talk's list of what to say, which
+  // can hang beside the pane, under whatever's over the room where it hangs.
+  const underFrom = (other, from, to) => (other && other.offsetHeight && to > other.offsetLeft && from < other.offsetLeft + other.offsetWidth ? other.offsetTop + other.offsetHeight + 5 : 6);
+  const under = (other) => underFrom(other, left, left + wide);
+  const roofFor = (from, to) => Math.max(underFrom(clock, from, to), underFrom(notes, from, to), underFrom(tracker, from, to));
   let tall = node.offsetHeight;
   let roof = Math.max(under(clock), under(notes), under(tracker));
   // The words come first. When the room's too short for them under the notes, the notes step aside until the words
@@ -430,22 +433,36 @@ function placePane(node, key, { choices = false, anywhere = false } = {}) {
     if (crosses(top) && !crosses(below) && below + tall <= floor) top = below;
   }
   putPane(node, box, { left, top, wide, tall, side }, spot ? { x: head.x, y: top > head.y ? spot.y + spot.h + 3 : head.y - 5 } : null);
-  if (choices) placeChoices(node, { left, top, wide, tall, width, floor, roof: Math.max(under(clock), under(notes), under(tracker)) });
+  if (choices) placeChoices(node, { left, top, wide, tall, width, floor, roofFor });
   node.classList.add("placed");
 }
 
+// The room's own panel floats over the right side of the room while it's open: the panes keep to the left of it.
+function hereCover(box) {
+  const here = document.getElementById("walk-here");
+  if (!here || here.classList.contains("folded") || getComputedStyle(here).position !== "absolute") return 0;
+  return Math.max(0, box.clientWidth - here.offsetLeft + 6);
+}
+
 // A talk's choices hang off the pane, on whichever side has the room, or under it, or over it, when
-// neither side has. They line up with the top of the pane, stay out from under the clock, never go
-// past the floor, and when there are more than the room has height for, the list scrolls.
-function placeChoices(node, { left, top, wide, tall, width, floor, roof }) {
+// neither side has. They line up with the top of the pane, stay out from under the clock, the notes and the tracker
+// where they hang, never go past the floor, and when there are more than the room has height for, the list scrolls.
+function placeChoices(node, { left, top, wide, tall, width, floor, roofFor }) {
   const panel = node.querySelector(".pop-choices");
   if (!panel) return;
-  panel.style.maxHeight = `${Math.max(80, floor - roof - 12)}px`;
+  const paneRoof = roofFor(left, left + wide);
+  panel.style.maxHeight = `${Math.max(80, floor - paneRoof - 12)}px`;
   const panelWide = panel.offsetWidth;
-  const panelTall = panel.offsetHeight;
+  let panelTall = panel.offsetHeight;
   let where = left + wide + 12 + panelWide <= width - 6 ? "at-right" : left - 12 - panelWide >= 6 ? "at-left" : "below";
-  if (where === "below" && top + tall + 12 + panelTall > floor && top - panelTall - 12 >= roof) where = "above";
+  if (where === "below" && top + tall + 12 + panelTall > floor && top - panelTall - 12 >= paneRoof) where = "above";
   for (const one of ["at-right", "at-left", "below", "above"]) panel.classList.toggle(one, one === where);
+  const from = where === "at-right" ? left + wide + 12 : where === "at-left" ? left - 12 - panelWide : left;
+  const roof = Math.max(paneRoof, roofFor(from, from + panelWide));
+  if (roof > paneRoof) {
+    panel.style.maxHeight = `${Math.max(80, floor - roof - 12)}px`;
+    panelTall = panel.offsetHeight;
+  }
   const start = where === "below" ? tall + 12 : where === "above" ? -panelTall - 12 : 0;
   panel.style.top = `${Math.round(Math.max(roof - top, Math.min(start, floor - top - panelTall)))}px`;
 }

@@ -84,8 +84,8 @@ input:focus { border-bottom-color: var(--text); }
 .field-label { font-weight: 700; color: var(--bright); margin-bottom: 4px; display: block; }
 .field-label::before { content: "> "; }
 
-/* Main game layout: the story takes all the room, with the menu buttons down the right edge. */
-.game { --rail-width: 124px; display: flex; height: 100%; position: relative; overflow: hidden; }
+/* Main game layout: the story takes all the room, with a narrow strip of menu buttons down the right edge. */
+.game { --rail-width: 60px; display: flex; height: 100%; position: relative; overflow: hidden; }
 .story { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
 .statusbar {
   display: flex; flex-wrap: wrap; gap: 2px 18px; padding: 6px 16px; align-items: center;
@@ -268,25 +268,42 @@ button.fighter:hover:not(:disabled), button.fighter:focus-visible { background: 
 .fight-result { padding: 8px 12px 10px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
 .fight-result-title { font-size: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
 
-/* The buttons that open each menu */
+/* The strip of menu buttons down the right edge: one button for each group, its picture over its short name, with a
+   dot when something in it wants you. A click opens the group's menus beside it, over everything else, in the console
+   look; a menu that's open lights its group. */
 .rail {
-  flex: 0 0 auto; width: var(--rail-width); position: relative; z-index: 32; overflow-y: auto;
-  display: flex; flex-direction: column; padding: 6px 0; gap: 1px; font-size: 13px;
+  flex: 0 0 auto; width: var(--rail-width); position: relative; z-index: 32;
+  display: flex; flex-direction: column; font-size: 13px;
   border-left: 1px solid var(--line); background: var(--panel);
 }
 .rail button, .drawer-tabs button { color: var(--muted); text-transform: uppercase; }
-.rail button { padding: 2px 10px; white-space: nowrap; }
 .rail button::before, .rail button::after, .drawer-tabs button::before, .drawer-tabs button::after { content: none; }
 .rail button.active, .drawer-tabs button.active { background: var(--text); color: var(--bg); }
+.rail-slot { position: relative; }
+.rail .rail-group-button {
+  position: relative; width: 100%; height: 58px; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  border-bottom: 1px solid var(--line); text-align: center; font-size: 10px; letter-spacing: .08em;
+}
+.rail-group-button svg { display: block; }
+.rail-dot { position: absolute; top: 9px; right: 13px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
+.rail-flyout {
+  position: absolute; top: 0; right: calc(100% + 1px); min-width: 210px; padding: 4px 0 6px; display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0, 0, 0, .55); animation: rail-flyout-in .14s ease-out;
+}
+@keyframes rail-flyout-in { from { opacity: 0; transform: translateX(8px); } }
+@media (prefers-reduced-motion: reduce) { .rail-flyout { animation: none; } }
+.rail-flyout-head { padding: 4px 14px 6px; margin-bottom: 2px; border-bottom: 1px dotted var(--line); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
+.rail-flyout-head::before { content: "-- "; }
+.rail-flyout-head::after { content: " --"; }
+.rail-flyout button { padding: 4px 14px; white-space: nowrap; text-align: left; color: var(--text); }
 .badge { margin-left: 4px; color: var(--warn); font-weight: 700; }
 .rail button:hover .badge, .rail button.active .badge, .drawer-tabs button:hover .badge, .drawer-tabs button.active .badge { color: var(--bg); }
 .badge::before { content: "("; }
 .badge::after { content: ")"; }
-/* The menus sit in groups on the rail, each under its own heading, and on the tabs when the window's narrow. */
+/* On the tabs of a phone-sized window, the menus sit in their groups, each under its own heading. */
 .rail-group { padding: 10px 10px 2px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
 .rail-group::before { content: "-- "; }
 .rail-group::after { content: " --"; }
-.rail .rail-group:first-child { padding-top: 2px; }
 .drawer-tabs .rail-group { padding: 0 2px 0 0; }
 /* A part of a page that folds away behind its own line, and slides open and shut in place. */
 .fold { gap: 0; }
@@ -780,16 +797,20 @@ body:has(#bag) .pop-notes { visibility: hidden; }
   .map-head span:nth-child(4), .map-head span:nth-child(5), .map-head span:nth-child(6), .map-row > .map-control, .map-row > .map-short, .map-row > span:nth-child(4) { display: none; }
 }
 
-/* The walk-around view: the level and what's here, with the story under them. */
+/* The walk-around view: the level, with what's here floating over its right side, and the story under it unless the
+   story's over the room. */
 .walk-view {
-  flex: 1; min-height: 0; display: grid;
-  grid-template-columns: minmax(0, 1fr) 24ch; grid-template-rows: minmax(0, 13fr) minmax(100px, 9fr);
-  grid-template-areas: "plan here" "story story";
+  position: relative; flex: 1; min-height: 0; display: grid;
+  grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 13fr) minmax(100px, 9fr);
+  grid-template-areas: "plan" "story";
 }
 .walk-map { grid-area: plan; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .walk-frame { flex: 1; min-width: 0; min-height: 0; padding: 4px; container-type: size; display: flex; align-items: center; justify-content: center; background: var(--bg); }
+/* On the classic plan the level keeps out from under the room's panel. The isometric view moves its camera instead. */
+.walk-view:not(.iso) .walk-frame { padding-right: calc(4px + var(--here-room, 0px)); }
 .walk-legend { flex: none; padding: 0 8px 2px; font-size: 12px; text-align: center; white-space: pre-wrap; }
 .walk-view.iso { grid-template-rows: minmax(0, 2fr) minmax(100px, 1fr); }
+.walk-view.pops-on { grid-template-rows: minmax(0, 1fr); grid-template-areas: "plan"; }
 .iso-canvas { display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; }
 @media (max-height: 700px) { .walk-legend { display: none; } }
 .walk-clock { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 0 6px; padding: 1px 8px; font-size: 12px; }
@@ -848,13 +869,53 @@ body:has(#bag) .pop-notes { visibility: hidden; }
 .walk-mark:disabled { opacity: 1; }
 .walk-captain { position: absolute; z-index: 2; width: 1ch; line-height: var(--walk-row); text-align: center; pointer-events: none; font-weight: 700; background: var(--bright); color: var(--bg); }
 .walk-cursor { position: absolute; z-index: 1; width: 1ch; height: var(--walk-row); outline: 1px solid var(--text); pointer-events: none; }
-.walk-here { grid-area: here; min-width: 0; min-height: 0; overflow-y: auto; padding: 6px 12px; display: flex; flex-direction: column; gap: 4px; border-left: 1px solid var(--line); background: var(--panel); font-size: 13px; }
-.walk-here-name { color: var(--bright); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
-.walk-here-list { display: flex; flex-direction: column; align-items: flex-start; }
-.walk-here-list button { padding: 0 2px; }
-.walk-here-list button::before { content: "> "; color: var(--muted); }
-.walk-here-list button::after { content: none; }
-.walk-here-person { color: var(--speaker); font-weight: 700; }
+/* What's here floats over the right side of the room, in a pane like the ones by people's heads: four corners, and a
+   tag with the room's name that folds it down to one line. It lists the room's people, its systems and the ways out;
+   the things in the room aren't listed, since they're the ? marks in it. public/walk.js (placeHere) puts it under the
+   room's clock and clear of the typing window, and the room keeps you out from under it. */
+.walk-here {
+  grid-area: plan; position: absolute; z-index: 21; top: 44px; right: 12px; width: clamp(230px, 24vw, 310px); max-height: calc(100% - 128px);
+  min-height: 0; display: flex; flex-direction: column;
+  background: rgba(3, 4, 3, .84); color: var(--text); box-shadow: 0 10px 30px rgba(0, 0, 0, .55); font-size: 13px;
+}
+.walk-here-corner { position: absolute; z-index: 1; width: 11px; height: 11px; border: 2px solid var(--text); pointer-events: none; }
+.walk-here-corner.tl { left: -1px; top: -1px; border-right: 0; border-bottom: 0; }
+.walk-here-corner.tr { right: -1px; top: -1px; border-left: 0; border-bottom: 0; }
+.walk-here-corner.bl { left: -1px; bottom: -1px; border-right: 0; border-top: 0; }
+.walk-here-corner.br { right: -1px; bottom: -1px; border-left: 0; border-top: 0; }
+.walk-here .walk-here-tag {
+  position: absolute; z-index: 2; left: 12px; top: -8px; max-width: calc(100% - 24px); display: flex; gap: 0 10px; align-items: baseline;
+  padding: 0 6px; background: var(--text); color: var(--bg); font: 700 11px/15px var(--mono); text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; overflow: hidden;
+}
+.walk-here .walk-here-tag::before, .walk-here .walk-here-tag::after { content: none; }
+.walk-here .walk-here-tag:hover, .walk-here .walk-here-tag:focus-visible { background: var(--bright); color: var(--bg); }
+.walk-here-name { flex: none; }
+.walk-here-deck { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.walk-here-fold { flex: none; font-weight: 400; letter-spacing: 0; }
+.walk-here-summary { padding: 14px 12px 8px; color: var(--muted); font-size: 12px; }
+.walk-here-body { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 16px 12px 12px; }
+.walk-here-top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 10px; }
+.walk-here-desc { margin: -6px 0 0; color: var(--muted); font-size: 12.5px; }
+.walk-here-section { display: flex; flex-direction: column; gap: 1px; }
+.walk-here-head { display: flex; justify-content: space-between; margin-bottom: 4px; padding-bottom: 3px; border-bottom: 1px dotted var(--line); color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.walk-here-row, .walk-here-part { text-align: left; }
+.walk-here .walk-here-row::before, .walk-here .walk-here-row::after, .walk-here .walk-here-part::before, .walk-here .walk-here-part::after { content: none; }
+.walk-here-row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 2px 4px; }
+.walk-here-row:hover:not(:disabled) *, .walk-here-row:focus-visible * { color: var(--bg); }
+.walk-here-badge { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: var(--speaker); color: var(--bg); font-size: 11px; font-weight: 700; }
+.walk-here-who { color: var(--speaker); font-weight: 700; white-space: nowrap; }
+.walk-here-doing { margin-left: auto; min-width: 0; color: var(--muted); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.walk-here-crowd { padding: 2px 4px; color: var(--muted); font-size: 12px; }
+.walk-here-arrow { flex: none; width: 18px; text-align: center; color: var(--muted); }
+.walk-here-way.shut, .walk-here-note { color: var(--muted); }
+.walk-here-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.walk-here .walk-here-part { --part: #76ecd2; display: inline-flex; align-items: center; gap: 6px; padding: 1px 7px; border: 1px solid color-mix(in srgb, var(--part) 45%, #000); color: var(--part); }
+.walk-here .walk-here-part.down { --part: #ffc466; }
+.walk-here .walk-here-part.ringing { --part: #ff8f7f; }
+.walk-here .walk-here-part:hover:not(:disabled), .walk-here .walk-here-part:focus-visible { background: var(--part); color: var(--bg); }
+.walk-here-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.walk-here .walk-room-note { margin-top: -4px; }
+.walk-here-acts { display: flex; flex-direction: column; align-items: flex-start; }
 .walk-story { grid-area: story; min-height: 0; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
 .walk-full { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .walk-story-bar { flex: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 1px 16px; background: var(--panel); border-bottom: 1px dotted var(--line); }
@@ -864,23 +925,26 @@ body:has(#bag) .pop-notes { visibility: hidden; }
 .walk-thing-options { padding: 6px 8px 8px; }
 .walk-thing-options .option-number, .walk-thing-options .option-detail { color: var(--c-dim); }
 .walk-thing-options .option-label { color: var(--c-bright); }
-@media (min-width: 1100px) {
-  .walk-view { grid-template-columns: minmax(0, 1fr) 34ch; }
-}
+/* On a phone the room's too small to float anything over: what's here goes under it, the way it used to. */
 @media (max-width: 640px) {
-  .walk-view { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(150px, 1fr) auto minmax(90px, 1fr); grid-template-areas: "plan" "here" "story"; }
+  .walk-view { grid-template-rows: minmax(150px, 1fr) auto minmax(90px, 1fr); grid-template-areas: "plan" "here" "story"; }
   .walk-view.pops-on { grid-template-rows: minmax(150px, 1fr) auto; grid-template-areas: "plan" "here"; }
-  .walk-here { max-height: 24vh; border-left: 0; border-top: 1px solid var(--line); }
+  .walk-here { grid-area: here; position: relative; z-index: auto; top: auto; right: auto; width: auto; max-height: 24vh; box-shadow: none; border-top: 1px solid var(--line); background: var(--panel); }
+  .walk-here-corner { display: none; }
+  .walk-here .walk-here-tag { position: static; flex: none; align-self: flex-start; margin: 6px 12px 0; }
+  .walk-here-body { padding-top: 8px; }
+  .walk-here-summary { padding-top: 6px; }
   .walk-legend { display: none; }
 }
 
 /* The story over the room, in the same windows as the rest of the game. What's said goes in a
    window over whoever's saying it, in their color, and the rest goes along the bottom. Each size is
    worked out from the room, so that it fits whatever size the window is. */
-.walk-view.pops-on { grid-template-rows: minmax(0, 1fr); grid-template-areas: "plan here"; }
 .pops-on .walk-map { position: relative; overflow: hidden; }
 .pops-on .walk-frame { padding: 0; }
-.pops .walk-clock { position: absolute; top: 5px; right: 5px; max-width: calc(100% - 10px); padding: 2px 8px; background: var(--panel); border: 1px solid var(--line); pointer-events: auto; }
+/* The clock keeps out from under the quest tracker in the other corner: what's stopped it goes on a second line when
+   there isn't the width. */
+.pops .walk-clock { position: absolute; top: 5px; right: 5px; max-width: max(240px, calc(100% - 326px)); padding: 2px 8px; background: var(--panel); border: 1px solid var(--line); pointer-events: auto; }
 .pops { position: absolute; inset: 0; z-index: 22; container: room / size; pointer-events: none; }
 .pop-balloon, .pop-note, .pop-window { pointer-events: auto; }
 .pop-window { width: auto; min-width: 0; }
@@ -992,8 +1056,6 @@ body:has(#bag) .pop-notes { visibility: hidden; }
 .pop-note { padding: 2px 8px; background: var(--panel); border: 1px solid var(--line); cursor: pointer; animation: pop-note-go .7s ease forwards; }
 .pop-note .log-lines { font-size: 12.5px; }
 @keyframes pop-note-go { to { opacity: 0; } }
-.pops .walk-legend { position: absolute; right: 6px; bottom: 7px; max-width: 42cqw; padding: 2px 6px; text-align: right; background: rgba(5, 10, 7, .7); }
-.pops.pop-open .walk-legend { display: none; }
 /* With less room, it's one thing at a time: the choices wait until the scene's been read, and
    narration goes away while someone's talking. */
 @container room (max-width: 760px) {
@@ -1003,7 +1065,6 @@ body:has(#bag) .pop-notes { visibility: hidden; }
   .pop-command.reading .options, .pop-command.reading .check-title { display: none; }
   .pop-story.overhead .pop-words { display: none; }
   .pop-notes { width: min(78cqw, 58ch); }
-  .pops .walk-legend { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .write-cursor::after { animation: none; }
@@ -1066,17 +1127,22 @@ body:has(#bag) .pop-notes { visibility: hidden; }
   .fight-hint { display: none; }
 }
 
-@media (max-width: 860px) {
-  /* On a phone the menu buttons move inside the menu, which covers the whole screen. */
+/* On a phone the menu buttons move inside the menu, which covers the whole screen. */
+@media (max-width: 560px) {
   .game { --rail-width: 0px; }
   .fight-title .mobile-toggle { color: var(--bg); }
   .rail { display: none; }
-  .drawer { width: 100%; border-left: 0; }
+  .drawer { border-left: 0; }
   .drawer-tabs { display: flex; }
+  .mobile-toggle { display: inline-block; margin-left: auto; }
+}
+
+@media (max-width: 860px) {
+  /* A narrow window's menu covers everything but the strip. */
+  .drawer { width: calc(100% - var(--rail-width)); }
   .menu-body { padding: 12px 16px; }
   .drawer-head { padding: 6px 16px; }
   .drawer-tabs { padding: 4px 16px; }
-  .mobile-toggle { display: inline-block; margin-left: auto; }
   .title { font-size: 24px; }
   .creator-body { grid-template-columns: minmax(0, 1fr); }
   .creator-sheet { display: none; }
@@ -1164,9 +1230,10 @@ body:has(.qt.open) .pop-notes { visibility: hidden; }
 .story { position: relative; }
 .story > .qt { top: 44px; }
 
-/* What happens, over the top of the room, for as long as it's being read: out of the tracker's way, under the clock. */
+/* What happens, over the top of the room, for as long as it's being read: out of the tracker's way, under the clock, and
+   clear of the room's panel on the right (--here-room, from public/walk.js). */
 .pop-caption {
-  position: absolute; z-index: 4; top: 38px; left: 318px; right: 10px; margin: 0 auto; max-width: 64ch; pointer-events: auto; cursor: pointer;
+  position: absolute; z-index: 4; top: 38px; left: 318px; right: calc(10px + var(--here-room, 0px)); margin: 0 auto; max-width: 64ch; pointer-events: auto; cursor: pointer;
   padding: 8px 14px 6px; background: rgba(4, 8, 6, .88); border: 1px solid #2a3d31; box-shadow: 0 8px 26px rgba(0, 0, 0, .5);
   animation: pop-caption-in .25s ease-out;
 }
@@ -1175,13 +1242,13 @@ body:has(.qt.open) .pop-notes { visibility: hidden; }
 .pop-caption .pop-hint { display: flex; gap: 12px; justify-content: flex-end; padding: 4px 0 0; color: var(--muted); font: 12px/1.4 var(--mono); }
 .pop-caption .pop-back { color: var(--muted); font-size: 12px; }
 .pop-waiting {
-  position: absolute; z-index: 4; top: 38px; left: 318px; right: 10px; margin: 0 auto; width: max-content; max-width: 40ch; pointer-events: auto;
+  position: absolute; z-index: 4; top: 38px; left: 318px; right: calc(10px + var(--here-room, 0px)); margin: 0 auto; width: max-content; max-width: 40ch; pointer-events: auto;
   padding: 3px 10px; background: rgba(3, 17, 10, .92); border: 1px solid #2a6a43; color: #8df5ac; font: 13px/1.4 var(--mono);
 }
 .pop-waiting:hover, .pop-waiting:focus-visible { background: #8df5ac; color: #03110a; outline: 0; }
 /* A small room: it all goes under the tracker instead of beside it. */
 @container (max-width: 620px) {
-  .pop-caption, .pop-waiting { left: 8px; right: 8px; top: calc(var(--qt-bottom, 34px) + 8px); }
+  .pop-caption, .pop-waiting { left: 8px; right: calc(8px + var(--here-room, 0px)); top: calc(var(--qt-bottom, 34px) + 8px); }
 }
 @media (prefers-reduced-motion: reduce) { .qt, .qt-right { transition: none !important; } }
 
@@ -1194,8 +1261,6 @@ body:has(.qt.open) .pop-notes { visibility: hidden; }
 .walk-plan.thin { filter: sepia(.35) brightness(.85); }
 .walk-plan.dark.thin { filter: brightness(.42) sepia(.4); }
 .walk-plan.alarm { box-shadow: inset 0 0 0 2px rgba(220, 50, 30, .55), inset 0 0 40px rgba(220, 40, 20, .25); }
-.walk-here-part { color: #7fd8e0; }
-.walk-here-part.down { color: #e0a050; }
 .walk-room-note { margin-top: 4px; color: var(--warn, #e0b060); }
 .walk-room-note.bad { color: var(--bad, #ff7a6a); }
 .walk-thing-said { display: flex; flex-direction: column; gap: 4px; margin: 6px 10px 0; color: var(--c-bright); }

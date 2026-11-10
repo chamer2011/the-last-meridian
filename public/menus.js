@@ -608,11 +608,13 @@ export const MENUS = {
   settings: { label: "Settings", command: "settings", about: "Reading, the AI, saved games, and your files", view: settingsMenu },
 };
 
-// The groups the menus sit in on the rail, each under its own heading.
+// The groups the menus sit in. On the strip down the right edge each group is one button, its picture over its short
+// name, and its menus open beside it; on the tabs of a narrow window they sit under their headings. A picture is the
+// shapes of a small line drawing, 24 across.
 export const MENU_GROUPS = [
-  { title: "You", ids: ["character", "skills", "traits", "perks", "beliefs", "dossier"] },
-  { title: "The story", ids: ["quests", "leads", "board", "people", "codex", "bestiary"] },
-  { title: "The ship", ids: ["ship", "command", "map"] },
-  { title: "Gear", ids: ["inventory", "market"] },
-  { title: "Game", ids: ["settings"] },
+  { title: "You", short: "You", icon: [["circle", { cx: 12, cy: 8, r: 3.5 }], ["path", { d: "M5 20c1.2-3.6 3.8-5.5 7-5.5s5.8 1.9 7 5.5" }]], ids: ["character", "skills", "traits", "perks", "beliefs", "dossier"] },
+  { title: "The story", short: "Story", icon: [["path", { d: "M4 5.5c2.8-1 5.6-1 8 .8v13c-2.4-1.8-5.2-1.8-8-.8z" }], ["path", { d: "M20 5.5c-2.8-1-5.6-1-8 .8v13c2.4-1.8 5.2-1.8 8-.8z" }]], ids: ["quests", "leads", "board", "people", "codex", "bestiary"] },
+  { title: "The ship", short: "Ship", icon: [["path", { d: "M12 3l4 7v8l-4 3-4-3v-8z" }], ["path", { d: "M8 13l-3 3v3l3-1" }], ["path", { d: "M16 13l3 3v3l-3-1" }]], ids: ["ship", "command", "map"] },
+  { title: "Gear", short: "Gear", icon: [["path", { d: "M6 8h12l-1 12H7z" }], ["path", { d: "M9 8V6a3 3 0 0 1 6 0v2" }]], ids: ["inventory", "market"] },
+  { title: "Game", short: "Game", icon: [["path", { d: "M4 7h10" }], ["path", { d: "M18 7h2" }], ["path", { d: "M4 17h2" }], ["path", { d: "M10 17h10" }], ["circle", { cx: 16, cy: 7, r: 2 }], ["circle", { cx: 8, cy: 17, r: 2 }]], ids: ["settings"] },
 ];
