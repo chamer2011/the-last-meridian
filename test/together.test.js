@@ -1,9 +1,9 @@
 // The systems played together over the real server, the way a player would: the written story, using things, working
 // the place's parts and their checks with the clock running, computers, picking pockets and a fight, the alarm, midnight
-// with a check open, handing the game to the AI and back, a jump to Haven, and a life that isn't the captain's. What
+// with a check open, words the story has no answer for, a jump to Haven, and a life that isn't the captain's. What
 // must always hold is looked at after every step: never a check and a fight at once, never a computer with either,
 // credits and health that are numbers and not below nothing, standing within -100 to 100, a clock that never goes back,
-// nobody in a room twice, and every line of the story a line of text. The AI is a stand-in that costs nothing.
+// nobody in a room twice, and every line of the story a line of text.
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -16,31 +16,11 @@ process.env.GAME_DATA_DIR ??= fs.mkdtempSync(path.join(os.tmpdir(), "meridian-to
 const { randomDraft } = await import("../src/creator.js");
 const { projectDir } = await import("../src/paths.js");
 
-// The stand-in AI tells a little and offers two choices, and keeps what it was sent.
-const asked = [];
-const standIn = http.createServer(async (req, res) => {
-  let raw = "";
-  for await (const chunk of req) raw += chunk;
-  const body = JSON.parse(raw);
-  asked.push(body);
-  res.writeHead(200, { "content-type": "text/event-stream" });
-  const send = (type, payload) => res.write(`event: ${type}\ndata: ${JSON.stringify({ type, ...payload })}\n\n`);
-  send("message_start", { message: { id: "msg_1", type: "message", role: "assistant", model: body.model, content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 10, output_tokens: 1 } } });
-  send("content_block_start", { index: 0, content_block: { type: "text", text: "" } });
-  send("content_block_delta", { index: 0, delta: { type: "text_delta", text: "The deck hums. Someone laughs two rooms away.\n\n> 1. Walk on\n> 2. Wait and listen" } });
-  send("content_block_stop", { index: 0 });
-  send("message_delta", { delta: { stop_reason: "end_turn", stop_sequence: null }, usage: { output_tokens: 5 } });
-  send("message_stop", {});
-  res.end();
-});
-
 let server;
 let address;
 before(async () => {
-  await new Promise((resolve) => { standIn.listen(0, "127.0.0.1", resolve); });
   const data = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-together-server-"));
   fs.mkdirSync(path.join(data, "saves"), { recursive: true });
-  fs.writeFileSync(path.join(data, "settings.json"), JSON.stringify({ provider: "claude", model: "claude-haiku-5-5", effort: "low", apiKey: "not-a-real-key", story: "written" }));
   const port = await new Promise((resolve) => {
     const probe = http.createServer();
     probe.listen(0, "127.0.0.1", () => {
@@ -49,8 +29,7 @@ before(async () => {
     });
   });
   address = `http://127.0.0.1:${port}`;
-  const env = { ...process.env, GAME_DATA_DIR: data, PORT: String(port), ANTHROPIC_BASE_URL: `http://127.0.0.1:${standIn.address().port}` };
-  delete env.ANTHROPIC_API_KEY;
+  const env = { ...process.env, GAME_DATA_DIR: data, PORT: String(port) };
   server = spawn(process.execPath, ["server.js"], { cwd: projectDir, env, stdio: "pipe" });
   await new Promise((resolve, reject) => {
     server.stdout.on("data", (chunk) => { if (String(chunk).includes("running at")) resolve(); });
@@ -59,7 +38,6 @@ before(async () => {
 });
 after(() => {
   server?.kill();
-  standIn.close();
 });
 
 // ---- Playing ------------------------------------------------------------------------------------
@@ -174,7 +152,6 @@ async function workTheRoom(where) {
 
 test("the captain's written opening plays, and the bridge's things, parts, pockets and a fight all work together", async () => {
   await call("/api/new", { draft: randomDraft({ seed: 7, archetype: "officer" }) });
-  assert.equal((await state()).mode, "written");
   const opening = await call("/api/chat", { event: "start" });
   assert.equal(opening.error, null);
   for (let i = 0; i < 4; i += 1) {
@@ -187,7 +164,6 @@ test("the captain's written opening plays, and the bridge's things, parts, pocke
   }
   await workTheRoom("the bridge");
   assert.ok(done.used > 0 && done.worked > 0, JSON.stringify(done));
-  assert.equal(asked.length, 0, "the written story never calls the AI");
   assert.deepEqual(problems, []);
 });
 
@@ -206,21 +182,15 @@ test("midnight comes with a check open, and the alarm rings and stops, with noth
   assert.deepEqual(problems, []);
 });
 
-test("handed to the AI, it's told the written story once, and handed back, the written story carries on without it", async () => {
-  const toAi = await call("/api/story", { mode: "ai" });
-  assert.equal(toAi.game.mode, "ai");
-  await call("/api/chat", { text: "I look around the bridge." });
-  assert.equal(asked.length, 1);
-  assert.match(JSON.stringify(asked[0].messages), /written_story/);
-  await call("/api/chat", { text: "Walk on" });
-  assert.equal(asked.length, 2);
-  assert.doesNotMatch(JSON.stringify(asked[1].messages.at(-1)), /written_story/, "told once");
-  const back = await call("/api/story", { mode: "written" });
-  assert.equal(back.game.mode, "written");
-  await call("/api/chat", { text: "Wait and listen" });
-  await call("/api/chat", { event: "continue" });
-  assert.equal(asked.length, 2, "the written story doesn't call the AI");
-  await holds("after the switch");
+test("words the story has no answer for change nothing, and there's no AI to hand the game to", async () => {
+  const before1 = await state();
+  const reply = await call("/api/chat", { text: "I look around the bridge." });
+  assert.ok(reply.error, "the story says it has no answer");
+  const after1 = await state();
+  assert.equal(after1.transcript.length, before1.transcript.length);
+  assert.equal(after1.storyWaiting, false);
+  assert.equal((await call("/api/story", { mode: "ai" })).status, 404);
+  await holds("after words with no answer");
   assert.deepEqual(problems, []);
 });
 

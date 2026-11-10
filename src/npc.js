@@ -1,8 +1,7 @@
-// Generates the numbers for people and enemies the game master adds while playing.
-// The AI only says what sort of person they are. Their stats always come from here.
+// Generates the numbers for people the campaign adds, such as those from the player's past.
+// A file only says what sort of person they are. Their stats always come from here.
 
-import { AXES, POLES, SPECIES } from "./character-data.js";
-import { FACTIONS, LOCATIONS, STATS } from "./data.js";
+import { STATS } from "./data.js";
 
 export const THREAT_LABELS = { 1: "Minor", 2: "Capable", 3: "Dangerous", 4: "Deadly", 5: "Legendary" };
 
@@ -72,30 +71,3 @@ export function generateStats(name, archetype, threat) {
   return { attributes, skills, combat: combatStats(archetype, threat) };
 }
 
-// A person's file, written out for the AI. Numbers stay out of it: the game handles those.
-export function characterBrief(id, person, contact) {
-  const fullName = [person.title, person.name].filter(Boolean).join(" ");
-  const beliefs = Object.entries(person.beliefs ?? {})
-    .map(([axis, value]) => `${POLES[value < 0 ? AXES[axis].low : AXES[axis].high].name} ${Math.abs(value)}`)
-    .join(", ");
-  const facts = [
-    person.pronouns,
-    SPECIES[person.species]?.name ?? person.species,
-    person.age ? `age ${person.age}` : null,
-    FACTIONS[person.faction]?.name,
-    LOCATIONS[person.location] ? `usually at ${LOCATIONS[person.location].name}` : null,
-  ].filter(Boolean).join(", ");
-  const line = (label, text) => (text ? `${label}: ${text}` : null);
-  return [
-    `${fullName} (id: ${id}). ${facts}.`,
-    line("Role", person.role),
-    line("Publicly known", person.note),
-    line("Appearance", person.appearance),
-    line("Personality", person.personality),
-    line("How they speak", person.voice),
-    line("Goals", person.goals),
-    line("Secrets, for you only", person.secrets),
-    line("Beliefs", beliefs),
-    contact ? `With the player: ${contact.attitude}. ${contact.note ?? ""}`.trim() : "The player hasn't met them yet.",
-  ].filter(Boolean).join("\n");
-}

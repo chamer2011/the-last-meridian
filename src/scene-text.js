@@ -284,7 +284,7 @@ export function conditionHolds(game, text, helpers = { attr, skillRank, maxHp })
 
 const signed = (text) => (/^[+-]?\d+$/.test(text) ? Number(text) : null);
 
-// One "* ..." line, turned into the same call the AI would make, or a flag for the scene to remember.
+// One "* ..." line, turned into one of the game's actions, or a flag for the scene to remember.
 export function parseEffect(text) {
   const line = text.trim();
   const [head, ...restOfLine] = line.split(":");
@@ -657,7 +657,7 @@ export function parseSceneText(text, name = "the scene") {
       else part.with = /^nobody$/i.test(who) ? "nobody" : who;
       return;
     }
-    // A note for the AI game master alone, when there is one, about what the people here would and wouldn't do. The player never sees it.
+    // A note for whoever writes, about what the people here would and wouldn't do. The player never sees it.
     if (/^AI:/i.test(trimmed)) {
       flush();
       part.ai = [part.ai, trimmed.replace(/^AI:\s*/i, "")].filter(Boolean).join(" ");

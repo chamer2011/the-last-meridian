@@ -1,8 +1,7 @@
 // A fight in the room, in real time. The rules of a fight stay src/combat.js's: the same dice, abilities, energy, belt,
 // talking them down, running, followers, people arriving, and endings. This adds where everyone stands, walking, line
 // of fire, cover and reach, and time: everyone acts again once they're ready, and the page says how much time has
-// passed, so the fight only goes on while the page runs it, and stands still while the player has it stopped. None of
-// it uses the AI.
+// passed, so the fight only goes on while the page runs it, and stands still while the player has it stopped.
 //
 // A square is half a tile wide and one tile deep, as everywhere in the rooms, so distances are worked out in tiles.
 

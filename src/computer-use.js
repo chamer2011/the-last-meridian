@@ -1,6 +1,6 @@
 // Using a computer the player is on: reading its files, mail and logs, running its programs with the
 // effects a scene could cause, reaching another computer over its network, and logging off, or being
-// thrown out when the trace completes. Programs run through the same tool code the AI's orders do,
+// thrown out when the trace completes. Programs run through the game's actions, as the scenes' effects do,
 // which is why this sits apart from src/computers.js: that file is read by the rules and the walk,
 // and the tools read those.
 
@@ -222,14 +222,13 @@ function connectTo(game, session, content, id) {
   return { over: true, summary, check: true };
 }
 
-// Logging off, or being thrown out: one line in the story, one for the game master, and the clock moves on.
+// Logging off, or being thrown out: one line in the story, and the clock moves on.
 function finish(game, session, notes = []) {
   const read = session.read.length;
   const ran = session.ran;
   const pct = session.maxTrace ? Math.round((session.trace / session.maxTrace) * 100) : null;
   const summary = `[COMPUTER] On ${session.name}: ${read ? `read ${read} ${read === 1 ? "thing" : "things"}` : "read nothing"}${ran.length ? `, ran ${ran.join(", ")}` : ""}.${session.hacked && pct !== null && !notes.some((note) => /TRACE COMPLETE/.test(note)) ? ` Logged off with the trace at ${pct}%.` : ""}`;
   game.transcript?.push({ role: "notice", text: [summary, ...notes].join("\n") });
-  game.pendingEvents?.push(`The player used a computer, ${session.name} (${session.className.toLowerCase()}), ${session.how === "hacked" ? "after hacking into it" : session.how === "the password" ? "with a password they'd learned" : "which is theirs"}. ${read ? `They read: ${session.read.join("; ")}.` : "They read nothing."}${ran.length ? ` They ran: ${ran.join("; ")}.` : ""}${notes.some((note) => /TRACE COMPLETE/.test(note)) ? " The trace completed and threw them out." : ""} Bring it into the story only if it matters.`);
   // Each thing done takes a couple of minutes at least. Where the clock has been running meanwhile, that's already gone by.
   const owed = (session.actions * MINUTES_PER_ACTION) / 60 - Math.max(0, (game.clock?.hours ?? 0) - (session.startedAt ?? game.clock?.hours ?? 0));
   if (owed > 0) passTime(game, owed);

@@ -117,8 +117,7 @@ The game knows what these do:
     Docking      Docking clamps: locked, the Meridian can't leave the place.
 
 Any other heading is a system of the place's own, like Water with a pump in it. It does nothing by
-itself, but its parts are there to work, the story can ask about it and change it, and the AI hears
-when it's down.
+itself, but its parts are there to work, and the story can ask about it and change it.
 
 Each kind of part has a look, and its own work by hand, in _defaults.json: a junction box's lever and
 its cables, a vent that can be sealed, a camera's lens that can be covered, a speaker's wires. A part

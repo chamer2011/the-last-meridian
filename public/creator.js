@@ -272,7 +272,7 @@ function textField(field, label, attrs = {}, tag = "input") {
 function identityStep() {
   const { pronouns } = state.setup;
   return [
-    ...heading("Identity", "Who you are. The game master uses all of this when it writes your story."),
+    ...heading("Identity", "Who you are."),
     textField("name", "Name", { maxlength: "40", placeholder: "Your full name" }),
     textField("callsign", "Callsign or nickname (optional)", { maxlength: "30", placeholder: "What your friends call you" }),
     el("div", { class: "stack" },
@@ -562,7 +562,7 @@ function driveStep() {
   const { drives, bonds } = state.setup;
   const bond = bonds[state.draft.bond];
   return [
-    ...heading("Drive and Bonds", "Why you get up in the morning, and the person you'd burn it all down for. The game master builds the story around these."),
+    ...heading("Drive and Bonds", "Why you get up in the morning, and the person you'd burn it all down for."),
     el("h3", { class: "group" }, "What drives you"),
     singleChoice(drives, "drive"),
     el("h3", { class: "group" }, "Your closest bond"),

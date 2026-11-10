@@ -504,15 +504,19 @@ function ordersWindow() {
       } }), "Stop when I'm ready to act")));
 }
 
+// A fight a written scene was waiting on goes on with the story; any other is over, and its line is in the story.
 function endingWindow() {
   const result = lf.ending;
-  const choices = [["Continue the story", () => {
-    lf.ending = null;
-    app.sendChat({ event: "continue" });
-  }, "the game master picks it up from here"], ["Look around first", () => {
+  const back = () => {
     lf.ending = null;
     app.render();
-  }]];
+  };
+  const choices = app.ui.game?.storyWaiting
+    ? [["Continue the story", () => {
+      lf.ending = null;
+      app.sendChat({ event: "continue" });
+    }, "the story picks it up from here"], ["Look around first", back]]
+    : [["Back to the room", back]];
   return el("section", { class: "check-window live-orders live-ending", "data-theme": RESULT_TONES[result.result] === "bad" ? "red" : "green", "aria-label": "How the fight ended" },
     el("header", { class: "check-title" }, el("span", { class: "check-name" }, RESULT_TITLES[result.result] ?? "It's over")),
     el("div", { class: "live-summary" }, result.summary, result.math && el("span", { class: "log-math" }, ` (${result.math})`)),

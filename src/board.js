@@ -155,7 +155,7 @@ const sceneName = (id, prefix) => `${prefix}_${checkId(id)}`;
 
 export function boardScene(id, prefix = "thread") {
   const file = sceneFile(id, prefix);
-  if (!fs.existsSync(file)) throw new Error(prefix === "talk" ? `${WORLD_CHARACTERS[id]?.name ?? id} has no written lines yet: the AI, or the stock lines, speak for them.` : `${WORLD_THREADS[id]?.title ?? id} has no written scene yet.`);
+  if (!fs.existsSync(file)) throw new Error(prefix === "talk" ? `${WORLD_CHARACTERS[id]?.name ?? id} has no written lines yet: stock lines speak for them.` : `${WORLD_THREADS[id]?.title ?? id} has no written scene yet.`);
   const text = fs.readFileSync(file, "utf8");
   return { id, text, ...checkBoardScene(id, text, prefix) };
 }

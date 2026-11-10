@@ -1,8 +1,7 @@
 // Walking around a place that has levels, and talking to the people there. All of it runs on this
 // computer. Walking doesn't move the clock by itself, though the clock runs beside it where people
-// live their days (see src/life.js). The game master gets one compact line about where the captain
-// is, and moves them with set_scene. Each line said in a talk is a normal AI turn, which runTurn in
-// src/ai.js sends with a <talk> tag.
+// live their days (see src/life.js). The written story moves the player with set_scene, and a talk
+// plays from the person's written lines or stock ones (src/talks.js).
 //
 // world/maps/ has each place's levels, one to a room, and a file's name is the id of the place it's
 // for. world/rooms.json has the kinds of room the game can draw for anywhere that isn't on a map,
@@ -317,7 +316,7 @@ export const canStand = (level, x, y) => Boolean(level.open[y]?.[x]) && !level.s
 // ---- Doors only the story can open --------------------------------------
 
 // Some ways in are for the story to decide: a guard, a locked door, a picket line. The player can
-// ask at the door, which is a normal AI turn. Once the story has taken the captain in, it stays open.
+// ask at the door, which follows the door's rule. Once the story has taken the captain in, it stays open.
 const storyClosed = (game, exit) => Boolean(exit.closed) && !game.opened?.[game.location]?.includes(exit.to);
 // Closed to walking: a door only the story opens, or one the place's systems have locked (see src/systems.js).
 const isClosed = (game, exit, levelId) => storyClosed(game, exit) || exitLocked(game, game.location, levelId, exit);
@@ -328,7 +327,7 @@ function openDoorsTo(game, id) {
   if (!game.opened[game.location].includes(id)) game.opened[game.location].push(id);
 }
 
-// Without an AI, asking at a closed door goes by the rule written in the map file, under closed.ask:
+// Asking at a closed door goes by the rule written in the map file, under closed.ask:
 // an answer that leaves it closed, a condition that opens it, or a check whose result decides.
 export function askAtDoor(game, key) {
   const walk = walkOf(game);
@@ -371,7 +370,7 @@ export function answerDoor(game, success) {
   return success ? asked.pass : asked.fail;
 }
 
-// Without an AI, using a thing is what its file says it is: something to pick up, a written result, or nothing much.
+// Using a thing is what its file says it is: something to pick up, a written result, or nothing much.
 export function useThing(game, key) {
   const walk = walkOf(game);
   const level = levelOf(game, walk, mapFor(game.location));
@@ -490,7 +489,7 @@ function roomLevel(game, walk, map) {
     return spot ? { ...person, label: person.name.slice(0, MAX_LABEL), ...spot } : null;
   }).filter(Boolean);
 
-  // What the game master said is here comes first, then whatever suits this kind of room.
+  // What the story said is here comes first, then whatever suits this kind of room.
   const named = (saved?.things ?? room.things ?? []).map((thing) => ({ ...thing, use: thing.use ?? `I go over to ${thing.name.replace(/^The /, "the ")} and take a closer look.` }));
   const usual = (kind.things ?? []).map((thing) => ({ ...thing, use: thing.use ?? `I go over to ${thing.name.replace(/^[AT]/, (first) => first.toLowerCase())} and take a closer look.` }));
   const places = Object.keys(spots).filter((key) => /[a-h]/.test(key)).sort();
@@ -893,7 +892,7 @@ export function walkCommand(game, body) {
     const end = path.at(-1) ?? from;
     spot.x = end.x;
     spot.y = end.y;
-    // Walking into another room drawn on the deck counts as walking there, for the AI's line about the map.
+    // Walking into another room drawn on the deck counts as walking there.
     if (!walk.room && level.roomAt(end.x, end.y) !== roomBefore) walk.walked = true;
     return answer(path, arrived, message);
   };
@@ -980,7 +979,7 @@ export function walkCommand(game, body) {
       }
       return answer([]);
     }
-    // Using a thing or asking at a door, without the AI. The page shows what came of it.
+    // Using a thing or asking at a door. The page shows what came of it.
     case "use":
       return useThing(game, String(body.key ?? ""));
     case "ask":
@@ -1009,7 +1008,7 @@ export function walkCommand(game, body) {
   }
 }
 
-// ---- The game master keeps the map true to the story --------------------
+// ---- The story keeps the map true to itself ------------------------------
 
 const plainName = (text) => String(text).toLowerCase().replace(/\s+/g, " ").replace(/^\s*the /, "").trim();
 
@@ -1115,7 +1114,7 @@ const cleanThings = (things) => (Array.isArray(things) ? things.slice(0, MAX_THI
 
 // The story has moved the captain, or changed who's with them. A name that isn't on the map gets
 // its own room, drawn to suit, so the map can't claim the captain is somewhere they're not. What
-// the game master says about a new room is saved with the campaign, so it stays that way.
+// the story says about a new room is saved with the campaign, so it stays that way.
 export function setScene(game, area, names = [], { kind = null, things = [] } = {}) {
   const walk = walkOf(game);
   if (!walk) return "There's no map of this place, so nothing changed.";
@@ -1144,25 +1143,6 @@ export function setScene(game, area, names = [], { kind = null, things = [] } = 
     });
   }
   return `The map now shows the player off the map, at ${walk.room.name}, in a room of the kind "${walk.room.kind}"${company ? `, with ${company}` : ""}.`;
-}
-
-// One compact line in the state block, with what everyone's doing where they live their own days.
-export function walkLine(game) {
-  const walk = walkAt(game);
-  if (!walk) return null;
-  if (walk.room) {
-    const names = walk.room.people.map((person) => person.name).join(", ");
-    return `Map: player off the map, at ${walk.room.name}.${names ? ` With: ${names}.` : ""}`;
-  }
-  const map = mapFor(game.location);
-  const level = map.levels[walk.level] ?? roomOf(map, map.start).level;
-  // On a deck, nearby means in the same room, not anywhere on the deck.
-  const roomNow = level.roomAt(walk.x, walk.y);
-  const people = peopleOnLevel(game, walk, level).filter((one) => level.roomAt(one.x, one.y) === roomNow);
-  const named = people.filter((one) => !one.crowd).map((one) => (one.doing ? `${shortName(game, one)} (${one.doing})` : shortName(game, one)));
-  const others = people.length - named.length;
-  const here = [...named, ...(others ? [`${others} other ${others === 1 ? "person" : "people"}`] : [])];
-  return `Map: player ${walk.walked ? "walked to" : "at"} ${roomOf(map, roomNow)?.name ?? level.name}.${here.length ? ` Nearby: ${here.join(", ")}.` : ""}`;
 }
 
 // ---- Saves from before there were levels --------------------------------
@@ -1266,7 +1246,7 @@ const thingView = (game, thing, level = null) => ({
   x: thing.x,
   y: thing.y,
   have: Boolean(thing.item && game.inventory?.[thing.item]),
-  // Something to pick up or a written result answers from the file, even with an AI, so the page knows it's free.
+  // Something to pick up or a written result answers from the file; anything else has nothing more to it, for now.
   written: Boolean(thing.item || thing.used || thing.holds || (!isCaptain(game) && thing.usedOther)),
   // A thing with a holds line can be opened, and this is what the inventory calls it.
   ...(thing.holds ? { holds: true, store: `thing:${game.location}:${thing.id}` } : {}),
@@ -1497,7 +1477,6 @@ function openTalk(game, key) {
     lastReply: null,
     said: 0,
     told: [],
-    unheard: [],
   };
 }
 
@@ -1510,13 +1489,12 @@ function rumorsLeft(game, talk) {
   return rumorsFrom(game, talk.key, namesFor(talk, person)).filter((rumor) => !talk.told.includes(rumor));
 }
 
-// A free line: what's going around, from the place's file, which goes nowhere near the AI.
+// What's going around, from the place's file.
 function tellRumor(game) {
   const talk = needTalk(game);
   const [rumor] = rumorsLeft(game, talk);
   if (!rumor) throw new Error("They've told you all they've heard for now.");
   talk.told.push(rumor);
-  talk.unheard.push(rumor);
   talk.said += 1;
   const asked = mapFor(game.location)?.talk?.rumorAsked ?? "What have you heard lately?";
   talk.log.push({ role: "player", text: asked }, { role: "narrator", text: `@${talk.name}: "${rumor.replaceAll('"', "'")}"`, free: true });
@@ -1535,13 +1513,13 @@ function lastWords(talk) {
   return quote.length > 90 ? `${quote.slice(0, 90).replace(/\s+\S*$/, "")}...` : quote;
 }
 
-// What was said, kept with the note in the story, so it survives if the AI's memory has to restart.
+// What was said, kept with the note in the story.
 const talkRecord = (talk) => talk.log
   .filter((line) => line.role === "player" || line.role === "narrator")
   .slice(-MAX_RECORD)
   .map((line) => ({ role: line.role, text: stripChoices(line.text) }));
 
-// The talk is over, and the story gets one line about it. The game master already heard every word.
+// The talk is over, and the story gets one line about it.
 export function closeTalk(game) {
   const talk = game.talk;
   if (!talk) return;
@@ -1561,7 +1539,7 @@ function checkFromTalk(game, label) {
   closeTalk(game);
 }
 
-// Everything in a talk that doesn't need the AI.
+// Everything in a talk but the things said, which go through the written conversation.
 export function talkCommand(game, body) {
   switch (body.action) {
     case "open": return openTalk(game, body.person);
@@ -1590,19 +1568,6 @@ export function talkLineOver(game) {
   if (game.combat || game.check) closeTalk(game);
 }
 
-// What runTurn needs for one line of a talk. In a written conversation, the AI fits the line to the written ones instead of answering freely.
-export function talkBrief(game, { written = false } = {}) {
-  const talk = needTalk(game);
-  const free = talk.unheard.splice(0);
-  const told = free.length ? ` Since your last line, they also passed on what people are saying: ${free.map((rumor) => `"${rumor}"`).join(" ")}` : "";
-  const soFar = talkRecord(talk).map((line) => (line.role === "player" ? `${isCaptain(game) ? "Captain" : game.name}: ${line.text}` : line.text)).join(" ");
-  // The reminder is on every line, because a long story sets a habit of writing long scenes.
-  const asked = written
-    ? "This conversation is written in advance: fit what the player said to one of the numbered lines in the written_scene block with follow_scene, or answer only as them in one to three sentences with 0, and write no > choices."
-    : "Answer only as them, in one to three sentences, then 2 or 3 short > choices.";
-  return { name: talk.name, lastReply: talk.lastReply, tag: `<talk with="${talk.name}" at="${talk.where}"${talk.doing ? ` doing="${talk.doing}"` : ""}>${asked}${told}</talk>`, soFar };
-}
-
 export function talkView(game) {
   const talk = game.talk;
   if (!talk) return null;
@@ -1612,12 +1577,7 @@ export function talkView(game) {
   const home = Object.values(map?.levels ?? {}).flatMap((level) => level.homes).find((one) => one.id === talk.personId);
   const own = (!isCaptain(game) && home?.asksOther) || home?.asks || [];
   const said = new Set(talk.log.filter((line) => line.role === "player").map((line) => line.text));
-  // In a written conversation, the things to say are its own, and the map's asks have nobody to answer them: without an AI that's
-  // every talk, and with one it's the people with a conversation of their own. typed says whether there's a line to type on.
-  const written = game.mode === "written" || Boolean(talk.written);
   return {
-    written,
-    typed: game.mode !== "written",
     id: talk.id,
     key: talk.key,
     name: talk.name,
@@ -1632,7 +1592,6 @@ export function talkView(game) {
     relationship: person ? audienceBonus(game, person.id) : 0,
     log: talk.log,
     lastReply: talk.lastReply,
-    asks: written ? [] : [...own, ...(map?.talk?.asks ?? [])].filter((ask) => !said.has(ask)),
     rumors: rumorsLeft(game, talk).length,
     rumorLabel: map?.talk?.rumor ?? "Ask what they've heard",
     goodbyeLabel: map?.talk?.goodbye ?? "Say goodbye",

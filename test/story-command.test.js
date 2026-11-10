@@ -16,11 +16,10 @@ process.env.GAME_COMMAND_DIR = commandDir;
 
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const cmd = await import("../src/command.js");
-const { aiSnapshot } = await import("../src/rules.js");
 const { conditionHolds, parseCondition, parseEffect, parseSceneText } = await import("../src/scene-text.js");
 const { factsLeft, loadScenes, sceneProblems } = await import("../src/scenes.js");
 const { openWrittenTalk, writtenTalkTurn } = await import("../src/talks.js");
-const { roleBrief } = await import("../src/role.js");
+const { isCaptain } = await import("../src/role.js");
 const { runTool, newTurnLimits } = await import("../src/tools.js");
 const { boardWorldItem, saveBoardWorldItem } = await import("../src/board.js");
 const { WORLD_CHARACTERS } = await import("../src/world.js");
@@ -121,19 +120,16 @@ test("Hask's answer about the stores follows whoever holds the quartermaster's p
   assert.doesNotMatch(answer, /\{quartermaster\}/);
 });
 
-test("the AI's state has one line on the chain of command, and its reads say where someone stands now", () => {
+test("who holds a post, and a captain the officers relieved, are what the game says they are", () => {
   const game = newGame();
-  assert.match(aiSnapshot(game), /^Chain of command aboard the CFS Meridian: everyone holds the post they began the game in; the officers' loyalty to the captain is about \d+\/100 and the council's confidence about \d+\/100\.$/m);
   cmd.commandCommand(game, { action: "replace", post: "quartermaster", key: "Gardener Benno" });
-  assert.match(cmd.commandLine(game), /Gardener Benno is quartermaster in place of Odessa Brandt/);
-  const read = runTool(game, "read_character", { name: "Odessa Brandt" }, newTurnLimits());
-  assert.match(read.result, /Their place aboard now: relieved as the quartermaster, and a gardener now\./);
-  // A captain the officers relieved is crew, and the AI's dossier says so.
+  assert.match(cmd.postAndName(game, "meridian", "quartermaster"), /Benno/);
+  // A captain the officers relieved is crew.
   const deposed = newGame();
   deposed.command.meridian.mutiny = { pressure: 9, stage: 3, ringleader: "tarrow", due: null, calmUntil: 0 };
   cmd.mutinyOutcome(deposed, "taken", "test");
-  assert.match(roleBrief(deposed, null), /they were the captain of the Meridian until the officers relieved them of command/);
-  assert.match(cmd.commandLine(deposed), /Kara Tarrow is captain, since the officers relieved the player of command on day \d+/);
+  assert.equal(isCaptain(deposed), false);
+  assert.equal(cmd.holderKey(deposed, "meridian", cmd.commandOf("meridian").chairPost), "tarrow");
 });
 
 test("the Story board reads the chain of command, saves through the game's own reader, and refuses a file it can't read", () => {

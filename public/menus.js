@@ -2,7 +2,7 @@
 // game's state, so a menu can never disagree with the rules.
 
 import { checkStyle, setCheckStyle } from "./check.js";
-import { api, beliefBar, columns, el, folded, meter, money, signed, strainMeter } from "./dom.js";
+import { api, beliefBar, columns, el, folded, meter, signed, strainMeter } from "./dom.js";
 import { mapMenu } from "./map.js";
 import { shipMenu } from "./ship.js";
 import { commandMenu } from "./command.js";
@@ -296,7 +296,7 @@ function peopleMenu() {
 const LEAD_KINDS = { job: "job", mystery: "mystery", crew: "crew", politics: "politics", survival: "survival", exploration: "exploration", dilemma: "dilemma", faction: "faction", main: "the Beacon" };
 
 function leadsMenu() {
-  const { ui, followLead, askAbout } = app;
+  const { ui, followLead } = app;
   const g = ui.game;
   const { here, rumors, active, done, moved } = g.story;
   const busy = ui.streaming || Boolean(g.combat) || Boolean(g.check);
@@ -310,16 +310,13 @@ function leadsMenu() {
     columns(
       section(`Leads here, at ${g.location.name}`,
         here.length
-          ? here.map((lead) => card(lead, el("div", { class: "row" }, g.mode === "written" && !lead.written
-            ? el("span", { class: "muted small", title: "This story hasn't been written out yet. It plays out by itself for now, and an AI game master could run it from its notes." }, "Not written yet")
-            : el("button", { disabled: busy, onclick: () => followLead(lead) }, "Look into this"),
-          lead.written && g.mode !== "written" && el("span", { class: "muted small", title: "This story is written out, so it plays from its file for free. Your own words in it go to the AI." }, "written, so it's free"))))
+          ? here.map((lead) => card(lead, el("div", { class: "row" }, !lead.written
+            ? el("span", { class: "muted small", title: "This story hasn't been written out yet. It plays out by itself for now, and the news says how it's going." }, "Not written yet")
+            : el("button", { disabled: busy, onclick: () => followLead(lead) }, "Look into this"))))
           : empty("Nothing new here at the moment. Try somewhere else, or come back later.")),
       section("What people are saying",
         rumors.length
-          ? rumors.map((rumor) => el("div", { class: "menu-entry" },
-            el("div", { class: "small" }, `"${rumor}"`),
-            el("div", {}, el("button", { class: "small", disabled: busy, onclick: () => askAbout(rumor) }, "Ask around about this"))))
+          ? rumors.map((rumor) => el("div", { class: "menu-entry" }, el("div", { class: "small" }, `"${rumor}"`)))
           : muted("Nobody's saying much here.")),
       section(`Following (${active.length})`,
         active.length ? active.map((lead) => card(lead)) : muted("Stories you take up will be listed here, along with your Quests.")),
@@ -454,18 +451,7 @@ function settingsMenu() {
     ...(title ? { title } : {}),
     onclick: () => changeReading({ [key]: value }),
   }, name)));
-  const s = ui.settings;
   const g = ui.game;
-  const choose = (provider, model) => runAction(async () => {
-    ui.settings = await api("/api/settings", { provider, model });
-    ui.settingsMessage = null;
-  });
-  const choice = (provider, id, name, note) => el("button", {
-    class: `card selectable${s.provider === provider && s.model === id ? " selected" : ""}`,
-    onclick: choose(provider, id),
-  }, el("strong", {}, name), note && muted(note));
-
-  let keyInput;
   return columns(
     section("Reading",
       pickRow("Story over the room:", "story", [
@@ -487,7 +473,7 @@ function settingsMenu() {
         el("button", { class: reading.view === "walk" ? "primary" : "", "aria-pressed": String(reading.view === "walk"), onclick: () => changeReading({ view: "walk" }) }, "Walk-around"),
         el("button", { class: reading.view === "classic" ? "primary" : "", "aria-pressed": String(reading.view === "classic"), onclick: () => changeReading({ view: "classic" }) }, "Classic")),
       folded("settings-views", "What the story views mean",
-        muted("Isometric shows the room you're in, seen from an angle, wherever you are, and you can walk around and click on people and things. The story comes up over the room a piece at a time: click anywhere to go on. Walking is free. The clock runs while you explore, because everyone lives their own day, and the buttons at the top of the room pause it or speed it up. Each thing you say in a talk is one call to the AI, with the clock stopped."),
+        muted("Isometric shows the room you're in, seen from an angle, wherever you are, and you can walk around and click on people and things. The story comes up over the room a piece at a time: click anywhere to go on. Walking is free. The clock runs while you explore, because everyone lives their own day, and the buttons at the top of the room pause it or speed it up. The clock stops while you talk to someone."),
         muted("Walk-around is the same thing, drawn in console art, with the story under it. Classic gives the story the whole window, and only the story moves the clock. Popup font is for the story over the room, and Story font is for the whole story, Classic and the panel under the room."))),
     folded("settings-display", "Display",
       pickRow("Interface size:", "interface", [
@@ -513,54 +499,6 @@ function settingsMenu() {
           onclick: app.act({ action: "difficulty", id }),
         }, label))),
       muted("Stronger enemies get more health, hit more often and hit harder at Normal and Hard. Your followers stay the same. On Hard, anyone who can't fight will usually lose to anything above a minor threat, unless they bring help or run. It applies from your next fight.")),
-    section("Who writes the story",
-      el("div", { class: "row small" },
-        [["written", "Written story"], ["ai", "AI game master"]].map(([id, label]) => el("button", {
-          class: (g?.mode ?? s.storyApplies) === id ? "primary" : "",
-          "aria-pressed": String((g?.mode ?? s.storyApplies) === id),
-          onclick: runAction(async () => {
-            const reply = await api("/api/story", { mode: id });
-            ui.settings = reply.settings;
-            if (reply.game) ui.game = reply.game;
-          }),
-        }, label))),
-      folded("settings-writers", "What the two mean",
-        muted("Written story: the story is written in advance, so it's free and needs no AI. For now that's the openings for three lives, the arrival at Haven, the main story's whole first act and a story aboard the Meridian from the Leads menu, and the crew's conversations, and the rest is being written. AI game master: the written parts still play as written, for free, and the AI reads whatever you type or say in them and fits it to the story, plays everyone and everything that isn't written, and runs the stories that haven't been written out. It needs a key or a local model from below.")),
-      muted(`${s.story === null ? `Until you choose, new games get the ${s.storyApplies === "written" ? "written story, because no AI is set up" : "AI game master, because an AI is set up"}. ` : ""}It changes this game from its next turn, and new games too. Handed to the AI, a game's first turn sends it what the written story has told so far, so that one costs a little more.`)),
-    folded("settings-model", "AI model",
-      s.claudeModels.map((m) => choice("claude", m.id, m.name, m.note)),
-      s.ollama.models.map((m) => choice("ollama", m, `Local: ${m}`, "Free and private. Runs on your graphics card.")),
-      !s.ollama.running && muted("Local models: Ollama isn't running, so none are listed. See the README to set it up, then come back here."),
-      s.ollama.running && !s.ollama.models.length && muted("Ollama is running but has no models installed yet. See the README."),
-      el("div", { class: "row" },
-        el("button", { onclick: runAction(async () => {
-          if (keyInput.value.trim()) ui.settings = await api("/api/settings", { apiKey: keyInput.value });
-          ui.settingsMessage = await api("/api/settings/test", {});
-        }) }, "Test connection"),
-        el("button", { onclick: runAction(async () => { ui.settings = await api("/api/settings"); }) }, "Refresh list")),
-      ui.settingsMessage && el("div", { class: `notice-inline ${ui.settingsMessage.ok ? "ok" : "fail"}` }, ui.settingsMessage.message),
-      s.provider === "claude" && el("div", { class: "row small" }, "Claude's thinking:",
-        ["medium", "low"].map((effort) => el("button", {
-          class: s.effort === effort ? "primary" : "",
-          "aria-pressed": String(s.effort === effort),
-          onclick: runAction(async () => { ui.settings = await api("/api/settings", { effort }); }),
-        }, effort === "medium" ? "Medium" : "Low"))),
-      s.provider === "claude" && muted("Low costs less per turn, but Claude may be less careful with the story and the rules. Changing this makes Claude reload your story once.")),
-    folded("settings-cost", "What the AI has cost",
-      row("Last turn", s.spending.lastTurn === null ? "None yet" : money(s.spending.lastTurn)),
-      row("Since you opened the game", money(s.spending.session), `${s.spending.calls} ${s.spending.calls === 1 ? "call" : "calls"}`),
-      row("Since this meter was added", money(s.spending.total)),
-      muted("Worked out from Anthropic's prices. Your exact bill is at console.anthropic.com. Fights and menus cost nothing.")),
-    folded("settings-key", "Anthropic API key",
-      small(s.hasKey ? "A key is saved on this computer." : "No key saved yet. You only need one for Claude models. Create one at console.anthropic.com."),
-      keyInput = el("input", { type: "password", placeholder: "Paste your key here", autocomplete: "off", "aria-label": "Anthropic API key" }),
-      el("div", { class: "row" },
-        el("button", { class: "primary", onclick: runAction(async () => {
-          if (!keyInput.value.trim()) throw new Error("Paste a key first.");
-          ui.settings = await api("/api/settings", { apiKey: keyInput.value });
-          ui.settingsMessage = await api("/api/settings/test", {});
-        }) }, "Save key"),
-        s.hasKey && el("button", { onclick: runAction(async () => { ui.settings = await api("/api/settings", { clearKey: true }); }) }, "Remove key"))),
     section("Saved games",
       ["slot1", "slot2", "slot3"].map((slot) => {
         const save = ui.saves.find((x) => x.slot === slot);
@@ -605,7 +543,7 @@ export const MENUS = {
   map: { label: "Star map", command: "map", about: "The chart of known space, and setting course", view: mapMenu },
   market: { label: "Market", command: "market", about: "Buying and selling, where there's a market", view: marketMenu },
   bestiary: { label: "Enemies met", command: "bestiary", about: "Enemies you know of, how they fight, and the simulator", view: bestiaryMenu },
-  settings: { label: "Settings", command: "settings", about: "Reading, the AI, saved games, and your files", view: settingsMenu },
+  settings: { label: "Settings", command: "settings", about: "Reading, display, checks, fights, saved games, and your files", view: settingsMenu },
 };
 
 // The groups the menus sit in. On the strip down the right edge each group is one button, its picture over its short

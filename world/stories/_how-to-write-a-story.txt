@@ -2,8 +2,8 @@ HOW TO WRITE A STORY
 ====================
 
 Every story the game can offer is one file in this folder, named by the story's id: two_weeks_of_fuel.txt is the
-story main_two_weeks_of_fuel. These are the game master's notes, not the words the player reads: the AI runs the
-story from them, and the written scene in world/scenes, if there is one, plays it out. The Story board in the game
+story main_two_weeks_of_fuel. These are the story's notes, not the words the player reads: the written scene in
+world/scenes, if there is one, plays it out, and until then the story only moves on by itself, by its clock. The Story board in the game
 (The story, then Story board) shows and changes these same files as boxes and arrows, and npm run check-story reads
 them all and says what's wrong, with the file and the line.
 
@@ -73,11 +73,11 @@ a colon. Here is a short one, with every kind of line:
     Rewards:
     Fuel for the fleet, and a place on Quill's list.
 
-The parts, in the order the game master reads them
---------------------------------------------------
+The parts, in order
+-------------------
 
 The lead is what the player hears when the story comes up. For anyone who isn't the captain is the same for a
-player who isn't in charge; leave it out and they get the lead. What's really going on is for the game master only.
+player who isn't in charge; leave it out and they get the lead. What's really going on is for whoever writes only.
 How it might go is the beats, Ways through the routes the player might take, Checks that fit the skill checks
 (a skill, a colon, easy, moderate or hard, then what it's for), and If it comes to a fight who they'd fight (enemy
 ids from world/enemies). Each of those is a list: one line per item, starting with - and a space. Rewards is one
@@ -86,16 +86,17 @@ line of what the player gets.
 A part that has nothing in it can be left out, except The lead, What's really going on and Rewards.
 
 Where it can end up is the story's endings, each with a name the rest of the game uses: lowercase letters, digits
-and underscores. The AI ends the story with one of these names, the written scene does with * ending, the record
+and underscores. The written scene ends the story with one of these names, with * ending, the record
 keeps it, and other stories ask for it with ended main_two_weeks_of_fuel raid_depot.
 
 Facts it can leave names the facts this story can put on the record, each with a line of plain words that the
-player reads in the Quests menu. The AI uses these names, and a scene that sets the flag without words gets the
+player reads in the Quests menu. A scene that sets the flag without words gets the
 line from here. Add ", after an_ending" when one ending in particular leaves it; the board draws it from there.
 
 What on the record changes it is how this story reacts to what happened before: a condition, written the same way
 as in a scene (flag a_fact, ended a_story, ended a_story its_ending, not ..., and ...), then -> and what changes in
-this story. The game master only sees the ones that hold when the story begins.
+this story. They're notes for whoever writes the scene: the checker reads the conditions, and the game does
+nothing more with them.
 
 If nobody steps in is the story's clock: what happens by itself, on the day given, if nobody has taken the story up.
 Every line under a stage is optional: lead is what the lead says from then on, if is a condition the stage needs

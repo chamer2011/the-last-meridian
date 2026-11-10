@@ -103,7 +103,7 @@ test("the Meridian's chain of command knows its posts, rooms, jobs and holders, 
 
 test("a new game keeps who holds what, with the player or the chair's captain in the captain's post, and an old save gets the same", () => {
   const game = newGame();
-  assert.equal(game.version, 18);
+  assert.equal(game.version, 19);
   assert.deepEqual(game.command.meridian.holders.captain, { key: "you", since: null, by: null });
   assert.deepEqual(game.command.meridian.holders.quartermaster, { key: "odessa", since: null, by: null });
   assert.equal(Object.keys(game.command.meridian.holders).length, 11);
@@ -115,7 +115,7 @@ test("a new game keeps who holds what, with the player or the chair's captain in
   // A save from before the chain of command: everyone in the post they hold now.
   const { command: _gone, ...old } = JSON.parse(JSON.stringify(docker));
   const migrated = migrateGame({ ...old, version: 17 });
-  assert.equal(migrated.version, 18);
+  assert.equal(migrated.version, 19);
   assert.deepEqual(migrated.command, docker.command);
 });
 

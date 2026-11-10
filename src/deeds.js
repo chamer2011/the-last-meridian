@@ -1,7 +1,7 @@
 // Two things the player can do to someone in the room from the right-click menu, both the game's own rules and free in
 // any game: picking their pocket, which is a Stealth check in the check window, and attacking them, which starts the
 // fight window. The numbers, and what each costs when it's seen, are in world/deeds.json. What's left on the record
-// is there for the written stories, and the AI hears a line about it with the player's next message.
+// is there for the written stories.
 
 import { findCharacter, findEnemy } from "./campaign.js";
 import { SKILLS } from "./character-data.js";
@@ -84,14 +84,12 @@ export function settleDeed(game, outcome) {
     // A pocket picked aboard is one more theft on the chief of security's watch.
     countForDuty(game, asked.place, "thefts");
     lines.push(`[STEALTH] You lift ${got} credits from ${asked.short}, and they don't notice a thing.`);
-    game.pendingEvents?.push(`The player picked ${asked.name}'s pocket at ${where} and got ${got} credits. Nobody noticed. Bring it into the story only if it matters.`);
   } else {
     lines.push(`[STEALTH] ${asked.short} catches your hand in their pocket.`);
     lines.push(...costs(game, asked.place, rules.caught ?? {}, `You were caught picking ${asked.short}'s pocket.`));
     if (asked.id) lines.push(...worsen(game, asked.id, { note: `Caught the player with a hand in their pocket at ${where}.` }));
     remember(game, `caught_stealing_at_${asked.place}`, `You were caught picking a pocket at ${where}.`);
     lines.push(...alarmIfWatched(game, asked.place, asked.room));
-    game.pendingEvents?.push(`The player tried to pick ${asked.name}'s pocket at ${where} and was caught. ${heard(lines)} Bring it into the story.`.replace(/\s+/g, " ").trim());
   }
   game.transcript?.push({ role: "notice", text: lines.join("\n") });
   return lines;
@@ -119,7 +117,6 @@ export function attackPerson(game, who, where) {
   if (who.id) lines.push(...worsen(game, who.id, { to: "hostile", note: `The player attacked them at ${place}.` }));
   remember(game, who.id ? `attacked_${who.id}` : `attacked_someone_at_${where.place}`, who.id ? `You attacked ${who.name}.` : `You attacked someone at ${place}.`);
   lines.push(...alarmIfWatched(game, where.place, where.room));
-  game.pendingEvents?.push(`The player attacked ${who.name} at ${place}, out of nowhere, and the fight is on. ${heard(lines)}`.replace(/\s+/g, " ").trim());
   return { said: lines.join("\n"), combat: true };
 }
 
@@ -173,5 +170,3 @@ function remember(game, id, text) {
 // A camera on the room rings the place's alarm, and the guards come.
 const alarmIfWatched = (game, place, room) => (room && watched(game, place, room) ? soundAlarm(game, place, room, { by: "player" }) : []);
 
-// The lines the AI should hear about.
-const heard = (lines) => lines.filter((line) => /^\[(ALARM|FACTION|SHIP|RELATION)\]/.test(line)).join(" ");

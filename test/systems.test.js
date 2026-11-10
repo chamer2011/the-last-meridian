@@ -13,7 +13,7 @@ process.env.GAME_DATA_DIR ??= fs.mkdtempSync(path.join(os.tmpdir(), "meridian-sy
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const sys = await import("../src/systems.js");
 const { clearMaps, mapFor, walkCommand, walkView } = await import("../src/walk.js");
-const { aiSnapshot, checkParts, passTime, publicState, travel } = await import("../src/rules.js");
+const { checkParts, passTime, publicState, travel } = await import("../src/rules.js");
 const { checkCommand } = await import("../src/checks.js");
 const { computerCommand, screenGoesDark } = await import("../src/computer-use.js");
 const { enterComputer, enterDoorPanel, useComputer } = await import("../src/computers.js");
@@ -185,8 +185,6 @@ test("tampering where a camera sees it rings the alarm, costs standing, goes on 
   assert.equal(sys.detourFor(game, "haven")("Docker Renko", "docks", false), null);
   walkCommand(game, { action: "work", key: `part:${relay.id}`, how: "on" });
   assert.deepEqual(sys.detourFor(game, "haven")("Docker Renko", "docks", false), { where: "@row", doing: "answering the alarm in the Consulate Row" });
-  // The AI hears it, in one line.
-  assert.match(aiSnapshot(game), /Systems at Haven Station: .*the alarm is ringing in The Consulate Row, because a camera saw the player tampering/);
   // People talk about it.
   const talk = stockTalk(game, { name: "Sable", short: "Sable", personId: null, doing: null });
   assert.ok(Object.values(talk.parts).some((part) => part.text.some((line) => /alarm's going in The Consulate Row/.test(line))));
@@ -431,7 +429,6 @@ test("conditions and effects in the scenes' words read the systems and change th
   assert.ok(conditionHolds(game, "system water on"));
   sys.applySystemsEffect(game, parseEffect("system water off at frontier").do.systems);
   assert.ok(conditionHolds(game, "system water off"));
-  assert.match(aiSnapshot(game), /Systems at Tessen Colony: water down \(the pump in The Well-Head, the windpump in The Far Homesteads\)/);
   sys.applySystemsEffect(game, parseEffect("fix everything").do.systems);
   assert.ok(conditionHolds(game, "system water on"));
   assert.equal(game.systems, undefined);
@@ -460,7 +457,7 @@ test("the Meridian can't jump with her engines down, plots by hand with her navi
 
 // ---- Nothing changes by being looked at ------------------------------------------------------------------
 
-test("showing the game, the AI's state and the board's views of the systems changes nothing in the save", () => {
+test("showing the game and the board's views of the systems changes nothing in the save", () => {
   const game = newGame();
   standIn(game, "haven", "docks");
   sys.damagePart(game, "haven", partNamed("haven", "vent", "hook").id, "sealed", { by: "story" });
@@ -468,16 +465,14 @@ test("showing the game, the AI's state and the board's views of the systems chan
   const before = JSON.stringify(game);
   publicState(game);
   walkView(game);
-  aiSnapshot(game);
-  sys.systemsLine(game);
   sys.detourFor(game, "haven");
   peopleAboard(game, "haven", "hook");
   checkParts(game, { skill: "stealth" });
   conditionHolds(game, "air bad in The Hook");
   assert.equal(JSON.stringify(game), before);
-  // With nothing wrong, the AI hears nothing at all about the systems.
+  // With nothing wrong, a new game keeps nothing about the systems.
   const fresh = newGame();
-  assert.ok(!/Systems at/.test(aiSnapshot(fresh)));
+  publicState(fresh);
   assert.equal(fresh.systems, undefined);
 });
 

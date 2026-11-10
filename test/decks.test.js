@@ -13,7 +13,7 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-decks-"));
 process.env.GAME_DATA_DIR = dataDir;
 
 const { WORLD_MAPS, MAP_FILE_PROBLEMS } = await import("../src/world.js");
-const { canStand, mapFor, personWhere, roomHere, roomsOf, setScene, walkCommand, walkLine, walkOf, walkView } = await import("../src/walk.js");
+const { canStand, mapFor, personWhere, roomHere, roomsOf, setScene, walkCommand, walkOf, walkView } = await import("../src/walk.js");
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const { lifeOf, peopleAboard } = await import("../src/life.js");
 const { roomDark, setDoor, switchPart, systemsOf } = await import("../src/systems.js");
@@ -59,9 +59,8 @@ test("a new game starts on the bridge, and here is the bridge, not the whole dec
   assert.ok(view.people.filter((person) => person.room === "bridge").some((person) => person.short === "Voss"));
   assert.ok(view.ways.some((way) => way.to === "names"), "the way out of the bridge leads to the Names Bulkhead");
   assert.equal(view.areas.length, map1().areas.length);
-  assert.match(walkLine(game), /^Map: player at The Bridge\./);
-  assert.match(walkLine(game), /Voss/);
-  assert.doesNotMatch(walkLine(game), /Reddick/, "someone in another room isn't nearby");
+  assert.equal(view.here.name, "The Bridge");
+  assert.ok(!view.people.filter((person) => person.room === "bridge").some((person) => /Reddick/.test(person.name)), "someone in another room isn't here");
 });
 const map1 = () => mapFor("meridian").levels.deck1;
 
@@ -71,8 +70,8 @@ test("walking into another room changes the room, not the deck, and the room's d
   assert.ok(reply.path.length > 5, "it's a walk, not a jump");
   assert.equal(roomHere(game).id, "names");
   assert.equal(game.walk.level, "deck1");
-  assert.match(walkLine(game), /player walked to The Names Bulkhead/);
   const view = walkView(game);
+  assert.equal(view.here.name, "The Names Bulkhead");
   assert.ok(view.ways.length >= 5, `the bulkhead opens on ${view.ways.length} rooms`);
   assert.ok(view.ways.some((way) => way.to === "bridge"));
   walkTo(game, "chart");

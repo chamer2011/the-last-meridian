@@ -1,25 +1,22 @@
-// The actions the AI game master can request. Each one is checked here before
-// anything changes in the game. A rejected request goes back to the AI as an
-// error, so it has to narrate around it.
+// The game's actions: what the written story's effects (* lines in world/scenes), conversations and computers can
+// change. Each one is checked here against its shape before anything changes in the game, and the checker uses the
+// same shapes to find mistakes in the files before anyone plays them.
 
-import { characterFileFor, ensureContactFiles, findCharacter, saveCampaignCharacter, saveCampaignEnemy } from "./campaign.js";
+import { ensureContactFiles, findCharacter } from "./campaign.js";
 import { startCheck } from "./checks.js";
 import { FACTIONS, ITEMS, LOCATIONS, STATS } from "./data.js";
-import { CONDITIONS, CONTEXTS, POLES, SKILLS, SPECIES, TRAITS } from "./character-data.js";
-import { changePlace, markWorldHeard, trackedPlaces, worldLines } from "./daily.js";
-import { changeCommand, markShipHeard } from "./ship.js";
-import { whereNow } from "./life.js";
-import { roleNow } from "./command.js";
+import { CONDITIONS, CONTEXTS, POLES, SKILLS, TRAITS } from "./character-data.js";
+import { changePlace, trackedPlaces } from "./daily.js";
+import { changeCommand } from "./ship.js";
 import { LORE_KINDS, hasStaticLore } from "./lore.js";
-import { MYSTERY_TOPICS, beginThread, mysteryNotes, noteThreadEnded, noteThreadStarted, placeFileIfNew, updateStory } from "./story-library.js";
-import { FACTS_PER_TURN, endStory, endingOf, recordEnding, recordFact } from "./record.js";
-import { NPC_ARCHETYPES, THREAT_LABELS } from "./npc.js";
+import { noteThreadEnded, noteThreadStarted, updateStory } from "./story-library.js";
+import { endingOf, recordEnding } from "./record.js";
 import {
   DIFFICULTY, TURN_LIMITS, addCondition, addItem, changeStanding, clamp, clockLabel, changeStress, findContact, grantXp, maxHp, passTime, practice,
   removeCondition, removeItem, shiftIdeology, startCombat, travel,
 } from "./rules.js";
 import { setScene } from "./walk.js";
-import { PARLEY, ROOM_KINDS, WORLD_THREADS, endingsOf } from "./world.js";
+import { PARLEY, ROOM_KINDS, WORLD_THREADS } from "./world.js";
 
 const obj = (properties, required = Object.keys(properties)) => ({
   type: "object", properties, required, additionalProperties: false,
@@ -34,7 +31,7 @@ const earnableTraits = Object.keys(TRAITS).filter((id) => TRAITS[id].earnable);
 export const TOOL_DEFS = [
   {
     name: "roll_check",
-    description: "Start a skill check for an action whose outcome is uncertain: persuading someone, sneaking, hacking, piloting, resisting fear. The game plays it out with the player in its own window, and your reply ends here, so write nothing else. You'll get the result with the next message, and then you narrate it. Never decide uncertain outcomes yourself. Pick the skill that best fits. Set difficulty by how hard the task is in the world, not by how skilled the player is. Only one check at a time.",
+    description: "Opens a skill check in its own window. Only one check at a time. The written story picks up its result.",
     input_schema: obj({
       skill: oneOf([...Object.keys(SKILLS), "none"], 'The skill being used. Use "none" only for raw ability with no skill involved, and then set attribute.'),
       attribute: oneOf(Object.keys(STATS), "Optional. Overrides the skill's usual attribute, for example Might with Intimidation when physically looming. Required when skill is \"none\"."),
@@ -47,7 +44,7 @@ export const TOOL_DEFS = [
   },
   {
     name: "start_combat",
-    description: "Start a turn-based fight when violence actually breaks out. The game takes over and runs the whole fight by itself from its files, without you, and your reply ends here. Put what the player reads just before the fight in lead_in. Either side can have followers, if the story allows it: up to four fighters on a side, counting the player. Anyone in a list can be written as 'dock_thug as Syndicate Guard' if the story calls them something else. You'll be told how it ended along with the player's next message.",
+    description: "Starts a fight, which the game runs by itself from its files. lead_in is what the player reads just before it. Up to four fighters on a side, counting the player.",
     input_schema: obj({
       enemy: str("What to fight: the id or name of an enemy type, including one you've just added with create_enemy, or the id or name of a character with a file. Pick something that suits the player's level."),
       lead_in: str("One to three sentences of story leading up to the first blow, in the same format as your narration. Don't describe how the fight goes."),
@@ -69,90 +66,38 @@ export const TOOL_DEFS = [
     }, ["enemy", "lead_in"]),
   },
   {
-    name: "read_character",
-    description: "Read a character's full file: their personality, way of speaking, goals and secrets. Call this before bringing in anyone on the people list whose file you haven't been given yet.",
-    input_schema: obj({ name: str("The person's id or name.") }),
-  },
-  {
-    name: "read_thread",
-    description: "Read your notes on a story thread, when you bring one into the story yourself: what's really going on, how it might go, and where it can end up. The place files list which threads could start where. If the player chose it from their Leads menu, you've already been given the notes.",
-    input_schema: obj({ id: str("The thread's id.") }),
-  },
-  {
-    name: "read_mystery",
-    description: "Read your private notes on one part of the main mystery, before a scene that touches it. factions gives each faction's theory and what it wants, reversals lists the wrong things the player should believe along the way, and routes_by_build shows how different kinds of person can get through.",
-    input_schema: obj({ topic: oneOf(MYSTERY_TOPICS, "Which part you need.") }),
-  },
-  {
     name: "update_story",
-    description: "Keep track of the main story: call this when the player finds one of its clues, or when the story moves on to a new act.",
+    description: "Keeps track of the main story: a clue the player has found, or the act it has moved into.",
     input_schema: obj({ clue: str("Optional. The id of a clue they've just found."), act: num("Optional. The act the main story has just moved into.") }, []),
   },
   {
-    name: "create_character",
-    description: "Save a new person to the world's files when someone who may matter turns up. The game generates their stats from the archetype and threat, and keeps the file for good, so write down what will keep them consistent. Calling it again with the same name updates their file. Passing extras don't need a file. Write facts about who they are, and use note_contact for what happens between them and the player. To fight them right away, call start_combat in the same reply with their name.",
-    input_schema: obj({
-      name: str("Their name, without a title."),
-      title: str("Optional. A title such as Captain or Dr."),
-      pronouns: str("Their pronouns, such as she/her, he/him or they/them."),
-      species: oneOf([...Object.keys(SPECIES), "unknown"], "Optional. Their species."),
-      faction: oneOf(Object.keys(FACTIONS), "Optional. The faction they belong to, if any."),
-      role: str("Who they are, in a few words, e.g. 'Quartermaster of the Long Reach'."),
-      location: oneOf(Object.keys(LOCATIONS), "Optional. Where they can usually be found."),
-      public: str("One or two sentences the player would know about them, with no secrets."),
-      appearance: str("Optional. What they look like."),
-      personality: str("Their personality, in a sentence or two."),
-      voice: str("How they speak, so that they always sound like themselves."),
-      goals: str("Optional. What they want."),
-      secrets: str("Optional. What they're hiding. The player never sees this."),
-      beliefs: { type: "array", items: oneOf(Object.keys(POLES), "A belief."), description: "Optional. The one to three beliefs they hold most strongly." },
-      archetype: oneOf(Object.keys(NPC_ARCHETYPES), "What sort of person they are. This decides how their stats are generated."),
-      threat: num("How dangerous they are in a fight, from 1 to 5: 1 minor, 2 capable, 3 dangerous, 4 deadly, 5 legendary."),
-      met: { type: "boolean", description: "Optional. True if the player is meeting them right now, which adds them to the player's contacts." },
-      attitude: oneOf(["ally", "friendly", "neutral", "wary", "hostile"], "Optional. How they feel about the player, if they've met."),
-    }, ["name", "pronouns", "role", "public", "personality", "voice", "archetype", "threat"]),
-  },
-  {
-    name: "create_enemy",
-    description: "Save a new type of enemy to the world's files, when the story needs something to fight that isn't on the list. The game generates its stats from the archetype and threat. To fight it right away, call start_combat in the same reply with its name. For a specific named opponent, use create_character instead.",
-    input_schema: obj({
-      name: str("The enemy's name, e.g. 'Ion Wraith'."),
-      archetype: oneOf(Object.keys(NPC_ARCHETYPES), "What sort of thing it is. This decides how its stats are generated."),
-      threat: num("How dangerous it is, from 1 to 5: 1 minor, 2 capable, 3 dangerous, 4 deadly, 5 legendary."),
-      description: str("One sentence the player will see."),
-      tags: { type: "array", items: oneOf(Object.keys(CONTEXTS), "A situation."), description: "Optional. Which situations apply when fighting it, such as choir or machines." },
-      why: oneOf(REASONS_TO_FIGHT, "Optional. Why this kind of enemy usually fights. Without this it goes by the archetype."),
-      faction: oneOf(Object.keys(FACTIONS), "Optional. The faction it fights for."),
-    }, ["name", "archetype", "threat", "description"]),
-  },
-  {
     name: "give_item",
-    description: "Give the player an item they actually found, earned or were handed in the story.",
+    description: "Gives the player an item.",
     input_schema: obj({ item: oneOf(Object.keys(ITEMS), "The item to give.") }),
   },
   {
     name: "take_item",
-    description: "Remove an item the player gave away, spent or lost in the story.",
+    description: "Takes an item from the player.",
     input_schema: obj({ item: oneOf(Object.keys(ITEMS), "The item to remove.") }),
   },
   {
     name: "change_credits",
-    description: "Pay the player or charge them. Use a negative amount for a cost. Fails if the player can't afford it, in which case the deal doesn't happen.",
+    description: "Pays the player, or charges them with a negative amount. Fails if they can't afford it.",
     input_schema: obj({ amount: num("Positive to give credits, negative to charge them."), reason: str("Short reason shown to the player.") }),
   },
   {
     name: "change_health",
-    description: "Hurt or heal the player outside a fight, such as from a trap, an explosion or a doctor. Negative hurts, positive heals. Non-combat harm can't kill the player; they stay at 1 health at worst.",
+    description: "Hurts or heals the player outside a fight. It can't kill them: they stay at 1 health at worst.",
     input_schema: obj({ amount: num("Negative for damage, positive for healing."), reason: str("Short reason shown to the player.") }),
   },
   {
     name: "change_stress",
-    description: "Raise the player's stress after something frightening, horrifying or morally heavy, or lower it after real comfort, connection or a meaningful win. Usually between 3 and 15 either way. High stress gives penalties on all checks, and at 100 the character breaks down.",
+    description: "Raises or lowers the player's stress.",
     input_schema: obj({ amount: num("Positive adds stress, negative relieves it."), reason: str("Short reason shown to the player.") }),
   },
   {
     name: "pass_time",
-    description: "Move the clock forward whenever meaningful time passes in the story: a long conversation, a shift of work, a night's sleep. Travel moves the clock by itself. Time heals injuries, builds fatigue and uses up the ship's supplies, so keep it honest.",
+    description: "Moves the clock forward. Time heals injuries, builds fatigue and uses up the ship's supplies.",
     input_schema: obj({
       hours: num("Hours passing, from 1 to 72."),
       activity: oneOf(["active", "work", "rest"], "active for normal activity, work for hard labor or a demanding shift, rest for real sleep or recovery."),
@@ -161,17 +106,17 @@ export const TOOL_DEFS = [
   },
   {
     name: "add_condition",
-    description: "Apply a lasting injury or state when the story causes one, such as a concussion from an explosion or radiation from a damaged reactor. Each has real penalties, and lasts until it heals with time or is treated.",
+    description: "Gives the player a lasting injury or state, which heals with time or is treated.",
     input_schema: obj({ condition: oneOf(Object.keys(CONDITIONS), "The condition to apply."), reason: str("Short reason shown to the player.") }),
   },
   {
     name: "remove_condition",
-    description: "Remove a condition when it's actually treated in the story, such as by a doctor in the medbay.",
+    description: "Treats one of the player's conditions.",
     input_schema: obj({ condition: oneOf(Object.keys(CONDITIONS), "The condition to remove."), reason: str("Short reason shown to the player.") }),
   },
   {
     name: "shift_ideology",
-    description: "Move the player's beliefs when they make a meaningful choice that expresses a belief or betrays one. Don't call this for small decisions. The game works out the cost to their conscience by itself: acting against a strong belief causes stress, and acting on one relieves it.",
+    description: "Moves the player's beliefs. Acting against a strong belief causes stress, and acting on one relieves it.",
     input_schema: obj({
       toward: oneOf(Object.keys(POLES), "The belief their choice moved them toward."),
       amount: num("1 for a telling choice, 2 for a major one, 3 for a defining moment."),
@@ -180,37 +125,32 @@ export const TOOL_DEFS = [
   },
   {
     name: "grant_trait",
-    description: "Give the player a permanent new trait after a truly life-changing event. This should be rare: at most a few times in a whole story.",
+    description: "Gives the player a new trait for good.",
     input_schema: obj({ trait: oneOf(earnableTraits, "The trait they've earned."), reason: str("Short reason shown to the player.") }),
   },
   {
     name: "remove_trait",
-    description: "Remove a trait when the player has genuinely overcome it through story events, such as finally clearing a debt or making peace with guilt.",
+    description: "Takes away one of the player's traits.",
     input_schema: obj({ trait: oneOf(Object.keys(TRAITS), "The trait to remove."), reason: str("Short reason shown to the player.") }),
   },
   {
     name: "train_skill",
-    description: "Give practice toward a skill when the player spends real time studying or being taught in the story. Skills also improve by themselves through checks, so don't use this for ordinary use of a skill.",
+    description: "Gives practice toward a skill.",
     input_schema: obj({ skill: oneOf(Object.keys(SKILLS), "The skill being trained."), amount: num("Practice points, usually 5 to 20."), reason: str("Short reason shown to the player.") }),
   },
   {
     name: "change_ship",
-    description: "Change the Meridian's hull or fuel, or the morale of the people aboard her, because of something that happened in the story. Her food, medicine and parts drain by themselves and are bought on the Ship menu, so never use this for those.",
+    description: "Changes the Meridian's hull or fuel, or the morale aboard her. Her food, medicine and parts are her stores, changed with * stores.",
     input_schema: obj({ hull: num("Change in hull, or 0."), fuel: num("Change in fuel, or 0."), morale: num("Change in morale aboard, or 0."), reason: str("Short reason shown to the player.") }),
   },
   {
     name: "change_command",
-    description: "Change who captains the Meridian, because the story really has put the player in the captain's chair or taken them out of it: an appointment, a mutiny, a resignation, a court martial that holds. It's a very big thing, and it stays that way until something else changes it. The rations, the buying and the jumps go with it.",
+    description: "Changes who captains the Meridian. The rations, the buying and the jumps go with it.",
     input_schema: obj({ takes: bool("True if the player has just become the captain. False if they've just stopped being it."), reason: str("Short reason shown to the player.") }),
   },
   {
-    name: "read_world",
-    description: "Read how things stand today at every place the player knows of, or at one place: who holds it, how much of a say each side has, what's short, and what's going on there. Only call this when a scene needs it, since the line for wherever the player is comes with the state.",
-    input_schema: obj({ place: str("Optional. One place's id.") }, []),
-  },
-  {
     name: "change_place",
-    description: "Change how things stand at a place, because of something that happened in the story: a supply run, a sabotage, a strike broken, a garrison landed. The daily ups and downs run by themselves, so never use this for those. Supplies are levels where 100 is normal for that place.",
+    description: "Changes how things stand at a place: its supplies, where 100 is normal for that place, and how much of a say each side has.",
     input_schema: obj({
       place: oneOf(trackedPlaces(), "The place's id."),
       food: num("Optional. Change in its food level, from -60 to 60."),
@@ -225,17 +165,17 @@ export const TOOL_DEFS = [
   },
   {
     name: "award_xp",
-    description: "Award experience for clever solutions, completed objectives and good roleplay. Usually 10 to 50. Fights award their own XP, so don't add any for those.",
+    description: "Awards experience.",
     input_schema: obj({ amount: num("XP to award."), reason: str("Short reason shown to the player.") }),
   },
   {
     name: "travel",
-    description: "Move the player to another location. If they're the captain, a jump moves the Meridian: it costs 1 to 3 fuel and many hours, depending on how far it is, and it fails without enough fuel. If they aren't, they go by themselves and the ship stays where it is, so charge any fare with change_credits. Crossing between the Meridian and the dock she's at takes an hour and no fuel. Use it whenever the player actually arrives somewhere new.",
+    description: "Moves the player to another place. A captain's jump moves the Meridian and costs fuel; anyone else goes alone.",
     input_schema: obj({ destination: oneOf(Object.keys(LOCATIONS), "Where to go.") }),
   },
   {
     name: "set_scene",
-    description: "Keep the walk-around map true to the story. Call it with your other tools when the story moves the player to another room, or to somewhere that isn't on the map, or changes who's with them. It takes no time. Never call it for the player's own walking, which the Map line already shows.",
+    description: "Puts the player in a room, or somewhere off the map, with the people named there. It takes no time.",
     input_schema: obj({
       area: str("Where the player is now: a room from the place file, or the name of anywhere else, such as 'Section Fourteen', which gets a room of its own, kept for good."),
       people: { type: "array", items: str("A person's id or name."), description: "Optional. Who's with the player there, up to 8. Everyone else goes back to their usual post." },
@@ -249,22 +189,22 @@ export const TOOL_DEFS = [
   },
   {
     name: "change_faction",
-    description: "Change how a faction regards the player, after something that faction would really notice.",
+    description: "Changes how a faction regards the player.",
     input_schema: obj({ faction: oneOf(Object.keys(FACTIONS), "The faction."), amount: num("Change from -15 to 15."), reason: str("Short reason shown to the player.") }),
   },
   {
     name: "add_quest",
-    description: "Add a new quest to the player's log when a real new goal comes up in the story.",
+    description: "Adds a quest to the player's log.",
     input_schema: obj({ id: str("Short lowercase id with underscores, e.g. 'rescue_the_miners'."), title: str("Quest title."), description: str("One or two sentences of background."), objective: str("What the player should do next.") }),
   },
   {
     name: "update_quest",
-    description: "Change a quest's current objective, or mark it complete or failed. Call this as soon as the player makes real progress.",
+    description: "Changes a quest's objective, or marks it done or failed.",
     input_schema: obj({ id: str("The quest id."), status: oneOf(["active", "completed", "failed"], "The quest's status now."), objective: str("The new current objective, or the final outcome.") }),
   },
   {
     name: "note_contact",
-    description: "Add or update a named character in the player's contacts. Call this when the player meets someone memorable, or when a relationship changes. Attitude affects later social checks with them. Everyone added here gets a local file automatically, so use create_character first if they're important enough to deserve a full one.",
+    description: "Adds or updates someone in the player's contacts. Their attitude changes later social checks with them.",
     input_schema: obj({
       name: str("The character's name."),
       attitude: oneOf(["ally", "friendly", "neutral", "wary", "hostile"], "How they feel about the player."),
@@ -274,45 +214,24 @@ export const TOOL_DEFS = [
   },
   {
     name: "add_journal",
-    description: "Record an important event or discovery in the journal. This is your long-term memory: you may later lose older conversation, but never the journal. Call it for major decisions, promises, revealed secrets and plot turns.",
+    description: "Writes an entry in the journal.",
     input_schema: obj({ entry: str("One or two sentences on what happened.") }),
   },
   {
     name: "add_lore",
-    description: "Add a new entry to the player's codex when you introduce a new named place, ship, group or idea that may come back. For important people, use create_character instead. The game then highlights that name in the story, and shows this entry when the player hovers over it. Calling it again with the same term updates the entry. Write only what the player's character would know, and never include secrets.",
+    description: "Adds or updates an entry in the player's codex, so the name is highlighted in the story.",
     input_schema: obj({
       term: str("The exact name as you write it in the story, e.g. 'The Rim'."),
       kind: oneOf(LORE_KINDS, "What sort of thing this is."),
       text: str("One or two sentences, written for the player."),
     }),
   },
-  {
-    name: "follow_scene",
-    description: "Only when the message has a <written_scene> block: the number of the written choice the player's words come to, or 0 when they fit none of them and your short reply answers them instead. The written story plays on from the choice by itself.",
-    input_schema: obj({ choice: num("The number of the written choice the player's words mean, or 0 for none of them.") }),
-  },
-  {
-    name: "note_fact",
-    description: "Put a lasting fact on the record, for the stories that come later: something the player did or learned that another story should know, such as a door closed to the Meridian, a debt owed, or a person who now trusts or hates them. Give it a short name and one line of plain words, and when the story's notes name the facts it can leave, use those names. The record is in your state as Fact lines, so don't note what's already there, and don't note passing things.",
-    input_schema: obj({ id: str("A short name in lowercase letters, digits and underscores, like signed_with_quill."), text: str("One line, written for the player, saying what's true now.") }),
-  },
-  {
-    name: "end_story",
-    description: "A story from the Leads menu has ended. Say which of the endings in its notes it came to, by name, or other if it ended another way, with one line for the player on how. The game marks its quest done and keeps the ending on the record for the stories that come later.",
-    input_schema: obj({ id: str("The story's id, from its notes."), ending: str("The name of the ending in the story's notes that fits best, or other for another way."), summary: str("One line, written for the player, on how it ended.") }),
-  },
 ];
 
 const withNotes = (first, notes = []) => [first, ...notes].filter(Boolean).join("\n");
 
-// The AI hears what the ship and the world did during this time in the result, so it doesn't need telling again.
-function timeResult(game, text) {
-  markShipHeard(game);
-  markWorldHeard(game);
-  return text;
-}
 
-// ---- Handlers. Each returns { result, notice }: result goes to the AI, notice to the player. ----
+// ---- Handlers. Each returns { result, notice }: result says what happened, and notice is what the player reads. ----
 
 // A story waiting on someone who has just died can't go on, so its quest fails with them, and its scene is over. That's
 // the rule for now, and it will make some stories too easy to lose; it's to be balanced later. Returns the notices.
@@ -343,7 +262,7 @@ const handlers = {
       reason: input.reason,
       scene: input.scene || null,
     });
-    return { result: "The player is taking this check in its own window. The result comes next, so continue from there." };
+    return { result: "The player is taking this check in its own window." };
   },
   start_combat(game, input) {
     if (game.check) throw new Error("A check is already running, so this fight can't start yet. Start it after you've seen the result.");
@@ -361,55 +280,12 @@ const handlers = {
     const friends = game.combat.allies.map((ally) => ally.name).join(", ");
     return {
       narration: input.lead_in,
-      result: `The fight against ${foes} began, and the game ran it. How it ended comes next, so continue from there.`,
+      result: `The fight against ${foes} began.`,
       notice: withNotes(`[COMBAT] The fight begins: ${foes}${friends ? `, with ${friends} at your side` : ""}`, notes),
     };
   },
-  read_character(game, input) {
-    const file = characterFileFor(game, input.name);
-    if (!file) throw new Error(`There's no file for "${input.name}". If they matter, add them with create_character.`);
-    game.ai.sentCharacters = [...new Set([...(game.ai.sentCharacters ?? []), file.id])];
-    const now = whereNow(game, file.id);
-    // Their place in the ship's chain of command, when it isn't what their file says.
-    const post = roleNow(game, file.id);
-    return { result: [file.brief, now && `Right now: ${now}.`, post && `Their place aboard now: ${post}.`].filter(Boolean).join("\n") };
-  },
-  read_thread(game, input) {
-    const notes = beginThread(game, input.id);
-    if (!notes) throw new Error(`There's no thread called ${input.id}.`);
-    return { result: notes };
-  },
-  read_mystery(game, input) {
-    return { result: mysteryNotes(input.topic) };
-  },
   update_story(game, input) {
     return { result: updateStory(game, input) };
-  },
-  create_character(game, input, turn) {
-    if (!game.campaign) throw new Error("There's no campaign to save this character to.");
-    if (turn.newCharacters >= TURN_LIMITS.newCharacters) throw new Error("That's enough new characters for now.");
-    if (input.threat < 1 || input.threat > 5) throw new Error("Threat must be from 1 to 5.");
-    const { id, person, created } = saveCampaignCharacter(game.campaign, input);
-    if (created) turn.newCharacters += 1;
-    game.ai.sentCharacters = [...new Set([...(game.ai.sentCharacters ?? []), id])];
-    if (!game.seenLore.includes(`person:${id}`) && input.met) game.seenLore.push(`person:${id}`);
-    let notice;
-    if (input.met) {
-      const existing = game.contacts.find((c) => c.name.toLowerCase() === person.name.toLowerCase());
-      if (!existing) {
-        game.contacts.push({ id, name: person.name, attitude: input.attitude ?? "neutral", note: person.note });
-        notice = `[CONTACT] New: ${person.name}`;
-      }
-    }
-    return { result: `${created ? "Saved a new file" : "Updated the file"} for ${person.name} (id: ${id}). The game generated their stats: threat ${THREAT_LABELS[person.combat.threat]}.`, ...(notice ? { notice } : {}) };
-  },
-  create_enemy(game, input, turn) {
-    if (!game.campaign) throw new Error("There's no campaign to save this enemy to.");
-    if (turn.newEnemies >= TURN_LIMITS.newEnemies) throw new Error("That's enough new enemies for now.");
-    if (input.threat < 1 || input.threat > 5) throw new Error("Threat must be from 1 to 5.");
-    const { id, enemy } = saveCampaignEnemy(game.campaign, input);
-    turn.newEnemies += 1;
-    return { result: `Saved ${enemy.name} (id: ${id}, threat ${THREAT_LABELS[input.threat]}). Use that id in start_combat.` };
   },
   give_item(game, input, turn) {
     if (turn.itemsGiven >= TURN_LIMITS.itemsGiven) throw new Error("Too many items given this turn. Don't give more.");
@@ -467,7 +343,7 @@ const handlers = {
     turn.hours += hours;
     const notes = passTime(game, hours, input.activity);
     return {
-      result: timeResult(game, `${hours} hours pass. It's now ${clockLabel(game)}. Fatigue ${game.needs.fatigue}/100.${notes.length ? ` ${notes.join(" ")}` : ""}`),
+      result: `${hours} hours pass. It's now ${clockLabel(game)}. Fatigue ${game.needs.fatigue}/100.${notes.length ? ` ${notes.join(" ")}` : ""}`,
       notice: withNotes(`[TIME] ${input.reason}: ${hours}h pass. It's now ${clockLabel(game)}.`, notes),
     };
   },
@@ -527,9 +403,6 @@ const handlers = {
     const { summary, notice } = changeCommand(game, input);
     return { result: summary, notice };
   },
-  read_world(game, input) {
-    return { result: worldLines(game, input.place) };
-  },
   change_place(game, input) {
     const { summary, notice } = changePlace(game, input);
     return { result: summary, notice };
@@ -543,8 +416,7 @@ const handlers = {
   },
   travel(game, input) {
     const { message, notes } = travel(game, input.destination);
-    // The notes on where they've arrived come straight back, in time for the AI to write the arrival.
-    return { result: timeResult(game, withNotes(message, [...notes, placeFileIfNew(game)])), notice: withNotes(`[NAV] ${message}`, notes) };
+    return { result: withNotes(message, notes), notice: withNotes(`[NAV] ${message}`, notes) };
   },
   set_scene(game, input) {
     return { result: setScene(game, input.area, input.people ?? [], { kind: input.kind ?? null, things: input.things ?? [] }) };
@@ -575,7 +447,7 @@ const handlers = {
   },
   note_contact(game, input) {
     if (input.name.trim().length > 60) throw new Error("That's too long for a name. Use what people call them, and put the rest in the note.");
-    // Someone with a file is always listed under their full name, whatever the AI called them.
+    // Someone with a file is always listed under their full name, whatever the scene called them.
     const name = findCharacter(game.campaign, input.name)?.name ?? input.name;
     const existing = findContact(game, name);
     if (existing) {
@@ -615,41 +487,6 @@ const handlers = {
     game.lore.push({ id: `custom:${game.lore.length}`, name: term, kind: input.kind, text: input.text });
     return { result: `Codex entry added: ${term}.`, notice: `[LORE] New codex entry: ${term}` };
   },
-  // The written story's one tool for the AI: it fits the player's own words to a written choice, and the game plays it.
-  follow_scene(game, input, turn) {
-    const scene = turn?.scene;
-    if (!scene) throw new Error("There's no written scene here to follow. Write the story yourself.");
-    const count = scene.choices.length;
-    if (input.choice < 0 || input.choice > count) throw new Error(`The written choices here are numbered 1 to ${count}, or 0 for none of them.`);
-    scene.followed = input.choice;
-    if (input.choice === 0) return { result: "Noted: nothing moves on. Now answer the player in one to three sentences, in the voices of the people there, with no > choices of your own. The written choices are offered again after your words." };
-    return { result: `The written story takes choice ${input.choice}, ${scene.choices[input.choice - 1].say}, and plays on from here by itself. Write nothing more.` };
-  },
-  // The record: a fact for later stories, and how a story ended.
-  note_fact(game, input, turn) {
-    if (turn && turn.facts >= FACTS_PER_TURN) throw new Error("That's enough facts for one turn. Keep the record to what another story will need.");
-    const id = input.id.trim().toLowerCase();
-    const text = input.text.trim();
-    if (text.length < 3 || text.length > 200) throw new Error("A fact is one line, from 3 to 200 characters.");
-    const { known } = recordFact(game, { id, text, from: null });
-    if (turn) turn.facts += 1;
-    return known
-      ? { result: `${id} was already on the record, and its words are kept.` }
-      : { result: `On the record: ${id}.`, notice: `[RECORD] ${text}` };
-  },
-  end_story(game, input) {
-    const id = input.id.trim();
-    const thread = WORLD_THREADS[id];
-    if (!thread) throw new Error(`There's no story called ${id}. The id is in the story's notes.`);
-    const names = endingsOf(thread).map((one) => one.id);
-    const ending = String(input.ending ?? "").trim().toLowerCase().replace(/\s+/g, "_");
-    if (ending !== "other" && !names.includes(ending)) throw new Error(`This story's endings are ${names.join(", ")}, or other for another way.`);
-    const summary = input.summary.trim();
-    if (summary.length < 3 || summary.length > 200) throw new Error("The summary is one line, from 3 to 200 characters.");
-    if (endingOf(game, id)) throw new Error("That story has already ended, and the record keeps its first ending.");
-    endStory(game, { id, ending: ending === "other" ? null : ending, summary });
-    return { result: `${thread.title} is over, ${ending === "other" ? "another way" : ending}, and it's on the record.`, notice: `[STORY] ${thread.title} has ended: ${summary}` };
-  },
 };
 
 function checkValue(key, spec, value) {
@@ -678,7 +515,7 @@ function checkValue(key, spec, value) {
   return null;
 }
 
-// Checks a request against its definition, because the AI's input isn't guaranteed to be valid.
+// Checks a request against its definition, because a file written by hand isn't guaranteed to be right.
 function validate(def, input) {
   if (typeof input !== "object" || input === null || Array.isArray(input)) return "Input must be an object.";
   const { properties, required } = def.input_schema;
@@ -696,11 +533,10 @@ function validate(def, input) {
 }
 
 export function newTurnLimits() {
-  return { xp: 0, creditsGained: 0, itemsGiven: 0, damage: 0, stress: 0, ideologyShifts: 0, traitChanges: 0, hours: 0, training: 0, loreEntries: 0, newCharacters: 0, newEnemies: 0, facts: 0 };
+  return { xp: 0, creditsGained: 0, itemsGiven: 0, damage: 0, stress: 0, ideologyShifts: 0, traitChanges: 0, hours: 0, training: 0, loreEntries: 0 };
 }
 
-// The clock stands still in a talk window, and the captain stays where they are, so these can't happen there.
-// The tool list itself stays the same, because changing it would make Claude reload the whole story.
+// The clock stands still in a talk window, and the player stays where they are, so these can't happen there.
 const NOT_IN_A_TALK = ["pass_time", "travel", "set_scene"];
 
 // What's wrong with a call before it's made, for checking written scenes. Null means it would be accepted.
@@ -712,9 +548,7 @@ export function toolProblem(name, input) {
 export function runTool(game, name, input, turn) {
   const def = TOOL_DEFS.find((t) => t.name === name);
   if (!def) return { result: `Unknown tool: ${name}`, isError: true };
-  if (turn?.talking && NOT_IN_A_TALK.includes(name)) return { result: "The clock is stopped in a talk window, and the player stays where they are, so that can't happen here. Just answer in words.", isError: true };
-  // In a written part, the written story is the only thing that can change the game.
-  if (turn?.scene && name !== "follow_scene") return { result: "This part of the story is written in advance, so nothing changes here except through follow_scene: give the number of the written choice the player's words mean, or 0 and answer them in a few words.", isError: true };
+  if (turn?.talking && NOT_IN_A_TALK.includes(name)) return { result: "The clock is stopped in a talk window, and the player stays where they are, so that can't happen in a conversation.", isError: true };
   const problem = validate(def, input);
   if (problem) return { result: problem, isError: true };
   try {

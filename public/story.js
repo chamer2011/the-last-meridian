@@ -1,4 +1,4 @@
-// Reads the game master's text and works out what each piece is: narration, someone
+// Reads the story's text and works out what each piece is: narration, someone
 // speaking, a consequence or a choice. Nothing here touches the screen, so the browser,
 // the server and the tests can all use it.
 
@@ -315,7 +315,7 @@ export function findLoreIds(text, index) {
   return ids;
 }
 
-// Finds the entry for a name as the AI wrote it, such as "Old Voss" for Voss.
+// Finds the entry for a name as the story wrote it, such as "Old Voss" for Voss.
 export function findLoreEntry(name, index) {
   const exact = index.byAlias.get(name);
   if (exact) return exact;
@@ -359,7 +359,7 @@ function peopleNamedIn(text, index) {
   return people;
 }
 
-// The AI doesn't always give speech its own line, so this works out who's talking from the
+// Speech doesn't always have its own line, so this works out who's talking from the
 // words around the quotes, and from who the passage was just talking about. When it's unclear,
 // a paragraph stays plain narration, because a wrong name is worse than none.
 export function attributeSpeech(blocks, index) {
@@ -417,7 +417,7 @@ export function loreEntries(staticLore, game) {
     return entry;
   });
   const known = new Set(staticLore.filter((e) => e.kind === "person").map((e) => e.person.toLowerCase()));
-  // People the game master has added in this campaign, from their files.
+  // People added in this campaign, from their files.
   for (const person of game?.people ?? []) {
     if (known.has(person.shortName.toLowerCase())) continue;
     known.add(person.shortName.toLowerCase());
@@ -447,7 +447,7 @@ export function loreEntries(staticLore, game) {
     });
   }
   for (const entry of game?.lore ?? []) {
-    // A name the AI gave as "The Rim" will often appear as "the Rim", or just "Rim".
+    // A name written as "The Rim" will often appear as "the Rim", or just "Rim".
     const article = entry.name.match(/^The\s+(.+)$/);
     entries.push({
       ...entry,

@@ -1,5 +1,5 @@
 // The star map: the chart of known space, with each place a button in its spot, and setting course. Everything
-// here is drawn from the game's state, and every button runs on this computer, without the AI.
+// here is drawn from the game's state, and every button runs on this computer.
 
 import { api, el, folded } from "./dom.js";
 

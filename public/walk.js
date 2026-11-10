@@ -1,6 +1,5 @@
 // The walk-around view: each room is its own level, drawn in console art, with the story under it.
-// The server keeps the levels and the captain's place in them. All of this is free: it never uses
-// the AI. The player walks freely, with the keys or a click (public/move.js). Where people live their
+// The server keeps the levels and the captain's place in them. The player walks freely, with the keys or a click (public/move.js). Where people live their
 // own days, the clock runs until Space pauses it, and this page asks the server twice a second where
 // everyone has got to.
 
@@ -83,7 +82,7 @@ const anotherWindow = () => {
   return Boolean(g.combat || g.check || g.talk || g.computer || walk.plan || app.bagOpen?.() || app.questsOpen?.());
 };
 
-// While the AI is writing or another window is up, the captain stays where they are.
+// While the story is being told or another window is up, the captain stays where they are.
 function cannotWalk() {
   const { ui } = app;
   return ui.streaming || ui.waiting || anotherWindow();
@@ -686,7 +685,7 @@ async function tick() {
   try {
     applyTick(await api("/api/tick", { ms: TICK_TIME, rate: SPEEDS[walk.speed].rate, drawn: ui.game.walk.here.drawn ?? 0 }));
   } catch {
-    // Most likely the game master has just started writing. The next tick looks again.
+    // Most likely a turn of the story has just started. The next tick looks again.
   }
   walk.ticking = false;
 }
@@ -790,16 +789,9 @@ function closeWindow() {
   app.render();
 }
 
-// A thing with a written result, or a door with a rule, answers from its file right here in the window, for free.
-// With an AI game master, anything else is the player's next line in the story.
+// A thing with a written result, or a door with a rule, answers from its file right here in the window.
 async function useThing() {
   const thing = walk.thing;
-  if (app.ui.game.mode !== "written" && !thing.written) {
-    walk.thing = null;
-    walk.looked = false;
-    app.sendChat({ text: thing.use });
-    return;
-  }
   try {
     const reply = await api("/api/walk", { action: thing.door ? "ask" : "use", key: thing.door ? thing.key : thing.id });
     app.ui.game = reply.game;
@@ -876,9 +868,8 @@ function thingChoices(thing) {
   if (thing.person) return personChoices(thing);
   if (thing.holds) return [["Open", "look through it, beside your pack", () => openStore(thing)], ["Close", "", closeWindow]];
   if (thing.actions || thing.part) return [...(thing.actions ?? []).map((action) => [action.label, action.detail, () => workOn(thing, action.id)]), ["Close", "", closeWindow]];
-  const written = app.ui.game.mode === "written" || Boolean(thing.written);
   return [
-    ...(thing.done ? [] : [[thing.door ? "Ask to go through" : "Use", thing.have ? "you're already carrying one" : written ? "free" : "this goes to the story, as your next action", useThing, thing.have]]),
+    ...(thing.done ? [] : [[thing.door ? "Ask to go through" : "Use", thing.have ? "you're already carrying one" : "", useThing, thing.have]]),
     ["Close", "", closeWindow],
   ];
 }
@@ -1010,7 +1001,6 @@ function markBox(key) {
 // over first, and Look looks from where the player stands. A click anywhere else, Escape, or walking puts it away.
 const menuJustShut = () => Date.now() - (walk.menuShut ?? 0) < 400;
 const sentence = (words) => (words ? `${words.charAt(0).toUpperCase()}${words.slice(1)}.` : "");
-const usedBy = (thing) => (app.ui.game.mode === "written" || thing.written ? "free" : "this goes to the story, as your next action");
 
 function openMenu(key, point) {
   if (cannotWalk() || !app.ui.game?.walk || !targetOf(key)) return;
@@ -1100,7 +1090,7 @@ function menuFor(target) {
       theme: "gold",
       items: [
         { label: "Look", run: () => openThing(thing.id) },
-        { label: "Use", detail: thing.have ? "you're already carrying one" : usedBy(thing), disabled: Boolean(thing.have), run: there(() => useThing()) },
+        { label: "Use", detail: thing.have ? "you're already carrying one" : "", disabled: Boolean(thing.have), run: there(() => useThing()) },
       ],
     };
   }
@@ -1129,7 +1119,7 @@ function menuFor(target) {
         theme: "amber",
         items: [
           { label: "Look", run: () => openDoor(exit.key) },
-          { label: "Ask to go through", detail: usedBy(exit), run: there(() => useThing()) },
+          { label: "Ask to go through", run: there(() => useThing()) },
         ],
       };
     }

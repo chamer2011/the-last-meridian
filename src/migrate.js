@@ -196,7 +196,7 @@ function fromVersion11(save) {
   return { ...save, version: 12, world: newWorld(save) };
 }
 
-// A game from before there was a written story has an AI game master, and keeps it.
+// A game from before there was a written story had an AI game master (and since version 19, the written story).
 function fromVersion14(save) {
   return { ...save, version: 15, mode: "ai", scene: null, flags: {}, lastCheck: null, lastFight: null };
 }
@@ -238,6 +238,22 @@ function fromVersion17(save) {
   return { ...save, version: 18, command: newCommandState(save) };
 }
 
+// Version 19 is the game without an AI game master. A game the AI was running opens as a written game: what was kept
+// for the AI goes (its side of the conversation, and the notes it hadn't read yet), and the story says so once, which
+// also stops the AI's last choices being offered, since only it could answer them. A talk the AI was playing closes.
+function fromVersion18(save) {
+  const { ai: _ai, mode, pendingEvents: _events, ...rest } = save;
+  const game = { ...rest, version: 19 };
+  if ((mode ?? "ai") === "ai" && game.transcript?.length) {
+    game.transcript = [...game.transcript, { role: "notice", text: "[STORY] The AI game master has gone from the game. From here, the written story runs it: a written scene under way carries on, and the Leads menu has the written stories.", turnover: true }];
+  }
+  if (game.talk && !game.talk.written) game.talk = null;
+  if (game.talk) delete game.talk.unheard;
+  if (game.world) delete game.world.unheard;
+  if (game.ship) delete game.ship.unheard;
+  return game;
+}
+
 export function migrateGame(save) {
   if (!save) return save;
   let game = save;
@@ -258,6 +274,7 @@ export function migrateGame(save) {
   if (game.version < 16) game = fromVersion15(game);
   if (game.version < 17) game = fromVersion16(game);
   if (game.version < 18) game = fromVersion17(game);
+  if (game.version < 19) game = fromVersion18(game);
   // A place that's gone from the world's files can't hold anyone, and factions added since this save was made need a standing.
   if (!LOCATIONS[game.location]) game.location = "meridian";
   game.factions ??= {};

@@ -11,7 +11,7 @@ process.env.GAME_DATA_DIR ??= fs.mkdtempSync(path.join(os.tmpdir(), "meridian-de
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const { mapFor, walkCommand, walkView } = await import("../src/walk.js");
 const { afterDeedFight, isWary, pocketDifficulty, settleDeed } = await import("../src/deeds.js");
-const { aiSnapshot, publicState } = await import("../src/rules.js");
+const { publicState } = await import("../src/rules.js");
 const { DEEDS, PARLEY } = await import("../src/world.js");
 const { ENEMIES, LOCATIONS } = await import("../src/data.js");
 const sys = await import("../src/systems.js");
@@ -56,7 +56,6 @@ test("a pocket is a Stealth check as hard as the person's Awareness, and a clean
   assert.ok(isWary(game, "meridian", voss.key));
   assert.equal(personNamed(game, /Voss/).wary, true);
   assert.throws(() => walkCommand(game, { action: "pickpocket", key: voss.key }), /hand on their pocket/);
-  assert.ok(game.pendingEvents.some((line) => /picked .*Voss's pocket .* and got \d+ credits\. Nobody noticed/.test(line)));
   assert.equal(game.ship.morale, newGame().ship.morale, "nobody noticed, so nothing's lost");
   // A day later, she's forgotten about it.
   game.clock.hours += DEEDS.pickpocket.wary_hours + 1;
@@ -79,7 +78,6 @@ test("caught with a hand in a pocket: morale on your own ship, standing elsewher
   // The bridge has a camera, so the alarm rings.
   assert.ok(sys.alarmRinging(game, "meridian"), "the camera saw it");
   assert.match(lines.join("\n"), /\[ALARM\] The alarm is ringing/);
-  assert.ok(game.pendingEvents.some((line) => /tried to pick .*Voss's pocket .* and was caught/.test(line)));
   assert.match(game.transcript.at(-1).text, /catches your hand/);
 
   // At Haven it's the station that thinks less of you.
@@ -112,7 +110,6 @@ test("attacking someone with a file starts the fight from their file, sours them
   assert.equal(game.ship.morale, morale + DEEDS.attack.morale);
   assert.equal(game.contacts.find((one) => one.name === "Ilya Voss").attitude, "hostile");
   assert.ok(game.flags.attacked_voss);
-  assert.ok(game.pendingEvents.some((line) => /attacked .*Voss at CFS Meridian, out of nowhere/.test(line)));
   assert.deepEqual(game.deedFight, { place: "meridian", key: voss.key, id: "voss", short: voss.short });
   // The player wins. She's off to get patched up, and back after the deeds file's hours.
   game.combat = null;
@@ -160,6 +157,5 @@ test("showing the game, with its pockets and wary people, changes nothing in the
   const before = JSON.stringify(game);
   walkView(game);
   publicState(game);
-  aiSnapshot(game);
   assert.equal(JSON.stringify(game), before);
 });

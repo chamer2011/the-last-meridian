@@ -1,5 +1,5 @@
 // People living their days: sleeping, eating, working, and walking from room to room. This is the
-// start of the world engine. It has no screens and no AI, so it's free to run, and all it knows is
+// start of the world engine. It has no screens, and all it knows is
 // what time it is and where everyone should be. The clock can move by a moment or by a year, and
 // everyone ends up where their day says they should be, with or without the captain. Only the place
 // the captain's in gets walked through step by step. Everywhere else, people are simply where their

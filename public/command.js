@@ -3,7 +3,7 @@
 // and the watch bill, with everyone's job, which the captain changes with two clicks. The captain also answers the
 // first officer's recommendations, gives a post to someone else with two clicks, and can hold the reviews. At the top,
 // how things stand aboard: the officers' loyalty, the council's confidence, and how far a mutiny has got. It's drawn
-// from the game's state (src/command.js), and nothing here calls the AI. A card for one of the story's people opens
+// from the game's state (src/command.js). A card for one of the story's people opens
 // their registry printout.
 
 import { api, el, folded, meter } from "./dom.js";

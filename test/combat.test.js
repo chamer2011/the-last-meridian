@@ -193,8 +193,8 @@ test("the fight is lost when the player falls, even with followers still standin
   assert.equal(outcome.result, "defeat");
   assert.ok(game.hp >= 1);
   assert.equal(outcome.followers[0].down, false);
-  assert.match(game.pendingEvents[0], /lost the fight/);
-  assert.match(game.pendingEvents[0], /Fighting beside them: Commander Ilya Voss \(\d+\/\d+ health\)/);
+  assert.match(outcome.summary, /^You lost the fight/);
+  assert.equal(outcome.followers[0].name, "Commander Ilya Voss");
 });
 
 test("people arrive on their round, on either side", () => {
@@ -399,18 +399,19 @@ test("rewards add up across the enemies, and followers take a share of the credi
   assert.match(outcome.summary, /^You and your followers beat the Dock Thug and the second Dock Thug in \d+ rounds?\.$/);
 });
 
-test("the AI hears who was in the fight, and who was left standing", () => {
+test("the fight's end says who was beside the player, and who was left standing", () => {
   const game = newGame();
   startCombat(game, "tarrow", { allies: ["voss", "marrow"] });
   game.combat.allies[1].hp = 0;
   game.combat.enemies[0].hp = 1;
   game.combat.enemies[0].defense = -100;
-  playOut(game);
-  const told = game.pendingEvents[0];
-  assert.match(told, /Lieutenant Kara Tarrow/);
-  assert.match(told, /the story decides/);
-  assert.match(told, /Commander Ilya Voss \(\d+\/\d+ health\)/);
-  assert.match(told, /Chief Engineer Dunn Marrow \(knocked out/);
+  const outcome = playOut(game);
+  assert.equal(outcome.result, "victory");
+  assert.deepEqual(game.lastFight.enemies, ["tarrow"]);
+  const voss = outcome.followers.find((one) => one.name === "Commander Ilya Voss");
+  const marrow = outcome.followers.find((one) => one.name === "Chief Engineer Dunn Marrow");
+  assert.equal(voss.down, false);
+  assert.equal(marrow.down, true, "knocked out");
 });
 
 test("running away takes the followers along", () => {
@@ -420,7 +421,8 @@ test("running away takes the followers along", () => {
   game.combat.enemies[0].hp = 100000;
   const outcome = playOut(game, { type: "flee" });
   assert.equal(outcome.result, "fled");
-  assert.match(game.pendingEvents[0], /followers got out/);
+  assert.match(outcome.summary, /^You got away/);
+  assert.equal(outcome.followers.length, 1, "Voss got out with them");
   assert.equal(game.bestiary.dock_thug.fled, 1);
 });
 
@@ -516,7 +518,7 @@ test("a save from the middle of a one-on-one fight carries on with two sides", (
     intro: "It hovers.",
   };
   const migrated = migrateGame(save);
-  assert.equal(migrated.version, 18);
+  assert.equal(migrated.version, 19);
   const fight = view(migrated);
   assert.equal(fight.round, 5);
   assert.equal(fight.enemies[0].hp, 3);
@@ -546,14 +548,14 @@ test("a simulated fight in an older save takes its lines back out of the story",
     snapshot: { hp: game.hp },
   };
   const migrated = migrateGame(save);
-  assert.deepEqual(migrated.transcript.filter((entry) => !entry.text.startsWith("[FLEET]")).map((entry) => entry.text), ["The story."]);
+  assert.deepEqual(migrated.transcript.filter((entry) => !entry.text.startsWith("[FLEET]") && !entry.turnover).map((entry) => entry.text), ["The story."]);
   assert.equal(view(migrated).training, true);
 });
 
 test("a save with no fight going just moves up a version", () => {
   const save = { ...structuredClone(newGame()), version: 4, bestiary: {}, pendingEvents: [], combat: null };
   const migrated = migrateGame(save);
-  assert.equal(migrated.version, 18);
+  assert.equal(migrated.version, 19);
   assert.equal(migrated.combat, null);
 });
 

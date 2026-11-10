@@ -5,7 +5,7 @@
 // review their people every so often, warn and relieve whoever's done badly, and fill the posts left empty; people
 // remember what was done to them, and the ambitious ask for their boss's post. Their loyalty to the captain moves with
 // the days, the council has a confidence of its own, and when both run low a mutiny builds, from grumbling to a
-// delegation to the ship being taken. Nothing here calls an AI, and reading it changes nothing.
+// delegation to the ship being taken. Reading it changes nothing.
 
 import { FACTION_BELIEFS, SKILLS } from "./character-data.js";
 import { FACTIONS, LOCATIONS } from "./data.js";
@@ -1400,53 +1400,6 @@ export function storyCommand(game, step, place = SHIP_PLACE) {
   return notes;
 }
 
-// ---- What the AI is told ---------------------------------------------------------------------------
-
-// One line for the AI's state: who holds what where it isn't how the game began, who's in the brig, and how the officers
-// and the council stand, rounded to fives so the line doesn't change with every turn.
-export function commandLine(game, place = SHIP_PLACE) {
-  const model = commandOf(place);
-  const state = stateOf(game, place);
-  if (!model || !state) return null;
-  const changed = [];
-  for (const post of model.posts) {
-    const key = holderKey(game, place, post.id);
-    if (post.id === model.chairPost) {
-      if (state.deposed && key && key !== YOU) changed.push(`${personCalled(game, key)} is captain, since the officers relieved the player of command on day ${state.deposed.day}`);
-      continue;
-    }
-    const start = model.start[post.id]?.key ?? null;
-    if (key === start) continue;
-    changed.push(key ? `${key === YOU ? "the player" : personCalled(game, key)} is ${post.title}${start ? ` in place of ${personCalled(game, start)}` : ""}` : `nobody is ${post.title}`);
-  }
-  const brig = Object.keys(state.brig ?? {}).map((key) => personCalled(game, key));
-  const five = (n) => Math.round((n ?? 0) / 5) * 5;
-  const parts = [
-    changed.length ? changed.join("; ") : "everyone holds the post they began the game in",
-    brig.length ? `in the brig: ${listWords(brig)}` : null,
-    model.mutiny ? `the officers' loyalty to the captain is about ${five(officersLoyalty(game, place))}/100 and the council's confidence about ${five(confidenceOf(game, place))}/100` : null,
-    model.mutiny && mutinyStage(game, place) > 0 ? `a mutiny is brewing, at ${STAGE_WORDS[mutinyStage(game, place)]}` : null,
-  ].filter(Boolean);
-  return `Chain of command aboard the ${model.name}: ${parts.join("; ")}.`;
-}
-
-// Someone's place in the ship's chain of command now, in words, when it isn't the one the game began with: a post
-// they were given, a job after losing one, or the brig. Null when it's as it was.
-export function roleNow(game, key, place = SHIP_PLACE) {
-  const model = commandOf(place);
-  const state = stateOf(game, place);
-  if (!model || !state || !key || key === YOU) return null;
-  if (state.brig?.[key]) return `locked in the brig, until day ${state.brig[key].until}`;
-  const held = postOf(game, place, key);
-  const began = Object.entries(model.start).find(([, one]) => one.key === key)?.[0] ?? null;
-  if (held === began && held) return null;
-  if (held === model.chairPost) return WORLD_CHARACTERS[key]?.chair ? null : `captain of the ${model.name} now`;
-  if (held) return `the ${model.name}'s ${postById(place, held).title} now${began ? `, no longer ${postById(place, began).title}` : ""}`;
-  if (!began) return null;
-  const job = jobOf(game, place, key);
-  return `relieved as the ${postById(place, began).title}, and ${job === null || job === undefined ? "one of the spare hands" : aJob(jobById(place, job)?.title ?? job)} now`;
-}
-
 // ---- Loyalty, the council's confidence, and mutiny ------------------------------------------------
 
 // The file's numbers for a mutiny: when it brews (morale and the officers' loyalty both under theirs), after how many
@@ -1786,7 +1739,6 @@ function takeShip(game, place, today, notes, { scene = true } = {}) {
   onRecord(game, "ship_taken_by_mutiny", `The officers took the ship from you on day ${today}, and ${personCalled(game, leader)} has the chair.`);
   const due = scene && aboard ? "brig" : null;
   calmDown(state, today, { due });
-  if (due) game.pendingEvents?.push("The officers have taken the ship, and the captain is under guard.");
   tell(game, place, notes, `The officers have taken the ship. ${upperFirst(name)} has the chair now${aboard ? ", and you're under guard in the brig" : ", and you aren't the captain any more"}.`, today);
 }
 
@@ -1826,11 +1778,9 @@ function startDelegation(game, place, state, today, notes) {
   const name = upperFirst(calledBy(game, place, m.ringleader));
   if (isCaptain(game)) {
     m.due = "delegation";
-    game.pendingEvents?.push(`${name} and some of the officers are asking to see the captain, together.`);
     tell(game, place, notes, `${name} and some of the officers are asking to see you, together. Carry on with the story to hear them.`, today);
   } else if (aboardShip(game)) {
     m.due = "conspiracy";
-    game.pendingEvents?.push(`${name} wants a quiet word with the player, away from the captain.`);
     tell(game, place, notes, `${name} wants a quiet word with you, away from ${captainWords(game, place)}. Carry on with the story to hear it.`, today);
   } else {
     const raised = raiseRations(game, "standard");

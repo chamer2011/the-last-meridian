@@ -289,7 +289,7 @@ function personGraph() {
   if (L.place) { add(linkNode(`link_place_${L.place.id}`, "place", L.place.name, "Where they are.", "Their place")); ws.push({ from: "note", to: `link_place_${L.place.id}` }); }
   if (L.species) { add(linkNode(`link_species_${L.species.id}`, "species", L.species.name, "What they are.", "Their species")); ws.push({ from: "note", to: `link_species_${L.species.id}` }); }
   for (const one of L.stories ?? []) { add(linkNode(`link_story_${one.id}`, "story", one.title, "A story they're in.", "A story")); ws.push({ from: "note", to: `link_story_${one.id}` }); }
-  add({ id: "lines", kind: L.written ? "fact" : "stub", col: 4, name: "Written lines", text: L.written ? "What they say in a talk, written out. Open the tab to see and change it." : "Not written yet: the AI, or the stock lines, speak for them.", label: "Talking", lines: true });
+  add({ id: "lines", kind: L.written ? "fact" : "stub", col: 4, name: "Written lines", text: L.written ? "What they say in a talk, written out. Open the tab to see and change it." : "Not written yet: stock lines speak for them.", label: "Talking", lines: true });
   ws.push({ from: "note", to: "lines" });
   return { list, ws };
 }
@@ -680,7 +680,7 @@ const sceneRoute = () => `/api/board/${state.scenePrefix === "talk" ? "talk" : "
 // ---- Tabs, zoom and looking around ------------------------------------------------------------
 async function showTab(tab) {
   if (tab === "scene" && !state.written) {
-    say(state.kind === "person" ? `${state.item.name} has no written lines yet: the AI, or the stock lines, speak for them.` : `${S().title} has no written scene yet. The AI runs it from these notes.`, false);
+    say(state.kind === "person" ? `${state.item.name} has no written lines yet: stock lines speak for them.` : `${S().title} has no written scene yet. Until it has, it plays out by itself on the story clock.`, false);
     tab = "notes";
   }
   if (tab !== "file") state.lastBoard = tab;
@@ -1095,7 +1095,7 @@ function inspectNothing(inspector) {
       : state.kind === "story" ? "The story's notes as a board: the lead and the beats, the ways through, and the endings by name. Click an ending and the facts it leaves, what follows days later, and the stories that react to it unfold beside it. Click any box to read all of it and change it."
         : state.kind === "place" ? "The place as a board: what the player sees, the feel of it, its districts, what can happen there, and the people and stories here. Click any box to read all of it and change it."
           : state.kind === "person" ? "The person as a board: how the game sees them, their looks, personality, voice, goals and secrets, their numbers, how they fight, and where they belong. Click any box to read all of it and change it."
-            : state.kind === "species" ? "The species as a board: what the player reads, how the game master plays them, their numbers, and the people who are one. Click any box to read all of it and change it."
+            : state.kind === "species" ? "The species as a board: what the player reads, the notes on how they play, their numbers, and the people who are one. Click any box to read all of it and change it."
               : state.kind === "enemy" ? "The enemy as a board: what the player sees, what they say in a fight, who they fight for, and where they turn up. Their numbers are in the box on the left."
                 : state.kind === "item" ? "The item as a board: what the player reads, its effects, and where it's sold or found. Its numbers are in the box on the left."
                   : state.kind === "faction" ? "The faction as a board: what the player reads, what they believe, and their people, places, enemies and stories, each a box that opens."
@@ -1155,7 +1155,7 @@ function inspectNode(inspector, node) {
     node.ending !== undefined || node.fact !== undefined
       ? el("div", {}, el("label", { for: "edit-name" }, node.ending !== undefined ? "Its name, which other stories use. Leave it empty and it's made from the words." : "The fact's name, which conditions use"), nameBox, node.ending !== undefined ? row(button("Name it from the words", () => { nameBox.value = nameFrom(area.value); })) : null)
       : el("h3", {}, node.name),
-    el("label", { for: "edit-text" }, b.lines ? "One way through on each line" : b.items ? "One on each line" : b.checks ? "Checks that fit, one on each line: a skill, a colon, easy, moderate or hard, and what it's for" : node.kind === "ending" ? "What's true if the story ends this way" : node.kind === "fact" ? "The line the player and the AI read" : node.kind === "consequence" || node.kind === "clock" ? "What people hear" : node.kind === "react" ? "What changes in this story" : "The words"),
+    el("label", { for: "edit-text" }, b.lines ? "One way through on each line" : b.items ? "One on each line" : b.checks ? "Checks that fit, one on each line: a skill, a colon, easy, moderate or hard, and what it's for" : node.kind === "ending" ? "What's true if the story ends this way" : node.kind === "fact" ? "The line the player reads" : node.kind === "consequence" || node.kind === "clock" ? "What people hear" : node.kind === "react" ? "What changes in this story" : "The words"),
     area,
     checksArea ? el("label", { for: "edit-fights" }, "If it comes to a fight, one on each line: enemy ids, and when") : null,
     checksArea,
@@ -1842,7 +1842,7 @@ function inspectPart(inspector, node) {
     row(button("Keep", () => keepPart(node.part, area.value)), button("Undo", () => inspect())),
     row(button("+ a choice", () => keepPart(node.part, `${part.raw.replace(/\n+$/, "")}\n> Say what the player does -> ${state.scene.parts.find((one) => one.name !== part.name)?.name ?? part.name}\n`))),
     wires.some((one) => one.from === node.id) ? fill(el("div", { class: "choices" }), el("label", {}, "Where it leads"), ...wires.map((one, i) => (one.from === node.id ? button(`${one.words} → ${one.to.replace(/^p_/, "")}`, () => select({ wire: i }), { class: "small" }) : null))) : null,
-    part.ai ? hint(`A note for the AI: ${part.ai}`) : null,
+    part.ai ? hint(`A note for whoever writes: ${part.ai}`) : null,
     node.problem ? el("div", { class: "problems" }, ...state.scene.problems.filter((one) => one.includes(`part ${part.name}`)).map((one) => el("div", {}, one))) : null,
     hint("Keep changes the part and the file together. Save writes the file, and it plays the new version from the next turn."));
 }

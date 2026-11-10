@@ -452,7 +452,7 @@ test("roll_check opens a check, and the true roll comes out of it, with and with
     assert.equal(game.check, null);
     assert.match(outcome.math, /vs 16/);
     assert.match(game.transcript.at(-1).text, /^\[ROLL\] Lift: .* vs 16/);
-    assert.match(game.pendingEvents.splice(0).join(" "), /Rolled \d+/);
+    assert.equal(game.lastCheck.reason, "Lift");
   }
   const full = runTool(game, "roll_check", { skill: "persuasion", attribute: "might", difficulty: "easy", context: ["crowd", "authority"], audience: "voss", reason: "Loom" }, newTurnLimits());
   assert.ok(!full.isError, full.result);

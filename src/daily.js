@@ -1,7 +1,6 @@
 // What changes at each place from one day to the next, whether the captain is there or not: its
 // supplies, what they cost, and who has the most say there. It runs at each midnight, on this computer,
-// with no AI. The game master gets one short line about wherever the captain is, and hears about
-// anything big. world/daily.json has the places, the numbers and the words.
+// and the news says what's changed. world/daily.json has the places, the numbers and the words.
 //
 // Each place has a level for each of its supplies, where 100 is normal for that place. Levels drift
 // back toward normal by themselves, or toward whatever the places it depends on can send it, so a
@@ -30,7 +29,6 @@ const BLAME = 0.25;
 // Shares drift slowly back toward how they started, so nothing's settled for good.
 const SETTLE = 0.004;
 const MAX_NEWS = 40;
-const REPORT_LINES = 3;
 const RUMOR_DAYS = 8;
 const ROUND = 10;
 
@@ -68,7 +66,6 @@ export function newWorld(game) {
     seed: seedFrom(`${game.name}|world`),
     places: Object.fromEntries(Object.entries(PLACES).map(([id, file]) => [id, placeStart(file)])),
     news: [],
-    unheard: [],
   };
 }
 
@@ -101,8 +98,6 @@ function tell(game, world, place, text, notes, big = false) {
   const close = place === game.location || (aboardShip(game) && place === game.ship?.at);
   if (!close && !(big && knownPlace(game, place))) return;
   notes.push(`[WORLD] ${text}`);
-  world.unheard.push(text);
-  if (world.unheard.length > REPORT_LINES) world.unheard.shift();
 }
 
 const placeText = (text, place) => text.replaceAll("{place}", LOCATIONS[place]?.name ?? place);
@@ -277,47 +272,6 @@ export const holdingsOf = (game, faction) => Object.entries(game.world?.places ?
   .filter(([id, state]) => state.holder === faction && knownPlace(game, id))
   .map(([id]) => LOCATIONS[id]?.name ?? id);
 
-// ---- What the game master gets -------------------------------------------------
-
-// Rounded and in plain words, so this line only changes when something's really changed.
-export function placeLine(game) {
-  const id = game.location;
-  const state = game.world?.places[id];
-  if (!state) return null;
-  const shares = ranked(state).map(([side, share]) => `${side} ${Math.round(share / 5) * 5}`).join(", ");
-  const goods = Object.entries(state.goods).map(([good, level]) => `${good} ${levelName(level)}`).join(", ");
-  const now = going(id, state);
-  return `${LOCATIONS[id].name} today: ${sideName(id, state.holder)} holds it (${shares}). Supplies: ${goods}.${now.length ? ` Going on: ${now.join(" ")}` : ""}`;
-}
-
-export function worldReport(game) {
-  const world = game.world;
-  if (!world?.unheard?.length) return null;
-  const lines = world.unheard.splice(0);
-  return `<world_report>News since your last message: ${lines.join(" ")} Bring in what matters to the story, or let it pass.</world_report>`;
-}
-
-export function markWorldHeard(game) {
-  if (game.world) game.world.unheard = [];
-}
-
-// How things stand everywhere the captain knows of, or at one place, for when a scene needs it.
-export function worldLines(game, place) {
-  const line = (id) => {
-    const state = game.world.places[id];
-    const shares = ranked(state).map(([side, share]) => `${side} ${Math.round(share / 5) * 5}`).join(", ");
-    const goods = Object.entries(state.goods).map(([good, level]) => `${good} ${levelName(level)}`).join(", ");
-    const now = going(id, state);
-    return `${LOCATIONS[id].name} (${id}): ${sideName(id, state.holder)} holds it (${shares}). ${goods ? `Supplies: ${goods}.` : ""}${now.length ? ` Going on: ${now.join(" ")}` : ""}`;
-  };
-  worldOf(game);
-  if (place) {
-    if (!game.world.places[place]) throw new Error(`Nothing's tracked at ${place}. These are: ${Object.keys(game.world.places).join(", ")}.`);
-    return line(place);
-  }
-  return Object.keys(game.world.places).filter((id) => knownPlace(game, id)).map(line).join("\n");
-}
-
 // What people are passing around, for rumors. It's the freshest news, starting with what's closest to here.
 export function worldRumors(game, count = 1) {
   const world = game.world;
@@ -347,7 +301,7 @@ export function pushPlace(game, place, { goods = {}, sides = {} }) {
 const LEVEL_LIMIT = 60;
 const SHARE_LIMIT = 30;
 
-// The game master changes things only through this, after something in the story.
+// The story changes things only through this, after something it tells.
 export function changePlace(game, { place, food, fuel, medicine, parts, side, amount = 0, news, reason }) {
   const world = worldOf(game);
   const state = world.places[place];

@@ -1,7 +1,6 @@
 // The Meridian on her own: where she is, what's aboard her (food, medicine and parts, and the fuel in her tank),
 // how her people are holding up, the rations, who captains her when the player doesn't, and the star map's
-// jumps. Everything here runs on this computer. The game master only ever gets a compact line about it, and a
-// short report when something has happened, so none of this adds to what a turn costs.
+// jumps. Everything here runs on this computer.
 //
 // world/ship.json has the numbers and the words, and world/starmap.json has the chart. shipLedger is the one
 // place that works out a day's numbers, so anything that should change them later belongs there. The fleet the
@@ -33,7 +32,6 @@ const FIRST = { food: ["shuttle_stores", "pantry"], medicine: ["medicine_cabinet
 const STORY_FOOD_CRATES = 10;
 const aboardCount = (game, id) => (id === "fuel" ? null : countAboard(game, SHIP_ID, STORE_ITEMS[id]));
 const MAX_LOG = 40;
-const MAX_REPORT_LINES = 5;
 
 const round1 = (n) => Math.round(n * 10) / 10;
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -79,8 +77,6 @@ export function newShipState(game) {
     out: {},
     warned: {},
     deaths: 0,
-    // What the game master hasn't been told yet, and what the Ship menu shows.
-    unheard: [],
     log: [],
     seed: seedFrom(`${game.name}|ship`),
   };
@@ -181,19 +177,14 @@ function daysLeft(game, id, ledger) {
 
 // ---- What the ship says ------------------------------------------------
 
-// A line for the story and the Ship menu. The game master hears it with its next message too, unless it's the
-// one that made the time pass, in which case it hears straight away. Only the newest line about each supply goes
-// out, since "running low" is old news once it's run out.
-function note(game, notes, tag, text, { heard = true, about = null } = {}) {
+// A line for the story and the Ship menu.
+function note(game, notes, tag, text) {
   const ship = game.ship;
   ship.log.push({ day: clockLabel(game), tag, text });
   if (ship.log.length > MAX_LOG) ship.log.splice(0, ship.log.length - MAX_LOG);
   // Someone who isn't with the ship doesn't hear about any of this, unless it's big enough to be news.
   if (!aboardShip(game)) return;
   notes.push(`[${tag}] ${text}`);
-  if (!heard) return;
-  if (about) ship.unheard = ship.unheard.filter((entry) => entry.about !== about);
-  ship.unheard.push({ about, text });
 }
 
 // A shortage ended by buying something or by a story reward gets said now, not tomorrow.
@@ -601,7 +592,7 @@ export function shipJumped(game, destination) {
   shipOf(game).at = LOCATIONS[destination] ? destination : null;
 }
 
-// ---- The player's decisions, all made here without the game master ------
+// ---- The player's decisions -------------------------------------------
 
 function setRations(game, id) {
   const ship = shipOf(game);
@@ -655,10 +646,8 @@ function setCourse(game, id) {
   const { message, notes } = travel(game, id);
   if (danger >= 2 && from !== game.location) riskyJump(game, danger);
   if (from !== game.location) {
-    // The written story can have an arrival for this place, played when the player continues.
+    // The written story can have an arrival for this place, or a part waiting for it, played when the player continues.
     game.arrived = game.location;
-    if (isCaptain(game)) game.pendingEvents.push(jumped ? `On the captain's order, the Meridian jumped to ${place.name}.` : `The captain crossed over to ${place.name}.`);
-    else game.pendingEvents.push(jumped ? `The player paid ${cost.fare} credits for passage to ${place.name}, on someone else's ship. They've just arrived, alone.` : `The player crossed over to ${place.name}.`);
   }
   return { message, notes: [`[NAV] ${message}`, ...notes], moved: from !== game.location };
 }
@@ -856,39 +845,7 @@ export function chartEntry(game, id) {
   };
 }
 
-// ---- What the game master gets ------------------------------------------
-
-function dayCount(game, id, ledger) {
-  if (isOut(game, id)) return "OUT";
-  const days = daysLeft(game, id, ledger);
-  return days === null ? "steady" : `${Math.floor(days)}d`;
-}
-
-// One compact line in the state block. It's rounded, so that it doesn't change on every turn.
-export function shipLine(game) {
-  const ship = shipOf(game);
-  const ledger = shipLedger(game);
-  const supplies = SUPPLY_IDS.map((id) => `${id} ${dayCount(game, id, ledger)}`).join(", ");
-  const chair = chairOf(game);
-  if (chair && !aboardShip(game)) return `The Meridian, under ${chair.name}, isn't the player's to command, and they only know what's got around: last heard of at ${placeName(ship)}.`;
-  return `${chair ? `The Meridian, under ${chair.name}, isn't the player's to command: ` : "Aboard: "}${ship.aboard.toLocaleString("en-US")} people, health ${ship.health}/100, at ${placeName(ship)}. Left: ${supplies}. Rations ${RATIONS[ship.rations].name.toLowerCase()}.`;
-}
-
-// What's happened since the game master last heard. It goes out once, with the next message.
-export function shipReport(game) {
-  const ship = game.ship;
-  if (!ship?.unheard?.length) return null;
-  const lines = ship.unheard.splice(0);
-  const shown = lines.slice(-MAX_REPORT_LINES);
-  const older = lines.length - shown.length;
-  return `<ship_report>Happened aboard the Meridian by itself since your last message${older ? `, among ${older} smaller things` : ""}: ${shown.map((entry) => entry.text).join(" ")} Bring what matters into the story as the serious thing it is.</ship_report>`;
-}
-
-export function markShipHeard(game) {
-  if (game.ship) game.ship.unheard = [];
-}
-
-// Someone's taken the chair, or lost it, in the story. It takes both sides to mean it, so this comes from the game master.
+// Someone's taken the chair, or lost it, in the story.
 export function changeCommand(game, { takes, reason }) {
   const ship = shipOf(game);
   game.role ??= { id: "captain", captain: true };

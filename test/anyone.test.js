@@ -11,18 +11,17 @@ import { after, before, test } from "node:test";
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-anyone-"));
 process.env.GAME_DATA_DIR = dataDir;
 
-const { SYSTEM_PROMPT, runTurn } = await import("../src/ai.js");
 const { findCharacter } = await import("../src/campaign.js");
 const { NOTABLES, SKILLS } = await import("../src/character-data.js");
 const { checkView, startCheck } = await import("../src/checks.js");
 const { buildCharacter, createGameFromDraft, creatorSetup, normalizeDraft, randomDraft } = await import("../src/creator.js");
-const { FACTIONS, LOCATIONS, STARTING_QUESTS, WORLD_BIBLE } = await import("../src/data.js");
-const { chairOf, changeCommand, shipCommand, shipLine, shipReport, shipView } = await import("../src/ship.js");
+const { FACTIONS, LOCATIONS, STARTING_QUESTS } = await import("../src/data.js");
+const { chairOf, changeCommand, shipCommand, shipView } = await import("../src/ship.js");
 const { peopleAboard } = await import("../src/life.js");
 const { migrateGame } = await import("../src/migrate.js");
 const { projectDir } = await import("../src/paths.js");
-const { START_LIST, aboardShip, isCaptain, jobHere, openingFor, startOf } = await import("../src/role.js");
-const { aiDossier, aiSnapshot, passTime, publicState, rest, restCost, travel, workShift } = await import("../src/rules.js");
+const { START_LIST, aboardShip, isCaptain, jobHere, startOf } = await import("../src/role.js");
+const { passTime, publicState, rest, restCost, travel, workShift } = await import("../src/rules.js");
 const { countAboard, logisticsOf, takeAboard } = await import("../src/logistics.js");
 
 // The ship's food, medicine and parts are what's in her rooms' stores (world/logistics): a test counts them, empties
@@ -49,10 +48,10 @@ function withoutSources(run) {
     model.refills = refills;
   }
 }
-const { arcBrief, leadsHere, storyView, threadNotes } = await import("../src/story-library.js");
+const { leadsHere, storyView } = await import("../src/story-library.js");
 const { hasMovedOn, leadNow } = await import("../src/story-clock.js");
 const { newTurnLimits, runTool } = await import("../src/tools.js");
-const { mapFor, roomHere, walkLine, walkOf, walkView } = await import("../src/walk.js");
+const { mapFor, roomHere, walkOf, walkView } = await import("../src/walk.js");
 const { SHIP_DATA, STAR_MAP, STORY_CLOCK, WORLD_MAPS, WORLD_THREADS } = await import("../src/world.js");
 
 const CHAIR = SHIP_DATA.chair;
@@ -124,7 +123,7 @@ test("three people could have the chair, each with a file, a post, a day, and th
 
 test("a captain's game hasn't changed: it starts where it always did, with the people it always had", () => {
   const game = createGameFromDraft(randomDraft({ seed: 21, archetype: "officer" }));
-  assert.equal(game.version, 18);
+  assert.equal(game.version, 19);
   assert.deepEqual(game.role, { id: "captain", captain: true });
   assert.equal(isCaptain(game), true);
   assert.equal(game.location, "meridian");
@@ -134,10 +133,6 @@ test("a captain's game hasn't changed: it starts where it always did, with the p
   assert.equal(publicState(game).role.captain, true);
   assert.equal(publicState(game).role.job, null);
   assert.equal(chairOf(game), null);
-  assert.match(aiSnapshot(game), /^Day 1, 08:00\. Captain /);
-  assert.match(shipLine(game), /^Aboard: 900 people/);
-  assert.match(aiDossier(game), /Their place in the world: The captain of the CFS Meridian/);
-  assert.equal(openingFor(game), "The game is starting. Open the story: The Meridian has just picked up the mysterious Beacon signal, and the player has just been made captain. Introduce Commander Voss.");
   assert.match(publicState(game).people.find((person) => person.id === "voss").role, /^Your /);
 });
 
@@ -163,12 +158,6 @@ for (const id of OTHERS) {
     assert.equal(shown.role.job.name, start.job.name);
     assert.ok(shown.locations.some((place) => place.here));
     for (const person of start.people) assert.ok(!shown.contacts.find((contact) => contact.name === NOTABLES[person].name).note.includes("Your "), "nobody here is theirs to command");
-    assert.ok(aiSnapshot(game).startsWith(`Day 1, 08:00. ${game.name}, ${start.short}, not in command`));
-    assert.match(aiDossier(game), /They are not the captain\./);
-    assert.ok(aiDossier(game).includes(start.gm));
-    assert.ok(openingFor(game).includes(start.opening));
-    assert.ok(openingFor(game).startsWith("The game is starting. Open the story:"));
-    assert.ok(!openingFor(game).includes("made captain"));
   });
 }
 
@@ -246,7 +235,7 @@ test("passage costs credits and time, moves them and nobody else, and doesn't to
   assert.equal(game.ship.at, at);
   assert.equal(game.clock.hours, hours + entry.hours);
   assert.equal(game.walk, null);
-  assert.ok(game.pendingEvents.some((line) => line.includes("passage to Kessara Drift") && line.includes("alone")));
+  assert.equal(game.arrived, "kessara", "a written arrival there would play when they carry on");
   assert.match(result.message, /^Took passage/);
 });
 
@@ -411,7 +400,7 @@ test("the ship goes on by itself: whoever has the chair moves her when she needs
     days(game, 1);
     if (game.ship.chair.funds < before + CHAIR.income) bought = true;
     if (game.ship.at) places.add(game.ship.at);
-    assert.equal(game.pendingEvents.length, 0, "nothing's waiting on them");
+    assert.equal(game.arrived ?? null, null, "nothing's waiting on them");
     assert.equal(game.location, "haven", "and they haven't been taken anywhere");
   }
   assert.equal(game.credits, credits, "none of that came out of their pocket");
@@ -431,9 +420,6 @@ test("someone away from the Meridian doesn't go hungry with her, or hear her tro
   assert.ok(!away.conditions.some((condition) => condition.id === "underfed"));
   assert.ok(!notes.some((line) => line.startsWith("[SUPPLY]") || line.startsWith("[COUNCIL]")), notes.join(" | "));
   assert.ok(away.ship.log.length > 0, "it's still happening, and it's in the ship's own log");
-  assert.equal(shipReport(away), null);
-  assert.match(shipLine(away), /only know what's got around/);
-  assert.ok(!shipLine(away).includes("Left:"), "and the game master isn't reminded of what they can't know");
   const aboard = newGame("engine_hand");
   empty(aboard, "food");
   aboard.ship.chair.funds = 0;
@@ -441,7 +427,6 @@ test("someone away from the Meridian doesn't go hungry with her, or hear her tro
   const heard = withoutSources(() => days(aboard, 6));
   assert.ok(aboard.conditions.some((condition) => condition.id === "underfed"), "aboard, they eat what everyone eats");
   assert.ok(heard.some((line) => line.startsWith("[SUPPLY]")));
-  assert.match(shipLine(aboard), /isn't the player's to command: \d+ people/);
 });
 
 test("whoever's on the dock sees the Meridian come and go", () => {
@@ -545,7 +530,6 @@ test("the story can take a captain out of the chair, and the world carries on wi
   assert.equal(shown.chair, chair.name);
   assert.throws(() => shipCommand(game, { action: "rations", id: "half" }), /has the chair/);
   assert.equal(restCost(game), 0, "they still have a bunk aboard");
-  assert.match(aiSnapshot(game), /former captain, not in command/);
   days(game, 30);
   const already = tool(game, "change_command", { takes: false, reason: "Again" });
   assert.match(already.result, /aren't in command anyway/);
@@ -578,53 +562,22 @@ test("the leads they see are written for them, and the captain's own business is
   for (const lead of leadsHere(captain)) assert.equal(lead.lead, WORLD_THREADS[lead.id].lead, "a captain's leads are as they were");
 });
 
-test("a story that's moved on reads as what's got around, and it can still be taken up", () => {
+test("a story that's moved on reads as what's got around", () => {
   const game = newGame("miner");
   game.level = 5;
   for (let day = 0; day < 60 && !hasMovedOn(game, "out_cinder_strike"); day += 1) days(game, 1);
   assert.ok(hasMovedOn(game, "out_cinder_strike"));
   const stage = STORY_CLOCK.threads.out_cinder_strike.stages[game.story.clock.threads.out_cinder_strike.stage - 1];
   assert.equal(leadNow(game, "out_cinder_strike"), stage.news);
-  const { result, isError } = tool(game, "read_thread", { id: "out_cinder_strike" });
-  assert.ok(!isError, result);
-  assert.match(result, /The player isn't the captain/);
-  assert.ok(result.includes(chairOf(game).name));
-  assert.match(result, /How the player heard about it/);
-  assert.ok(result.includes(WORLD_THREADS.out_cinder_strike.gm.truth.slice(0, 40)), "and all the notes are still there");
-  assert.equal(game.story.threads.out_cinder_strike, "active");
 });
 
-test("the captain's stories go on over their head, and the game master can still bring one in", () => {
+test("the captain's stories go on over their head", () => {
   const game = newGame("docker");
   assert.ok(!WORLD_THREADS.main_chain_of_command.anyone);
   for (let day = 0; day < 200 && !hasMovedOn(game, "main_chain_of_command"); day += 1) days(game, 1);
   assert.ok(hasMovedOn(game, "main_chain_of_command"), "it moved on all the same");
-  assert.equal(game.story.threads.main_chain_of_command, undefined);
-  const { result, isError } = tool(game, "read_thread", { id: "main_chain_of_command" });
-  assert.ok(!isError, result);
-  assert.match(result, /The player isn't the captain/);
-  assert.equal(storyView(game).active.at(-1).lead, leadNow(game, "main_chain_of_command"));
-  const notes = threadNotes("out_cinder_strike", newGame());
-  assert.ok(!notes.includes("isn't the captain"), "a captain doesn't need telling");
-  assert.ok(!notes.includes("How the player heard"));
-});
-
-test("the main story's brief tells the game master it's happening around them", () => {
-  const game = newGame("docker");
-  assert.match(arcBrief(game), /All of this is happening around the player/);
-  assert.ok(arcBrief(game).includes(chairOf(game).name));
-  assert.ok(!arcBrief(newGame()).includes("happening around the player"));
-});
-
-test("the instructions don't assume the player's the captain, and they say what to do if they aren't", () => {
-  assert.ok(!WORLD_BIBLE.includes("The player is its newly appointed captain"));
-  assert.match(WORLD_BIBLE, /The player may be that captain, or anyone else in the galaxy/);
-  assert.match(SYSTEM_PROMPT, /The player isn't always the captain\./);
-  assert.match(SYSTEM_PROMPT, /they travel by paying for passage/);
-  assert.match(SYSTEM_PROMPT, /call change_command/);
-  assert.ok(!/says where the captain is/.test(SYSTEM_PROMPT));
-  assert.ok(!/things the captain could say/.test(SYSTEM_PROMPT));
-  assert.match(walkLine(newGame()), /^Map: player at /);
+  assert.equal(game.story.threads.main_chain_of_command, undefined, "nobody took it up");
+  assert.ok(leadNow(game, "main_chain_of_command"));
 });
 
 test("the Meridian's chair and the people aboard treat someone else as someone else", () => {
@@ -653,7 +606,7 @@ test("a save from before all this is a captain's, and stays one", () => {
   old.clock.hours = 300;
   old.location = "meridian";
   const game = migrateGame(JSON.parse(JSON.stringify(old)));
-  assert.equal(game.version, 18);
+  assert.equal(game.version, 19);
   assert.deepEqual(game.role, { id: "captain", captain: true });
   assert.equal(isCaptain(game), true);
   assert.equal(chairOf(game), null);
@@ -677,24 +630,9 @@ test("looking at it changes nothing in the save", () => {
   assert.equal(JSON.stringify(game), before);
 });
 
-// ---- With the stand-in AI, and over the real server ---------------------------------------------
-
-function respond(res, body, reply) {
-  res.writeHead(200, { "content-type": "text/event-stream" });
-  const send = (type, data) => res.write(`event: ${type}\ndata: ${JSON.stringify({ type, ...data })}\n\n`);
-  const usage = { input_tokens: 4, output_tokens: 1 };
-  send("message_start", { message: { id: "msg_1", type: "message", role: "assistant", model: body.model, content: [], stop_reason: null, stop_sequence: null, usage } });
-  send("content_block_start", { index: 0, content_block: { type: "text", text: "" } });
-  send("content_block_delta", { index: 0, delta: { type: "text_delta", text: reply } });
-  send("content_block_stop", { index: 0 });
-  send("message_delta", { delta: { stop_reason: "end_turn", stop_sequence: null }, usage });
-  send("message_stop", {});
-  res.end();
-}
+// ---- Over the real server ---------------------------------------------
 
 const serverData = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-anyone-server-"));
-let standIn = null;
-let requests = [];
 let child = null;
 let port = 0;
 
@@ -713,17 +651,7 @@ async function post(route, body) {
 }
 
 before(async () => {
-  standIn = http.createServer(async (req, res) => {
-    let raw = "";
-    for await (const chunk of req) raw += chunk;
-    const body = JSON.parse(raw);
-    requests.push(body);
-    respond(res, body, "A stand-in scene.\n\n> Look around");
-  });
-  await new Promise((resolve) => { standIn.listen(0, "127.0.0.1", resolve); });
-  process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${standIn.address().port}`;
   fs.mkdirSync(path.join(serverData, "saves"), { recursive: true });
-  fs.writeFileSync(path.join(serverData, "settings.json"), JSON.stringify({ provider: "claude", model: "claude-haiku-5-5", effort: "low", apiKey: "not-a-real-key" }));
   port = await freePort();
   child = spawn(process.execPath, ["server.js"], { cwd: projectDir, env: { ...process.env, GAME_DATA_DIR: serverData, PORT: String(port) }, stdio: "pipe" });
   await new Promise((resolve, reject) => {
@@ -735,8 +663,6 @@ before(async () => {
 after(() => {
   child?.removeAllListeners("exit");
   child?.kill();
-  delete process.env.ANTHROPIC_BASE_URL;
-  standIn?.close();
   for (const folder of [serverData, dataDir]) {
     try {
       fs.rmSync(folder, { recursive: true, force: true, maxRetries: 3 });
@@ -744,23 +670,6 @@ after(() => {
       // It's a temporary folder, so it doesn't matter if something is still holding on to it.
     }
   }
-});
-
-test("the game master's told who they are, and it only gets the files for the people they know", async () => {
-  requests = [];
-  const game = newGame("docker");
-  game.transcript = [];
-  await runTurn({ game, settings: { provider: "claude", model: "claude-haiku-5-5", apiKey: "test-key-not-real" }, gameEvent: openingFor(game), emit: () => {} });
-  assert.equal(requests.length, 1);
-  const first = JSON.stringify(requests[0].messages[0].content);
-  assert.ok(first.includes("They are not the captain."));
-  assert.ok(first.includes(START_LIST.docker.gm));
-  assert.ok(first.includes("Mott Jessup"), "the people they know");
-  assert.ok(!first.includes("Dunn Marrow"), "and not the Meridian's officers, who they've never met");
-  assert.ok(first.includes(START_LIST.docker.opening));
-  assert.ok(first.includes("not in command"));
-  assert.ok(requests[0].system.length > 1000);
-  assert.ok(!JSON.stringify(requests[0].system).includes(game.name), "the instructions are the same for everyone, so they stay cheap");
 });
 
 test("over the real server: starting as a dock hand, working, booking passage, and being refused the ship's orders", async () => {
@@ -776,12 +685,8 @@ test("over the real server: starting as a dock hand, working, booking passage, a
 
   const started = await post("/api/chat", { event: "start" });
   assert.equal(started.status, 200);
-  const last = requests.at(-1);
-  const said = JSON.stringify(last.messages);
-  assert.ok(said.includes(START_LIST.docker.opening), "the story opens where they are");
-  assert.ok(said.includes("They are not the captain."));
-  assert.ok(!said.includes("has just been made captain"));
-  assert.ok(last.tools.some((one) => one.name === "change_command"));
+  assert.match(started.text, /Berth eleven has a crate in it/, "the dock hand's own written opening plays, where they are");
+  assert.ok(!started.text.includes("made captain"));
 
   const credits = made.game.credits;
   const worked = await post("/api/action", { action: "work" });

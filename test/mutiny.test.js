@@ -139,7 +139,7 @@ test("a ship kept hungry on half rations grumbles, lets orders go astray, and se
   assert.equal(refusedCut, "The council won't put a cut through for you: they've stopped taking your word on the rations.");
   assert.equal(refusedMove, "First Officer Tarrow won't move anyone for you while the ship's like this.");
   assert.equal(cmd.commandSceneDue(game), "command_delegation");
-  assert.ok(game.pendingEvents.length > 0, "Continue the story is offered");
+  assert.equal(publicState(game).storyWaiting, true, "Continue the story is offered");
   assert.match(cmd.commandView(game).mood.due, /^First Officer Tarrow and some of the officers are asking to see you, together/);
   const opened = turn(game, "continue");
   assert.match(opened, /@Kara Tarrow: "Captain\. We're here about how this ship is being run/);

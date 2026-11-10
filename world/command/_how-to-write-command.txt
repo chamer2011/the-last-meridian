@@ -290,9 +290,7 @@ What happens goes on the story's record, where later stories can react to it as 
     player_joined_mutiny        the player joined one against another captain
     player_warned_captain       the player warned the captain
 
-A person's part of a name is their id in world/characters, or their crowd name in lowercase with underscores. In a
-game with an AI, its state has one line on the chain of command: who holds what where it's changed since the game
-began, who's in the brig, and how loyal the officers are and how confident the council is, to the nearest five.
+A person's part of a name is their id in world/characters, or their crowd name in lowercase with underscores.
 
 The Story board's Command page edits this file: each post a box with who holds it when a game begins and an arrow from
 whoever chooses it, each job a box with who does it and an arrow from the post that heads it, and the spare hands, with

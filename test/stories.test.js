@@ -11,10 +11,8 @@ import { after, before, test } from "node:test";
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-stories-"));
 process.env.GAME_DATA_DIR = dataDir;
 
-const { SYSTEM_PROMPT } = await import("../src/ai.js");
 const { findCharacter } = await import("../src/campaign.js");
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
-const { worldReport } = await import("../src/daily.js");
 const { LOCATIONS } = await import("../src/data.js");
 const { councilOf, shipCommand, shipLedger, shipView } = await import("../src/ship.js");
 const { holderKey, postAndName } = await import("../src/command.js");
@@ -22,8 +20,8 @@ const { migrateGame } = await import("../src/migrate.js");
 const { projectDir } = await import("../src/paths.js");
 const { passTime, publicState } = await import("../src/rules.js");
 const { countAboard, fillStores, logisticsOf, putAboard, takeAboard } = await import("../src/logistics.js");
-const { clockOf, hasMovedOn, leadNow, ranItsCourse, whatHappened } = await import("../src/story-clock.js");
-const { arcBriefIfNew, leadsHere, storyView, threadNotes } = await import("../src/story-library.js");
+const { clockOf, hasMovedOn, leadNow, ranItsCourse } = await import("../src/story-clock.js");
+const { leadsHere, noteThreadStarted, storyView } = await import("../src/story-library.js");
 const { newTurnLimits, runTool } = await import("../src/tools.js");
 const { DAILY, SHIP_DATA, STORY_CLOCK, WORLD_ARC, WORLD_THREADS } = await import("../src/world.js");
 
@@ -177,7 +175,7 @@ test("a lead that's moved on says how things stand now, and says that it's moved
 
 test("once someone has taken a story up, it's in their hands and its clock stops", () => {
   const game = newGame();
-  tool(game, "read_thread", { id: "out_cinder_strike" });
+  noteThreadStarted(game, "out_cinder_strike");
   assert.equal(game.story.threads.out_cinder_strike, "active");
   const fuel = game.world.places.cinder.goods.fuel;
   until(game, () => clockOf(game).moved.length > 20);
@@ -191,17 +189,13 @@ test("once someone has taken a story up, it's in their hands and its clock stops
   assert.ok(Number.isFinite(fuel));
 });
 
-test("a story that's moved on can still be taken up, and the game master starts from how it stands", () => {
+test("a story that's moved on can still be taken up, and then it stops where it was", () => {
   const game = newGame();
   until(game, () => hasMovedOn(game, "main_two_weeks_of_fuel"));
   const stage = STORY_CLOCK.threads.main_two_weeks_of_fuel.stages[0];
-  const { result, isError } = tool(game, "read_thread", { id: "main_two_weeks_of_fuel" });
-  assert.ok(!isError, result);
-  assert.match(result, /moved on without the captain/);
-  assert.ok(result.includes(stage.news));
-  assert.ok(result.includes(stage.lead));
-  assert.ok(result.includes(WORLD_THREADS.main_two_weeks_of_fuel.lead), "and how it began is still there");
-  assert.ok(result.includes(WORLD_THREADS.main_two_weeks_of_fuel.gm.truth.slice(0, 40)), "and nothing's been lost from the notes");
+  assert.equal(leadNow(game, "main_two_weeks_of_fuel"), stage.lead ?? stage.news);
+  // Look into this, from the Leads menu.
+  noteThreadStarted(game, "main_two_weeks_of_fuel");
   assert.equal(game.story.threads.main_two_weeks_of_fuel, "active");
   const reached = game.story.clock.threads.main_two_weeks_of_fuel.stage;
   for (let day = 0; day < 100; day += 1) {
@@ -209,16 +203,12 @@ test("a story that's moved on can still be taken up, and the game master starts 
     days(game, 1);
   }
   assert.equal(game.story.clock.threads.main_two_weeks_of_fuel.stage, reached, "and it stops where it was");
-  assert.ok(whatHappened(game, "main_two_weeks_of_fuel").includes(stage.news));
-  assert.equal(threadNotes("main_two_weeks_of_fuel"), threadNotes("main_two_weeks_of_fuel", null));
 });
 
-test("a story that hasn't moved on tells the game master nothing new", () => {
+test("a story that hasn't moved on still reads as it began", () => {
   const game = newGame();
-  assert.equal(whatHappened(game, "out_cinder_strike"), null);
-  const notes = threadNotes("out_cinder_strike", game);
-  assert.ok(!notes.includes("moved on without"));
-  assert.equal(notes, threadNotes("out_cinder_strike"));
+  assert.equal(hasMovedOn(game, "out_cinder_strike"), false);
+  assert.equal(leadNow(game, "out_cinder_strike"), WORLD_THREADS.out_cinder_strike.lead);
 });
 
 test("what follows a story opens once that story has run its course, and only then", () => {
@@ -254,7 +244,6 @@ test("a story waits for the world to reach it", () => {
 
 test("the main story's pressure builds, and it moves on if nobody moves it, as far as the last act and no further", () => {
   const game = newGame();
-  game.ai = { ...game.ai, sentAct: 1 };
   const act = STORY_CLOCK.acts[0];
   const heard = new Set();
   until(game, () => {
@@ -264,10 +253,7 @@ test("the main story's pressure builds, and it moves on if nobody moves it, as f
   for (const event of act.events) assert.ok(heard.has(event.news), event.news);
   assert.ok(game.story.clock.moved.some((entry) => entry.text === act.moves_on.news));
   assert.equal(game.story.clock.act.act, 2);
-  const brief = arcBriefIfNew(game);
-  assert.ok(brief, "the game master gets told where the story has got to");
-  assert.ok(brief.includes(WORLD_ARC.acts[1].name));
-  assert.equal(arcBriefIfNew(game), null, "and only once");
+  assert.ok(game.story.clock.moved.some((entry) => entry.title === WORLD_ARC.acts[0].name), "the news says what's happened in the act");
   until(game, () => game.story.act === 4, 500);
   for (let day = 0; day < 200; day += 1) {
     comfortable(game);
@@ -276,7 +262,7 @@ test("the main story's pressure builds, and it moves on if nobody moves it, as f
   assert.equal(game.story.act, 4, "the Meridian has to be taken to the last one");
 });
 
-test("when the story moves on through the game master, the act's clock starts again from there", () => {
+test("when the written story moves the act on, the act's clock starts again from there", () => {
   const game = newGame();
   comfortable(game);
   days(game, 10);
@@ -332,16 +318,6 @@ test("a long wait doesn't flood the screen, but all of it is still in the news",
   assert.ok(Math.max(...oneDay) <= 2, "no more than a couple in a day");
 });
 
-test("the game master hears what's happened, once", () => {
-  const game = newGame();
-  game.ship.at = "meridian";
-  until(game, () => game.world.unheard.some((text) => clockOf(game).moved.some((entry) => entry.text === text)));
-  const report = worldReport(game);
-  assert.match(report, /^<world_report>/);
-  assert.ok(game.story.clock.moved.some((entry) => report.includes(entry.text)));
-  assert.equal(worldReport(game), null);
-});
-
 test("the Leads screen only shows what the captain could know, newest first and not too many", () => {
   const game = newGame();
   until(game, () => clockOf(game).moved.length > 25);
@@ -380,7 +356,7 @@ test("an old save picks it all up from today, with nothing happening at once", (
   old.ship.day = 300;
   old.world.day = 300;
   const game = migrateGame(JSON.parse(JSON.stringify(old)));
-  assert.equal(game.version, 18);
+  assert.equal(game.version, 19);
   assert.equal(game.story.clock.start, 300);
   assert.equal(game.story.clock.day, 300);
   comfortable(game);
@@ -388,7 +364,7 @@ test("an old save picks it all up from today, with nothing happening at once", (
   assert.deepEqual(game.story.clock.moved, []);
   assert.deepEqual(shipView(game).council, { off: false, recent: [] });
   until(game, () => clockOf(game).moved.length > 0);
-  assert.equal(game.version, 18);
+  assert.equal(game.version, 19);
   assert.equal(JSON.parse(JSON.stringify(game)).story.clock.start, 300);
 });
 
@@ -397,20 +373,11 @@ test("a year of it is quick, and doesn't fill up the save", () => {
   const started = Date.now();
   for (let day = 0; day < 365; day += 1) {
     days(game, 1);
-    game.pendingEvents = [];
   }
   assert.ok(Date.now() - started < 4000, `it took ${Date.now() - started} ms`);
   assert.ok(JSON.stringify(game.story.clock).length < 16000, `${JSON.stringify(game.story.clock).length} characters`);
   assert.ok(JSON.stringify(game.ship.council).length < 3000);
   assert.ok(game.ship.morale >= 0 && game.ship.morale <= 100);
-});
-
-test("the game master is told that stories don't wait, and the instructions stay the same line to line", () => {
-  assert.match(SYSTEM_PROMPT, /Stories don't wait/);
-  assert.match(SYSTEM_PROMPT, /officers and the council act by themselves/);
-  const game = newGame();
-  days(game, 40);
-  assert.ok(!SYSTEM_PROMPT.includes(game.name));
 });
 
 // ---- The officers and the council ---------------------------------------------------------
@@ -631,7 +598,6 @@ test("a ship left to itself doesn't flip back and forth", () => {
     withoutSources(() => {
       for (let day = 0; day < 365; day += 1) {
         said.push(...days(game, 1).filter((line) => line.startsWith("[COUNCIL]")));
-        game.pendingEvents = [];
         assert.ok(SHIP_DATA.rations[game.ship.rations]);
         assert.ok(game.ship.fuel >= 0);
       }
@@ -644,7 +610,6 @@ test("a ship left to itself doesn't flip back and forth", () => {
   const said = [];
   for (let day = 0; day < 40; day += 1) {
     said.push(...days(fed, 1).filter((line) => line.startsWith("[COUNCIL]")));
-    fed.pendingEvents = [];
   }
   assert.deepEqual(said, []);
   const food = shipView(fed).supplies.find((one) => one.id === "food");
@@ -661,7 +626,6 @@ test("a well-supplied ship with nobody following up its stories feels them, but 
       fillStores(game, "meridian");
       game.ship.fuel = Math.max(game.ship.fuel, 10);
       days(game, 1);
-      game.pendingEvents = [];
       lowest = Math.min(lowest, game.ship.morale);
     }
     assert.ok(game.ship.morale >= 15, `seed ${seed}: morale ${game.ship.morale}`);
@@ -682,7 +646,6 @@ async function post(route, body) {
 
 before(async () => {
   fs.mkdirSync(path.join(serverData, "saves"), { recursive: true });
-  fs.writeFileSync(path.join(serverData, "settings.json"), JSON.stringify({ provider: "claude", model: "claude-haiku-5-5", effort: "low", apiKey: "not-a-real-key" }));
   const save = newGame();
   comfortable(save);
   fs.writeFileSync(path.join(serverData, "saves", "autosave.json"), JSON.stringify(save));

@@ -18,3 +18,5 @@ On 2026-11-10 they said, verbatim: "Now let's overhaul combat. I want it happenn
 Checked: 14 tests in `test/live-fight.test.js`, a server trial of 12 fights, and a scratch browser check (`livefight-check.mjs`) passing 48 checks at 1384 and 814 wide. Not checked: the owner playing it, a real AI starting a fight, and balance beyond a few trial fights (three mutineers beat a player who never moves in about the same time as in rounds).
 
 **How to apply:** expect them to ask for changes once they've played it. Changing it shouldn't change `src/combat.js`'s numbers, so their files keep working; the timings are constants at the top of `src/live-fight.js`.
+
+Since 2026-11-10 there's no AI: a fight starts from a written scene or the right-click menu, and when it ends, **Continue the story** is offered only if a written scene is waiting on it; otherwise the end window has **Back to the room** (`storyWaiting` from `storyWaits` in `src/scenes.js`). See [project-optional-ai](project-optional-ai.md).

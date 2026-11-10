@@ -42,6 +42,6 @@ A file starts with the name, then a few lines about it, then parts under heading
     - Word at the Neutral Ground is that Sable has never once forgotten a tab.
 
 In a line is what the player reads on the star map. The feel of it, the districts, the complications and the
-secrets are for the game master, and the AI runs the place from them. Encounters are what can happen when the
+secrets are notes for whoever writes the place's stories: the player never reads them. Encounters are what can happen when the
 player arrives, and rumors are what people say, which the Leads menu shows: one line each, starting with - and a
 space. A part that has nothing in it can be left out.

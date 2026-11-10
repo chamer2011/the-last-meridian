@@ -7,12 +7,11 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
-import { after, before, beforeEach, test } from "node:test";
+import { after, before, test } from "node:test";
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-walk-"));
 process.env.GAME_DATA_DIR = dataDir;
 
-const { SYSTEM_PROMPT, runTurn } = await import("../src/ai.js");
 const { findCampaignRoom, saveCampaignCharacter, saveCampaignRoom } = await import("../src/campaign.js");
 const { checkCommand } = await import("../src/checks.js");
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
@@ -20,10 +19,10 @@ const { ITEMS, LOCATIONS } = await import("../src/data.js");
 const { shipCommand, shipLedger } = await import("../src/ship.js");
 const { migrateGame } = await import("../src/migrate.js");
 const { projectDir } = await import("../src/paths.js");
-const { aiSnapshot, publicState, rest, travel } = await import("../src/rules.js");
+const { publicState, rest, travel } = await import("../src/rules.js");
 const { rumorsFrom } = await import("../src/story-library.js");
 const { TOOL_DEFS, newTurnLimits, runTool } = await import("../src/tools.js");
-const { closeTalk, mapFor, roomHere, roomsOf, setScene, talkBrief, talkCommand, talkHeard, talkLineOver, talkSaid, walkCommand, walkFromStory, walkLine, walkOf, walkView } = await import("../src/walk.js");
+const { closeTalk, mapFor, roomHere, roomsOf, setScene, talkCommand, talkHeard, talkLineOver, talkSaid, walkCommand, walkFromStory, walkOf, walkView } = await import("../src/walk.js");
 const { ROOM_KINDS, WORLD_MAPS } = await import("../src/world.js");
 const { NOTABLES } = await import("../src/character-data.js");
 // Whoever could have the chair is only there in a game where the player isn't the captain.
@@ -222,7 +221,6 @@ test("a place with no levels has no walk-around view at all", () => {
     const game = newGame();
     game.location = "nowhere";
     assert.equal(walkView(game), null);
-    assert.equal(walkLine(game), null);
     assert.equal(publicState(game).walk, null);
     assert.throws(() => walkCommand(game, { action: "go", x: 1, y: 1 }), /no map/);
   });
@@ -256,7 +254,6 @@ test("every place in the world has a map, and the captain arrives at its way in"
     assert.equal(view.here.id, WORLD_MAPS[place].start, place);
     assert.equal(view.offPlan, false);
     assert.ok(view.overview.title, place);
-    assert.match(walkLine(game), /^Map: player at /);
     assert.doesNotThrow(() => publicState(game));
     assert.equal(game.walk, null, "only looking doesn't change the save");
   }
@@ -505,12 +502,11 @@ test("the Meridian has no closed doors, because it's your ship", () => {
 test("a talk somewhere else works just the same, with that place's own rumors", () => {
   const game = at("haven");
   setScene(game, "The Neutral Ground");
-  assert.match(walkLine(game), /^Map: player at The Neutral Ground\. Nearby: Sable \(polishing a glass\)(, \d+ other (person|people))?\.$/);
+  assert.equal(walkView(game).here.name, "The Neutral Ground");
+  assert.ok(walkView(game).people.some((one) => one.short === "Sable"));
   talkCommand(game, { action: "open", person: "sable" });
   const talk = publicState(game).talk;
   assert.equal(talk.where, "The Neutral Ground");
-  assert.ok(talk.asks.includes("What's the word on the station, Sable?"), "their own things to ask come first");
-  assert.ok(talk.asks.includes("What should I know that I don't?"), "and then what anyone could be asked");
   talkCommand(game, { action: "rumor" });
   const said = publicState(game).talk.log.at(-1).text;
   assert.ok(LOCATIONS.haven.rumors.some((rumor) => said.includes(rumor.replaceAll('"', "'"))), "it's one of Haven's");
@@ -553,7 +549,6 @@ test("somewhere the story makes up at another place gets a room too, with a way 
   const view = walkView(game);
   assert.equal(view.offPlan, true);
   assert.deepEqual(view.people.map((one) => one.key), ["tannis"]);
-  assert.match(walkLine(game), /^Map: player off the map, at Rook's Back Office\. With: /);
   assert.equal(findCampaignRoom(game.campaign, "Rook's Back Office", "kessara").place, "kessara");
   const back = walkCommand(game, { action: "go", to: "exit:0" });
   assert.equal(back.walk.here.id, "warrens");
@@ -694,7 +689,7 @@ test("walking freely: a square at a time it's kept, through a wall or out of rea
   const through = walkCommand(game, { action: "move", x: door.x, y: door.y });
   assert.equal(through.arrived.kind, "exit");
   assert.equal(deckOf(through.walk), "deck2");
-  assert.match(walkLine(game), /walked to The Lower Forward Stair/);
+  assert.equal(walkView(game).here.name, "The Lower Forward Stair");
 });
 
 test("walking freely into a door only the story opens stops beside it, the same as clicking it", () => {
@@ -765,7 +760,7 @@ test("walking through a door with the arrow keys works too, and the path is stil
   const through = walkCommand(game, { action: "step", dx: 0, dy: 1 });
   assert.equal(through.arrived.kind, "exit");
   assert.equal(deckOf(through.walk), "deck2");
-  assert.match(walkLine(game), /walked to The Lower Forward Stair/);
+  assert.equal(walkView(game).here.name, "The Lower Forward Stair");
 });
 
 test("walking changes nothing but where the captain is: not the clock, not the ship, not the AI", () => {
@@ -789,7 +784,6 @@ test("showing the game changes nothing in the save", () => {
   const game = newGame();
   const before1 = structuredClone(game);
   publicState(game);
-  aiSnapshot(game);
   assert.deepEqual(game, before1);
 });
 
@@ -953,7 +947,6 @@ test("a room stays the way it was first described, for good, and can be gone bac
   assert.equal(back.here.name, "The Old Galley");
   assert.ok(back.things.some((one) => one.name === "A cracked oven"));
   assert.deepEqual(back.people.map((one) => one.key), ["voss"]);
-  assert.match(walkLine(game), /off the map, at The Old Galley/);
 
   // Coming back in the story, with nothing more said, it's the same room.
   walkCommand(game, { action: "go", to: "exit:0" });
@@ -1017,25 +1010,20 @@ test("the captain can walk around a room like that, and get back out by clicking
   const back = walkCommand(game, { action: "go", to: "exit:0" });
   assert.equal(back.walk.offPlan, false);
   assert.deepEqual(back.walk.captain, before1, "back where they were");
-  assert.match(walkLine(game), /walked to The Bridge/);
+  assert.equal(walkView(game).here.name, "The Bridge");
 });
 
-test("the state has one compact line about where the captain is, which only changes with the room", () => {
+test("walking about a room keeps the player in it, and the story can put them somewhere off the map", () => {
   const game = newGame();
-  const first = walkLine(game);
-  assert.equal(first, "Map: player at The Bridge. Nearby: Voss (on the bridge), Pell (at the helm), Sorel (on comms), Vey (in the sensor pit).");
-  assert.ok(aiSnapshot(game).split("\n").includes(first));
+  assert.equal(walkView(game).here.name, "The Bridge");
   walkCommand(game, { action: "go", x: 10, y: 14 });
-  assert.equal(walkLine(game), first, "walking around the same room isn't news");
+  assert.equal(walkView(game).here.name, "The Bridge", "walking around the same room keeps the room");
   walkCommand(game, { action: "go", to: "room:names" });
-  assert.match(walkLine(game), /^Map: player walked to The Names Bulkhead\. Nearby: Roe \(sitting with the names\)(, \d+ other (person|people))?\.$/);
-  assert.ok(walkLine(game).length < 200);
+  assert.equal(walkView(game).here.name, "The Names Bulkhead");
   tool(game, "set_scene", { area: "Section Fourteen", people: ["voss"] });
-  assert.equal(walkLine(game), "Map: player off the map, at Section Fourteen. With: Ilya Voss.");
-  // Somewhere without levels has no line at all, so it costs nothing.
+  assert.equal(walkView(game).here.name, "Section Fourteen");
   withUnmappedPlace(() => {
     game.location = "nowhere";
-    assert.ok(!aiSnapshot(game).includes("Map: player"));
     assert.match(setScene(game, "The Soup Line"), /no map/);
   });
 });
@@ -1052,7 +1040,7 @@ test("leaving and coming back starts from the way in, even from somewhere off th
   assert.equal(view.here.id, "bridge");
 });
 
-// ---- The player's own campaign: somewhere the AI invented ----------------
+// ---- The player's own campaign: somewhere an older game's story invented ----
 
 function sectionFourteen(campaign = "walk-test-campaign") {
   const game = newGame(40);
@@ -1104,7 +1092,7 @@ test("someone from Section Fourteen can be talked to, with their own art and how
   assert.ok(crowd.art.length > 0);
 });
 
-// ---- Talking: everything that doesn't need the AI -----------------------
+// ---- Talking ------------------------------------------------------------
 
 test("opening and closing a talk costs nothing, and a talk where nothing was said leaves no note", () => {
   const game = newGame();
@@ -1113,8 +1101,6 @@ test("opening and closing a talk costs nothing, and a talk where nothing was sai
   const view = publicState(game).talk;
   assert.equal(view.name, "Commander Ilya Voss");
   assert.equal(view.where, "The Bridge");
-  assert.ok(view.asks.length >= 2);
-  assert.ok(view.asks.includes("What's our real situation, Commander?"), "her own things to ask come first");
   assert.equal(view.log[0].role, "aside");
   assert.throws(() => talkCommand(game, { action: "open", person: "pell" }), /Finish the talk/);
   talkCommand(game, { action: "close" });
@@ -1133,7 +1119,7 @@ test("you can't talk to someone who isn't here, or before the story has started"
   assert.throws(() => talkCommand(fresh, { action: "open", person: "voss" }), /Start the story/);
 });
 
-test("rumors come from the place's file for free, and nobody gossips about themselves", () => {
+test("rumors come from the place's file, and nobody gossips about themselves", () => {
   const game = newGame();
   const all = LOCATIONS.meridian.rumors;
   for (const name of ["Voss", "Marrow", "Pell"]) {
@@ -1152,10 +1138,9 @@ test("rumors come from the place's file for free, and nobody gossips about thems
   assert.equal(view.rumors, count - 1);
   assert.equal(view.log.at(-1).role, "narrator");
   assert.match(view.log.at(-1).text, /^@Commander Ilya Voss: "/);
-  assert.equal(view.lastReply, null, "only what the AI said can offer choices");
+  assert.equal(view.lastReply, null, "a rumor offers no choices of its own");
   while (publicState(game).talk.rumors > 0) talkCommand(game, { action: "rumor" });
   assert.throws(() => talkCommand(game, { action: "rumor" }), /all they've heard/);
-  assert.equal(game.ai.messages.length, 0, "nothing went to the AI");
 });
 
 test("closing a talk leaves one line in the story, and what was said is kept with it", () => {
@@ -1193,7 +1178,7 @@ test("a choice with a check on it, offered in a talk, opens the check's window a
   const hours = game.clock.hours;
   checkCommand(game, "run");
   assert.equal(game.clock.hours, hours);
-  assert.equal(game.pendingEvents.length, 1);
+  assert.equal(game.lastCheck.source, "choice");
 });
 
 test("a fight or a check that starts during a talk takes over from it", () => {
@@ -1215,257 +1200,16 @@ test("something the captain is already carrying can't be used again, and everyth
   assert.equal(thing(game, "Soup kettle").have, false);
 });
 
-// ---- A stand-in for Anthropic's API, to check what actually gets sent ---
-
-let server;
-let requests = [];
-let replies = [];
-
-function respond(res, body, reply) {
-  if (reply.status) {
-    res.writeHead(reply.status, { "content-type": "application/json" });
-    res.end(JSON.stringify({ type: "error", error: { type: "invalid_request_error", message: reply.message } }));
-    return;
-  }
-  res.writeHead(200, { "content-type": "text/event-stream" });
-  const send = (type, data) => res.write(`event: ${type}\ndata: ${JSON.stringify({ type, ...data })}\n\n`);
-  send("message_start", { message: { id: "msg_1", type: "message", role: "assistant", model: body.model, content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 10, output_tokens: 1 } } });
-  reply.blocks.forEach((block, index) => {
-    if (block.type === "text") {
-      send("content_block_start", { index, content_block: { type: "text", text: "" } });
-      send("content_block_delta", { index, delta: { type: "text_delta", text: block.text } });
-    } else {
-      send("content_block_start", { index, content_block: { type: "tool_use", id: block.id, name: block.name, input: {} } });
-      send("content_block_delta", { index, delta: { type: "input_json_delta", partial_json: JSON.stringify(block.input) } });
-    }
-    send("content_block_stop", { index });
-  });
-  send("message_delta", { delta: { stop_reason: reply.stop ?? "end_turn", stop_sequence: null }, usage: { output_tokens: 5 } });
-  send("message_stop", {});
-  res.end();
-}
-
-before(async () => {
-  server = http.createServer(async (req, res) => {
-    let raw = "";
-    for await (const chunk of req) raw += chunk;
-    const body = JSON.parse(raw);
-    requests.push(body);
-    respond(res, body, replies.shift() ?? { blocks: [{ type: "text", text: '@Someone: "Nothing more."' }] });
-  });
-  await new Promise((resolve) => { server.listen(0, "127.0.0.1", resolve); });
-  process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${server.address().port}`;
-});
-
-after(() => {
-  delete process.env.ANTHROPIC_BASE_URL;
-  server.closeAllConnections();
-  server.close();
-  try {
-    fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 3 });
-  } catch {
-    // It's a temporary folder, so it doesn't matter if something is still holding on to it.
-  }
-});
-
-beforeEach(() => {
-  requests = [];
-  replies = [];
-});
-
-const settings = { provider: "claude", model: "claude-opus-5-5", apiKey: "test-key-not-real" };
-const lastMessageText = () => {
-  const { content } = requests.at(-1).messages.at(-1);
-  return typeof content === "string" ? content : content.map((part) => part.text ?? part.content ?? "").join("\n");
-};
-const allToolResults = (game) => game.ai.messages.flatMap((message) => (Array.isArray(message.content) ? message.content : [])).filter((block) => block.type === "tool_result");
-const saySomething = async (game, text, reply) => {
-  if (reply) replies.push(...[reply].flat());
-  const talk = talkBrief(game);
-  talkSaid(game, text);
-  const narration = await runTurn({ game, settings, playerText: text, talk, emit: () => {} });
-  talkHeard(game, narration);
-  return narration;
-};
-
-test("a line in a talk goes through the normal turn, with its tag, and the same instructions and tools", async () => {
+test("a conversation can't move the clock or the player, whatever its file says", () => {
   const game = newGame();
-  await runTurn({ game, settings, playerText: "I look around.", emit: () => {} });
-  const normal = requests.at(-1);
-  talkCommand(game, { action: "open", person: "voss" });
-  const reply = await saySomething(game, "How are you holding up?", { blocks: [{ type: "text", text: '@Commander Ilya Voss: "Fine."\n\n> Ask again\n> Leave it' }] });
-  assert.match(reply, /Fine/);
-  const request = requests.at(-1);
-  assert.match(lastMessageText(), /<talk with="Commander Ilya Voss" at="The Bridge" doing="on the bridge">Answer only as them, in one to three sentences, then 2 or 3 short > choices\.<\/talk>/);
-  assert.match(lastMessageText(), /The player writes: How are you holding up\?/);
-  // The instructions and tools can't change for a talk, or Claude would have to reload the whole story, line by line.
-  assert.equal(request.system, normal.system);
-  assert.deepEqual(request.tools, normal.tools);
-  assert.deepEqual(request.cache_control, normal.cache_control);
-  assert.match(SYSTEM_PROMPT, /<talk> tag/);
-  assert.match(SYSTEM_PROMPT, /one to three sentences/);
-});
-
-test("taking a choice the person offered goes back with its tags", async () => {
-  const game = newGame();
-  await runTurn({ game, settings, playerText: "I look around.", emit: () => {} });
-  talkCommand(game, { action: "open", person: "voss" });
-  await saySomething(game, "Report.", { blocks: [{ type: "text", text: '@Commander Ilya Voss: "Fine."\n\n> [mercy] Tell her to rest\n> Leave it' }] });
-  await saySomething(game, "Tell her to rest");
-  assert.match(lastMessageText(), /takes this choice from your last message: > \[mercy\] Tell her to rest/);
-});
-
-test("the AI can't move the clock from inside a talk, so a talk can never use up a day aboard", async () => {
-  const game = newGame();
-  talkCommand(game, { action: "open", person: "voss" });
-  game.clock.hours = 23;
-  game.ship.day = 0;
-  const stores = JSON.stringify(game.stores ?? null);
-  const fatigue = game.needs.fatigue;
-  const hours = game.clock.hours;
-  for (let i = 0; i < 5; i += 1) {
-    await saySomething(game, `Line ${i}`, [
-      { blocks: [{ type: "tool_use", id: `t${i}a`, name: "pass_time", input: { hours: 24, activity: "active", reason: "A long talk" } }, { type: "tool_use", id: `t${i}b`, name: "travel", input: { destination: "haven" } }, { type: "tool_use", id: `t${i}c`, name: "set_scene", input: { area: "The Long Mess" } }], stop: "tool_use" },
-      { blocks: [{ type: "text", text: '@Commander Ilya Voss: "No."' }] },
-    ]);
+  const talking = { ...newTurnLimits(), talking: true };
+  for (const [name, input] of [["pass_time", { hours: 30, activity: "active", reason: "A long talk" }], ["travel", { destination: "haven" }], ["set_scene", { area: "The Long Mess" }]]) {
+    const refused = runTool(game, name, input, talking);
+    assert.equal(refused.isError, true, name);
+    assert.match(refused.result, /clock is stopped in a talk window/);
   }
-  assert.equal(game.clock.hours, hours);
-  assert.equal(game.ship.day, 0);
-  assert.equal(JSON.stringify(game.stores ?? null), stores, "nothing in the stores moved");
-  assert.equal(game.needs.fatigue, fatigue);
   assert.equal(game.location, "meridian");
-  assert.equal(walkView(game).here.id, "bridge");
-  const results = allToolResults(game);
-  assert.equal(results.length, 15);
-  for (const result of results) {
-    assert.equal(result.is_error, true);
-    assert.match(result.content, /clock is stopped/);
-  }
-});
-
-test("the same tools still work in the story, outside a talk", async () => {
-  const game = newGame();
-  game.clock.hours = 10;
-  replies = [
-    { blocks: [{ type: "tool_use", id: "t1", name: "pass_time", input: { hours: 2, activity: "active", reason: "A long talk" } }, { type: "tool_use", id: "t2", name: "set_scene", input: { area: "The Long Mess", people: ["voss"] } }], stop: "tool_use" },
-    { blocks: [{ type: "text", text: "Later, in the mess." }] },
-  ];
-  await runTurn({ game, settings, playerText: "We head to the mess.", emit: () => {} });
-  assert.equal(game.clock.hours, 12);
-  assert.equal(walkView(game).here.id, "mess");
-  assert.ok(person(game, "voss"));
-  for (const result of allToolResults(game)) assert.ok(!result.is_error, result.content);
-});
-
-test("everything else the AI can do still works in a talk, within the same limits", async () => {
-  const game = newGame();
-  talkCommand(game, { action: "open", person: "voss" });
-  await saySomething(game, "I trust you.", [
-    { blocks: [{ type: "tool_use", id: "t1", name: "note_contact", input: { name: "Ilya Voss", attitude: "friendly", note: "Trusted her." } }], stop: "tool_use" },
-    { blocks: [{ type: "text", text: '@Commander Ilya Voss: "Noted."' }] },
-  ]);
-  assert.equal(publicState(game).talk.attitude, "friendly");
-});
-
-test("the person's file goes out the first time they're talked to, and only then", async () => {
-  const game = newGame();
-  game.ai.sentCharacters = ["pell"];
-  game.ai.messages = [{ role: "user", content: "Earlier." }, { role: "assistant", content: [{ type: "text", text: "Earlier." }] }];
-  game.ai.provider = "claude";
-  talkCommand(game, { action: "open", person: "voss" });
-  await saySomething(game, "Report.", { blocks: [{ type: "text", text: '@Commander Ilya Voss: "Ask Tarrow."' }] });
-  assert.match(lastMessageText(), /<character_files>[\s\S]*Ilya Voss/);
-  // Someone the person only mentions doesn't add to the bill. Someone the player asks about does.
-  await saySomething(game, "Anything else?");
-  assert.ok(!lastMessageText().includes("<character_files>"));
-  await saySomething(game, "What about Marrow?");
-  assert.match(lastMessageText(), /<character_files>[\s\S]*Dunn Marrow/);
-});
-
-test("however long a talk goes on, no line of it brings on the whole state", async () => {
-  const game = newGame();
-  await runTurn({ game, settings, playerText: "I look around.", emit: () => {} });
-  game.ai.stateAge = 11;
-  talkCommand(game, { action: "open", person: "voss" });
-  for (let i = 0; i < 20; i += 1) {
-    await saySomething(game, `Line ${i}`);
-    assert.ok(!lastMessageText().includes("Attributes:"), `line ${i} sent the whole state`);
-    assert.equal(game.ai.stateAge, 11);
-  }
-  closeTalk(game);
-  await runTurn({ game, settings, playerText: "I go on.", emit: () => {} });
-  assert.equal(game.ai.stateAge, 12);
-  await runTurn({ game, settings, playerText: "And on.", emit: () => {} });
-  assert.match(lastMessageText(), /Attributes:/);
-});
-
-test("news from the ship waits until the talk's over, instead of being wasted on a line of small talk", async () => {
-  const game = newGame();
-  await runTurn({ game, settings, playerText: "I look around.", emit: () => {} });
-  game.ship.unheard.push({ about: "food", text: "The Meridian is out of food." });
-  game.story.lastNews = null;
-  talkCommand(game, { action: "open", person: "voss" });
-  await saySomething(game, "Report.");
-  assert.ok(!lastMessageText().includes("<ship_report>"));
-  assert.equal(game.ship.unheard.length, 1);
-  closeTalk(game);
-  await runTurn({ game, settings, playerText: "I go on.", emit: () => {} });
-  assert.match(lastMessageText(), /<ship_report>/);
-});
-
-test("a talk costs very little beyond the line itself", async () => {
-  const game = newGame();
-  await runTurn({ game, settings, playerText: "I look around.", emit: () => {} });
-  talkCommand(game, { action: "open", person: "voss" });
-  await saySomething(game, "Report.");
-  await saySomething(game, "Anything else?");
-  const message = lastMessageText();
-  assert.ok(!message.includes("Map: player"), "standing still doesn't resend the line");
-  assert.ok(message.length < 300, `a quiet line sends only ${message.length} characters`);
-});
-
-test("walking within a room adds nothing to the next message, and changing rooms adds one short line", async () => {
-  const game = newGame();
-  await runTurn({ game, settings, playerText: "I look around.", emit: () => {} });
-  walkCommand(game, { action: "go", x: 10, y: 14 });
-  await runTurn({ game, settings, playerText: "Still looking.", emit: () => {} });
-  assert.match(lastMessageText(), /Nothing has changed since your last update/);
-  walkCommand(game, { action: "go", to: "room:names" });
-  await runTurn({ game, settings, playerText: "What's this?", emit: () => {} });
-  assert.match(lastMessageText(), /Map: player walked to The Names Bulkhead/);
-});
-
-test("the game master can describe a new room as it goes there, and the map shows it at once", async () => {
-  const game = newGame();
-  game.campaign = "walk-described-room";
-  const states = [];
-  replies = [
-    { blocks: [{ type: "tool_use", id: "t1", name: "set_scene", input: { area: "The Cannon Deck", kind: "gundeck", people: ["voss"], things: [{ name: "A fresh scorch mark", look: "It wasn't there yesterday." }] } }], stop: "tool_use" },
-    { blocks: [{ type: "text", text: "You climb up to the guns." }] },
-  ];
-  await runTurn({ game, settings, playerText: "I go up to the cannon deck.", emit: (e) => { if (e.type === "state") states.push(walkView(game).here.name); } });
-  assert.deepEqual(states, ["The Cannon Deck"], "the room's there before the story's finished arriving");
-  assert.ok(walkView(game).things.some((one) => one.name === "A fresh scorch mark"));
-  assert.match(allToolResults(game)[0].content, /off the map, at The Cannon Deck, in a room of the kind "gundeck", with Ilya Voss/);
-  assert.equal(findCampaignRoom(game.campaign, "The Cannon Deck").kind, "gundeck");
-  assert.match(requests[0].tools.find((def) => def.name === "set_scene").description, /walk-around map/);
-  assert.match(SYSTEM_PROMPT, /keeps it for good/);
-});
-
-test("if the AI's memory restarts, a finished talk is in the record, and so is the one still going", async () => {
-  const game = newGame();
-  await runTurn({ game, settings, playerText: "I look around.", emit: () => {} });
-  talkCommand(game, { action: "open", person: "voss" });
-  await saySomething(game, "What happened to the Tarn?", { blocks: [{ type: "text", text: '@Commander Ilya Voss: "Nothing I can talk about."' }] });
-  closeTalk(game);
-  talkCommand(game, { action: "open", person: "pell" });
-  await saySomething(game, "Who taught you to fly?", { blocks: [{ type: "text", text: '@Ensign Pell Asante: "A cargo hauler."' }] });
-  // Switching provider is one of the things that restarts it from the record.
-  game.ai.provider = "something-else";
-  await saySomething(game, "And after that?");
-  const message = lastMessageText();
-  assert.match(message, /A TALK IN ITS OWN WINDOW: Player: What happened to the Tarn\? @Commander Ilya Voss: "Nothing I can talk about\."/);
-  assert.match(message, /Said in this talk so far: Captain: Who taught you to fly\?/);
+  assert.equal(runTool(game, "change_stress", { amount: -4, reason: "Weak tea" }, talking).isError, undefined, "anything else a scene can do still works");
 });
 
 test("the Ship menu and sleep can't move the clock during a talk", () => {
@@ -1492,12 +1236,11 @@ const oldSave = (game = newGame(), version = 7) => {
 
 test("a save from before there was any map loads, with the captain in a room", () => {
   const game = migrateGame(oldSave());
-  assert.equal(game.version, 18);
+  assert.equal(game.version, 19);
   assert.equal(game.talk, null);
   assert.equal(game.walk.place, "meridian");
   assert.equal(walkView(game).here.id, "bridge");
   assert.doesNotThrow(() => publicState(game));
-  assert.match(aiSnapshot(game), /Map: player at The Bridge/);
 });
 
 test("loading a save twice changes nothing the second time", () => {
@@ -1525,7 +1268,6 @@ test("a save in the middle of Section Fourteen opens there, with the people from
   assert.equal(view.here.name, "Section Fourteen");
   assert.equal(walkOf(game).room.kind, "ducts");
   assert.deepEqual(view.people.map((one) => one.short).sort(), ["Dot Harrow", "Naomi Cass", "Tobiah Wren"]);
-  assert.match(aiSnapshot(game), /Map: player off the map, at Section Fourteen\. With: .*Dot Harrow/);
   // The story's choices are still on offer, and walking back out is one click.
   const back = walkCommand(game, { action: "go", to: "exit:0" });
   assert.equal(back.walk.offPlan, false);
@@ -1536,7 +1278,7 @@ test("a save from when the ship was one plan keeps the captain in the same room"
     const old = oldSave(newGame(), 8);
     old.walk = { place: "meridian", x, y, walked: false, with: [{ id: "voss", name: "Ilya Voss", x: 41, y: 5 }], room: null };
     const game = migrateGame(old);
-    assert.equal(game.version, 18);
+    assert.equal(game.version, 19);
     assert.equal(roomHere(game).id, level, `${x},${y}`);
     assert.deepEqual(walkOf(game).with, [], "everyone's back at their posts");
     assert.equal(walkView(game).offPlan, false);
@@ -1564,7 +1306,7 @@ test("a save somewhere else opens wherever its latest scene says, from any older
     away.location = "haven";
     away.transcript = [{ role: "narrator", text: 'You push through the door of the Neutral Ground.\n\n@Jun Sable: "Weapons in the rack."' }];
     const game = migrateGame(oldSave(away, version));
-    assert.equal(game.version, 18);
+    assert.equal(game.version, 19);
     assert.equal(walkView(game).here.id, "bar", `from version ${version}`);
     assert.ok(person(game, "sable"), "whoever's in the scene is there");
     assert.doesNotThrow(() => publicState(game));
@@ -1598,10 +1340,10 @@ test("a save from any older version gets here too", () => {
   save.version = 6;
   delete save.fleet;
   const game = migrateGame(save);
-  assert.equal(game.version, 18);
+  assert.equal(game.version, 19);
   assert.ok(game.ship.day !== undefined && game.ship.aboard > 0, "the ship's own numbers are there");
   assert.doesNotThrow(() => publicState(game));
-  assert.equal(newGame().version, 18);
+  assert.equal(newGame().version, 19);
 });
 
 test("a save made while talking carries on talking", () => {
@@ -1629,9 +1371,7 @@ async function post(route, body = {}) {
 
 before(async () => {
   fs.mkdirSync(path.join(serverData, "saves"), { recursive: true });
-  fs.writeFileSync(path.join(serverData, "settings.json"), JSON.stringify(settings));
   const save = oldSave();
-  save.pendingEvents = [];
   fs.writeFileSync(path.join(serverData, "saves", "autosave.json"), JSON.stringify(save));
   // A port nobody's using: this asks the system for one, and lets it go again.
   port = await new Promise((resolve) => {
@@ -1682,27 +1422,21 @@ test("over the real server: walking, talking and closing never move the clock, a
     assert.match(refused.error, /talk first/);
   }
 
-  replies = [
-    { blocks: [{ type: "tool_use", id: "s1", name: "pass_time", input: { hours: 30, activity: "active", reason: "A long talk" } }], stop: "tool_use" },
-    { blocks: [{ type: "text", text: '@Father Bastian Roe: "Weak tea and strong doubts."\n\n> Ask about the doubts' }] },
-  ];
-  const line = await post("/api/talk", { action: "say", text: "How are people holding up, Father?" });
+  // He speaks first, from his written lines, and what's said is one of them.
+  assert.match(opened.game.talk.lastReply, /Sit down, sit down/);
+  const line = await post("/api/talk", { action: "say", text: "Ask how the services are going" });
   assert.equal(line.status, 200);
   const done = line.lines.at(-1);
   assert.equal(done.type, "done");
   assert.equal(done.state.clock.hours, hours);
-  assert.equal(done.state.talk.lastReply.includes("Weak tea"), true);
+  assert.match(done.state.talk.lastReply, /Every tenth day/);
   assert.ok(line.lines.some((entry) => entry.type === "text"));
-  assert.ok(!done.state.transcript.some((entry) => entry.text?.includes("Weak tea")), "what's said stays in its window");
+  assert.ok(!done.state.transcript.some((entry) => entry.text?.includes("Every tenth day")), "what's said stays in its window");
 
   const rumor = await post("/api/talk", { action: "rumor" });
   assert.equal(rumor.game.talk.log.at(-1).role, "narrator");
   assert.ok(rumor.game.clock.hours === hours);
 
-  // A rumor goes along with the next line, so the game master knows it was said.
-  replies = [{ blocks: [{ type: "text", text: '@Father Bastian Roe: "People say a lot of things."' }] }];
-  await post("/api/talk", { action: "say", text: "Do you believe that?" });
-  assert.match(lastMessageText(), /they also passed on what people are saying/);
 
   const closed = await post("/api/talk", { action: "close" });
   assert.equal(closed.game.talk, null);
@@ -1713,32 +1447,32 @@ test("over the real server: walking, talking and closing never move the clock, a
   assert.equal(notes.length, 1);
 
   const onDisk = JSON.parse(fs.readFileSync(path.join(serverData, "saves", "autosave.json"), "utf8"));
-  assert.equal(onDisk.version, 18);
+  assert.equal(onDisk.version, 19);
   assert.equal(onDisk.talk, null);
   assert.equal(onDisk.clock.hours, hours);
 });
 
-test("over the real server: a failed AI call puts everything back, including what was said", async () => {
+test("over the real server: words that aren't one of their lines put everything back, including what was said", async () => {
   await post("/api/talk", { action: "open", person: "bastian" });
   const before1 = await (await fetch(`http://127.0.0.1:${port}/api/state`)).json();
-  replies = [{ status: 400, message: "Something went wrong at the other end." }];
   const line = await post("/api/talk", { action: "say", text: "This won't get through." });
   const failed = line.lines.at(-1);
   assert.equal(failed.type, "error");
+  assert.match(failed.message, /isn't one of the things to say here/);
   assert.deepEqual(failed.state.talk.log, before1.game.talk.log);
   assert.equal(failed.state.clock.hours, before1.game.clock.hours);
   await post("/api/talk", { action: "close" });
 });
 
-test("over the real server: typing an action still goes to the story, and closes any talk that's open", async () => {
+test("over the real server: typing words the story has no answer for changes nothing, and closes any talk that's open", async () => {
   await post("/api/talk", { action: "open", person: "bastian" });
-  replies = [{ blocks: [{ type: "text", text: "You leave him to it.\n\n> Go on" }] }];
+  const before1 = await (await fetch(`http://127.0.0.1:${port}/api/state`)).json();
   const turn = await post("/api/chat", { text: "I head back to the bridge." });
-  const done = turn.lines.at(-1);
-  assert.equal(done.type, "done");
-  assert.equal(done.state.talk, null);
-  assert.equal(done.state.transcript.at(-1).text, "You leave him to it.\n\n> Go on");
-  assert.equal(done.state.transcript.at(-2).text, "I head back to the bridge.");
+  const failed = turn.lines.at(-1);
+  assert.equal(failed.type, "error");
+  assert.match(failed.message, /no more written story here/);
+  assert.equal(failed.state.talk, null);
+  assert.equal(failed.state.transcript.length, before1.game.transcript.length, "nothing was said, so the story has nothing new");
 });
 
 test("over the real server: during a fight or a check, nobody walks or talks", async () => {

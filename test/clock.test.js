@@ -16,7 +16,7 @@ const { clearFact, endStory, endingOf, recordFact } = await import("../src/recor
 const { passTime } = await import("../src/rules.js");
 const { fillStores } = await import("../src/logistics.js");
 const { allStoryProblems } = await import("../src/scenes.js");
-const { clockFacts, clockProblems, hasMovedOn, leadNow, whatHappened } = await import("../src/story-clock.js");
+const { clockFacts, clockProblems, hasMovedOn, leadNow } = await import("../src/story-clock.js");
 const { STORY_CLOCK, WORLD_THREADS } = await import("../src/world.js");
 
 const FUEL = "main_two_weeks_of_fuel";
@@ -25,7 +25,6 @@ const newGame = (seed = 21) => {
   const draft = randomDraft({ seed, archetype: "officer" });
   draft.start = "captain";
   const game = createGameFromDraft(draft);
-  game.mode = "written";
   game.transcript.push({ role: "narrator", text: "The story so far." });
   return game;
 };
@@ -97,8 +96,6 @@ test("a stage with a condition is skipped when it doesn't hold, and the fork's o
   assert.equal(moved(corvane, /hear Legate Corvane out/).length, 1);
   assert.equal(moved(corvane, /voted to follow the Beacon/).length, 0);
   assert.match(leadNow(corvane, COUNCIL), /hear the Hegemony's terms/);
-  assert.match(whatHappened(corvane, COUNCIL), /hear Legate Corvane out/);
-  assert.doesNotMatch(whatHappened(corvane, COUNCIL), /voted to follow/, "a skipped stage never happened");
   assert.ok(hasMovedOn(corvane, COUNCIL));
 
   const quill = newGame(22);

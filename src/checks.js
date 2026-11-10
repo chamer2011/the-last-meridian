@@ -1,8 +1,7 @@
 // Skill checks that play out in their own window. Each skill has its own little game, which runs
 // entirely on this computer. In most of them, playing well improves the odds of the final roll;
 // in a decided one, like hacking, what happens in the window is the result, with no roll on top.
-// Either way the result goes to the game master along with what happened, so the AI isn't called
-// until it's over.
+// Either way, the written story picks up the result once it's over.
 
 import { findCharacter } from "./campaign.js";
 import { CONTEXTS, FACTION_BELIEFS, POLES, SKILLS } from "./character-data.js";
@@ -86,7 +85,7 @@ function refreshEdge(check, ctx) {
 }
 
 // Opens the window for a check. source says where it came from: a tagged choice the player
-// clicked, the game master asking for one, or practice, which doesn't count for anything. target
+// clicked, a written scene asking for one, or practice, which doesn't count for anything. target
 // is what it's about in the room, as the room's marks name it, for the window's line to point at.
 export function startCheck(game, { skill = null, attribute = null, difficulty, context = [], audience = null, reason, scene = null, choice = null, source = "tool", computer = null, target = null }) {
   if (game.check) throw new Error("Finish the check you're in the middle of first.");
@@ -137,7 +136,7 @@ export function startCheck(game, { skill = null, attribute = null, difficulty, c
 export const hackingClasses = () => allClasses(CHECK_TEXT.skills?.hacking).map(({ difficulty, name }) => ({ difficulty, name }));
 
 // The player clicked a choice that's tagged with a check. Whatever they clicked has to be on offer
-// right now, and its tags come from what the game master wrote, not from the browser.
+// right now, and its tags come from what the story wrote, not from the browser.
 export function startChoiceCheck(game, label, entries = game.transcript) {
   const vocab = buildVocab(SKILLS);
   for (let i = entries.length - 1; i >= 0; i -= 1) {
@@ -229,22 +228,18 @@ function finishCheck(game) {
   game.check = null;
   if (practiceOnly) return { over: true, outcome };
   // Work on a part of the place's systems is settled by src/systems.js, which says what came of it; neither the written
-  // story nor the AI is waiting on it.
+  // story is waiting on it.
   if (check.source === "part") {
     game.transcript.push({ role: "notice", text: [decided ? `[HACK] ${check.reason}: ${label}, ${math}` : `[ROLL] ${check.reason}: ${math}: ${label}`, ...r.notes].join("\n") });
     return { over: true, outcome };
   }
-  // The written story reads this to decide where it goes next. The AI reads the event below instead.
+  // The written story reads this to decide where it goes next.
   game.lastCheck = { id: check.id, skill: check.skill, difficulty: check.difficulty, success: r.success, reason: check.reason, source: check.source, used: false };
-  const taken = check.choice ? `The player took this choice from your last message: ${check.choice}\nThe game ran the check in its own window, so don't call roll_check for it.` : `The check you asked for is done: ${check.reason}.`;
   if (decided) {
     game.transcript.push({ role: "notice", text: [`[HACK] ${check.reason}: ${label}, ${math}`, ...r.notes].join("\n") });
-    game.pendingEvents.push(`${taken} Result: ${r.success ? "SUCCESS" : "FAILURE"} (${label.toLowerCase()}). How it went: ${story} Narrate this outcome faithfully.`);
     return { over: true, outcome };
   }
   game.transcript.push({ role: "notice", text: [`[ROLL] ${check.reason}: ${math}: ${label}`, ...r.notes].join("\n") });
-  const margin = `by ${Math.abs(r.margin)}`;
-  game.pendingEvents.push(`${taken} Result: ${label} ${margin}. Rolled ${math}. How it went: ${story} Narrate this outcome faithfully, and let a large margin make it more dramatic.`);
   return { over: true, outcome };
 }
 

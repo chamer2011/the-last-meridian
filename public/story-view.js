@@ -180,7 +180,7 @@ export function blockNode(block, used = new Set()) {
   return el("p", { class: "narration" }, partsNodes(block.parts, used));
 }
 
-// The game master's text in pieces, for showing a piece at a time, and the words of one of them.
+// The story's text in pieces, for showing a piece at a time, and the words of one of them.
 export const sceneBlocks = (text, options) => attributeSpeech(parseNarration(text, options), context.index);
 export const wordNodes = (parts) => partsNodes(parts, new Set());
 

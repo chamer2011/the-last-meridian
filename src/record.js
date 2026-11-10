@@ -1,6 +1,6 @@
 // The record: what the player did in each story, and the lasting facts that left, kept in the save so that every
-// story that comes after can read it. The written story's flags are facts on it, the AI puts facts and endings
-// on it through two checked tools, the Quests menu shows it, and the AI reads it in its state every turn. It's the
+// story that comes after can read it. The written story's flags are facts on it, its * ending lines are endings,
+// the Quests menu shows it, and the scenes and the story clock read it. It's the
 // game's memory of consequences, which the journal, being prose, isn't.
 
 import { noteThreadEnded, storyOf } from "./story-library.js";
@@ -8,8 +8,6 @@ import { FACT_LINES, WORLD_THREADS, endingsOf } from "./world.js";
 
 export const FACT_ID = /^[a-z][a-z0-9_]{1,39}$/;
 export const MAX_FACTS = 300;
-export const FACTS_PER_TURN = 3;
-
 // Flags from before the record existed, as facts with no words, so that an older save's flags show on it too.
 const flagFacts = (game, facts) => Object.keys(game.flags ?? {})
   .filter((id) => !facts.some((fact) => fact.id === id))
@@ -79,7 +77,7 @@ export function endedWith(game, id, ending = null) {
 }
 
 // A story ends: its ending goes on the record, its quest is settled with the same line, and the Leads menu and the
-// clock learn it's over. The written story's * ending lines and the AI's end_story both come through here.
+// clock learn it's over. The written story's * ending lines come through here.
 export function endStory(game, { id, ending = null, summary, failed = false }) {
   const thread = WORLD_THREADS[id];
   if (!thread) throw new Error(`There's no story called ${id}.`);
@@ -97,15 +95,6 @@ export function endStory(game, { id, ending = null, summary, failed = false }) {
 export const factWords = (fact) => fact.text ?? FACT_LINES[fact.id] ?? fact.id.replaceAll("_", " ");
 
 const titleOf = (id) => WORLD_THREADS[id]?.title ?? id;
-
-// The record as the AI reads it in its state: a line per ending and per fact, so that only what's changed is sent
-// again. A very long record keeps its latest facts.
-export function recordLines(game) {
-  const record = readRecord(game);
-  const endings = Object.entries(record.endings).map(([id, ending]) => `Story ended, ${titleOf(id)} (${id})${ending.ending ? `, ${ending.ending}` : ""}: ${ending.summary}`);
-  const facts = record.facts.slice(-80).map((fact) => `Fact ${fact.id}: ${factWords(fact)}`);
-  return [...endings, ...facts];
-}
 
 // The record as the page shows it: the stories that ended, latest first, and the facts, oldest first, each with the
 // story it came from when a written scene left it.

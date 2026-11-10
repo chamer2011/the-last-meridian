@@ -1,23 +1,16 @@
 // The world's story material, kept in files: story threads, what's going on at each place, and the
-// main story's clues. The game master is given these only when they become relevant, which keeps
-// every message small. The player can see the leads and rumors at wherever they are in a menu,
-// without using the AI at all.
+// main story's clues. The player sees the leads and rumors at wherever they are in a menu.
 
-import { fullName } from "./campaign.js";
-import { NOTABLES } from "./character-data.js";
-import { ENEMIES, FACTIONS, ITEMS, LOCATIONS } from "./data.js";
+import { LOCATIONS } from "./data.js";
 import { worldRumors } from "./daily.js";
-import { hasMovedOn, leadNow, movedView, ranItsCourse, whatHappened } from "./story-clock.js";
+import { hasMovedOn, leadNow, movedView, ranItsCourse } from "./story-clock.js";
 import { isCaptain } from "./role.js";
 import { writtenThreadIds } from "./scene-files.js";
-import { conditionHolds, parseCondition } from "./scene-text.js";
-import { chairOf } from "./ship.js";
+import { parseCondition } from "./scene-text.js";
 import { SET_ASIDE, WORLD_ARC, WORLD_THREADS, endingsOf } from "./world.js";
 
 const LEADS_SHOWN = 4;
 const RUMORS_SHOWN = 3;
-const ENCOUNTERS_SENT = 3;
-const CLUES_SENT = 3;
 // What's going around at a place changes this often, in days.
 const NEWS_CYCLE = 2;
 
@@ -67,7 +60,7 @@ function threadOpen(id, thread, game) {
 }
 
 // A few of the stories that could start here, with a mix of kinds. Main story threads come first, and the
-// stories that have been written out come before all of those, in every game: with an AI they're the free ones.
+// stories that have been written out come before all of those.
 export function leadsHere(game) {
   const open = Object.entries(WORLD_THREADS).filter(([id, thread]) => threadOpen(id, thread, game));
   const shuffled = seededShuffle(open, cycleSeed(game, "leads"));
@@ -113,62 +106,7 @@ export function storyView(game) {
   return { here: leadsHere(game), rumors: rumorsHere(game), active: followed("active"), done: followed("done"), moved: movedView(game) };
 }
 
-const personLine = (id) => {
-  const person = NOTABLES[id];
-  return person ? `${id} (${fullName(person)}, ${person.role})` : null;
-};
 const list = (label, items) => (items?.length ? `${label}:\n${items.map((item) => `- ${item}`).join("\n")}` : null);
-const inline = (label, items) => (items?.length ? `${label}: ${items.join(", ")}.` : null);
-
-function cluesHere(game) {
-  const { clues, act } = storyOf(game);
-  return (WORLD_ARC.clues ?? [])
-    .filter((clue) => (clue.places ?? []).includes(game.location) && !clues.includes(clue.id) && (clue.act ?? 1) <= act)
-    .slice(0, CLUES_SENT);
-}
-
-// Everything the game master needs to run the place the player's in.
-export function placeFile(game) {
-  const story = storyOf(game);
-  const place = LOCATIONS[game.location];
-  if (!place?.gm) return null;
-  const { gm } = place;
-  const fresh = (place.encounters ?? []).map((text, i) => ({ text, key: `e:${game.location}:${i}` })).filter((entry) => !story.used.includes(entry.key));
-  const encounters = seededShuffle(fresh, cycleSeed(game, "encounters")).slice(0, ENCOUNTERS_SENT);
-  story.used.push(...encounters.map((entry) => entry.key));
-  game.ai.sentPlace = game.location;
-  const leads = leadsHere(game);
-  const faction = FACTIONS[place.faction]?.name;
-  return [
-    `<place_file place="${game.location}">`,
-    `${place.name}.${faction ? ` Run by ${faction}.` : ""} ${place.desc}`,
-    gm.feel,
-    list("Where things happen", gm.districts?.map((district) => `${district.name}: ${district.desc}`)),
-    inline("People here, with read_character for their files", gm.people?.map(personLine).filter(Boolean)),
-    inline("Enemies that suit this place", gm.enemies?.filter((id) => ENEMIES[id]).map((id) => `${id} (${ENEMIES[id].name})`)),
-    inline("Things someone might find here", gm.items?.filter((id) => ITEMS[id])),
-    list("What can go wrong here", gm.complications),
-    list("Secrets, for you only", gm.secrets),
-    list("Small things that could happen on this visit, if they suit the moment", encounters.map((entry) => entry.text)),
-    list("What people are saying here, which the player can also read in their Leads menu", rumorsHere(game)),
-    list("Stories that could start here, which the player can also see in their Leads menu. Call read_thread for the notes on one if you bring it in", leads.map((lead) => `${lead.id}: ${lead.title}. ${lead.lead}`)),
-    list("Clues to the main story that could be found here. Call update_story when one is found", cluesHere(game).map((clue) => `${clue.id}: ${clue.text}${clue.how ? ` How: ${clue.how}` : ""}${clue.points_to ? ` Points to: ${clue.points_to}` : ""}`)),
-    "</place_file>",
-  ].filter(Boolean).join("\n");
-}
-
-// The place's notes go out once per visit, including right at the start of a conversation.
-export function placeFileIfNew(game) {
-  return game.ai.sentPlace === game.location ? null : placeFile(game);
-}
-
-// How the story before this one ended, for its notes, once it has.
-function endedBefore(game, thread) {
-  const ending = thread.after ? game.story?.record?.endings?.[thread.after] : null;
-  if (!ending) return null;
-  return `Before it, ${WORLD_THREADS[thread.after].title} ended${ending.ending ? ` (${ending.ending})` : ""}: ${ending.summary}`;
-}
-
 // What's wrong in the stories' notes, world/stories, in plain words: an ending without a name, a fact without a
 // line, a reaction the game can't read, or one that waits on a fact nothing leaves. With the set of facts
 // something leaves, that last check runs too.
@@ -210,40 +148,6 @@ export function notesProblems(known = null) {
   return problems;
 }
 
-export function threadNotes(id, game = null) {
-  const thread = WORLD_THREADS[id];
-  if (!thread) return null;
-  const { gm } = thread;
-  return [
-    `<story_thread id="${id}" title="${thread.title}">`,
-    "Your notes for this story. Treat them as a starting point, and let the player's choices change where it goes, but keep to what's on the record. Use add_quest with this thread's id as the quest's id when it begins, and end_story, with the ending's name, when it ends.",
-    game && !isCaptain(game) && `The player isn't the captain, and these notes were written with the captain in mind. Where they say the captain, read the player if it's something they could do from where they stand. Otherwise it's ${chairOf(game)?.name ?? "whoever has the chair"}, and the player will have to get to them, or work around them.`,
-    `The lead: ${thread.lead}`,
-    game && whatHappened(game, id),
-    game && (hasMovedOn(game, id) || !isCaptain(game)) && `How the player heard about it: ${leadNow(game, id)}`,
-    gm.truth && `What's really going on: ${gm.truth}`,
-    inline("People involved, with read_character for their files", thread.people?.map(personLine).filter(Boolean)),
-    list("How it might go", gm.beats),
-    list("Ways through", gm.routes),
-    inline("Checks that fit", gm.checks),
-    list("If it comes to a fight", gm.fights),
-    list("Where it can end up, by the ending's name", endingsOf(thread).map((one) => `${one.id}: ${one.text}`)),
-    list("Facts it can leave, with note_fact", Object.entries(gm.facts ?? {}).map(([name, text]) => `${name}: ${text}`)),
-    game && list("What's on the record changes it", (gm.reacts ?? []).filter((one) => conditionHolds(game, one.to)).map((one) => one.then)),
-    game && endedBefore(game, thread),
-    gm.rewards && `Rewards: ${gm.rewards}`,
-    "</story_thread>",
-  ].filter(Boolean).join("\n");
-}
-
-// The player or the game master has taken up a thread.
-export function beginThread(game, id) {
-  if (!WORLD_THREADS[id]) return null;
-  const { threads } = storyOf(game);
-  threads[id] ??= "active";
-  return threadNotes(id, game);
-}
-
 export function noteThreadStarted(game, id) {
   if (!WORLD_THREADS[id]) return;
   const { threads } = storyOf(game);
@@ -253,42 +157,6 @@ export function noteThreadStarted(game, id) {
 export function noteThreadEnded(game, id) {
   if (WORLD_THREADS[id]) storyOf(game).threads[id] = "done";
 }
-
-export const threadPeople = (id) => (WORLD_THREADS[id]?.people ?? []).map((person) => NOTABLES[person]?.name).filter(Boolean);
-
-// Where the main story stands. It goes out at the start of a conversation and when an act changes.
-export function arcBrief(game) {
-  const story = storyOf(game);
-  const acts = WORLD_ARC.acts ?? [];
-  const act = acts[story.act - 1];
-  if (!act) return null;
-  game.ai.sentAct = story.act;
-  return [
-    "<main_story>",
-    `Where the main story stands: act ${story.act} of ${acts.length}, ${act.name}. Never tell the player this.`,
-    !isCaptain(game) && `All of this is happening around the player, not to them. ${chairOf(game)?.name ?? "Someone else"} has the chair, and these scenes are that person's. The player may only ever see the edges of it, and that's fine. Let them get closer if they go looking, and don't bring it to them.`,
-    WORLD_ARC.truth?.how_it_connects && `How it all connects, for you only: ${WORLD_ARC.truth.how_it_connects}`,
-    list("How to run the mystery", WORLD_ARC.gm_rules),
-    `What the story's doing now: ${act.goal}`,
-    act.pressure && `What's getting worse in the background: ${act.pressure}`,
-    act.moves_on_when && `It moves on when: ${act.moves_on_when} Then call update_story with the new act.`,
-    list("Scenes that could happen in this act", act.beats),
-    story.clues.length ? `Clues they've already found: ${story.clues.join(", ")}.` : null,
-    story.act >= acts.length - 1 ? list("How it could all end", (WORLD_ARC.endings ?? []).map((ending) => `${ending.name}: ${ending.gm}`)) : null,
-    "</main_story>",
-  ].filter(Boolean).join("\n");
-}
-
-// The rest of the main story's notes are large, so the game master asks for the part it needs.
-export const MYSTERY_TOPICS = [...Object.keys(WORLD_ARC.truth ?? {}), "factions", "reversals", "routes_by_build", "timeline"];
-
-export function mysteryNotes(topic) {
-  const notes = WORLD_ARC.truth?.[topic] ?? WORLD_ARC[topic];
-  if (notes === undefined) throw new Error(`There are no notes on ${topic}.`);
-  return typeof notes === "string" ? notes : JSON.stringify(notes, null, 1);
-}
-
-export const arcBriefIfNew = (game) => (game.ai.sentAct === storyOf(game).act ? null : arcBrief(game));
 
 export function updateStory(game, { clue, act }) {
   const story = storyOf(game);
@@ -304,8 +172,6 @@ export function updateStory(game, { clue, act }) {
     story.act = act;
     if (story.clock) story.clock.act = null;
     said.push(`The main story is now in act ${act}.`);
-    const brief = arcBrief(game);
-    if (brief) said.push(brief);
   }
   if (!said.length) throw new Error("Give a clue or an act.");
   return said.join("\n");

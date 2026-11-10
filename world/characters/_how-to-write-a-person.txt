@@ -19,7 +19,7 @@ A file starts with the name, then a few lines about them, then parts under headi
     place: meridian                     (an id from world/places, or none)
     crew: yes                           (one of the Meridian's crew; leave it out if not)
     color: #7fe0c3                      (the color their words are shown in)
-    listed: no                          (keep them off the list the AI is given; leave it out if not)
+    listed: no                          (a note that they're minor; the game doesn't use it; leave it out if not)
     prominent: yes                      (one of the few the character creator mentions; leave it out if not)
     chair: yes                          (they chair the council; leave it out if not)
     voice style: comm                   (comm, choir or machine, for how their words look; leave it out for a plain voice)
@@ -83,8 +83,8 @@ A file starts with the name, then a few lines about them, then parts under headi
     When they're beaten:
     - ...
 
-In a line is how the game sees them, in one sentence. Appearance, Personality, Voice, Goals and Secrets are for the
-game master, and the AI plays them from these. The numbers are the same ones the player has. The fight lines are
+In a line is how the game sees them, in one sentence. Appearance, Personality, Voice, Goals and Secrets are notes for
+whoever writes their lines and scenes: the player never reads them. The numbers are the same ones the player has. The fight lines are
 read out in a fight, one picked at random each time; a person with no lines gets plain ones.
 
 A part that has nothing in it can be left out.

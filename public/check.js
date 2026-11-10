@@ -233,7 +233,9 @@ function resultNode() {
   const harder = DIFFICULTIES[DIFFICULTIES.indexOf(outcome.difficulty) + 1];
   const choices = outcome.training
     ? [["Try it again", () => again(outcome.difficulty)], harder && ["Try something harder", () => again(harder), harder.replace("_", " ")], ["Close", () => closeWindow()]].filter(Boolean)
-    : [["Continue the story", () => continueStory(), "the game master picks it up from here"], ["Close, and look around first", () => closeWindow()]];
+    : app.ui.game?.storyWaiting
+      ? [["Continue the story", () => continueStory(), "the story picks it up from here"], ["Close, and look around first", () => closeWindow()]]
+      : [["Close", () => closeWindow()]];
   return el("div", { class: "check-window check-result", id: "check-window", "data-theme": outcome.theme, role: "dialog", "aria-label": outcome.window, tabindex: "-1", onclick: skipRoll },
     el("pre", { class: "check-rain", "aria-hidden": "true" }, rainFor(outcome.id)),
     el("header", { class: "check-title" },
@@ -431,7 +433,7 @@ export function focusCheck() {
   else document.getElementById("check-window")?.focus({ preventScroll: true });
 }
 
-// The player clicked a choice tagged with a check, so its window opens instead of calling the AI.
+// The player clicked a choice tagged with a check, so its window opens.
 export async function startChoiceCheck(label) {
   const { game } = await api("/api/check/start", { label });
   app.ui.game = game;

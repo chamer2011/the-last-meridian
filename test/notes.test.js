@@ -11,10 +11,10 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-notes-"));
 process.env.GAME_DATA_DIR = dataDir;
 
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
-const { endStory, endedWith, endingOf, recordFact, recordLines, recordView } = await import("../src/record.js");
+const { endStory, endedWith, endingOf, recordFact, recordView } = await import("../src/record.js");
 const { conditionHolds, parseCondition, parseEffect, parseSceneText } = await import("../src/scene-text.js");
 const { allStoryProblems, factsLeft, loadScenes, sceneProblems, writtenTurn } = await import("../src/scenes.js");
-const { notesProblems, threadNotes } = await import("../src/story-library.js");
+const { notesProblems } = await import("../src/story-library.js");
 const { TOOL_DEFS, newTurnLimits, runTool } = await import("../src/tools.js");
 const { FACT_LINES, WORLD_THREADS, endingsOf } = await import("../src/world.js");
 
@@ -23,7 +23,6 @@ const newGame = (seed = 23) => {
   const draft = randomDraft({ seed, archetype: "officer" });
   draft.start = "captain";
   const game = createGameFromDraft(draft);
-  game.mode = "written";
   return game;
 };
 const quiet = (game) => ({ emit: () => {}, log: (role, text) => game.transcript.push({ role, text }) });
@@ -121,7 +120,7 @@ test("the written story ends its story by name: the record, the quest and the Le
   assert.equal(quest.objective, "Signed with Mother Quill.");
   assert.equal(game.story.threads[FUEL], "done");
   assert.ok(notices.includes("[STORY] Two Weeks of Fuel has ended: Signed with Mother Quill."), notices.join("\n"));
-  assert.ok(recordLines(game).includes("Story ended, Two Weeks of Fuel (main_two_weeks_of_fuel), sign_with_quill: Signed with Mother Quill."));
+  assert.equal(recordView(game).endings[0].ending, "sign_with_quill");
 
   const lost = parseSceneText("== start\nThe vent.\n* ending ignored failed: You let it run.\nEND").scene;
   const other = newGame();
@@ -134,31 +133,26 @@ test("the written story ends its story by name: the record, the quest and the Le
 
 const publicStateEnding = (game) => recordView(game).endings[0].ending;
 
-test("the AI ends a story by its ending's name, and its notes list the names, the facts it can leave, and what the record changes", () => {
-  const def = TOOL_DEFS.find((one) => one.name === "end_story");
-  assert.ok(def.input_schema.properties.ending, "the action takes the ending's name");
-  assert.equal(def.input_schema.properties.outcome, undefined);
+test("a story's notes name its endings and facts, and its reactions are read against the record", () => {
+  const thread = WORLD_THREADS.main_chain_of_command;
+  assert.ok(endingsOf(thread).some((one) => one.id === "voss_arrested" && /^If Voss is arrested/.test(one.text)));
+  assert.equal(thread.gm.facts.tarrow_resigned, "Lieutenant Tarrow resigned over Commander Voss.");
   const game = newGame();
-  const notes = threadNotes("main_chain_of_command", game);
-  assert.match(notes, /Where it can end up, by the ending's name:\n- voss_arrested: If Voss is arrested/);
-  assert.match(notes, /Facts it can leave, with note_fact:\n- tarrow_resigned: Lieutenant Tarrow resigned over Commander Voss\./);
-  assert.doesNotMatch(notes, /What's on the record changes it/, "nothing on the record yet");
+  const holding = (id, on = game) => (WORLD_THREADS[id].gm.reacts ?? []).filter((one) => conditionHolds(on, one.to)).map((one) => one.then);
+  assert.equal(holding("main_chain_of_command").length, 0, "nothing on the record yet");
   endStory(game, { id: FUEL, ending: "take_corvanes_fuel", summary: "Corvane's fuel." });
-  const changed = threadNotes("main_chain_of_command", game);
-  assert.match(changed, /What's on the record changes it:\n- The fleet runs on Corvane's fuel/);
-  assert.doesNotMatch(changed, /at war with the Syndicate/, "only the reactions that hold");
+  assert.ok(holding("main_chain_of_command").some((line) => /^The fleet runs on Corvane's fuel/.test(line)));
+  assert.ok(!holding("main_chain_of_command").some((line) => /at war with the Syndicate/.test(line)), "only the reactions that hold");
   recordFact(game, { id: "said_dont_know", from: "thread_main_the_council" });
-  assert.match(threadNotes("main_chain_of_command", game), /- The captain told the council they don't know/);
-  const council = threadNotes("main_the_council", newGame());
-  assert.match(council, /The tanks aren't filled yet/, "a reaction to a story not ended yet");
-  assert.doesNotMatch(threadNotes("main_the_council", game), /The tanks aren't filled yet/);
+  assert.ok(holding("main_chain_of_command").some((line) => /^The captain told the council they don't know/.test(line)));
+  assert.ok(holding("main_the_council", newGame()).some((line) => /The tanks aren't filled yet/.test(line)), "a reaction to a story not ended yet");
+  assert.ok(!holding("main_the_council").some((line) => /The tanks aren't filled yet/.test(line)));
 });
 
 test("a fact a scene leaves without words shows the line the story's notes give it", () => {
   const game = newGame();
   recordFact(game, { id: "kessara_closed", from: `thread_${FUEL}` });
   assert.equal(recordView(game).facts.find((fact) => fact.id === "kessara_closed").text, FACT_LINES.kessara_closed);
-  assert.ok(recordLines(game).includes(`Fact kessara_closed: ${FACT_LINES.kessara_closed}`));
   recordFact(game, { id: "tannis_owes", text: "The scene's own words win.", from: `thread_${FUEL}` });
   assert.equal(recordView(game).facts.find((fact) => fact.id === "tannis_owes").text, "The scene's own words win.");
 });

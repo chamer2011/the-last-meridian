@@ -133,7 +133,7 @@ Lines starting with * happen when the part begins, and the player sees each as a
     * time 2 hours: The reason              (add work or rest after hours if that's what it was; 72 at most in one part)
     * flag told_the_fleet                   (remembers something, for conditions later, in any scene)
     * flag kessara_closed: Kessara is closed to the fleet     (with words, the player reads it on the record,
-                                            in the Quests menu, and so does the AI)
+                                            in the Quests menu)
     * unflag told_the_fleet
     * ending sign_with_quill: How it ended   (ends this scene's story by one of the endings named in its file,
                                             world/stories: the quest is done with that line, and the ending's on
@@ -162,9 +162,9 @@ Lines starting with * happen when the part begins, and the player sees each as a
                                           stay out or warn; world/command/_how-to-write-command.txt says what each does)
     * raw add_lore {"term": "The Rim", "kind": "place", "text": "What the player would know."}
 
-The last one does anything the AI can do, with the fields from src/tools.js. The rules are the
-same as for the AI: there are limits on credits and XP in one turn, and a quest has to exist
-before it can change.
+The last one does any of the game's actions, with the fields from src/tools.js. The same rules
+hold: there are limits on credits and XP in one turn, and a quest has to exist before it can
+change.
 
 
 CONDITIONS
@@ -318,15 +318,14 @@ in a talk. A conversation can't open a CHECK or a FIGHT: put those in a scene.
 
 Use ? not captain -> other at the start when the person would speak differently to someone who
 isn't the captain. Anyone without a file of their own gets stock lines, made from who they are and
-what they're doing, from the templates at the end of world/rooms.json. With an AI game master, the
-AI plays them instead, and a person with a file still speaks from it.
+what they're doing, from the templates at the end of world/rooms.json.
 
 
 THINGS AND DOORS
 ----------------
 
 These are in the map files, world/maps/<place>.json, not here. A thing's used is what happens
-when the player uses it without an AI (usedOther for someone who isn't the captain), and a thing
+when the player uses it (usedOther for someone who isn't the captain), and a thing
 with an item is picked up. A closed door's ask is the rule when the player asks at it:
 
     "ask": { "check": "persuasion:moderate", "reason": "Talk your way past", "pass": "...", "fail": "..." }
@@ -344,28 +343,20 @@ GAME MESSAGES
     NOTE: [STORY] A message shown with the part, in the colored lines, not in the story's own voice.
 
 
-NOTES FOR THE AI
-----------------
+NOTES FOR WHOEVER WRITES
+------------------------
 
     AI: Sable won't go below forty, and a threat makes her stop talking.
 
-With an AI game master, the written parts still play as written, and clicking a choice is free.
-But the player can also type their own words, and then the AI reads this part, these notes and
-the choices, and either takes the choice the words come to, or answers in a sentence or two
-without moving the story on. An AI: line is for the AI alone: the player never sees it. Use it
-for what the people here would and wouldn't do, what they know, and what can't happen here, so
-the AI's answers stay true to the part. Several AI: lines in one part are read together. Without
-an AI the line does nothing. A conversation (talk_<id>.txt) can have them too.
+An AI: line is a note in the file, and nothing more: the player never sees it, and the game does
+nothing with it. They were written when the game had an AI game master, which read them to stay
+true to the part. That's gone, so keep them, change them or delete them as you like.
 
 
 WHAT THE PLAYER CAN TYPE
 ------------------------
 
-Without an AI, the player picks from the choices, or types part of one. Typing is forgiving:
-"say nothing" is enough for "Say nothing, and listen to it". Anything else is refused in plain
-words, and nothing changes. So every part the player can stay in needs choices.
-
-With an AI game master, anything else they type goes to the AI, which fits it to one of the
-choices or answers it in a few words, and the written part still decides what happens next: the
-AI can't change the game from a written part any other way. So the choices still have to cover
-every way through, and an AI: line can say what the AI should and shouldn't allow in between.
+The player picks from the choices, or types part of one. Typing is forgiving: "say nothing" is
+enough for "Say nothing, and listen to it". Anything else is refused in plain words, and nothing
+changes. So every part the player can stay in needs choices, and the choices have to cover every
+way through.

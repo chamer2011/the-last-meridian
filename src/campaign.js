@@ -1,12 +1,12 @@
 // The people and enemies that belong to one campaign, kept as files on this computer.
-// When the game master adds someone, they're saved here and remembered for good. Saved
+// People from the player's past get files here, and an older game may have more. Saved
 // games from the same campaign share these files, and a new campaign starts with none.
 
 import fs from "node:fs";
 import path from "node:path";
 import { NOTABLES, POLES } from "./character-data.js";
 import { ENEMIES } from "./data.js";
-import { characterBrief, combatStats, generateStats } from "./npc.js";
+import { generateStats } from "./npc.js";
 import { dataDir } from "./paths.js";
 import { readFolder } from "./world.js";
 
@@ -90,11 +90,11 @@ const toBeliefs = (poles = []) => {
   return beliefs;
 };
 
-// Saves a person the game master has added, or fills in more of their file.
+// Saves a person to the campaign, or fills in more of their file.
 export function saveCampaignCharacter(campaign, input) {
   const given = String(input.name ?? "").trim();
   if (!slugify(given) || given.length > 60) throw new Error("A character needs a name of up to 60 characters.");
-  if (NOTABLES[slugify(given)] || findCharacter(null, given)) throw new Error(`${given} already has a file. Use read_character to see it, and note_contact to change how things stand.`);
+  if (NOTABLES[slugify(given)] || findCharacter(null, given)) throw new Error(`${given} already has a file. Use note_contact to change how things stand.`);
   // Someone already on file is updated, whichever of their names was used.
   const id = findCharacter(campaign, given)?.id ?? slugify(given);
   const existing = store(campaign).characters[id];
@@ -125,18 +125,6 @@ export function saveCampaignCharacter(campaign, input) {
   store(campaign).characters[id] = person;
   writeFile(campaign, "characters", id, person);
   return { id, person, created: !existing };
-}
-
-export function saveCampaignEnemy(campaign, input) {
-  const name = String(input.name ?? "").trim();
-  const id = slugify(name).replaceAll("-", "_");
-  if (!id || name.length > 60) throw new Error("An enemy needs a name of up to 60 characters.");
-  if (ENEMIES[id]) throw new Error(`There's already an enemy called ${name}. Use its id: ${id}.`);
-  const stats = combatStats(input.archetype, input.threat);
-  const enemy = { name, desc: input.description ?? "", ...stats, tags: [...new Set([...stats.tags, ...(input.tags ?? [])])], archetype: input.archetype, ...(input.why ? { motive: input.why } : {}), ...(input.faction ? { faction: input.faction } : {}) };
-  store(campaign).enemies[id] = enemy;
-  writeFile(campaign, "enemies", id, enemy);
-  return { id, enemy };
 }
 
 const roomId = (name) => slugify(String(name).replace(/^\s*the\s+/i, ""));
@@ -184,9 +172,3 @@ export function saveCaptainSheet(campaign, sheet) {
   fs.writeFileSync(path.join(root, "captain.json"), `${JSON.stringify(sheet, null, 2)}\n`);
 }
 
-export function characterFileFor(game, text) {
-  const person = findCharacter(game.campaign, text);
-  if (!person) return null;
-  const contact = game.contacts.find((c) => c.name.toLowerCase() === person.name.toLowerCase());
-  return { id: person.id, brief: characterBrief(person.id, person, contact) };
-}

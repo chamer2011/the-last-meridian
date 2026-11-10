@@ -66,7 +66,7 @@ export function piecesOf(block, limit) {
 // ---- A scene -------------------------------------------------------------
 
 // The pieces of a scene, in order, the game's messages with the piece they come up with, and what
-// the player said to start it. blocksOf reads the game master's text, and can be given by the page,
+// the player said to start it. blocksOf reads the story's text, and can be given by the page,
 // which knows who's who.
 export function sceneOf(entries, { blocksOf, limit = 340, streaming = false }) {
   const beats = [];
@@ -90,7 +90,7 @@ export function sceneOf(entries, { blocksOf, limit = 340, streaming = false }) {
 const wordsOf = (name) => name.toLowerCase().replace(/[^\p{L}\p{N}' -]/gu, "").split(/\s+/).filter(Boolean);
 const LITTLE_WORDS = new Set(["the", "of", "a", "an", "de", "van", "von"]);
 
-// Finds someone in the room from their name as the AI wrote it, such as "Commander Ilya Voss" for
+// Finds someone in the room from their name as the story wrote it, such as "Commander Ilya Voss" for
 // Voss. Someone in the crowd only counts if the name is exactly theirs, and a wrong person with a
 // balloon over their head is worse than none.
 export function personSpeaking(speaker, people = []) {

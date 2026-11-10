@@ -14,7 +14,7 @@
 //   factions  { fleet: 5 }             faction standing changes
 //   rank      1                        extra promotion
 //   contact   { role, attitude, note } someone you met ({name} is filled in with their name)
-//   hook      "..."                    a loose end for the AI game master to use in the story
+//   hook      "..."                    a loose end for a story to pick up
 //   forcedOut true                     you can't continue this career next term
 
 export const CAREERS = {

@@ -10,22 +10,18 @@ import { test } from "node:test";
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-record-"));
 process.env.GAME_DATA_DIR = dataDir;
 
-const { SYSTEM_PROMPT } = await import("../src/ai.js");
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
-const { FACTS_PER_TURN, clearFact, endingOf, recordEnding, recordFact, recordLines, recordOf, recordView } = await import("../src/record.js");
-const { aiSnapshot, publicState } = await import("../src/rules.js");
+const { clearFact, endingOf, recordEnding, recordFact, recordOf, recordView } = await import("../src/record.js");
+const { publicState } = await import("../src/rules.js");
 const { parseEffect, parseSceneText } = await import("../src/scene-text.js");
 const { sceneProblems, writtenTurn } = await import("../src/scenes.js");
-const { threadNotes } = await import("../src/story-library.js");
-const { TOOL_DEFS, newTurnLimits, runTool } = await import("../src/tools.js");
+const { newTurnLimits, runTool } = await import("../src/tools.js");
 
 const FUEL = "main_two_weeks_of_fuel";
 const newGame = (seed = 21) => {
   const draft = randomDraft({ seed, archetype: "officer" });
   draft.start = "captain";
-  const game = createGameFromDraft(draft);
-  game.mode = "written";
-  return game;
+  return createGameFromDraft(draft);
 };
 const tool = (game, name, input, turn = newTurnLimits()) => runTool(game, name, input, turn);
 
@@ -50,7 +46,7 @@ test("a fact has a short name and a line, sets its flag, and keeps its first wor
   assert.deepEqual(view.facts.map((fact) => fact.text), ["nobody declares this"], "a fact without words shows its name, spaced out");
 });
 
-test("a story's ending goes on the record by its name, and the page and the AI's state read it", () => {
+test("a story's ending goes on the record by its name, and the page reads it", () => {
   const game = newGame();
   assert.throws(() => recordEnding(game, { id: "no_such_story", summary: "x" }), /no story/);
   assert.throws(() => recordEnding(game, { id: FUEL, ending: "no_such_ending", summary: "x" }), /no ending called no_such_ending/);
@@ -60,12 +56,6 @@ test("a story's ending goes on the record by its name, and the page and the AI's
   recordEnding(game, { id: FUEL, ending: "raid_depot", summary: "Another." });
   assert.equal(endingOf(game, FUEL).ending, "sign_with_quill", "the first ending is the one that's kept");
   recordFact(game, { id: "signed_with_quill", text: "The fleet signed Mother Quill's page.", from: "thread_main_two_weeks_of_fuel" });
-  const lines = recordLines(game);
-  assert.ok(lines.includes("Story ended, Two Weeks of Fuel (main_two_weeks_of_fuel), sign_with_quill: Signed with Mother Quill: forty-one markers, to be named later."), lines.join("\n"));
-  assert.ok(lines.includes("Fact signed_with_quill: The fleet signed Mother Quill's page."));
-  const state = aiSnapshot(game);
-  assert.match(state, /Story ended, Two Weeks of Fuel/);
-  assert.match(state, /Fact signed_with_quill: The fleet signed Mother Quill's page\./);
   const shown = publicState(game).story.record;
   assert.equal(shown.endings[0].title, "Two Weeks of Fuel");
   assert.equal(shown.endings[0].ending, "sign_with_quill");
@@ -74,49 +64,7 @@ test("a story's ending goes on the record by its name, and the page and the AI's
   assert.deepEqual(shown.facts[0], { id: "signed_with_quill", text: "The fleet signed Mother Quill's page.", from: "Two Weeks of Fuel", day: 1 });
 });
 
-test("the AI's two actions are checked: names, lengths, three facts a turn, and one ending a story", () => {
-  const game = newGame();
-  assert.ok(TOOL_DEFS.some((def) => def.name === "note_fact") && TOOL_DEFS.some((def) => def.name === "end_story"));
-  const turn = newTurnLimits();
-  const noted = tool(game, "note_fact", { id: "Voss_Trusts_The_Captain", text: "Commander Voss trusts the captain now." }, turn);
-  assert.equal(noted.isError, undefined, noted.result);
-  assert.match(noted.notice, /^\[RECORD\] Commander Voss trusts the captain now\./);
-  assert.equal(game.flags.voss_trusts_the_captain, true, "the name is lowered");
-  const again = tool(game, "note_fact", { id: "voss_trusts_the_captain", text: "Other words." }, turn);
-  assert.match(again.result, /already on the record/);
-  assert.equal(again.notice, undefined);
-  assert.equal(tool(game, "note_fact", { id: "bad name", text: "Something." }, turn).isError, true);
-  assert.equal(tool(game, "note_fact", { id: "too_short", text: "No" }, turn).isError, true);
-  tool(game, "note_fact", { id: "third_fact", text: "A third fact for the turn." }, turn);
-  const fourth = tool(game, "note_fact", { id: "fourth_fact", text: "One too many for the turn." }, turn);
-  assert.equal(fourth.isError, true);
-  assert.match(fourth.result, /enough facts for one turn/);
-  assert.equal(turn.facts, FACTS_PER_TURN);
-  assert.equal(game.flags.fourth_fact, undefined);
-
-  tool(game, "add_quest", { id: FUEL, title: "Two Weeks of Fuel", description: "Fuel.", objective: "Find fuel." });
-  assert.equal(tool(game, "end_story", { id: "no_such_story", ending: "sign_with_quill", summary: "It ended." }).isError, true);
-  const wrong = tool(game, "end_story", { id: FUEL, ending: "no_such_ending", summary: "It ended." });
-  assert.equal(wrong.isError, true);
-  assert.match(wrong.result, /sign_with_quill, raid_depot, take_corvanes_fuel, settle_cinder_reach, or other/);
-  assert.equal(tool(game, "end_story", { id: FUEL, ending: "sign_with_quill", summary: "No" }).isError, true);
-  const ended = tool(game, "end_story", { id: FUEL, ending: "Take Corvanes Fuel", summary: "The Hegemony's fuel, free, with a transponder on every tank." });
-  assert.equal(ended.isError, undefined, ended.result);
-  assert.match(ended.notice, /^\[STORY\] Two Weeks of Fuel has ended: The Hegemony's fuel/);
-  assert.equal(endingOf(game, FUEL).ending, "take_corvanes_fuel", "the name is read the way the AI is likely to write it");
-  const quest = game.quests.find((q) => q.id === FUEL);
-  assert.equal(quest.status, "completed");
-  assert.equal(quest.objective, "The Hegemony's fuel, free, with a transponder on every tank.");
-  assert.equal(game.story.threads[FUEL], "done", "the Leads menu and the clock know it's over");
-  const twice = tool(game, "end_story", { id: FUEL, ending: "sign_with_quill", summary: "Again." });
-  assert.equal(twice.isError, true);
-  assert.match(twice.result, /already ended/);
-  const other = tool(game, "end_story", { id: "main_visiting_hours", ending: "other", summary: "It ended another way: nobody will say how." });
-  assert.equal(other.isError, undefined, other.result);
-  assert.equal(endingOf(game, "main_visiting_hours").ending, null);
-});
-
-test("a story's quest settled the old way still records its ending, and in a written part no fact can be noted", () => {
+test("a story's quest settled the old way still records its ending", () => {
   const game = newGame();
   tool(game, "add_quest", { id: FUEL, title: "Two Weeks of Fuel", description: "Fuel.", objective: "Find fuel." });
   tool(game, "update_quest", { id: FUEL, status: "completed", objective: "Signed with Mother Quill." });
@@ -128,11 +76,6 @@ test("a story's quest settled the old way still records its ending, and in a wri
   tool(game, "add_quest", { id: "the_beacon_two", title: "Not a story", description: "x", objective: "y" });
   tool(game, "update_quest", { id: "the_beacon_two", status: "failed", objective: "Over." });
   assert.equal(Object.keys(recordOf(game).endings).length, 2, "a quest that isn't a story isn't an ending");
-  const fit = { ...newTurnLimits(), scene: { choices: [], followed: undefined } };
-  const refused = tool(game, "note_fact", { id: "made_up", text: "Something the AI made up in a written part." }, fit);
-  assert.equal(refused.isError, true);
-  assert.match(refused.result, /written in advance/);
-  assert.equal(game.flags.made_up, undefined);
 });
 
 test("the written story's flags join the record, with words when the line has them, and the checker names a bad flag", () => {
@@ -166,19 +109,5 @@ test("an older save's flags join the record when it's read, and the record doesn
   recordOf(game);
   assert.equal(recordOf(game).facts.length, 2);
   assert.deepEqual(recordView(game).facts.map((fact) => fact.text), ["old flag one", "old flag two"]);
-  assert.ok(recordLines(game).includes("Fact old_flag_one: old flag one"));
 });
 
-test("the AI is told about the record, and a story's notes say how the story before it ended", () => {
-  assert.match(SYSTEM_PROMPT, /THE RECORD/);
-  assert.match(SYSTEM_PROMPT, /call end_story with the name of the ending/);
-  assert.match(SYSTEM_PROMPT, /call note_fact/);
-  assert.match(SYSTEM_PROMPT, /campaign you didn't write/);
-  const game = newGame();
-  const before = threadNotes("main_chain_of_command", game);
-  assert.match(before, /end_story, with the ending's name, when it ends/);
-  assert.doesNotMatch(before, /Before it,/);
-  recordEnding(game, { id: "main_the_old_scholar", ending: "tharel_kept_safe_trusts_captain", summary: "Tharel showed the two layers, and trusts the captain." });
-  const after = threadNotes("main_chain_of_command", game);
-  assert.match(after, /Before it, The Warm Room ended \(tharel_kept_safe_trusts_captain\): Tharel showed the two layers, and trusts the captain\./);
-});

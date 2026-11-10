@@ -36,5 +36,6 @@ files, and npm run check-story reads them all and says what's wrong, with the fi
     standing with: fleet 5, hegemony -15            (how factions start out feeling about them, by faction id)
     skills: deception -2, persuasion 1              (a bonus or penalty to a skill)
 
-In a line is what the player reads when choosing. For the game master is how the AI plays them. A part that has
+In a line is what the player reads when choosing. For the game master is a note for whoever writes on how they play
+in the story: the player never reads it. A part that has
 nothing in it can be left out.

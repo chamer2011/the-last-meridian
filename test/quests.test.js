@@ -24,7 +24,6 @@ const CREW = "crew_naomi_under_crew";
 
 const newGame = () => {
   const game = createGameFromDraft(randomDraft({ seed: 21, archetype: "officer" }));
-  game.mode = "written";
   return game;
 };
 // One turn, the way the server plays it, with what the story says kept in the transcript in order.

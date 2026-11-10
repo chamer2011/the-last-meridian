@@ -7,7 +7,7 @@ import { buildCharacter, createGameFromDraft, creatorSetup, normalizeDraft, rand
 import { ABILITIES, ENEMIES, FACTIONS, ITEMS, PERKS, STATS } from "../src/data.js";
 import { CAREERS, FALL_CHOICES, GENERAL_EVENTS, GENERAL_MISHAPS } from "../src/life-data.js";
 import { migrateGame } from "../src/migrate.js";
-import { aiDossier, aiSnapshot, maxEnergy, maxHp, publicState } from "../src/rules.js";
+import { maxEnergy, maxHp, publicState } from "../src/rules.js";
 
 // ---- The data has to fit together ---------------------------------------
 
@@ -145,9 +145,9 @@ function assertPlayable(game, label) {
   assert.ok(game.contacts.length >= 4, label);
   assert.ok(game.perks.length >= 1, label);
   assert.ok(game.equipped.weapon, `${label}: has a weapon`);
-  JSON.stringify(publicState(game));
-  assert.ok(aiSnapshot(game).includes(game.name), label);
-  assert.ok(aiDossier(game).includes("Life history"), label);
+  const shown = publicState(game);
+  assert.equal(shown.name, game.name, label);
+  assert.ok(shown.dossier.biography.length >= 2, label);
 }
 
 test("every archetype produces a valid, playable character for many seeds", () => {
@@ -470,17 +470,15 @@ test("the best weapon you can actually use is equipped", () => {
   if (game.credits >= 0) assert.equal(game.equipped.weapon, "heavy_carbine");
 });
 
-test("the character's identity reaches the AI", () => {
+test("the character's identity is kept, and shown in their record", () => {
   const draft = randomDraft({ seed: 8, archetype: "adept", keep: { name: "Sel Aurin", pronouns: "custom", customPronouns: "ze/zir", appearance: "A silver scar across one cheek.", callsign: "Echo" } });
   const game = createGameFromDraft(draft);
-  const dossier = aiDossier(game);
+  const shown = publicState(game);
   assert.equal(game.name, "Sel Aurin");
-  assert.match(dossier, /ze\/zir/);
-  assert.match(dossier, /silver scar/);
-  assert.match(dossier, /Echo/);
-  assert.match(dossier, /Ilari/);
-  assert.match(aiSnapshot(game), /ze\/zir/);
-  assert.match(aiSnapshot(game), /Beliefs:/);
+  assert.equal(shown.pronouns, "ze/zir");
+  assert.match(shown.dossier.appearance, /silver scar/);
+  assert.equal(shown.dossier.callsign, "Echo");
+  assert.equal(shown.species, "Ilari");
 });
 
 test("a chosen bond becomes a contact with the chosen name", () => {
@@ -489,12 +487,11 @@ test("a chosen bond becomes a contact with the chosen name", () => {
   draft.bondName = "Aya";
   const game = buildCharacter(draft).game;
   assert.ok(game.contacts.some((c) => c.name === "Aya" && c.attitude === "friendly"));
-  assert.match(aiDossier(game), /Closest bond: Aya/);
   assert.match(publicState(game).dossier.bond, /Aya/);
   draft.bond = "no_one";
   const alone = buildCharacter(draft).game;
   assert.ok(!alone.contacts.some((c) => c.name === "Aya"));
-  assert.match(aiDossier(alone), /Closest bond: No one/);
+  assert.equal(publicState(alone).dossier.bond, null);
 });
 
 // ---- Old saves ----------------------------------------------------------
@@ -511,7 +508,7 @@ const oldSave = (background) => ({
 test("old saves still load, keep their progress and work with the new rules", () => {
   for (const background of ["officer", "smuggler", "adept", "engineer", "envoy", "something_unknown"]) {
     const game = migrateGame(oldSave(background));
-    assert.equal(game.version, 18);
+    assert.equal(game.version, 19);
     assert.deepEqual(game.lore, []);
     assert.ok(game.seenLore.length > 0);
     assert.equal(game.name, "Old Hand");
@@ -521,11 +518,12 @@ test("old saves still load, keep their progress and work with the new rules", ()
     assert.equal(game.transcript.filter((entry) => entry.role === "player").length, 1);
     assert.equal(game.stats.presence, 4);
     assert.equal(game.stats.endurance, 3);
-    assert.deepEqual(game.ai, { provider: null, messages: [] });
+    assert.equal(game.ai, undefined, "what was kept for the AI goes");
+    assert.equal(game.mode, undefined);
+    assert.equal(game.transcript.at(-1).turnover, true, "and the story says the AI game master has gone");
     assert.equal(game.contacts.filter((c) => c.name === "Ilya Voss").length, 1);
     assert.equal(game.contacts.find((c) => c.name === "Ilya Voss").note, "XO");
-    JSON.stringify(publicState(game));
-    assert.ok(aiDossier(game).includes("Old Hand"));
+    assert.equal(publicState(game).name, "Old Hand");
     assert.ok(maxHp(game) > 0);
     assert.ok(game.hp <= maxHp(game));
     assert.ok(game.energy <= maxEnergy(game));

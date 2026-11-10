@@ -2,7 +2,7 @@
 
 import { creatorScreen, initCreator, openCreator, resetCreator } from "./creator.js";
 import { checkNode, checkOpen, focusCheck, initCheck, resetCheck, startChoiceCheck, startPractice } from "./check.js";
-import { api, el, meter, money, readLines } from "./dom.js";
+import { api, el, meter, readLines } from "./dom.js";
 import { fightNode, fightOpen, focusFight, initFight, resetFight, startSim } from "./fight.js";
 import { initMap } from "./map.js";
 import { initShip } from "./ship.js";
@@ -28,7 +28,6 @@ const ui = {
   game: null,
   saves: [],
   setup: null,
-  settings: null,
   screen: "title",
   tab: "skills",
   sideOpen: false,
@@ -47,7 +46,6 @@ const ui = {
   codexSearch: "",
   error: null,
   menuMessage: null,
-  settingsMessage: null,
   draft: "",
   consoleLines: [],
 };
@@ -115,7 +113,7 @@ function runAction(fn) {
   };
 }
 
-// ---- Talking to the AI --------------------------------------------------
+// ---- Playing a turn of the story ---------------------------------------------
 
 async function sendChat(body) {
   if (ui.streaming) return;
@@ -168,10 +166,8 @@ async function sendChat(body) {
         renderWalk();
       } else if (msg.type === "done") {
         ui.game = msg.state;
-        ui.settings.spending = msg.spending;
       } else if (msg.type === "error") {
         ui.game = msg.state;
-        ui.settings.spending = msg.spending;
         ui.error = { message: msg.message, retry: body };
       }
     });
@@ -208,10 +204,6 @@ function titleScreen() {
         el("div", { class: "muted small" }, `${SLOT_LABELS[s.slot]}, ${new Date(s.savedAt).toLocaleString()}`)),
       el("button", { onclick: runAction(async () => loadGame(s.slot)) }, "Load"),
     )),
-    !ui.settings.hasKey && ui.settings.provider === "claude" && el("div", { class: "card small" },
-      ui.settings.storyApplies === "written"
-        ? "No AI is set up, so a new game uses the written story, which is free. For now that's the openings for three lives, the arrival at Haven, the whole of the main story's first act and a story aboard the Meridian, and the rest is being written. An AI, added in the Settings menu once you've started, with an Anthropic API key or a local model, reads whatever you type and writes what isn't written yet."
-        : "You'll need to choose an AI before you can play the story. Once you start, open the Settings menu to paste an Anthropic API key or pick a local model."),
   );
 }
 
@@ -255,13 +247,6 @@ async function startNewGame(draft) {
   ui.error = null;
   ui.consoleLines = [];
   resetCreator();
-  // A game with an AI game master and no AI configured opens Settings first. The story starts when the player is ready.
-  if (game.mode !== "written" && ui.settings.provider === "claude" && !ui.settings.hasKey) {
-    ui.tab = "settings";
-    ui.sideOpen = true;
-    render();
-    return;
-  }
   render();
   sendChat({ event: "start" });
 }
@@ -281,7 +266,6 @@ function statusNode() {
     g.role.captain && el("span", { class: g.ship.fuel < 2 ? "meter low" : "" }, `FUEL ${g.ship.fuel}`),
     g.role.captain && g.ship.shortages.length > 0 && el("span", { class: "meter low" }, `SHORT: ${g.ship.shortages.join(", ").toUpperCase()}`),
     el("span", { class: "muted" }, `${g.clock.label} @ ${g.location.name}`),
-    ui.settings.spending.lastTurn !== null && el("span", { class: "muted", title: "What the last AI turn cost. There's more in Settings." }, `LAST TURN ${money(ui.settings.spending.lastTurn)}`),
     el("button", { class: "mobile-toggle", onclick: () => openMenu(ui.tab) }, "Menu"),
   );
 }
@@ -292,19 +276,13 @@ function currentOptions() {
   // A fight, a check or a talk has its own window, with its own choices.
   if (ui.streaming || ui.waiting || g.combat || g.check || g.talk || g.computer) return [];
   // After a fight or a check, the game waits. The story only goes on when the player says to carry on.
-  const written = g.mode === "written";
-  const carryOn = [{ label: "Continue the story", detail: written || g.scene ? "the story picks it up from here" : "the game master picks it up from here", run: () => sendChat({ event: "continue" }) }];
-  if (g.pendingEvents > 0) return carryOn;
+  const carryOn = [{ label: "Continue the story", detail: "the story picks it up from here", run: () => sendChat({ event: "continue" }) }];
+  if (g.storyWaiting) return carryOn;
   // A written part waiting on someone the player isn't with has nothing to answer yet: the tracker says who to go to.
   if (g.scene?.held) return [];
-  // The written story with no scene being played has nothing to choose, whatever its last words were.
-  if (written && !g.scene) return [];
-  // In a written part of a game with an AI, clicking a choice costs nothing: only typing goes to the AI.
-  const choices = choicesFor(g.transcript).map((choice) => ({ ...choice, ...(g.scene && !written ? { detail: "free" } : {}), run: () => takeChoice(choice) }));
-  // Over the room, nothing waits there when there's nothing to answer: Enter brings up the typing line instead. In the
-  // other views, there should always be something to click.
-  if (popupsShown()) return choices;
-  return !choices.length && walkShown() && g.transcript.length ? carryOn : choices;
+  // With no scene being played there's nothing to choose, whatever the story's last words were.
+  if (!g.scene) return [];
+  return choicesFor(g.transcript).map((choice) => ({ ...choice, run: () => takeChoice(choice) }));
 }
 
 // The typing line over the room, brought up by Enter, and put away by Esc or once it's been used.
@@ -334,7 +312,7 @@ function talkTo(key) {
   return sendChat({ event: "meet", person: key });
 }
 
-// A choice with a check on it opens the check's window, and the AI hears how it went afterward.
+// A choice with a check on it opens the check's window, and the story goes on from how it went.
 function takeChoice(choice) {
   if (!choice.tags?.some((tag) => tag.kind === "check" && tag.difficulty)) return sendChat({ text: choice.label });
   return startChoiceCheck(choice.label)
@@ -393,9 +371,8 @@ function composerNode() {
   // Over the room, the choices hang off the pane of whoever's being answered, so the typing line is all this has.
   const over = popupsShown();
   const hint = ui.streaming || ui.waiting ? "processing..."
-    : g.pendingEvents > 0 ? "press 1 to carry on, or type what you do next"
-      : g.scene && g.mode !== "written" ? "a choice is free; your own words are one call to the AI"
-        : over ? "type an action, then Enter; Esc puts this away" : "type an action, a number, or /help";
+    : g.storyWaiting ? "press 1 to carry on"
+      : over ? "type a choice or its number, then Enter; Esc puts this away" : "type a choice, its number, or /help";
   return el("div", { class: "composer" }, el("div", { class: "composer-inner" },
     !over && options.length > 0 && el("div", { class: "options" }, options.map((o, i) => el("button", { disabled: o.disabled, onclick: o.run }, el("span", { class: "option-number" }, `${i + 1})`), optionContent(o)))),
     needsStart
@@ -460,7 +437,6 @@ function logNode({ latest = false } = {}) {
     inner.append(el("div", { class: "entry error" }, ui.error.message, " ",
       el("div", { class: "row", style: "margin-top:8px" },
         el("button", { onclick: () => { const retry = ui.error.retry; ui.error = null; sendChat(retry); } }, "Try again"),
-        el("button", { onclick: () => { ui.error = null; render(); openMenu("settings"); } }, "Open Settings"),
       )));
   }
   // Once the reader scrolls by themselves, the page stops following the text.
@@ -499,9 +475,9 @@ function placeLog(previousTop, isNew) {
   } else if (walkShown() && ui.game.transcript.at(-1)?.role === "notice") {
     // A line added under the story, such as the note a talk leaves, has to be in view in that small panel.
     log.scrollTop = log.scrollHeight;
-  } else if (ui.game.pendingEvents > 0 || ui.followStream) {
+  } else if (ui.game.storyWaiting || ui.followStream) {
     const turns = log.querySelectorAll(".turn:not(:empty)");
-    if (ui.game.pendingEvents > 0) log.scrollTop = log.scrollHeight;
+    if (ui.game.storyWaiting) log.scrollTop = log.scrollHeight;
     else log.scrollTop = turns.length ? turns[turns.length - 1].offsetTop - 12 : log.scrollHeight;
   } else {
     log.scrollTop = previousTop;
@@ -777,11 +753,10 @@ async function refreshAll() {
   ui.game = data.game;
   ui.saves = data.saves;
   ui.setup = data.setup;
-  ui.settings = data.settings;
   ui.waiting = Boolean(data.busy) && !ui.streaming;
   if (!ui.game && ui.screen === "game") ui.screen = "title";
   render();
-  // The game master was already writing when this page loaded, so this looks again until it's done.
+  // A turn was already being played when this page loaded, so this looks again until it's done.
   if (ui.waiting) setTimeout(() => refreshAll().catch(() => {}), 1500);
 }
 
@@ -830,10 +805,6 @@ initMenus({
     closeMenu();
     sendChat({ text: `I look into this: ${lead.title}`, thread: lead.id });
   },
-  askAbout: (rumor) => {
-    closeMenu();
-    sendChat({ text: `I ask around about something I heard: "${rumor}"` });
-  },
 });
 
 initFight({ ui, render, sendChat, openMenu, closeMenu, inRoom: fightInRoom });
@@ -878,11 +849,6 @@ initPopups({
     const { retry } = ui.error;
     ui.error = null;
     sendChat(retry);
-  },
-  openSettings: () => {
-    ui.error = null;
-    render();
-    openMenu("settings");
   },
 });
 initTalk({ ui, reading, render, openMenu, popupsShown });

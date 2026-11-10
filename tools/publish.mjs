@@ -52,10 +52,10 @@ const THE_APP = `## The app
 
 The installer gives the game its own window, with shortcuts on your desktop and in the Start menu. It holds its own copy of the game, so you don't need anything else installed.
 
-- **Where your things are:** your saved games, your settings and your API key are in \`%APPDATA%\\Almagest Explorer's\\data\`, which is what \`data/\` means in this guide if you used the installer. If you had it installed as The Last Meridian, the game's name until version 0.5.0, the first run under the new name copies them over from \`%APPDATA%\\The Last Meridian\`, and leaves that folder as it was.
+- **Where your things are:** your saved games are in \`%APPDATA%\\Almagest Explorer's\\data\`, which is what \`data/\` means in this guide if you used the installer. If you had it installed as The Last Meridian, the game's name until version 0.5.0, the first run under the new name copies them over from \`%APPDATA%\\The Last Meridian\`, and leaves that folder as it was.
 - **A new version:** run the newer installer. It replaces the game and leaves your saves alone.
 - **If something goes wrong:** what the game printed is in \`%APPDATA%\\Almagest Explorer's\\game.log\`.
-- **Uninstalling:** use **Installed apps** in Windows Settings. That only removes the game. Your saves and API key stay until you delete \`%APPDATA%\\Almagest Explorer's\` yourself.
+- **Uninstalling:** use **Installed apps** in Windows Settings. That only removes the game. Your saves stay until you delete \`%APPDATA%\\Almagest Explorer's\` yourself.
 `;
 
 const GUIDE_TOP = "# Almagest Explorer's: the full guide\n\nHow everything in the game works. It names places and people you'll meet, but it doesn't say how the story ends. To get the game, see the [front page](README.md).\n\n";

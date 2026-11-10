@@ -2,8 +2,8 @@
 // world/computers, read by public/world-text.js, or a generic one the game makes for a console,
 // server, panel or power board in a room, or a door with a hack on it, that nobody has written.
 // The player gets in by right (the Meridian's own), with a password they've learned, or by a hack
-// of the computer's class, and what they can do once in is src/computer-use.js. Nothing here uses
-// the AI. This file is read by the rules and the walk, so it reads nothing that reads the tools.
+// of the computer's class, and what they can do once in is src/computer-use.js. This file is read by
+// the rules and the walk, so it reads nothing that reads the tools.
 
 import { LOCATIONS } from "./data.js";
 import { placeNow, worldOf } from "./daily.js";

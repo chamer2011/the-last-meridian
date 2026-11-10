@@ -1,6 +1,6 @@
 // The Ship menu: the Meridian's numbers, where she is, what's aboard, the rations, buying and selling at the dock,
 // waiting, what the officers decided, her log, her systems and her crew. Everything here is drawn from the game's
-// state, and every button runs on this computer, without the AI. Someone who isn't her captain sees how she stands.
+// state, and every button runs on this computer. Someone who isn't her captain sees how she stands.
 
 import { api, el, folded, meter, signed, twoColumns } from "./dom.js";
 import { shipOrder } from "./map.js";

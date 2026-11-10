@@ -117,7 +117,7 @@ choose Insert Tile, and click where it stands. Then fill in its properties, in t
                 they look when you come over, and side, left or right, is the side their name goes in the
                 Walk-around view.
     A thing     Name is what it's called. look is what you read when you look at it, and use is what you do when
-                you use it, which goes to the story. used is what happens, written out, with no AI, and
+                you use it. used is what happens, written out, and
                 usedOther the same for someone who isn't the captain. item is something you pick up from it.
     A way out   the stairs: to is the deck it leads to, by the name of its file, such as deck2. Its Name is what
                 it says on it. Put it in a wall. You come out on the other deck beside its way back here, and when

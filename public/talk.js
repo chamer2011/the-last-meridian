@@ -1,16 +1,15 @@
 // A talk: the captain talks to one person. With the story over the room, what they say comes up
 // on a pane by their head and the things to say hang off it; in the other views it's a console over
-// the map. Opening it, closing it and passing on rumors are free. Each thing said goes to the AI as
-// an ordinary turn, with the clock stopped. Everything can be clicked, and typing is only there if
-// it's wanted.
+// the map. The person answers from their written lines, or from stock ones, with the clock stopped.
+// Everything is clicked, or picked by its number.
 
 import { trimmedArt } from "./art.js";
-import { api, el, money, readLines, signed } from "./dom.js";
+import { api, el, readLines, signed } from "./dom.js";
 import { paneNode } from "./pane.js";
 import { choicesFor, optionContent, storyEntryNode, thinkingNode } from "./story-view.js";
 import { WRITING_SPEEDS, holdBack, newPen } from "./writer.js";
 
-const talk = { draft: "", sending: false, live: "", heard: null, message: null, spent: 0, lastId: null, logged: 0, writing: false, words: null, wordsOn: null, paneFor: null, youFor: null };
+const talk = { sending: false, live: "", heard: null, message: null, lastId: null, logged: 0, writing: false, words: null, wordsOn: null, paneFor: null, youFor: null };
 
 const calm = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const pen = newPen({
@@ -34,7 +33,7 @@ export const talkOpen = () => Boolean(app?.ui.game?.talk);
 
 export function resetTalk() {
   pen.stop();
-  Object.assign(talk, { draft: "", sending: false, live: "", heard: null, message: null, spent: 0, lastId: null, logged: 0, writing: false, words: null, wordsOn: null, paneFor: null, youFor: null });
+  Object.assign(talk, { sending: false, live: "", heard: null, message: null, lastId: null, logged: 0, writing: false, words: null, wordsOn: null, paneFor: null, youFor: null });
 }
 
 // Whether the talk is on a pane by the person's head, which it is whenever the story's over the room.
@@ -91,7 +90,7 @@ function updateLive() {
 async function say(text) {
   const line = text.trim();
   if (!line || talk.sending) return;
-  Object.assign(talk, { sending: true, heard: line, live: "", draft: "", message: null, writing: true, words: null });
+  Object.assign(talk, { sending: true, heard: line, live: "", message: null, writing: true, words: null });
   pen.start();
   app.ui.streaming = true;
   app.render();
@@ -106,13 +105,9 @@ async function say(text) {
       app.ui.game = msg.state;
     } else if (msg.type === "done") {
       app.ui.game = msg.state;
-      app.ui.settings.spending = msg.spending;
-      talk.spent += msg.spending.lastTurn ?? 0;
     } else if (msg.type === "error") {
       app.ui.game = msg.state;
-      app.ui.settings.spending = msg.spending;
       talk.message = msg.message;
-      talk.draft = line;
     }
   };
   try {
@@ -121,7 +116,6 @@ async function say(text) {
     await readLines(res, handle);
   } catch (err) {
     talk.message = err.message;
-    talk.draft = line;
   }
   Object.assign(talk, { sending: false, heard: null, live: "", logged: app.ui.game?.talk?.log.length ?? 0, writing: pen.busy });
   app.ui.streaming = false;
@@ -142,9 +136,8 @@ async function order(body) {
   app.render();
 }
 
-// Walking up to someone opens this. Nothing's said to the AI until the player says something.
+// Walking up to someone opens this, and they speak first.
 export function startTalk(key) {
-  talk.spent = 0;
   return order({ action: "open", person: key });
 }
 
@@ -186,17 +179,14 @@ function logPanel(view) {
       el("div", { id: "talk-live" })));
 }
 
-// What the person just offered comes first, then what the map file suggests, then the free ones.
+// What the person just offered comes first, then asking what they've heard, then goodbye.
 function optionsFor(view) {
   const offered = view.lastReply ? choicesFor([{ role: "narrator", text: view.lastReply }]) : [];
-  const shown = new Set(offered.map((choice) => choice.label));
-  const asks = view.asks.filter((ask) => !shown.has(ask)).slice(0, offered.length ? 1 : 3);
   const withCheck = (choice) => choice.tags?.some((tag) => tag.kind === "check" && tag.difficulty);
   return [
-    ...offered.map((choice) => ({ ...choice, ...(view.written && view.typed ? { detail: "free" } : {}), run: () => (withCheck(choice) ? order({ action: "check", label: choice.label }) : say(choice.label)) })),
-    ...asks.map((ask) => ({ label: ask, run: () => say(ask) })),
-    view.rumors > 0 && { label: view.rumorLabel, detail: "free", run: () => order({ action: "rumor" }) },
-    { label: view.goodbyeLabel, detail: "free", run: endTalk },
+    ...offered.map((choice) => ({ ...choice, run: () => (withCheck(choice) ? order({ action: "check", label: choice.label }) : say(choice.label)) })),
+    view.rumors > 0 && { label: view.rumorLabel, run: () => order({ action: "rumor" }) },
+    { label: view.goodbyeLabel, run: endTalk },
   ].filter(Boolean);
 }
 
@@ -208,40 +198,12 @@ function optionsNode(view) {
   }, el("span", { class: "option-number" }, `${i + 1})`), optionContent(option))));
 }
 
-function inputNode() {
-  return el("div", { class: "check-prompt" },
-    el("label", { for: "talk-input", class: "tone-dim" }, "say>"),
-    el("input", {
-      id: "talk-input",
-      type: "text",
-      autocomplete: "off",
-      spellcheck: "false",
-      placeholder: "or type your own words, if you'd like",
-      value: talk.draft,
-      disabled: talk.sending,
-      oninput: (event) => { talk.draft = event.target.value; },
-      onkeydown: (event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          say(talk.draft);
-        }
-      },
-    }),
-    el("button", { class: "check-run", disabled: talk.sending, onclick: () => say(talk.draft) }, "Say it"));
-}
+const TALK_HINT = "Click a line, or press its number.";
 
-// What the footer says about what costs what.
-function talkHint(view) {
-  if (!view.written) return "Each thing you say is one call to the AI. Free ones are marked.";
-  if (view.typed) return "A written conversation: the listed lines are free. Your own words are one call to the AI.";
-  return "A written conversation. Nothing here uses the AI, so it's all free.";
-}
-
-// A new talk starts its count of what's been said and spent from nothing.
+// A new talk starts its count of what's been said from nothing.
 function noteTalk(view) {
   if (view.id === talk.lastId) return;
   talk.lastId = view.id;
-  talk.spent = 0;
   talk.logged = 0;
 }
 
@@ -259,11 +221,11 @@ export function talkNode() {
         el("button", { class: "mobile-toggle", onclick: () => app.openMenu(app.ui.tab) }, "Menu")),
       el("div", { class: "talk-desk" }, personPanel(view), logPanel(view)),
       talk.message && el("div", { class: "notice-inline fail talk-message" }, talk.message),
-      el("div", { class: "check-controls" }, optionsNode(view), view.typed && inputNode()),
+      el("div", { class: "check-controls" }, optionsNode(view)),
       el("footer", { class: "check-taskbar" },
-        el("span", { class: "check-hint" }, talkHint(view)),
+        el("span", { class: "check-hint" }, TALK_HINT),
         el("span", { class: "check-spacer" }),
-        el("span", { class: "check-meter" }, `THIS TALK ${money(talk.spent)}`))));
+        view.relationship !== 0 && el("span", { class: "check-meter" }, `${signed(view.relationship)} ON SOCIAL CHECKS`))));
 }
 
 // ---- The talk by their head ---------------------------------------------
@@ -300,11 +262,9 @@ function choicesPanel(view, ready) {
     el("div", { class: "pop-tag" }, "What do you say?"),
     optionsNode(view),
     talk.message && el("div", { class: "notice-inline fail talk-message" }, talk.message),
-    view.typed && inputNode(),
     el("div", { class: "pop-choices-foot" },
-      el("span", {}, talkHint(view)),
-      view.relationship !== 0 && el("span", {}, `${signed(view.relationship)} on social checks with them`),
-      view.typed && el("span", { class: "check-meter" }, `THIS TALK ${money(talk.spent)}`)),
+      el("span", {}, TALK_HINT),
+      view.relationship !== 0 && el("span", {}, `${signed(view.relationship)} on social checks with them`)),
     view.log.length > 1 && el("details", { class: "pop-record" },
       el("summary", {}, "What was said"),
       el("div", { class: "pop-record-lines" }, view.log.map((entry) => storyEntryNode(entry)))));
@@ -344,13 +304,11 @@ export function talkPanesNode() {
   return [theirs, yours];
 }
 
-// Puts the keyboard on the typing line, and shows the latest of what's been said.
+// Shows the latest of what's been said.
 export function focusTalk() {
   const log = document.getElementById("talk-log");
   if (log) log.scrollTop = log.scrollHeight;
   writeNewest();
-  if (app.ui.sideOpen) return;
-  document.getElementById("talk-input")?.focus({ preventScroll: true });
 }
 
 function onKey(event) {
@@ -360,7 +318,7 @@ function onKey(event) {
     if (!talk.sending) endTalk();
     return;
   }
-  if (talk.sending || talk.draft.length > 0 || !/^[1-9]$/.test(event.key)) return;
+  if (talk.sending || !/^[1-9]$/.test(event.key)) return;
   const choice = document.querySelector(`#talk [data-choice="${event.key}"]`);
   if (choice) {
     event.preventDefault();

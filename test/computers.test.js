@@ -153,13 +153,12 @@ test("the player's own computers open with no hack, and reading, running and log
   assert.equal(game.computer.screen.title, "fleet_manifest.txt");
   computerCommand(game, { action: "type", text: "mail" });
   assert.equal(game.computer.screen.kind, "mail");
-  // Logging off: a line in the story, one for the game master, and a little time gone.
+  // Logging off: a line in the story, and a little time gone.
   const hoursBefore = game.clock.hours;
   const reply = computerCommand(game, { action: "logoff" });
   assert.equal(reply.over, true);
   assert.equal(game.computer, null);
   assert.match(game.transcript.at(-1).text, /^\[COMPUTER\] On The plot table: read 2 things, ran Log the day's orders\./);
-  assert.match(game.pendingEvents.at(-1), /used a computer, The plot table/);
   assert.ok(game.clock.hours > hoursBefore);
   assert.equal(game.computers.meridian_plot_table.visits, 1);
 });

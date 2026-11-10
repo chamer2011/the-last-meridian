@@ -6,16 +6,16 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
-import { allCharacters, campaignCharacters, campaignEnemies, ensureContactFiles, findCharacter, findEnemy, newCampaignId, saveCaptainSheet, slugify } from "../src/campaign.js";
+import { allCharacters, campaignCharacters, campaignEnemies, ensureContactFiles, findCharacter, newCampaignId, saveCampaignCharacter, saveCaptainSheet, slugify } from "../src/campaign.js";
 import { NOTABLES, SKILLS, SPECIES } from "../src/character-data.js";
 import { createGameFromDraft, randomDraft } from "../src/creator.js";
 import { ENEMIES, FACTIONS, LOCATIONS, STATS } from "../src/data.js";
 import { LORE } from "../src/lore.js";
 import { migrateGame } from "../src/migrate.js";
 import { enemyNumbers } from "../src/combat.js";
-import { NPC_ARCHETYPES, THREAT_LABELS, characterBrief, combatStats, generateStats } from "../src/npc.js";
+import { NPC_ARCHETYPES, THREAT_LABELS, combatStats, generateStats } from "../src/npc.js";
 import { captainSheet, combatAction, publicState, startCombat } from "../src/rules.js";
-import { TOOL_DEFS, newTurnLimits, runTool } from "../src/tools.js";
+import { newTurnLimits, runTool } from "../src/tools.js";
 import { COMBAT_TEXT } from "../src/world.js";
 import { buildLoreIndex, findLoreEntry, loreEntries } from "../public/story.js";
 
@@ -35,6 +35,10 @@ function campaignGame(seed) {
 }
 
 const tool = (game, name, input, turn = newTurnLimits()) => runTool(game, name, input, turn);
+
+// Someone in the campaign's own files: people from the player's past get one, and so did anyone an older game's story
+// added, so the game still reads them.
+const addPerson = (game, input) => saveCampaignCharacter(game.campaign, input);
 
 const KESSA = {
   name: "Kessa Vane",
@@ -127,15 +131,17 @@ test("fight text only uses words the game can fill in", () => {
 
 test("a character's secrets, goals and fighting numbers stay out of what the browser receives", () => {
   const game = campaignGame(11);
-  tool(game, "create_character", { ...KESSA, met: true, attitude: "friendly" });
+  addPerson(game, KESSA);
+  tool(game, "note_contact", { name: "Kessa Vane", attitude: "friendly", note: "Sold you fuel." });
   for (const id of Object.keys(allCharacters(game.campaign))) game.seenLore.push(`person:${id}`);
   const state = publicState(game);
   assert.ok(state.people.length >= 19);
   const sent = JSON.stringify(state);
   for (const person of Object.values(allCharacters(game.campaign))) {
-    assert.ok(!sent.includes(person.secrets), `${person.name}: secrets`);
-    assert.ok(!sent.includes(person.goals), `${person.name}: goals`);
-    assert.ok(!sent.includes(person.personality), `${person.name}: personality`);
+    // A thin file, such as one for someone from the player's past, can have these empty.
+    if (person.secrets) assert.ok(!sent.includes(person.secrets), `${person.name}: secrets`);
+    if (person.goals) assert.ok(!sent.includes(person.goals), `${person.name}: goals`);
+    if (person.personality) assert.ok(!sent.includes(person.personality), `${person.name}: personality`);
   }
   for (const person of state.people) {
     assert.deepEqual(Object.keys(person).filter((key) => ["secrets", "goals", "personality", "voice", "combat", "attributes", "skills"].includes(key)), []);
@@ -144,7 +150,7 @@ test("a character's secrets, goals and fighting numbers stay out of what the bro
 
 test("the player only sees someone's looks once they've met", () => {
   const game = campaignGame(12);
-  tool(game, "create_character", KESSA);
+  addPerson(game, KESSA);
   game.seenLore.push("person:kessa-vane");
   const heardOf = publicState(game).people.find((p) => p.id === "kessa-vane");
   assert.equal(heardOf.met, false);
@@ -185,15 +191,13 @@ test("generated stats stay sensible, and the same person always gets the same on
   assert.equal(combatStats("nonsense", 99).threat, 1);
 });
 
-// ---- The game master adding to the world --------------------------------
+// ---- People in the campaign's files ---------------------------------------
 
-test("the game master can add a character, who's saved to a file with generated stats", () => {
+test("a person in the campaign is saved to a file with generated stats", () => {
   const game = campaignGame(21);
-  const turn = newTurnLimits();
-  // Numbers from the AI have no way in, because the game makes them.
-  const made = tool(game, "create_character", { ...KESSA, hp: 9999, combat: { hp: 9999 } }, turn);
-  assert.ok(!made.isError, made.result);
-  assert.match(made.result, /kessa-vane/);
+  // Numbers from a file have no way in, because the game makes them.
+  const made = addPerson(game, { ...KESSA, hp: 9999, combat: { hp: 9999 } });
+  assert.equal(made.id, "kessa-vane");
   const file = path.join(dataDir, "campaigns", slugify(game.campaign), "characters", "kessa-vane.json");
   const saved = JSON.parse(fs.readFileSync(file, "utf8"));
   assert.equal(saved.name, "Kessa Vane");
@@ -201,17 +205,14 @@ test("the game master can add a character, who's saved to a file with generated 
   assert.equal(saved.combat.threat, 2);
   assert.deepEqual(saved.combat, generateStats("Kessa Vane", "scoundrel", 2).combat);
   assert.equal(saved.beliefs.violence, -6);
-  assert.equal(turn.newCharacters, 1);
 });
 
 test("updating a character fills in their file without changing what stays the same", () => {
   const game = campaignGame(22);
-  tool(game, "create_character", KESSA);
+  addPerson(game, KESSA);
   const before = findCharacter(game.campaign, "Kessa Vane");
-  const turn = newTurnLimits();
-  const updated = tool(game, "create_character", { ...KESSA, secrets: "She has a second ship." }, turn);
-  assert.match(updated.result, /Updated/);
-  assert.equal(turn.newCharacters, 0);
+  const updated = addPerson(game, { ...KESSA, secrets: "She has a second ship." });
+  assert.equal(updated.created, false);
   const after = findCharacter(game.campaign, "Kessa Vane");
   assert.equal(after.secrets, "She has a second ship.");
   assert.deepEqual(after.combat, before.combat);
@@ -229,10 +230,9 @@ test("people go by their first name too, and using it finds the same person", ()
   tool(game, "note_contact", { name: "Iris", attitude: "friendly", note: "Called you back." });
   assert.equal(game.contacts.length, count);
   // Filling in a thin file under a shorter name doesn't make a second person.
-  const turn = newTurnLimits();
-  const filled = tool(game, "create_character", { ...KESSA, name: "Iris", role: "Deputy registrar", public: "Works in the civil registry." }, turn);
-  assert.match(filled.result, /Updated the file for Iris Kavan/);
-  assert.equal(turn.newCharacters, 0);
+  const filled = addPerson(game, { ...KESSA, name: "Iris", role: "Deputy registrar", public: "Works in the civil registry." });
+  assert.equal(filled.id, "iris-kavan");
+  assert.equal(filled.created, false);
   assert.equal(Object.keys(campaignCharacters(game.campaign)).filter((id) => id.startsWith("iris")).length, 1);
   assert.equal(findCharacter(game.campaign, "Iris").role, "Deputy registrar");
   // The story highlights the first name.
@@ -250,67 +250,17 @@ test("files saved before first names were added still go by them", () => {
   assert.equal(findCharacter(campaign, "Tannen").id, "lio-tannen");
 });
 
-test("the game's own characters can't be replaced, and new ones are limited per turn", () => {
+test("the game's own characters can't be replaced by a campaign's", () => {
   const game = campaignGame(23);
-  const turn = newTurnLimits();
-  for (const name of ["Ilya Voss", "Voss", "voss"]) {
-    const replaced = tool(game, "create_character", { ...KESSA, name }, turn);
-    assert.ok(replaced.isError, name);
-  }
-  assert.equal(turn.newCharacters, 0);
+  for (const name of ["Ilya Voss", "Voss", "voss"]) assert.throws(() => addPerson(game, { ...KESSA, name }), /already has a file/, name);
   assert.equal(findCharacter(game.campaign, "Voss").id, "voss");
-  for (const name of ["One Person", "Two Person", "Three Person"]) assert.ok(!tool(game, "create_character", { ...KESSA, name }, turn).isError);
-  assert.ok(tool(game, "create_character", { ...KESSA, name: "Four Person" }, turn).isError);
-  assert.ok(tool(game, "create_character", { ...KESSA, name: "Bad Threat", threat: 9 }).isError);
-  assert.ok(tool(game, "create_character", { ...KESSA, name: "Bad Type", archetype: "wizard" }).isError);
 });
 
-test("reading a file gives the AI what it needs to play them, including secrets", () => {
-  const game = campaignGame(24);
-  const file = tool(game, "read_character", { name: "Voss" });
-  assert.ok(!file.isError);
-  assert.equal(file.notice, undefined);
-  assert.ok(file.result.includes(NOTABLES.voss.secrets));
-  assert.ok(file.result.includes(NOTABLES.voss.voice));
-  assert.ok(!/\bhp\b/i.test(file.result));
-  assert.ok(game.ai.sentCharacters.includes("voss"));
-  assert.ok(tool(game, "read_character", { name: "Nobody Atall" }).isError);
-  assert.match(characterBrief("x", { name: "New Person", note: "N" }, undefined), /hasn't met them yet/);
-});
-
-test("something just added can be fought in the same reply, by name, which saves a round", () => {
+test("someone in the campaign's files can be fought by name", () => {
   const game = campaignGame(38);
-  tool(game, "create_enemy", { name: "Hull Crawler", archetype: "beast", threat: 1, description: "It lives in the plating." });
-  assert.ok(!tool(game, "start_combat", { enemy: "Hull Crawler", lead_in: "It drops from the ceiling." }).isError);
-  assert.equal(game.combat.enemies[0].name, "Hull Crawler");
-  fightToTheEnd(game);
-  tool(game, "create_character", { ...KESSA, name: "Odo Marsh" });
+  addPerson(game, { ...KESSA, name: "Odo Marsh" });
   assert.ok(!tool(game, "start_combat", { enemy: "Odo Marsh", lead_in: "He draws." }).isError);
   assert.equal(game.combat.enemies[0].name, "Quartermaster Odo Marsh");
-});
-
-test("a new enemy goes in the files and can be fought right away", () => {
-  const game = campaignGame(25);
-  const turn = newTurnLimits();
-  const made = tool(game, "create_enemy", { name: "Ion Wraith", archetype: "machine", threat: 3, description: "A ghost in the ship's wiring.", tags: ["choir"] }, turn);
-  assert.ok(!made.isError, made.result);
-  assert.match(made.result, /ion_wraith/);
-  const file = path.join(dataDir, "campaigns", slugify(game.campaign), "enemies", "ion_wraith.json");
-  const saved = JSON.parse(fs.readFileSync(file, "utf8"));
-  assert.equal(saved.machine, true);
-  assert.ok(saved.tags.includes("choir") && saved.tags.includes("machines"));
-  const started = tool(game, "start_combat", { enemy: "ion_wraith", lead_in: "The lights flicker." });
-  assert.ok(!started.isError, started.result);
-  assert.equal(started.narration, "The lights flicker.");
-  assert.equal(game.combat.enemies[0].name, "Ion Wraith");
-  assert.equal(game.combat.enemies[0].hp, enemyNumbers(combatStats("machine", 3)).hp);
-  fightToTheEnd(game);
-  assert.equal(game.bestiary.ion_wraith.fought, 1);
-  // The same type of thing is still the same type after being fought.
-  assert.equal(findEnemy(game.campaign, "Ion Wraith").id, "ion_wraith");
-  assert.ok(tool(game, "create_enemy", { name: "Dock Thug", archetype: "soldier", threat: 1, description: "x" }, turn).isError);
-  tool(game, "create_enemy", { name: "Second Enemy", archetype: "beast", threat: 1, description: "x" }, turn);
-  assert.ok(tool(game, "create_enemy", { name: "Third Enemy", archetype: "beast", threat: 1, description: "x" }, turn).isError);
 });
 
 test("the story can rename an enemy, which keeps its stats and uses general fight text", () => {
@@ -330,7 +280,7 @@ test("the story can rename an enemy, which keeps its stats and uses general figh
     said += JSON.stringify(outcome.events);
   } while (!outcome.over);
   assert.doesNotMatch(said, /\bthug\b|Dock Thug/i);
-  assert.match(game.pendingEvents[0], /the Syndicate Courier/);
+  assert.match(outcome.summary, /Syndicate Courier/);
   // It's still a dock thug in the bestiary.
   assert.equal(game.bestiary.dock_thug.fought, 1);
   // The fight survives being saved and loaded.
@@ -349,9 +299,8 @@ test("start_combat refuses things that don't exist, and leaves no fight behind",
   assert.equal(game.combat, null);
 });
 
-test("a named character can be fought from their file, and the story decides what becomes of them", () => {
+test("a named character can be fought from their file", () => {
   const game = campaignGame(27);
-  game.pendingEvents = [];
   const started = tool(game, "start_combat", { enemy: "Kara Tarrow", lead_in: "Tarrow draws." });
   assert.ok(!started.isError, started.result);
   assert.equal(game.combat.enemies[0].hp, enemyNumbers(NOTABLES.tarrow.combat).hp);
@@ -363,8 +312,8 @@ test("a named character can be fought from their file, and the story decides wha
     outcome = combatAction(game, { type: "attack" });
   } while (!outcome.over);
   assert.equal(outcome.result, "victory");
-  assert.match(game.pendingEvents[0], /Lieutenant Kara Tarrow/);
-  assert.match(game.pendingEvents[0], /the story decides/);
+  assert.match(outcome.summary, /Tarrow/);
+  assert.deepEqual(game.lastFight.enemies, ["tarrow"], "a written scene can read who it was");
   // Someone they've fought shows up with the enemies they've faced.
   assert.ok(publicState(game).enemies.some((e) => e.id === "tarrow"));
 });
@@ -389,10 +338,9 @@ test("anyone added as a contact gets a file, and people with files keep their fu
 
 test("one campaign's people stay out of another, but its saved copies share them", () => {
   const first = campaignGame(29);
-  tool(first, "create_character", KESSA);
+  addPerson(first, KESSA);
   const second = campaignGame(30);
   assert.equal(findCharacter(second.campaign, "Kessa Vane"), null);
-  assert.ok(tool(second, "read_character", { name: "Kessa Vane" }).isError);
   const copy = JSON.parse(JSON.stringify(first));
   assert.equal(findCharacter(copy.campaign, "Kessa Vane").id, "kessa-vane");
 });
@@ -400,27 +348,15 @@ test("one campaign's people stay out of another, but its saved copies share them
 test("without a campaign, nothing is written to disk", () => {
   const game = newGame(31);
   assert.equal(game.campaign, null);
-  assert.ok(tool(game, "create_character", KESSA).isError);
-  assert.ok(tool(game, "create_enemy", { name: "Nope", archetype: "beast", threat: 1, description: "x" }).isError);
   ensureContactFiles(game);
   assert.equal(Object.keys(campaignCharacters(null)).length, 0);
   assert.equal(Object.keys(campaignEnemies(null)).length, 0);
 });
 
-test("the tools the AI sees don't change during play", () => {
-  // Claude's saved reasoning stops being valid if these change, so nothing dynamic can be in them.
-  const before = JSON.stringify(TOOL_DEFS);
-  const game = campaignGame(32);
-  tool(game, "create_character", { ...KESSA, name: "Tool Stability" });
-  tool(game, "create_enemy", { name: "Stability Beast", archetype: "beast", threat: 1, description: "x" });
-  assert.equal(JSON.stringify(TOOL_DEFS), before);
-  assert.ok(!before.includes("tool-stability"));
-  assert.ok(!before.includes("stability_beast"));
-});
-
 test("people added in a campaign are highlighted in the story", () => {
   const game = campaignGame(33);
-  tool(game, "create_character", { ...KESSA, met: true, attitude: "friendly" });
+  addPerson(game, KESSA);
+  tool(game, "note_contact", { name: "Kessa Vane", attitude: "friendly", note: "Sold you fuel." });
   const state = publicState(game);
   const entries = loreEntries(LORE, state);
   const index = buildLoreIndex(entries);
@@ -499,11 +435,11 @@ test("taking cover only lasts for the round it's taken, and the numbers shown st
   assert.equal(publicState(game).combat.you.defense, before);
 });
 
-test("a finished fight waits for the player, then the AI hears about it once", () => {
+test("a finished fight nobody's story was waiting on is over, with nothing more to carry on", () => {
   const game = newGame(45);
   game.credits = 100;
   startCombat(game, "dock_thug");
-  assert.equal(publicState(game).pendingEvents, 0);
+  assert.equal(publicState(game).storyWaiting, false);
   game.combat.enemies[0].hp = 1;
   let outcome;
   do {
@@ -512,8 +448,8 @@ test("a finished fight waits for the player, then the AI hears about it once", (
   } while (!outcome.over);
   assert.equal(outcome.result, "victory");
   assert.equal(game.combat, null);
-  assert.equal(publicState(game).pendingEvents, 1);
-  assert.match(game.pendingEvents[0], /won the fight/);
+  assert.equal(publicState(game).storyWaiting, false);
+  assert.equal(game.lastFight.result, "victory");
   assert.equal(game.bestiary.dock_thug.won, 1);
   assert.ok(outcome.events.some((line) => line.tone === "good" && /XP/.test(line.math ?? "")));
 });
@@ -568,11 +504,11 @@ test("older saves get a campaign, and the same save always gets the same one", (
   save.contacts.push({ name: "Old Friend", attitude: "friendly", note: "Knew you back then." });
   save.contacts[0].note = "Commander Ilya Voss. She's hiding something about the Choir.";
   const game = migrateGame(structuredClone(save));
-  assert.equal(game.version, 18);
+  assert.equal(game.version, 19);
   assert.ok(game.campaign.startsWith(slugify(save.name)));
   assert.equal(migrateGame(structuredClone(save)).campaign, game.campaign);
   assert.deepEqual(game.bestiary, {});
-  assert.deepEqual(game.pendingEvents, []);
+  assert.equal(game.pendingEvents, undefined, "what was kept for the AI is gone");
   // An old description gave away a secret.
   assert.doesNotMatch(game.contacts[0].note, /hiding something/);
   assert.doesNotThrow(() => publicState(game));
@@ -612,12 +548,11 @@ test("the captain's sheet is a readable copy of the real numbers", () => {
 
 test("the game can say where its files are", () => {
   const game = campaignGame(73);
-  tool(game, "create_character", KESSA);
-  tool(game, "create_enemy", { name: "File Beast", archetype: "beast", threat: 1, description: "x" });
+  addPerson(game, KESSA);
   const { files } = publicState(game);
   assert.equal(files.world, "world");
   assert.equal(files.worldCharacters, Object.keys(NOTABLES).length);
   assert.equal(files.campaignCharacters, 1);
-  assert.equal(files.campaignEnemies, 1);
+  assert.equal(files.campaignEnemies, 0);
   assert.ok(files.campaign.includes(slugify(game.campaign)));
 });

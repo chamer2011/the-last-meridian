@@ -1,5 +1,5 @@
-// Fights run entirely on this computer, from the stats in the files. The AI only says who's in
-// a fight, and it's told how it ended. There are two sides, the player's and the enemy's, and
+// Fights run entirely on this computer, from the stats in the files. A written scene says who's in a
+// fight, and reads how it ended. There are two sides, the player's and the enemy's, and
 // either can have followers, including ones who join partway through.
 //
 // Each round returns a list of events for the fight window to play back. An event has text to
@@ -642,21 +642,15 @@ export function endCombat(game, ended, log) {
   }
 
   addFatigue(game, 6);
-  const nameOf = (enemy) => (enemy.named ? enemy.name : enemy.prose);
-  const foes = listOf(c.enemies.map(nameOf));
-  const beatenNames = listOf(beaten.map(nameOf));
   const side = followers.length ? "You and your followers" : "You";
-  // Those who went away are still out there, and that's the story's to pick up.
+  // Those who went away are still out there, and the summary says how they went.
   const done = Object.keys(APPROACHES).filter((id) => wentAway.some((enemy) => enemy.out === id)).map((id) => {
     const these = wentAway.filter((enemy) => enemy.out === id);
     return fillWith(APPROACHES[id].done, { prose: listOf(these.map((enemy) => enemy.prose)), paid: these.reduce((sum, enemy) => sum + (enemy.paid ?? 0), 0) });
   }).join(" ");
-  const told = wentAway.map((enemy) => fillWith(APPROACHES[enemy.out].told, { ...enemy, prose: nameOf(enemy) })).join(" ");
-  const stillOut = told ? ` ${told} ${wentAway.length > 1 ? "They're" : "That one's"} still out there, so what happens next is up to the story.` : "";
   // Followers take their share of the credit. Someone who was paid to go is only worth half.
   const earned = () => Math.round(c.enemies.reduce((total, enemy) => total + enemy.xp * (wentAway.includes(enemy) ? APPROACHES[enemy.out].xp ?? 1 : 1), 0) / (1 + c.allies.length * 0.5));
   let summary;
-  let story;
   let math = null;
   let tone;
   if (result === "victory") {
@@ -671,8 +665,6 @@ export function endCombat(game, ended, log) {
     // What they had on them is left on the floor, for the player to look through.
     const left = leaveLoot(game, beaten);
     if (left.length) log.push({ text: `They left something on the floor: ${listOf(left)}.`, tone: "good" });
-    const named = beaten.filter((enemy) => enemy.named).map((enemy) => enemy.name);
-    story = `The player won the fight against ${beatenNames} in ${rounds}, and took ${credits} credits.${named.length ? ` The game hasn't decided what becomes of ${listOf(named)}. They're beaten and at the player's mercy, so the story decides.` : ""}${stillOut}`;
     summary = `${side} beat ${beatenProse} in ${rounds}.${done ? ` ${done}` : ""}`;
     tone = "good";
   } else if (result === "talked") {
@@ -680,7 +672,6 @@ export function endCombat(game, ended, log) {
     math = `+${xp} XP`;
     log.push({ text: "It's over, and nobody had to be beaten.", tone: "good", math });
     addNotes(c, log, grantXp(game, xp));
-    story = `The fight with ${foes} ended in ${rounds} without anyone being beaten.${stillOut}`;
     summary = done;
     tone = "good";
   } else if (result === "surrendered") {
@@ -688,12 +679,10 @@ export function endCombat(game, ended, log) {
     addNotes(c, log, changeStress(game, 6));
     // A drone can't take prisoners, so it's the people with it who matter.
     const takers = alive(c.enemies).filter((enemy) => motiveOf(enemy).surrender !== false);
-    const reason = takers[0]?.reason;
-    story = `The player gave up in the fight with ${listOf(takers.map(nameOf))} after ${rounds}, and is at their mercy.${reason ? ` They were fighting because: ${reason}` : ""} Decide what they do now, in a way that fits why they were fighting: they might rob the player, arrest them, drag them off or let them go. It isn't the end of the game.${stillOut}`;
     summary = PARLEY.surrender.done.replaceAll("{enemy}", listOf(takers.map((enemy) => enemy.prose)));
     tone = "warn";
   } else if (result === "defeat") {
-    // Losing a fight isn't game over. It's a setback the story has to deal with.
+    // Losing a fight isn't game over. It's a setback: hurt, and poorer.
     const lost = Math.floor(game.credits * 0.25);
     game.credits -= lost;
     math = `-${lost} credits`;
@@ -701,12 +690,10 @@ export function endCombat(game, ended, log) {
     inflictWound(game, log);
     game.hp = Math.max(1, Math.floor(maxHp(game) * 0.25));
     addNotes(c, log, changeStress(game, 15));
-    story = `The player lost the fight against ${foes}, was left badly hurt and lost ${lost} credits. They survive, and wake up somewhere that fits the story.${stillOut}`;
     summary = `You lost the fight against ${prose}.`;
     tone = "bad";
   } else {
     addNotes(c, log, changeStress(game, 3));
-    story = `The player ran from the fight with ${foes}, who ${c.enemies.length > 1 ? "are" : "is"} still out there.${followers.length ? " Their followers got out with them." : ""}${stillOut}`;
     summary = `You got away from ${prose}.`;
     tone = "info";
   }
@@ -724,12 +711,6 @@ export function endCombat(game, ended, log) {
   }
   // The written story reads this to decide where it goes next.
   game.lastFight = { result, enemies: [...new Set(c.enemies.map((enemy) => enemy.id))], summary, used: false };
-  // The AI hears about the fight with the player's next message. Nothing is sent to it now.
-  const wounds = game.conditions.map((condition) => CONDITIONS[condition.id].name);
-  const beside = followers.length
-    ? ` Fighting beside them: ${listOf(c.allies.map((ally) => `${ally.named ? ally.name : ally.prose} (${ally.hp > 0 ? `${ally.hp}/${ally.maxHp} health` : "knocked out, and the story decides how badly"})`))}.`
-    : "";
-  game.pendingEvents.push(`${story}${beside} Health is now ${game.hp}/${maxHp(game)}.${wounds.length ? ` Current injuries and conditions: ${wounds.join(", ")}.` : ""}`);
   return { over: true, result, events: log, followers, summary, math, tone, notes: c.notes };
 }
 

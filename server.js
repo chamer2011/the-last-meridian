@@ -1,10 +1,9 @@
 // The game's local server. It only accepts connections from this computer.
-// It holds the game and your API key, and the browser page talks to it.
+// It holds the game, and the browser page talks to it. Everything runs here: there's no AI, and nothing goes online.
 
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
-import { AiError, CLAUDE_MODELS, callCost, listOllamaModels, runTurn, testClaude } from "./src/ai.js";
 import { boardScene, boardStories, boardStory, boardWorldItem, boardWorldList, checkBoardScene, saveBoardScene, saveBoardStory, saveBoardWorldItem, saveLayout } from "./src/board.js";
 import { ensureContactFiles, newCampaignId, saveCaptainSheet } from "./src/campaign.js";
 import { SKILLS } from "./src/character-data.js";
@@ -15,17 +14,16 @@ import { buildCharacter, createGameFromDraft, creatorSetup, randomDraft } from "
 import { shipCommand } from "./src/ship.js";
 import { commandCommand } from "./src/command.js";
 import { noteLoreSeen } from "./src/lore.js";
-import { openingFor } from "./src/role.js";
 import { migrateGame } from "./src/migrate.js";
-import { StoryError, choiceLine, followChoice, keepForAi, parkCurrentScene, sceneBrief, storyTurnKind, switchStory, withoutChoices, writtenTurn } from "./src/scenes.js";
+import { StoryError, writtenTurn } from "./src/scenes.js";
 import { followQuest } from "./src/quests.js";
-import { followTalkChoice, openWrittenTalk, talkSceneBrief, talkTurnKind, writtenTalkTurn } from "./src/talks.js";
+import { openWrittenTalk, writtenTalkTurn } from "./src/talks.js";
 import { dataDir, projectDir } from "./src/paths.js";
 import {
   buy, buyPerk, captainSheet, clockFor, combatAction, equip, notePeopleSeen, publicState, raiseSkill, raiseStat, rest, sell, setDifficulty, startCombat, useItem, workShift,
 } from "./src/rules.js";
 import { personSheet } from "./src/person-sheet.js";
-import { closeTalk, talkBrief, talkCommand, talkHeard, talkLineOver, talkSaid, walkCommand, walkTick } from "./src/walk.js";
+import { closeTalk, talkCommand, talkHeard, talkLineOver, talkSaid, walkCommand, walkTick } from "./src/walk.js";
 import { enterAfterHack, enterDoorPanel } from "./src/computers.js";
 import { airBadHere, controlSystem, settlePart, systemsOf } from "./src/systems.js";
 import { computerCommand, screenGoesDark } from "./src/computer-use.js";
@@ -33,81 +31,12 @@ import { afterDeedFight, settleDeed } from "./src/deeds.js";
 import { bagCommand } from "./src/bag.js";
 
 const savesDir = path.join(dataDir(), "saves");
-const settingsFile = path.join(dataDir(), "settings.json");
 const publicDir = path.join(projectDir, "public");
 const PORT = Number(process.env.PORT) || 3210;
 // "previous" keeps the last game when a new one starts, in case that was a mistake.
 const SAVE_SLOTS = ["autosave", "previous", "slot1", "slot2", "slot3"];
 
 fs.mkdirSync(savesDir, { recursive: true });
-
-// ---- Settings -----------------------------------------------------------
-
-// story is who writes a new game's story: "written" for the scenes in world/scenes, "ai" for the AI
-// game master, or null to leave it to the game, which uses the written story until an AI is set up.
-const DEFAULT_SETTINGS = { provider: "claude", model: "claude-opus-5-5", effort: "medium", apiKey: "", story: null };
-
-function loadSettings() {
-  try {
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(settingsFile, "utf8")) };
-  } catch {
-    return { ...DEFAULT_SETTINGS };
-  }
-}
-
-let settings = loadSettings();
-
-const saveSettings = () => fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
-const hasKey = () => Boolean(settings.apiKey || process.env.ANTHROPIC_API_KEY);
-const aiIsSetUp = () => settings.provider === "ollama" || hasKey();
-const storyMode = () => settings.story ?? (aiIsSetUp() ? "ai" : "written");
-
-async function settingsView() {
-  return {
-    provider: settings.provider,
-    model: settings.model,
-    effort: settings.effort,
-    story: settings.story,
-    storyApplies: storyMode(),
-    hasKey: hasKey(),
-    claudeModels: CLAUDE_MODELS,
-    ollama: await listOllamaModels(),
-    spending,
-  };
-}
-
-// ---- What the AI has cost -----------------------------------------------
-
-const usageFile = path.join(dataDir(), "usage.jsonl");
-
-function spentSoFar() {
-  try {
-    return fs.readFileSync(usageFile, "utf8").split("\n").filter(Boolean).reduce((total, line) => total + JSON.parse(line).cost, 0);
-  } catch {
-    return 0;
-  }
-}
-
-const spending = { lastTurn: null, session: 0, calls: 0, total: spentSoFar() };
-
-// Keeps a record of every call, which also shows how well the ways of saving money are working.
-function recordUsage({ model, usage }) {
-  const cost = callCost(model, usage);
-  spending.session += cost;
-  spending.total += cost;
-  spending.calls += 1;
-  fs.appendFileSync(usageFile, `${JSON.stringify({
-    at: new Date().toISOString(),
-    model,
-    input: usage.input_tokens,
-    written: usage.cache_creation_input_tokens,
-    read: usage.cache_read_input_tokens,
-    output: usage.output_tokens,
-    thinking: usage.output_tokens_details?.thinking_tokens,
-    cost,
-  })}\n`);
-  return cost;
-}
 
 // ---- Saves --------------------------------------------------------------
 
@@ -207,24 +136,16 @@ export const gameIsBusy = () => busy;
 
 // ---- Streaming a turn of the story to the browser --------------------------
 
-// What the AI is told when the player starts or continues the story. The written story reads the event itself.
-const eventFor = (event) => (event === "start" ? openingFor(game) : event === "continue" ? "Continue the story from here." : undefined);
-
-// One turn, from the written story, from the AI game master, or from both: with an AI, the written parts still play
-// themselves, for free, and the AI reads the player's own words in them. Nothing goes to the AI unless it has to.
-async function streamTurn(res, { playerText, event, threadId, person = null, talking = false }) {
+// One turn of the written story, or one line said in a written conversation. It goes out a piece at a time, the way
+// the page reads it, and a turn the story can't answer puts the game back as it was.
+function streamTurn(res, { playerText, event, threadId, person = null, talking = false }) {
   res.writeHead(200, { "content-type": "application/x-ndjson", "cache-control": "no-store" });
-  const send = (obj) => res.write(`${JSON.stringify(obj)}\n`);
+  const send = (obj) => res.write(`${JSON.stringify(obj)}
+`);
   const before = structuredClone(game);
   busy = true;
-  spending.lastTurn = 0;
   try {
-    // Who answers: the written story ("written"), the AI by itself ("ai"), or the AI fitting the player's own words to a written part ("fit").
-    const kind = talking ? talkTurnKind(game, playerText) : storyTurnKind(game, { playerText, event, threadId });
-    const talk = talking ? talkBrief(game, { written: kind === "fit" }) : null;
     if (talking) talkSaid(game, playerText);
-    // The written story records what the player did itself, once it knows which choice they meant.
-    else if (playerText && kind !== "written") log("player", playerText);
     // Narration and game messages are kept in the order they happened.
     const pieces = [];
     const emit = (e) => {
@@ -239,18 +160,10 @@ async function streamTurn(res, { playerText, event, threadId, person = null, tal
         send({ type: "notice", text: e.text });
       }
       if (e.type === "state") send({ type: "state", state: publicState(game) });
-      if (e.type === "usage") spending.lastTurn += recordUsage(e);
     };
-    if (kind === "written" && talking) writtenTalkTurn({ game, playerText, emit });
-    else if (kind === "written") writtenTurn({ game, playerText, event, threadId, person, emit, log });
-    else if (kind === "fit") await fitTurn({ playerText, talk, emit });
-    else {
-      // Whatever arrival there was, the AI tells it now, and a story it takes up sets aside any written one that was
-      // under way, which waits its turn.
-      game.arrived = null;
-      if (threadId) parkCurrentScene(game);
-      await runTurn({ game, settings, playerText, gameEvent: eventFor(event), threadId, talk, emit });
-    }
+    // The written story records what the player did itself, once it knows which choice they meant.
+    if (talking) writtenTalkTurn({ game, playerText, emit });
+    else writtenTurn({ game, playerText, event, threadId, person, emit, log });
     for (const piece of pieces) {
       const text = piece.text.trim();
       if (!text) continue;
@@ -262,52 +175,19 @@ async function streamTurn(res, { playerText, event, threadId, person = null, tal
         notePeopleSeen(game, text);
       }
     }
-    // With an AI game master, what the written story played is kept for the AI's next message, so that it knows.
-    if (game.mode === "ai" && kind !== "ai") rememberForAi(game, playerText, pieces, talk?.name ?? null);
     if (talking) talkLineOver(game);
     else game.turn += 1;
     autosave();
-    send({ type: "done", state: publicState(game), spending });
+    send({ type: "done", state: publicState(game) });
   } catch (err) {
-    // Put the game back, so a failed turn doesn't change the story.
+    // Put the game back, so a turn the story couldn't answer changes nothing.
     game = before;
-    const message = err instanceof AiError || err instanceof StoryError ? err.message : `Unexpected error: ${err.message}`;
-    send({ type: "error", message, state: publicState(game), spending });
+    const message = err instanceof StoryError ? err.message : `Unexpected error: ${err.message}`;
+    send({ type: "error", message, state: publicState(game) });
   } finally {
     busy = false;
     res.end();
   }
-}
-
-// The player typed their own words in a written part. The AI reads the part and fits them to one of its choices,
-// which then plays as if it had been clicked, or answers them in a few words and leaves the choices as they were.
-// The AI's words are held back until it has decided, so that a choice line of its own can be dropped and the
-// written ones put back.
-async function fitTurn({ playerText, talk, emit }) {
-  const brief = talk ? talkSceneBrief(game) : sceneBrief(game);
-  if (!brief) throw new StoryError("The story has lost its place. Press Continue the story.");
-  const held = [];
-  await runTurn({ game, settings, playerText, talk, scene: brief, emit: (e) => (e.type === "text" ? held.push(e.text) : emit(e)) });
-  const picked = brief.followed > 0 ? brief.choices[brief.followed - 1] : null;
-  const aside = withoutChoices(held.join(""));
-  if (picked) {
-    if (aside) emit({ type: "text", text: aside });
-    if (talk) return followTalkChoice(game, picked, emit);
-    emit({ type: "notice", text: `[STORY] Taken as: ${picked.say}` });
-    return followChoice(game, picked, { emit });
-  }
-  const again = brief.choices.map(choiceLine).join("\n");
-  emit({ type: "text", text: aside ? `${aside}\n\n${again}` : again });
-  emit({ type: "state" });
-}
-
-// What the written story said, kept for the AI's next message, without the choices.
-function rememberForAi(game, playerText, pieces, talkingWith) {
-  const said = pieces.filter((piece) => piece.role === "narrator").map((piece) => withoutChoices(piece.text)).filter(Boolean).join("\n\n");
-  if (!said) return;
-  keepForAi(game, [talkingWith
-    ? `In a talk with ${talkingWith}${playerText ? `, the player said: "${playerText}"` : ""}. ${said}`
-    : `${playerText ? `The player: ${playerText}\n` : ""}${said}`]);
 }
 
 // ---- Routes -------------------------------------------------------------
@@ -335,7 +215,7 @@ const requireGame = () => {
 
 // The clock stands still during a talk, so anything that could move it waits until it's over.
 const TALK_WAITING = "Finish the talk first.";
-// The clock stands still on a computer too, and the AI only hears about it at log-off.
+// The clock stands still on a computer too.
 const COMPUTER_WAITING = "Log off the computer first.";
 
 function menuAction(body) {
@@ -402,64 +282,11 @@ async function handleApi(req, res, route) {
       game: shown,
       saves: listSaves(),
       setup: creatorSetup(),
-      settings: await settingsView(),
     });
   }
-  if (req.method === "GET" && route === "/api/settings") return json(res, 200, await settingsView());
 
   if (req.method !== "POST") return json(res, 404, { error: "Not found." });
   const body = await readBody(req);
-
-  if (route === "/api/settings") {
-    if (typeof body.apiKey === "string" && body.apiKey.trim()) settings.apiKey = body.apiKey.trim();
-    if (body.clearKey) settings.apiKey = "";
-    if (body.effort === "medium" || body.effort === "low") settings.effort = body.effort;
-    if (body.story === "written" || body.story === "ai") settings.story = body.story;
-    if (body.provider === "claude") {
-      if (!CLAUDE_MODELS.some((m) => m.id === body.model)) throw new Error("Unknown Claude model.");
-      settings.provider = "claude";
-      settings.model = body.model;
-    } else if (body.provider === "ollama") {
-      if (typeof body.model !== "string" || !body.model) throw new Error("Choose a local model.");
-      settings.provider = "ollama";
-      settings.model = body.model;
-    }
-    saveSettings();
-    return json(res, 200, await settingsView());
-  }
-  if (route === "/api/settings/test") {
-    if (settings.provider === "claude") {
-      if (!hasKey()) return json(res, 200, { ok: false, message: "No API key yet. Paste one above first." });
-      return json(res, 200, await testClaude(settings));
-    }
-    const { running, models } = await listOllamaModels();
-    if (!running) return json(res, 200, { ok: false, message: "Ollama isn't running." });
-    return json(res, 200, models.includes(settings.model)
-      ? { ok: true, message: `Connected. ${settings.model} is ready.` }
-      : { ok: false, message: `${settings.model} isn't installed in Ollama.` });
-  }
-
-  // Who writes the story: new games, and the game being played, from its next turn. Handing a game to the AI needs one set up.
-  if (route === "/api/story") {
-    const mode = body.mode;
-    if (mode !== "written" && mode !== "ai") throw new Error("Choose the written story or the AI game master.");
-    if (mode === "ai" && !aiIsSetUp()) throw new Error("Set up an AI first: a key or a local model, under AI model below.");
-    if (game && (game.mode ?? "ai") !== mode) {
-      if (busy) throw new Error("The game master is still writing. Wait a moment.");
-      // A fight, a check or a talk hands its end to whoever's telling the story, so it finishes with the one it began with.
-      if (game.combat) throw new Error("Finish the fight first.");
-      if (game.check) throw new Error("Finish the check first.");
-      if (game.talk) throw new Error(TALK_WAITING);
-      switchStory(game, mode);
-      // The written story can't answer the AI's choices, so they stop being offered from here. A game that hasn't
-      // begun has nothing to hand over, and keeps its Start the story button.
-      if (game.transcript.length) game.transcript.push({ role: "notice", text: mode === "ai" ? "[STORY] From here, the AI game master runs this game. The written parts still play as written, for free." : "[STORY] From here, the written story runs this game, with no AI.", ...(mode === "written" ? { turnover: true } : {}) });
-      autosave();
-    }
-    settings.story = mode;
-    saveSettings();
-    return json(res, 200, { settings: await settingsView(), game: game ? publicState(game) : null });
-  }
 
   // Someone's registry printout, opened from the right-click menu. It only reads.
   if (route === "/api/person-sheet") return json(res, 200, personSheet(requireGame(), body.key));
@@ -469,13 +296,11 @@ async function handleApi(req, res, route) {
     return json(res, 200, buildCharacter(draft).view);
   }
 
-  if (busy) return json(res, 409, { error: "The game master is still writing. Wait a moment." });
+  if (busy) return json(res, 409, { error: "The story is still being told. Wait a moment." });
 
   if (route === "/api/new") {
     const created = createGameFromDraft(body.draft);
     created.campaign = newCampaignId(created.name);
-    // Who writes this game's story is decided now, and stays decided: a story the AI has been writing can't be picked up by the written one.
-    created.mode = storyMode();
     // People from the captain's past get their files now.
     ensureContactFiles(created);
     keepAsPrevious();
@@ -503,7 +328,7 @@ async function handleApi(req, res, route) {
     autosave();
     return json(res, 200, { game: publicState(game), message });
   }
-  // The Ship menu's orders and the star map run here. The AI hears about them with its next message.
+  // The Ship menu's orders and the star map run here.
   if (route === "/api/ship") {
     if (requireGame().combat) throw new Error("Finish the fight first.");
     if (game.check) throw new Error("Finish the check first.");
@@ -522,7 +347,7 @@ async function handleApi(req, res, route) {
     autosave();
     return json(res, 200, { game: publicState(game), message });
   }
-  // Fights happen right here. No request goes to the AI until the player continues the story.
+  // Fights happen right here. A written scene waiting on one goes on when the player continues the story.
   if (route === "/api/combat") {
     requireGame();
     // A fight in the room: moving it there, time going by while the page runs it, and the player's orders. Time going
@@ -550,7 +375,7 @@ async function handleApi(req, res, route) {
     autosave();
     return json(res, 200, { game: publicState(game), outcome });
   }
-  // A check plays out here too, and the AI only hears about it once it's over.
+  // A check plays out here too.
   if (route === "/api/check/start") {
     if (requireGame().talk) throw new Error(TALK_WAITING);
     if (game.computer) throw new Error(COMPUTER_WAITING);
@@ -610,7 +435,7 @@ async function handleApi(req, res, route) {
     autosave();
     return json(res, 200, { game: publicState(game), said });
   }
-  // A computer the player is on: reading, running and logging off happen here, and the AI hears one line at the end.
+  // A computer the player is on: reading, running and logging off happen here.
   if (route === "/api/computer") {
     if (requireGame().combat) throw new Error("Finish the fight first.");
     if (game.check) throw new Error("Finish the check first.");
@@ -628,7 +453,7 @@ async function handleApi(req, res, route) {
     autosave();
     return json(res, 200, { game: publicState(game) });
   }
-  // The clock running by itself while the player explores. Nothing here goes near the AI. The reply
+  // The clock running by itself while the player explores. The reply
   // is small, because this is twice a second, unless something's happened that the whole screen needs.
   if (route === "/api/tick") {
     const before = Math.floor(requireGame().clock.hours / 2);
@@ -643,7 +468,7 @@ async function handleApi(req, res, route) {
     const passed = news || redrawn || Math.floor(game.clock.hours / 2) !== before;
     return json(res, 200, { ...reply, clock: clockFor(game), ...(passed ? { game: publicState(game), news } : {}) });
   }
-  // Walking runs here, without the AI. The reply is small, because this can be every key press.
+  // Walking runs here. The reply is small, because this can be every key press.
   if (route === "/api/walk") {
     if (requireGame().combat) throw new Error("Finish the fight first.");
     if (game.check) throw new Error("Finish the check first.");
@@ -659,7 +484,7 @@ async function handleApi(req, res, route) {
     saveAfterWalking();
     return json(res, 200, reply);
   }
-  // A talk: opening it, closing it and free lines stay here, and each thing said goes to the AI like any other turn.
+  // A talk: opening it, closing it, passing on rumors, and each thing said, from the person's written lines or stock ones.
   if (route === "/api/talk") {
     if (requireGame().combat) throw new Error("Finish the fight first.");
     if (game.check) throw new Error("Finish the check first.");
@@ -670,11 +495,8 @@ async function handleApi(req, res, route) {
       return streamTurn(res, { playerText: text, talking: true });
     }
     talkCommand(game, body);
-    // The person speaks first from their written conversation, or from stock lines when there's no AI to play them.
-    // With an AI, what they said is kept for it, so it knows when the player types their own words.
-    if (body.action === "open" && openWrittenTalk(game, { filesOnly: game.mode === "ai" }) && game.mode === "ai") {
-      rememberForAi(game, null, [{ role: "narrator", text: game.talk.lastReply ?? "" }], game.talk.name);
-    }
+    // The person speaks first, from their written conversation or from stock lines.
+    if (body.action === "open") openWrittenTalk(game);
     autosave();
     return json(res, 200, { game: publicState(game) });
   }

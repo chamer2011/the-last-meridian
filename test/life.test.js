@@ -18,9 +18,9 @@ const { findCharacter } = await import("../src/campaign.js");
 const { peopleAboard, whereNow } = await import("../src/life.js");
 const { migrateGame } = await import("../src/migrate.js");
 const { projectDir } = await import("../src/paths.js");
-const { aiSnapshot, clockLabel, clockRuns, passTime, publicState, rest } = await import("../src/rules.js");
+const { clockLabel, clockRuns, passTime, publicState, rest } = await import("../src/rules.js");
 const { newTurnLimits, runTool } = await import("../src/tools.js");
-const { canStand, mapFor, setScene, talkBrief, talkCommand, talkView, walkCommand, walkLine, walkOf, walkTick, walkView } = await import("../src/walk.js");
+const { canStand, mapFor, setScene, talkCommand, talkView, walkCommand, walkOf, walkTick, walkView } = await import("../src/walk.js");
 const { WORLD_LIFE, WORLD_MAPS } = await import("../src/world.js");
 const { NOTABLES } = await import("../src/character-data.js");
 // Whoever could have the chair is only there in a game where the player isn't the captain.
@@ -315,8 +315,6 @@ test("showing the game changes nothing in the save, and a save can have no lives
   const before = JSON.stringify(game);
   publicState(game);
   walkView(game);
-  walkLine(game);
-  aiSnapshot(game);
   whereNow(game, "voss");
   assert.equal(JSON.stringify(game), before);
   assert.equal(game.life, null);
@@ -326,7 +324,7 @@ test("an older save moves up a version, and everyone starts from wherever this t
   const old = { ...newGame(), version: 10, clock: { hours: 12.5 } };
   delete old.life;
   const game = migrateGame(JSON.parse(JSON.stringify(old)));
-  assert.equal(game.version, 18);
+  assert.equal(game.version, 19);
   assert.equal(game.life, null);
   assert.equal(find(game, "voss").doing, "eating");
   assert.doesNotThrow(() => publicState(game));
@@ -591,7 +589,6 @@ test("someone asleep has to be woken, and someone working is doing something", (
   talkCommand(game, { action: "open", person: "voss" });
   assert.match(game.talk.log[0].text, /Voss is asleep/);
   assert.equal(talkView(game).doing, "asleep");
-  assert.match(talkBrief(game).tag, /doing="asleep"/);
   talkCommand(game, { action: "close" });
   const awake = newGame();
   talkCommand(awake, { action: "open", person: "pell" });
@@ -607,7 +604,6 @@ test("anyone in the crowd can be walked up to and talked to", () => {
   assert.equal(reply.arrived.kind, "person");
   talkCommand(game, { action: "open", person: someone.key });
   assert.equal(talkView(game).name, someone.name);
-  assert.match(talkBrief(game).tag, new RegExp(`with="${someone.name}"`));
 });
 
 test("bumping into someone walking past doesn't start a talk, but bumping into someone standing still does", () => {
@@ -631,21 +627,9 @@ test("bumping into someone walking past doesn't start a talk, but bumping into s
 
 // ---- The story and the people around it ------------------------------------------
 
-test("the game master hears who's nearby and what they're doing, in one short line", () => {
-  const game = at(12.75);
-  setScene(game, "The Long Mess");
-  const line = walkLine(game);
-  assert.match(line, /^Map: player at The Long Mess\. Nearby: .*Voss \(eating\)/);
-  assert.match(line, /\d+ other people\.$/);
-  assert.ok(line.length < 500, line);
-  assert.ok(aiSnapshot(game).split("\n").includes(line));
-  assert.ok(!/Deckhand|Mess Hand/.test(line), "the crowd's just a number");
-});
-
-test("the game master can ask where someone is right now", () => {
+test("where someone is right now, in words", () => {
   const game = newGame();
-  const reply = tool(game, "read_character", { name: "Voss" });
-  assert.match(reply.result, /Right now: on the bridge, at the Bridge\./);
+  assert.match(whereNow(game, "voss"), /^on the bridge, at the Bridge/);
   game.clock.hours = 19.75;
   assert.equal(whereNow(game, "tarrow"), "somewhere out of sight");
   assert.equal(whereNow(game, "nobody at all"), null);
@@ -733,7 +717,7 @@ test("a tick moves the clock and everyone in it, and nothing else", () => {
   for (let i = 0; i < 200; i += 1) walkTick(game, { ms: 500, rate: 60 });
   assert.equal(JSON.stringify(game.ai), ai);
   assert.equal(game.transcript.length, story);
-  assert.match(walkLine(game), /^Map: player at /, "the map line doesn't say the captain went anywhere");
+  assert.equal(walkOf(game).walked, false, "the captain didn't go anywhere");
 });
 
 test("a tick can't be used to skip time, and only runs at the clock's own speeds", () => {

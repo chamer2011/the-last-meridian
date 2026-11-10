@@ -13,7 +13,7 @@
 //   checks: -1                 bonus or penalty on every check
 //   credits: 500               starting credits (only applied at creation)
 //   factions: { fleet: 10 }    one-time change in faction standing
-// "gm" is a note for the AI game master about how to play this in the story.
+// "gm" is a note for whoever writes the story about how this plays in it. The game doesn't show it.
 
 import { WORLD_CHARACTERS, WORLD_FACTIONS, WORLD_SPECIES } from "./world.js";
 
@@ -78,7 +78,7 @@ export const SKILLS = {
   manifestation: { name: "Manifestation", attr: "resonance", group: "resonance", desc: "Bending the world through Resonance." },
 };
 
-// Situations the AI can flag on a check. Traits can give bonuses or penalties in them.
+// Situations a check can be in. Traits can give bonuses or penalties in them.
 export const CONTEXTS = {
   choir: "against the Choir",
   machines: "against machines",
@@ -276,7 +276,7 @@ export const ATTITUDE_VALUES = { ally: 2, friendly: 1, neutral: 0, wary: -1, hos
 export const TRAIT_GROUPS = { physical: "Body", mind: "Mind", social: "Reputation", resonance: "Resonance" };
 
 // cost above 0 spends trait points, below 0 gives them back, and 0 is a pure tradeoff.
-// earnable traits can also be gained during play, if the AI thinks the story has earned them.
+// earnable traits can also be gained during play, when a written scene gives one.
 export const TRAITS = {
   // Body
   iron_constitution: { name: "Iron Constitution", group: "physical", cost: 2, desc: "You've never had a sick day, and your doctors find it rude.", excludes: ["frail", "chronic_illness"], fx: { maxHp: 12, fatigueRate: 0.75 } },

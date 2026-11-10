@@ -29,7 +29,6 @@ const newGame = (start = "captain", seed = 21) => {
   const draft = randomDraft({ seed, archetype: "officer" });
   draft.start = start;
   const game = createGameFromDraft(draft);
-  game.mode = "written";
   return game;
 };
 
@@ -63,14 +62,12 @@ function settleCheck(game, success) {
   assert.ok(game.check, "a check is open");
   game.lastCheck = { id: game.check.id, skill: game.check.skill, difficulty: game.check.difficulty, success, reason: game.check.reason, source: game.check.source, used: false };
   game.check = null;
-  game.pendingEvents.push("The check is done.");
 }
 // Ends the fight that's on, the way the fight window would.
 function endFight(game, result) {
   assert.ok(game.combat, "a fight is on");
   game.combat = null;
   game.lastFight = { result, enemies: ["drift_raider"], summary: "It ended.", used: false };
-  game.pendingEvents.push("The fight is over.");
 }
 // A check from the list, then the story carrying on from how it came out.
 function checkThen(game, words, success) {
@@ -108,7 +105,7 @@ test("the written story can move the act and fill the tank, and a part can wait 
   assert.equal(waiting.scene.part, "here", "nothing has changed, so the story stays");
   assert.doesNotMatch(still, /You're there/);
   waiting.location = "kessara";
-  waiting.pendingEvents.push("The Meridian jumped.");
+  waiting.arrived = "kessara";
   const arrived = play(waiting, { event: "continue" }, scenes);
   assert.match(arrived, /You're there/);
   assert.equal(waiting.scene, null);
@@ -154,7 +151,7 @@ test("the fuel: the captain finds days with Marrow, jumps to Kessara, limits Qui
   // The jump is the star map's. Here it's done by hand, and the story goes on when the player continues.
   game.location = "kessara";
   game.walk = null;
-  game.pendingEvents.push("On the captain's order, the Meridian jumped to Kessara Drift.");
+  game.arrived = "kessara";
   const parlor = play(game, { event: "continue" });
   assert.equal(game.scene.part, "parlor");
   assert.match(parlor, /@Mother Quill/);

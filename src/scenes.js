@@ -1,8 +1,8 @@
-// The written story: scenes played from world/scenes, with no AI. A scene is made of parts. Each part
-// has text in the same format the game master writes, so the page shows it the same way, and choices
-// that lead to other parts. A part can open a skill check or start a fight, and where the story goes
-// next depends on how that came out. Whatever a part changes in the game goes through the same tools
-// the AI uses, so the rules are the same either way. The files are plain text, read again whenever the
+// The written story: scenes played from world/scenes. A scene is made of parts. Each part has text in the
+// story's own format (@Name: lines for speech, => for what lasts), and choices that lead to other parts. A
+// part can open a skill check or start a fight, and where the story goes next depends on how that came out.
+// Whatever a part changes in the game goes through the game's actions in src/tools.js, which check it first.
+// The files are plain text, read again whenever the
 // story needs them, so a change shows up without restarting the game. world/scenes/_how-to-write-a-scene.txt
 // explains how to write one.
 
@@ -11,7 +11,7 @@ import path from "node:path";
 import { SKILLS } from "./character-data.js";
 import { startChoiceCheck } from "./checks.js";
 import { worldDir } from "./paths.js";
-import { DIFFICULTY, attr, maxHp, skillRank } from "./rules.js";
+import { DIFFICULTY, attr, maxHp, skillRank, tellStoryWaits } from "./rules.js";
 import { conditionHolds, parseCondition, parseSceneText } from "./scene-text.js";
 import { clearFact, endStory, recordFact } from "./record.js";
 import { clockFacts, clockProblems } from "./story-clock.js";
@@ -31,7 +31,6 @@ import { FACT_LINES, MAP_FILE_PROBLEMS, SET_ASIDE, STORIES_DIR, STORY_CLOCK, STO
 // Something the player did that the written story has no answer to. The turn changes nothing, and they read this.
 export class StoryError extends Error {}
 
-const AI_HINT = "With an AI game master, chosen in Settings, you can type anything you like.";
 const FIGHT_ENDINGS = { victory: "won", talked: "talked", defeat: "lost", fled: "fled", surrendered: "gaveUp" };
 // What conditions need from the rules. A conversation adds what's been said in it, as seen.
 export const HELPERS = { attr, skillRank, maxHp };
@@ -91,12 +90,11 @@ function readScene(file, name) {
   return { scene: Object.keys(scene.parts).length ? scene : null, problems };
 }
 
-// How the story opens for this life: its own scene if one's written, or the one that fits anyone. With an AI
-// game master, a life without an opening of its own gets the AI's instead, so only its own counts there.
+// How the story opens for this life: its own scene if one's written, or the one that fits anyone.
 export function openingSceneId(game, scenes = loadScenes().scenes) {
   const own = `opening_${game.role?.id ?? "captain"}`;
   if (scenes[own]) return own;
-  return scenes.opening && game.mode !== "ai" ? "opening" : null;
+  return scenes.opening ? "opening" : null;
 }
 
 // ---- Reading a part ----------------------------------------------------------------
@@ -110,7 +108,7 @@ export const withoutChoices = (text) => String(text ?? "").split("\n").filter((l
 // The choices this player gets to see: the ones whose conditions hold.
 export const openChoices = (part, game, helpers = HELPERS) => (part.choices ?? []).filter((choice) => !choice.if || conditionHolds(game, choice.if, helpers));
 
-// What the player reads when a part begins, in the game master's own format.
+// What the player reads when a part begins, in the story's own format.
 export function partText(part, game = null, helpers = HELPERS) {
   const lines = (Array.isArray(part.text) ? part.text : [part.text]).filter(Boolean);
   const choices = (game ? openChoices(part, game, helpers) : part.choices ?? []).map(choiceLine);
@@ -124,8 +122,7 @@ export const ruleThatHolds = (part, game, helpers = HELPERS) => (part.when ?? []
 
 const normalize = (text) => String(text ?? "").toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
 
-// Words that say nothing about which choice is meant. With an AI, a wrong match here would play a written
-// choice the player didn't mean, for free, instead of asking the AI, so these never count as a match.
+// Words that say nothing about which choice is meant, so a wrong match doesn't play a choice the player didn't mean.
 const FILLER = new Set("the a an and or but of to in on at for with from by as is are was were be been it its this that these those you your yours him his her hers them their they she he we our us me my i do does did what which who whom how why when where not no yes up out off down into about all any some one there here then than so if can will would could should let have has had am just now too very own same more most other again once".split(" "));
 
 // Typing is forgiving: the whole choice, the start of it, or most of its words, with typos in the rest.
@@ -234,8 +231,6 @@ function parkScene(game) {
   game.parked[game.scene.id] = game.scene;
   game.scene = null;
 }
-export const parkCurrentScene = parkScene;
-
 function takeUp(game, id) {
   const waiting = game.parked?.[id];
   if (!waiting) return false;
@@ -546,8 +541,6 @@ function nextAfter(game, pending) {
 
 // The player pressed Continue after a check, a fight or something else the game did by itself.
 function carryOn(game, scenes, context) {
-  // The AI isn't here to read these, so the written story decides what they mean.
-  game.pendingEvents.splice(0);
   // Asking at a closed door opened a check. Its result decides whether the door opens.
   if (game.lastCheck && !game.lastCheck.used && game.lastCheck.source === "door" && game.doorAsked) {
     game.lastCheck.used = true;
@@ -597,32 +590,51 @@ function carryOn(game, scenes, context) {
   context.emit({ type: "state" });
 }
 
+// Whether pressing Continue the story would play something: a check or a fight a written part is waiting on, the answer
+// at a closed door, a written arrival, a part waiting for the ship to get somewhere, or the officers come to see the
+// player. A fight, a check, a jump or anything else nobody's waiting on is over once it's over, and its line is already
+// in the story, so nothing more is offered after it.
+export function storyWaits(game, scenes = loadScenes().scenes) {
+  const check = game.lastCheck && !game.lastCheck.used ? game.lastCheck : null;
+  if (check?.source === "door" && game.doorAsked) return true;
+  const due = commandSceneDue(game);
+  if (due && scenes[due]) return true;
+  if (game.arrived && scenes[`arrive_${game.arrived}`] && !game.scene) return true;
+  const scene = sceneFor(game, scenes);
+  const part = scene?.parts?.[game.scene.part];
+  if (!part || game.scene.told === false) return false;
+  const pending = game.scene.pending;
+  if (pending?.kind === "check" && check) return true;
+  if (pending?.kind === "fight" && game.lastFight && !game.lastFight.used) return true;
+  if (check?.source === "choice" && (part.choices ?? []).some((choice) => choice.check && choice.say === check.reason)) return true;
+  return Boolean(game.arrived && ruleThatHolds(part, game));
+}
+
+tellStoryWaits(storyWaits);
+
 // What's wrong with the scene file the player needs, if it can't be read at all.
 function brokenMessage(id, broken) {
   return broken[id] ? `The scene ${id} can't be read: ${broken[id]}. Fix the file in world\\scenes, or run npm run check-story to see every problem.` : null;
 }
 
-// One turn of the written story. emit() streams what the player reads, the same as an AI turn does,
+// One turn of the written story. emit() streams what the player reads, a piece at a time,
 // and log() records what the player did, before the story answers it.
 export function writtenTurn({ game, playerText, event, threadId, person = null, emit, log, scenes = null, broken = {} }) {
   const loaded = scenes ? { scenes, broken } : loadScenes();
   const context = { emit, turn: newTurnLimits() };
-  // Whatever was waiting to be told, such as a crossing or a jump, the written story has read: otherwise the page
-  // would keep offering Continue the story over a scene that has just begun.
-  game.pendingEvents.splice(0);
   if (event === "start") {
     // A life's own opening that can't be read is a mistake to fix, not a reason to play the plain one instead.
     const own = brokenMessage(`opening_${game.role?.id ?? "captain"}`, loaded.broken);
     if (own) throw new StoryError(own);
     const id = openingSceneId(game, loaded.scenes);
-    if (!id) throw new StoryError(brokenMessage("opening", loaded.broken) ?? "There's no written opening yet. Choose an AI game master in Settings to start the story.");
+    if (!id) throw new StoryError(brokenMessage("opening", loaded.broken) ?? "There's no written opening yet: world\\scenes needs opening.txt, or one for this life.");
     return startScene(game, id, loaded.scenes, context);
   }
   if (event === "continue") return carryOn(game, loaded.scenes, context);
   if (event === "meet") return meet(game, person, loaded.scenes, context, log);
   if (threadId) {
     const id = `thread_${threadId}`;
-    if (!loaded.scenes[id]) throw new StoryError(brokenMessage(id, loaded.broken) ?? `This story hasn't been written out yet. For now it plays out by itself, and the Leads menu and the news say how it's going. ${AI_HINT}`);
+    if (!loaded.scenes[id]) throw new StoryError(brokenMessage(id, loaded.broken) ?? "This story hasn't been written out yet. For now it plays out by itself, and the Leads menu and the news say how it's going.");
     log("player", playerText);
     // The story is taken up: the Leads menu lists it as followed, and it stops moving on by itself.
     noteThreadStarted(game, threadId);
@@ -631,14 +643,14 @@ export function writtenTurn({ game, playerText, event, threadId, person = null, 
   const scene = sceneFor(game, loaded.scenes);
   if (!scene) {
     if (game.scene) throw new StoryError(brokenMessage(game.scene.id, loaded.broken) ?? `The scene ${game.scene.id} has gone from world\\scenes, so the story can't go on from here.`);
-    throw new StoryError(`There's no more written story here for now. You can walk around, talk to people about what they've heard, and watch the world go on. ${AI_HINT}`);
+    throw new StoryError("There's no more written story here for now. You can walk around, talk to people about what they've heard, and watch the world go on.");
   }
   // The story only goes on with whoever it's waiting on: not before the player has gone over to them, and not once
   // they've walked away.
   if (heldUp(game)) throw new StoryError(waitingWords(game));
   const part = partOf(scene, game.scene.part, game.scene.id);
   const choice = matchChoice(playerText, openChoices(part, game));
-  if (!choice) throw new StoryError(`That isn't one of the choices here. Pick one, or type part of it. ${AI_HINT}`);
+  if (!choice) throw new StoryError("That isn't one of the choices here. Pick one, or type part of it.");
   const tag = { scene: game.scene.id, quest: game.scene.quest ?? null };
   if (choice.check) {
     // The check's window opens first, the same as when the choice is clicked, and the story goes on once it's done.
@@ -649,94 +661,6 @@ export function writtenTurn({ game, playerText, event, threadId, person = null, 
   }
   log("player", choice.say, tag);
   goOn(game, scene, choice.to, context);
-}
-
-// ---- With an AI game master on top -------------------------------------------
-
-// What the written story told, kept for the AI's next message: each piece is what the player did, if anything, and what
-// the story said. A long run is cut to its latest, since the journal, the quests and the record say how the rest came out.
-const KEPT_FOR_AI = 30000;
-export function keepForAi(game, pieces) {
-  game.ai ??= { provider: null, messages: [] };
-  const written = (game.ai.written ??= []);
-  written.push(...pieces.filter(Boolean));
-  while (written.length > 1 && written.reduce((sum, entry) => sum + entry.length, 0) > KEPT_FOR_AI) written.shift();
-}
-
-// The game changes hands between the written story and the AI game master, at the player's word, from its next turn.
-// Handed to the AI, it gets what the story told since the AI last read it, from the record of play, the way it gets the
-// written parts in a game it runs: from the start, in a game that began written. Handed to the written story, the game
-// remembers how far the AI had read. Returns whether anything changed.
-export function switchStory(game, mode) {
-  if (mode !== "written" && mode !== "ai") throw new Error("Choose the written story or the AI game master.");
-  if ((game.mode ?? "ai") === mode) return false;
-  game.ai ??= { provider: null, messages: [] };
-  if (mode === "ai") {
-    const runs = [];
-    for (const entry of game.transcript.slice(game.ai.seenUpTo ?? 0)) {
-      if (entry.role === "player") runs.push({ player: entry.text, said: [] });
-      else if (entry.role === "narrator" || entry.role === "combat") {
-        if (!runs.length) runs.push({ player: null, said: [] });
-        const text = entry.role === "combat" ? `A fight: ${entry.text}` : withoutChoices(entry.text);
-        if (text) runs.at(-1).said.push(text);
-      }
-    }
-    keepForAi(game, runs.filter((run) => run.said.length).map((run) => `${run.player ? `The player: ${run.player}\n` : ""}${run.said.join("\n\n")}`));
-  } else game.ai.seenUpTo = game.transcript.length;
-  game.mode = mode;
-  return true;
-}
-
-// Who answers a turn of the story in a game with an AI game master: the written story, when it has this moment
-// ("written"); the AI by itself ("ai"); or the AI fitting the player's own words to the written part they're in
-// ("fit"). Without an AI it's always the written story. A file that can't be read goes to the written story too,
-// so that it says what's wrong instead of the AI quietly taking over.
-export function storyTurnKind(game, { playerText, event, threadId }, loaded = loadScenes()) {
-  if (game.mode !== "ai") return "written";
-  const { scenes, broken } = loaded;
-  if (event === "start") return broken[`opening_${game.role?.id ?? "captain"}`] || openingSceneId(game, scenes) ? "written" : "ai";
-  // Going over to someone a written part is waiting on is the written story's to answer, and costs nothing.
-  if (event === "meet") return "written";
-  if (event === "continue") {
-    if (game.lastCheck && !game.lastCheck.used && game.lastCheck.source === "door" && game.doorAsked) return "written";
-    if (game.arrived && scenes[`arrive_${game.arrived}`] && !game.scene) return "written";
-    if (commandSceneDue(game) && scenes[commandSceneDue(game)]) return "written";
-    // A written part waiting on someone the player isn't with leaves the AI to say what happens meanwhile.
-    if (game.scene && game.scene.told === false && !personWhere(game, game.scene.with)?.here) return "ai";
-    return game.scene ? "written" : "ai";
-  }
-  if (threadId) return scenes[`thread_${threadId}`] || broken[`thread_${threadId}`] ? "written" : "ai";
-  if (!game.scene) return "ai";
-  // While a written part waits on someone, the player's own words are the AI's to answer, as if no part were written.
-  if (heldUp(game)) return "ai";
-  const part = sceneFor(game, scenes)?.parts?.[game.scene.part];
-  if (!part) return "written";
-  return matchChoice(playerText, openChoices(part, game)) ? "written" : "fit";
-}
-
-// What the AI is told about the part the player is in, when they've typed their own words there: what they've just
-// read, without its choice lines, the writer's notes for the AI, and the choices on offer, which it answers by number.
-// follow_scene fills in followed.
-export function sceneBrief(game, scenes = loadScenes().scenes) {
-  const scene = sceneFor(game, scenes);
-  const part = scene?.parts?.[game.scene?.part];
-  if (!part || game.scene.told === false) return null;
-  return { title: scene.title ?? game.scene.id, talk: false, text: withoutChoices(partText(part, game)), notes: part.ai ?? null, choices: openChoices(part, game), followed: undefined };
-}
-
-// The AI has fitted the player's words to one of the written choices, and the story goes on as if it had been clicked.
-export function followChoice(game, choice, { emit }, scenes = loadScenes().scenes) {
-  const scene = sceneFor(game, scenes);
-  if (!scene) throw new StoryError(`The scene ${game.scene?.id} has gone from world\\scenes, so the story can't go on from here.`);
-  const part = partOf(scene, game.scene.part, game.scene.id);
-  if (heldUp(game)) throw new StoryError(waitingWords(game));
-  if (choice.check) {
-    // The player's own words are in the story by now, so the choice's tags are read from the part itself.
-    if (!startChoiceCheck(game, choice.say, [{ role: "narrator", text: partText(part, game) }])) throw new StoryError("That choice isn't on offer any more.");
-    emit({ type: "state" });
-    return;
-  }
-  goOn(game, scene, choice.to, { emit, turn: newTurnLimits() });
 }
 
 // ---- Checking a scene --------------------------------------------------------

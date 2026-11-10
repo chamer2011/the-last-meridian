@@ -317,7 +317,7 @@ test("someone who stands down is out of it, and the rest fight on, a little less
   assert.match(aimedAt(led, "persuade", last).title, new RegExp(`the others have backed off -${PARLEY.backing.leader}`));
 });
 
-test("talking everyone down ends the fight: no winner, the XP, none of their money, and the story's told they're still out there", () => {
+test("talking everyone down ends the fight: no winner, the XP, none of their money", () => {
   const game = persuasive(fightWith("drift_raider", { allies: ["voss"] }));
   game.xp = 0;
   const credits = game.credits;
@@ -331,11 +331,7 @@ test("talking everyone down ends the fight: no winner, the XP, none of their mon
   assert.equal(outcome.math, `+${Math.round(ENEMIES.drift_raider.xp / 1.5)} XP`);
   assert.equal(game.credits, credits);
   assert.equal(game.factions.drift, standing + PARLEY.approaches.persuade.standing);
-  const told = game.pendingEvents.at(-1);
-  assert.match(told, /without anyone being beaten/);
-  assert.match(told, /talked out of fighting by the player/);
-  assert.match(told, /still out there/);
-  assert.match(told, /Fighting beside them: Commander Ilya Voss/);
+  assert.equal(outcome.followers[0].name, "Commander Ilya Voss");
   assert.deepEqual(game.bestiary.drift_raider, { fought: 1, won: 0, lost: 0, fled: 0, talked: 1, gaveUp: 0 });
   assert.ok(publicState(game).enemies.find((enemy) => enemy.id === "drift_raider").record.talked === 1);
 });
@@ -357,9 +353,6 @@ test("beating some and talking down the rest is still a win, with money only fro
   assert.equal(game.credits, credits + 7);
   assert.match(outcome.summary, /^You beat the Dock Thug in \d+ rounds?\. The Drift Raider let you talk them out of it\.$/);
   assert.equal(outcome.math, `+${ENEMIES.dock_thug.xp + ENEMIES.drift_raider.xp} XP, +7 credits`);
-  const told = game.pendingEvents.at(-1);
-  assert.match(told, /won the fight against the Dock Thug/);
-  assert.match(told, /Drift Raider was talked out of fighting/);
   assert.equal(game.bestiary.dock_thug.won, 1);
   assert.equal(game.bestiary.drift_raider.talked, 1);
 });
@@ -388,7 +381,6 @@ test("paying them off only costs anything if they take it, and it costs what the
   assert.ok(outcome.events.find((one) => one.out).math.includes(`-${cost} credits`));
   assert.equal(outcome.math, `+${Math.round(ENEMIES.dock_thug.xp * PARLEY.approaches.pay.xp)} XP`);
   assert.match(outcome.summary, new RegExp(`took ${cost} credits`));
-  assert.match(paying.pendingEvents.at(-1), new RegExp(`took ${cost} credits from the player`));
 
   // Good at it, it costs less. Someone under orders costs more than someone desperate.
   const priced = (why, rank) => {
@@ -410,7 +402,7 @@ test("paying them off only costs anything if they take it, and it costs what the
   assert.equal(broke.combat.round, round);
 });
 
-test("a lie only gets one chance with each of them, and the story's told it was a lie", () => {
+test("a lie only gets one chance with each of them", () => {
   let game;
   let first;
   let second;
@@ -435,7 +427,6 @@ test("a lie only gets one chance with each of them, and the story's told it was 
     fooled.hp = 1000;
     combatAction(fooled, { type: "parley", id: "lie", target: "e0" });
   } while (fooled.combat);
-  assert.match(fooled.pendingEvents.at(-1), /believed a lie the player told them/);
   assert.equal(fooled.bestiary.dock_thug.talked, 1);
 });
 
@@ -445,7 +436,6 @@ test("a threat works, and they'll hold it against you", () => {
   const outcome = talkTo(game, "threaten");
   assert.equal(outcome.result, "talked");
   assert.equal(game.factions.drift, standing + PARLEY.approaches.threaten.standing);
-  assert.match(game.pendingEvents.at(-1), /frightened off by the player, and won't forget it/);
   assert.match(outcome.summary, /backed off/);
   assert.ok(outcome.notes.some((note) => /^\[FACTION\] Kessara Syndicate -3/.test(note)));
 });
@@ -463,7 +453,6 @@ test("machines and animals don't talk, but there are other ways", () => {
   const done = talkTo(hacked, "shutdown");
   assert.equal(done.result, "talked");
   assert.match(done.summary, /shut down/);
-  assert.match(hacked.pendingEvents.at(-1), /could start up again/);
 
   const rat = fightWith("scrap_rat");
   assert.deepEqual(names(rat), ["threaten", "calm"]);
@@ -515,7 +504,7 @@ test("an unknown approach, or someone who isn't there, is refused without using 
 
 // ---- Giving up ----------------------------------------------------------
 
-test("giving up ends it where it stands, and the story decides what they do with you", () => {
+test("giving up ends it where it stands", () => {
   const game = fightWith("dock_thug", { allies: ["voss"], reason: "You owe the Syndicate." });
   game.hp = 11;
   const credits = game.credits;
@@ -529,11 +518,6 @@ test("giving up ends it where it stands, and the story decides what they do with
   assert.equal(game.credits, credits);
   assert.ok(game.needs.stress > stress);
   assert.equal(outcome.summary, "You gave up to the Dock Thug.");
-  const told = game.pendingEvents.at(-1);
-  assert.match(told, /gave up/);
-  assert.match(told, /at their mercy/);
-  assert.match(told, /You owe the Syndicate/);
-  assert.match(told, /It isn't the end of the game/);
   assert.ok(!game.bestiary.dock_thug.won);
   assert.equal(game.bestiary.dock_thug.gaveUp, 1);
 
@@ -541,7 +525,6 @@ test("giving up ends it where it stands, and the story decides what they do with
   const mixed = fightWith("security_drone", { followers: ["dock_thug"] });
   const gave = combatAction(mixed, { type: "surrender" });
   assert.equal(gave.summary, "You gave up to the Dock Thug.");
-  assert.match(mixed.pendingEvents.at(-1), /gave up in the fight with the Dock Thug after/);
 });
 
 test("several who went the same way get one sentence between them", () => {
@@ -738,39 +721,15 @@ test("every enemy, every character kind, every approach: sane numbers, and every
       assert.ok(game.credits >= 0);
       assert.ok(["victory", "defeat", "fled", "talked", "surrendered"].includes(outcome.result));
       assert.doesNotMatch(outcome.summary, /\{/);
-      assert.doesNotMatch(game.pendingEvents.at(-1), /\{|undefined/);
     }
   }
 });
 
-// ---- With the stand-in AI, and over the real server ---------------------
-
-function sendReply(res, body, blocks, stop) {
-  res.writeHead(200, { "content-type": "text/event-stream" });
-  const send = (type, data) => res.write(`event: ${type}\ndata: ${JSON.stringify({ type, ...data })}\n\n`);
-  const usage = { input_tokens: 4, output_tokens: 1 };
-  send("message_start", { message: { id: "msg_1", type: "message", role: "assistant", model: body.model, content: [], stop_reason: null, stop_sequence: null, usage } });
-  blocks.forEach((block, index) => {
-    if (block.type === "text") {
-      send("content_block_start", { index, content_block: { type: "text", text: "" } });
-      send("content_block_delta", { index, delta: { type: "text_delta", text: block.text } });
-    } else {
-      send("content_block_start", { index, content_block: { type: "tool_use", id: block.id, name: block.name, input: {} } });
-      send("content_block_delta", { index, delta: { type: "input_json_delta", partial_json: JSON.stringify(block.input) } });
-    }
-    send("content_block_stop", { index });
-  });
-  send("message_delta", { delta: { stop_reason: stop, stop_sequence: null }, usage });
-  send("message_stop", {});
-  res.end();
-}
+// ---- Over the real server -----------------------------------------------------------
 
 const serverData = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-parley-server-"));
-let standIn = null;
-let requests = [];
 let child = null;
 let port = 0;
-let nextFight = null;
 
 const freePort = () => new Promise((resolve) => {
   const probe = http.createServer();
@@ -787,22 +746,12 @@ async function post(route, body) {
 }
 
 before(async () => {
-  standIn = http.createServer(async (req, res) => {
-    let raw = "";
-    for await (const chunk of req) raw += chunk;
-    const body = JSON.parse(raw);
-    requests.push(body);
-    if (nextFight) {
-      const input = nextFight;
-      nextFight = null;
-      sendReply(res, body, [{ type: "tool_use", id: "fight_1", name: "start_combat", input }], "tool_use");
-    } else sendReply(res, body, [{ type: "text", text: "A stand-in scene.\n\n> Look around" }], "end_turn");
-  });
-  await new Promise((resolve) => { standIn.listen(0, "127.0.0.1", resolve); });
   fs.mkdirSync(path.join(serverData, "saves"), { recursive: true });
-  fs.writeFileSync(path.join(serverData, "settings.json"), JSON.stringify({ provider: "claude", model: "claude-haiku-5-5", effort: "low", apiKey: "not-a-real-key" }));
+  // A fight already on, with the reason for it, the way a scene or the right-click menu starts one.
+  const save = persuasive(fightWith("desperate_refugee", { why: "afraid", reason: "They think you've come to take their ship's rations." }, 42, "envoy"));
+  fs.writeFileSync(path.join(serverData, "saves", "autosave.json"), JSON.stringify(save));
   port = await freePort();
-  child = spawn(process.execPath, ["server.js"], { cwd: projectDir, env: { ...process.env, ANTHROPIC_BASE_URL: `http://127.0.0.1:${standIn.address().port}`, GAME_DATA_DIR: serverData, PORT: String(port) }, stdio: "pipe" });
+  child = spawn(process.execPath, ["server.js"], { cwd: projectDir, env: { ...process.env, GAME_DATA_DIR: serverData, PORT: String(port) }, stdio: "pipe" });
   await new Promise((resolve, reject) => {
     child.stdout.on("data", (chunk) => { if (String(chunk).includes("running at")) resolve(); });
     child.on("exit", () => reject(new Error("The server stopped.")));
@@ -812,7 +761,6 @@ before(async () => {
 after(() => {
   child?.removeAllListeners("exit");
   child?.kill();
-  standIn?.close();
   try {
     fs.rmSync(serverData, { recursive: true, force: true, maxRetries: 3 });
   } catch {
@@ -820,25 +768,11 @@ after(() => {
   }
 });
 
-test("over the real server: the game master starts a fight and says why, the player talks them down, and the game master hears how it went", async () => {
-  // A life with no written opening of its own, so the game master writes the opening, and can start a fight in it.
-  const draft = randomDraft({ seed: 42, archetype: "envoy" });
-  draft.start = "miner";
-  const made = await post("/api/new", { draft });
-  assert.equal(made.status, 200, JSON.stringify(made));
-  nextFight = { enemy: "desperate_refugee", lead_in: "A thin figure steps out, holding a knife.", why: "afraid", reason: "They think you've come to take their ship's rations." };
-  const started = await post("/api/chat", { event: "start" });
-  assert.equal(started.status, 200);
-  const asked = requests.at(-1);
-  assert.ok(asked.system.some?.((part) => part.text?.includes("Talking in fights")) ?? JSON.stringify(asked.system).includes("Talking in fights"));
-  assert.ok(asked.tools.find((tool) => tool.name === "start_combat").input_schema.properties.why);
-
+test("over the real server: the player talks them down, the fight's line is in the story, and nothing more is waiting", async () => {
   let state = await fetch(`http://127.0.0.1:${port}/api/state`).then((res) => res.json());
-  assert.ok(state.game.combat, JSON.stringify(state.game.transcript.slice(-2)));
+  assert.ok(state.game.combat);
   const key = state.game.combat.enemies[0].key;
   assert.equal(state.game.combat.reads[key].why, "They think you've come to take their ship's rations.");
-
-  const talked = requests.length;
   let reply;
   let rounds = 0;
   do {
@@ -848,16 +782,10 @@ test("over the real server: the game master starts a fight and says why, the pla
   } while (!reply.outcome.over && rounds < 60);
   assert.equal(reply.outcome.over, true);
   assert.equal(reply.outcome.result, "talked", JSON.stringify(reply.outcome));
-  assert.equal(requests.length, talked, "none of it goes near the AI");
   assert.equal(reply.game.combat, null);
   const line = reply.game.transcript.findLast((entry) => entry.role === "combat");
   assert.match(line.text, /let you talk them out of it/);
-
-  const continued = await post("/api/chat", { event: "continue" });
-  assert.equal(continued.status, 200);
-  const told = JSON.stringify(requests.at(-1).messages.at(-1));
-  assert.match(told, /talked out of fighting by the player/);
-  assert.match(told, /still out there/);
+  assert.equal(reply.game.storyWaiting, false, "no scene was waiting on it, so the fight's end window just goes back to the room");
   state = await fetch(`http://127.0.0.1:${port}/api/state`).then((res) => res.json());
-  assert.equal(state.game.bestiary?.desperate_refugee?.talked ?? 1, 1);
+  assert.equal(state.game.enemies.find((enemy) => enemy.id === "desperate_refugee").record.talked, 1);
 });

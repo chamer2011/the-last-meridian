@@ -4,7 +4,7 @@
 // takes from one store and puts into another so often, while its room has power and someone's at it. The whole ship
 // eats from the kettle at its sittings, and whoever finds it empty goes without, which the ship's morale feels at
 // midnight. The file's other parts (loads, errands, refills) are read and checked for their shape, and come to life
-// step by step. Everything here runs on this computer, and the AI isn't told any of it yet. public/logistics-text.js
+// step by step. Everything here runs on this computer. public/logistics-text.js
 // reads the words; this knows the maps, the items, the systems and everyone's days.
 
 import { ITEMS, LOCATIONS } from "./data.js";

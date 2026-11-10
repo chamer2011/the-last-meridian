@@ -47,7 +47,7 @@ export const ABILITIES = {
 // Each type of enemy has a file in world/enemies, with its stats and the lines used in fights.
 export const ENEMIES = WORLD_ENEMIES;
 
-// Each place can also have a file in world/places, with what the game master needs to run it.
+// Each place can also have a file in world/places, with the writer's notes on it.
 const BASE_LOCATIONS = {
   meridian: { name: "CFS Meridian", desc: "Your battered frigate and the flagship of what's left. Medbay, mess hall, one working cannon.", market: [], rest: true },
   haven: { name: "Haven Station", desc: "A neutral trade hub where every faction drinks in the same bar and pretends not to notice.", market: ["medkit", "stim", "energy_cell", "repair_kit", "fuel_cell", "sidearm", "heavy_carbine", "flak_vest", "marine_plate", "forged_papers", "lockbreaker", "data_chip"] },
@@ -99,18 +99,3 @@ export const STARTING_QUESTS = [
     objective: "Secure a fuel supplier for the ship.",
   },
 ];
-
-export const WORLD_BIBLE = `SETTING: ALMAGEST EXPLORER'S
-Tone: hopeful exploration, swashbuckling adventure, and desperate survival, all in one original galaxy. Think thoughtful diplomacy on the bridge, scoundrels in cantinas, mystical powers, and one battered ship hunted by machines. This is an ORIGINAL universe. Never use names, characters, ships or terms from existing franchises.
-
-BACKSTORY: Six months ago the Concord, a peaceful interstellar republic, fell in a single week to the Choir: silver machines that sing to one another across space and copy the faces of the people they kill. Nobody knows who built them. The frigate CFS Meridian got away with about nine hundred people aboard, three times what she was built for, and she's on her own: the Refugee Fleet she led is a thing of the past, and the story never brings its other ships back. Her newly appointed captain has the job because everyone above them is dead. The player may be that captain, or anyone else in the galaxy: the <player_dossier> says who they are.
-
-PEOPLES: The Concord was home to humans and to several other peoples. Korrun are broad heavy-worlders who prize plain speech. Veshti are long-limbed spacers who dislike planets. Ilari are empaths whose skin shows their feelings in patterns of light. Thessan are cold-blooded, long-lived archivists. Synthetics are free machine people, citizens under Concord law, and since the Fall they're feared and hated by many survivors.
-
-FACTIONS:
-- Refugee Fleet, which now means the Meridian's own nine hundred: exhausted, frightened and arguing. The Meridian's captain answers for all of them. XO Commander Ilya Voss is loyal, blunt and hides a Choir-related secret. Chief Engineer Dunn Marrow keeps the ship running through profanity. Dr. Sen Aduro, the chief medical officer, is the ship's exhausted conscience. Lt. Kara Tarrow, the chief of security, wants every machine in the galaxy destroyed.
-- The Hegemony: an authoritarian empire at Vantor Prime led by the Serene Regent. It offers refugees protection in exchange for conscription, and hunts Resonants through its Inquisitors.
-- Kessara Syndicate: pirates and smugglers led by the charming and treacherous Mother Quill.
-- Order of Ilun: nearly extinct monks led by Abbess Ione who study Resonance, the faint field left behind by the vanished First Builders. Resonants can feel it and bend it: sensing minds, pushing objects, glimpsing what's coming. It always has a price.
-
-THE MYSTERY (do not reveal early; let the player uncover it over many sessions): The Beacon promises a safe harbor, but it is a First Builder warning light, not an invitation. The First Builders made the Choir as guardians against something older, and then vanished. The Choir's song is a failing attempt to keep that thing asleep, and it copies the dead because it is trying to preserve minds. The final choice will be whether to destroy the Choir, join it, or fix it, and it falls to whoever gets that far.`;

@@ -1,6 +1,6 @@
 // The fight window: a popup over the story, with the two sides facing each other in console
 // art, and what the player can do down its sides. The game's server works out each round, and
-// its events are played back here one at a time. None of this involves the AI.
+// its events are played back here one at a time.
 
 import { fallenArt, mirrorArt, trimmedArt } from "./art.js";
 import { api, el, signed } from "./dom.js";
@@ -314,7 +314,9 @@ function resultNode() {
   const result = fight.result;
   const choices = result.training
     ? [["Run it again", () => runAgain()], ["Close", () => closeWindow()]]
-    : [["Continue the story", () => continueStory(), "the game master picks it up from here"], ["Close, and look around first", () => closeWindow()]];
+    : app.ui.game?.storyWaiting
+      ? [["Continue the story", () => continueStory(), "the story picks it up from here"], ["Close, and look around first", () => closeWindow()]]
+      : [["Close", () => closeWindow()]];
   return el("div", { class: "fight-result" },
     el("div", { class: `fight-result-title tone-${RESULT_TONES[result.result]}` }, RESULT_TITLES[result.result]),
     el("div", {}, result.training ? result.message : result.summary, result.math && el("span", { class: "log-math" }, ` (${result.math})`)),

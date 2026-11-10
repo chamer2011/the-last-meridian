@@ -447,26 +447,27 @@ test("a raw attribute check has a window too", () => {
   }
 });
 
-test("practice doesn't count: no skill growth, no story, nothing for the game master", () => {
+test("practice doesn't count: no skill growth, no story, nothing for the story to pick up", () => {
   const game = newGame();
-  const before = structuredClone({ skillXp: game.skillXp, transcript: game.transcript, needs: game.needs, pending: game.pendingEvents });
+  const before = structuredClone({ skillXp: game.skillXp, transcript: game.transcript, needs: game.needs, lastCheck: game.lastCheck });
   for (let i = 0; i < 40; i += 1) {
     open(game, "hacking");
     const { outcome } = checkCommand(game, "run");
     assert.equal(outcome.training, true);
   }
-  assert.deepEqual({ skillXp: game.skillXp, transcript: game.transcript, needs: game.needs, pending: game.pendingEvents }, before);
+  assert.deepEqual({ skillXp: game.skillXp, transcript: game.transcript, needs: game.needs, lastCheck: game.lastCheck }, before);
 });
 
-test("a real check grows the skill, adds to the story, and tells the game master how it went", () => {
+test("a real check grows the skill, adds to the story, and leaves its result for the written story", () => {
   const game = newGame();
   startCheck(game, { skill: "hacking", difficulty: "hard", reason: "Get in", source: "tool" });
   const { outcome } = checkCommand(game, "run");
   assert.ok((game.skillXp.hacking ?? 0) > 0 || (game.skills.hacking ?? 0) > 0);
   assert.equal(outcome.training, false);
   assert.match(game.transcript.at(-1).text, /^\[ROLL\] Get in:/);
-  assert.equal(game.pendingEvents.length, 1);
-  assert.match(game.pendingEvents[0], /How it went:/);
+  assert.equal(game.lastCheck.reason, "Get in");
+  assert.equal(game.lastCheck.used, false);
+  assert.ok(outcome.story, "the window says how it went");
 });
 
 test("work in the window shows up in the roll, where there is one", () => {
@@ -502,7 +503,6 @@ test("a cracked session is a success with no roll, and a disconnect a quiet fail
   assert.equal(again.lastCheck.success, false);
   assert.match(again.transcript.at(-1).text, /^\[HACK\] Get in: DISCONNECTED/);
   assert.ok(!readRecord(again).facts.some((fact) => fact.id.startsWith("traced_on")), "no mark for backing out");
-  assert.match(again.pendingEvents[0], /Result: FAILURE \(disconnected\)/);
 });
 
 test("the computer's class sets the break-in: a door panel is small and patient, the Beacon long and layered", () => {
@@ -615,7 +615,6 @@ test("the hack ends by itself when the trace completes, as a failure, with a mar
   assert.equal(game.lastCheck.success, false);
   assert.match(game.transcript.at(-1).text, /^\[HACK\] Get in: TRACED, trace 100%/);
   assert.ok(readRecord(game).facts.some((fact) => fact.id === "traced_on_ships_main_system"), "the mark on the record");
-  assert.match(game.pendingEvents[0], /Result: FAILURE \(traced\)/);
   // A crew terminal leaves no mark.
   const small = trained("hacking", 0);
   startCheck(small, { skill: "hacking", difficulty: "moderate", reason: "Peek", source: "tool" });
@@ -643,7 +642,7 @@ test("an older save, even one with no check system, loads and can start one", ()
   delete save.check;
   delete save.story;
   const migrated = migrateGame(save);
-  assert.equal(migrated.version, 18);
+  assert.equal(migrated.version, 19);
   assert.equal(migrated.check, null);
   open(migrated, "hacking");
   assert.ok(publicState(migrated).check);

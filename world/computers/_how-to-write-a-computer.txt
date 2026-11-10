@@ -4,7 +4,7 @@ HOW TO WRITE A COMPUTER
 A computer is one plain text file in this folder, world/computers/<id>.txt. The player gets into it
 by hacking it (the Intrusion Console), by sitting at it when it's theirs, or with a password the
 story has given them. Once in, they read its files, mail and logs, run its programs, and can reach
-other computers on its network. Nothing on a computer uses the AI.
+other computers on its network.
 
     npm run check-story
 

@@ -5,8 +5,7 @@
 // vents, speakers and screens stop; air that stops moving goes bad over minutes, people leave, and the player is
 // hurt; a locked door stops anyone walking through; a camera that sees the player tampering raises the alarm, which
 // brings the guards, locks the doors the file says, and costs standing with whoever holds the place. The place's
-// engineers fix what's broken, and its people switch back what the player switched off, in time. Nothing here uses
-// the AI, which hears one line about anything that isn't working.
+// engineers fix what's broken, and its people switch back what the player switched off, in time.
 //
 // world/systems/<place>.txt is a place's own file, read by public/systems-text.js. A place without one gets what
 // world/systems/_defaults.json says, worked out from its rooms and things. The save holds only what's different
@@ -1062,7 +1061,7 @@ export function detourFor(game, place) {
   };
 }
 
-// ---- What it does to checks, to the AI, to a jump ------------------------------------------------------
+// ---- What it does to checks and to a jump -------------------------------------------------------------
 
 // A dark room helps a sneak and hurts a lookout, and a camera on the player makes sneaking harder.
 export function roomEdge(game, skill) {
@@ -1074,44 +1073,6 @@ export function roomEdge(game, skill) {
   if (dark[skill] && roomDark(game, spot.place, spot.room)) parts.push({ label: "in the dark", value: dark[skill] });
   if (seen[skill] && watched(game, spot.place, spot.room)) parts.push({ label: "a camera on you", value: seen[skill] });
   return parts;
-}
-
-// One line for the AI about whatever isn't working where the player is, and nothing when everything is.
-export function systemsLine(game) {
-  const place = game.location;
-  const model = systemsOf(place);
-  const state = game.systems?.[place];
-  if (!model || !state) return null;
-  const limits = airLimits();
-  const map = mapFor(place);
-  const rooms = roomsOf(map);
-  const bits = [];
-  const list = (levels) => levels.map((level) => level.name).join(", ");
-  const unpowered = rooms.filter((level) => !roomPowered(game, place, level.id));
-  if (unpowered.length) bits.push(`no power in ${list(unpowered)}`);
-  const dark = rooms.filter((level) => roomPowered(game, place, level.id) && roomDark(game, place, level.id));
-  if (dark.length) bits.push(`lights out in ${list(dark)}`);
-  const badAir = rooms.filter((level) => airIn(game, place, level.id) < limits.bad);
-  const thinAir = rooms.filter((level) => airIn(game, place, level.id) < limits.thin && !badAir.includes(level));
-  if (badAir.length) bits.push(`the air is bad in ${list(badAir)}`);
-  if (thinAir.length) bits.push(`the air is thin in ${list(thinAir)}`);
-  const sleeping = livesHere(place) ? [...badAir, ...thinAir].flatMap((level) => peopleIn(game, place, level.id).filter((one) => one.asleep && !one.crowd).map((one) => `${one.label ?? one.name} in ${level.name}`)) : [];
-  if (sleeping.length) bits.push(`asleep in that air: ${sleeping.join(", ")}`);
-  const blind = partsOf(model, "cameras").filter((part) => !partWorks(game, place, part)).map((part) => roomNameOf(place, part.room));
-  if (blind.length) bits.push(`cameras not working in ${[...new Set(blind)].join(", ")}`);
-  const ringing = state.alarm.ringing;
-  if (ringing) bits.push(`the alarm is ringing${ringing.room ? ` in ${roomNameOf(place, ringing.room)}` : ""}${ringing.seen ? ", because a camera saw the player tampering" : ""}`);
-  if (state.alarm.disarmed) bits.push("the alarm is disarmed");
-  for (const [room, s] of Object.entries(state.doors)) {
-    if (s.forced) bits.push(`the door to ${roomNameOf(place, room)} has been forced`);
-    else if (s.locked) bits.push(`the door to ${roomNameOf(place, room)} is locked`);
-  }
-  if (!commsUp(game, place)) bits.push("comms are jammed");
-  for (const system of model.systems.filter((one) => !["power", "lights", "air", "cameras", "alarm", "doors", "comms"].includes(one.id))) {
-    const down = partsOf(model, system.id).filter((part) => !partWorks(game, place, part));
-    if (down.length) bits.push(`${lowerFirst(system.title)} down (${down.map((part) => `the ${part.name} in ${roomNameOf(place, part.room)}`).join(", ")})`);
-  }
-  return bits.length ? `Systems at ${model.name}: ${bits.join("; ")}. Everything else is working.` : null;
 }
 
 // The Meridian can't jump with her engines down, and she can't leave a station that has its clamps locked.
@@ -1327,7 +1288,6 @@ export function settlePart(game, outcome, enterPanel = null) {
     lines = doWork(game, asked.place, part, action, outcome.success);
   }
   if (lines.length) game.transcript?.push({ role: "notice", text: lines.join("\n") });
-  game.pendingEvents?.push(`The player worked on the systems at ${model.name} by hand: ${outcome.reason ?? "something"}, ${outcome.success ? "and managed it" : "and failed"}. ${lines.filter((line) => /^\[(ALARM|FACTION)\]/.test(line)).join(" ")} Bring it into the story only if it matters.`.trim());
   return lines;
 }
 

@@ -11,7 +11,7 @@ import { after, before, test } from "node:test";
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-scenes-"));
 process.env.GAME_DATA_DIR = dataDir;
 
-const { parseNarration, parseOptions, buildVocab } = await import("../public/story.js");
+const { buildVocab, latestOptions, parseNarration, parseOptions } = await import("../public/story.js");
 const { POLES, SKILLS } = await import("../src/character-data.js");
 const { checkCommand } = await import("../src/checks.js");
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
@@ -34,7 +34,6 @@ const newGame = (start = "captain", seed = 21) => {
   const draft = randomDraft({ seed, archetype: "officer" });
   draft.start = start;
   const game = createGameFromDraft(draft);
-  game.mode = "written";
   return game;
 };
 
@@ -354,7 +353,8 @@ test("the captain's opening plays through with no AI: speech, a choice, conseque
   assert.match(game.quests.find((quest) => quest.id === "the_beacon").objective, /Haven Station is plotted/);
   assert.equal(game.xp, 10);
   assert.ok(game.transcript.some((entry) => entry.role === "notice" && /XP/.test(entry.text)), "the award shows as a game message");
-  assert.ok(publicState(game).scene === null && publicState(game).mode === "written");
+  assert.equal(publicState(game).scene, null);
+  assert.equal(publicState(game).mode, undefined, "there's only the written story, so the game doesn't say which");
 });
 
 test("a choice with a check opens the check's window, and the story goes on from how it came out", () => {
@@ -368,11 +368,11 @@ test("a choice with a check opens the check's window, and the story goes on from
   assert.equal(game.scene.part, "bridge", "the story waits");
   assert.equal(checkCommand(game, "run").over, true);
   assert.equal(game.check, null);
-  assert.equal(game.pendingEvents.length, 1, "the page offers Continue the story");
+  assert.equal(publicState(game).storyWaiting, true, "the page offers Continue the story");
   const expected = game.lastCheck.success ? "voss_pressed_pass" : "voss_pressed_fail";
   play(game, { event: "continue" });
   assert.equal(game.scene.part, expected);
-  assert.equal(game.pendingEvents.length, 0);
+  assert.equal(publicState(game).storyWaiting, false);
   assert.ok(game.lastCheck.used, "the same result can't be read twice");
   // Pressing Continue again says so, instead of playing the result again.
   const again = play(game, { event: "continue" });
@@ -412,7 +412,6 @@ test("a part can demand a check or start a fight itself, and the ending decides 
   // The fight's ending is what the fight window records when it's over.
   game.combat = null;
   game.lastFight = { result: "fled", enemies: ["scrap_rat"], summary: "You got away.", used: false };
-  game.pendingEvents.push("The player ran.");
   play(game, { event: "continue" }, scenes);
   assert.equal(game.scene, null);
   assert.match(lastNarration(game), /You ran/);
@@ -442,35 +441,45 @@ test("someone who isn't the captain gets the opening that fits anyone, with a no
   assert.equal(game.scene, null);
 });
 
-test("in a written game, a talk has what people have heard and goodbye, with nothing to type", () => {
+test("a talk has what people have heard and goodbye, with nothing to type", () => {
   const game = newGame();
   play(game, { event: "start" });
   const voss = publicState(game).walk.people.find((one) => /Voss/.test(one.name));
   assert.ok(voss, "Voss is on the bridge");
   talkCommand(game, { action: "open", person: voss.key });
   const view = talkView(game);
-  assert.equal(view.written, true);
-  assert.deepEqual(view.asks, []);
+  assert.equal(view.asks, undefined, "there's nothing to say but the written lines");
+  assert.equal(view.typed, undefined, "and no line to type on");
   assert.ok(view.rumors >= 0);
+  assert.ok(view.goodbyeLabel);
   talkCommand(game, { action: "close" });
-  game.mode = "ai";
-  talkCommand(game, { action: "open", person: voss.key });
-  assert.equal(talkView(game).written, false);
-  assert.ok(talkView(game).asks.length > 0, "with an AI, there are things to say");
 });
 
-test("an older save keeps its AI game master, and a new game says which it has", () => {
+test("an older save, even one the AI game master was running, opens as a written game", () => {
   const old = { ...createGameFromDraft(randomDraft({ seed: 3, archetype: "officer" })), version: 14 };
-  delete old.mode;
   delete old.scene;
+  old.transcript = [{ role: "narrator", text: "The AI's last scene.\n\n> Go left\n> Go right" }];
+  old.ai = { provider: "claude", messages: [{ role: "user", content: "x" }], written: ["what the story told"] };
+  old.pendingEvents = ["A fight, for the AI to tell."];
   const migrated = migrateGame(old);
-  assert.equal(migrated.version, 18);
-  assert.equal(migrated.mode, "ai");
+  assert.equal(migrated.version, 19);
+  assert.equal(migrated.mode, undefined);
+  assert.equal(migrated.ai, undefined, "what was kept for the AI goes");
+  assert.equal(migrated.pendingEvents, undefined);
   assert.equal(migrated.scene, null);
   assert.deepEqual(migrated.flags, {});
+  const notice = migrated.transcript.at(-1);
+  assert.match(notice.text, /^\[STORY\] The AI game master has gone from the game/);
+  assert.equal(notice.turnover, true);
+  assert.deepEqual(latestOptions(migrated.transcript), [], "the AI's last choices aren't offered");
+  assert.equal(publicState(migrated).storyWaiting, false);
+  // A game the written story was already running says nothing.
+  const written = migrateGame({ ...structuredClone(old), version: 18, mode: "written", transcript: [{ role: "narrator", text: "Written." }] });
+  assert.equal(written.transcript.length, 1);
   const fresh = createGameFromDraft(randomDraft({ seed: 3, archetype: "officer" }));
-  assert.equal(fresh.mode, "ai", "the server decides, from the Settings menu");
-  assert.equal(publicState(fresh).mode, "ai");
+  assert.equal(fresh.mode, undefined);
+  assert.equal(fresh.ai, undefined);
+  assert.equal(publicState(fresh).mode, undefined);
 });
 
 // ---- The Downstairs Crew: one whole story, written out ----------------------------------------
@@ -481,7 +490,6 @@ function settleCheck(game, success) {
   assert.ok(game.check, "a check is open");
   game.lastCheck = { id: game.check.id, skill: game.check.skill, difficulty: game.check.difficulty, success, reason: game.check.reason, source: game.check.source, used: false };
   game.check = null;
-  game.pendingEvents.push("The check is done.");
 }
 const roomNow = (game) => publicState(game).walk.here.name;
 
@@ -596,7 +604,6 @@ test("the Downstairs Crew's other roads: a fight in the deep duct, the council s
   assert.equal(fighter.combat.enemies.length, 2);
   fighter.combat = null;
   fighter.lastFight = { result: "defeat", enemies: ["scrap_rat"], summary: "You lost.", used: false };
-  fighter.pendingEvents.push("The player lost.");
   play(fighter, { event: "continue" });
   assert.equal(fighter.scene.part, "rats_lost");
   play(fighter, { playerText: "go on" });
@@ -691,7 +698,6 @@ test("in a written game, someone with a conversation of their own speaks first, 
   const game = newGame();
   play(game, { event: "start" });
   const view = openTalkWith(game, /Voss/);
-  assert.equal(view.written, true);
   assert.match(view.lastReply, /@Commander Ilya Voss: "Captain\."/);
   assert.match(view.lastReply, /> What's our real situation, Commander\?/);
   assert.equal(game.talk.written.id, "talk_voss");
@@ -902,7 +908,7 @@ test("arriving somewhere with a written arrival plays it when the player continu
   assert.equal(jump.moved, true);
   assert.equal(game.location, "haven");
   assert.equal(game.arrived, "haven");
-  assert.equal(game.pendingEvents.length, 1, "the page offers Continue the story");
+  assert.equal(publicState(game).storyWaiting, true, "the page offers Continue the story");
   const arrival = play(game, { event: "continue" });
   assert.match(arrival[0].text, /Haven Station comes up on the viewport/);
   assert.equal(game.arrived, null);
@@ -1056,20 +1062,19 @@ test("the engine hand and the dock hand each get their own way into the Warm Roo
   assert.ok(docker.combat, "the snatch team is a real fight");
   docker.combat = null;
   docker.lastFight = { result: "defeat", enemies: ["dock_thug"], summary: "You lost.", used: false };
-  docker.pendingEvents.push("The player lost.");
   play(docker, { event: "continue" });
   assert.equal(docker.scene, null);
   assert.equal(docker.flags.tharel_taken_by_quill, true);
   assert.equal(quest(docker, WARM).status, "completed");
 });
 
-// ---- Over the real server, with no key and no AI anywhere -------------------------------------
+// ---- Over the real server -----------------------------------------------------------------
 
 const serverData = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-scenes-server-"));
 let child = null;
 let port = 0;
-let aiCalls = 0;
-let standIn = null;
+// A settings file from when the game had an AI, with a key in it. The game must leave it exactly as it is.
+const OLD_SETTINGS = JSON.stringify({ provider: "claude", model: "claude-haiku-5-5", effort: "low", apiKey: "not-a-real-key", story: "ai" });
 
 const freePort = () => new Promise((resolve) => {
   const probe = http.createServer();
@@ -1091,17 +1096,10 @@ async function post(route, body) {
 const state = async () => (await (await fetch(`http://127.0.0.1:${port}/api/state`)).json());
 
 before(async () => {
-  // Any call to the AI would land here, and there must be none.
-  standIn = http.createServer((req, res) => {
-    aiCalls += 1;
-    res.writeHead(500);
-    res.end();
-  });
-  await new Promise((resolve) => { standIn.listen(0, "127.0.0.1", resolve); });
   fs.mkdirSync(path.join(serverData, "saves"), { recursive: true });
+  fs.writeFileSync(path.join(serverData, "settings.json"), OLD_SETTINGS);
   port = await freePort();
-  const env = { ...process.env, GAME_DATA_DIR: serverData, PORT: String(port), ANTHROPIC_BASE_URL: `http://127.0.0.1:${standIn.address().port}` };
-  delete env.ANTHROPIC_API_KEY;
+  const env = { ...process.env, GAME_DATA_DIR: serverData, PORT: String(port) };
   child = spawn(process.execPath, ["server.js"], { cwd: projectDir, env, stdio: "pipe" });
   await new Promise((resolve, reject) => {
     child.stdout.on("data", (chunk) => { if (String(chunk).includes("running at")) resolve(); });
@@ -1112,7 +1110,6 @@ before(async () => {
 after(() => {
   child?.removeAllListeners("exit");
   child?.kill();
-  standIn?.close();
   for (const folder of [serverData, dataDir]) {
     try {
       fs.rmSync(folder, { recursive: true, force: true, maxRetries: 3 });
@@ -1122,15 +1119,12 @@ after(() => {
   }
 });
 
-test("over the real server: with no key, a new game gets the written story, and the opening plays with no AI call", async () => {
-  const settings = (await state()).settings;
-  assert.equal(settings.hasKey, false);
-  assert.equal(settings.story, null);
-  assert.equal(settings.storyApplies, "written");
+test("over the real server: a new game's written opening plays, and so does what follows", async () => {
+  assert.equal((await state()).settings, undefined, "there are no AI settings");
 
   const made = await post("/api/new", { draft: randomDraft({ seed: 42, archetype: "officer" }) });
   assert.equal(made.status, 200, JSON.stringify(made));
-  assert.equal(made.game.mode, "written");
+  assert.equal(made.game.mode, undefined);
   assert.equal(made.game.scene, null);
 
   const opening = await post("/api/chat", { event: "start" });
@@ -1151,7 +1145,7 @@ test("over the real server: with no key, a new game gets the written story, and 
   assert.equal(started.game.check.skill, "persuasion");
   const rolled = await post("/api/check", { command: "run" });
   assert.equal(rolled.over, true);
-  assert.equal(rolled.game.pendingEvents, 1);
+  assert.equal(rolled.game.storyWaiting, true);
   const carried = await post("/api/chat", { event: "continue" });
   assert.equal(carried.error, null);
   assert.ok(["voss_pressed_pass", "voss_pressed_fail"].includes(carried.done.scene.part), JSON.stringify(carried.done.scene));
@@ -1177,17 +1171,14 @@ test("over the real server: with no key, a new game gets the written story, and 
     const refused = await post("/api/chat", { text: `I look into this: ${unwritten.title}`, thread: unwritten.id });
     assert.match(refused.error, /hasn't been written out yet/);
   }
-  assert.equal(aiCalls, 0, "nothing went anywhere near the AI");
 });
 
-test("over the real server: a talk in a written game is the person's own written words, with nothing to type and no AI", async () => {
+test("over the real server: a talk is the person's own written words, with nothing to type", async () => {
   const current = (await state()).game;
   const voss = current.walk.people.find((one) => /Voss/.test(one.name));
   assert.ok(voss);
   const opened = await post("/api/talk", { action: "open", person: voss.key });
   assert.equal(opened.status, 200, JSON.stringify(opened));
-  assert.equal(opened.game.talk.written, true);
-  assert.deepEqual(opened.game.talk.asks, []);
   assert.match(opened.game.talk.lastReply, /@Commander Ilya Voss/);
   const said = await post("/api/talk", { action: "say", text: "What's our real situation, Commander?" });
   assert.equal(said.status, 200);
@@ -1197,10 +1188,9 @@ test("over the real server: a talk in a written game is the person's own written
   const wrong = await post("/api/talk", { action: "say", text: "Dance for me" });
   assert.match(wrong.error, /isn't one of the things to say/);
   await post("/api/talk", { action: "close" });
-  assert.equal(aiCalls, 0);
 });
 
-test("over the real server: using a thing and asking at a door come back as what happened, with no AI", async () => {
+test("over the real server: using a thing comes back as what happened", async () => {
   await post("/api/talk", { action: "close" });
   const chair = (await state()).game.walk.things.find((thing) => /chair/.test(thing.name));
   const sat = await post("/api/walk", { action: "use", key: chair.id });
@@ -1208,21 +1198,20 @@ test("over the real server: using a thing and asking at a door come back as what
   assert.match(sat.said, /The chair takes your weight/);
   assert.equal(sat.check, false);
   assert.ok(sat.game.transcript.some((entry) => entry.role === "notice" && /chair takes your weight/.test(entry.text)), "the story keeps a line about it");
-  assert.equal(aiCalls, 0);
 });
 
-test("over the real server: choosing the AI game master in Settings applies to the next new game, and a key does the same by itself", async () => {
-  const chosen = await post("/api/settings", { story: "ai" });
-  assert.equal(chosen.story, "ai");
-  assert.equal(chosen.storyApplies, "ai");
-  const aiGame = await post("/api/new", { draft: randomDraft({ seed: 43, archetype: "officer" }) });
-  assert.equal(aiGame.game.mode, "ai");
+test("over the real server: there's no AI to choose, and the old settings file with its key is left as it was", async () => {
+  for (const route of ["/api/settings", "/api/settings/test", "/api/story"]) {
+    const refused = await post(route, { story: "ai", mode: "ai", apiKey: "another-key" });
+    assert.equal(refused.status, 404, route);
+  }
+  assert.equal((await fetch(`http://127.0.0.1:${port}/api/settings`)).status, 404);
+  const made = await post("/api/new", { draft: randomDraft({ seed: 43, archetype: "officer" }) });
+  assert.equal(made.status, 200);
+  assert.equal(made.game.mode, undefined);
   await post("/api/save", { slot: "slot1" });
-  const back = await post("/api/settings", { story: "written" });
-  assert.equal(back.storyApplies, "written");
-  const written = await post("/api/new", { draft: randomDraft({ seed: 44, archetype: "officer" }) });
-  assert.equal(written.game.mode, "written");
-  // The saved game, with its AI game master, is kept as it was.
   const loaded = await post("/api/load", { slot: "slot1" });
-  assert.equal(loaded.game.mode, "ai");
+  assert.equal(loaded.game.mode, undefined);
+  assert.equal(fs.readFileSync(path.join(serverData, "settings.json"), "utf8"), OLD_SETTINGS, "the file is untouched");
+  assert.ok(!fs.existsSync(path.join(serverData, "usage.jsonl")), "nothing's counted, since nothing costs anything");
 });

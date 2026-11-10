@@ -2,7 +2,7 @@
 // a few stages, on their own clock, that change the world a little and change what the lead says.
 // Nothing's ever lost. A story that's moved on can still be taken up, from wherever it's got to. Once
 // someone has taken it up, it's in their hands and its clock stops. All of this runs on this
-// computer at each midnight, with no AI. world/story-clock.json has the stages and the words.
+// computer at each midnight. world/story-clock.json has the stages and the words.
 // The clock reads the record too: a stage can wait on a condition, two stages on the same day can be a fork,
 // a consequence follows from how a story ended or from a fact, days later, and any of them can leave facts.
 
@@ -245,13 +245,6 @@ export function leadNow(game, id) {
   // Someone who isn't the captain only knows what's got around.
   if (!isCaptain(game)) return reached.at(-1)?.news ?? WORLD_THREADS[id]?.anyone ?? WORLD_THREADS[id]?.lead;
   return reached.map((stage) => stage.lead).filter(Boolean).at(-1) ?? WORLD_THREADS[id]?.lead;
-}
-
-// What the game master gets to know about what's already happened in a story.
-export function whatHappened(game, id) {
-  const done = stagesReached(game, id);
-  if (!done.length) return null;
-  return `This story has moved on without the captain, so start from how things stand now, and treat the notes below as how it began. What's happened: ${done.map((stage) => stage.news).join(" ")}`;
 }
 
 // What the Leads menu shows, for the places the captain knows of.

@@ -128,8 +128,8 @@ test("installing it only ever adds shortcuts, and uninstalling it leaves what's 
 
 test("setting the game up the old way doesn't download the app's building tools", () => {
   assert.match(fs.readFileSync(path.join(projectDir, "start-game.bat"), "utf8"), /npm install --omit=dev/);
-  assert.ok(pack.dependencies["@anthropic-ai/sdk"]);
-  assert.ok(!pack.dependencies.electron, "the app's tools aren't needed to run the game");
+  assert.equal(pack.dependencies, undefined, "the game itself needs nothing installed, since it has no AI to talk to");
+  assert.ok(pack.devDependencies.electron, "the app's tools are only for building it");
 });
 
 // ---- Saving when it closes -----------------------------------------------------

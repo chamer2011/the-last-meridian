@@ -1,5 +1,5 @@
-// The game's rules. The AI can narrate whatever it likes, but only this code
-// changes health, money, items and so on, so the story can't cheat.
+// The game's rules. Only this code changes health, money, items and so on, whatever the story's files say,
+// so nothing can cheat.
 
 import { allCharacters, allEnemies, campaignCharacters, campaignEnemies, campaignFolderName, findCharacter, findEnemy, fullName } from "./campaign.js";
 import {
@@ -12,27 +12,27 @@ import {
 } from "./character-data.js";
 import { checkView } from "./checks.js";
 import { FIGHT_DIFFICULTIES, attackBonus, combatProfile, combatView, enemyNumbers, parleyNotes } from "./combat.js";
-import { advanceWorld, holdingsOf, itemFactor, newWorld, newsView, placeLine, placeNow, worldOf } from "./daily.js";
-import { advanceShip, chairOf, chartEntry, isCharted, jumpCost, newShipState, shipGoingHungry, shipJumped, shipLine, shipOf, shipView } from "./ship.js";
+import { advanceWorld, holdingsOf, itemFactor, newWorld, newsView, placeNow, worldOf } from "./daily.js";
+import { advanceShip, chairOf, chartEntry, isCharted, jumpCost, newShipState, shipGoingHungry, shipJumped, shipOf, shipView } from "./ship.js";
 import { advanceLife, lifeOf } from "./life.js";
 import { advanceLogistics, startLogistics } from "./logistics.js";
-import { advanceCommand, commandLine, commandView, dutyDay, moodDay, reviewDay, sidesTaken, startCommand } from "./command.js";
+import { advanceCommand, commandView, dutyDay, moodDay, reviewDay, sidesTaken, startCommand } from "./command.js";
 import { startingLoreIds } from "./lore.js";
 import { THREAT_LABELS } from "./npc.js";
-import { START_LIST, aboardShip, isCaptain, jobHere, roleBrief, startOf, toOutsider } from "./role.js";
-import { recordLines, recordView } from "./record.js";
+import { START_LIST, aboardShip, isCaptain, jobHere, startOf, toOutsider } from "./role.js";
+import { recordView } from "./record.js";
 import { advanceStories, clockOf } from "./story-clock.js";
 import { emptyStory, storyView } from "./story-library.js";
-import { checkTarget, startInRoom, talkView, walkLine, walkView } from "./walk.js";
+import { checkTarget, startInRoom, talkView, walkView } from "./walk.js";
 import { computerView } from "./computers.js";
-import { advanceSystems, jumpBlocked, roomEdge, shipSystemsView, systemsLine } from "./systems.js";
+import { advanceSystems, jumpBlocked, roomEdge, shipSystemsView } from "./systems.js";
 import { buildLoreIndex, findLoreIds } from "../public/story.js";
 import { bagView, roomFor, tiring } from "./bag.js";
 import { heldUp, questsView } from "./quests.js";
 
 export { combatAction, startCombat } from "./combat.js";
 
-// Limits on what the AI may do, per player message.
+// Limits on what one turn of the story may do, so a mistake in a file can't hand out a fortune.
 export const TURN_LIMITS = {
   xp: 150, creditsGained: 500, itemsGiven: 2, damage: 30, stress: 40, ideologyShifts: 2, traitChanges: 1, hours: 240, training: 40, loreEntries: 3, newCharacters: 3, newEnemies: 2,
 };
@@ -685,16 +685,20 @@ export function travel(game, destination) {
   };
 }
 
+// Whether the written story is waiting on something. src/scenes.js says, since it reads these rules and they can't read it.
+let storyWaitsNow = () => false;
+export const tellStoryWaits = (fn) => {
+  storyWaitsNow = fn;
+};
+
 // ---- A new game ---------------------------------------------------------
 
 // Builds a playable game from a finished character. creator.js works out the profile.
 export function assembleGame(profile) {
   const start = START_LIST[profile.start] ?? START_LIST.captain;
   const game = {
-    version: 18,
+    version: 19,
     campaign: null,
-    // Who writes the story: "written" plays the scenes in world/scenes, and "ai" is the AI game master. The server sets it from the Settings menu.
-    mode: "ai",
     scene: null,
     flags: {},
     lastCheck: null,
@@ -731,7 +735,6 @@ export function assembleGame(profile) {
     lore: [],
     seenLore: startingLoreIds(),
     bestiary: {},
-    pendingEvents: [],
     combat: null,
     check: null,
     talk: null,
@@ -742,7 +745,6 @@ export function assembleGame(profile) {
     story: emptyStory(),
     transcript: [],
     turn: 0,
-    ai: { provider: null, messages: [] },
   };
   for (const id of profile.items) addItem(game, id);
   equipBest(game);
@@ -782,7 +784,7 @@ function startContacts(start, ideology) {
   });
 }
 
-// ---- What the browser and the AI get to see -----------------------------
+// ---- What the browser gets to see -----------------------------------------
 
 export const clockFor = (game) => ({ hours: game.clock.hours, label: clockLabel(game) });
 
@@ -946,7 +948,7 @@ export function publicState(game) {
   const stock = LOCATIONS[game.location]?.market ?? [];
   const character = game.character;
   const enemies = enemyList(game);
-  // The game master's notes on a place stay here. Only this much reaches the browser.
+  // The writer's notes on a place stay here. Only this much reaches the browser.
   const { gm: _gm, encounters: _encounters, rumors: _rumors, ...place } = LOCATIONS[game.location];
   return {
     name: game.name,
@@ -979,8 +981,9 @@ export function publicState(game) {
     enemiesTotal: Object.keys(allEnemies(game.campaign)).length,
     enemiesUnseen: Object.keys(allEnemies(game.campaign)).filter((id) => !enemies.some((enemy) => enemy.id === id)).length,
     locations: locationList(game),
-    pendingEvents: game.pendingEvents.length,
-    mode: game.mode ?? "ai",
+    // The written story has something to pick up when the player continues: a check or a fight a scene is waiting on,
+    // the answer at a door, a written arrival, or the officers at the door. Anything else is already in the story.
+    storyWaiting: storyWaitsNow(game),
     // held: the scene's part waits for someone the player isn't with, so its choices aren't on offer.
     scene: game.scene ? { id: game.scene.id, part: game.scene.part, quest: game.scene.quest ?? null, with: game.scene.with ?? null, told: game.scene.told !== false, held: heldUp(game) } : null,
     files: {
@@ -1075,57 +1078,6 @@ function roleView(game) {
   };
 }
 
-// A compact snapshot sent to the AI with each message, so it always knows the true state.
-export function aiSnapshot(game) {
-  const weapon = ITEMS[game.equipped.weapon]?.name ?? "none";
-  const armor = ITEMS[game.equipped.armor]?.name ?? "none";
-  const items = Object.entries(game.inventory).map(([id, n]) => `${id} x${n}`).join(", ") || "nothing";
-  const perks = game.perks.map((id) => PERKS[id]?.name ?? id).join(", ");
-  const traits = game.traits.map((id) => TRAITS[id]?.name ?? id).join(", ") || "none";
-  const skills = Object.entries(game.skills).filter(([, rank]) => rank >= 3).sort((a, b) => b[1] - a[1]).map(([id, rank]) => `${SKILLS[id].name} ${rank}`).join(", ") || "none above rank 2";
-  const beliefs = Object.entries(AXES).map(([id, axis]) => {
-    const value = game.ideology[id] ?? 0;
-    return value === 0 ? `${axis.name} neutral` : `${POLES[value < 0 ? axis.low : axis.high].name} ${Math.abs(value)}`;
-  }).join(", ");
-  const convictions = activeConvictions(game.ideology).map((c) => c.name).join(", ") || "none";
-  const conditions = game.conditions.map((c) => `${CONDITIONS[c.id].name} (${c.hoursLeft}h left)`).join(", ") || "none";
-  // Quests and people each get their own line, so that only the one that changed needs sending.
-  const quests = game.quests.filter((q) => q.status === "active").map((q) => `Active quest ${q.id}: ${q.objective}`);
-  const finished = game.quests.filter((q) => q.status !== "active").map((q) => `${q.title} (${q.status})`).join(", ") || "none";
-  const factions = Object.entries(game.factions).map(([id, v]) => `${id} ${v}`).join(", ");
-  const contacts = contactList(game).map((c) => `Known person: ${c.name} (${c.attitude}${c.status && c.status !== "alive" ? `, ${c.status}` : ""}): ${c.note}`);
-  const addedPeople = Object.entries(campaignCharacters(game.campaign)).map(([id, person]) => `${id} (${person.name})`).join(", ") || "none";
-  const addedEnemies = Object.entries(campaignEnemies(game.campaign)).map(([id, enemy]) => `${id} (${enemy.name})`).join(", ") || "none";
-  const deckPlan = walkLine(game);
-  const placeToday = placeLine(game);
-  const systemsNow = systemsLine(game);
-  const who = isCaptain(game) ? `Captain ${game.name}` : `${game.name}, ${roleView(game).short}, not in command`;
-  return [
-    `${clockLabel(game)}. ${who} (${game.character.pronouns}), level ${game.level}.`,
-    `Health ${game.hp}/${maxHp(game)}, energy ${game.energy}/${maxEnergy(game)}, stress ${game.needs.stress}/100, fatigue ${game.needs.fatigue}/100, credits ${game.credits}.`,
-    `Injuries and conditions: ${conditions}.`,
-    `Attributes: ${Object.keys(STATS).map((id) => `${id} ${attr(game, id)}`).join(", ")}.`,
-    `Best skills: ${skills}.`,
-    `Weapon: ${weapon}. Armor: ${armor}. Traits: ${traits}. Perks: ${perks}.`,
-    `Beliefs: ${beliefs}. Convictions: ${convictions}.`,
-    `Carrying: ${items}.`,
-    `Location: ${LOCATIONS[game.location].name} (${game.location}).`,
-    ...(deckPlan ? [deckPlan] : []),
-    ...(placeToday ? [placeToday] : []),
-    ...(systemsNow ? [systemsNow] : []),
-    `${isCaptain(game) ? "Ship" : "The Meridian"}: hull ${game.ship.hull}/${game.ship.maxHull}, fuel ${game.ship.fuel}/${game.ship.maxFuel}, morale aboard ${game.ship.morale}/100.`,
-    shipLine(game),
-    ...(commandLine(game) ? [commandLine(game)] : []),
-    `Faction standing: ${factions}.`,
-    ...(quests.length ? quests : ["Active quests: none."]),
-    `Finished quests: ${finished}.`,
-    ...recordLines(game),
-    ...(contacts.length ? contacts : ["Known people: none yet."]),
-    `Character files added in this campaign: ${addedPeople}.`,
-    `Enemy types added in this campaign: ${addedEnemies}.`,
-  ].join("\n");
-}
-
 // Marks people added in this campaign as known, once the story has mentioned them.
 export function notePeopleSeen(game, text) {
   const entries = Object.entries(campaignCharacters(game.campaign)).map(([id, person]) => ({ id: `person:${id}`, name: person.name, aliases: person.aliases }));
@@ -1134,26 +1086,3 @@ export function notePeopleSeen(game, text) {
   }
 }
 
-// The full character background, sent to the AI at the start of each conversation.
-export function aiDossier(game) {
-  const c = game.character;
-  const line = (label, text) => (text ? `${label}: ${text}` : null);
-  const traitNotes = game.traits.map((id) => TRAITS[id]).filter(Boolean).map((t) => `- ${t.name}: ${t.gm ?? t.desc}`);
-  const careers = (c.careers ?? []).map((job) => `${job.rankTitle}, ${job.name} (${job.terms} term${job.terms === 1 ? "" : "s"})`).join("; ");
-  return [
-    "<player_dossier>",
-    "This is the player's character. Use it to make the story personal, and reveal it through events rather than reciting it.",
-    `Name: ${game.name}${c.callsign ? `, known as "${c.callsign}"` : ""}. Pronouns: ${c.pronouns}. Age: ${c.age}.`,
-    roleBrief(game, chairOf(game)),
-    line("Species", SPECIES[c.species]?.gm),
-    line("Appearance", c.appearance),
-    line("Origin", [HOMEWORLDS[c.homeworld]?.gm, UPBRINGINGS[c.upbringing]?.gm].filter(Boolean).join(" ")),
-    line("Career", careers),
-    c.biography?.length ? `Life history:\n${c.biography.map((b) => `- ${b}`).join("\n")}` : null,
-    line("What drives them", DRIVES[c.drive] ? `${DRIVES[c.drive].name}. ${DRIVES[c.drive].gm}` : null),
-    line("Closest bond", c.bondPerson ? `${c.bondPerson}. ${BONDS[c.bond]?.note} Put this person in danger, or in the way, when it would matter most.` : c.bond === "no_one" ? "No one. Everyone they knew died in the Fall." : null),
-    traitNotes.length ? `Traits and how to play them:\n${traitNotes.join("\n")}` : null,
-    c.hooks?.length ? `Loose ends from their past, addressed to the player. Bring these into the story over time, and invent the details:\n${c.hooks.map((h) => `- ${h}`).join("\n")}` : null,
-    "</player_dossier>",
-  ].filter(Boolean).join("\n");
-}

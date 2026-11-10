@@ -12,12 +12,12 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-daily-"));
 process.env.GAME_DATA_DIR = dataDir;
 
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
-const { changePlace, levelName, newWorld, newsView, placeLine, placeNow, supplyFactor, worldLines, worldReport, worldRumors } = await import("../src/daily.js");
+const { changePlace, levelName, newWorld, newsView, placeNow, supplyFactor, worldRumors } = await import("../src/daily.js");
 const { FACTIONS, ITEMS, LOCATIONS } = await import("../src/data.js");
 const { chartEntry, shipCommand, shipView } = await import("../src/ship.js");
 const { migrateGame } = await import("../src/migrate.js");
 const { projectDir } = await import("../src/paths.js");
-const { aiSnapshot, buy, buyPrice, passTime, publicState, sell, sellPrice } = await import("../src/rules.js");
+const { buy, buyPrice, passTime, publicState, sell, sellPrice } = await import("../src/rules.js");
 const { countAboard, takeAboard } = await import("../src/logistics.js");
 const { rumorsHere } = await import("../src/story-library.js");
 const { TOOL_DEFS, newTurnLimits, runTool } = await import("../src/tools.js");
@@ -107,13 +107,13 @@ test("on day one, every price and every chart entry is exactly what it always wa
 });
 
 test("a new game has a world, and an older save gets one that starts from now", () => {
-  assert.equal(newGame().version, 18);
+  assert.equal(newGame().version, 19);
   assert.ok(newGame().world.places.haven);
   const old = { ...newGame(), version: 11, clock: { hours: 24 * 40 + 8 } };
   old.ship.day = 40;
   delete old.world;
   const game = migrateGame(JSON.parse(JSON.stringify(old)));
-  assert.equal(game.version, 18);
+  assert.equal(game.version, 19);
   assert.equal(game.world.day, 40, "nobody pays for the days that went by before");
   assert.deepEqual(passTime(game, 1), [], "and nothing happens all at once");
   assert.doesNotThrow(() => publicState(game));
@@ -228,8 +228,7 @@ test("a side that keeps gaining ground takes over, and it's big news", () => {
   assert.ok(notes.some((line) => line.startsWith("[WORLD]") && line.includes(name("strike"))), notes.join(" | "));
   assert.equal(chartEntry(game, "cinder").control, name("strike"), "the star map says so");
   assert.equal(placeNow(game, "cinder").changed, true);
-  assert.ok(worldReport(game).includes(name("strike")), "and the game master hears about it, once");
-  assert.equal(worldReport(game), null);
+  assert.ok(newsView(game).some((entry) => entry.text.includes(name("strike"))), "and it's in the news");
 });
 
 test("a place that can't change hands never does, however hard anyone pushes", () => {
@@ -362,44 +361,13 @@ test("the Meridian herself, and a ship with no day of its own, have no prices of
     const game = at(id);
     assert.equal(buyPrice(game, ITEMS.ration_pack), buyPrice(newGame(), ITEMS.ration_pack), id);
     assert.equal(placeNow(game, id), null, id);
-    assert.equal(placeLine(game), null, id);
   }
 });
 
-// ---- The game master ------------------------------------------------------------
+// ---- The story ------------------------------------------------------------------
 
-test("the game master gets one short line about wherever the captain is, in plain words", () => {
-  const game = at("cinder");
-  const line = placeLine(game);
-  assert.match(line, /^Cinder Reach today: The refinery company holds it \(company 45, strike 45, hegemony 5, drift 5\)\. Supplies: food normal, fuel normal, medicine normal, parts normal\.$/);
-  assert.ok(aiSnapshot(game).split("\n").includes(line));
-  assert.ok(!aiSnapshot(newGame()).includes(" today: "), "nothing about the Meridian herself");
-  game.world.places.cinder.events = [{ id: "cinder_tremor", left: 5 }];
-  game.world.places.cinder.goods.fuel = 40;
-  assert.match(placeLine(game), /fuel scarce.*Going on: A big tremor/);
-  assert.ok(placeLine(game).length < 400);
-});
-
-test("that line doesn't change on small ups and downs, so it costs almost nothing", () => {
-  const game = at("kessara");
-  const lines = new Set();
-  for (let day = 0; day < 20; day += 1) {
-    game.world.places.kessara.events = [];
-    for (const good of Object.keys(game.world.places.kessara.goods)) game.world.places.kessara.goods[good] = 100 + (day % 3);
-    game.world.places.kessara.hold = { drift: 80 + (day % 2) / 2, raiders: 20 - (day % 2) / 2 };
-    lines.add(placeLine(game));
-  }
-  assert.equal(lines.size, 1);
-});
-
-test("the game master can ask how things stand, and change them when the story really does", () => {
+test("the story can change how things stand at a place, when it really does", () => {
   const game = newGame();
-  assert.ok(TOOL_DEFS.some((def) => def.name === "read_world"));
-  const all = tool(game, "read_world", {});
-  assert.match(all.result, /Haven Station \(haven\)/);
-  assert.ok(!all.result.includes("Foundry Seven"), "nothing about places the player doesn't know of");
-  assert.match(tool(game, "read_world", { place: "foundry" }).result, /Foundry Seven/);
-  assert.ok(tool(game, "read_world", { place: "nowhere" }).isError);
 
   const reply = tool(game, "change_place", { place: "cinder", fuel: -200, side: "strike", amount: 100, news: "The strikers have taken the Stack at Cinder Reach.", reason: "The captain helped them take the Stack." });
   assert.ok(!reply.isError, reply.result);
@@ -451,7 +419,7 @@ test("the place's people and its supplies don't get in each other's way in a lon
   const game = at("haven");
   days(game, 90);
   assert.doesNotThrow(() => publicState(game));
-  assert.ok(worldLines(game).length > 100);
+  for (const state of Object.values(game.world.places)) for (const level of Object.values(state.goods)) assert.ok(Number.isFinite(level));
 });
 
 // ---- Over the real server -----------------------------------------------------

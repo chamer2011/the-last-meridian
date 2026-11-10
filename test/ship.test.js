@@ -1,25 +1,25 @@
-// The Meridian on her own: her stores, the daily drain, shortages, rations, the hull, the star map, what the game
-// master hears, the stories set aside with the fleet, and old saves. None of this calls a real AI.
+// The Meridian on her own: her stores, the daily drain, shortages, rations, the hull, the star map, the stories set
+// aside with the fleet, and old saves.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import http from "node:http";
 import os from "node:os";
 import path from "node:path";
-import { after, before, test } from "node:test";
+import { after, test } from "node:test";
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-ship-"));
 process.env.GAME_DATA_DIR = dataDir;
 
-const { SYSTEM_PROMPT, runTurn } = await import("../src/ai.js");
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const { storePut } = await import("../src/bag.js");
 const { countAboard, fillStores, logisticsOf, putAboard, takeAboard } = await import("../src/logistics.js");
 const { LOCATIONS } = await import("../src/data.js");
 const { LORE } = await import("../src/lore.js");
 const { migrateGame } = await import("../src/migrate.js");
-const { aiSnapshot, passTime, publicState, rest, travel } = await import("../src/rules.js");
-const { SHIP_ID, chairOf, councilOf, jumpCost, shipCommand, shipLedger, shipLine, shipReport, shipView } = await import("../src/ship.js");
+const { passTime, publicState, rest, travel } = await import("../src/rules.js");
+// The written story says whether it's waiting on something, such as a written arrival.
+await import("../src/scenes.js");
+const { SHIP_ID, chairOf, councilOf, jumpCost, shipCommand, shipLedger, shipView } = await import("../src/ship.js");
 const { leadsHere } = await import("../src/story-library.js");
 const { clockOf } = await import("../src/story-clock.js");
 const { TOOL_DEFS, newTurnLimits, runTool } = await import("../src/tools.js");
@@ -85,7 +85,7 @@ test("the ship's file: nine hundred aboard, four supplies, four ration levels, a
 test("a new game's ship carries her stores, with the day's clock set and nobody else in the chair", () => {
   const game = newGame();
   const s = game.ship;
-  assert.equal(game.version, 18);
+  assert.equal(game.version, 19);
   assert.equal(s.aboard, 900);
   assert.equal(s.food, SHIP_DATA.start.food);
   assert.equal(s.medicine, SHIP_DATA.start.medicine);
@@ -413,9 +413,8 @@ test("Set course runs here, and the story hears about it when the player carries
   assert.equal(game.location, "haven");
   assert.match(message, /Jumped to Haven Station/);
   assert.match(notes[0], /^\[NAV\]/);
-  assert.equal(game.pendingEvents.length, 1);
-  assert.match(game.pendingEvents[0], /the Meridian jumped to Haven Station/);
-  assert.equal(publicState(game).pendingEvents, 1);
+  assert.equal(game.arrived, "haven");
+  assert.equal(publicState(game).storyWaiting, true, "Haven has a written arrival, which plays when the player carries on");
   // From Haven, the Meridian and the dock are a short hop apart.
   shipCommand(game, { action: "course", id: SHIP_ID });
   assert.equal(game.ship.at, "haven");
@@ -427,51 +426,18 @@ test("Set course runs here, and the story hears about it when the player carries
   assert.equal(publicState(game).locations.find((place) => place.id === "haven").shipIsHere, true);
 });
 
-// ---- What the game master hears ----------------------------------------------
+// ---- What the story can change ----------------------------------------------
 
-test("the game master gets one compact line, rounded so it doesn't change every turn", () => {
-  const game = newGame();
-  const line = shipLine(game);
-  assert.ok(aiSnapshot(game).split("\n").includes(line));
-  assert.ok(line.length < 200, `the ship line is ${line.length} characters`);
-  assert.match(line, /^Aboard: 900 people/);
-  assert.match(line, /Left: food steady, fuel \d+d, medicine \d+d, parts \d+d/, "the refills keep the food steady, and the rest is counted in days");
-  withoutSources(() => assert.match(shipLine(game), /Left: food \d+d, fuel \d+d/));
-  assert.ok(!/ships|Choir pursuit/.test(line));
-  game.clock.hours += 3;
-  assert.equal(shipLine(game), line, "nothing's changed, so the line shouldn't");
-  game.ship.fuel = 0;
-  assert.match(shipLine(game), /fuel OUT/);
-  assert.match(aiSnapshot(game), /Ship: hull \d+\/\d+, fuel 0\/\d+, morale aboard \d+\/100\./);
-});
-
-test("the report goes out once, keeps to the newest news, and stays small", () => {
-  const game = newGame();
-  assert.equal(shipReport(game), null);
-  takeAboard(game, SHIP_ID, "ration_crate", 20);
-  withoutSources(() => {
-    days(game, 2);
-    days(game, 4);
-  });
-  const report = shipReport(game);
-  assert.match(report, /^<ship_report>/);
-  assert.match(report, /out of food/);
-  assert.ok(!/Food is down to/.test(report), "running low is old news once it's run out");
-  assert.ok(report.length < 900, `the report is ${report.length} characters`);
-  assert.equal(shipReport(game), null, "it should only go out once");
-});
-
-test("when the AI moves the clock, it hears straight away and not a second time", () => {
+test("when the story moves the clock, it says what the days brought", () => {
   const game = newGame();
   empty(game, "food");
   game.clock.hours = 20;
   const { result, notice } = withoutSources(() => tool(game, "pass_time", { hours: 48, activity: "active", reason: "A long wait" }));
   assert.match(result, /out of food/);
   assert.match(notice, /\[SUPPLY\]/);
-  assert.equal(shipReport(game), null);
 });
 
-test("the AI's ship tool changes hull, fuel and morale within limits, and the fleet's tools are gone", () => {
+test("the story's ship action changes hull, fuel and morale within limits, and the fleet's actions are gone", () => {
   const game = newGame();
   const { result, isError } = tool(game, "change_ship", { hull: 0, fuel: 99, morale: 99, reason: "Too good to be true" });
   assert.ok(!isError, result);
@@ -482,10 +448,6 @@ test("the AI's ship tool changes hull, fuel and morale within limits, and the fl
     assert.equal(tool(game, gone, { reason: "x" }).isError, true);
   }
   assert.ok(TOOL_DEFS.some((def) => def.name === "change_command"));
-  assert.match(SYSTEM_PROMPT, /THE SHIP\n/);
-  assert.ok(!SYSTEM_PROMPT.includes("THE FLEET"));
-  assert.ok(!/41 named ships|fleet_report|fleet_news|read_fleet|change_fleet/.test(SYSTEM_PROMPT));
-  assert.match(SYSTEM_PROMPT, /a thing of the past/);
 });
 
 test("the codex has no ships of the fleet, and the chart has no fleet", () => {
@@ -529,83 +491,12 @@ test("stories set aside stay in their files, out of the Leads menu, and still on
   assert.ok(Object.keys(STORY_CLOCK.threads).length === Object.keys(WORLD_THREADS).length);
 });
 
-// A stand-in for Anthropic's API, to check what actually gets sent.
-let server;
-let requests = [];
-let replies = [];
-
-function respond(res, body, reply) {
-  res.writeHead(200, { "content-type": "text/event-stream" });
-  const send = (type, data) => res.write(`event: ${type}\ndata: ${JSON.stringify({ type, ...data })}\n\n`);
-  send("message_start", { message: { id: "msg_1", type: "message", role: "assistant", model: body.model, content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 10, output_tokens: 1 } } });
-  reply.blocks.forEach((block, index) => {
-    if (block.type === "text") {
-      send("content_block_start", { index, content_block: { type: "text", text: "" } });
-      send("content_block_delta", { index, delta: { type: "text_delta", text: block.text } });
-    } else {
-      send("content_block_start", { index, content_block: { type: "tool_use", id: block.id, name: block.name, input: {} } });
-      send("content_block_delta", { index, delta: { type: "input_json_delta", partial_json: JSON.stringify(block.input) } });
-    }
-    send("content_block_stop", { index });
-  });
-  send("message_delta", { delta: { stop_reason: reply.stop ?? "end_turn", stop_sequence: null }, usage: { output_tokens: 5 } });
-  send("message_stop", {});
-  res.end();
-}
-
-before(async () => {
-  server = http.createServer(async (req, res) => {
-    let raw = "";
-    for await (const chunk of req) raw += chunk;
-    const body = JSON.parse(raw);
-    requests.push(body);
-    respond(res, body, replies.shift() ?? { blocks: [{ type: "text", text: "Nothing more." }] });
-  });
-  await new Promise((resolve) => { server.listen(0, "127.0.0.1", resolve); });
-  process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${server.address().port}`;
-});
-
 after(() => {
-  delete process.env.ANTHROPIC_BASE_URL;
-  server.close();
   try {
     fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 3 });
   } catch {
     // It's a temporary folder, so it doesn't matter if something is still holding on to it.
   }
-});
-
-const settings = { provider: "claude", model: "claude-opus-5-5", apiKey: "test-key-not-real" };
-const lastMessageText = () => {
-  const { content } = requests.at(-1).messages.at(-1);
-  return typeof content === "string" ? content : content.map((part) => part.text ?? part.content ?? "").join("\n");
-};
-
-test("the daily simulation makes no calls at all", async () => {
-  requests = [];
-  const game = newGame();
-  for (const order of [{ action: "wait", days: 3 }, { action: "rations", id: "reduced" }, { action: "course", id: "haven" }, { action: "buy", id: "food" }]) shipCommand(game, order);
-  days(game, 30);
-  await new Promise((resolve) => { setTimeout(resolve, 10); });
-  assert.equal(requests.length, 0);
-});
-
-test("a shortage reaches the game master once, with its next message", async () => {
-  requests = [];
-  replies = [];
-  const game = newGame();
-  game.transcript.push({ role: "narrator", text: "The story so far." });
-  empty(game, "food");
-  withoutSources(() => days(game, 2));
-  assert.ok(game.ship.unheard.length);
-  replies = [{ blocks: [{ type: "text", text: "One." }] }, { blocks: [{ type: "text", text: "Two." }] }];
-  await runTurn({ game, settings, playerText: "I look around.", emit: () => {} });
-  assert.match(lastMessageText(), /<ship_report>/);
-  assert.match(lastMessageText(), /out of food/);
-  assert.match(lastMessageText(), /Aboard: 900 people/);
-  assert.ok(!lastMessageText().includes("fleet_report"));
-  await runTurn({ game, settings, playerText: "I look around again.", emit: () => {} });
-  assert.ok(!lastMessageText().includes("<ship_report>"));
 });
 
 // ---- Old saves ----------------------------------------------------------
@@ -622,7 +513,7 @@ test("a save from before the ship kept her own stores loads, with nothing charge
   save.ship = { name: "CFS Meridian", hull: 40, maxHull: 100, fuel: 3, maxFuel: 12, morale: 31 };
   save.transcript = [{ role: "narrator", text: "The story so far.\n\n> Do something" }];
   const game = migrateGame(save);
-  assert.equal(game.version, 18);
+  assert.equal(game.version, 19);
   assert.equal(game.ship.day, 9);
   assert.equal(game.ship.at, "kessara");
   assert.equal(stock(game, "food"), 56, "her stores are full, from the logistics file");
@@ -631,9 +522,7 @@ test("a save from before the ship kept her own stores loads, with nothing charge
   assert.equal(game.ship.morale, 31, "morale stays what it was");
   assert.equal(game.ship.hull, 40);
   assert.equal(game.fleet, undefined);
-  assert.equal(game.pendingEvents.length, 0, "the player's choices should still be on screen");
-  assert.doesNotThrow(() => publicState(game));
-  assert.doesNotThrow(() => aiSnapshot(game));
+  assert.equal(publicState(game).storyWaiting, false, "nothing's waiting on the player");
   passTime(game, 24);
   assert.ok(game.ship.owed?.medicine > 0, "and a day has been charged since");
 });
@@ -650,7 +539,7 @@ test("a save with the fleet in it loses the fleet, and keeps what was the ship's
   };
   save.transcript = [{ role: "narrator", text: "The story so far." }];
   const game = migrateGame(save);
-  assert.equal(game.version, 18);
+  assert.equal(game.version, 19);
   assert.equal(game.fleet, undefined);
   assert.equal(game.ship.day, 12);
   assert.equal(game.ship.at, "cinder");
@@ -664,9 +553,8 @@ test("a save with the fleet in it loses the fleet, and keeps what was the ship's
   assert.equal(game.ship.log.length, 1);
   assert.equal(game.ship.council.off, true);
   assert.equal(game.ship.council.setCrews, undefined);
-  assert.match(game.transcript.at(-1).text, /^\[SHIP\] The fleet is a thing of the past/);
+  assert.ok(game.transcript.some((entry) => /^\[SHIP\] The fleet is a thing of the past/.test(entry.text)));
   assert.doesNotThrow(() => publicState(game));
-  assert.doesNotThrow(() => aiSnapshot(game));
   assert.equal(JSON.stringify(game).includes("pursuit"), false);
 });
 
@@ -683,7 +571,7 @@ test("a captain's save aboard the Sundial docks the Meridian there, and one from
   const ancient = { ...oldSave(), version: 3, bestiary: undefined };
   delete ancient.campaign;
   const game = migrateGame(ancient);
-  assert.equal(game.version, 18);
+  assert.equal(game.version, 19);
   assert.ok(game.ship.day !== undefined);
   assert.doesNotThrow(() => publicState(game));
 });

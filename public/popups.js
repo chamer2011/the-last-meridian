@@ -94,7 +94,7 @@ function sync() {
   postNotes();
 }
 
-// The player's done something, so the next thing the game master writes is a new scene.
+// The player's done something, so the next thing the story tells is a new scene.
 export function beginScene() {
   pen.stop();
   clearTimeout(pop.fadeTimer);
@@ -280,8 +280,7 @@ function captionNode() {
       ui.consoleLines.map((entry) => storyEntryNode(entry)),
       ui.error && el("div", { class: "entry error" }, ui.error.message,
         el("div", { class: "row", style: "margin-top:8px" },
-          el("button", { onclick: app.retry }, "Try again"),
-          el("button", { onclick: app.openSettings }, "Open Settings"))),
+          el("button", { onclick: app.retry }, "Try again"))),
       pop.said && pop.at === 0 && words && el("div", { class: "pop-said" }, `> ${pop.said}`),
       words,
       pop.open && waiting && thinkingNode()),
@@ -358,7 +357,7 @@ function answerNode() {
       el("div", { class: "pop-tag" }, yours ? "What do you do?" : "What do you say?"),
       el("div", { class: "options" }, options.map((option, i) => el("button", { "data-choice": String(i + 1), disabled: option.disabled, onclick: option.run },
         el("span", { class: "option-number" }, `${i + 1})`), optionContent(option)))),
-      el("div", { class: "pop-choices-foot" }, el("span", {}, app.ui.game.mode === "written" ? "Click one, or press its number." : "Click one, or press Enter to type your own."))),
+      el("div", { class: "pop-choices-foot" }, el("span", {}, "Click one, or press its number."))),
   });
 }
 
@@ -528,7 +527,7 @@ function waitingChip() {
   return el("button", { class: "pop-waiting", id: "pop-waiting", onclick: openPopups, title: "Or click whoever it's waiting on" }, "The story is waiting for you");
 }
 
-// As the game master's words arrive.
+// As the story's words arrive.
 export function updatePopups() {
   if (!document.getElementById("pops")) return;
   sync();
