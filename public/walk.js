@@ -10,6 +10,7 @@ import { paneNode, putPane } from "./pane.js";
 import { untagged } from "./story.js";
 import { closePopups, popsNode, popupDrawn, popupNext, popupPressed, popupReading, resetPopups } from "./popups.js";
 import { adopt, currentSquare, follow, leavingRoom, levelIdOf, positionNow, resetMoving, startMoving } from "./move.js";
+import { liveClick, liveFighters, liveHidden, liveKey, liveLayerNode, liveOn, liveOverlay, liveRosterNode, liveYouSpot } from "./live-fight.js";
 
 const TICK_TIME = 500;
 // How fast the clock can run, in minutes of the game to each real minute.
@@ -67,7 +68,9 @@ export function initWalk(hooks) {
 const isoShown = () => app.reading.view === "iso";
 export const walkShown = () => (app.reading.view === "walk" || isoShown()) && Boolean(app.ui.game?.walk);
 // The story goes over the room, unless the player would rather have it under the room.
-export const popupsShown = () => walkShown() && isoShown() && app.reading.story !== "panel" && !walk.fullStory;
+export const popupsShown = () => walkShown() && isoShown() && app.reading.story !== "panel" && !walk.fullStory && !liveOn();
+// Whether a fight can be fought in the room: the isometric room is on screen (public/live-fight.js).
+export const roomShownForFight = () => walkShown() && isoShown() && !walk.fullStory;
 
 export function resetWalk() {
   resetMoving();
@@ -86,8 +89,12 @@ function cannotWalk() {
   return ui.streaming || ui.waiting || anotherWindow();
 }
 
-// Where the player is now: walking, between squares.
+// Where the player is now: walking, between squares, or where the fight in the room has them.
 const shownSpot = () => {
+  if (liveOn()) {
+    const spot = liveYouSpot();
+    if (spot) return spot;
+  }
   adopt(app.ui.game.walk);
   return positionNow() ?? app.ui.game.walk.captain;
 };
@@ -307,7 +314,8 @@ function frameNode() {
   if (isoShown()) {
     walk.shownLevel = levelIdOf(view);
     walk.marks = new Map();
-    return el("div", { class: "walk-frame", id: "walk-frame" }, isoFrameNode({ view: () => app.ui.game?.walk ?? null, spot: shownSpot, blocked: cannotWalk, go, menu: (key, point) => openMenu(key, point), pressed: () => menuJustShut() || (popupsShown() && !anotherWindow() && popupPressed()), reading: () => popupsShown() && !anotherWindow() && popupReading(), drawn: () => {
+    return el("div", { class: "walk-frame", id: "walk-frame" }, isoFrameNode({ view: () => app.ui.game?.walk ?? null, spot: shownSpot, blocked: cannotWalk, go, menu: (key, point) => (liveOn() ? null : openMenu(key, point)),
+      fighters: liveFighters, fightOverlay: liveOverlay, fightClick: liveClick, fighting: liveOn, fightHidden: liveHidden, pressed: () => menuJustShut() || (popupsShown() && !anotherWindow() && popupPressed()), reading: () => popupsShown() && !anotherWindow() && popupReading(), drawn: () => {
       popupDrawn();
       placeThingPane();
     } }));
@@ -433,6 +441,14 @@ function hereNode() {
     role.rest > 0 && el("button", { disabled: cannotWalk() || credits < role.rest, onclick: app.act({ action: "rest" }) }, `Rent a bunk (${role.rest} cr)`),
     role.rest > 0 && el("button", { disabled: cannotWalk(), onclick: app.act({ action: "rest", rough: true }) }, "Sleep rough"),
   ].filter(Boolean);
+  // In a fight in the room, the panel has the two sides instead (public/live-fight.js).
+  const roster = isoShown() ? liveRosterNode() : null;
+  if (roster) {
+    return el("section", { class: "walk-here live-here", id: "walk-here", "aria-label": "The fight" },
+      ["tl", "tr", "bl", "br"].map((corner) => el("span", { class: `walk-here-corner ${corner}`, "aria-hidden": "true" })),
+      el("div", { class: "walk-here-tag live-tag" }, el("span", { class: "walk-here-name" }, view.here.name), el("span", { class: "walk-here-deck" }, "a fight")),
+      el("div", { class: "walk-here-body" }, roster));
+  }
   const folded = walk.hereFolded;
   const counted = (n, one, many) => (n ? `${n} ${n === 1 ? one : many}` : null);
   const summary = [counted(people.length, "person", "people"), counted(parts.length, "system", "systems"), counted(ways.length, "way out", "ways out")].filter(Boolean).join(" · ");
@@ -497,17 +513,19 @@ export function walkViewNode(logNode, composerNode) {
   const popped = popupsShown();
   // The classic plan says what its marks are. The isometric room has nothing written over it.
   const legend = isoShown() ? null : el("div", { class: "muted walk-legend" }, `@ you   ${app.ui.game.walk.things.length ? "? something to look at   " : ""}Walk with WASD or a click   Right-click for more   Space pauses`);
-  return el("div", { class: `walk-view${isoShown() ? " iso" : ""}${popped ? " pops-on" : ""}`, id: "walk-view" },
+  const fighting = liveOn() && isoShown();
+  return el("div", { class: `walk-view${isoShown() ? " iso" : ""}${popped || fighting ? " pops-on" : ""}${fighting ? " fighting" : ""}`, id: "walk-view" },
     el("div", { class: "walk-map" },
       frameNode(),
-      !popped && clockBar(),
-      popped ? popsNode(composerNode, legend, clockBar()) : legend,
+      !popped && !fighting && clockBar(),
+      popped ? popsNode(composerNode, legend, clockBar()) : fighting ? null : legend,
       thingLayer(),
       menuLayer(),
-      app.questTracker?.(),
-      app.sheet?.()),
+      fighting ? null : app.questTracker?.(),
+      app.sheet?.(),
+      fighting ? liveLayerNode() : null),
     hereNode(),
-    !popped && el("div", { class: "walk-story" }, storyBar(), logNode({ latest: true })));
+    !popped && !fighting && el("div", { class: "walk-story" }, storyBar(), logNode({ latest: true })));
 }
 
 function drawHere() {
@@ -540,7 +558,9 @@ export function placeHere() {
     const clock = popupsShown() ? document.getElementById("walk-clock") : null;
     const top = clock?.offsetHeight ? clock.offsetTop + clock.offsetHeight + 14 : 18;
     here.style.top = `${top}px`;
-    here.style.maxHeight = `${Math.max(90, map.clientHeight - top - (popupsShown() ? 84 : 18))}px`;
+    // Short of the typing window over the room, or of the bar of orders in a fight.
+    const orders = map.querySelector("#live-layer .live-orders");
+    here.style.maxHeight = `${Math.max(90, map.clientHeight - top - (orders ? orders.offsetHeight + 16 : popupsShown() ? 84 : 18))}px`;
     if (!walk.hereFolded) cover = Math.max(0, map.clientWidth - here.offsetLeft + 8);
   } else {
     here.style.top = "";
@@ -1356,7 +1376,9 @@ export function focusThing() {
 
 function onKey(event) {
   if (app.ui.screen !== "game" || !app.ui.game || app.ui.sideOpen || event.ctrlKey || event.metaKey || event.altKey || document.getElementById("board")) return;
-  const typing = Boolean(event.target.closest?.("input, textarea, select"));
+  const typing = Boolean(event.target.closest?.('input:not([type="checkbox"]), textarea, select'));
+  // A fight in the room has the keys while it's on.
+  if (!typing && liveKey(event)) return;
   if (walk.menu && !typing) {
     if (event.key === "Escape") {
       event.preventDefault();

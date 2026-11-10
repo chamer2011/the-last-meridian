@@ -15,6 +15,7 @@ import {
 } from "./rules.js";
 import { COMBAT_ART, COMBAT_TEXT, PARLEY } from "./world.js";
 import { beltSupplies, drawnWeapon, leaveLoot, spendFromBelt } from "./bag.js";
+import { liveActions, liveView } from "./live-fight.js";
 
 // The most fighters a side can have, counting the player. More wouldn't fit in the window.
 const MAX_PER_SIDE = 4;
@@ -41,10 +42,10 @@ export const FIGHT_DIFFICULTIES = {
 const ORDINALS = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth"];
 const YOU = "you";
 
-const pickFrom = (pool) => pool[roll(0, pool.length - 1)];
+export const pickFrom = (pool) => pool[roll(0, pool.length - 1)];
 const capitalized = (text) => text[0].toUpperCase() + text.slice(1);
 // Someone who's been talked out of it isn't in the fight any more, though they're still on their feet.
-const alive = (fighters) => fighters.filter((fighter) => fighter.hp > 0 && !fighter.out);
+export const alive = (fighters) => fighters.filter((fighter) => fighter.hp > 0 && !fighter.out);
 const roundsText = (n) => `${n} round${n === 1 ? "" : "s"}`;
 
 function listOf(words) {
@@ -52,7 +53,7 @@ function listOf(words) {
   return `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`;
 }
 
-function fill(pool, { enemy, ally, weapon } = {}) {
+export function fill(pool, { enemy, ally, weapon } = {}) {
   return pickFrom(pool)
     .replaceAll("{enemy}", enemy?.prose ?? "your enemy")
     .replaceAll("{Enemy}", capitalized(enemy?.prose ?? "your enemy"))
@@ -199,7 +200,7 @@ export function attackBonus(game, target, stat, skill) {
 }
 
 // The weapon in hand, or the sidearm once it's been drawn in this fight.
-function currentWeapon(game) {
+export function currentWeapon(game) {
   const weapon = ITEMS[drawnWeapon(game)];
   if (!weapon) return { name: "your bare hands", stat: "might", skill: "melee", damage: [1, 3], text: "unarmed" };
   return { name: weapon.name, stat: weapon.stat, skill: weapon.skill, damage: weapon.damage, text: weapon.skill };
@@ -210,13 +211,13 @@ const damageRange = (game, range, bonus = 0) => {
   return [Math.max(1, range[0] + extra), Math.max(1, range[1] + extra)];
 };
 
-const fleeBonus = (game) => attrMod(game, "agility") + skillRank(game, "athletics") + fxSum(game, "flee");
+export const fleeBonus = (game) => attrMod(game, "agility") + skillRank(game, "athletics") + fxSum(game, "flee");
 // The more of them there are, the harder it is to slip away.
-const fleeDc = (c) => FLEE_DC + 2 * (alive(c.enemies).length - 1);
+export const fleeDc = (c) => FLEE_DC + 2 * (alive(c.enemies).length - 1);
 
 // ---- One round ----------------------------------------------------------
 
-function addNotes(c, log, notes) {
+export function addNotes(c, log, notes) {
   if (c.training) return;
   for (const note of notes) {
     c.notes.push(note);
@@ -230,22 +231,23 @@ function hurtEnemy(target, damage, log, line) {
   if (target.hp <= 0) log.push({ on: target.key, down: true, text: fill(enemyLines(target, "defeated"), { enemy: target }), tone: "good" });
 }
 
-function playerAttack(game, c, target, log, { ability = null, bonusDamage = 0, bonusAttack = 0, stat, skill } = {}) {
+export function playerAttack(game, c, target, log, { ability = null, bonusDamage = 0, bonusAttack = 0, stat, skill } = {}) {
   const weapon = currentWeapon(game);
   const attackStat = stat ?? weapon.stat;
   const attackSkill = skill ?? weapon.skill;
   const die = roll(1, 20);
   const total = die + attackBonus(game, target, attackStat, attackSkill) + bonusAttack;
-  const hit = die === 20 || (die !== 1 && total >= target.defense);
+  const against = target.defense + (target.cover ?? 0);
+  const hit = die === 20 || (die !== 1 && total >= against);
   const lines = ability ? COMBAT_TEXT.abilities[ability] : COMBAT_TEXT.attack[weapon.text] ?? COMBAT_TEXT.attack.melee;
   const words = { enemy: target, weapon: weapon.name };
   if (!hit) {
-    log.push({ by: YOU, on: target.key, missed: true, text: fill(lines.miss, words), tone: "dim", math: `${total} vs defense ${target.defense}` });
+    log.push({ by: YOU, on: target.key, missed: true, ...(target.cover ? { cover: true } : {}), text: fill(lines.miss, words), tone: "dim", math: `${total} vs defense ${against}${target.cover ? ", in cover" : ""}` });
   } else {
     const critical = die === 20;
     const [low, high] = damageRange(game, weapon.damage, bonusDamage);
     const damage = roll(low, high) * (critical ? 2 : 1);
-    hurtEnemy(target, damage, log, { by: YOU, on: target.key, text: fill(critical && lines.crit ? lines.crit : lines.hit, words), tone: "good", math: `${damage} damage, ${total} vs defense ${target.defense}${critical ? ", critical" : ""}` });
+    hurtEnemy(target, damage, log, { by: YOU, on: target.key, text: fill(critical && lines.crit ? lines.crit : lines.hit, words), tone: "good", math: `${damage} damage, ${total} vs defense ${against}${critical ? ", critical" : ""}` });
   }
   addNotes(c, log, practice(game, attackSkill, hit ? 2 : 1));
   return hit;
@@ -262,7 +264,7 @@ function heal(game, amount, fighters = []) {
   return { healed: game.hp - before, hp };
 }
 
-function useAbility(game, c, id, target, log) {
+export function useAbility(game, c, id, target, log) {
   const lines = COMBAT_TEXT.abilities;
   const stun = (hit) => {
     if (hit && target.hp > 0) target.stunned = true;
@@ -288,7 +290,7 @@ function useAbility(game, c, id, target, log) {
   } else if (id === "glare") {
     const die = roll(1, 20);
     const total = die + checkParts(game, { skill: "intimidation", context: target.tags }).total;
-    const worked = die === 20 || (die !== 1 && total >= target.defense);
+    const worked = die === 20 || (die !== 1 && total >= target.defense + (target.cover ?? 0));
     stun(worked);
     log.push({ by: YOU, on: target.key, missed: !worked, text: fill(worked ? lines.glare.hit : lines.glare.miss, { enemy: target }), tone: worked ? "good" : "dim", math: `${total} vs ${target.defense}` });
     addNotes(c, log, practice(game, "intimidation", 2));
@@ -301,14 +303,14 @@ function useAbility(game, c, id, target, log) {
   }
 }
 
-function followerAttacks(c, ally, focus, log) {
+export function followerAttacks(c, ally, focus, log, chosen = null) {
   const foes = alive(c.enemies);
-  // Followers go after what the player is aiming at, or else the weakest one left.
-  const target = foes.find((foe) => foe.key === focus) ?? foes.reduce((weakest, foe) => (foe.hp < weakest.hp ? foe : weakest));
+  // Followers go after what the player is aiming at, or else the weakest one left. In the room they choose for themselves.
+  const target = chosen ?? foes.find((foe) => foe.key === focus) ?? foes.reduce((weakest, foe) => (foe.hp < weakest.hp ? foe : weakest));
   const die = roll(1, 20);
   const total = die + ally.attack;
   const words = { enemy: target, ally };
-  if (die !== 20 && (die === 1 || total < target.defense)) {
+  if (die !== 20 && (die === 1 || total < target.defense + (target.cover ?? 0))) {
     log.push({ by: ally.key, on: target.key, missed: true, text: fill(COMBAT_TEXT.ally.miss, words), tone: "dim", math: `${total} vs defense ${target.defense}` });
     return;
   }
@@ -323,7 +325,7 @@ function inflictWound(game, log) {
   log.push({ text: `${pickFrom(COMBAT_TEXT.player.wound)} ${CONDITIONS[id].name}: ${CONDITIONS[id].desc}`, tone: "bad" });
 }
 
-function attackPlayer(game, c, enemy, log) {
+export function attackPlayer(game, c, enemy, log) {
   const die = roll(1, 20);
   const target = defense(game) + c.guard;
   const total = die + enemy.attack;
@@ -351,11 +353,11 @@ function attackPlayer(game, c, enemy, log) {
   }
 }
 
-function attackFollower(c, enemy, ally, log) {
+export function attackFollower(c, enemy, ally, log) {
   const die = roll(1, 20);
   const total = die + enemy.attack;
   const words = { enemy, ally };
-  if (die !== 20 && (die === 1 || total < ally.defense)) {
+  if (die !== 20 && (die === 1 || total < ally.defense + (ally.cover ?? 0))) {
     log.push({ by: enemy.key, on: ally.key, missed: true, text: fill(COMBAT_TEXT.enemyVsAlly.miss, words), tone: "dim", math: `${total} vs defense ${ally.defense}` });
     return;
   }
@@ -485,7 +487,7 @@ function parleyLine(enemy, id, outcome) {
 }
 
 // The player tries it. Whatever happens, it's their turn gone, and the enemies still get theirs.
-function tryParley(game, c, target, id, log) {
+export function tryParley(game, c, target, id, log) {
   const approach = APPROACHES[id];
   const found = parleyOdds(game, c, target, id);
   const die = roll(1, 20);
@@ -508,7 +510,7 @@ function tryParley(game, c, target, id, log) {
   addNotes(c, log, practice(game, approach.skill, worked ? 3 : 2));
 }
 
-const someoneTakesPrisoners = (c) => alive(c.enemies).some((enemy) => motiveOf(enemy).surrender !== false);
+export const someoneTakesPrisoners = (c) => alive(c.enemies).some((enemy) => motiveOf(enemy).surrender !== false);
 
 // For the Bestiary: why this kind of enemy usually fights, and what you could try on it.
 export function parleyNotes(source) {
@@ -517,7 +519,7 @@ export function parleyNotes(source) {
   return { why: motiveOf(enemy).says, could: Object.keys(APPROACHES).filter((id) => couldWork(enemy, id)).map((id) => nameFor(enemy, id)) };
 }
 
-function bringArrivals(c, log) {
+export function bringArrivals(c, log) {
   const next = c.round + 1;
   c.arrivals = c.arrivals.filter((arrival) => {
     if (arrival.round > next) return true;
@@ -533,7 +535,7 @@ function bringArrivals(c, log) {
 }
 
 // Refuses what can't be done before anything changes, so it costs nothing.
-function checkAllowed(game, c, action, target) {
+export function checkAllowed(game, c, action, target) {
   if (action.type === "flee" && alive(c.enemies).some((enemy) => enemy.boss)) throw new Error(pickFrom(COMBAT_TEXT.player.fleeBoss));
   if (action.type === "ability") {
     const ability = ABILITIES[action.id];
@@ -560,6 +562,7 @@ function checkAllowed(game, c, action, target) {
 export function combatAction(game, action) {
   const c = game.combat;
   if (!c) throw new Error("There's no fight right now.");
+  if (c.live) throw new Error("This fight is happening in the room.");
   const foes = alive(c.enemies);
   const target = foes.find((foe) => foe.key === action.target) ?? foes[0];
   checkAllowed(game, c, action, target);
@@ -620,7 +623,7 @@ export function combatAction(game, action) {
 
 // ---- How a fight ends ---------------------------------------------------
 
-function endCombat(game, ended, log) {
+export function endCombat(game, ended, log) {
   const c = game.combat;
   const wentAway = c.enemies.filter((enemy) => enemy.out && enemy.hp > 0);
   const beaten = c.enemies.filter((enemy) => !wentAway.includes(enemy));
@@ -746,7 +749,7 @@ function playerArt(game) {
   return COMBAT_ART.soldier;
 }
 
-function fighterView(fighter) {
+export function fighterView(fighter) {
   return {
     key: fighter.key,
     name: fighter.name,
@@ -777,7 +780,7 @@ function readOf(game, c, enemy) {
 }
 
 // What the player can do this round, with the odds worked out against each enemy.
-function combatActions(game) {
+export function combatActions(game) {
   const c = game.combat;
   const foes = alive(c.enemies);
   const weapon = currentWeapon(game);
@@ -870,7 +873,9 @@ export function combatView(game) {
     allies: c.allies.map(fighterView),
     enemies: c.enemies.map(fighterView),
     reads: Object.fromEntries(alive(c.enemies).map((enemy) => [enemy.key, readOf(game, c, enemy)])),
-    actions: combatActions(game),
+    // A fight in the room has no taking cover, and says where everyone is (src/live-fight.js).
+    actions: c.live ? liveActions(game) : combatActions(game),
+    live: c.live ? liveView(game) : null,
   };
 }
 

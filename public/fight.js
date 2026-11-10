@@ -51,7 +51,8 @@ const alive = (fighters) => fighters.filter((fighter) => fighter.hp > 0 && !figh
 function sync() {
   if (fight.playing || fight.result) return;
   const live = app.ui.game?.combat ?? null;
-  if (!live) {
+  // A fight in the room is drawn by the room (public/live-fight.js), not in this window.
+  if (!live || app.inRoom?.(live)) {
     closeFight();
     return;
   }

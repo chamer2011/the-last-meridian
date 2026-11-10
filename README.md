@@ -95,7 +95,27 @@ The quest you're following is in the top left corner of the room: its name, the 
 
 ## Fights
 
-A fight opens in its own window over the story. Your side faces the enemy's, with each fighter drawn in console art beside their health and numbers, and your actions run down the sides of the window with your odds next to them.
+In the isometric view, a fight happens in the room you're in, in real time, and it stops whenever you like. A simulated fight, and a fight in any other view, opens in its own window instead, played in rounds.
+
+### A fight in the room
+
+Everyone in the fight stands somewhere in the room: you where you were, someone you went for where they stood, and anyone else coming in by the way into the room furthest from you. Your followers stand beside you. Each fighter has a health bar and, under it, a bar that fills as they get ready to act again. Nobody can act again until that bar is full.
+
+- **It starts stopped.** Nothing moves until you press **Space** or click **Go on**. Press Space again, or click **Stop**, to stop it whenever you like, as often as you like. You can give orders while it's stopped, and they're carried out once it goes on.
+- **To shoot or hit someone,** click them in the room, or on their line in the room's panel on the right. You keep going for them whenever you're ready, until they're down or you choose someone else. If you can't reach them from where you are, you walk up to them.
+- **To move,** click the floor. You walk there, and you can't act while you're walking.
+- **Your orders** are along the bottom, numbered as in the fight window: talking, the belt, your abilities, your sidearm, giving up, **Run for it**. Press a number or click one. Anything that's aimed at someone asks you to click who. What it does and your chances are in its tooltip. It's carried out the moment you're ready.
+- **Stop when I'm ready to act**, a box beside the button, stops the fight by itself each time your bar fills, so you can choose your next order calmly. It stays ticked or not for the next fight.
+- **Cover** is standing behind something. There's no Take cover order in the room. Someone with a console, a crate or anything else low between them and the shooter is harder to hit, by 3. When you hover over an enemy, the room shows whether you can shoot them from where you stand, and whether they're behind cover. Walls stop shots altogether.
+- **Up close or from afar.** Someone with a pistol or a rifle shoots across the room. Someone with a blade, a club or claws has to walk up to you first. Enemies who shoot look for a spot where they can hit you and you can't easily hit them, so moving matters.
+- **People who were due to come running partway through** come in by the door when their time comes, about six seconds for each round they'd have waited.
+- When it's over, a line says how it went, with **Continue the story** and **Look around first**. You stay where you were standing at the end.
+
+If you open a fight in the room from another view, the fight window says so and has a **Show the room** button.
+
+### The fight window
+
+A fight in the window has your side facing the enemy's, with each fighter drawn in console art beside their health and numbers, and your actions run down the sides of the window with your odds next to them.
 
 The window is only as big as the fight needs: small for a duel, and bigger as followers join and the log fills. If your screen runs out of room, the actions move underneath the fighters and the log shrinks, so the buttons stay in view.
 
@@ -106,7 +126,7 @@ The window is only as big as the fight needs: small for a duel, and bigger as fo
 - **Your sidearm:** with a weapon on your hip, **Draw your ...** switches to it for the rest of the fight, and **Back to your ...** switches back. Either takes your turn.
 - **Difficulty:** **Fights** in the Settings menu goes from Easy to Hard, and applies from your next fight. Your followers stay the same, but enemies change. On Hard, someone who can't fight will usually lose to anything above a minor threat, unless they bring help or run.
 
-**Talking instead of fighting.** Under **Another way** in the fight window are other things you can do with your turn. Each shows your chance of it working against whoever you're aiming at, and the chance changes as the fight goes on. Hover over one to see the sum.
+**Talking instead of fighting.** Under **Another way** in the fight window, and among the orders along the bottom in a fight in the room, are other things you can do with your turn. In the room, "your turn" is the moment your bar is full, and talking only reaches people within about twelve tiles. Each shows your chance of it working against whoever you're aiming at, and the chance changes as the fight goes on. Hover over one to see the sum.
 
 | Option | What it uses | What it does |
 |---|---|---|
@@ -282,7 +302,7 @@ In Isometric and Walk-around, the main window shows the room you're in, with you
   - **A door:** **Go through**. A closed one has **Look** and **Ask to go through**, and a locked one **Look**, **Force the door** and **Hack the door panel**.
   - **The floor:** **Walk here**.
 - **Picking a pocket** is a Stealth check in the check window. It's as hard as the person's Awareness in their file, so Commander Voss, with 4, is hard. Someone without a file is easy, or moderate if their name says they watch for a living, like a guard or a hunter, and anyone asleep is a step easier. A clean lift pays a few credits, and nobody knows. If they catch your hand, they think less of you, whoever holds the place takes 2 off your standing (on the Meridian, as her captain, it's 2 off morale aboard instead), it goes on the record for the stories, and a camera on the room rings the alarm. Either way, they keep a hand on their pocket for a day.
-- **Attacking someone** asks first, then walks you over and starts a fight in the fight window. Someone with a file fights the way their file says. Anyone else fights as a Dock Thug under their own name, or as a Customs Marine if they're a guard. It costs 5 standing with whoever holds the place (5 morale on your own ship), turns anyone with a file against you, goes on the record, and a camera on the room rings the alarm. If you win, they're off getting patched up for 12 hours. With an AI, the game master hears about a pocket or a fight in a line with your next message. All of these numbers are in `world/deeds.json`.
+- **Attacking someone** asks first, then walks you over and starts a fight: in the isometric view it's played in the room, with them where they stood, and in the other views in the fight window. Someone with a file fights the way their file says. Anyone else fights as a Dock Thug under their own name, or as a Customs Marine if they're a guard. It costs 5 standing with whoever holds the place (5 morale on your own ship), turns anyone with a file against you, goes on the record, and a camera on the room rings the alarm. If you win, they're off getting patched up for 12 hours. With an AI, the game master hears about a pocket or a fight in a line with your next message. All of these numbers are in `world/deeds.json`.
 - **The clock runs on** while a thing's window is open, through every skill check (working a part of the place's systems, forcing or hacking a door, hacking a computer you've walked up to, picking a pocket, and the story's own checks too), while you're using a computer, and while a menu or the map of the place is open. So the world doesn't wait while you try, and the air can go bad or the alarm stop while you're at it. Talks and fights stop it, and so does **Space**.
 - **When the story moves you,** the map follows, and people the story has with you stand beside you.
 - **When the story goes somewhere that isn't on the map,** such as somewhere the game master has made up, that place gets a room of its own, drawn to suit: ducts look like ducts, a brig has bars, and a chapel has pews. The game master says what kind of room it is and what's in it that matters, and the room is kept with your campaign, so it stays the same if you come back. It's listed on the map of that place from then on.
@@ -555,7 +575,7 @@ The Meridian is drawn in **Tiled**, a free map editor, one file to a deck, and y
 - `src/lore.js` holds the entries of **What you know**. Only put what your character would know in there, because players can read it.
 - `src/creator.js` works out a character from the choices made in the creator, and `src/role.js` works out who that makes them in the world, and what the game master is told about it.
 - `src/rules.js` holds the rules: dice, leveling, stress and beliefs.
-- `src/combat.js` holds the rules for fights, including talking in them, and `public/fight.js` draws the fight window.
+- `src/combat.js` holds the rules for fights, including talking in them, and `public/fight.js` draws the fight window. `src/live-fight.js` plays a fight in the room in real time on top of those rules (where everyone stands, walking, lines of fire, cover, being ready), and `public/live-fight.js` draws it over the isometric room, with the orders along the bottom.
 - `src/ship.js` runs the Meridian's day: her stores, her hull, her people's health and morale, the officers' decisions, and whoever has her chair when the player doesn't. `public/ship.js` draws the Ship menu and `public/map.js` the star map.
 - `src/logistics.js` puts each place's stores in its rooms from `world/logistics/`, full to start with, runs its machines, its generator, its errands, its refills and the ship's sittings on the clock, takes what the engineers' repairs use up from its stores (the repairs themselves are the systems' own, in `src/systems.js`), and counts it all for the Ship menu, whose food, medicine and parts are these stores and nothing else. An errand turns someone aside from their day the way the systems do, so the life engine walks them there and back. The generator's supply against the loads is settled in `src/systems.js`, which lets systems go in the written order and treats a stopped generator as no power anywhere. `public/logistics-text.js` reads and writes the files.
 - `src/command.js` reads the chain of command from `world/command/`, keeps who holds each post and who does which job in the save, and answers who holds a post or does a job for the council, the systems, the machines, the errands and the chair. It gives everyone on the watch bill their job's day, which `src/life.js` walks, lets the captain move people, and has the first officer cover for anyone lost. It also runs the officers' reviews: the warnings, relieving and replacing, what people remember, the ambitious asking for a post, and the captain's recommendations, choices and hold; and loyalty, the council's confidence, the mutiny and the brig, with the written scenes it starts; and it answers what a scene asks of the chain of command, plays what a scene changes in it, puts what happens on the record, and gives the AI its line. `public/command.js` draws the Command menu, and `public/command-text.js` reads and writes the files.

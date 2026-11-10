@@ -17,7 +17,8 @@ import { initSheet, openPersonSheet, resetSheet, sheetNode, toggleSheet } from "
 import { drawQuests, initQuests, questTrackerNode, questsOpen, resetQuests, toggleQuests } from "./quests.js";
 import { beginScene, initPopups, openPopups, popupDrawn, popupNext, popupsAttached, updatePopups } from "./popups.js";
 import { INTERFACE_SIZES, interfaceZoom } from "./scene.js";
-import { focusThing, initWalk, keepClear, markPoint, newsBehindMenu, placeHere, popupsShown, putAwayRoomWindows, renderWalk, resetWalk, showWholeStory, thingNode, thingOpen, toggleClock, walkShown, walkViewNode } from "./walk.js";
+import { focusThing, initWalk, keepClear, markPoint, newsBehindMenu, placeHere, popupsShown, putAwayRoomWindows, renderWalk, resetWalk, roomShownForFight, showWholeStory, thingNode, thingOpen, toggleClock, walkShown, walkViewNode } from "./walk.js";
+import { bringIntoRoom, fightInRoom, initLive, liveElsewhereNode, liveOn, liveSettled, resetLive } from "./live-fight.js";
 import { aimWith } from "./float.js";
 import { WRITING_SPEEDS } from "./writer.js";
 
@@ -217,6 +218,7 @@ function titleScreen() {
 async function loadGame(slot) {
   const { game, saves } = await api("/api/load", { slot });
   resetFight();
+  resetLive();
   resetCheck();
   resetWalk();
   resetTalk();
@@ -236,6 +238,7 @@ async function loadGame(slot) {
 async function startNewGame(draft) {
   const { game, saves } = await api("/api/new", { draft });
   resetFight();
+  resetLive();
   resetCheck();
   resetWalk();
   resetTalk();
@@ -730,8 +733,8 @@ function render() {
   const isNew = !previous || count !== ui.renderedCount;
   ui.renderedCount = count;
   app.replaceChildren(el("div", { class: "game" },
-    el("main", { class: "story" }, statusNode(), walkShown() ? walkViewNode(logNode, composerNode) : logNode(), !popupsShown() && composerNode(), !walkShown() && questTrackerNode()),
-    fightNode(),
+    el("main", { class: "story" }, statusNode(), walkShown() ? walkViewNode(logNode, composerNode) : logNode(), !popupsShown() && !(liveOn() && walkShown()) && composerNode(), !walkShown() && questTrackerNode()),
+    fightNode() ?? liveElsewhereNode(),
     checkNode(),
     talkNode(),
     computerNode(),
@@ -743,10 +746,14 @@ function render() {
     drawerNode(),
   ));
   if (!popupsShown()) updateLive();
+  // A fight that's just begun, with the room on screen, moves into it.
+  bringIntoRoom();
   // The tracker first, since the story's panes keep out of its way, and then the room's panel, for the same reason.
   drawQuests();
   placeHere();
   popupsAttached();
+  // In a fight in the room, after the story's popups have let go of the camera.
+  if (liveOn()) liveSettled();
   dropStaleTooltip();
   if (!ui.streaming) placeLog(previousTop, isNew);
   if (fightOpen()) focusFight();
@@ -829,7 +836,8 @@ initMenus({
   },
 });
 
-initFight({ ui, render, sendChat, openMenu, closeMenu });
+initFight({ ui, render, sendChat, openMenu, closeMenu, inRoom: fightInRoom });
+initLive({ ui, render, renderStatus, sendChat, roomShown: roomShownForFight, showRoom: () => changeReading({ view: "iso", chosen: true }) });
 initCheck({ ui, render, sendChat, openMenu, closeMenu });
 initMap({ ui, render, runAction, renderMenus, openMenu, closeMenu });
 initShip({ ui, render, runAction, renderMenus, openMenu, closeMenu });

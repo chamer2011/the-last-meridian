@@ -837,6 +837,44 @@ export function personHere(game, key) {
   return entry ? { entry, view: personView(game, entry) } : null;
 }
 
+// The ground a fight in the room is fought on: the level the player's on, where they stand, the room drawn round them,
+// the ways into it, and everyone else on the level, who stands where they are while it goes on. Null where there's no map.
+export function fightGround(game) {
+  const walk = walkAt(game);
+  if (!walk) return null;
+  const map = mapFor(game.location);
+  const level = levelOf(game, walk, map);
+  const spot = walk.room ?? walk;
+  const roomNow = walk.room ? walk.room.name : level.roomAt(spot.x, spot.y);
+  const area = walk.room ? null : level.areas.find((one) => one.id === roomNow) ?? null;
+  const ways = area
+    ? [...area.doors, ...level.exits.filter((exit) => level.roomAt(exit.x, exit.y) === roomNow)]
+    : [...level.exits, ...[...level.doors].map((key) => {
+      const [x, y] = key.split(",").map(Number);
+      return { x, y };
+    })];
+  return {
+    level,
+    area,
+    you: { x: spot.x, y: spot.y },
+    ways: ways.map((way) => ({ x: way.x, y: way.y })),
+    people: peopleOnLevel(game, walk, level).map((entry) => personView(game, entry, level)),
+  };
+}
+
+// Where the player stands once a fight in the room is over: where they ended up, if it's somewhere they can stand.
+export function standAfterFight(game, x, y) {
+  const map = mapFor(game.location);
+  if (!map) return;
+  // A game that hasn't walked yet has no square kept: it's kept from now on.
+  const walk = walkOf(game);
+  const level = levelOf(game, walk, map);
+  if (!canStand(level, x, y)) return;
+  const spot = walk.room ?? walk;
+  spot.x = x;
+  spot.y = y;
+}
+
 // Everything the player can do by walking. It's all free, and it can't change anything else.
 export function walkCommand(game, body) {
   const walk = walkOf(game);

@@ -1353,3 +1353,55 @@ body:has(.qt.open) .pop-notes { visibility: hidden; }
 .walk-here-deck { margin-top: -2px; }
 .walk-plan-decks { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 4px 8px 0; }
 .walk-plan-decks button.picked { color: var(--c-bright); outline: 1px solid var(--c); }
+
+/* ---- A fight in the room (public/live-fight.js) --------------------------------------------------------------------
+   The fight is drawn by the room itself. Over it: what's happened in its top left, the orders in its bottom left in the
+   game's console window, and the two sides in the room's panel. The story over the room, its clock and the quest
+   tracker step aside while it's on. */
+.walk-view.fighting .qt, .walk-view.fighting .pops { display: none; }
+.live-layer { position: absolute; inset: 0; z-index: 25; pointer-events: none; font: 13px/1.4 var(--mono); }
+.live-notes { position: absolute; left: 8px; top: 8px; width: min(340px, 44%); display: flex; flex-direction: column; gap: 3px; }
+.live-banner { align-self: flex-start; padding: 1px 8px; background: var(--panel); border: 1px solid var(--line); color: var(--bright); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.live-note { padding: 2px 8px; background: rgba(8, 17, 12, .9); border: 1px solid var(--line); color: var(--story); font-size: 12.5px; }
+.live-note.old { opacity: .62; }
+.live-note.good { color: var(--text); }
+.live-note.bad { color: var(--bad); }
+.live-note.dim { color: var(--muted); }
+.live-note.info { color: var(--info); }
+.live-layer .live-orders { position: absolute; left: 5px; right: 5px; bottom: 5px; max-height: 45%; display: flex; flex-direction: column; pointer-events: auto; }
+.live-layer .live-orders .check-title { padding: 1px 10px; }
+.live-options { min-height: 0; overflow-y: auto; flex-direction: row; flex-wrap: wrap; gap: 2px 4px; padding: 4px 6px 2px; }
+.live-options button { font-size: 13px; padding: 1px 7px; flex-wrap: nowrap; white-space: nowrap; }
+.live-options .option-number, .live-options .option-detail { color: var(--c-dim); }
+.live-options .option-label { color: var(--c-bright); flex: none; }
+.live-options .option-detail { margin-left: auto; min-width: 0; font-size: 11.5px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.live-options button.on { background: var(--c); }
+.live-options button.on * { color: var(--c-bg) !important; }
+.live-options button:disabled .option-label { color: var(--c-dim); }
+.live-hint { flex: 1 1 260px; min-width: 0; color: var(--c-dim); font-size: 12px; }
+.live-message { padding: 2px 10px; color: #ff8f7f; font-size: 12px; }
+.live-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 3px 8px 5px; border-top: 1px solid var(--c-line); }
+.live-controls .live-go { padding: 1px 10px; border: 1px solid var(--c); color: var(--c-bright); font-weight: 700; }
+.live-controls .live-go::before, .live-controls .live-go::after { content: none; }
+.live-controls .live-go:hover, .live-controls .live-go:focus-visible { background: var(--c); color: var(--c-bg); }
+.live-check { display: inline-flex; align-items: center; gap: 6px; color: var(--c); font-size: 12px; cursor: pointer; white-space: nowrap; }
+.live-check input { margin: 0; accent-color: var(--c); }
+.live-summary { padding: 5px 10px 0; color: var(--c-bright); }
+.live-summary.small { padding-top: 2px; color: var(--c-dim); }
+.live-ending .live-options { padding-top: 6px; }
+.walk-here.live-here .live-tag { cursor: default; }
+.live-roster { display: flex; flex-direction: column; gap: 2px; }
+.live-roster .walk-here-head { margin-top: 6px; }
+.live-roster .walk-here-head:first-child { margin-top: 0; }
+.live-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 1px 7px; width: 100%; padding: 2px 4px; text-align: left; }
+.walk-here .live-row::before, .walk-here .live-row::after { content: none; }
+button.live-row:hover:not(:disabled), button.live-row:focus-visible, button.live-row.aimed { background: rgba(255, 143, 127, .18); outline: 1px solid #ff8f7f; color: inherit; }
+button.live-row:hover:not(:disabled) *, button.live-row:focus-visible * { color: inherit; }
+.live-who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--bright); font-weight: 700; }
+.live-count { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.live-bar { grid-column: 2 / 4; height: 4px; background: rgba(255, 255, 255, .12); }
+.live-bar b { display: block; height: 100%; background: #8df5ac; }
+.live-bar.them b { background: #ff8f7f; }
+.live-sub { grid-column: 2 / 4; color: var(--muted); font-size: 11px; }
+.live-sub:empty { display: none; }
+.live-row.lost .live-who { text-decoration: line-through; opacity: .55; }

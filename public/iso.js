@@ -2227,6 +2227,16 @@ function lookFor(key, color, crowd) {
   };
 }
 
+// A fighter who isn't someone already in the room looks like the others of their side, each a little different.
+const fighterLooks = new Map();
+function fighterLook(one) {
+  const known = fighterLooks.get(one.key);
+  if (known && known.color === one.color) return known.look;
+  const look = lookFor(one.key, one.color ?? (one.side === "enemy" ? "#b0503a" : "#8ec5ff"), false);
+  fighterLooks.set(one.key, { color: one.color, look });
+  return look;
+}
+
 const YOU_LOOK = { coat: "#7c9484", coatDark: "#54665a", trousers: "#2c3430", skin: "#d8b090", hair: "#2a2420", vest: true, pack: true, long: false, hat: false };
 
 const limb = (ctx, x0, y0, x1, y1, width, color) => {
@@ -2738,7 +2748,7 @@ function draw(now, dt) {
   drawPartLights(painter, now, view);
 
   // Where the mouse is, if that's somewhere to walk.
-  if (iso.hover?.kind === "floor" && !iso.hooks.blocked() && !iso.hooks.reading?.()) {
+  if (iso.hover?.kind === "floor" && (iso.hooks.fighting?.() || (!iso.hooks.blocked() && !iso.hooks.reading?.()))) {
     const { x, y } = iso.hover;
     if (walkable(scene.kinds[y]?.[x])) {
       const x0 = x * CELL_WIDTH;
@@ -2755,11 +2765,17 @@ function draw(now, dt) {
   const figures = [];
   const youAt = cellCentre(iso.you.x, iso.you.y);
   figures.push({ type: "you", wx: youAt.wx, wy: youAt.wy, depth: youAt.wx + youAt.wy });
+  // In a fight in the room, whoever's in it is drawn as a fighter (public/live-fight.js), and only once.
+  const fighting = iso.hooks.fightHidden?.() ?? null;
   for (const person of view.people) {
     const shown = iso.shown.get(person.key);
-    if (!shown) continue;
+    if (!shown || fighting?.has(person.key)) continue;
     const { wx, wy } = cellCentre(shown.x, shown.y);
     figures.push({ type: "person", person, shown, wx, wy, depth: wx + wy });
+  }
+  for (const one of iso.hooks.fighters?.(dt / 1000) ?? []) {
+    const { wx, wy } = cellCentre(one.x, one.y);
+    figures.push({ type: "fighter", one, wx, wy, depth: wx + wy });
   }
   const covering = new Set();
   for (const figure of figures) {
@@ -2779,7 +2795,16 @@ function draw(now, dt) {
   const hoverKey = iso.hover?.key;
   for (const item of order) {
     if (item.type === "block") drawBlock(painter, item, iso.materials);
-    else if (item.type === "person") {
+    else if (item.type === "fighter") {
+      const { one, wx, wy } = item;
+      const [x, y] = at(wx, wy);
+      const look = (one.person && iso.shown.get(one.person)?.look) ?? fighterLook(one);
+      ctx.save();
+      ctx.globalAlpha = one.fade ?? 1;
+      drawPerson(ctx, x, y, unit, { look, flip: one.flip, back: one.back, walking: one.walking, step: one.step, asleep: one.down, ring: hoverKey === `fighter:${one.key}` && !one.down ? "rgba(255,250,220,.95)" : one.ring });
+      ctx.restore();
+      if (!one.down) hits.push({ kind: "fighter", key: `fighter:${one.key}`, fighter: one.key, side: one.side, x: x - unit * 0.22, y: y - unit * 0.92, w: unit * 0.44, h: unit, floorX: x, floorY: y });
+    } else if (item.type === "person") {
       const { person, shown, wx, wy } = item;
       const [x, y] = at(wx, wy);
       const hovered = hoverKey === `person:${person.key}`;
@@ -2877,6 +2902,9 @@ function draw(now, dt) {
     chip(ctx, text, hit.floorX, hit.floorY - unit * 0.95, hovered ? BACKGROUND : tag, { background: hovered ? tag : undefined, size: 11, ...clip });
   }
 
+  // A fight in the room puts its health, readiness, names, odds and shots over everything.
+  iso.hooks.fightOverlay?.({ ctx, at, unit, hover: hoverKey, chip: (c2, text, x, y, color, opts = {}) => chip(c2, text, x, y, color, { ...clip, ...opts }) });
+
   // A room the player has just walked into fades up.
   const fade = 1 - (now - iso.fadeFrom) / 300;
   if (fade > 0 && !iso.calm) {
@@ -2948,7 +2976,7 @@ function loop(now) {
   iso.lastGoal = iso.camera ? `${Math.round(iso.camera.u * 50)},${Math.round(iso.camera.v * 50)}` : "";
   // Nothing going on: just enough to keep the lights and the water moving.
   // Walking, every frame there is; anything else moving, thirty a second; nothing going on, eight.
-  const every = iso.youMoving ? 0 : moving || cameraMoving || iso.redraw || now - iso.fadeFrom < 320 ? 1000 / 30 : 1000 / 8;
+  const every = iso.youMoving ? 0 : moving || cameraMoving || iso.redraw || iso.hooks.fighting?.() || now - iso.fadeFrom < 320 ? 1000 / 30 : 1000 / 8;
   if (now - iso.lastDraw < every) return;
   const since = now - iso.lastDraw;
   iso.lastDraw = now;
@@ -2981,6 +3009,8 @@ function underPointer() {
 }
 
 function titleFor(hit) {
+  if (hit?.kind === "fighter") return hit.side === "enemy" ? "Click to go for them." : "";
+  if (iso.hooks?.fighting?.()) return "";
   if (hit?.kind === "person") return `${hit.person.name}${hit.person.doing ? `, ${hit.person.doing}` : ""}. Click to walk over and talk, or right-click for more.`;
   if (hit?.kind === "thing" && hit.thing.part) return `${hit.thing.name}, ${hit.thing.part.word}. Click to walk over and work it, or right-click for more.`;
   if (hit?.kind === "thing") return `${hit.thing.name}. Click to walk over and take a look, or right-click for more.`;
@@ -2999,7 +3029,7 @@ function lookUnderPointer() {
   if ((hit?.key ?? null) !== (iso.hover?.key ?? null)) iso.redraw = true;
   iso.hover = hit;
   const blocked = iso.hooks.blocked();
-  iso.canvas.style.cursor = iso.hooks.reading?.() ? "pointer" : blocked ? "default" : hit && hit.kind !== "floor" ? "pointer" : "crosshair";
+  iso.canvas.style.cursor = iso.hooks.fighting?.() ? (hit?.kind === "fighter" && hit.side === "enemy" ? "pointer" : "crosshair") : iso.hooks.reading?.() ? "pointer" : blocked ? "default" : hit && hit.kind !== "floor" ? "pointer" : "crosshair";
   const title = titleFor(hit);
   if (iso.canvas.title !== title) iso.canvas.title = title;
 }
@@ -3018,6 +3048,8 @@ function onClick(event) {
   iso.pointer = { x: event.clientX, y: event.clientY };
   if (iso.hooks.pressed?.()) return;
   const hit = underPointer();
+  // In a fight in the room, a click is an order.
+  if (iso.hooks.fightClick?.(hit)) return;
   if (!hit || iso.hooks.blocked()) return;
   if (hit.kind === "floor") iso.hooks.go({ action: "go", x: hit.x, y: hit.y }, null, hit.point);
   else iso.hooks.go({ action: "go", to: hit.key });

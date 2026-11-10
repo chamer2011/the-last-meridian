@@ -9,7 +9,8 @@ import { boardScene, boardStories, boardStory, boardWorldItem, boardWorldList, c
 import { ensureContactFiles, newCampaignId, saveCaptainSheet } from "./src/campaign.js";
 import { SKILLS } from "./src/character-data.js";
 import { checkCommand, startCheck, startChoiceCheck } from "./src/checks.js";
-import { simulatorFollowers } from "./src/combat.js";
+import { combatView, simulatorFollowers } from "./src/combat.js";
+import { goLive, liveOrder, liveTick } from "./src/live-fight.js";
 import { buildCharacter, createGameFromDraft, creatorSetup, randomDraft } from "./src/creator.js";
 import { shipCommand } from "./src/ship.js";
 import { commandCommand } from "./src/command.js";
@@ -523,7 +524,20 @@ async function handleApi(req, res, route) {
   }
   // Fights happen right here. No request goes to the AI until the player continues the story.
   if (route === "/api/combat") {
-    const outcome = combatAction(requireGame(), body);
+    requireGame();
+    // A fight in the room: moving it there, time going by while the page runs it, and the player's orders. Time going
+    // by comes several times a second, so only the fight goes back, and the save waits for a quiet moment.
+    if (body.action === "live") {
+      goLive(game);
+      autosave();
+      return json(res, 200, { game: publicState(game) });
+    }
+    const live = Boolean(game.combat?.live);
+    const outcome = body.action === "tick" ? liveTick(game, body) : live ? liveOrder(game, body) : combatAction(game, body);
+    if ((body.action === "tick" || live) && !outcome.over) {
+      if (outcome.events.length || body.action !== "tick") saveAfterWalking();
+      return json(res, 200, { combat: combatView(game), you: { hp: game.hp, energy: game.energy }, outcome });
+    }
     // The blow-by-blow stays in the fight window. The story only records how it ended,
     // and a simulated fight leaves no trace in the story at all.
     if (outcome.over && !outcome.training) {
