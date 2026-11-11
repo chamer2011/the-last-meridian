@@ -33,8 +33,6 @@ const ui = {
   sideOpen: false,
   streaming: false,
   waiting: false,
-  // Over the room, the typing line only comes up when Enter is pressed.
-  typing: false,
   liveEntries: [],
   followStream: true,
   renderedCount: 0,
@@ -193,7 +191,7 @@ function titleScreen() {
     ),
     el("div", { class: "row" },
       el("button", { class: "primary", onclick: runAction(async () => { ui.screen = "create"; await openCreator(ui.setup); }) }, "New game"),
-      ui.game && el("button", { onclick: () => { ui.screen = "game"; render(); } }, `Continue as ${ui.game.name}`),
+      ui.game && el("button", { onclick: () => { ui.screen = "game"; render(); startIfUntold(); } }, `Continue as ${ui.game.name}`),
     ),
     ui.menuMessage && !ui.menuMessage.ok && el("div", { class: "notice-inline fail" }, ui.menuMessage.text),
     saves.length > 0 && el("h3", { class: "muted small" }, "Saved games"),
@@ -216,13 +214,19 @@ async function loadGame(slot) {
   resetBag();
   resetSheet();
   resetQuests();
-  ui.typing = false;
   ui.game = game;
   ui.saves = saves;
   ui.screen = "game";
   ui.sideOpen = false;
   ui.error = null;
   ui.consoleLines = [];
+  render();
+  startIfUntold();
+}
+
+// A game whose story hasn't begun begins it by itself: there's no button for it, and nothing at the bottom of the room.
+function startIfUntold() {
+  if (ui.screen === "game" && ui.game && !ui.game.transcript.length && !ui.streaming && !ui.waiting && !ui.error) sendChat({ event: "start" });
 }
 
 async function startNewGame(draft) {
@@ -236,11 +240,10 @@ async function startNewGame(draft) {
   resetBag();
   resetSheet();
   resetQuests();
-  ui.typing = false;
   ui.game = game;
   ui.saves = saves;
   ui.screen = "game";
-  ui.tab = "character";
+  ui.tab = "skills";
   ui.sideOpen = false;
   ui.error = null;
   ui.consoleLines = [];
@@ -254,7 +257,9 @@ async function startNewGame(draft) {
 function statusNode() {
   const g = ui.game;
   return el("div", { class: "statusbar", id: "status" },
-    el("strong", {}, g.name), el("span", { class: "muted" }, `LVL ${g.level}`),
+    // The player's name opens their registry printout, as C does. A star by it says there are attribute points to spend.
+    el("button", { class: "status-name", title: "Your registry printout (C)", onclick: (event) => { event.currentTarget.blur(); toggleSheet(); } }, g.name, g.statPoints > 0 && el("span", { class: "status-alert", title: `${g.statPoints} attribute point${g.statPoints === 1 ? "" : "s"} to spend` }, " *")),
+    el("span", { class: "muted" }, `LVL ${g.level}`),
     meter("HP", g.hp, g.maxHp), meter("EN", g.energy, g.maxEnergy),
     el("span", { class: g.needs.stress >= 50 ? "meter low" : "" }, `STRESS ${g.needs.stress}`),
     el("span", { class: g.needs.fatigue >= 60 ? "meter low" : "" }, `FATIGUE ${g.needs.fatigue}`),
@@ -281,19 +286,6 @@ function currentOptions() {
   // With no scene being played there's nothing to choose, whatever the story's last words were.
   if (!g.scene) return [];
   return choicesFor(g.transcript).map((choice) => ({ ...choice, run: () => takeChoice(choice) }));
-}
-
-// The typing line over the room, brought up by Enter, and put away by Esc or once it's been used.
-function startTyping() {
-  ui.typing = true;
-  render();
-  document.getElementById("composer")?.focus({ preventScroll: true });
-  return true;
-}
-function stopTyping() {
-  if (!ui.typing) return;
-  ui.typing = false;
-  render();
 }
 
 // Talking to someone: a quest whose scene is waiting on them goes on with it, and anyone else has a talk. With their
@@ -347,7 +339,6 @@ function submitPrompt() {
   const text = ui.draft.trim();
   if (!text) return;
   ui.draft = "";
-  ui.typing = false;
   ui.consoleLines = [];
   if (text.startsWith("/")) return runCommand(text);
 
@@ -394,12 +385,10 @@ function composerNode() {
             // With nothing typed, Enter goes on to the next piece of the story.
             if (popupsShown() && e.key === "Enter" && !e.target.value.trim() && popupNext()) e.preventDefault();
             if (!walkShown()) return;
-            // In a room, Esc gives the keys back to walking and puts the typing line away, and Space with nothing
-            // typed pauses the clock.
+            // In a room, Esc gives the keys back to walking, and Space with nothing typed pauses the clock.
             if (e.key === "Escape") {
               e.preventDefault();
               e.target.blur();
-              stopTyping();
             } else if (e.key === " " && !e.target.value.trim()) {
               e.preventDefault();
               toggleClock();
@@ -490,7 +479,7 @@ const act = (body) => runAction(async () => {
   if (message) ui.menuMessage = { ok: true, text: message };
 });
 
-const menuAlerts = (g) => ({ character: g.statPoints, skills: g.skillPoints, perks: g.perkPoints, ship: g.role.captain ? g.ship.shortages.length : 0 });
+const menuAlerts = (g) => ({ skills: g.skillPoints, perks: g.perkPoints, ship: g.role.captain ? g.ship.shortages.length : 0 });
 
 // The menus, in their groups, each group under its own heading, on the rail down the right edge and on the tabs of a
 // narrow window. What a menu holds is on its tooltip, not on the screen.
@@ -614,7 +603,7 @@ function closeMenu() {
 function focusComposer() {
   const composer = document.getElementById("composer");
   if (!composer) return;
-  if (walkShown() && !ui.draft.trim() && !ui.typing) {
+  if (walkShown() && !ui.draft.trim()) {
     if (document.activeElement === composer) composer.blur();
     return;
   }
@@ -651,7 +640,7 @@ function render() {
   const isNew = !previous || count !== ui.renderedCount;
   ui.renderedCount = count;
   app.replaceChildren(el("div", { class: "game" },
-    el("main", { class: "story" }, statusNode(), walkShown() ? walkViewNode(logNode, composerNode) : logNode(), !popupsShown() && !(liveOn() && walkShown()) && composerNode(), !walkShown() && questTrackerNode()),
+    el("main", { class: "story" }, statusNode(), walkShown() ? walkViewNode(logNode) : logNode(), !popupsShown() && !(liveOn() && walkShown()) && composerNode(), !walkShown() && questTrackerNode()),
     fightNode() ?? liveElsewhereNode(),
     checkNode(),
     talkNode(),
@@ -756,7 +745,6 @@ initWalk({
   openBag,
   bagOpen,
   talkTo,
-  startTyping,
   questTracker: questTrackerNode,
   sheet: () => sheetNode({ inMap: true }),
   openPersonSheet,
@@ -774,9 +762,8 @@ initPopups({
   reading,
   render,
   showWholeStory,
-  // What can be said or done once a scene's been read, and whether the typing line is up.
+  // What can be said or done once a scene's been read.
   options: currentOptions,
-  typing: () => ui.typing || (ui.game?.transcript.length === 0 && !ui.streaming && !ui.waiting && !ui.error),
   retry: () => {
     const { retry } = ui.error;
     ui.error = null;

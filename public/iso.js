@@ -18,7 +18,9 @@ const AMBIENT_BOOST = 1.6;
 const SIZES = { smallest: 46, largest: 84 };
 // The most pixels the picture of a level is drawn at, so a whole deck doesn't ask too much of a computer.
 
-const ZOOMS = { smallest: 0.55, largest: 1.7 };
+// Zooming out goes only 40% as far as it once did (to 0.82 of the usual size, not 0.55), at the owner's asking on
+// 2026-11-10: further out, the ship was too small to read.
+const ZOOMS = { smallest: 0.82, largest: 1.7 };
 const MOST_TEXTURES = 300;
 const FONT = '"Cascadia Mono", Consolas, "Lucida Console", "Courier New", monospace';
 const BACKGROUND = "#030403";

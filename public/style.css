@@ -92,6 +92,10 @@ input:focus { border-bottom-color: var(--text); }
   border-bottom: 1px solid var(--line); background: var(--panel); font-size: 13px;
 }
 .statusbar strong { color: var(--bright); text-transform: uppercase; }
+/* The player's name opens their registry printout, so it's a button that looks like the name it always was. */
+.statusbar .status-name { border: 0; background: none; padding: 0; font: inherit; font-weight: 700; color: var(--bright); text-transform: uppercase; cursor: pointer; }
+.statusbar .status-name:hover, .statusbar .status-name:focus-visible { text-decoration: underline; }
+.statusbar .status-alert { color: var(--warn); }
 .meter { white-space: pre; }
 .meter.low { color: var(--bad); }
 
@@ -938,19 +942,8 @@ body:has(#bag) .pop-notes { visibility: hidden; }
 .pop-balloon, .pop-note, .pop-window { pointer-events: auto; }
 .pop-window { width: auto; min-width: 0; }
 .pop-row { position: absolute; left: 5px; right: 5px; bottom: 5px; display: flex; align-items: flex-end; gap: 5px; pointer-events: none; }
-.pop-command { flex: 0 1 46%; }
-.pops:not(.pop-open) .pop-command { flex: 0 1 74ch; }
 .pop-story { flex: 1 1 54%; max-height: 60cqh; }
 .pop-story.more, .pop-balloon.more { cursor: pointer; }
-.pop-command .composer { border: 0; background: none; padding: 3px 8px 4px; }
-.pop-command .composer-inner { max-width: none; gap: 3px; }
-.pop-command .options button { display: block; font-size: 13px; padding: 1px 3px; }
-.pop-command .options button > * { margin-right: 1ch; }
-.pop-command .option-number, .pop-command .option-detail { color: var(--c-dim); }
-.pop-command .option-label { color: var(--c-bright); }
-.pop-command .prompt { color: var(--c-dim); }
-.pop-command .prompt-line input { color: var(--c-bright); caret-color: var(--c); }
-.pop-command .prompt-line input::placeholder { color: var(--c-dim); }
 .pop-reopen { flex: none; color: var(--c-bright); font-weight: 700; white-space: nowrap; }
 .pop-close { margin-left: auto; color: var(--c-bg); font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 12px; }
 .check-window .pop-close:hover:not(:disabled), .check-window .pop-close:focus-visible { background: var(--c-bg); color: var(--c); }
@@ -1050,8 +1043,6 @@ body:has(#bag) .pop-notes { visibility: hidden; }
 @container room (max-width: 760px) {
   .pop-row { flex-direction: column; align-items: stretch; }
   .pop-row .pop-story { order: -1; flex: none; max-height: 44cqh; }
-  .pops .pop-row .pop-command { flex: none; }
-  .pop-command.reading .options, .pop-command.reading .check-title { display: none; }
   .pop-story.overhead .pop-words { display: none; }
   .pop-notes { width: min(78cqw, 58ch); }
 }

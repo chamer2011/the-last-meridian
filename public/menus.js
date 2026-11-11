@@ -34,85 +34,6 @@ function asciiBar(value, max, width = 10) {
   return `[${"#".repeat(filled)}${"-".repeat(width - filled)}]`;
 }
 
-// ---- Character ----------------------------------------------------------
-
-function characterMenu() {
-  const { ui, act } = app;
-  const g = ui.game;
-  const d = g.dossier;
-  const p = g.combatProfile;
-  const penalties = [
-    g.penalties.stress && `Stress: ${g.penalties.stress} on every check.`,
-    g.penalties.fatigue && `Fatigue: ${g.penalties.fatigue} on every check.`,
-    g.penalties.checks && `Conditions: ${signed(g.penalties.checks)} on every check.`,
-  ].filter(Boolean);
-  return columns(
-    section(g.role.captain ? "Captain" : "You",
-      el("div", { class: "card stack gap-small" },
-        el("strong", { class: "menu-name" }, `${g.name}${d.callsign ? ` "${d.callsign}"` : ""}`),
-        small(`${g.pronouns}, age ${g.age}. ${g.species}.`),
-        small(g.background),
-        muted(`From ${d.homeworld ?? "somewhere"}. ${d.upbringing ?? ""}`),
-        small(`${g.ideologyTitle}. ${d.drive ? `Driven to: ${d.drive}.` : ""}`))),
-    !g.role.captain && section("Your place",
-      el("strong", {}, g.role.title),
-      g.role.chair && muted(`${g.role.chair} has the Meridian's chair. You're not the one they ask.`),
-      g.role.job
-        ? [muted(`It's a living: about ${g.role.job.pay} credits for eight hours, and it wears you out.`), el("div", {}, el("button", { disabled: Boolean(g.combat || g.talk), onclick: act({ action: "work" }) }, g.role.job.name))]
-        : g.role.jobAway && muted(`Your work's back at ${g.role.jobAway.place}.`),
-      el("div", { class: "row" },
-        el("button", { disabled: Boolean(g.combat || g.talk || g.check), onclick: () => app.openMenu("map") }, "Open the star map"),
-        el("button", { onclick: () => app.openMenu("ship") }, "How's the Meridian?"))),
-    section("Experience",
-      row("Level", g.level),
-      el("div", { class: "menu-row" }, el("span", {}, "Next level"), el("span", {}, `${asciiBar(g.xp, g.xpToNext)} ${g.xp}/${g.xpToNext} XP`)),
-      row("Attribute points", g.statPoints, "every 2 levels"),
-      row("Skill points", g.skillPoints, "spend in Skills"),
-      row("Perk points", g.perkPoints, "spend in Perks")),
-    section("Condition",
-      el("div", { class: "stack gap-small small" },
-        meter("HEALTH ", g.hp, g.maxHp), meter("ENERGY ", g.energy, g.maxEnergy),
-        strainMeter("STRESS ", g.needs.stress), strainMeter("FATIGUE", g.needs.fatigue)),
-      penalties.length > 0 ? el("div", { class: "notice-inline fail" }, penalties.join(" ")) : muted("Nothing is holding you back right now."),
-      small(g.clock.label),
-      g.conditions.map((c) => el("div", { class: "card" },
-        el("div", { class: "spread" }, el("strong", {}, c.name), el("span", { class: "muted small" }, `${Math.ceil(c.hoursLeft)}h left`)),
-        muted(c.desc),
-        effects(c.effects))),
-      sleepButtons(g)),
-    section("Attributes",
-      g.statPoints > 0 && small(`You have ${g.statPoints} point${g.statPoints === 1 ? "" : "s"} to spend.`),
-      Object.entries(ui.setup.stats).map(([id, label]) => el("div", { class: "menu-entry" },
-        el("div", { class: "menu-row" },
-          el("span", {}, label, g.stats[id] !== g.baseStats[id] && el("span", { class: "muted small" }, ` (base ${g.baseStats[id]})`)),
-          el("span", { class: "row" },
-            el("strong", {}, String(g.stats[id])),
-            el("span", { class: "muted small", title: "Added to checks that use this attribute" }, signed(g.stats[id] - 3)),
-            g.statPoints > 0 && el("button", { "aria-label": `Raise ${label}`, onclick: act({ action: "stat", id }) }, "+"))),
-        muted(g.statInfo[id])))),
-    section("In a fight",
-      row("Weapon", p.weapon, `${p.weaponStat} and ${p.weaponSkill}`),
-      row("Attack bonus", signed(p.attack)),
-      row("Damage", `${p.damage[0]}-${p.damage[1]}`),
-      row("Armor", p.armor, p.armorDefense ? `defense +${p.armorDefense}` : ""),
-      row("Defense", p.defense, "enemies must beat this"),
-      row("Chance to escape", `${p.escape}%`),
-      g.abilities.length > 0 && el("div", { class: "small" }, `Abilities: ${g.abilities.map((a) => `${a.name} (${a.energy} energy)`).join(", ")}`)),
-  );
-}
-
-// Where someone can sleep, and what it costs them.
-function sleepButtons(g) {
-  const { act } = app;
-  const { rest, captain } = g.role;
-  const busy = Boolean(g.combat || g.talk);
-  if (rest === null) return muted("You can only sleep properly aboard the Meridian.");
-  if (!rest) return el("div", {}, el("button", { disabled: busy, onclick: act({ action: "rest" }) }, captain ? "Sleep aboard ship (8 hours)" : "Sleep (8 hours)"));
-  return el("div", { class: "row" },
-    el("button", { disabled: busy || g.credits < rest, title: g.credits < rest ? "You can't afford it" : "", onclick: act({ action: "rest" }) }, `Rent a bunk (8 hours, ${rest} cr)`),
-    el("button", { disabled: busy, title: "Free, but you won't wake up much better for it", onclick: act({ action: "rest", rough: true }) }, "Sleep rough (8 hours)"));
-}
-
 // ---- Skills -------------------------------------------------------------
 
 function skillsMenu() {
@@ -526,7 +447,6 @@ function settingsMenu() {
 
 // about is what a menu holds, for the tooltip on its button: it isn't written on the screen.
 export const MENUS = {
-  character: { label: "Character", command: "char", about: "Your registry printout: who you are, your numbers, condition and gear, or press C", view: characterMenu, window: "sheet" },
   skills: { label: "Skills", command: "skills", about: "What you're good at, your odds, and practice", view: skillsMenu },
   traits: { label: "Traits", command: "traits", about: "Traits, convictions, and everything affecting you", view: traitsMenu },
   perks: { label: "Perks", command: "perks", about: "What you've learned, and what you can learn now", view: perksMenu },
@@ -548,7 +468,7 @@ export const MENUS = {
 
 // The groups the menus sit in on the rail, each under its own heading.
 export const MENU_GROUPS = [
-  { title: "You", ids: ["character", "skills", "traits", "perks", "beliefs", "dossier"] },
+  { title: "You", ids: ["skills", "traits", "perks", "beliefs", "dossier"] },
   { title: "The story", ids: ["quests", "leads", "board", "people", "codex", "bestiary"] },
   { title: "The ship", ids: ["ship", "command", "map"] },
   { title: "Gear", ids: ["inventory", "market"] },

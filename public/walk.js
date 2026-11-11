@@ -507,7 +507,7 @@ function storyBar() {
 }
 
 // The story's log goes in here with its usual id, so streaming and scrolling work just as they do in the classic view.
-export function walkViewNode(logNode, composerNode) {
+export function walkViewNode(logNode) {
   if (walk.fullStory) return el("div", { class: "walk-full" }, storyBar(), logNode());
   const popped = popupsShown();
   // The classic plan says what its marks are. The isometric room has nothing written over it.
@@ -517,7 +517,7 @@ export function walkViewNode(logNode, composerNode) {
     el("div", { class: "walk-map" },
       frameNode(),
       !popped && !fighting && clockBar(),
-      popped ? popsNode(composerNode, legend, clockBar()) : fighting ? null : legend,
+      popped ? popsNode(legend, clockBar()) : fighting ? null : legend,
       thingLayer(),
       menuLayer(),
       fighting ? null : app.questTracker?.(),
@@ -1413,13 +1413,12 @@ function onKey(event) {
       return;
     }
   }
-  // The keys walk (public/move.js). With nothing else for them, Enter brings up the typing line, and a number picks
-  // one of the story's choices.
+  // The keys walk (public/move.js). A number picks one of the story's choices, and in the views with a typing line
+  // under the story, Enter goes to it. Over the room there's none.
   if (typing || !walkShown() || walk.fullStory || cannotWalk()) return;
   if (event.key === "Enter" && !pressable) {
     event.preventDefault();
-    // Over the room, the typing line comes up for it; in the other views, it's always there.
-    if (!popupsShown() || !app.startTyping?.()) document.getElementById("composer")?.focus({ preventScroll: true });
+    if (!popupsShown()) document.getElementById("composer")?.focus({ preventScroll: true });
   } else if (/^[1-9]$/.test(event.key) && app.pickOption(Number(event.key))) event.preventDefault();
 }
 

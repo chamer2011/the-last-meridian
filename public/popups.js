@@ -361,14 +361,6 @@ function answerNode() {
   });
 }
 
-// The typing line comes up when Enter is pressed, or when there's a story to start, and goes again once it's used.
-function typingWindow(composer) {
-  if (!app.typing?.()) return null;
-  return el("section", { class: "check-window pop-window pop-command", "data-theme": "green", id: "pop-command" },
-    el("header", { class: "check-title" }, el("span", { class: "check-name" }, "What do you do?")),
-    composer);
-}
-
 // Where a pane by someone's head goes: up and to their right, with its corner a hand from the head,
 // or up and to their left when the right has no room, and always on the screen, out from under the
 // clock and the notes. This runs each time the room's drawn, so it stays with them as they move, and
@@ -540,7 +532,7 @@ export function popupsAttached() {
   else isoLook();
 }
 
-export function popsNode(composerNode, legend, clock) {
+export function popsNode(legend, clock) {
   // This comes first, because what's on the typing line depends on whether the story's open.
   sync();
   return el("div", { class: `pops${pop.open ? " pop-open" : ""}`, id: "pops" },
@@ -552,5 +544,7 @@ export function popsNode(composerNode, legend, clock) {
     waitingChip(),
     legend,
     clock,
-    el("div", { class: "pop-row", id: "pop-row" }, app.typing?.() ? typingWindow(composerNode()) : null));
+    // Nothing sits along the bottom of the room any more: the choices hang off whoever's answered, and the story
+    // starts by itself. The row stays, empty, for what measures it.
+    el("div", { class: "pop-row", id: "pop-row" }));
 }

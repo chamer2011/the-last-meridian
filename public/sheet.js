@@ -1,6 +1,6 @@
 // The character sheet: what the fleet's registry prints about the player, on amber dot-matrix paper that feeds down
 // out of a printer slot at the top of the map, and goes back up into it when it's torn off. It opens from the
-// Character button, /char or C, takes only a corner of the room, and the clock runs on behind it. The owner picked it
+// player's name in the top bar or C (the Character menu went on 2026-11-10, at the owner's word), takes only a corner of the room, and the clock runs on behind it. The owner picked it
 // from five examples on 2026-11-08 ("the registry printout", in the map and not a menu on the right). Everything on it
 // comes from the game view the menus used; the buttons do what the old Character menu's did. Anyone else's printout
 // opens from the right-click menu on them (Registry), from the server's /api/person-sheet (src/person-sheet.js).

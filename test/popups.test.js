@@ -190,11 +190,14 @@ test("the popups are in the game's own windows, in its own font, and what's said
   const pane = fs.readFileSync(new URL("../public/pane.js", import.meta.url), "utf8");
   const talk = fs.readFileSync(new URL("../public/talk.js", import.meta.url), "utf8");
   // Nothing of the story stays along the bottom: what happens is over the top of the room while it's read, and what
-  // can be said hangs off the pane of whoever's waiting for an answer. The typing line comes up only on Enter.
+  // can be said hangs off the pane of whoever's waiting for an answer. Since 2026-11-10 there's no typing line over
+  // the room at all, and a story that hasn't begun starts by itself.
   assert.ok(popups.includes("class: `pop-caption"));
   assert.ok(!popups.includes("check-window pop-window pop-story"));
   assert.ok(popups.includes('id: "story-choices"'));
-  assert.ok(popups.includes("check-window pop-window pop-command"));
+  assert.ok(!popups.includes("pop-command") && !popups.includes("typingWindow"));
+  const app = fs.readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.ok(!app.includes("startTyping") && app.includes("function startIfUntold()"));
   // The speech, and a talk, go on the same pane: four corners, a tag, a line to the head, in the speaker's color.
   assert.ok(pane.includes('class: "pop-pane pop-speaker"'));
   assert.ok(popups.includes("paneNode({") && talk.includes("paneNode({"));
