@@ -11,7 +11,7 @@
 import { findCharacter, fullName } from "./campaign.js";
 import { CAREERS, FALL_CHOICES, GENERAL_EVENTS, GENERAL_MISHAPS } from "./life-data.js";
 import { HEALTH_FILE_PROBLEMS, WORLD_CHARACTERS, WORLD_HEALTH, WORLD_LIFE, WORLD_PLACES, WORLD_SPECIES, WOUNDS } from "./world.js";
-import { DEFAULT_HITS, PARTS, PART_WORDS, readBodyLine, readKindLine, readOldMarks, readStartLine } from "../public/health-text.js";
+import { DEFAULT_HITS, PARTS, PART_WORDS, readBodyLine, readHitLine, readKindLine, readOldMarks, readShare, readStartLine, readWeaponLine } from "../public/health-text.js";
 
 const lower = (text) => String(text ?? "").trim().toLowerCase();
 const normal = (text) => lower(text).replace(/^(a|an|the)\s+/, "");
@@ -81,6 +81,7 @@ const MOST_MADE = 4000;
 export function clearBodies() {
   kinds = null;
   starts = null;
+  hits = null;
   made.clear();
 }
 
@@ -119,7 +120,7 @@ function findKind(words, parts = null) {
   }
   return best;
 }
-const RULE_KEYS = ["serious", "limps", "hidden", "artificial", "notRandom", "never", "worsens", "noHand", "noStand", "bleeds", "heals", "treated", "treatment", "out", "harder", "after"];
+const RULE_KEYS = ["serious", "fightAttack", "limps", "hidden", "artificial", "notRandom", "never", "worsens", "noHand", "noStand", "bleeds", "heals", "treated", "treatment", "out", "harder", "after"];
 const rulesOf = (kind) => Object.fromEntries(RULE_KEYS.filter((key) => kind[key] !== undefined).map((key) => [key, kind[key]]));
 
 // A species' body: its parts' hit weights, and what it does differently.
@@ -233,7 +234,7 @@ export function bodyOf(game, who) {
   if (who.id && !person) return null;
   const key = person ? `id:${person.id}` : crowdKey(who.place ?? game.location, who.name);
   const cached = made.get(`${seed}|${key}`);
-  if (cached) return cached;
+  if (cached) return withWounds(game, key, cached);
   let body;
   if (person) {
     const roll = seeded(`${seed}|${key}|age`);
@@ -246,7 +247,180 @@ export function bodyOf(game, who) {
   }
   if (made.size >= MOST_MADE) made.clear();
   made.set(`${seed}|${key}`, body);
-  return body;
+  return withWounds(game, key, body);
+}
+
+// ---- Wounds of now: kept in the save, and gone when their time comes ------------------------------------
+
+// The player's are game.wounds; anyone else's are game.bodies[key].wounds, by the key their body is made from. Each is
+// { part, kind, words, at, until }: the clock's hours it came at and goes at, or null for never. For now a wound just
+// heals when its time comes, by its kind's healing untreated, or treated where it only heals once treated, since
+// nothing treats anyone yet; the plan's step 3 makes healing, bleeding and treatment real.
+const nowOf = (game) => game.clock?.hours ?? 0;
+const lasts = (wound, now) => wound.until === null || wound.until === undefined || wound.until > now;
+const storeOf = (game, key) => (key === "you" ? game.wounds : game.bodies?.[key]?.wounds) ?? [];
+export const woundsNow = (game, key) => storeOf(game, key).filter((wound) => lasts(wound, nowOf(game)));
+
+// A kind by its id, on that part if there's one for it.
+export function kindOf(id, part) {
+  const all = kindsNow().all;
+  return all.find((kind) => kind.id === id && kind.parts.includes(part)) ?? all.find((kind) => kind.id === id) ?? null;
+}
+const rulesOfWound = (wound) => {
+  const kind = kindOf(wound.kind, wound.part);
+  return kind ? rulesOf(kind) : {};
+};
+
+function hoursOf(kind, roll) {
+  if (kind.out) return kind.out[0] + Math.floor(roll() * (kind.out[1] - kind.out[0] + 1));
+  if (kind.never) return null;
+  const days = kind.heals ?? kind.treated ?? null;
+  return days === null ? null : days * 24;
+}
+// A wound of a kind on a part, before it's kept: how many hours it will last.
+export const newWound = (kind, part, roll = Math.random) => ({ part, kind: kind.id, words: fill(kind.words, part), hours: hoursOf(kind, roll) });
+const stamped = (game, wound) => ({ part: wound.part, kind: wound.kind, words: wound.words, at: nowOf(game), until: wound.hours === null || wound.hours === undefined ? null : nowOf(game) + wound.hours });
+
+export function addWounds(game, key, list) {
+  if (!key || !list.length) return;
+  const kept = list.map((wound) => stamped(game, wound));
+  if (key === "you") {
+    game.wounds = [...(game.wounds ?? []), ...kept];
+    return;
+  }
+  game.bodies ??= {};
+  const held = game.bodies[key] ?? { wounds: [] };
+  game.bodies[key] = { ...held, wounds: [...held.wounds, ...kept] };
+}
+
+// Wounds whose time has come are gone, everyone's. It returns the player's, for the story to say so.
+export function healWounds(game) {
+  const now = nowOf(game);
+  const healed = (game.wounds ?? []).filter((wound) => !lasts(wound, now));
+  if (healed.length) game.wounds = game.wounds.filter((wound) => lasts(wound, now));
+  for (const [key, held] of Object.entries(game.bodies ?? {})) {
+    const left = (held.wounds ?? []).filter((wound) => lasts(wound, now));
+    if (left.length === (held.wounds ?? []).length) continue;
+    if (left.length) game.bodies[key] = { ...held, wounds: left };
+    else delete game.bodies[key];
+  }
+  return healed;
+}
+
+// A body as it is now: what it was made with, and the wounds it has.
+function withWounds(game, key, body) {
+  const now = woundsNow(game, key);
+  if (!now.length) return body;
+  return { ...body, marks: [...body.marks, ...now.map((wound) => markOfWound(game, wound))] };
+}
+const markOfWound = (game, wound) => ({
+  part: wound.part, kind: wound.kind, section: "wound", words: wound.words, template: null, rules: rulesOfWound(wound), from: "now",
+  ...(wound.until === null || wound.until === undefined ? {} : { hoursLeft: Math.max(0, wound.until - nowOf(game)) }),
+});
+
+// ---- Hits: where they land and what they leave ---------------------------------------------------------
+
+let hits = null;
+function hitsNow() {
+  if (hits) return hits;
+  const problems = [];
+  const weapons = [];
+  let rest = "blunt";
+  for (const raw of WOUNDS.weapons ?? []) {
+    const line = readWeaponLine(raw.text);
+    if (line.problem) problems.push({ line: raw.line, message: line.problem });
+    else if (line.rest) rest = line.kind;
+    else weapons.push(line);
+  }
+  const lines = [];
+  for (const raw of WOUNDS.hits ?? []) {
+    const line = readHitLine(raw.text);
+    if (line.problem) {
+      problems.push({ line: raw.line, message: line.problem });
+      continue;
+    }
+    lines.push({ ...line, line: raw.line });
+  }
+  const light = readShare(WOUNDS.light ?? "20% of their health");
+  const hard = readShare(WOUNDS.hard ?? "40% of their health, or a hard hit", true);
+  hits = { weapons, rest, lines, light: light.problem ? 0.2 : light.share, hard: hard.problem ? 0.4 : hard.share, critical: hard.problem ? true : hard.critical, problems };
+  return hits;
+}
+
+// The kind of hit a weapon makes, by the words in its name: a plasma cutter burns, a sidearm shoots, bare hands are blunt.
+export function weaponKind(name) {
+  const { weapons, rest } = hitsNow();
+  const words = lower(name);
+  for (const line of weapons) if (line.words.some((word) => new RegExp(`\\b${escaped(word)}`).test(words))) return line.kind;
+  return rest;
+}
+
+const fitsBody = (kind, species) => (kind.only ? kind.only.includes(species) : !kind.not?.includes(species));
+
+// Where a hit lands, and the wound it leaves: a part at random by the body's sizes, never chosen by anyone, and a wound
+// by how much of their health it took, what it was with, and whether it put them down. Null for a machine, which has no
+// body and breaks as it always has.
+export function landHit(body, { weapon = null, damage = 0, maxHp = 1, critical = false, down = false, roll = Math.random } = {}) {
+  if (!body) return null;
+  const species = speciesBody(body.species);
+  const part = weighted(roll, PARTS.map((one) => [one, Math.max(0, species.hits[one] ?? 0)]));
+  const rules = hitsNow();
+  const kind = weaponKind(weapon ?? "bare hands");
+  const matches = (line) => line.kind === kind || line.kind === "anything";
+  const line = rules.lines.find((one) => one.species.includes(body.species) && matches(one)) ?? rules.lines.find((one) => !one.species.length && matches(one));
+  const share = damage / Math.max(1, maxHp);
+  const hard = share >= rules.hard || (critical && rules.critical);
+  const pick = (options) => {
+    for (const option of options) {
+      if (!option.parts.includes(part)) continue;
+      const found = findKind(option.name, [part]);
+      if (found && fitsBody(found, body.species)) return found;
+    }
+    return null;
+  };
+  let wound = null;
+  if (line) {
+    if (down) wound = pick(line.down);
+    if (!wound && hard) wound = pick(line.hard);
+    if (!wound && line.light && (hard || down || share >= rules.light)) wound = pick([{ name: line.light, parts: PARTS }]);
+  }
+  return { part, where: PART_WORDS[part], wound: wound ? newWound(wound, part, roll) : null };
+}
+
+// ---- Fighters ----------------------------------------------------------------------------------------
+
+// A fighter's body and the wounds they come into the fight with: someone with a file by their id, someone with only a
+// name by their place and name, and an enemy that's nobody in particular a body for the fight alone, which isn't kept.
+// A machine has none.
+export function fighterBody(game, { id = null, name = null, place = null, machine = false, species = null } = {}) {
+  if (machine) return { body: null, wounds: [] };
+  const person = id ? findCharacter(game.campaign, id) : null;
+  const key = person ? `id:${person.id}` : name && place ? crowdKey(place, name) : null;
+  const kind = person ? person.species ?? "human" : name && place ? crowdWho(name).species : species ?? "human";
+  return { body: { key, species: kind }, wounds: key ? woundsNow(game, key).map((wound) => ({ ...wound })) : [] };
+}
+
+const fightRules = (wounds = []) => wounds.map(rulesOfWound);
+// What their wounds take off their attack in a fight.
+export const fightAttackOf = (wounds = []) => fightRules(wounds).reduce((sum, rules) => sum + (rules.fightAttack ?? 0), 0);
+// A wound that won't let them stand: they can't walk in a fight in the room, or run from one.
+export const legWound = (wounds = []) => wounds.find((wound) => rulesOfWound(wound).noStand) ?? null;
+// How someone down is: out cold, unable to stand, or just unable to get up.
+export function downState(wounds = []) {
+  const rules = fightRules(wounds);
+  if (rules.some((one) => one.out)) return "out cold";
+  if (rules.some((one) => one.noStand)) return "can't stand";
+  return "can't get up";
+}
+// The wounds that matter in a fight, for the fighters' cards and the room's panel.
+export const fightWords = (wounds = []) => wounds.filter((wound) => {
+  const rules = rulesOfWound(wound);
+  return rules.serious || rules.fightAttack || rules.noStand || rules.out;
+}).map((wound) => wound.words);
+// The player's wounds, as an effect on their numbers: only what they take off an attack in a fight, for now.
+export function woundEffects(game) {
+  const attack = fightAttackOf(woundsNow(game, "you"));
+  return attack ? { attack } : null;
 }
 
 // ---- The player's own body ----------------------------------------------------------------------
@@ -305,12 +479,14 @@ function playerBody(game) {
   const species = character.species ?? "human";
   const job = [...(character.careers ?? []).map((one) => one.name), character.background].filter(Boolean).join(" ");
   const body = makeBody(seed, "you", { species, age: character.age ?? 30, job }, pastLines(character, game.traits ?? []));
-  const hits = speciesBody(species).hits;
+  const sizes = speciesBody(species).hits;
   for (const condition of game.conditions ?? []) {
     const text = CONDITION_WOUNDS[condition.id];
     if (!text) continue;
-    body.marks.push({ ...markFrom(readBodyLine(text), seeded(`${seed}|you|${condition.id}`), hits, "now"), hoursLeft: condition.hoursLeft });
+    body.marks.push({ ...markFrom(readBodyLine(text), seeded(`${seed}|you|${condition.id}`), sizes, "now"), hoursLeft: condition.hoursLeft });
   }
+  // The wounds fights have left.
+  body.marks.push(...woundsNow(game, "you").map((wound) => markOfWound(game, wound)));
   if ((game.conditions ?? []).some((c) => c.id === "infected")) {
     const kind = findKind("infected");
     const under = body.marks.find((mark) => mark.section === "wound");
@@ -424,6 +600,19 @@ export function healthProblems() {
   for (const kind of all) {
     for (const id of [...(kind.only ?? []), ...(kind.not ?? [])]) {
       if (!WORLD_SPECIES[id]) out.push(`health/wounds.txt (line ${kind.line}): ${kind.name} names ${id}, which isn't one of the species in world/species`);
+    }
+  }
+  // The hits: kinds the weapons make, wounds the file has, species there are.
+  const rules = hitsNow();
+  for (const one of rules.problems) out.push(`health/wounds.txt (line ${one.line}): ${one.message}`);
+  const kindsOfHit = new Set([...rules.weapons.map((one) => one.kind), rules.rest, "anything"]);
+  for (const line of rules.lines) {
+    const where = `health/wounds.txt (line ${line.line})`;
+    if (!kindsOfHit.has(line.kind)) out.push(`${where}: ${line.kind} isn't a kind of hit under Weapons, or anything`);
+    for (const id of line.species) if (!WORLD_SPECIES[id]) out.push(`${where}: ${id} isn't one of the species in world/species`);
+    for (const option of [...(line.light ? [{ name: line.light, parts: PARTS }] : []), ...line.hard, ...line.down]) {
+      if (!all.some((kind) => kind.section === "wound" && kind.key === normal(option.name))) out.push(`${where}: ${option.name} isn't one of the wounds under Wounds`);
+      else if (!all.some((kind) => kind.section === "wound" && kind.key === normal(option.name) && kind.parts.some((part) => option.parts.includes(part)))) out.push(`${where}: ${option.name} can't be on the parts it's given`);
     }
   }
   for (const [place, file] of Object.entries(WORLD_HEALTH)) {

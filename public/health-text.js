@@ -64,9 +64,10 @@ export function readRule(text) {
   if ((found = rule.match(/^likelier in:\s*(.+)$/))) return { likelier: listOf(found[1]).map(lower) };
   if ((found = rule.match(/^only for:\s*(.+)$/))) return { only: listOf(found[1]).map(lower) };
   if ((found = rule.match(/^not for:\s*(.+)$/))) return { not: listOf(found[1]).map(lower) };
+  if ((found = rule.match(/^in a fight: attack ([+-]?\d+)$/))) return { fightAttack: Number(found[1]) };
   return { problem: `I don't know the rule "${String(text).trim()}"` };
 }
-export const RULE_WORDS = "serious; bleeds 4 an hour; heals in 4 days, 2 once dressed; heals in 8 days once dressed; never heals; out cold for 1 to 4 hours; checks one step harder; the hand's no use; can't stand on it; limps; hidden; artificial; never at random; comes after 2 days undressed; worse every day; likelier in: dock, engine; only for: synthetic; not for: synthetic";
+export const RULE_WORDS = "in a fight: attack -2; serious; bleeds 4 an hour; heals in 4 days, 2 once dressed; heals in 8 days once dressed; never heals; out cold for 1 to 4 hours; checks one step harder; the hand's no use; can't stand on it; limps; hidden; artificial; never at random; comes after 2 days undressed; worse every day; likelier in: dock, engine; only for: synthetic; not for: synthetic";
 
 // Words, then rules, separated by semicolons: "a bad {side} knee; limps; likelier in: dock".
 function readWordsAndRules(text) {
@@ -104,10 +105,50 @@ export function readOldMarks(text) {
 }
 
 const DEFAULT_OLD_MARKS = "one every 20 years after 20, at most 3";
+const DEFAULT_LIGHT = "20% of their health";
+const DEFAULT_HARD = "40% of their health, or a hard hit";
+
+// "20% of their health", and for a hard wound ", or a hard hit" after it: how much of someone's health one hit has to
+// take to leave a wound, and whether a hard hit (a critical) always leaves a hard one.
+export function readShare(text, hard = false) {
+  const found = lower(text).match(/^(\d+(?:\.\d+)?)% of their health(, or a hard hit)?$/);
+  if (!found || (found[2] && !hard)) return { problem: hard ? "is written like: 40% of their health, or a hard hit" : "is written like: 20% of their health" };
+  return { share: Number(found[1]) / 100, critical: Boolean(found[2]) };
+}
+
+// "blade: knife, sword, claw" or "blunt: anything else": which kind of hit a weapon makes, by the words in its name.
+export function readWeaponLine(text) {
+  const found = String(text).trim().match(/^([A-Za-z]+):\s*(.+)$/);
+  if (!found) return { problem: "each one is written: a kind of hit, a colon and words in a weapon's name, like blade: knife, sword" };
+  const kind = lower(found[1]);
+  if (lower(found[2]) === "anything else") return { kind, rest: true };
+  return { kind, words: listOf(found[2]).map(lower) };
+}
+
+// "blunt: bruise; hard: broken bone on a limb, concussion on the head; down: knock on the head", or "anything for
+// synthetic: dent; hard: cracked casing": the wound a kind of hit leaves, on whom, when it's a hit, a hard one, or the one
+// that puts them down. "anything" is any kind of hit.
+export function readHitLine(text) {
+  const found = String(text).trim().match(/^([A-Za-z]+)(?:\s+for\s+([^:]+))?:\s*(.+)$/);
+  if (!found) return { problem: "each one is written: a kind of hit, a colon and the wound it leaves, then hard: and down: if you like, like blade: cut; hard: deep cut" };
+  const [light, ...rest] = found[3].split(";").map((one) => one.trim()).filter(Boolean);
+  const hit = { kind: lower(found[1]), species: found[2] ? listOf(found[2]).map(lower) : [], light: lower(light) === "nothing" ? null : lower(light), hard: [], down: [] };
+  for (const piece of rest) {
+    const option = piece.match(/^(hard|down):\s*(.+)$/i);
+    if (!option) return { problem: `"${piece}" isn't hard: or down:` };
+    for (const one of listOf(option[2])) {
+      const [name, where] = one.split(/\s+on\s+/i);
+      const parts = where ? readWhere(where) : { parts: PARTS };
+      if (parts.problem) return { problem: `${one}: ${parts.problem}` };
+      hit[lower(option[1])].push({ name: lower(name), parts: parts.parts });
+    }
+  }
+  return hit;
+}
 
 export function parseWoundsText(text) {
   const problems = [];
-  const value = { name: "Wounds and old marks", draft: null, oldMarks: DEFAULT_OLD_MARKS, rough: [], wounds: [], marks: [] };
+  const value = { name: "Wounds and old marks", draft: null, oldMarks: DEFAULT_OLD_MARKS, light: DEFAULT_LIGHT, hard: DEFAULT_HARD, rough: [], wounds: [], weapons: [], hits: [], marks: [] };
   let part = null;
   let titled = false;
   for (const [index, raw] of String(text ?? "").replace(/\r\n?/g, "\n").split("\n").entries()) {
@@ -123,15 +164,15 @@ export function parseWoundsText(text) {
       }
       problems.push({ line: n, message: "the first line is the name, written # Wounds and old marks" });
     }
-    const heading = line.match(/^(Wounds|Old marks):$/i);
+    const heading = line.match(/^(Wounds|Weapons|Hits|Old marks):$/i);
     if (heading) {
-      part = heading[1].toLowerCase() === "wounds" ? "wounds" : "marks";
+      part = { wounds: "wounds", weapons: "weapons", hits: "hits", "old marks": "marks" }[heading[1].toLowerCase()];
       continue;
     }
     if (part) {
       const entry = line.match(/^-\s+(.*)$/);
       if (!entry) {
-        problems.push({ line: n, message: `under "${part === "wounds" ? "Wounds" : "Old marks"}", each one starts with - and a space` });
+        problems.push({ line: n, message: `under "${{ wounds: "Wounds", weapons: "Weapons", hits: "Hits", marks: "Old marks" }[part]}", each one starts with - and a space` });
         continue;
       }
       value[part].push({ text: entry[1].trim(), line: n });
@@ -139,7 +180,7 @@ export function parseWoundsText(text) {
     }
     const field = line.match(/^([A-Za-z][A-Za-z ]{0,30}):\s*(.*)$/);
     if (!field) {
-      problems.push({ line: n, message: "before the first part, each line is draft, old marks or rough work, then a colon and its value" });
+      problems.push({ line: n, message: "before the first part, each line is draft, old marks, a wound from a hit, a hard wound or rough work, then a colon and its value" });
       continue;
     }
     const key = lower(field[1]);
@@ -149,7 +190,12 @@ export function parseWoundsText(text) {
       const read = readOldMarks(value.oldMarks);
       if (read.problem) problems.push({ line: n, message: read.problem });
     } else if (key === "rough work") value.rough = listOf(field[2]).map(lower);
-    else problems.push({ line: n, message: `I don't know "${field[1]}": the lines at the top are draft, old marks and rough work` });
+    else if (key === "a wound from a hit" || key === "a hard wound") {
+      const read = readShare(field[2], key === "a hard wound");
+      if (read.problem) problems.push({ line: n, message: `${key} ${read.problem}` });
+      value[key === "a hard wound" ? "hard" : "light"] = field[2].trim();
+    }
+    else problems.push({ line: n, message: `I don't know "${field[1]}": the lines at the top are draft, old marks, a wound from a hit, a hard wound and rough work` });
   }
   if (!titled) problems.push({ line: 1, message: "the file is empty: it starts with # Wounds and old marks" });
   return { value, problems };
@@ -159,8 +205,11 @@ export function writeWoundsText(value) {
   const out = [`# ${value.name ?? "Wounds and old marks"}`];
   if (value.draft) out.push(`draft: ${value.draft}`);
   out.push(`old marks: ${value.oldMarks ?? DEFAULT_OLD_MARKS}`);
+  out.push(`a wound from a hit: ${value.light ?? DEFAULT_LIGHT}`, `a hard wound: ${value.hard ?? DEFAULT_HARD}`);
   if (value.rough?.length) out.push(`rough work: ${value.rough.join(", ")}`);
   out.push("", "Wounds:", ...(value.wounds ?? []).map((one) => `- ${one.text}`));
+  out.push("", "Weapons:", ...(value.weapons ?? []).map((one) => `- ${one.text}`));
+  out.push("", "Hits:", ...(value.hits ?? []).map((one) => `- ${one.text}`));
   out.push("", "Old marks:", ...(value.marks ?? []).map((one) => `- ${one.text}`));
   return `${out.join("\n")}\n`;
 }

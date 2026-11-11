@@ -14,6 +14,7 @@ import { attrMod, oddsFor, practice, roll, useItem } from "./rules.js";
 import { canStand, fightGround, standAfterFight } from "./walk.js";
 import { COMBAT_TEXT } from "./world.js";
 import { drawnWeapon, spendFromBelt } from "./bag.js";
+import { legWound, woundsNow } from "./body.js";
 
 const WIDTH = 0.5;
 // How fast anyone walks in a fight, in tiles a second.
@@ -165,6 +166,8 @@ function bodies(game) {
   ];
 }
 const standing = (game, body) => (body.fighter ? body.fighter.hp > 0 && !body.fighter.out : game.hp > 0);
+// Someone with a wound they can't stand on, such as a broken leg, fights from where they are (src/body.js).
+const legOf = (game, body) => legWound(body.fighter ? body.fighter.wounds : woundsNow(game, YOU));
 const reachOfBody = (game, body) => (body.fighter ? body.live.reach : yourReach(game));
 const facing = (game, body) => bodies(game).filter((other) => other.side !== body.side && standing(game, other));
 // Where nobody else can be walked through: everyone still standing, and everyone in the room who isn't in the fight.
@@ -350,7 +353,7 @@ function planFor(game, ground, body) {
 // The player, with something held, walks up to whoever they're going for.
 function closeIn(game, ground, target) {
   const you = game.combat.live.you;
-  if (you.chase > 0) return;
+  if (you.chase > 0 || legOf(game, bodies(game)[0])) return;
   you.chase = 0.5;
   const area = reachFrom(ground.level, squareOf(you), 14, taken(game, ground, bodies(game)[0]));
   let best = null;
@@ -419,6 +422,11 @@ function playerActs(game, ground, log) {
   if (need && target) {
     const sight = sightBetween(game, ground, you, need, target.live);
     if (!sight.ok) {
+      const leg = need === "melee" ? legOf(game, bodies(game)[0]) : null;
+      if (leg && !you.stuck) {
+        you.stuck = true;
+        log.push({ text: `You can't get to them with ${leg.words}.`, tone: "dim" });
+      }
       if (need === "melee") closeIn(game, ground, target);
       return null;
     }
@@ -500,7 +508,8 @@ function advance(game, ground, dt, log) {
       body.live.path = [];
       continue;
     }
-    walkOn(body.live, dt);
+    if (legOf(game, body)) body.live.path = [];
+    else walkOn(body.live, dt);
     body.live.cool = Math.max(0, body.live.cool - dt);
   }
   for (const body of bodies(game)) {
@@ -510,7 +519,7 @@ function advance(game, ground, dt, log) {
     body.live.think = 1.3 + Math.random();
     const plan = planFor(game, ground, body);
     if (plan.target) body.live.mark = plan.target;
-    if (plan.path.length && (body.live.reach === "melee" || plan.score > plan.stay + 7)) body.live.path = plan.path;
+    if (plan.path.length && !legOf(game, body) && (body.live.reach === "melee" || plan.score > plan.stay + 7)) body.live.path = plan.path;
   }
   // People due partway through come in by the way into the room, round by round as they would have.
   const round = 1 + Math.floor(c.live.t / ROUND_SECONDS);
@@ -573,6 +582,8 @@ export function liveOrder(game, body) {
   const you = c.live.you;
   if (game.hp <= 0) throw new Error("You're down.");
   if (body.type === "move") {
+    const leg = legOf(game, bodies(game)[0]);
+    if (leg) throw new Error(`You can't walk with ${leg.words}.`);
     const x = Math.round(Number(body.x));
     const y = Math.round(Number(body.y));
     if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("Walk where?");

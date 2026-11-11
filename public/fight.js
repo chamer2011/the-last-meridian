@@ -84,6 +84,8 @@ function fighterCard(fighter, side) {
     side === "you" && el("div", { class: "fighter-bar" }, `EN ${healthBar(fighter.energy, fighter.maxEnergy)}`),
     el("div", { class: "fighter-stats" }, `ATK ${signed(fighter.attack)} DEF ${fighter.defense} DMG ${fighter.damage.join("-")}`),
     fighter.weapon && el("div", { class: "fighter-stats" }, fighter.weapon),
+    // The wounds that tell in a fight, such as a broken arm or a leg they can't stand on.
+    fighter.wounds?.length > 0 && el("div", { class: "fighter-stats tone-warn", title: fighter.wounds.join(", ") }, fighter.wounds.map((words) => words.charAt(0).toUpperCase() + words.slice(1)).join(", ")),
     fighter.stunned && !down && el("div", { class: "fighter-stats tone-warn" }, "Can't act this round"),
     down && el("div", { class: "fighter-stats tone-bad" }, "Down"),
     gone && el("div", { class: "fighter-stats tone-good" }, fighter.out),

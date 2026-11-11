@@ -1,7 +1,7 @@
 // The game's rules. Only this code changes health, money, items and so on, whatever the story's files say,
 // so nothing can cheat.
 
-import { bodyOf, bodyView, newBodySeed } from "./body.js";
+import { bodyOf, bodyView, healWounds, newBodySeed, woundEffects } from "./body.js";
 import { allCharacters, allEnemies, campaignCharacters, campaignEnemies, campaignFolderName, findCharacter, findEnemy, fullName } from "./campaign.js";
 import {
   ABILITIES, CORE_FACTIONS, FACTIONS, ITEMS, LOCATIONS, PERKS, STARTING_QUESTS, STATS, STAT_INFO,
@@ -65,6 +65,8 @@ function fxSources(game) {
   for (const id of game.perks ?? []) add(PERKS[id]?.fx);
   for (const c of game.conditions ?? []) add(CONDITIONS[c.id]?.fx);
   for (const c of activeConvictions(game.ideology)) add(c.fx);
+  // What the wounds fights have left take off the player's attack.
+  add(woundEffects(game));
   for (const id of Object.keys(game.inventory ?? {})) add(ITEMS[id]?.fx);
   return list;
 }
@@ -318,6 +320,8 @@ function hoursPass(game, hours, activity) {
       notes.push(`[HEALTH] You've recovered: ${CONDITIONS[c.id].name}.`);
     }
   }
+  // Wounds go when their time comes, everyone's (src/body.js).
+  for (const wound of healWounds(game)) notes.push(`[HEALTH] Healed: ${wound.words}.`);
   // The ship, the world and the stories go through each day together, so it makes no difference how a long wait is cut up.
   const today = Math.floor(game.clock.hours / 24);
   const told = { today: 0, all: 0 };
@@ -698,7 +702,7 @@ export const tellStoryWaits = (fn) => {
 export function assembleGame(profile) {
   const start = START_LIST[profile.start] ?? START_LIST.captain;
   const game = {
-    version: 20,
+    version: 21,
     campaign: null,
     scene: null,
     flags: {},
@@ -748,6 +752,9 @@ export function assembleGame(profile) {
     turn: 0,
     // Everyone's body is made up from this (src/body.js), so it's the same all game and different in the next.
     bodySeed: newBodySeed(),
+    // The wounds fights leave: the player's, and anyone else's by their body's key.
+    wounds: [],
+    bodies: {},
   };
   for (const id of profile.items) addItem(game, id);
   equipBest(game);

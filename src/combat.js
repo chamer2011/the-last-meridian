@@ -6,11 +6,12 @@
 // show, and can say who acted, who was affected and what their health is now.
 
 import { findCharacter, findEnemy } from "./campaign.js";
-import { ATTITUDE_VALUES, CONDITIONS, FACTION_BELIEFS, NOTABLES, SKILLS } from "./character-data.js";
+import { addWounds, downState, fightAttackOf, fightWords, fighterBody, landHit, legWound, woundsNow } from "./body.js";
+import { ATTITUDE_VALUES, FACTION_BELIEFS, NOTABLES, SKILLS } from "./character-data.js";
 import { ABILITIES, ENEMIES, ITEMS, STATS } from "./data.js";
 import { THREAT_LABELS } from "./npc.js";
 import {
-  addCondition, addFatigue, attrMod, beliefAffinity, changeStanding, changeStress, checkParts, clamp, defense, fxSum, grantXp, maxEnergy, maxHp, oddsFor, practice, roll, skillRank,
+  addFatigue, attrMod, beliefAffinity, changeStanding, changeStress, checkParts, clamp, defense, fxSum, grantXp, maxEnergy, maxHp, oddsFor, practice, roll, skillRank,
   unlockedAbilities, useItem,
 } from "./rules.js";
 import { COMBAT_ART, COMBAT_TEXT, PARLEY } from "./world.js";
@@ -101,7 +102,9 @@ export function whyTheyFight(source, { why = null, reason = null, faction = null
   };
 }
 
-function newFighter(c, side, { source, called, asName = false }) {
+// body is from src/body.js's fighterBody: their body, null for a machine, and the wounds they come in with. Hits land on
+// it, and the wounds they leave count in the fight and are kept afterwards for anyone the body belongs to.
+function newFighter(c, side, { source, called, asName = false, body = null }) {
   // A fight saved before difficulties existed carries on with the numbers it started with.
   const numbers = side === "enemy" ? enemyNumbers(source, c.difficulty ?? "easy") : source;
   // Someone the story has renamed keeps their stats, and uses the general fight text instead of their own.
@@ -135,6 +138,8 @@ function newFighter(c, side, { source, called, asName = false }) {
     desc: source.desc ?? "",
     onHit: source.onHit ?? null,
     lines: renamed ? null : source.lines ?? null,
+    body: source.machine ? null : body?.body ?? { key: null, species: "human" },
+    wounds: body?.wounds ?? [],
     stunned: false,
     ...(side === "enemy" ? whyTheyFight(source, c.story) : {}),
   };
@@ -144,10 +149,12 @@ function newFighter(c, side, { source, called, asName = false }) {
 // asName says the main enemy's "as" is a person's own name, like "dock_thug as Docker Pav", not a kind of enemy.
 export function startCombat(game, enemyId, { training = false, called = null, followers = [], allies = [], arrivals = [], leadIn = null, why = null, reason = null, faction = null, asName = false } = {}) {
   if (game.combat) throw new Error("A fight is already underway.");
-  const main = findFighter(game, enemyId);
-  const foes = followers.map((who) => findFighter(game, who));
-  const friends = allies.map((who) => findFighter(game, who));
-  const later = arrivals.map(({ who, side, round }) => ({ ...findFighter(game, who), side: side === "enemy" ? "enemy" : "ally", round: Math.max(2, round ?? 2) }));
+  // Everyone comes with their body: someone with a file their own, anyone else one for the fight.
+  const withBody = (found) => ({ ...found, body: fighterBody(game, { id: found.source.named ? found.source.id : null, machine: found.source.machine }) });
+  const main = withBody(findFighter(game, enemyId));
+  const foes = followers.map((who) => withBody(findFighter(game, who)));
+  const friends = allies.map((who) => withBody(findFighter(game, who)));
+  const later = arrivals.map(({ who, side, round }) => ({ ...withBody(findFighter(game, who)), side: side === "enemy" ? "enemy" : "ally", round: Math.max(2, round ?? 2) }));
   if (foes.length + 1 > MAX_PER_SIDE || friends.length + 1 > MAX_PER_SIDE) throw new Error(`Each side can have at most ${MAX_PER_SIDE} fighters, counting the player.`);
   if (later.length > MAX_ARRIVALS) throw new Error(`At most ${MAX_ARRIVALS} people can arrive during a fight.`);
   const people = [main, ...foes, ...friends, ...later].filter(({ source }) => source.named).map(({ source }) => source.id);
@@ -169,10 +176,10 @@ export function startCombat(game, enemyId, { training = false, called = null, fo
     story: { why, reason: reason ? String(reason).slice(0, 160) : null, faction },
     // A simulated fight leaves everything exactly as it was.
     ...(training ? {
-      snapshot: structuredClone({ hp: game.hp, energy: game.energy, needs: game.needs, conditions: game.conditions, inventory: game.inventory, skills: game.skills, skillXp: game.skillXp, credits: game.credits, xp: game.xp, level: game.level, perkPoints: game.perkPoints, statPoints: game.statPoints, skillPoints: game.skillPoints, traits: game.traits }),
+      snapshot: structuredClone({ hp: game.hp, energy: game.energy, needs: game.needs, conditions: game.conditions, wounds: game.wounds ?? [], inventory: game.inventory, skills: game.skills, skillXp: game.skillXp, credits: game.credits, xp: game.xp, level: game.level, perkPoints: game.perkPoints, statPoints: game.statPoints, skillPoints: game.skillPoints, traits: game.traits }),
     } : {}),
   };
-  c.enemies.push(newFighter(c, "enemy", { source: main.source, called: called ?? main.called, asName }));
+  c.enemies.push(newFighter(c, "enemy", { source: main.source, called: called ?? main.called, asName, body: main.body }));
   for (const foe of foes) c.enemies.push(newFighter(c, "enemy", foe));
   for (const friend of friends) c.allies.push(newFighter(c, "ally", friend));
   c.intro = fill(enemyLines(c.enemies[0], "intro"), { enemy: c.enemies[0] });
@@ -225,10 +232,23 @@ export function addNotes(c, log, notes) {
   }
 }
 
-function hurtEnemy(target, damage, log, line) {
+// The part a hit landed on goes in its numbers, "6 damage to the left arm", and a wound it leaves gets a line of its own.
+const toThePart = (math, hit) => (hit ? String(math).replace(/^(\d+ damage)/, `$1 to the ${hit.where}`) : math);
+function woundLine(fighter, hit, tone) {
+  if (!hit?.wound) return null;
+  fighter.wounds = [...(fighter.wounds ?? []), { ...hit.wound, fresh: true }];
+  return { on: fighter.key, wound: hit.wound.words, text: `That leaves ${fighter.prose} with ${hit.wound.words}.`, tone };
+}
+
+// weapon is what it was done with, by name, which says what kind of wound it leaves.
+function hurtEnemy(target, damage, log, line, { weapon = null, critical = false } = {}) {
   target.hp = Math.max(0, target.hp - damage);
-  log.push({ ...line, damage, hp: { [target.key]: target.hp } });
-  if (target.hp <= 0) log.push({ on: target.key, down: true, text: fill(enemyLines(target, "defeated"), { enemy: target }), tone: "good" });
+  const hit = landHit(target.body, { weapon, damage, maxHp: target.maxHp, critical, down: target.hp <= 0 });
+  log.push({ ...line, damage, hp: { [target.key]: target.hp }, ...(hit ? { math: toThePart(line.math, hit), where: hit.where } : {}) });
+  const wound = woundLine(target, hit, "good");
+  if (wound) log.push(wound);
+  // Nobody dies in a fight: whoever's beaten is down, out cold or unable to stand.
+  if (target.hp <= 0) log.push({ on: target.key, down: true, text: fill(enemyLines(target, "defeated"), { enemy: target }), tone: "good", ...(target.body ? { math: downState(target.wounds) } : {}) });
 }
 
 export function playerAttack(game, c, target, log, { ability = null, bonusDamage = 0, bonusAttack = 0, stat, skill } = {}) {
@@ -247,7 +267,7 @@ export function playerAttack(game, c, target, log, { ability = null, bonusDamage
     const critical = die === 20;
     const [low, high] = damageRange(game, weapon.damage, bonusDamage);
     const damage = roll(low, high) * (critical ? 2 : 1);
-    hurtEnemy(target, damage, log, { by: YOU, on: target.key, text: fill(critical && lines.crit ? lines.crit : lines.hit, words), tone: "good", math: `${damage} damage, ${total} vs defense ${against}${critical ? ", critical" : ""}` });
+    hurtEnemy(target, damage, log, { by: YOU, on: target.key, text: fill(critical && lines.crit ? lines.crit : lines.hit, words), tone: "good", math: `${damage} damage, ${total} vs defense ${against}${critical ? ", critical" : ""}` }, { weapon: weapon.name, critical });
   }
   addNotes(c, log, practice(game, attackSkill, hit ? 2 : 1));
   return hit;
@@ -308,7 +328,8 @@ export function followerAttacks(c, ally, focus, log, chosen = null) {
   // Followers go after what the player is aiming at, or else the weakest one left. In the room they choose for themselves.
   const target = chosen ?? foes.find((foe) => foe.key === focus) ?? foes.reduce((weakest, foe) => (foe.hp < weakest.hp ? foe : weakest));
   const die = roll(1, 20);
-  const total = die + ally.attack;
+  // A wound such as a broken arm makes anyone worse with a weapon.
+  const total = die + ally.attack + fightAttackOf(ally.wounds);
   const words = { enemy: target, ally };
   if (die !== 20 && (die === 1 || total < target.defense + (target.cover ?? 0))) {
     log.push({ by: ally.key, on: target.key, missed: true, text: fill(COMBAT_TEXT.ally.miss, words), tone: "dim", math: `${total} vs defense ${target.defense}` });
@@ -316,19 +337,16 @@ export function followerAttacks(c, ally, focus, log, chosen = null) {
   }
   const critical = die === 20;
   const damage = roll(...ally.damage) * (critical ? 2 : 1);
-  hurtEnemy(target, damage, log, { by: ally.key, on: target.key, text: fill(critical ? COMBAT_TEXT.ally.crit : COMBAT_TEXT.ally.hit, words), tone: "good", math: `${damage} damage${critical ? ", critical" : ""}` });
+  hurtEnemy(target, damage, log, { by: ally.key, on: target.key, text: fill(critical ? COMBAT_TEXT.ally.crit : COMBAT_TEXT.ally.hit, words), tone: "good", math: `${damage} damage${critical ? ", critical" : ""}` }, { weapon: ally.weapon, critical });
 }
 
-function inflictWound(game, log) {
-  const id = pickFrom(Object.keys(CONDITIONS).filter((condition) => CONDITIONS[condition].wound));
-  addCondition(game, id);
-  log.push({ text: `${pickFrom(COMBAT_TEXT.player.wound)} ${CONDITIONS[id].name}: ${CONDITIONS[id].desc}`, tone: "bad" });
-}
+// The player's body, for a hit to land on.
+const yourBody = (game) => ({ key: YOU, species: game.character?.species ?? "human" });
 
 export function attackPlayer(game, c, enemy, log) {
   const die = roll(1, 20);
   const target = defense(game) + c.guard;
-  const total = die + enemy.attack;
+  const total = die + enemy.attack + fightAttackOf(enemy.wounds);
   if (die !== 20 && (die === 1 || total < target)) {
     log.push({ by: enemy.key, on: YOU, missed: true, text: fill(enemyLines(enemy, "miss"), { enemy }), tone: "dim", math: `${total} vs your defense ${target}` });
     return;
@@ -336,26 +354,36 @@ export function attackPlayer(game, c, enemy, log) {
   const critical = die === 20;
   const damage = roll(...enemy.damage) * (critical ? 2 : 1);
   game.hp -= damage;
-  log.push({ by: enemy.key, on: YOU, damage, hp: { [YOU]: Math.max(0, game.hp) }, text: fill(enemyLines(enemy, critical ? "crit" : "hit"), { enemy }), tone: "bad", math: `${damage} damage${critical ? ", critical" : ""}` });
+  const struck = { by: enemy.key, on: YOU, damage, hp: { [YOU]: Math.max(0, game.hp) }, text: fill(enemyLines(enemy, critical ? "crit" : "hit"), { enemy }), tone: "bad", math: `${damage} damage${critical ? ", critical" : ""}` };
+  log.push(struck);
   if (enemy.onHit?.energy) {
     game.energy = Math.max(0, game.energy + enemy.onHit.energy);
     log.push({ text: `It drains you: ${enemy.onHit.energy} energy.`, tone: "bad" });
   }
   if (enemy.onHit?.stress) addNotes(c, log, changeStress(game, enemy.onHit.stress));
-  if (critical) {
-    addNotes(c, log, changeStress(game, 4));
-    if (roll(1, 2) === 1) inflictWound(game, log);
-  }
+  if (critical) addNotes(c, log, changeStress(game, 4));
   if (game.hp <= 0 && !c.survivorUsed && game.perks.includes("survivor")) {
     game.hp = 1;
     c.survivorUsed = true;
     log.push({ hp: { [YOU]: 1 }, text: pickFrom(COMBAT_TEXT.player.survivor), tone: "good", math: "Survivor: 1 health" });
   }
+  // Where it landed, and the wound it left, which stays: a simulated fight puts everything back afterwards.
+  const hit = landHit(yourBody(game), { weapon: enemy.weapon, damage, maxHp: maxHp(game), critical, down: game.hp <= 0 });
+  if (hit) {
+    struck.math = toThePart(struck.math, hit);
+    struck.where = hit.where;
+  }
+  if (hit?.wound) {
+    addWounds(game, YOU, [hit.wound]);
+    log.push({ on: YOU, wound: hit.wound.words, text: `It leaves you with ${hit.wound.words}.`, tone: "bad" });
+  }
+  if (game.hp <= 0) log.push({ on: YOU, text: YOU_DOWN[downState(woundsNow(game, YOU))], tone: "bad" });
 }
+const YOU_DOWN = { "out cold": "You go down, out cold.", "can't stand": "You go down, and you can't stand.", "can't get up": "You go down, and you can't get up." };
 
 export function attackFollower(c, enemy, ally, log) {
   const die = roll(1, 20);
-  const total = die + enemy.attack;
+  const total = die + enemy.attack + fightAttackOf(enemy.wounds);
   const words = { enemy, ally };
   if (die !== 20 && (die === 1 || total < ally.defense + (ally.cover ?? 0))) {
     log.push({ by: enemy.key, on: ally.key, missed: true, text: fill(COMBAT_TEXT.enemyVsAlly.miss, words), tone: "dim", math: `${total} vs defense ${ally.defense}` });
@@ -364,8 +392,12 @@ export function attackFollower(c, enemy, ally, log) {
   const critical = die === 20;
   const damage = roll(...enemy.damage) * (critical ? 2 : 1);
   ally.hp = Math.max(0, ally.hp - damage);
-  log.push({ by: enemy.key, on: ally.key, damage, hp: { [ally.key]: ally.hp }, text: fill(critical ? COMBAT_TEXT.enemyVsAlly.crit : COMBAT_TEXT.enemyVsAlly.hit, words), tone: "bad", math: `${damage} damage${critical ? ", critical" : ""}` });
-  if (ally.hp <= 0) log.push({ on: ally.key, down: true, text: fill(COMBAT_TEXT.ally.down, { ally }), tone: "bad" });
+  const hit = landHit(ally.body, { weapon: enemy.weapon, damage, maxHp: ally.maxHp, critical, down: ally.hp <= 0 });
+  const math = `${damage} damage${critical ? ", critical" : ""}`;
+  log.push({ by: enemy.key, on: ally.key, damage, hp: { [ally.key]: ally.hp }, text: fill(critical ? COMBAT_TEXT.enemyVsAlly.crit : COMBAT_TEXT.enemyVsAlly.hit, words), tone: "bad", math: toThePart(math, hit), ...(hit ? { where: hit.where } : {}) });
+  const wound = woundLine(ally, hit, "bad");
+  if (wound) log.push(wound);
+  if (ally.hp <= 0) log.push({ on: ally.key, down: true, text: fill(COMBAT_TEXT.ally.down, { ally }), tone: "bad", ...(ally.body ? { math: downState(ally.wounds) } : {}) });
 }
 
 function enemyActs(game, c, enemy, log) {
@@ -537,6 +569,8 @@ export function bringArrivals(c, log) {
 // Refuses what can't be done before anything changes, so it costs nothing.
 export function checkAllowed(game, c, action, target) {
   if (action.type === "flee" && alive(c.enemies).some((enemy) => enemy.boss)) throw new Error(pickFrom(COMBAT_TEXT.player.fleeBoss));
+  const leg = action.type === "flee" ? legWound(woundsNow(game, YOU)) : null;
+  if (leg) throw new Error(`You can't run with ${leg.words}.`);
   if (action.type === "ability") {
     const ability = ABILITIES[action.id];
     if (!ability || !unlockedAbilities(game).some((a) => a.id === action.id)) throw new Error("You don't know that ability.");
@@ -642,6 +676,9 @@ export function endCombat(game, ended, log) {
   }
 
   addFatigue(game, 6);
+  // The wounds the fight left stay on everyone whose body is kept: people with files, and someone with only a name who
+  // was gone for from the right-click menu. An enemy who's nobody in particular takes theirs away with them.
+  for (const fighter of [...c.allies, ...c.enemies]) addWounds(game, fighter.body?.key, (fighter.wounds ?? []).filter((wound) => wound.fresh));
   const side = followers.length ? "You and your followers" : "You";
   // Those who went away are still out there, and the summary says how they went.
   const done = Object.keys(APPROACHES).filter((id) => wentAway.some((enemy) => enemy.out === id)).map((id) => {
@@ -682,12 +719,11 @@ export function endCombat(game, ended, log) {
     summary = PARLEY.surrender.done.replaceAll("{enemy}", listOf(takers.map((enemy) => enemy.prose)));
     tone = "warn";
   } else if (result === "defeat") {
-    // Losing a fight isn't game over. It's a setback: hurt, and poorer.
+    // Losing a fight isn't game over. It's a setback: hurt, and poorer. The wounds are the ones the hits left.
     const lost = Math.floor(game.credits * 0.25);
     game.credits -= lost;
     math = `-${lost} credits`;
     log.push({ text: pickFrom(COMBAT_TEXT.player.defeat), tone: "bad", math });
-    inflictWound(game, log);
     game.hp = Math.max(1, Math.floor(maxHp(game) * 0.25));
     addNotes(c, log, changeStress(game, 15));
     summary = `You lost the fight against ${prose}.`;
@@ -736,8 +772,10 @@ export function fighterView(fighter) {
     name: fighter.name,
     hp: fighter.hp,
     maxHp: fighter.maxHp,
-    attack: fighter.attack,
+    attack: fighter.attack + fightAttackOf(fighter.wounds),
     defense: fighter.defense,
+    // The wounds that tell in a fight: a broken arm, a leg they can't stand on, anything serious.
+    wounds: fightWords(fighter.wounds),
     damage: fighter.damage,
     weapon: fighter.weapon,
     desc: fighter.desc,
@@ -822,9 +860,12 @@ export function combatActions(game) {
   actions.push(someoneTakesPrisoners(c)
     ? { group: "other", action: { type: "surrender" }, label: "Give up", detail: "the story decides what they do with you" }
     : { group: "other", action: { type: "surrender" }, label: "Give up", disabled: true, why: "there's nobody here to give up to" });
+  const leg = legWound(woundsNow(game, YOU));
   actions.push(foes.some((foe) => foe.boss)
     ? { group: "other", action: { type: "flee" }, label: "Run for it", disabled: true, why: "there's no outrunning this one" }
-    : { group: "other", action: { type: "flee" }, label: "Run for it", oddsLabel: "ESCAPE", odds: oddsFor(fleeBonus(game), fleeDc(c)) });
+    : leg
+      ? { group: "other", action: { type: "flee" }, label: "Run for it", disabled: true, why: `not with ${leg.words}` }
+      : { group: "other", action: { type: "flee" }, label: "Run for it", oddsLabel: "ESCAPE", odds: oddsFor(fleeBonus(game), fleeDc(c)) });
   return actions;
 }
 
@@ -848,6 +889,7 @@ export function combatView(game) {
       defense: defense(game),
       damage: damageRange(game, weapon.damage),
       weapon: weapon.name,
+      wounds: fightWords(woundsNow(game, YOU)),
       art: playerArt(game),
       fallen: COMBAT_ART.fallen,
     },

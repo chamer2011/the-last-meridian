@@ -168,7 +168,9 @@ const rangedKey = (key) => (key === "you" ? combat()?.live?.you.reach : combat()
 // Each thing that happened goes in the notes, and what can be seen of it over the room: a shot, a swing, a number.
 function played(events) {
   for (const event of events) {
-    if (event.text) note(event.text, event.tone === "good" ? "good" : event.tone === "bad" ? "bad" : event.tone === "dim" ? "dim" : event.tone === "info" ? "info" : "");
+    // A hit says where it landed, and someone down how they are: out cold, or unable to stand.
+    const text = event.where ? `${event.text} (${event.where})` : event.down && event.math ? `${event.text} (${event.math})` : event.text;
+    if (event.text) note(text, event.tone === "good" ? "good" : event.tone === "bad" ? "bad" : event.tone === "dim" ? "dim" : event.tone === "info" ? "info" : "");
     else if (event.note) note(event.note, "dim");
     if (event.by && event.on && event.by !== event.on && (event.damage || event.missed)) {
       lf.fx.push(rangedKey(event.by) ? { kind: "shot", from: event.by, to: event.on, hit: !event.missed, t: 0, life: 0.26 } : { kind: "swing", from: event.by, to: event.on, t: 0, life: 0.3 });
@@ -556,7 +558,7 @@ export function liveRosterNode() {
       el("span", { class: "live-who" }, one.name),
       el("span", { class: "live-count" }, `${Math.max(0, one.hp)}/${one.maxHp}`),
       el("span", { class: `live-bar ${side === "enemy" ? "them" : "us"}` }, el("b", { style: `width:${Math.round((Math.max(0, one.hp) / one.maxHp) * 100)}%` })),
-      el("span", { class: "live-sub" }, [one.hp <= 0 ? "down" : one.out ? "out of it" : null, (side === "you" ? live.you.covered : live.fighters[one.key]?.covered) && !lost ? "in cover" : null, side === "you" ? `energy ${c.you.energy}/${c.you.maxEnergy}` : null].filter(Boolean).join(" · ")),
+      el("span", { class: "live-sub", title: (one.wounds ?? []).join(", ") }, [one.hp <= 0 ? "down" : one.out ? "out of it" : null, (side === "you" ? live.you.covered : live.fighters[one.key]?.covered) && !lost ? "in cover" : null, ...(one.wounds ?? []), side === "you" ? `energy ${c.you.energy}/${c.you.maxEnergy}` : null].filter(Boolean).join(" · ")),
     ];
     if (side !== "enemy") return el("div", { class: `live-row${lost ? " lost" : ""}` }, parts);
     return el("button", {
@@ -568,7 +570,7 @@ export function liveRosterNode() {
   };
   return el("div", { class: "live-roster", id: "live-roster" },
     el("div", { class: "walk-here-head" }, el("span", {}, "With you"), el("span", {}, String(1 + c.allies.filter((one) => one.hp > 0).length))),
-    row({ key: "you", name: c.you.name, hp: c.you.hp, maxHp: c.you.maxHp, color: "#b4f0be" }, "you"),
+    row({ key: "you", name: c.you.name, hp: c.you.hp, maxHp: c.you.maxHp, color: "#b4f0be", wounds: c.you.wounds }, "you"),
     c.allies.map((one) => row(one, "ally")),
     el("div", { class: "walk-here-head" }, el("span", {}, "Against you"), el("span", {}, String(c.enemies.filter((one) => one.hp > 0 && !one.out).length))),
     c.enemies.map((one) => row(one, "enemy")));

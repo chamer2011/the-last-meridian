@@ -8,10 +8,11 @@ broken bone, a burn). Bodies are made up when a game begins, from a person's spe
 whatever their own file says, which always wins. The same person has the same body all game, and a different one in
 the next game.
 
-For now the game only shows bodies: on Look (right-click someone), on the registry printouts, and on the figure in
-the inventory. Nothing works differently yet. What the rules below do (bleeding, healing, limping, the medbay) comes
-in the later steps of the health plan, one at a time. npm run check-story reads all of it and says what's wrong,
-with the file and the line.
+Bodies show on Look (right-click someone), on the registry printouts, and on the figure in the inventory, and since
+step 2 of the health plan every hit in a fight lands on a part and can leave a wound there, which stays after the
+fight and goes when its time comes. Most of what the rules below do (bleeding, limping, the medbay, treatment) comes in
+the later steps, one at a time; what works now is said where it's explained. npm run check-story reads all of it and
+says what's wrong, with the file and the line.
 
 Four kinds of file have a say:
 
@@ -27,16 +28,42 @@ Four kinds of file have a say:
     # Wounds and old marks
     draft: the AI's, not yet edited by the owner
     old marks: one every 20 years after 20, at most 3
+    a wound from a hit: 20% of their health
+    a hard wound: 40% of their health, or a hard hit
     rough work: engine, tech, dock, guard, marine, miner
 
     Wounds:
     - deep cut, any part: a deep cut in the {part}; serious; bleeds 12 an hour; heals in 8 days once dressed
+
+    Weapons:
+    - blade: knife, sword, claw
+    - blunt: anything else
+
+    Hits:
+    - blade: cut; hard: deep cut
+    - blunt: bruise; hard: concussion on the head, broken bone on a limb; down: knock on the head
+    - anything for synthetic: dent; hard: cracked casing
 
     Old marks:
     - bad knee, a leg: a bad {side} knee; limps; likelier in: dock, hauler, porter
 
 old marks: how often someone gathers an old mark: one for every so many years of their life after an age, and the
 most anyone carries, counting what their own file says.
+
+a wound from a hit: how much of someone's health one hit has to take to leave a wound. a hard wound: how much it has
+to take to leave a hard one, and ", or a hard hit" if a hard hit (a critical) always does. A hit that takes less
+leaves nothing, though it still lands somewhere, and the fight says where.
+
+Weapons: which kind of hit a weapon makes, by the words in its name, the first line that has one: a Plasma Cutter
+burns, a Concord Sidearm shoots. The line that says anything else is for everything the other lines don't name, bare
+hands included. The kinds are yours to name.
+
+Hits: the wound each kind of hit leaves. After the colon, the wound a hit leaves (or nothing); after hard:, the hard
+wound, as a list of wounds each with "on" and where it can be, the first that fits the part the hit landed on; after
+down:, the wound the hit that puts them down leaves, if it fits, instead. "anything" is any kind of hit, and "for"
+and a species is a line for that species only, which comes before the others. A wound has to be able to be on the part
+the hit landed on, or the next one is tried, and a hit that puts someone down always leaves at least the light one.
+Where each hit lands is at random, by the hit line in the species' Body part: nobody aims.
 
 rough work: words in a job that make old marks come twice as often. A word counts when a job has a word starting
 with it, so engine counts for Engineer and Engine Hand.
@@ -55,12 +82,16 @@ The rules:
     serious                         a badly hurt wound, shown in red
     bleeds 4 an hour                (until treated, if you like)
     heals in 4 days                 and heals in 4 days, 2 once dressed, or heals in 8 days once dressed (only once
-                                    treated); splinted instead of dressed for a broken bone
+                                    treated); splinted instead of dressed for a broken bone. For now a wound is gone
+                                    when its days are up: the untreated days, or the treated ones where it only heals
+                                    once treated, since nothing treats anyone yet
     never heals
-    out cold for 1 to 4 hours
+    out cold for 1 to 4 hours       and gone after that many hours
     checks one step harder
+    in a fight: attack -2           this much off their attack in a fight, the player's and anyone's
     the hand's no use
-    can't stand on it               someone with it can't walk
+    can't stand on it               someone with it can't walk; for now, in a fight in the room they stay where they
+                                    are, and they can't run from a fight
     limps                           someone with it walks with a limp
     comes after 2 days undressed    (for an infection)
     worse every day

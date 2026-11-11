@@ -333,7 +333,8 @@ test("a fight always finishes, and losing is not game over", () => {
     assert.ok(outcome.over);
     assert.equal(game.combat, null);
     assert.ok(game.hp >= 1);
-    if (outcome.result === "defeat") assert.ok(game.conditions.length >= 1);
+    // Losing leaves the wounds the hits left, and the hit that put the player down always leaves one.
+    if (outcome.result === "defeat") assert.ok(game.wounds.length >= 1);
   }
 });
 

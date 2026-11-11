@@ -261,6 +261,11 @@ function fromVersion19(save) {
   return { ...save, version: 20, bodySeed: save.bodySeed ?? newBodySeed() };
 }
 
+// Version 21 keeps the wounds fights leave: the player's, and anyone else's by the key their body is made from.
+function fromVersion20(save) {
+  return { ...save, version: 21, wounds: save.wounds ?? [], bodies: save.bodies ?? {} };
+}
+
 export function migrateGame(save) {
   if (!save) return save;
   let game = save;
@@ -283,6 +288,7 @@ export function migrateGame(save) {
   if (game.version < 18) game = fromVersion17(game);
   if (game.version < 19) game = fromVersion18(game);
   if (game.version < 20) game = fromVersion19(game);
+  if (game.version < 21) game = fromVersion20(game);
   // A place that's gone from the world's files can't hold anyone, and factions added since this save was made need a standing.
   if (!LOCATIONS[game.location]) game.location = "meridian";
   game.factions ??= {};

@@ -3,6 +3,7 @@
 // fight window. The numbers, and what each costs when it's seen, are in world/deeds.json. What's left on the record
 // is there for the written stories.
 
+import { fighterBody } from "./body.js";
 import { findCharacter, findEnemy } from "./campaign.js";
 import { SKILLS } from "./character-data.js";
 import { startCheck } from "./checks.js";
@@ -111,6 +112,8 @@ export function attackPerson(game, who, where) {
     asName: !own,
   });
   game.deedFight = { place: where.place, key: who.key, id: who.id ?? null, short: who.short };
+  // Someone with only a name fights as a stand-in enemy, with their own body, so the wounds they take stay with them.
+  if (!own) Object.assign(game.combat.enemies[0], fighterBody(game, { name: who.key, place: where.place }));
   const place = placeName(where.place);
   const lines = [`[COMBAT] You go for ${who.short}.`, ...notes];
   lines.push(...costs(game, where.place, rules, `You attacked ${who.short} at ${place}.`));
