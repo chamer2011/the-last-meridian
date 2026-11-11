@@ -135,7 +135,7 @@ test("a spare hand put on as a cook takes the cooks' day, and the galley works w
   assert.deepEqual(life.usuallyIn(game, "meridian", "galley", 600, "cook"), ["Yusuf"]);
   minutes(game, 30);
   assert.match(life.whereNow(game, "Yusuf"), /^cooking, at the Galley/);
-  assert.match(life.whereNow(game, "Cook Imre"), /^(eating|waiting in the medbay queue|reading the names|patching something|talking in the corridor|heading for)/, "and Imre has the spare hands' day");
+  assert.match(life.whereNow(game, "Cook Imre"), /^(eating|waiting in the medbay queue|passing the morning|reading the names|patching something|talking in the corridor|heading for)/, "and Imre has the spare hands' day");
   assert.notEqual(lg.machinesView(game, "meridian").find((one) => one.id === "galley").status, "waiting for a cook there");
 });
 

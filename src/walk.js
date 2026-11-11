@@ -7,7 +7,7 @@
 // for. world/rooms.json has the kinds of room the game can draw for anywhere that isn't on a map,
 // and a campaign can keep its own rooms in its folder, so they stay the same from then on.
 
-import { bodyOf, lookLine } from "./body.js";
+import { bodyOf, lookLine, paceOf } from "./body.js";
 import { allCharacters, campaignRooms, findCampaignRoom, findCharacter, fullName, saveCampaignRoom } from "./campaign.js";
 import { startCheck, startChoiceCheck } from "./checks.js";
 import { useComputer } from "./computers.js";
@@ -1399,6 +1399,8 @@ export function walkView(game) {
     } : {}),
     overview: overviewView(game, walk, map),
     ...(livesHere(walk.place) ? { life: true } : {}),
+    // How fast the player walks, as a share of the usual: slower with a limp, slower still on a leg they can't stand on.
+    pace: paceOf(bodyOf(game, "you")),
   };
 }
 

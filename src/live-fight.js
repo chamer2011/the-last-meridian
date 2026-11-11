@@ -14,7 +14,7 @@ import { attrMod, oddsFor, practice, roll, useItem } from "./rules.js";
 import { canStand, fightGround, standAfterFight } from "./walk.js";
 import { COMBAT_TEXT } from "./world.js";
 import { drawnWeapon, spendFromBelt } from "./bag.js";
-import { legWound, woundsNow } from "./body.js";
+import { bodyOf, legWound, paceOf, woundsNow, woundsPace } from "./body.js";
 
 const WIDTH = 0.5;
 // How fast anyone walks in a fight, in tiles a second.
@@ -168,6 +168,8 @@ function bodies(game) {
 const standing = (game, body) => (body.fighter ? body.fighter.hp > 0 && !body.fighter.out : game.hp > 0);
 // Someone with a wound they can't stand on, such as a broken leg, fights from where they are (src/body.js).
 const legOf = (game, body) => legWound(body.fighter ? body.fighter.wounds : woundsNow(game, YOU));
+// And someone with a limp walks slower: the player by their whole body, anyone else by the wounds they have.
+const paceIn = (game, body) => (body.fighter ? woundsPace(body.fighter.wounds) : paceOf(bodyOf(game, YOU)));
 const reachOfBody = (game, body) => (body.fighter ? body.live.reach : yourReach(game));
 const facing = (game, body) => bodies(game).filter((other) => other.side !== body.side && standing(game, other));
 // Where nobody else can be walked through: everyone still standing, and everyone in the room who isn't in the fight.
@@ -509,7 +511,7 @@ function advance(game, ground, dt, log) {
       continue;
     }
     if (legOf(game, body)) body.live.path = [];
-    else walkOn(body.live, dt);
+    else walkOn(body.live, dt * paceIn(game, body));
     body.live.cool = Math.max(0, body.live.cool - dt);
   }
   for (const body of bodies(game)) {

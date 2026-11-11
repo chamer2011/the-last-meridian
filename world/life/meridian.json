@@ -1589,11 +1589,11 @@
         },
         {
           "at": "07:45",
-          "doing": "waiting in the medbay queue",
+          "doing": "passing the morning",
           "pick": [
-            "queue",
             "names-readers",
-            "bunks-aisle"
+            "bunks-aisle",
+            "mess-west"
           ]
         },
         {

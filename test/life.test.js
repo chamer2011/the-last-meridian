@@ -16,6 +16,7 @@ const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const { LOCATIONS } = await import("../src/data.js");
 const { findCharacter } = await import("../src/campaign.js");
 const { peopleAboard, whereNow } = await import("../src/life.js");
+const { bodyOf, paceOf } = await import("../src/body.js");
 const { migrateGame } = await import("../src/migrate.js");
 const { projectDir } = await import("../src/paths.js");
 const { clockLabel, clockRuns, passTime, publicState, rest } = await import("../src/rules.js");
@@ -190,7 +191,8 @@ test("a few days a minute at a time: everyone eats, sleeps, walks, and always ge
     last = now;
   }
   for (const [id, one] of Object.entries(seen)) {
-    assert.ok(one.longest <= 15, `${id} was still on the way somewhere after ${one.longest} minutes`);
+    // Someone with a limp takes longer to get anywhere.
+    assert.ok(one.longest <= 15 / paceOf(bodyOf(game, { id })), `${id} was still on the way somewhere after ${one.longest} minutes`);
     assert.ok(one.rooms.size >= 2, `${id} never leaves one room`);
     if (id !== "seven") assert.ok(one.ate, `${id} never eats`);
     if (id !== "seven" && id !== "iven") assert.ok(one.slept, `${id} never sleeps`);
@@ -285,6 +287,8 @@ test("a long gap puts everyone where they should be, the same every time, and a 
 test("walking gives the same result every time, and carries on the same after saving and loading", () => {
   const one = newGame();
   const two = newGame();
+  // The same game: bodies are made up from the game's own seed, and a limp slows someone down.
+  two.bodySeed = one.bodySeed;
   for (let i = 0; i < 300; i += 1) {
     clockRuns(one, 1 / 3);
     clockRuns(two, 1 / 3);
@@ -443,7 +447,9 @@ test("at every place, over a couple of days, names don't cover anything and nobo
           }
           const key = one.id ?? one.name;
           walking[key] = one.walking ? (walking[key] ?? 0) + 10 : 0;
-          assert.ok(walking[key] <= 30, `${place}: ${one.name} is still walking after ${walking[key]} minutes`);
+          // Someone with a limp, or a leg they can't stand on, takes longer to get anywhere.
+          const pace = paceOf(bodyOf(game, one.id ? { id: one.id } : { name: one.name, place }));
+          assert.ok(walking[key] <= 30 / pace + 10, `${place}: ${one.name} is still walking after ${walking[key]} minutes`);
         }
       }
     }

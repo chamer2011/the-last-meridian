@@ -83,7 +83,7 @@ test("a person's own file wins over what's made up, in every game", () => {
     assert.equal(voss.marks.find((mark) => /burn scar along one jaw/i.test(mark.words))?.state, "old", "a burn scar is an old mark, not a burn");
     // Vik and Hana are on the medbay's cots for a reason now.
     const vik = bodyView(bodyOf(game, { name: "Vik", place: "meridian" }));
-    assert.equal(vik.status, "Can't walk");
+    assert.equal(vik.status, "Can barely walk");
     assert.equal(vik.parts.right_leg, "bad");
     assert.ok(vik.marks.some((mark) => mark.words === "A broken right leg"));
     const hana = bodyView(bodyOf(game, { name: "Hana", place: "meridian" }));
@@ -161,9 +161,9 @@ test("Look, the printouts and the player's own state show the body, and reading 
   const view = walkView(game);
   const vik = view.people.find((one) => one.key === "Vik");
   assert.ok(vik, "Vik is in the medbay");
-  assert.match(vik.marks, /Can't walk\. A broken right leg\./);
+  assert.match(vik.marks, /Can barely walk\. A broken right leg\./);
   const sheet = personSheet(game, "Vik");
-  assert.equal(sheet.body.status, "Can't walk");
+  assert.equal(sheet.body.status, "Can barely walk");
   // The crowd's printout and their body agree on who they are.
   const who = crowdWho("Vik");
   assert.equal(sheet.species, WORLD_SPECIES[who.species].name);

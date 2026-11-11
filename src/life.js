@@ -13,6 +13,7 @@ import { atPost, canStand, findPath, mapFor, roomOf, seedFrom } from "./walk.js"
 import { detourFor, partSquares } from "./systems.js";
 import { WORLD_LIFE } from "./world.js";
 import { jobsOf, movedDays } from "./command.js";
+import { bodyOf, hurtAt, paceOf, queueOf } from "./body.js";
 
 const MINUTES_IN_A_DAY = 1440;
 const SQUARES_A_MINUTE = 18;
@@ -168,17 +169,41 @@ function planFor(map, file, entry, hours, detour) {
   if (!detour) return plan;
   const turn = detour(entry.key, levelOfPlan(map, file, entry, plan), Boolean(plan.block.asleep));
   // A detour names a room, or a spot the file knows, such as the square beside one of the ship's stores.
-  const known = turn && (/^[@>]/.test(turn.where) ? roomOf(map, turn.where.slice(1)) : file.spots[turn.where]);
+  const known = turn && (/^[@>]/.test(turn.where) ? roomOf(map, turn.where.slice(1)) : file.spots[turn.where] ?? file.groups[turn.where]);
   return known ? { key: `systems:${turn.where}:${turn.doing}`, block: { doing: turn.doing, go: turn.where }, where: turn.where } : plan;
 }
 
 // Everything that turns someone aside from their day: the place's systems first (the alarm, a repair, bad air), then
-// the ship's errands. Null when nothing's going on.
+// the ship's errands, then the morning queue at the medbay. Null when nothing's going on.
 function detoursFor(game, place) {
   const systems = detourFor(game, place);
   const errands = errandDetour(game, place);
-  if (!systems && !errands) return null;
-  return (key, room, asleep) => systems?.(key, room, asleep) ?? errands?.(key, room, asleep) ?? null;
+  const queue = queueDetour(game, place);
+  if (!systems && !errands && !queue) return null;
+  return (key, room, asleep) => systems?.(key, room, asleep) ?? errands?.(key, room, asleep) ?? queue?.(key, room, asleep) ?? null;
+}
+
+// In the morning, whoever's hurt and on their feet goes and waits at the medbay, as the place's health file says
+// (src/body.js), unless they're asleep or laid up. Null outside its hours or where nobody's hurt.
+function queueDetour(game, place) {
+  const queue = queueOf(place);
+  if (!queue) return null;
+  const minute = ((game.clock.hours % 24) + 24) % 24 * 60;
+  if (minute < queue.from || minute >= queue.to) return null;
+  const hurt = hurtAt(game, place);
+  if (!hurt.size) return null;
+  return (key, room, asleep) => (!asleep && hurt.has(key) ? { where: queue.at, doing: "waiting in the medbay queue" } : null);
+}
+
+// How fast each person at a place walks, as a share of the usual, from their body: a limp slows them, and a leg they
+// can't stand on slows them more (src/body.js).
+function pacesFor(game, place, roster) {
+  const paces = new Map();
+  for (const entry of roster) {
+    const pace = paceOf(bodyOf(game, entry.id ? { id: entry.id } : { name: entry.name, place }));
+    if (pace !== 1) paces.set(entry.key, pace);
+  }
+  return paces;
 }
 
 // The people of a place, for the ship's errands to name: their key in its file, their id if they're someone, and their
@@ -503,8 +528,8 @@ function walkOn(map, state, steps) {
 
 // ---- The clock moves ---------------------------------------------------------------
 
-// Everyone moves on to whatever's next, and walks a little of the way there.
-function moveOn(place, people, hours, steps, detour = null, roster = lifeFileFor(place).roster) {
+// Everyone moves on to whatever's next, and walks a little of the way there, as fast as their legs let them.
+function moveOn(place, people, hours, steps, detour = null, roster = lifeFileFor(place).roster, paces = null) {
   const file = lifeFileFor(place);
   const map = mapFor(place);
   for (const entry of roster) {
@@ -522,7 +547,14 @@ function moveOn(place, people, hours, steps, detour = null, roster = lifeFileFor
         state.path = null;
       }
     }
-    walkOn(map, state, steps);
+    const pace = paces?.get(entry.key);
+    if (pace === undefined) walkOn(map, state, steps);
+    else {
+      state.carry = (state.carry ?? 0) + steps * pace;
+      const mine = Math.floor(state.carry);
+      state.carry -= mine;
+      walkOn(map, state, mine);
+    }
   }
 }
 
@@ -559,7 +591,7 @@ export function advanceLife(game) {
   const people = life.places[place];
   const detour = livesHere(place) ? detoursFor(game, place) : null;
   const roster = livesHere(place) ? rosterFor(game, place) : [];
-  if (livesHere(place) && people && gap <= LONG_GAP) moveOn(place, people, hours, steps, detour, roster);
+  if (livesHere(place) && people && gap <= LONG_GAP) moveOn(place, people, hours, steps, detour, roster, pacesFor(game, place, roster));
   life.places = livesHere(place) ? { [place]: people && gap <= LONG_GAP ? people : settle(place, hours, people, detour, roster) } : {};
   companyMovesOn(game, hours);
 }

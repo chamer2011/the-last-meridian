@@ -5,7 +5,7 @@ price: 60
 size: 1x1
 weight: 0.5
 stack: 5
-effect: hp 15
+effect: hp 15, dress 1
 
 In a line:
-Restores 15 health, plus your Medicine rank.
+Restores 15 health, plus your Medicine rank, and dresses or splints your worst wound.

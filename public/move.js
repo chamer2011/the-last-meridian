@@ -237,7 +237,7 @@ function turnAside() {
 }
 
 function along(dt) {
-  let left = SPEED * dt;
+  let left = SPEED * (state.pace ?? 1) * dt;
   const { route } = state;
   while (left > 1e-6 && route.points.length) {
     const goal = route.points[0];
@@ -267,6 +267,8 @@ function frame(now) {
   const view = hooks?.view();
   if (!view) return;
   adopt(view);
+  // A limp, or a leg they can't stand on, slows the player down (the server's pace, from their body).
+  state.pace = view.pace ?? 1;
   if (!state.pos) return;
   const heading = state.held.size && hooks.canMove() && !state.leaving ? headingOf([...state.held.values()], hooks.angled()) : null;
   if (state.route) {
@@ -281,7 +283,8 @@ function frame(now) {
     if (!state.walking) hooks.setOff();
     state.walking = true;
     const ground = groundOf(view);
-    const next = walkBy(ground, state.pos, (heading.wx * SPEED * dt) / CELL_WIDTH, heading.wy * SPEED * dt);
+    const speed = SPEED * state.pace;
+    const next = walkBy(ground, state.pos, (heading.wx * speed * dt) / CELL_WIDTH, heading.wy * speed * dt);
     if (next.x !== state.pos.x || next.y !== state.pos.y) {
       state.pos = next;
       hooks.placed(state.pos);

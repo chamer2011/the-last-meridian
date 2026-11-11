@@ -51,6 +51,7 @@ export function readRule(text) {
   if (rule === "never at random") return { notRandom: true };
   if (rule === "never heals") return { never: true };
   if (rule === "worse every day") return { worsens: true };
+  if (rule === "can go bad") return { goesBad: true };
   if (rule === "the hand's no use" || rule === "the hand’s no use") return { noHand: true };
   if (rule === "can't stand on it" || rule === "can’t stand on it") return { noStand: true };
   if ((found = rule.match(/^bleeds (\S+) an hour( until treated)?$/)) && numberOf(found[1]) !== null) return { bleeds: numberOf(found[1]) };
@@ -148,7 +149,7 @@ export function readHitLine(text) {
 
 export function parseWoundsText(text) {
   const problems = [];
-  const value = { name: "Wounds and old marks", draft: null, oldMarks: DEFAULT_OLD_MARKS, light: DEFAULT_LIGHT, hard: DEFAULT_HARD, rough: [], wounds: [], weapons: [], hits: [], marks: [] };
+  const value = { name: "Wounds and old marks", draft: null, oldMarks: DEFAULT_OLD_MARKS, light: DEFAULT_LIGHT, hard: DEFAULT_HARD, care: {}, rough: [], wounds: [], weapons: [], hits: [], accidents: [], marks: [] };
   let part = null;
   let titled = false;
   for (const [index, raw] of String(text ?? "").replace(/\r\n?/g, "\n").split("\n").entries()) {
@@ -164,21 +165,21 @@ export function parseWoundsText(text) {
       }
       problems.push({ line: n, message: "the first line is the name, written # Wounds and old marks" });
     }
-    const heading = line.match(/^(Wounds|Weapons|Hits|Old marks):$/i);
+    const heading = line.match(/^(Wounds|Weapons|Hits|Accidents|Old marks):$/i);
     if (heading) {
-      part = { wounds: "wounds", weapons: "weapons", hits: "hits", "old marks": "marks" }[heading[1].toLowerCase()];
+      part = { wounds: "wounds", weapons: "weapons", hits: "hits", accidents: "accidents", "old marks": "marks" }[heading[1].toLowerCase()];
       continue;
     }
     if (part) {
       const entry = line.match(/^-\s+(.*)$/);
       if (!entry) {
-        problems.push({ line: n, message: `under "${{ wounds: "Wounds", weapons: "Weapons", hits: "Hits", marks: "Old marks" }[part]}", each one starts with - and a space` });
+        problems.push({ line: n, message: `under "${{ wounds: "Wounds", weapons: "Weapons", hits: "Hits", accidents: "Accidents", marks: "Old marks" }[part]}", each one starts with - and a space` });
         continue;
       }
       value[part].push({ text: entry[1].trim(), line: n });
       continue;
     }
-    const field = line.match(/^([A-Za-z][A-Za-z ]{0,30}):\s*(.*)$/);
+    const field = line.match(/^([A-Za-z][A-Za-z'’ ]{0,40}):\s*(.*)$/);
     if (!field) {
       problems.push({ line: n, message: "before the first part, each line is draft, old marks, a wound from a hit, a hard wound or rough work, then a colon and its value" });
       continue;
@@ -194,8 +195,12 @@ export function parseWoundsText(text) {
       const read = readShare(field[2], key === "a hard wound");
       if (read.problem) problems.push({ line: n, message: `${key} ${read.problem}` });
       value[key === "a hard wound" ? "hard" : "light"] = field[2].trim();
-    }
-    else problems.push({ line: n, message: `I don't know "${field[1]}": the lines at the top are draft, old marks, a wound from a hit, a hard wound and rough work` });
+    } else if (CARE[key.replace(/’/g, "'")]) {
+      const careKey = key.replace(/’/g, "'");
+      const read = CARE[careKey].read(field[2]);
+      if (read.problem) problems.push({ line: n, message: `${careKey} ${read.problem}` });
+      value.care[careKey] = field[2].trim();
+    } else problems.push({ line: n, message: `I don't know "${field[1]}": the lines at the top are draft, old marks, a wound from a hit, a hard wound, ${Object.keys(CARE).join(", ")} and rough work` });
   }
   if (!titled) problems.push({ line: 1, message: "the file is empty: it starts with # Wounds and old marks" });
   return { value, problems };
@@ -206,12 +211,59 @@ export function writeWoundsText(value) {
   if (value.draft) out.push(`draft: ${value.draft}`);
   out.push(`old marks: ${value.oldMarks ?? DEFAULT_OLD_MARKS}`);
   out.push(`a wound from a hit: ${value.light ?? DEFAULT_LIGHT}`, `a hard wound: ${value.hard ?? DEFAULT_HARD}`);
+  for (const key of Object.keys(CARE)) if (value.care?.[key] !== undefined) out.push(`${key}: ${value.care[key]}`);
   if (value.rough?.length) out.push(`rough work: ${value.rough.join(", ")}`);
   out.push("", "Wounds:", ...(value.wounds ?? []).map((one) => `- ${one.text}`));
   out.push("", "Weapons:", ...(value.weapons ?? []).map((one) => `- ${one.text}`));
   out.push("", "Hits:", ...(value.hits ?? []).map((one) => `- ${one.text}`));
+  if (value.accidents?.length) out.push("", "Accidents:", ...value.accidents.map((one) => `- ${one.text}`));
   out.push("", "Old marks:", ...(value.marks ?? []).map((one) => `- ${one.text}`));
   return `${out.join("\n")}\n`;
+}
+
+// ---- Living with wounds -------------------------------------------------------------------------
+
+const share = (text) => {
+  const found = lower(text).match(/^(\d+(?:\.\d+)?)% of the pace$/);
+  return found ? { pace: Number(found[1]) / 100 } : { problem: "is written like: 60% of the pace" };
+};
+const TIMES = { twice: 2, "three times": 3, "four times": 4, "half again": 1.5 };
+// The lines at the top of the wounds file about blood, bleeding, dressing, healing, walking and pain, each with how it's
+// read and what it reads to. Their defaults are the draft's.
+export const CARE = {
+  "blood comes back": { read: (text) => { const f = lower(text).match(/^(\S+) an hour(, once nothing bleeds)?$/); return f && numberOf(f[1]) !== null ? { perHour: numberOf(f[1]) } : { problem: "is written like: 2 an hour, once nothing bleeds" }; }, default: "2 an hour, once nothing bleeds" },
+  "low on blood": { read: (text) => { const f = lower(text).match(/^under (\d+), checks (\S+) steps? harder$/); return f && numberOf(f[2]) !== null ? { under: Number(f[1]), harder: numberOf(f[2]) } : { problem: "is written like: under 60, checks one step harder" }; }, default: "under 60, checks one step harder" },
+  "bleeding stops at": { read: (text) => { const f = lower(text).match(/^(\d+)(, for now)?$/); return f ? { floor: Number(f[1]) } : { problem: "is written like: 35, for now" }; }, default: "35, for now" },
+  "they dress their own": { read: (text) => { const f = lower(text).match(/^wounds that aren['’]t serious, after (an|\S+) hours?$/); return f && numberOf(f[1]) !== null ? { hours: numberOf(f[1]) } : { problem: "is written like: wounds that aren't serious, after an hour" }; }, default: "wounds that aren't serious, after an hour" },
+  "left alone": { read: (text) => { const f = lower(text).match(/^(twice|three times|four times|half again|\d+(?:\.\d+)? times) as long, for a wound that heals once treated$/); return f ? { factor: TIMES[f[1]] ?? Number(f[1].split(" ")[0]) } : { problem: "is written like: twice as long, for a wound that heals once treated" }; }, default: "twice as long, for a wound that heals once treated" },
+  "with a limp": { read: share, default: "60% of the pace" },
+  "on a leg they can't stand on": { read: share, default: "30% of the pace" },
+  pain: { read: (text) => { const f = lower(text).match(/^(\S+) stress a day for a wound, (\S+) for a serious one$/); return f && numberOf(f[1]) !== null && numberOf(f[2]) !== null ? { wound: numberOf(f[1]), serious: numberOf(f[2]) } : { problem: "is written like: 2 stress a day for a wound, 5 for a serious one" }; }, default: "2 stress a day for a wound, 5 for a serious one" },
+};
+export const careOf = (care = {}) => Object.fromEntries(Object.entries(CARE).map(([key, one]) => {
+  const read = one.read(care[key] ?? one.default);
+  return [key, read.problem ? one.read(one.default) : read];
+}));
+
+// "burn: likelier in: engine, cook": the wound an accident at work leaves, and the work it's likelier in.
+export function readAccidentLine(text) {
+  const found = String(text).trim().match(/^([^:;]+?)(?::\s*likelier in:\s*(.+))?$/i);
+  if (!found || !found[1].trim()) return { problem: "each one is written: a wound, and likelier in: and the work, like burn: likelier in: engine, cook" };
+  return { name: lower(found[1]), likelier: found[2] ? listOf(found[2]).map(lower) : [] };
+}
+
+// "07:45 to 10:30, at queue": when the hurt go to the medbay, and the spot or group of spots in the place's life file.
+export function readQueue(text) {
+  const found = lower(text).match(/^(\d{1,2}):(\d{2}) to (\d{1,2}):(\d{2}), at (.+)$/);
+  if (!found) return { problem: "is written like: 07:45 to 10:30, at queue" };
+  return { from: Number(found[1]) * 60 + Number(found[2]), to: Number(found[3]) * 60 + Number(found[4]), at: found[5].trim() };
+}
+
+// "1 in 20 days in rough work, 1 in 100 for everyone else": how often someone has an accident at their work.
+export function readAccidents(text) {
+  const found = lower(text).match(/^1 in (\d+) days in rough work, 1 in (\d+) for everyone else$/);
+  if (!found || Number(found[1]) < 1 || Number(found[2]) < 1) return { problem: "is written like: 1 in 20 days in rough work, 1 in 100 for everyone else" };
+  return { rough: 1 / Number(found[1]), anyone: 1 / Number(found[2]) };
 }
 
 // ---- A body line ------------------------------------------------------------------------------
@@ -272,8 +324,13 @@ export function parseHealthText(text, id = "it") {
       continue;
     }
     const field = line.match(/^([A-Za-z][A-Za-z ]{0,30}):\s*(.*)$/);
-    if (field && lower(field[1]) === "draft") value.draft = field[2].trim();
-    else problems.push({ line: n, message: field ? `I don't know "${field[1]}": for now the only line at the top is draft, and the only part is At the start` : "before At the start, the only line is draft, then a colon and its value" });
+    const key = field ? lower(field[1]) : null;
+    if (key === "draft") value.draft = field[2].trim();
+    else if (key === "the morning queue" || key === "accidents at work") {
+      const read = key === "the morning queue" ? readQueue(field[2]) : readAccidents(field[2]);
+      if (read.problem) problems.push({ line: n, message: `${key} ${read.problem}` });
+      value[key === "the morning queue" ? "queue" : "accidents"] = field[2].trim();
+    } else problems.push({ line: n, message: field ? `I don't know "${field[1]}": the lines at the top are draft, the morning queue and accidents at work, and the only part is At the start` : "before At the start, each line is draft, the morning queue or accidents at work, then a colon and its value" });
   }
   if (!titled) problems.push({ line: 1, message: "the file is empty: it starts with # and the place's name" });
   return { value, problems };
@@ -282,6 +339,8 @@ export function parseHealthText(text, id = "it") {
 export function writeHealthText(value) {
   const out = [`# ${value.name ?? ""}`];
   if (value.draft) out.push(`draft: ${value.draft}`);
+  if (value.queue) out.push(`the morning queue: ${value.queue}`);
+  if (value.accidents) out.push(`accidents at work: ${value.accidents}`);
   out.push("", "At the start:", ...(value.start ?? []).map((one) => `- ${one.text}`));
   return `${out.join("\n")}\n`;
 }

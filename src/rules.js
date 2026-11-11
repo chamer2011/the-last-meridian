@@ -1,7 +1,7 @@
 // The game's rules. Only this code changes health, money, items and so on, whatever the story's files say,
 // so nothing can cheat.
 
-import { bodyOf, bodyView, healWounds, newBodySeed, woundEffects } from "./body.js";
+import { accidentsDay, bodyOf, bodyView, dressWounds, handsFree, newBodySeed, painADay, passWounds, woundEffects } from "./body.js";
 import { allCharacters, allEnemies, campaignCharacters, campaignEnemies, campaignFolderName, findCharacter, findEnemy, fullName } from "./campaign.js";
 import {
   ABILITIES, CORE_FACTIONS, FACTIONS, ITEMS, LOCATIONS, PERKS, STARTING_QUESTS, STATS, STAT_INFO,
@@ -321,7 +321,13 @@ function hoursPass(game, hours, activity) {
     }
   }
   // Wounds go when their time comes, everyone's (src/body.js).
-  for (const wound of healWounds(game)) notes.push(`[HEALTH] Healed: ${wound.words}.`);
+  // Wounds go on living (src/body.js): bleeding, dressed, gone bad, healed. The player's are said, and they hurt.
+  const lived = passWounds(game, hours, { speed });
+  for (const words of lived.dressed) notes.push(`[HEALTH] You dress ${words.replace(/^an? /, "the ")}.`);
+  for (const words of lived.bad) notes.push(`[HEALTH] ${words.replace(/^an? /, "The ")} has gone bad.`);
+  for (const words of lived.healed) notes.push(`[HEALTH] Healed: ${words}.`);
+  const pain = painADay(game);
+  if (pain) notes.push(...changeStress(game, (pain * hours) / 24));
   // The ship, the world and the stories go through each day together, so it makes no difference how a long wait is cut up.
   const today = Math.floor(game.clock.hours / 24);
   const told = { today: 0, all: 0 };
@@ -330,6 +336,8 @@ function hoursPass(game, hours, activity) {
     // Each post's duty for the day is settled once the ship's own day has had it, and on a review day the officers
     // review their people after that; then loyalty, the council's confidence and any mutiny move on.
     notes.push(...advanceLogistics(game, day * 24), ...advanceShip(game, day), ...dutyDay(game, day), ...reviewDay(game, day), ...moodDay(game, day), ...advanceWorld(game, day), ...advanceStories(game, day, told));
+    // Now and then someone hurts themselves at their work, at a place whose health file says how often.
+    accidentsDay(game, day);
   }
   syncVitals(game);
   return notes;
@@ -383,6 +391,10 @@ export function useItem(game, id) {
       const before = game.ship.hull;
       game.ship.hull = Math.min(game.ship.maxHull, game.ship.hull + amount + skillRank(game, "engineering") * 2);
       parts.push(`+${game.ship.hull - before} hull`);
+    } else if (key === "dress") {
+      // A medkit dresses or splints the worst of the player's wounds (src/body.js).
+      const done = dressWounds(game, "you", amount);
+      if (done.length) parts.push(...done);
     } else if (key === "fuel") {
       const before = game.ship.fuel;
       game.ship.fuel = Math.min(game.ship.maxFuel, game.ship.fuel + amount);
@@ -568,6 +580,7 @@ export function workShift(game) {
   const job = jobHere(game);
   if (!job) throw new Error("You've got no work here.");
   if (game.needs.fatigue >= TOO_TIRED_TO_WORK) throw new Error("You're too tired to work another shift. Get some sleep first.");
+  if (!handsFree(game, game.location, "you")) throw new Error("You can't work with a hand that's no use. Let it heal first.");
   const notes = passTime(game, 8, "work");
   const pay = job.pay + skillRank(game, job.skill);
   game.credits += pay;

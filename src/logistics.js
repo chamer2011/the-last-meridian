@@ -7,6 +7,7 @@
 // step by step. Everything here runs on this computer. public/logistics-text.js
 // reads the words; this knows the maps, the items, the systems and everyone's days.
 
+import { handsFree } from "./body.js";
 import { ITEMS, LOCATIONS } from "./data.js";
 import { storeCounts, storePut, storeTake } from "./bag.js";
 import { findCharacter } from "./campaign.js";
@@ -606,10 +607,11 @@ function errandDoing(model, e, s) {
 // Who does an errand in a game: whoever set out on it; or else the person it names, or whoever holds the post it
 // names. An errand that names a job has nobody until someone doing the job is free to go.
 const carrierOf = (game, place, e, s = null) => s?.by ?? (e.post ? holderKey(game, place, e.post) : e.job ? null : e.key);
-// Someone doing a job, awake, at their post and not already carrying something else.
+// Someone doing a job, awake, at their post, with a hand that isn't hurt too badly to carry (src/body.js), and not
+// already carrying something else.
 function freeHand(game, place, state, job, hours) {
   const busy = new Set(Object.values(state.errands ?? {}).map((one) => one.by).filter(Boolean));
-  return onJob(game, place, job).find((key) => key !== YOU && !busy.has(key) && !lostReason(game, place, key) && isAbout(game, place, key, hours)) ?? null;
+  return onJob(game, place, job).find((key) => key !== YOU && !busy.has(key) && !lostReason(game, place, key) && handsFree(game, place, key) && isAbout(game, place, key, hours)) ?? null;
 }
 
 function runErrands(game, place, model, state, t) {
@@ -623,7 +625,7 @@ function runErrands(game, place, model, state, t) {
     if (!s) {
       if (have() >= e.under) continue;
       const who = e.job ? freeHand(game, place, state, e.job, t / 60) : carrierOf(game, place, e);
-      if (!who || !isAbout(game, place, who, t / 60)) continue;
+      if (!who || !isAbout(game, place, who, t / 60) || !handsFree(game, place, who)) continue;
       state.errands[e.id] = { phase: "going", since: t, load: null, by: who };
       continue;
     }
@@ -699,8 +701,9 @@ function runMachine(game, place, model, m, state, minute, minutes, you) {
   const s = state.machines[m.id] ??= { progress: 0, made: 0, waiting: null };
   const from = m.from ? storeById(model, m.from) : null;
   const into = m.into ? storeById(model, m.into) : null;
-  // Who's at it, asked once: whether it waits for someone, and how fast they go.
-  const workers = m.needs.worker ? usuallyIn(game, place, m.room, minute % 1440, m.needs.job) : null;
+  // Who's at it, asked once: whether it waits for someone, and how fast they go. Someone with a hand that's no use
+  // can't do the work.
+  const workers = m.needs.worker ? usuallyIn(game, place, m.room, minute % 1440, m.needs.job).filter((who) => handsFree(game, place, who)) : null;
   const why = whyWaiting(game, place, m, from, into, minute, you, workers);
   const atWork = why === null || (why !== "no power" && !why.startsWith("waiting for "));
   // A machine that needs someone doing a job goes as fast as the best of them at that job's skill.

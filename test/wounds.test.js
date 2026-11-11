@@ -88,7 +88,8 @@ test("someone beaten from the right-click menu keeps the wounds, and every hit s
   assert.deepEqual(kept.sort(), [...left].sort());
   const shown = body.bodyView(body.bodyOf(game, { name: "Deckhand Rafe", place: "meridian" }));
   assert.equal(shown.marks.length, before + left.length);
-  for (const words of left) assert.ok(shown.marks.some((mark) => mark.words.toLowerCase() === words), words);
+  // A wound that bleeds says so until it's dressed.
+  for (const words of left) assert.ok(shown.marks.some((mark) => mark.words.toLowerCase().startsWith(words)), words);
   const down = events.find((event) => event.down && event.on === enemy.key);
   assert.match(down.math, /out cold|can't stand|can't get up/, "nobody dies: they're down");
 });
@@ -113,8 +114,13 @@ test("the player keeps the wounds the hits left, losing gives no other, and they
   const notes = passTime(game, 24 * 3);
   assert.deepEqual(game.wounds.map((one) => one.kind), ["broken_bone"], "a bruise is gone in two days, a broken arm isn't");
   assert.ok(notes.some((note) => /Healed: a bruise on the chest/.test(note)));
-  passTime(game, 24 * 30);
-  assert.equal(game.wounds.length, 0);
+  // A broken arm only heals splinted, in 30 days, so left alone it takes twice as long, as the wounds file says; a
+  // medkit splints it, and from then it's the 30.
+  const arm = game.wounds[0];
+  assert.equal(arm.until - arm.at, 60 * 24);
+  assert.deepEqual(body.dressWounds(game, "you"), ["splinted the broken left arm"]);
+  assert.equal(arm.until, game.clock.hours + 30 * 24);
+  assert.match(publicState(game).body.lines.find((line) => /arm/.test(line.words)).words, /, splinted$/);
 });
 
 test("wounds count in a fight: a broken arm hits worse, and a broken leg can't run", () => {

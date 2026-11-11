@@ -10,8 +10,9 @@ the next game.
 
 Bodies show on Look (right-click someone), on the registry printouts, and on the figure in the inventory, and since
 step 2 of the health plan every hit in a fight lands on a part and can leave a wound there, which stays after the
-fight and goes when its time comes. Most of what the rules below do (bleeding, limping, the medbay, treatment) comes in
-the later steps, one at a time; what works now is said where it's explained. npm run check-story reads all of it and
+fight. Since step 3 wounds bleed, get dressed, go bad, heal at their own pace, slow a limping walker and keep a useless
+hand off errands and work. The medbay, carrying the fallen and treatment come in the later steps, one at a time; what
+works now is said where it's explained. npm run check-story reads all of it and
 says what's wrong, with the file and the line.
 
 Four kinds of file have a say:
@@ -49,6 +50,22 @@ Four kinds of file have a say:
 
 old marks: how often someone gathers an old mark: one for every so many years of their life after an age, and the
 most anyone carries, counting what their own file says.
+
+Living with wounds (step 3 of the health plan), the lines at the top that say:
+    blood comes back: 2 an hour, once nothing bleeds
+    low on blood: under 60, checks one step harder
+    bleeding stops at: 35, for now         (nobody bleeds lower than this until the medbay steps; later, 0)
+    they dress their own: wounds that aren't serious, after an hour
+    left alone: twice as long, for a wound that heals once treated
+    with a limp: 60% of the pace           (how fast someone walks with a limp: a wound on a leg, or a mark that limps)
+    on a leg they can't stand on: 30% of the pace
+    pain: 2 stress a day for a wound, 5 for a serious one      (the player's stress)
+A wound that bleeds lowers its owner's blood every hour until it's dressed. Someone dresses a wound that isn't serious
+themselves after the time it says; a serious one waits for someone else: for the player, a medkit, which dresses or
+splints their worst wound (its effect line says dress 1), and later the medbay. A wound that can go bad goes bad if
+it's still undressed when the infected line's days are up. A wound heals in its days, faster once dressed, and a
+species' Body part can make it slower; one that only heals once treated takes the left alone times as long untreated.
+One step harder on a check is 2 off the roll.
 
 a wound from a hit: how much of someone's health one hit has to take to leave a wound. a hard wound: how much it has
 to take to leave a hard one, and ", or a hard hit" if a hard hit (a critical) always does. A hit that takes less
@@ -89,6 +106,7 @@ The rules:
     out cold for 1 to 4 hours       and gone after that many hours
     checks one step harder
     in a fight: attack -2           this much off their attack in a fight, the player's and anyone's
+    can go bad                      left undressed long enough, it goes bad (see the infected line)
     the hand's no use
     can't stand on it               someone with it can't walk; for now, in a fight in the room they stay where they
                                     are, and they can't run from a fight
@@ -103,17 +121,29 @@ The rules:
     not for: synthetic              that species never has it
 
 
+Accidents (in wounds.txt, before Old marks): the wounds people get at their work, each likelier in the work it names:
+    - burn: likelier in: engine, tech, cook, galley
+How often is in a place's file, below.
+
 2. A PLACE'S HEALTH, LIKE MERIDIAN.TXT
 --------------------------------------
 
     # CFS Meridian
     draft: the AI's, not yet edited by the owner
+    the morning queue: 07:45 to 10:30, at queue
+    accidents at work: 1 in 20 days in rough work, 1 in 100 for everyone else
 
     At the start:
     - Vik, right leg: broken bone
     - Hana, chest: deep burn
 
-Each line is someone at that place, a comma, and a body line (below). It's for the people with only a name, who have
+the morning queue: when anyone there who's hurt and on their feet goes to wait at the medbay, and where: a spot or a
+group of spots in the place's file in world/life (queue is the medbay's). Anyone asleep or laid up stays put.
+
+accidents at work: how often someone there hurts themselves at their work, rough work being the wounds file's. The
+wound is one of the wounds file's Accidents, likelier the ones for their work, on a part at random.
+
+Each line under At the start is someone at that place, a comma, and a body line (below). It's for the people with only a name, who have
 no file of their own; someone with a file can be named here too, by their id or their name. Later steps will add the
 medbay's cots and who answers a call.
 

@@ -508,6 +508,8 @@ function bodyFigure(body) {
   }
   return svg;
 }
+// How long a wound has left: hours for a day or two, then days.
+const timeLeft = (hours) => (hours < 48 ? `${hours}h left` : `${Math.round(hours / 24)} days left`);
 const MARK_CLASS = { old: "", artificial: "sheet-hi", hurt: "sheet-warn", bad: "sheet-red" };
 function bodyBlock(body) {
   if (!body) return [];
@@ -519,7 +521,7 @@ function bodyBlock(body) {
       el("div", { class: "sheet-body-text" },
         el("div", {}, status, body.blood !== null ? ["  BLOOD ", el("span", { class: `sheet-bar${body.blood < 100 ? " sheet-red" : ""}` }, bar(body.blood, 100, 8)), ` ${body.blood}`] : ""),
         body.lines.length
-          ? body.lines.map((mark) => el("div", { class: `sheet-mark ${MARK_CLASS[mark.state]}` }, `- ${mark.words}${mark.hoursLeft ? `, ${mark.hoursLeft}h left` : ""}`))
+          ? body.lines.map((mark) => el("div", { class: `sheet-mark ${MARK_CLASS[mark.state]}` }, `- ${mark.words}${mark.hoursLeft ? `, ${timeLeft(mark.hoursLeft)}` : ""}`))
           : el("div", { class: "sheet-dim" }, "No marks worth noting."))),
   ];
 }
