@@ -1,0 +1,36 @@
+# Who's stirring it
+// Draft by the AI (Claude), 2026-11-11, not yet edited by the owner. While there's grumbling aboard (a mutiny's first
+// stage), the first officer asks the captain to have a word with whichever officer is least loyal to them. Talking to
+// them is the word; it moves their loyalty a little, and the grumbling dying down ends it. {about} is the officer.
+when: captain and mutiny grumbling
+about: the least loyal officer
+asks: the first officer
+needs: talk to {about}
+by: 2 days
+gone when: mutiny calm
+
+== ask
+@{asker}: "There's grumbling in the mess, Captain, and it's coming from somewhere. If I had to guess, {about}. Have a word, before it's more than words."
+> I'll talk to {about} -> yes
+> Let them grumble -> no
+> Not now -> later
+
+== yes
+@{asker}: "Hear them out. That's half of it."
+
+== no
+@{asker}: "As you say. I'll keep my ears open."
+
+== later
+@{asker}: "Soon, Captain."
+
+== done
+@{asker}: "Whatever you said to {about}, the mess is a little quieter."
+* loyalty {about} 4: The captain came and heard them out
+* xp 10: Who's stirring it
+
+== failed
+@{asker}: "It's louder in the mess, not quieter."
+
+== gone
+@{asker}: "The grumbling's died down. Never mind what I said."

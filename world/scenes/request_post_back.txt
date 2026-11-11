@@ -1,0 +1,35 @@
+# The post they lost
+// Draft by the AI (Claude), 2026-11-11, not yet edited by the owner. Someone relieved of a post in the last two weeks
+// asks the captain for it back. A yes gives it back there and then (and {holder}, who has it now, goes back to a job,
+// as when anyone's relieved); a no leaves it with {holder}, and they remember. {post} is the post they lost.
+when: captain
+about: someone relieved
+asks: them
+needs: your word
+by: 1 day
+
+== ask
+@{asker}: "Captain. You'll have heard I'm not the {post} any more. {holder} has it now. Give it back to me. I won't let it slip again."
+> It's yours again -> yes
+> {holder} keeps it -> no
+> Let me think about it -> later
+
+== yes
+@{asker}: "You won't regret it."
+* appoint {post} {asker}: You gave {asker} back the post of {post}
+
+== no
+@{asker}: "Then that's that."
+
+== later
+@{asker}: "Don't think about it too long."
+
+== done
+@{asker}: "I'll show you it was the right call."
+* xp 5: The post they lost
+
+== failed
+@{asker}: "I waited for your answer, Captain."
+
+== gone
+@{asker}: "Never mind the {post}. It's been settled."

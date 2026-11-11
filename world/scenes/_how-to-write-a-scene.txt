@@ -159,6 +159,9 @@ Lines starting with * happen when the part begins, and the player sees each as a
     * loyalty marrow -10: The reason            (their loyalty to the captain, a memory that fades like the rest)
     * remember marrow tarrow -15: The reason    (Marrow remembering this of Tarrow, for or against them; you for the
                                                 player)
+    * rivalry ends chief_medical_officer: The reason   (whoever was working against that post's holder stops)
+    * release tarrow: The reason                (someone let out of the brig before their days are done, a spare
+                                                hand on the watch bill)
     * mutiny give ground: The reason      (the ship's chain of command, for the scenes it plays: give ground,
                                           calmed, arrest, crushed, step down, refused, taken, released, join,
                                           stay out or warn; world/command/_how-to-write-command.txt says what each does)
@@ -207,6 +210,11 @@ and join several with "and":
     job Cook Imre cook               What someone does on the watch bill: a job by its id, or spare.
     loyalty marrow < 40              Someone's loyalty to the captain, from 0 to 100, with the same comparisons
                                      as credits.
+    rival any                        Someone aboard the Meridian is working against a post's holder (a rival,
+                                     after a review). rival chief_medical_officer for that post's holder.
+    brig any                         Someone's in the Meridian's brig. brig tarrow for that person.
+    down any                         Someone aboard the Meridian is lying where they fell, not on a cot and
+                                     not being carried. down and a name for that person.
     mutiny brewing                   A mutiny's brewing aboard the Meridian. Also mutiny calm, grumbling,
                                      refusing orders and delegation (how far it's got), taken (the officers
                                      relieved the player of command, and they're crew now), can arrest (the
@@ -355,9 +363,13 @@ On top, before the first part, a few lines say when it comes up and what puts it
 
 when:       a condition, as in a scene. While it holds, they ask. If it stops holding before the
             player has said yes, they don't ask any more.
+about:      for a request about someone's own trouble, which trouble it is (more under PEOPLE'S
+            TROUBLES, below): a rival, someone relieved, someone in the brig, the least loyal officer,
+            or someone down with nobody coming.
 asks:       who asks: a post (the chief medical officer: whoever holds it now), a job (a cook: one
             of the cooks at work), or someone by name. Add ", in The Galley" to say where to find
-            them, if it isn't where their post or job is.
+            them, if it isn't where their post or job is. With about:, "them" is the trouble's own
+            person (see below).
 needs:      what's wanted, one of these:
                 medicine crates aboard +2         bought for the ship from the Ship menu
                 ration crates in the pantry +2    carried into that store by hand, or bought into it
@@ -375,6 +387,12 @@ needs:      what's wanted, one of these:
                 pass engineering                  a check of that skill passed; add "at the air
                                                   plant" for one on that part, or "with {asker}"
                                                   for one with that person
+                your word                         nothing more than a yes: the yes part's * lines
+                                                  do what was asked, and it's done at once
+                carry {about} to the medbay       the one lying there picked up by the player
+                                                  (Carry them, on their right-click menu) and put
+                                                  down on a cot (about: someone down with nobody
+                                                  coming)
             Only what the player does counts. Taking something back out of a store takes it off.
 by:         how long they give, once the player says yes: 5 days, or 12 hours.
 gone when:  a condition that means it's been put right without the player. If it holds while the
@@ -386,7 +404,8 @@ handed to:  a post the captain can leave it to instead, like the chief engineer.
             and five goes on that post's duty for the day; if not, it's failed, and fifteen comes off.
 
 Then the parts, in the talk window's way (see CONVERSATIONS), with {asker} for whoever's asking,
-and in a request to fix something, {part} for what's broken and {room} for the room it's in:
+in a request to fix something, {part} for what's broken and {room} for the room it's in, and in a
+request about someone, {about}, {post} and {holder} (below):
 
     == ask          what they ask. One of its choices goes to yes (or given).
     == yes          what they say to a yes. The player takes it on.
@@ -418,6 +437,31 @@ request's file name and how it went: request_medicine_done, request_medicine_fai
 request_medicine_refused, request_pantry_seen_to and request_pantry_left_undone. Each has a line of
 words the player can read under Facts on record in the quest log, and the latest time is the one
 kept.
+
+PEOPLE'S TROUBLES
+
+A request with an about: line is about someone: it comes up only while there's such a trouble
+aboard, it's about the first one there's someone free to ask about, and it's gone (if the player
+hasn't done it yet) once the trouble isn't there any more.
+
+    a rival                         someone working against a post's holder. {about} is the rival,
+                                    {post} the post, and asks: them is the holder.
+    someone relieved                someone relieved of a post in the last two weeks who hasn't
+                                    another. asks: them is them, {post} is the post they lost, and
+                                    {holder} whoever has it now.
+    someone in the brig             asks: them is whoever's in it.
+    the least loyal officer         the officer least loyal to the captain. {about} is them, {post}
+                                    their post. Nobody asks for themselves, so asks: names someone,
+                                    like the first officer.
+    someone down with nobody coming someone lying where they fell for a quarter of an hour, with no
+                                    nurse or spare hand on the way. {about} is them and {room} where
+                                    they lie. It's gone when someone else picks them up, done when
+                                    the player lays them on a cot, and failed if they die there.
+
+A request can take a side: what the yes and no parts' * lines do is the side taken, as when the
+rival's file has a no that the rival remembers kindly (* remember {about} you 4). {post} in a
+* line is the post's id, so * appoint {post} {asker} gives someone their post back, and
+* rivalry ends {post} ends a rivalry.
 
 At most three requests wait at once, and someone new asks once a day at most. Each person asks one
 thing at a time. A request that's over rests for a while before it can come up again: two days if

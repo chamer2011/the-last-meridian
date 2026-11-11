@@ -13,7 +13,7 @@ import { stockOf, storeByWords, storeNames } from "./logistics.js";
 
 // The ship whose stores "stock" counts. Spelt here rather than taken from src/ship.js, which reads scenes itself.
 const SHIP_ID = "meridian";
-import { MUTINY_CONDITIONS, MUTINY_OUTCOMES, commandWords, knownPerson, loyaltyFor, mutinyHolds, storyHolds } from "./command.js";
+import { MUTINY_CONDITIONS, MUTINY_OUTCOMES, brigHolds, commandWords, knownPerson, loyaltyFor, mutinyHolds, rivalHolds, storyHolds } from "./command.js";
 
 // Two people written one after the other, as in "* remember marrow tarrow -10": the first split where both are someone.
 function splitPeople(words) {
@@ -226,6 +226,22 @@ export function parseCondition(text) {
         Object.assign(term, { who, op, amount: Number(amount) });
         break;
       }
+      case "rival": {
+        // Someone working against whoever holds a post: rival any, or rival chief_medical_officer.
+        const { posts } = commandWords();
+        const post = rest.join(" ").toLowerCase();
+        if (post !== "any" && !posts.has(post)) problems.push(`"rival" is followed by any or a post, by its id (${[...posts].join(", ")}): "${raw.trim()}"`);
+        term.id = post;
+        break;
+      }
+      case "brig":
+      case "down": {
+        // Someone in the brig, or lying where they fell aboard the Meridian: any, or someone by their id or name.
+        const who = rest.join(" ");
+        if (!who || (!/^any$/i.test(who) && !knownPerson(who))) problems.push(`"${term.kind}" is followed by any or someone aboard, by their id or name: "${raw.trim()}"`);
+        term.who = who;
+        break;
+      }
       case "repairs":
         // Something aboard the Meridian is broken and the engineers can't mend it for want of a parts crate.
         if (rest.join(" ").toLowerCase() !== "waiting") problems.push(`"repairs" is followed by waiting: "${raw.trim()}"`);
@@ -289,6 +305,14 @@ function termHolds(game, term, helpers) {
     }
     case "mutiny": result = mutinyHolds(game, term.id); break;
     case "repairs": result = partsWaitingIds(game, SHIP_ID).length > 0; break;
+    case "rival": result = rivalHolds(game, term.id); break;
+    case "brig": result = brigHolds(game, term.who); break;
+    case "down": {
+      // Lying where they fell, not yet in the medbay or on the way: game.down, kept by src/medbay.js.
+      const lying = Object.values(game.down ?? {}).filter((d) => d.place === SHIP_ID && !d.bed && !d.carriedBy && !d.going && !d.dead);
+      result = /^any$/i.test(term.who) ? lying.length > 0 : lying.some((d) => String(d.who).toLowerCase() === String(term.who).toLowerCase());
+      break;
+    }
     case "holds":
     case "job": result = storyHolds(game, term); break;
     case "loyalty": result = COMPARE[term.op](loyaltyFor(game, term.who), term.amount); break;
@@ -409,10 +433,24 @@ export function parseEffect(text) {
       const { posts, chairs } = commandWords();
       const post = words[1]?.toLowerCase();
       const who = words.slice(2).join(" ");
-      if (!post || !posts.has(post)) return { problem: `appoint is written * appoint a_post someone: reason, with the post by its id (${[...posts].join(", ")})` };
+      // A request's {post} stands for the post it's about, filled in when it's played.
+      if (!post || (!posts.has(post) && post !== "{post}")) return { problem: `appoint is written * appoint a_post someone: reason, with the post by its id (${[...posts].join(", ")})` };
       if (chairs.has(post)) return { problem: "the captain's chair changes hands through the story's change of command, or a mutiny, not appoint" };
       if (!who || !knownPerson(who) || /^(you|nobody)$/i.test(who)) return { problem: `there's nobody called ${who || "nothing"} aboard to appoint: write their id or name (the player can't be given a post yet)` };
       return after ? { do: { command: "appoint", post, who, reason: after } } : { problem: "appoint needs a colon and the reason after it" };
+    }
+    case "rivalry": {
+      // Whoever was working against a post's holder lets it go: * rivalry ends chief_medical_officer: reason.
+      const { posts } = commandWords();
+      const post = words[2]?.toLowerCase();
+      if (words[1]?.toLowerCase() !== "ends" || !post || (!posts.has(post) && post !== "{post}") || words.length > 3) return { problem: `rivalry is written * rivalry ends a_post: reason, with the post by its id (${[...posts].join(", ")}) or {post}` };
+      return after ? { do: { command: "rivalry_ends", post, reason: after } } : { problem: "rivalry ends needs a colon and the reason after it" };
+    }
+    case "release": {
+      // Someone let out of the brig before their days are done: * release tarrow: reason.
+      const who = words.slice(1).join(" ");
+      if (!who || !knownPerson(who) || /^(you|nobody)$/i.test(who)) return { problem: `there's nobody called ${who || "nothing"} aboard to let out of the brig` };
+      return after ? { do: { command: "release", who, reason: after } } : { problem: "release needs a colon and the reason after it" };
     }
     case "relieve": {
       // Someone relieved of their post: * relieve chief_engineer: reason. Whoever chooses for it gives it to someone else.
@@ -567,8 +605,8 @@ function parseChoice(text, line) {
 }
 
 // The lines on top of a request, and what each is kept as.
-const REQUEST_KEYS = { when: "when", asks: "asks", needs: "needs", by: "by", "gone when": "gone", "handed to": "handed" };
-const REQUEST_LINE = /^(when|asks|needs|by|gone\s+when|handed\s+to):\s*(.*)$/i;
+const REQUEST_KEYS = { when: "when", about: "about", asks: "asks", needs: "needs", by: "by", "gone when": "gone", "handed to": "handed" };
+const REQUEST_LINE = /^(when|about|asks|needs|by|gone\s+when|handed\s+to):\s*(.*)$/i;
 
 // Reads one file's text. parts come out in the shape src/scenes.js plays, and problems say what to fix.
 

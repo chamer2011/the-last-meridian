@@ -7,6 +7,14 @@ import { findCharacter, fullName } from "./campaign.js";
 import { LOCATIONS } from "./data.js";
 import { personWhere } from "./walk.js";
 
+// When it's due, in words: the day, and the time too when they gave less than a day ("14:30 on day 1").
+export function dueWords(due, short = false) {
+  if (!short) return `day ${Math.floor(due / 24) + 1}`;
+  const minutes = Math.round(due * 60);
+  const two = (n) => String(n).padStart(2, "0");
+  return `${two(Math.floor(minutes / 60) % 24)}:${two(minutes % 60)} on day ${Math.floor(minutes / 1440) + 1}`;
+}
+
 const THEY = { "she/her": "She's", "he/him": "He's", "they/them": "They're" };
 const theyAre = (person) => THEY[String(person?.pronouns ?? "").toLowerCase()] ?? "They're";
 const at = (where) => (where?.place ? `at ${where.placeName}` : where?.room ? `at ${where.room.replace(/^The /, "the ")}` : "somewhere you could find them");
@@ -28,7 +36,7 @@ function stepOf(game, quest, scene) {
   if (quest.status === "completed") return { state: "done", text: quest.objective ?? "Done" };
   if (quest.status === "failed") return { state: "failed", text: quest.objective ?? "Failed" };
   // Something someone asked: what's been brought so far, and who asked and by when (src/requests.js).
-  if (quest.request) return { state: "go", text: quest.objective ?? "", where: [quest.askedBy ? `${quest.askedBy} asked.` : null, quest.due ? `By day ${Math.floor(quest.due / 24) + 1}.` : null].filter(Boolean).join(" ") };
+  if (quest.request) return { state: "go", text: quest.objective ?? "", where: [quest.askedBy ? `${quest.askedBy} asked.` : null, quest.due ? `By ${dueWords(quest.due, quest.dueShort)}.` : null].filter(Boolean).join(" ") };
   if (scene?.with) {
     const person = findCharacter(game.campaign, scene.with);
     const name = person ? fullName(person) : scene.with;

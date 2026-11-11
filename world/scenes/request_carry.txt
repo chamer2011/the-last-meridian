@@ -1,0 +1,31 @@
+# A hand with the carrying
+// Draft by the AI (Claude), 2026-11-11, not yet edited by the owner. When someone aboard has been lying where they fell
+// for a quarter of an hour with nobody coming for them (every nurse and spare hand busy or asleep), a nurse asks anyone
+// who lives aboard to carry them to the medbay: Carry them, on their right-click menu, then Put them down on a cot.
+// {about} is who's lying there, and {room} where.
+when: down any
+about: someone down with nobody coming
+asks: a nurse
+needs: carry {about} to the medbay
+by: 3 hours
+
+== ask
+@{asker}: "{about} is lying in {room}, and there's nobody free to fetch them. You've a pair of arms. Bring them here, to a cot, would you?"
+> I'll bring them -> yes
+> I can't -> no
+
+== yes
+@{asker}: "Carefully. Pick them up, bring them here, and put them down on a cot."
+
+== no
+@{asker}: "Then I'll go myself when I can."
+
+== done
+@{asker}: "There. Put them down gently. I'll take it from here."
+* xp 10: A hand with the carrying
+
+== failed
+@{asker}: "Nobody brought {about} in. They lay there all that time."
+
+== gone
+@{asker}: "{about}'s been seen to. Never mind."

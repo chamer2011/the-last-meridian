@@ -1,0 +1,35 @@
+# Days in the brig
+// Draft by the AI (Claude), 2026-11-11, not yet edited by the owner. Whoever's in the brig asks the captain, when the
+// captain comes by, to be let out before their days are done. A yes lets them out there and then, a spare hand on the
+// watch bill; a no leaves them to their days.
+when: captain
+about: someone in the brig
+asks: them
+needs: your word
+by: 1 day
+
+== ask
+@{asker}: "Captain. I've had time to think, in here. Let me out before my days are done, and I'll keep my head down. You have my word."
+> Let them out -> yes
+> You'll do your days -> no
+> Not now -> later
+
+== yes
+@{asker}: "Thank you, Captain."
+* release {asker}: The captain let them out early
+
+== no
+@{asker}: "Then I'll count the days."
+
+== later
+@{asker}: "I'm not going anywhere."
+
+== done
+@{asker}: "I meant what I said."
+* xp 5: Days in the brig
+
+== failed
+@{asker}: "I asked you a simple thing, Captain."
+
+== gone
+@{asker}: "My days are done anyway."

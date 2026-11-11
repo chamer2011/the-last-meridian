@@ -1,0 +1,37 @@
+# Bad blood
+// Draft by the AI (Claude), 2026-11-11, not yet edited by the owner. Whoever holds a post that someone is working
+// against (a rival, from the chain of command's reviews) asks anyone who lives aboard to have a word with them. Talking
+// to the rival is the word. Saying no takes the rival's side, a little. {about} is the rival, {post} the post.
+when: rival any
+about: a rival
+asks: them
+needs: talk to {about}
+by: 3 days
+
+== ask
+@{asker}: "{about} has been telling anyone who'll listen that I can't do this job. It's getting into the work. Would you have a word? It might come better from you."
+> I'll talk to {about} -> yes
+> Maybe {about} has a point -> no
+> Not now -> later
+
+== yes
+@{asker}: "Thank you. Don't make a scene of it."
+
+== no
+@{asker}: "I see. Well. I know where I stand, then."
+* remember {about} you 4: You wouldn't take {asker}'s side against them
+
+== later
+@{asker}: "It won't get better by itself."
+
+== done
+@{asker}: "Whatever you said to {about}, it's quieter. Thank you."
+* rivalry ends {post}: You had a word with {about}
+* remember {about} you -3: You took {asker}'s side
+* xp 10: Bad blood
+
+== failed
+@{asker}: "{about}'s still at it. I thought you were going to have a word."
+
+== gone
+@{asker}: "{about} seems to have let it go by themselves. Never mind."

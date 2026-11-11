@@ -1455,10 +1455,75 @@ export function storyCommand(game, step, place = SHIP_PLACE) {
       notes.push(`[COMMAND] ${named(who)} will remember that of ${calledBy(game, place, other)}: ${step.reason}`);
       break;
     }
+    case "rivalry_ends": {
+      // Whoever was working against the post's holder lets it go.
+      if (!post) throw new Error(`there's no post called ${step.post} whose rivalry could end`);
+      const rival = rivalOf(game, place, post.id, today);
+      if (state.rivals?.[post.id]) state.rivals = Object.fromEntries(Object.entries(state.rivals).filter(([id]) => id !== post.id));
+      if (rival) notes.push(`[COMMAND] ${named(rival)} has stopped working against ${calledBy(game, place, holderKey(game, place, post.id))}: ${step.reason}`);
+      break;
+    }
+    case "release": {
+      // Out of the brig before their days are done: a spare hand on the watch bill, as when the days are over.
+      if (!who || who === YOU || who === "nobody") throw new Error(`there's nobody called ${step.who} to let out of the brig`);
+      if (!state.brig?.[who]) break;
+      state.brig = Object.fromEntries(Object.entries(state.brig).filter(([key]) => key !== who));
+      state.jobs = { ...state.jobs, [who]: null };
+      tell(game, place, notes, `${named(who)} has been let out of the brig early, and is one of the spare hands now: ${step.reason}`, today);
+      break;
+    }
     default:
       break;
   }
   return notes;
+}
+
+// ---- What a request can be about (src/requests.js) -----------------------------------------------
+
+// How long someone relieved still asks for their post back, in days.
+const RELIEVED_ASKS = 14;
+// The troubles in the chain of command that a request can be about, as who it falls on (asker), who it's about, and
+// the post, newest first where there's an order:
+//   a rival                  whoever holds a post someone's working against, about the rival
+//   someone relieved         someone relieved in the last two weeks who holds no post now, about the post they lost
+//   someone in the brig      whoever's in the brig
+//   the least loyal officer  the officer least loyal to the captain, least first
+// Reading this changes nothing.
+export const TROUBLES = ["a rival", "someone relieved", "someone in the brig", "the least loyal officer"];
+export function troublesOf(game, kind, place = SHIP_PLACE) {
+  const model = commandOf(place);
+  const state = stateOf(game, place);
+  if (!model) return [];
+  const today = dayNow(game);
+  const free = (key) => key && key !== YOU && stillAlive(game, key) && !state?.brig?.[key];
+  switch (kind) {
+    case "a rival":
+      return model.posts.map((post) => ({ post: post.id, asker: holderKey(game, place, post.id), about: rivalOf(game, place, post.id, today) })).filter((one) => free(one.asker) && one.about && free(one.about));
+    case "someone relieved":
+      return Object.entries(state?.memory ?? {}).flatMap(([key, list]) => {
+        const last = [...list].reverse().find((one) => one.kind === "relieved");
+        if (!last || today - last.day > RELIEVED_ASKS || !free(key) || postOf(game, place, key) || holderKey(game, place, last.post) === key) return [];
+        return [{ asker: key, about: key, post: last.post }];
+      });
+    case "someone in the brig":
+      return Object.keys(state?.brig ?? {}).filter((key) => key !== YOU && stillAlive(game, key)).map((key) => ({ asker: key, about: key, post: null }));
+    case "the least loyal officer":
+      return officersOf(game, place).sort((a, b) => loyaltyOf(game, place, a) - loyaltyOf(game, place, b)).map((key) => ({ asker: null, about: key, post: postOf(game, place, key) }));
+    default:
+      return [];
+  }
+}
+// For the scenes' conditions: whether a post's holder has someone working against them (any post, or one by its
+// id), and whether someone's in the brig (anyone, or someone by name).
+export function rivalHolds(game, postWords, place = SHIP_PLACE) {
+  if (/^any$/i.test(postWords)) return troublesOf(game, "a rival", place).length > 0;
+  return troublesOf(game, "a rival", place).some((one) => one.post === postByWords(place, postWords));
+}
+export function brigHolds(game, words, place = SHIP_PLACE) {
+  const held = Object.keys(stateOf(game, place)?.brig ?? {});
+  if (/^any$/i.test(words)) return held.length > 0;
+  const who = personByWords(place, words);
+  return Boolean(who && held.includes(who));
 }
 
 // ---- Loyalty, the council's confidence, and mutiny ------------------------------------------------
