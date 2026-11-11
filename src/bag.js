@@ -10,6 +10,7 @@ import { ITEMS } from "./data.js";
 import { INVENTORY } from "./world.js";
 import { addItem, attr, removeItem, useItem } from "./rules.js";
 import { standingAt } from "./walk.js";
+import { notePut } from "./puts.js";
 
 const R = () => INVENTORY;
 const round1 = (n) => Math.round(n * 10) / 10;
@@ -368,7 +369,10 @@ function move(game, from, to) {
     if (from.at === to.at) return {};
     if (to.at === "weapon" && game.equipped.sidearm === source.id && from.at !== "sidearm" && (game.inventory[source.id] ?? 0) < 2) throw new Error("That one's on your hip.");
     const old = game.equipped[to.at];
-    if (outOfStore) addItem(game, source.id, 1);
+    if (outOfStore) {
+      addItem(game, source.id, 1);
+      notePut(game, found.key, source.id, -1);
+    }
     source.take(1);
     if (from.at === "sidearm" || from.at === "weapon" || from.at === "armor") game.equipped[from.at] = null;
     // What was there goes where this came from, if that's gear it fits; otherwise back in the bag.
@@ -387,7 +391,10 @@ function move(game, from, to) {
     const room = stackOf(item) - (there?.n ?? 0);
     const n = Math.min(room, count);
     if (n <= 0) throw new Error("That place on the belt is full.");
-    if (outOfStore) addItem(game, source.id, n);
+    if (outOfStore) {
+      addItem(game, source.id, n);
+      notePut(game, found.key, source.id, -n);
+    }
     if (from.at !== "loose") source.take(n);
     game.bag.belt[i] = { id: source.id, n: (there?.n ?? 0) + n };
     if (outOfStore) keepContents(game, found, contentsOf(game, found));
@@ -406,6 +413,7 @@ function move(game, from, to) {
     if (n <= 0) throw new Error("That stack's full.");
     if (intoStore) removeHeld(game, source, n);
     else if (outOfStore) addItem(game, source.id, n);
+    if (intoStore || outOfStore) notePut(game, found.key, source.id, intoStore ? n : -n);
     if (!intoStore && from.at !== "loose") source.take(n);
     onto.n += n;
   } else {
@@ -417,6 +425,8 @@ function move(game, from, to) {
       const n = count;
       if (intoStore) removeHeld(game, source, n);
       else if (outOfStore) addItem(game, source.id, n);
+      // What the player carries into a store, or out of it, counts for anything someone's asked them to bring.
+      if (intoStore || outOfStore) notePut(game, found.key, source.id, intoStore ? n : -n);
       if (!intoStore && from.at !== "loose") source.take(n);
       list.push({ id: source.id, x, y, n });
     }
@@ -514,6 +524,7 @@ function takeFrom(game, from) {
   const took = source.n - n;
   if (!took) throw new Error(`There's no room in your pack for the ${item.name}.`);
   addItem(game, source.id, took);
+  notePut(game, found.key, source.id, -took);
   source.take(took);
   keepContents(game, found, source.list);
   return { said: `Took the ${item.name}${took > 1 ? ` x${took}` : ""}.` };

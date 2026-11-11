@@ -28,6 +28,7 @@ import { healthFiles, healthProblems } from "./body.js";
 import { medbayProblems } from "./medbay.js";
 import { commandFacts, commandProblems, commandSceneDue, commandSceneStarted, mutinyOutcome, sampleStandIns, standIns, storyCommand } from "./command.js";
 import { storyHitsShip } from "./ship.js";
+import { requestProblems } from "./requests.js";
 import { FACT_LINES, MAP_FILE_PROBLEMS, SET_ASIDE, STORIES_DIR, STORY_CLOCK, STORY_FILE_PROBLEMS, WORLD_COMMAND, WORLD_COMPUTERS, WORLD_FILE_PROBLEMS, WORLD_MAPS, WORLD_THREADS, endingsOf } from "./world.js";
 
 // Something the player did that the written story has no answer to. The turn changes nothing, and they read this.
@@ -286,7 +287,8 @@ export function failForDeath(game, scene, emit = () => {}) {
 // their name; in a FIGHT, a WITH line and a check's audience, their id. One with nobody standing in is "someone" in the
 // words. A scene with none is itself, and a filled one is remembered for as long as the same people stand in.
 const STAND_IN = /\{([a-z_]+)\}/g;
-const ID_FIELDS = new Set(["with", "enemy", "allies", "enemy_followers", "check"]);
+// A chain-of-command line's who and other ("* remember {asker} you 10") are filled with the id too.
+const ID_FIELDS = new Set(["with", "enemy", "allies", "enemy_followers", "check", "who", "other"]);
 function fillStandIns(value, values, field = null) {
   if (typeof value === "string") {
     return value.replace(STAND_IN, (all, name) => {
@@ -301,11 +303,12 @@ function fillStandIns(value, values, field = null) {
 }
 const leavesStandIns = new WeakMap();
 const filledScenes = new WeakMap();
-export function withStandIns(game, scene) {
+// extra adds stand-ins of the scene's own, like a request's {asker}.
+export function withStandIns(game, scene, extra = null) {
   if (!scene) return scene;
   if (!leavesStandIns.has(scene)) leavesStandIns.set(scene, /\{[a-z_]+\}/.test(JSON.stringify(scene)));
   if (!leavesStandIns.get(scene)) return scene;
-  const values = standIns(game);
+  const values = { ...standIns(game), ...(extra ?? {}) };
   const key = JSON.stringify(values);
   const kept = filledScenes.get(scene);
   if (kept?.key === key) return kept.filled;
@@ -683,7 +686,8 @@ function checkProblem(text) {
 export function sceneProblems(scene, id = "the scene", { talk = false } = {}) {
   const problems = [];
   // A scene's stand-ins are checked as if real people stood in them, and one the game doesn't fill in is a mistake.
-  const samples = sampleStandIns();
+  // A request has whoever's asking as well, checked as if Dr. Aduro were.
+  const samples = { ...sampleStandIns(), ...(String(id).startsWith("request_") ? { asker: { id: "aduro", name: "Dr. Sen Aduro" } } : {}) };
   const unknown = [...new Set([...JSON.stringify(scene ?? {}).matchAll(/\{([a-z_]+)\}/g)].map((one) => one[1]).filter((name) => !samples[name]))];
   for (const name of unknown) problems.push(`${id}: {${name}} isn't a stand-in the game fills in: the stand-ins are ${Object.keys(samples).map((one) => `{${one}}`).join(", ")}`);
   scene = fillStandIns(scene, samples);
@@ -692,7 +696,9 @@ export function sceneProblems(scene, id = "the scene", { talk = false } = {}) {
   if (!scene?.start) problems.push(`${id} doesn't say which part it starts at`);
   else if (!parts[scene.start]) problems.push(`${id} starts at ${scene.start}, which isn't a part`);
   const reached = new Set();
-  const stack = scene?.start && parts[scene.start] ? [scene.start] : [];
+  // How a request ends isn't reached by a choice: the game plays it when the time comes.
+  const endings = String(id).startsWith("request_") ? ["done", "failed", "gone"].filter((name) => parts[name]) : [];
+  const stack = [...(scene?.start && parts[scene.start] ? [scene.start] : []), ...endings];
   while (stack.length) {
     const name = stack.pop();
     if (reached.has(name)) continue;
@@ -777,8 +783,10 @@ export function sceneProblems(scene, id = "the scene", { talk = false } = {}) {
 export function allSceneProblems(dir = SCENES_DIR) {
   const { scenes, problems } = loadScenes(dir);
   const found = problems.map((one) => `${one.file}${one.line ? ` (line ${one.line})` : ""}: ${one.message}`);
-  for (const [id, scene] of Object.entries(scenes)) found.push(...sceneProblems(scene, id, { talk: id.startsWith("talk_") }));
-  return { count: Object.keys(scenes).length, problems: found };
+  // A request's ask and answers are said in the talk window, so it's checked as a conversation is, and its lines on top too.
+  for (const [id, scene] of Object.entries(scenes)) found.push(...sceneProblems(scene, id, { talk: id.startsWith("talk_") || id.startsWith("request_") }));
+  found.push(...requestProblems(scenes));
+  return { count: Object.keys(scenes).length, requests: Object.keys(scenes).filter((id) => id.startsWith("request_")).length, problems: found };
 }
 
 // Every fact something in the world can leave on the record: a story's notes name it, a scene sets it with * flag,
@@ -798,7 +806,7 @@ export function factsLeft(scenes) {
 // The scenes and the stories' notes together: what one file says about another is checked here, so a scene can't
 // wait on a fact nothing leaves, and a story's notes can't react to one.
 export function allStoryProblems(dir = SCENES_DIR) {
-  const { count, problems } = allSceneProblems(dir);
+  const { count, requests, problems } = allSceneProblems(dir);
   const { scenes } = loadScenes(dir);
   const known = factsLeft(scenes);
   const flagsIn = (text) => parseCondition(text).terms.filter((term) => term.kind === "flag").map((term) => term.id);
@@ -810,7 +818,7 @@ export function allStoryProblems(dir = SCENES_DIR) {
   }
   problems.push(...STORY_FILE_PROBLEMS, ...WORLD_FILE_PROBLEMS, ...MAP_FILE_PROBLEMS, ...notesProblems(known), ...clockProblems(known), ...computerProblems(), ...systemsProblems(), ...logisticsProblems(), ...commandProblems(), ...healthProblems(), ...medbayProblems());
   const drawn = Object.values(WORLD_MAPS).flatMap((map) => Object.values(map.levels ?? {})).filter((level) => level.drawn).length;
-  return { count, stories: Object.keys(WORLD_THREADS).length, computers: Object.keys(WORLD_COMPUTERS).length, systems: placesWithSystems(), logistics: placesWithLogistics(), command: Object.keys(WORLD_COMMAND).length, health: healthFiles(), drawn, problems, fleet: fleetLeftovers(dir) };
+  return { count, requests, stories: Object.keys(WORLD_THREADS).length, computers: Object.keys(WORLD_COMPUTERS).length, systems: placesWithSystems(), logistics: placesWithLogistics(), command: Object.keys(WORLD_COMMAND).length, health: healthFiles(), drawn, problems, fleet: fleetLeftovers(dir) };
 }
 
 // The fleet is a thing of the past, and the world's words are the owner's to rework in their own time. This is

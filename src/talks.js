@@ -6,12 +6,13 @@
 import { findCharacter } from "./campaign.js";
 import { clearFact, recordFact } from "./record.js";
 import { toOutsider } from "./role.js";
-import { HELPERS, StoryError, loadScenes, matchChoice, openChoices, partText, ruleThatHolds, withStandIns } from "./scenes.js";
+import { HELPERS, StoryError, choiceLine, loadScenes, matchChoice, openChoices, partText, ruleThatHolds, withStandIns } from "./scenes.js";
 import { newTurnLimits, runTool } from "./tools.js";
 import { seedFrom, talkHeard, walkView } from "./walk.js";
 import { ROOM_TALK } from "./world.js";
 import { systemsTalk } from "./systems.js";
-import { grudgeLine } from "./command.js";
+import { grudgeLine, storyCommand } from "./command.js";
+import { ANSWERS, answerRequest, askerStandIn, requestFor, requestScene } from "./requests.js";
 
 const helpersFor = (talk) => ({ ...HELPERS, seen: talk.written?.seen ?? [] });
 
@@ -49,10 +50,29 @@ export function stockTalk(game, talk) {
 
 function sceneOf(game, talk) {
   if (talk.written?.stock) return talk.written.stock;
-  // A conversation can leave people for the game to fill in, as a scene can: {quartermaster} is whoever holds the post.
-  const scene = withStandIns(game, loadScenes().scenes[talk.written?.id]);
+  // A conversation can leave people for the game to fill in, as a scene can: {quartermaster} is whoever holds the post,
+  // and in a request, {asker} is whoever's asking.
+  const extra = talk.written?.request ? { asker: askerStandIn(game, talk.written.asker) } : null;
+  const scene = withStandIns(game, loadScenes().scenes[talk.written?.id], extra);
   if (!scene) throw new StoryError(`The conversation file ${talk.written?.id} has gone, or can't be read any more. Run npm run check-story to see why.`);
   return scene;
+}
+
+// Where someone's own conversation starts, written or stock, for after they've asked what they had to ask: the part and
+// the choices in it, without its first words, since they've just been speaking.
+function usualStart(game, talk) {
+  const { usual } = talk.written;
+  const scene = usual.stock ?? withStandIns(game, loadScenes().scenes[usual.id] ?? null);
+  if (!scene) return null;
+  const helpers = { ...HELPERS, seen: [] };
+  let id = scene.start;
+  for (let hops = 0; hops < 20; hops += 1) {
+    const rule = scene.parts[id] ? ruleThatHolds(scene.parts[id], game, helpers) : null;
+    if (!rule) break;
+    id = rule.to;
+  }
+  const part = scene.parts[id];
+  return part ? { id, choices: openChoices(part, game, helpers) } : null;
 }
 
 // Says one part: its text and choices go in the window, and what it changes goes through the game's actions.
@@ -66,9 +86,18 @@ function enterTalkPart(game, talk, scene, id, emit, hops = 0) {
   }
   talk.written.part = id;
   if (!talk.written.seen.includes(id)) talk.written.seen.push(id);
-  const text = partText(part, game, helpersFor(talk));
-  if (text) emit({ type: "text", text });
-  if (part.note) emit({ type: "notice", text: part.note });
+  let text = partText(part, game, helpersFor(talk));
+  // A request that's been answered hands the talk back to the person's own conversation: what they say to the answer,
+  // then the things the player can usually say to them.
+  const handBack = talk.written.request && !openChoices(part, game, helpersFor(talk)).length ? usualStart(game, talk) : null;
+  if (handBack) text = [text, handBack.choices.map(choiceLine).join("\n")].filter(Boolean).join("\n\n");
+  // The pane by someone's head shows the newest thing said, so in a request what they say comes after what it changes
+  // ("Taken on: ..."), which goes in the notes at the top as well.
+  const speak = () => {
+    if (text) emit({ type: "text", text });
+    if (part.note) emit({ type: "notice", text: part.note });
+  };
+  if (!talk.written.request) speak();
   game.flags ??= {};
   const turn = { ...newTurnLimits(), talking: true };
   for (const step of part.do ?? []) {
@@ -83,11 +112,20 @@ function enterTalkPart(game, talk, scene, id, emit, hops = 0) {
     }
     // Only a story's own scene ends it, and the checker says so; a conversation's * ending line does nothing.
     if (step.ending) continue;
+    // The ship's chain of command, as a conversation changes it: a memory, someone's loyalty.
+    if (step.command) {
+      for (const notice of storyCommand(game, step)) emit({ type: "notice", text: notice });
+      continue;
+    }
     const outcome = runTool(game, tool, input, turn);
     if (outcome.isError) throw new Error(`In the conversation ${talk.written.id}, part ${id}, ${tool} failed: ${outcome.result}`);
     if (outcome.narration) emit({ type: "text", text: outcome.narration });
     if (outcome.notice) emit({ type: "notice", text: outcome.notice });
   }
+  // The player's answer to a request: yes takes it on, not now puts it off a day, no turns it down (src/requests.js).
+  if (talk.written.request && ANSWERS.includes(id)) for (const notice of answerRequest(game, talk.written.request, id)) emit({ type: "notice", text: notice });
+  if (talk.written.request) speak();
+  if (handBack) talk.written = { id: talk.written.usual.id, part: handBack.id, seen: [handBack.id], stock: talk.written.usual.stock };
   emit({ type: "state" });
 }
 
@@ -101,6 +139,10 @@ export function openWrittenTalk(game) {
   const own = id ? withStandIns(game, scenes[id] ?? null) : null;
   talk.written = { id: own ? id : null, part: null, seen: [], stock: own ? null : stockTalk(game, talk) };
   if (id && broken[id]) talkHeard(game, `[STORY] The conversation file ${id} can't be read: ${broken[id]}. Stock lines are used instead.`, "notice");
+  // Someone with something to ask the player asks it first, and their own conversation goes on once it's answered.
+  const asking = requestFor(game, talk.key);
+  const request = asking ? requestScene(game, asking) : null;
+  if (request) talk.written = { id: `request_${asking.kind}`, request: asking.kind, asker: asking.asker, part: null, seen: [], stock: null, usual: talk.written };
   // Being relieved, passed over or promoted is the first thing on someone's mind while it's fresh. It's said with
   // their first words, so that the pane by their head, which shows the newest thing said, has both.
   const grudge = grudgeLine(game, talk.personId ?? talk.name);
@@ -112,7 +154,8 @@ export function openWrittenTalk(game) {
     }
     if (e.type === "notice") talkHeard(game, e.text, "notice");
   };
-  enterTalkPart(game, talk, own ?? talk.written.stock, (own ?? talk.written.stock).start, emit);
+  const opening = request ?? own ?? talk.written.stock;
+  enterTalkPart(game, talk, opening, opening.start, emit);
   if (first) talkHeard(game, first);
   return true;
 }

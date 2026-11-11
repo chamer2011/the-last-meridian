@@ -7,9 +7,9 @@
 import { allStoryProblems, SCENES_DIR } from "./scenes.js";
 
 const dir = process.argv[2] ?? SCENES_DIR;
-const { count, stories, computers, systems, logistics, command, health, drawn, problems, fleet } = allStoryProblems(dir);
+const { count, requests, stories, computers, systems, logistics, command, health, drawn, problems, fleet } = allStoryProblems(dir);
 if (!problems.length) {
-  console.log(`All ${count} ${count === 1 ? "scene is" : "scenes are"} sound, and so are the notes of ${stories} stories, the ${computers} computers, the systems of ${systems} places, the logistics of ${logistics} ${logistics === 1 ? "place" : "places"}, the chain of command of ${command} ${command === 1 ? "place" : "places"}, the wounds, the bodies and the health of ${health} ${health === 1 ? "place" : "places"} and the ${drawn} ${drawn === 1 ? "map" : "maps"} drawn in Tiled.`);
+  console.log(`All ${count} ${count === 1 ? "scene is" : "scenes are"} sound (${requests} of them ${requests === 1 ? "a request" : "requests"}), and so are the notes of ${stories} stories, the ${computers} computers, the systems of ${systems} places, the logistics of ${logistics} ${logistics === 1 ? "place" : "places"}, the chain of command of ${command} ${command === 1 ? "place" : "places"}, the wounds, the bodies and the health of ${health} ${health === 1 ? "place" : "places"} and the ${drawn} ${drawn === 1 ? "map" : "maps"} drawn in Tiled.`);
 } else {
   console.log(`${problems.length} ${problems.length === 1 ? "problem" : "problems"} in ${dir}, world\\stories, world\\computers, world\\systems, world\\logistics, world\\command, world\\health and world\\maps:\n`);
   for (const problem of problems) console.log(`- ${problem}`);

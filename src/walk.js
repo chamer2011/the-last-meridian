@@ -607,6 +607,9 @@ function peopleOnLevel(game, walk, level) {
 }
 
 const keyOf = (entry) => entry.id ?? entry.name;
+// Whether someone has something to ask the player: asked, and not put off (src/requests.js keeps game.requests, and
+// can't be read from here, since it reads the scenes).
+const asksNow = (game, key) => Object.values(game.requests?.open ?? {}).some((one) => one.state === "offered" && one.asker === key && !(one.later > (game.clock?.hours ?? 0)));
 const shortName = (game, entry) => entry.label ?? (entry.id ? findCharacter(game.campaign, entry.id)?.name : null) ?? entry.name;
 
 // ---- Where someone is, for the story waiting on them ------------------------
@@ -1266,6 +1269,8 @@ function personView(game, entry, level = null) {
     // (src/medbay.js).
     ...downView(game, key),
     pocket: pocketDetail(game, { id: entry.id ?? null, name, asleep: Boolean(entry.asleep) }),
+    // Someone with something to ask the player has a mark on their tag (src/requests.js).
+    ...(asksNow(game, key) ? { asks: true } : {}),
     ...(isWary(game, game.location, key) ? { wary: true } : {}),
     // On a deck, which of its rooms they're in.
     ...(level?.areas.length ? { room: level.roomAt(entry.x, entry.y) } : {}),

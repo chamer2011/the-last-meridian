@@ -24,6 +24,8 @@ thread_<story>.txt     Plays when a story from the Leads menu is taken up, for e
 arrive_<place>.txt     Plays when the player arrives at that place, by jump, passage or shuttle, when
                        they press Continue the story. The ids are the file names in world/places.
 talk_<person>.txt      What that person says in a talk. See CONVERSATIONS below.
+request_<kind>.txt     Something someone aboard asks the player when something goes wrong, like
+                       request_medicine.txt. See REQUESTS below.
 
 
 THE SHAPE OF A SCENE
@@ -193,6 +195,10 @@ and join several with "and":
     door locked The Hook             comms, engines, navigation, docking, and system and a name. Add
                                      here, or in and a room, and at and a place. world/systems has the rest.
     act < 2                          The main story's act, with the same comparisons as credits.
+    fuel < 3                         The Meridian's jump fuel, with the same comparisons.
+    stock medicine_crate < 2         How many of an item the Meridian's stores hold, all of them together,
+                                     by the item's id. Add in and a store for one of them: stock
+                                     ration_crate < 1 in the pantry. The stores are in world/logistics.
     chance 30                        True 30 times in 100, at random.
     holds quartermaster odessa       Who holds a post aboard the Meridian: the post by its id, then someone by
                                      their id or name, you, or nobody.
@@ -319,6 +325,65 @@ in a talk. A conversation can't open a CHECK or a FIGHT: put those in a scene.
 Use ? not captain -> other at the start when the person would speak differently to someone who
 isn't the captain. Anyone without a file of their own gets stock lines, made from who they are and
 what they're doing, from the templates at the end of world/rooms.json.
+
+
+REQUESTS
+--------
+
+A file called request_<kind>.txt is a request: when something goes wrong aboard, someone it
+matters to has something to ask the player. While they do, there's an amber ! on their tag in
+the room, and on their line in What's here, and the story says so once. When the player talks to
+them, they ask first; once the player has answered, their own conversation goes on as usual.
+Saying yes puts it in the player's quests, under Requests, with what's wanted and the day it's
+due. It ends one of three ways, with that person's line in the story:
+
+    done      the player brought what was needed
+    gone      it was put right some other way first, so it isn't needed (no harm done)
+    failed    the day came and it still wasn't done
+
+On top, before the first part, five lines say when it comes up and what puts it right:
+
+    # Medicine for the medbay
+    when: captain and stock medicine_crate < 2
+    asks: the chief medical officer
+    needs: medicine crates aboard +2
+    by: 5 days
+    gone when: stock medicine_crate >= 4
+
+when:       a condition, as in a scene. While it holds, they ask. If it stops holding before the
+            player has said yes, they don't ask any more.
+asks:       who asks: a post (the chief medical officer: whoever holds it now), a job (a cook: one
+            of the cooks at work), or someone by name. Add ", in The Galley" to say where to find
+            them, if it isn't where their post or job is.
+needs:      what's wanted, where, and how many, with a + before the number:
+                medicine crates aboard +2         bought for the ship from the Ship menu
+                ration crates in the pantry +2    carried into that store by hand, or bought into it
+                fuel in the tank +3               bought for the ship
+            Only what the player brings counts. Taking something back out of a store takes it off.
+by:         how long they give, once the player says yes: 5 days, or 12 hours.
+gone when:  a condition that means it's been put right without the player. If it holds while the
+            player hasn't brought anything yet, the request is gone; if they'd brought some, it's done.
+
+Then the parts, in the talk window's way (see CONVERSATIONS), with {asker} for whoever's asking:
+
+    == ask          what they ask. One of its choices goes to yes.
+    == yes          what they say to a yes. The player takes it on.
+    == later        what they say to "not now". They ask again a day later. (Needed only if a
+                    choice goes there.)
+    == no           what they say to a no. They don't ask again for a week.
+    == done         what they say once it's done, with what the player gets: * xp 15: The reason,
+                    * remember {asker} you 10: what they'll remember.
+    == failed       what they say if the day comes first.
+    == gone         what they say if it was put right without the player.
+
+A part with no choices hands the talk back to their own conversation. Done, failed and gone are
+said in the story, not in a talk, so their * lines can't move the clock or the player.
+
+At most three requests wait at once, and someone new asks once a day at most. Each person asks one
+thing at a time. A request that's over rests for a while before it can come up again: two days if
+it was done or gone, four if it failed, a week after a no. Requests only come to someone who lives
+aboard the Meridian, captain or crew, and a when: line can say more, like captain for anything
+only the captain can buy.
 
 
 THINGS AND DOORS

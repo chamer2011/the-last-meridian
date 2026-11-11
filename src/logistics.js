@@ -493,6 +493,25 @@ export function countAboard(game, place, items) {
   return { n, of };
 }
 
+// A store by what it's called, "the pantry" or "medicine cabinet", or by its id. Null when there's no such store.
+const storeWords = (words) => String(words ?? "").toLowerCase().replace(/^the\s+/, "").replace(/[^a-z0-9]+/g, " ").trim();
+export function storeByWords(place, words) {
+  const want = storeWords(words);
+  if (!want) return null;
+  return logisticsOf(place)?.stores.find((store) => storeWords(store.name) === want || store.id === want.replace(/ /g, "_")) ?? null;
+}
+// The names of a place's stores of things, for saying which there are.
+export const storeNames = (place) => (logisticsOf(place)?.stores ?? []).filter((store) => !store.count).map((store) => `the ${store.name}`);
+
+// How many of an item a place's stores hold: in one store, named, or in all of them. Null where the place has no
+// logistics, or no such store. Reading it changes nothing.
+export function stockOf(game, place, item, storeName = null) {
+  if (!storeName) return countAboard(game, place, item)?.n ?? null;
+  const store = storeByWords(place, storeName);
+  if (!store || store.count) return null;
+  return storeCounts(game, store.key, store.holds)[item] ?? 0;
+}
+
 // The stores that keep an item, in the file's order, or in the order of the ids given.
 function storesKeeping(model, item, order = null) {
   const keeping = model.stores.filter((store) => !store.count && item in store.holds);
@@ -500,14 +519,17 @@ function storesKeeping(model, item, order = null) {
   return [...order.map((id) => keeping.find((store) => store.id === id)).filter(Boolean), ...keeping.filter((store) => !order.includes(store.id))];
 }
 
-// Puts so many of an item into the place's stores that keep it, the first with room first. Says how many went in.
-export function putAboard(game, place, item, n, order = null) {
+// Puts so many of an item into the place's stores that keep it, the first with room first. Says how many went in, and
+// tells onPut, if it's given, how many went into each store.
+export function putAboard(game, place, item, n, order = null, onPut = null) {
   const model = logisticsOf(place);
   if (!model) return 0;
   let left = n;
   for (const store of storesKeeping(model, item, order)) {
     if (left <= 0) break;
-    left -= storePut(game, store.key, store.holds, item, left);
+    const put = storePut(game, store.key, store.holds, item, left);
+    left -= put;
+    if (put) onPut?.(store, put);
   }
   return n - left;
 }

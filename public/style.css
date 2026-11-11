@@ -23,6 +23,8 @@
   --pop-font: var(--mono);
   --pop-size: max(12px, calc(var(--story-size) - 3px));
   --lore: #8fd0e8;
+  /* The mark on someone who has something to ask the player: the ship's amber, apart from the gold of things. */
+  --asks: #ffa94d;
 }
 
 :root[data-story-font="terminal"] {
@@ -899,6 +901,10 @@ body:has(#bag) .pop-notes { visibility: hidden; }
 .walk-here-who { color: var(--speaker); font-weight: 700; white-space: nowrap; }
 .walk-here-doing { margin-left: auto; min-width: 0; color: var(--muted); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .walk-here-crowd { padding: 2px 4px; color: var(--muted); font-size: 12px; }
+/* Someone with something to ask the player (src/requests.js): an amber ! beside their name, and in the plan their letter. */
+.walk-here-asks { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; background: var(--asks); color: var(--bg); font-size: 11px; font-weight: 700; }
+.walk-person.asks .walk-person-letter { background: var(--asks); color: var(--bg); }
+.walk-person.crowd.asks { color: var(--asks); font-weight: 700; }
 .walk-here-arrow { flex: none; width: 18px; text-align: center; color: var(--muted); }
 .walk-here-way.shut, .walk-here-note { color: var(--muted); }
 .walk-here-chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1186,6 +1192,7 @@ body:has(#bag) .pop-notes { visibility: hidden; }
 .qt .qt-item::before, .qt .qt-item::after { content: none; }
 .qt.open { background: #030d08; }
 .qt-item-name { display: block; color: var(--c-bright); font-weight: 700; }
+.qt-tag { margin-left: 6px; color: var(--asks); font-size: 10px; font-weight: 400; text-transform: uppercase; letter-spacing: .06em; }
 .qt-item-step { display: block; color: var(--c-dim); font-size: 12px; }
 .qt-item[data-tone="hold"] .qt-item-step { color: #f2c14e; }
 .qt-item[data-tone="failed"] .qt-item-name, .qt-item[data-tone="failed"] .qt-item-step { color: #ff8f7f; }

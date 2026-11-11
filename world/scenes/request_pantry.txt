@@ -1,0 +1,38 @@
+# A bare pantry
+// Draft by the AI (Claude), 2026-11-10, not yet edited by the owner. A cook asks anyone who lives aboard when the pantry has
+// nothing left to cook and the shuttle stores in the lighter bay still have ration crates. The quartermaster usually
+// carries them, so this is for when nobody has. It's done when the player has carried two crates into the pantry
+// themselves (open the shuttle stores, take them, open the pantry, put them in), and gone if someone else does first.
+when: stock ration_crate < 1 in the pantry and stock produce < 1 in the pantry and stock ration_crate > 1 in the shuttle stores
+asks: a cook
+needs: ration crates in the pantry +2
+by: 1 day
+gone when: stock ration_crate >= 2 in the pantry
+
+== ask
+@{asker}: "There's nothing in the pantry. Not a crate. The shuttle stores down in the lighter bay are full of them, and nobody's brought any up. Could you carry a couple? They're heavy."
+> I'll bring two up -> yes
+> Not now -> later
+> Not my job -> no
+
+== yes
+@{asker}: "Two will do the next sittings. Thank you."
+
+== later
+@{asker}: "Soon, or the next sitting gets water."
+
+== no
+@{asker}: "Then they'll eat what's left in the kettle, and there's not much."
+* remember {asker} you -2: You wouldn't carry crates up to the bare pantry
+
+== done
+@{asker}: "That's the next sittings fed. Put them by the wall, there."
+* xp 10: A bare pantry
+* remember {asker} you 6: You carried crates up when the pantry was bare
+
+== failed
+@{asker}: "The kettle's been empty since this morning. People went back to work hungry."
+* remember {asker} you -4: You said you'd bring crates up, and didn't
+
+== gone
+@{asker}: "Someone brought crates up. Never mind."

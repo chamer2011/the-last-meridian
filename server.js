@@ -17,6 +17,7 @@ import { noteLoreSeen } from "./src/lore.js";
 import { migrateGame } from "./src/migrate.js";
 import { StoryError, writtenTurn } from "./src/scenes.js";
 import { followQuest } from "./src/quests.js";
+import { advanceRequests } from "./src/requests.js";
 import { openWrittenTalk, writtenTalkTurn } from "./src/talks.js";
 import { dataDir, projectDir } from "./src/paths.js";
 import {
@@ -335,6 +336,8 @@ async function handleApi(req, res, route) {
     if (game.talk) throw new Error(TALK_WAITING);
     if (game.computer) throw new Error(COMPUTER_WAITING);
     const { message, notes = [], moved = false } = shipCommand(game, body);
+    // Something bought may be what someone asked for, so it's counted at once, even with the clock stopped.
+    notes.push(...advanceRequests(game));
     if (notes.length) log("notice", notes.join("\n"));
     autosave();
     return json(res, 200, { game: publicState(game), message, moved });
@@ -432,6 +435,9 @@ async function handleApi(req, res, route) {
   if (route === "/api/bag") {
     const { said, quiet } = bagCommand(requireGame(), body);
     if (said && !quiet) log("notice", said.startsWith("[") ? said : `[ITEM] ${said}`);
+    // Something carried into a store may be what someone asked for.
+    const asked = advanceRequests(game);
+    if (asked.length) log("notice", asked.join("\n"));
     autosave();
     return json(res, 200, { game: publicState(game), said });
   }

@@ -9,6 +9,10 @@ import { endedWith } from "./record.js";
 import { DIFFICULTY, attr, maxHp, skillRank } from "./rules.js";
 import { WORLD_THREADS, endingsOf } from "./world.js";
 import { systemHolds } from "./systems.js";
+import { stockOf, storeByWords, storeNames } from "./logistics.js";
+
+// The ship whose stores "stock" counts. Spelt here rather than taken from src/ship.js, which reads scenes itself.
+const SHIP_ID = "meridian";
 import { MUTINY_CONDITIONS, MUTINY_OUTCOMES, commandWords, knownPerson, loyaltyFor, mutinyHolds, storyHolds } from "./command.js";
 
 // Two people written one after the other, as in "* remember marrow tarrow -10": the first split where both are someone.
@@ -148,6 +152,20 @@ export function parseCondition(text) {
         compare("belief", "belief");
         if (term.id && !POLES[term.id]) problems.push(`there's no belief called ${term.id}`);
         break;
+      case "stock": {
+        // How many of an item the Meridian's stores hold, all of them or one: stock medicine_crate < 2, stock
+        // ration_crate < 1 in the pantry. The item by its id, as for "has"; the store by its name in the logistics file.
+        const cut = rest.findIndex((word) => word.toLowerCase() === "in");
+        const head = cut >= 0 ? rest.slice(0, cut) : rest;
+        const store = cut >= 0 ? rest.slice(cut + 1).join(" ") : null;
+        const [id, op, amount] = head;
+        if (head.length !== 3 || !COMPARE[op] || !/^-?\d+$/.test(amount ?? "")) problems.push(`"stock" needs an item's id, one of >= <= > < = !=, and a number, and can end with in and a store: "${raw.trim()}"`);
+        else if (!ITEMS[id]) problems.push(`there's no item called ${id}`);
+        else if (store !== null && !storeByWords(SHIP_ID, store)) problems.push(`the Meridian has no store called ${store || "nothing"}: its stores are ${storeNames(SHIP_ID).join(", ")}`);
+        Object.assign(term, { id, op, amount: Number(amount), store });
+        break;
+      }
+      case "fuel":
       case "credits":
       case "stress":
       case "health":
@@ -238,6 +256,8 @@ function termHolds(game, term, helpers) {
     day: () => Math.floor((game.clock?.hours ?? 0) / 24) + 1,
     level: () => game.level,
     act: () => game.story?.act ?? 1,
+    // The Meridian's jump fuel, which keeping station and every jump burn.
+    fuel: () => game.ship?.fuel ?? 0,
     skill: () => skillRank(game, term.id),
     stat: () => attr(game, term.id),
     faction: () => game.factions?.[term.id] ?? 0,
@@ -258,6 +278,11 @@ function termHolds(game, term, helpers) {
     case "life": result = (game.role?.id ?? "captain") === term.id; break;
     case "at": result = game.location === term.id; break;
     case "system": result = systemHolds(game, term); break;
+    case "stock": {
+      const n = stockOf(game, SHIP_ID, term.id, term.store);
+      result = n !== null && COMPARE[term.op](n, term.amount);
+      break;
+    }
     case "mutiny": result = mutinyHolds(game, term.id); break;
     case "holds":
     case "job": result = storyHolds(game, term); break;
@@ -537,6 +562,10 @@ function parseChoice(text, line) {
 }
 
 // Reads one file's text. parts come out in the shape src/scenes.js plays, and problems say what to fix.
+// The lines on top of a request, and what each is kept as.
+const REQUEST_KEYS = { when: "when", asks: "asks", needs: "needs", by: "by", "gone when": "gone" };
+const REQUEST_LINE = /^(when|asks|needs|by|gone\s+when):\s*(.*)$/i;
+
 export function parseSceneText(text, name = "the scene") {
   const scene = { title: null, start: null, parts: {} };
   const problems = [];
@@ -610,9 +639,17 @@ export function parseSceneText(text, name = "the scene") {
     }
     if (!part) {
       if (!trimmed) return;
+      const top = trimmed.match(REQUEST_LINE);
       if (trimmed.startsWith("#")) scene.title = trimmed.replace(/^#+\s*/, "");
       else if (/^start:/i.test(trimmed)) scene.start = trimmed.replace(/^start:\s*/i, "").trim();
-      else problem(line, "before the first part, only a # title, a start: line and // comments go here. A part starts with == and its name");
+      // A request (request_<kind>.txt) says on top when it comes up, who asks, what puts it right, by when, and when it's
+      // no longer needed. src/requests.js reads these, and the checker says when one's wrong or missing.
+      else if (top) {
+        scene.request ??= { line };
+        const key = REQUEST_KEYS[top[1].toLowerCase().replace(/\s+/g, " ")];
+        if (scene.request[key] !== undefined) problem(line, `${top[1]}: is written twice`);
+        scene.request[key] = top[2].trim();
+      } else problem(line, "before the first part, only a # title, a start: line and // comments go here, and in a request the when:, asks:, needs:, by: and gone when: lines. A part starts with == and its name");
       return;
     }
     if (!trimmed) {

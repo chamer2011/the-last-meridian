@@ -225,6 +225,7 @@ function toneFor(tag, body) {
       if (/Pursuit -\d|is back with the fleet/.test(body)) return "good";
       return /\+\d/.test(body) && !/-\d/.test(body) ? "good" : "bad";
     case "TIME": return "dim";
+    case "REQUEST": return /^Done/.test(body) ? "good" : /^Failed/.test(body) ? "bad" : /^Taken on/.test(body) ? "info" : "warn";
     case "HACK": return /GRANTED/.test(body) ? "good" : "bad";
     case "STEALTH": return /catches|caught/.test(body) ? "bad" : "good";
     case "ALARM": return /stops|armed\.$|is armed/.test(body) && !/disarmed/.test(body) ? "info" : "bad";

@@ -1,0 +1,37 @@
+# Fuel for the jumps
+// Draft by the AI (Claude), 2026-11-10, not yet edited by the owner. Whoever is chief engineer asks the captain when the jump fuel
+// is under three: keeping station burns it whether the ship goes anywhere or not. It's done when the captain has
+// bought three more at a port with a depot, and gone if the tank fills some other way.
+when: captain and fuel < 3
+asks: the chief engineer
+needs: fuel in the tank +3
+by: 5 days
+gone when: fuel >= 6
+
+== ask
+@{asker}: "Captain. The tank's under three, and keeping station eats it whether we go anywhere or not. Get us to a depot and put three more in her, or we'll be sitting out here in the cold."
+> I'll find fuel -> yes
+> Not now -> later
+> We stay where we are -> no
+
+== yes
+@{asker}: "Three more in the tank and I'll stop counting. For a week."
+
+== later
+@{asker}: "Don't leave it till it's gone. I'm not pushing her by hand."
+
+== no
+@{asker}: "Then I'll start shutting the lower decks down. Tell people to find a coat."
+* remember {asker} you -3: You told him to let the fuel run down
+
+== done
+@{asker}: "There's something in the tank again. I'll stop doing the sums in my sleep."
+* xp 15: Fuel for the jumps
+* remember {asker} you 8: You found fuel when the tank was nearly dry
+
+== failed
+@{asker}: "We're running on what's left in the lines, Captain. I told you days ago."
+* remember {asker} you -6: You said you'd find fuel, and didn't
+
+== gone
+@{asker}: "Fuel's come aboard. Never mind what I said."

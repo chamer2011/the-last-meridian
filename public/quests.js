@@ -91,8 +91,10 @@ function listNode(viewing) {
   const going = quests.filter((quest) => quest.status === "active");
   const groups = [
     ["Following", going.filter((quest) => quest.id === following)],
-    ["Going on", going.filter((quest) => quest.id !== following && quest.step?.state !== "hold")],
-    ["On hold", going.filter((quest) => quest.id !== following && quest.step?.state === "hold")],
+    ["Going on", going.filter((quest) => quest.id !== following && !quest.request && quest.step?.state !== "hold")],
+    // What people aboard have asked, apart from the stories (src/requests.js).
+    ["Requests", going.filter((quest) => quest.id !== following && quest.request)],
+    ["On hold", going.filter((quest) => quest.id !== following && !quest.request && quest.step?.state === "hold")],
     ["Failed", quests.filter((quest) => quest.status === "failed")],
     ["Finished", quests.filter((quest) => quest.status === "completed")],
   ];
@@ -108,7 +110,7 @@ function listNode(viewing) {
         "data-tone": toneOf(quest),
         "data-quest": quest.id,
         onclick: () => view(quest.id),
-      }, el("span", { class: "qt-item-name" }, quest.title), el("span", { class: "qt-item-step" }, quest.status === "active" ? (quest.step?.state === "hold" ? `On hold: ${quest.step.text}` : quest.step?.text || quest.objective) : quest.objective))),
+      }, el("span", { class: "qt-item-name" }, quest.title, quest.request && quest.status !== "active" && el("span", { class: "qt-tag" }, "request")), el("span", { class: "qt-item-step" }, quest.status === "active" ? (quest.step?.state === "hold" ? `On hold: ${quest.step.text}` : quest.step?.text || quest.objective) : quest.objective))),
     ]),
     ended.length > 0 && [el("div", { class: "qt-group" }, "Ended without you"), ended.map((ending) => el("div", { class: "qt-item ended" }, el("span", { class: "qt-item-name" }, ending.title), el("span", { class: "qt-item-step" }, ending.summary ?? "")))]);
 }

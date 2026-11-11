@@ -1327,7 +1327,9 @@ export function commandWords() {
   }
   return { posts, jobs, chairs };
 }
-export const knownPerson = (words) => Object.keys(WORLD_COMMAND).some((place) => personByWords(place, words) !== null);
+// A stand-in in curly brackets, {asker} or {quartermaster}, counts: the game fills it in when it plays the scene, and the
+// checker says if it's one the game doesn't know.
+export const knownPerson = (words) => /^\{[a-z_]+\}$/.test(String(words ?? "").trim()) || Object.keys(WORLD_COMMAND).some((place) => personByWords(place, words) !== null);
 
 // What a scene's "? holds", "? job" and "? loyalty" ask of the ship's chain of command.
 export function storyHolds(game, term, place = SHIP_PLACE) {

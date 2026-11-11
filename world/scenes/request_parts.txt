@@ -1,0 +1,37 @@
+# Parts for the engineers
+// Draft by the AI (Claude), 2026-11-10, not yet edited by the owner. Whoever is chief engineer asks the captain when there are
+// fewer than four parts crates aboard, counting the shuttle stores: every repair takes one, and mending the hull takes
+// the rest. It's done when the captain has bought two at a port, and gone if they turn up some other way.
+when: captain and stock parts_crate < 4
+asks: the chief engineer
+needs: parts crates aboard +2
+by: 7 days
+gone when: stock parts_crate >= 6
+
+== ask
+@{asker}: "Captain, we're nearly out of parts crates. Every repair takes one and the hull eats the rest, and I've started taking bolts out of things that don't need them. Two more crates would do. Any port with a market."
+> I'll get you parts -> yes
+> Not now -> later
+> Make do with what you've got -> no
+
+== yes
+@{asker}: "Two crates. I'll stop unbolting the lighter bay."
+
+== later
+@{asker}: "Before something breaks, then. Something always breaks."
+
+== no
+@{asker}: "Then the next thing that breaks stays broken."
+* remember {asker} you -3: You told him to make do without parts
+
+== done
+@{asker}: "Two crates in the lockers. The next thing that breaks gets fixed."
+* xp 15: Parts for the engineers
+* remember {asker} you 8: You brought parts when the lockers were nearly bare
+
+== failed
+@{asker}: "Still no parts, and the hull's wearing where I can't mend it. You said you'd get them."
+* remember {asker} you -6: You said you'd get parts, and didn't
+
+== gone
+@{asker}: "Parts came aboard. That'll do for now."

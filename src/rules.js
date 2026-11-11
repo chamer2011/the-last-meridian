@@ -276,7 +276,8 @@ export function passTime(game, hours, activity = "active") {
   const medbay = advanceMedbay(game);
   advanceLife(game);
   const notes = hoursPass(game, hours, activity);
-  return [...systems, ...command, ...medbay, ...notes, ...advanceLogistics(game)];
+  // Last, anyone with something to ask the player, and anything they've asked that's done, put right or overdue.
+  return [...systems, ...command, ...medbay, ...notes, ...advanceLogistics(game), ...requestsMove(game)];
 }
 
 // The clock running by itself while the player explores. It moves in moments, and every two hours
@@ -293,6 +294,7 @@ export function clockRuns(game, minutes) {
     if (hour % 2 === 0) notes.push(...hoursPass(game, 2, "active"));
   }
   notes.push(...advanceLogistics(game));
+  notes.push(...requestsMove(game));
   return notes;
 }
 
@@ -708,6 +710,11 @@ export function travel(game, destination) {
 
 // Whether the written story is waiting on something. src/scenes.js says, since it reads these rules and they can't read it.
 let storyWaitsNow = () => false;
+// And how the requests people make move on with the clock, which src/requests.js says for the same reason.
+let requestsMove = () => [];
+export const tellRequests = (fn) => {
+  requestsMove = fn;
+};
 export const tellStoryWaits = (fn) => {
   storyWaitsNow = fn;
 };

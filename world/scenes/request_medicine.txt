@@ -1,0 +1,37 @@
+# Medicine for the medbay
+// Draft by the AI (Claude), 2026-11-10, not yet edited by the owner. Whoever is chief medical officer asks the captain when the
+// medicine cabinet is nearly empty, since only the captain buys for the ship. It's done when the captain has bought
+// two crates from the Ship menu at a port, and gone if two more turn up some other way.
+when: captain and stock medicine_crate < 2
+asks: the chief medical officer
+needs: medicine crates aboard +2
+by: 5 days
+gone when: stock medicine_crate >= 4
+
+== ask
+@{asker}: "A word, Captain. The medicine cabinet's down to its last crate, and I'm already choosing who gets it. Two more would carry us a while. Any port with a market should have some."
+> I'll see to it -> yes
+> Not now -> later
+> We'll have to manage without -> no
+
+== yes
+@{asker}: "Two crates. Thank you. I'll keep the lock off the cabinet till then."
+
+== later
+@{asker}: "Soon, then. The cabinet won't wait long."
+
+== no
+@{asker}: "Then I'll make what's left go as far as it can, and some people won't get any."
+* remember {asker} you -3: You said the medbay would have to manage without medicine
+
+== done
+@{asker}: "Two crates, and a lock on the cabinet again. That's people I won't have to turn away."
+* xp 15: Medicine for the medbay
+* remember {asker} you 10: You brought medicine when the cabinet was nearly empty
+
+== failed
+@{asker}: "There's been nothing to give since the last crate went. You said you'd see to it."
+* remember {asker} you -8: You said you'd see to the medicine, and didn't
+
+== gone
+@{asker}: "Never mind the medicine. Someone found crates for the cabinet."

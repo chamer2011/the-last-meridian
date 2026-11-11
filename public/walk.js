@@ -213,7 +213,8 @@ function dressMark(node, person) {
   node.classList.toggle("walking", Boolean(person.walking));
   node.classList.toggle("asleep", Boolean(person.asleep));
   node.classList.toggle("crowd", Boolean(person.crowd));
-  const title = `${person.name}${person.doing ? `, ${person.doing}` : ""}. Click to walk over and talk.`;
+  node.classList.toggle("asks", Boolean(person.asks));
+  const title = `${person.name}${person.asks ? " has something to ask you" : ""}${person.doing ? `, ${person.doing}` : ""}. Click to walk over and talk.`;
   if (node.title !== title) node.title = title;
 }
 
@@ -383,7 +384,7 @@ function roomNote(room) {
 }
 
 // Who's listed in the room's panel, and what they're doing. It's only redrawn when this changes.
-const listOf = (view) => JSON.stringify(view.people.map((person) => (person.crowd ? 0 : [person.key, person.doing])));
+const listOf = (view) => JSON.stringify(view.people.map((person) => (person.crowd && !person.asks ? 0 : [person.key, person.doing, Boolean(person.asks)])));
 
 // A system in the room, as a small tag that walks you over to it: teal when it works, amber when it's off or broken,
 // red when it's ringing, with its state when it isn't the usual one.
@@ -426,7 +427,8 @@ function hereNode() {
   // On a deck, it's the room the player's in, not the whole deck.
   const inRoom = (one) => !view.here.deck || one.room === view.here.id;
   const people = view.people.filter(inRoom);
-  const named = people.filter((person) => !person.crowd);
+  // Anyone with something to ask is listed by name, crowd or not.
+  const named = people.filter((person) => !person.crowd || person.asks);
   const others = people.length - named.length;
   const crowd = others === 1 && !named.length ? "One other person" : others && !named.length ? `${others} other people` : others === 1 ? "and one other" : `and ${others} others`;
   const parts = view.things.filter((thing) => thing.part && inRoom(thing));
@@ -474,8 +476,9 @@ function hereNode() {
           named.map((person) => button([
             el("span", { class: "walk-here-badge" }, person.short[0].toUpperCase()),
             el("span", { class: "walk-here-who" }, person.short),
+            person.asks && el("span", { class: "walk-here-asks", title: "Has something to ask you" }, "!"),
             person.doing && el("span", { class: "walk-here-doing" }, person.doing),
-          ], `person:${person.key}`, { class: "walk-here-row walk-here-person", style: `--speaker:${person.color}`, title: `${person.name}${person.doing ? `, ${person.doing}` : ""}` })),
+          ], `person:${person.key}`, { class: "walk-here-row walk-here-person", style: `--speaker:${person.color}`, title: `${person.name}${person.asks ? " has something to ask you" : ""}${person.doing ? `, ${person.doing}` : ""}` })),
           others > 0 && el("div", { class: "walk-here-crowd" }, crowd),
         ]),
         parts.length > 0 && hereSection("Systems", parts.length, el("div", { class: "walk-here-chips" }, parts.map((thing) => partChip(thing, button)))),

@@ -2715,6 +2715,9 @@ function vignetteFor(width, height, ratio) {
   return iso.vignette.canvas;
 }
 
+// The colour of the mark over someone who has something to ask: the ship's amber, apart from the gold of things.
+const ASKS_COLOR = "#ffa94d";
+
 function chip(ctx, text, x, y, color, { background = "rgba(4,6,5,.62)", size = 11, width, height }) {
   ctx.font = `700 ${size}px ${FONT}`;
   const wide = ctx.measureText(text).width + 8;
@@ -2911,11 +2914,15 @@ function draw(now, dt) {
     const hovered = hoverKey === hit.key;
     const shown = iso.shown.get(person.key);
     const near = shown && Math.abs(shown.x - iso.you.x) * CELL_WIDTH + Math.abs(shown.y - iso.you.y) < 5;
-    if (!hovered && (person.crowd || person.walking || !near)) continue;
+    // Someone with something to ask the player has a mark on their tag, seen from across the room (src/requests.js).
+    if (!hovered && !person.asks && (person.crowd || person.walking || !near)) continue;
     if (hit.floorX < -8 || hit.floorY < -8 || hit.floorX > width + 8 || hit.floorY - unit > height + 8) continue;
-    const text = hovered ? `${person.name}${person.doing ? `, ${person.doing}` : ""}` : person.short;
-    const tag = mix(hexOr(person.color, "#a0a090"), "#d8d4c0", 0.3);
-    chip(ctx, text, hit.floorX, hit.floorY - unit * 0.95, hovered ? BACKGROUND : tag, { background: hovered ? tag : undefined, size: 11, ...clip });
+    const name = hovered ? `${person.name}${person.doing ? `, ${person.doing}` : ""}` : person.short;
+    const text = person.asks ? (hovered ? `! ${name}: has something to ask you` : near ? `! ${person.short}` : "!") : name;
+    const tag = person.asks ? ASKS_COLOR : mix(hexOr(person.color, "#a0a090"), "#d8d4c0", 0.3);
+    // The mark is a filled amber box, always, so it can't be taken for the gold ? over things.
+    const filled = hovered || person.asks;
+    chip(ctx, text, hit.floorX, hit.floorY - unit * 0.95, filled ? BACKGROUND : tag, { background: filled ? tag : undefined, size: person.asks && !hovered && !near ? 13 : 11, ...clip });
   }
 
   // A fight in the room puts its health, readiness, names, odds and shots over everything.

@@ -16,6 +16,7 @@ import { YOU, commandOf, councilRefuses, holderKey, officerName, officerNames, p
 import { medbayView } from "./medbay.js";
 import { countAboard, errandsView, foodADay, machinesView, mealsOfDay, mealsView, putAboard, refilledADay, refillsView, repairsView, storesView, takeAboard } from "./logistics.js";
 import { SHIP_DATA, STAR_MAP } from "./world.js";
+import { notePut } from "./puts.js";
 
 const { rules: RULES, rations: RATIONS, supplies: SUPPLIES, text: TEXT, council: COUNCIL, chair: CHAIR, ship: SHIP } = SHIP_DATA;
 
@@ -664,8 +665,17 @@ function buySupply(game, id) {
   if (id === "fuel" && ship.fuel >= ship.maxFuel) throw new Error("The tank is full.");
   if (id !== "fuel" && roomFor(game, id) < supply.lot) throw new Error(`There's no room aboard for ${lotText(supply)} more of ${supply.name.toLowerCase()}: the stores that keep it are full.`);
   game.credits -= price;
-  if (id === "fuel") ship.fuel = Math.min(ship.maxFuel, ship.fuel + supply.lot);
-  else stow(game, id, supply.lot);
+  // What the player buys counts toward anything someone's asked them to bring (src/requests.js).
+  if (id === "fuel") {
+    const before = ship.fuel;
+    ship.fuel = Math.min(ship.maxFuel, ship.fuel + supply.lot);
+    notePut(game, "tank", "fuel", ship.fuel - before);
+  } else {
+    stow(game, id, supply.lot, (store, n) => {
+      notePut(game, store.key, STORE_ITEMS[id][0], n);
+      notePut(game, "aboard", STORE_ITEMS[id][0], n);
+    });
+  }
   tradedAt(game, ship.at, id);
   const notes = [];
   const amount = lotText(supply);
@@ -685,12 +695,12 @@ function sellable(game, id) {
   const counted = id === "food" ? countAboard(game, SHIP_ID, ["ration_crate"]) : aboardCount(game, id);
   return counted ? counted.n : game.ship[id] ?? 0;
 }
-function stow(game, id, n) {
+function stow(game, id, n, onPut = null) {
   if (!aboardCount(game, id)) {
     game.ship[id] = round1((game.ship[id] ?? 0) + n);
     return n;
   }
-  return putAboard(game, SHIP_ID, STORE_ITEMS[id][0], n, FIRST[id]);
+  return putAboard(game, SHIP_ID, STORE_ITEMS[id][0], n, FIRST[id], onPut);
 }
 function unstow(game, id, n) {
   if (!aboardCount(game, id)) {
