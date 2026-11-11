@@ -295,6 +295,8 @@ export const MEDBAY_KEYS = {
   quarters: { path: "quarters", read: (text) => { const found = listOf(text).map((one) => one.match(/^(.+?)\s+(\d+(?:\.\d+)?)$/)); return found.length && found.every(Boolean) ? { rooms: found.map((f) => ({ room: f[1].trim(), weight: Number(f[2]) })) } : { problem: "is written like: The Overflow 5, The Hot Bunks 4, The Aft Holds 1" }; } },
   // And the doctor's rounds, once a day at midnight: the doses a serious illness gets, aboard and on the register alike.
   "the doctor's rounds": { path: "rounds", read: (text) => { const f = lower(text).match(/^(\S+) doses? for each serious illness, once a day$/); return f && numberOf(f[1]) !== null ? { doses: numberOf(f[1]) } : { problem: "is written like: 1 dose for each serious illness, once a day" }; } },
+  // Step 10: what the player pays for each dose they're given, at a place that charges. Nothing aboard the Meridian.
+  "you pay": { path: "pays", read: (text) => { const f = lower(text).match(/^(\d+(?:\.\d+)?) credits? a dose$/); return f ? { perDose: Number(f[1]) } : { problem: "is written like: 2 credits a dose" }; } },
 };
 
 // "cracked casing: 1 parts crate, an hour", "dent: 20 minutes" or "artificial arm: 2 parts crates, 6 hours": what mending

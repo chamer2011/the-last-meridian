@@ -202,7 +202,7 @@ test("Tarrow's answer to how she's doing follows how she is", () => {
 });
 
 test("the Story board edits the wounds file, the medbay, and a species' body", () => {
-  assert.deepEqual(boardWorldList("health").map((one) => one.id), ["wounds", "meridian"]);
+  assert.deepEqual(boardWorldList("health").map((one) => one.id), ["wounds", "anselm", "meridian"]);
   const wounds = boardWorldItem("health", "wounds");
   assert.ok(wounds.value.wounds.length > 10 && wounds.lists.parts.length === 6);
   assert.ok(wounds.links.species.some((one) => one.id === "korrun"));

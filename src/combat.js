@@ -7,7 +7,7 @@
 
 import { findCharacter, findEnemy } from "./campaign.js";
 import { addWounds, beatenFor, downState, fightAttackOf, fightWords, fighterBody, landHit, legWound, woundsNow } from "./body.js";
-import { fallDown, hasADayAt, wakeInMedbay } from "./medbay.js";
+import { fallDown, hasADayAt, wakeAfterDefeat } from "./medbay.js";
 import { personHere } from "./walk.js";
 import { ATTITUDE_VALUES, FACTION_BELIEFS, NOTABLES, SKILLS } from "./character-data.js";
 import { ABILITIES, ENEMIES, ITEMS, STATS } from "./data.js";
@@ -735,14 +735,15 @@ export function endCombat(game, ended, log) {
     tone = "warn";
   } else if (result === "defeat") {
     // Losing a fight isn't game over. The wounds are the ones the hits left. Where there's a medbay, someone carries the
-    // player there and they come to on a cot hours later, with what they had (src/medbay.js); anywhere else it's a
-    // setback where they fell: hurt, and poorer.
+    // player there and they come to on a cot hours later, with what they had; at the dock the Meridian's at, with none,
+    // her shuttle crew bring them back aboard to hers, if she's their home (src/medbay.js); anywhere else it's a setback
+    // where they fell: hurt, and poorer.
     game.hp = Math.max(1, Math.floor(maxHp(game) * 0.25));
-    const woke = wakeInMedbay(game);
+    const woke = wakeAfterDefeat(game);
     if (woke) {
       log.push({ text: pickFrom(COMBAT_TEXT.player.defeat), tone: "bad" });
       for (const line of woke) log.push({ text: line, tone: "info" });
-      summary = `You lost the fight against ${prose}, and came to in the medbay.`;
+      summary = `You lost the fight against ${prose}, and came to ${game.location === "meridian" ? "in the medbay" : "on a cot"}.`;
     } else {
       const lost = Math.floor(game.credits * 0.25);
       game.credits -= lost;

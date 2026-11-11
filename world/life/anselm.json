@@ -1,5 +1,16 @@
 {
   "_help": "The days of the people here. The instructions are at the top of meridian.json.",
+  "spots": {
+    "cot-1": ["ward", 4, 3],
+    "cot-2": ["ward", 9, 3],
+    "cot-3": ["ward", 14, 3],
+    "cot-4": ["ward", 19, 3],
+    "cot-5": ["ward", 4, 9],
+    "cot-6": ["ward", 9, 9]
+  },
+  "groups": {
+    "triage": [{ "level": "sorting", "from": 20, "to": 40, "y": 7, "step": 2 }]
+  },
   "people": {
     "wen": [
       { "at": "00:30", "doing": "asleep on a gurney", "go": "@sorting", "asleep": true },

@@ -18,7 +18,8 @@ says what's wrong, with the file and the line.
 Four kinds of file have a say:
 
 1. world/health/wounds.txt: the kinds of wound and old mark.
-2. world/health/<place>.txt: who starts the game hurt or marked at a place (meridian.txt is the Meridian).
+2. world/health/<place>.txt: who starts the game hurt or marked at a place, and its medbay if it has one
+   (meridian.txt is the Meridian, anselm.txt Anselm's Mercy and its Long Ward).
 3. Each species file in world/species: its Body part.
 4. Each person's file in world/characters: their Body part, if they have one.
 
@@ -236,6 +237,31 @@ of the register sick, three for every hundredth seriously sick, and when it's lo
 dead are people on the register, the worst off and the oldest first. Everyone is listed on any computer with a
 register log (world/computers), like the records terminal in the Meridian's medbay. A place without a quarters line
 has no register.
+
+A medbay away from the Meridian (step 10 of the health plan). Any place can have one, written the same way, as
+anselm.txt is for Anselm's Mercy:
+
+    the medbay: The Long Ward
+    cots: cot-1, cot-2, cot-3, cot-4, cot-5, cot-6
+    who answers a call: Nurse Adaeze, Nurse Piet, Nurse Luz, Orderly Sem
+    who treats: Dr. Adeyemi, Doc Marsh, Nurse Adaeze, Nurse Piet, Nurse Luz
+    medicine: the place's own, 20 doses to a crate
+    you pay: 2 credits a dose
+    the morning queue: 06:30 to 09:30, at triage
+
+A place without a chain of command (world/command) names who answers a call and who treats one by one: anyone in
+the place's file in world/life, by their id, a name their file gives them (Dr. Adeyemi, Doc Marsh), or their crowd
+name. The cots and the queue are spots and groups in that file too. The place's own medicine is what the port has:
+each crate the medbay opens takes from the port's medicine as the Meridian buying one would (world/daily.json), and
+when the port has none left, nobody's treated there until it has more; a place the world doesn't keep supplies for,
+like Anselm's Mercy, never runs out, as it never does for the ship's buying. you pay is what the player is charged
+for each dose they're given there, or what they have if it's less; aboard the Meridian it's free. The lines the
+story says name the medbay by its room there (the Long Ward). Someone at a place with a medbay can die there when
+help doesn't come, as aboard the Meridian; without a dead are laid out in line, the dead are taken away at once.
+
+Knocked down at a place with a medbay, the player comes to on one of its cots. At the dock the Meridian is at, with
+none there, the captain or her crew are brought back aboard by her shuttle crew to her medbay; anyone else, or
+anywhere else, comes round where they fell.
 
 Each line under At the start is someone at that place, a comma, and a body line (below). It's for the people with only a name, who have
 no file of their own; someone with a file can be named here too, by their id or their name. A line that names one of

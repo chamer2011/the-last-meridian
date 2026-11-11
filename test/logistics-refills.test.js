@@ -122,7 +122,9 @@ test("the Ship menu's food, medicine and parts are the rooms' stores: counted in
   publicState(game);
   assert.equal(JSON.stringify(game), before, "reading changes nothing");
   passTime(game, 24 * 9, "routine");
-  assert.equal(countAboard(game, SHIP_ID, ["medicine_crate"]).n, 4);
+  // And the doctor's rounds take one of their own if anyone aboard has fallen seriously ill, which is up to the seed.
+  const forTheRounds = game.medbay.meridian.rounds === undefined ? 0 : 1;
+  assert.equal(countAboard(game, SHIP_ID, ["medicine_crate"]).n, 4 - forTheRounds);
   assert.equal(game.ship.owed.medicine ?? 0, 0);
   assert.ok(countAboard(game, SHIP_ID, ["parts_crate"]).n >= 10, "the engineers take a crate about once a week");
   // The shuttle stores are kept full and Brandt keeps the pantry at about four crates, while the produce goes as fast

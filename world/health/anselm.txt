@@ -1,0 +1,22 @@
+# Anselm's Mercy
+draft: the AI's, not yet edited by the owner
+the medbay: The Long Ward
+cots: cot-1, cot-2, cot-3, cot-4, cot-5, cot-6
+who answers a call: Nurse Adaeze, Nurse Piet, Nurse Luz, Orderly Sem
+who treats: Dr. Adeyemi, Doc Marsh, Nurse Adaeze, Nurse Piet, Nurse Luz
+medicine: the place's own, 20 doses to a crate
+bed rest: 3 days after a serious wound is treated
+you pay: 2 credits a dose
+the morning queue: 06:30 to 09:30, at triage
+
+Treatments:
+- cut: 1 dose, 10 minutes
+- deep cut: 2 doses, 30 minutes
+- broken bone: 2 doses, an hour
+- cracked ribs: 1 dose, 20 minutes
+- burn: 2 doses, 40 minutes
+- deep burn: 3 doses, an hour
+- infected: 1 dose, 20 minutes
+- lost: 4 doses, 2 hours
+
+At the start:
