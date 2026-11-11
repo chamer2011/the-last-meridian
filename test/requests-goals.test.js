@@ -272,13 +272,13 @@ test("talk to someone, go somewhere, pass a check: the other kinds of goal", () 
   walk.closeTalk(game);
   assert.match(told(rq.advanceRequests(game))[0], /^\[REQUEST\] Done: Word to the quartermaster\./);
 
-  const go = take("test_go", "test_go", 34.5);
+  const go = take("test_go", "test_go", 58.5);
   assert.equal(go.objective, "Go to Haven Station");
   game.location = "haven";
   assert.match(told(rq.advanceRequests(game))[0], /^\[REQUEST\] Done: A trip to Haven\./);
   game.location = SHIP;
 
-  const pass = take("test_pass", "test_pass", 58.5);
+  const pass = take("test_pass", "test_pass", 106.5);
   assert.equal(pass.objective, "Pass a check of engineering");
   // Checks are rolled until one passes, the way the game rolls them.
   for (let tries = 0; tries < 60 && pass.status === "active"; tries += 1) {

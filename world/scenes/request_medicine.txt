@@ -2,7 +2,8 @@
 // Draft by the AI (Claude), 2026-11-10, not yet edited by the owner. Whoever is chief medical officer asks the captain when the
 // medicine cabinet is nearly empty, since only the captain buys for the ship. It's done when the captain has bought
 // two crates from the Ship menu at a port, and gone if two more turn up some other way.
-when: captain and stock medicine_crate < 2
+for: the captain
+when: stock medicine_crate < 2
 asks: the chief medical officer
 needs: medicine crates aboard +2
 by: 5 days

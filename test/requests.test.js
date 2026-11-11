@@ -138,7 +138,7 @@ test("nobody asks while nothing's wrong; once the cabinet's nearly empty, Dr. Ad
   assert.equal(game.requests, undefined, "a game with nothing to ask keeps its save as it was");
   lowOnMedicine(game);
   const notes = told(at(game, 10.5));
-  assert.deepEqual(notes, ["[REQUEST] Dr. Aduro has something to ask you, in Medbay."]);
+  assert.deepEqual(notes, ["[REQUEST] Dr. Aduro has something for you to decide, in Medbay."], "an officer brings the captain a decision");
   assert.equal(game.requests.open.medicine.asker, "aduro");
   assert.deepEqual(told(at(game, 11.5)), [], "it's said once");
   walk.walkCommand(game, { action: "room", to: "medbay" });
@@ -242,7 +242,7 @@ test("asked about something that's then put right, they don't ask any more", () 
   assert.equal(rq.asksNow(game, "aduro"), false);
 });
 
-test("one new ask a day, one thing at a time each: fuel and parts both wait on the chief engineer", () => {
+test("a quiet day between new asks, one thing at a time each: fuel and parts both wait on the chief engineer", () => {
   const game = newGame();
   game.ship.fuel = 2;
   lowOnMedicine(game);
@@ -250,9 +250,11 @@ test("one new ask a day, one thing at a time each: fuel and parts both wait on t
   at(game, 10.5);
   assert.equal(Object.keys(game.requests.open).length, 1, "one the first day");
   at(game, 34.5);
-  assert.equal(Object.keys(game.requests.open).length, 2, "another the next");
+  assert.equal(Object.keys(game.requests.open).length, 1, "a quiet day after");
   at(game, 58.5);
-  at(game, 82.5);
+  assert.equal(Object.keys(game.requests.open).length, 2, "another the day after that");
+  at(game, 106.5);
+  at(game, 154.5);
   const open = Object.values(game.requests.open);
   assert.ok(open.length <= 3, "three at most");
   assert.equal(open.filter((one) => one.asker === "marrow").length, 1, "the chief engineer asks one thing at a time");

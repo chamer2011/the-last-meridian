@@ -36,7 +36,7 @@ function stepOf(game, quest, scene) {
   if (quest.status === "completed") return { state: "done", text: quest.objective ?? "Done" };
   if (quest.status === "failed") return { state: "failed", text: quest.objective ?? "Failed" };
   // Something someone asked: what's been brought so far, and who asked and by when (src/requests.js).
-  if (quest.request) return { state: "go", text: quest.objective ?? "", where: [quest.askedBy ? `${quest.askedBy} asked.` : null, quest.due ? `By ${dueWords(quest.due, quest.dueShort)}.` : null].filter(Boolean).join(" ") };
+  if (quest.request) return { state: "go", text: quest.objective ?? "", where: [quest.askedBy ? (quest.order ? `${quest.askedBy}'s orders.` : `${quest.askedBy} asked.`) : null, quest.due ? `By ${dueWords(quest.due, quest.dueShort)}.` : null].filter(Boolean).join(" ") };
   if (scene?.with) {
     const person = findCharacter(game.campaign, scene.with);
     const name = person ? fullName(person) : scene.with;

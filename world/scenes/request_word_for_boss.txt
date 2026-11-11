@@ -1,0 +1,33 @@
+# A word for the boss
+// Draft by the AI (Claude), 2026-11-11, not yet edited by the owner. For anyone whose life began somewhere other than
+// the Meridian: someone with a name where the player is (not their boss) asks them to pass a word on to their boss,
+// who's easier for the player to reach. Talking to the boss is the word. {boss} is whoever the player works for there.
+for: outsiders
+asks: someone here
+needs: talk to your boss
+by: 2 days
+
+== ask
+@{asker}: "You work for {boss}, don't you? I can never get a word in. Tell them I was asking after them, and that I've something worth their while, if they've a minute."
+> I'll tell {boss} -> yes
+> Not now -> later
+> Tell them yourself -> no
+
+== yes
+@{asker}: "I owe you one."
+
+== later
+@{asker}: "When you've a moment, then."
+
+== no
+@{asker}: "Fine. I'll keep trying."
+
+== done
+@{asker}: "{boss} came by. Whatever you said, it worked."
+* xp 5: A word for the boss
+
+== failed
+@{asker}: "Nothing from {boss}. I suppose you forgot."
+
+== gone
+@{asker}: "Never mind. I caught {boss} myself."

@@ -2,6 +2,7 @@
 // Draft by the AI (Claude), 2026-11-10, not yet edited by the owner. A nurse asks anyone who lives aboard and carries a
 // medkit, when the medicine cabinet is empty: it would tide a patient over until crates come. The player can hand it
 // over there and then, or say they'll bring one and give it later (Give, on the nurse's right-click menu).
+for: anyone aboard
 when: stock medicine_crate < 1 and has medkit
 asks: a nurse
 needs: give 1 medkit to {asker}

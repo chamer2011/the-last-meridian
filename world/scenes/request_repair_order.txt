@@ -1,0 +1,32 @@
+# Bodge it till the crates come
+// Draft by the AI (Claude), 2026-11-11, not yet edited by the owner. For crew aboard the Meridian who work as a tech
+// (the engine hand begins as one): when something has broken and there's no parts crate to mend it with, the chief
+// engineer orders them to bodge it by hand, which takes no crate: the part's own fix, in its window or on its right-click
+// menu. It's an order, so refusing it costs more than a plain no. {part} is what's broken and {room} where it is.
+for: crew
+as: an order
+when: repairs waiting and job you tech
+asks: your officer
+needs: fix a part waiting for repairs
+by: 1 day
+
+== ask
+@{asker}: "The {part} in {room} is down, and there isn't a crate aboard to mend it properly. Get in there and bodge it. Tape, wire, whatever holds."
+> On my way -> yes
+> That's not my job -> no
+
+== yes
+@{asker}: "Don't make it pretty. Make it work."
+
+== no
+@{asker}: "It's exactly your job. I'll remember you said that."
+
+== done
+@{asker}: "It's holding. Ugly, but holding. Good."
+* xp 15: Bodge it till the crates come
+
+== failed
+@{asker}: "The {part}'s still down. I gave you a day."
+
+== gone
+@{asker}: "Someone's seen to the {part}. Never mind."

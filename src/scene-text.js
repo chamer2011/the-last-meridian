@@ -13,7 +13,7 @@ import { stockOf, storeByWords, storeNames } from "./logistics.js";
 
 // The ship whose stores "stock" counts. Spelt here rather than taken from src/ship.js, which reads scenes itself.
 const SHIP_ID = "meridian";
-import { MUTINY_CONDITIONS, MUTINY_OUTCOMES, brigHolds, commandWords, knownPerson, loyaltyFor, mutinyHolds, rivalHolds, storyHolds } from "./command.js";
+import { MUTINY_CONDITIONS, MUTINY_OUTCOMES, brigHolds, commandWords, knownPerson, loyaltyFor, mutinyHolds, rivalHolds, shortHolds, storyHolds } from "./command.js";
 
 // Two people written one after the other, as in "* remember marrow tarrow -10": the first split where both are someone.
 function splitPeople(words) {
@@ -234,6 +234,15 @@ export function parseCondition(text) {
         term.id = post;
         break;
       }
+      case "short": {
+        // A job on the Meridian's watch bill with fewer people at work than it wants: short any, short cook, or short
+        // your job (the player's own).
+        const { jobs } = commandWords();
+        const job = rest.join(" ").toLowerCase();
+        if (job !== "any" && job !== "your job" && (!jobs.has(job) || job === "spare")) problems.push(`"short" is followed by any, your job, or a job by its id (${[...jobs].filter((one) => one !== "spare").join(", ")}): "${raw.trim()}"`);
+        term.id = job;
+        break;
+      }
       case "brig":
       case "down": {
         // Someone in the brig, or lying where they fell aboard the Meridian: any, or someone by their id or name.
@@ -307,6 +316,7 @@ function termHolds(game, term, helpers) {
     case "repairs": result = partsWaitingIds(game, SHIP_ID).length > 0; break;
     case "rival": result = rivalHolds(game, term.id); break;
     case "brig": result = brigHolds(game, term.who); break;
+    case "short": result = shortHolds(game, term.id); break;
     case "down": {
       // Lying where they fell, not yet in the medbay or on the way: game.down, kept by src/medbay.js.
       const lying = Object.values(game.down ?? {}).filter((d) => d.place === SHIP_ID && !d.bed && !d.carriedBy && !d.going && !d.dead);
@@ -605,8 +615,8 @@ function parseChoice(text, line) {
 }
 
 // The lines on top of a request, and what each is kept as.
-const REQUEST_KEYS = { when: "when", about: "about", asks: "asks", needs: "needs", by: "by", "gone when": "gone", "handed to": "handed" };
-const REQUEST_LINE = /^(when|about|asks|needs|by|gone\s+when|handed\s+to):\s*(.*)$/i;
+const REQUEST_KEYS = { for: "for", as: "as", when: "when", about: "about", asks: "asks", needs: "needs", by: "by", "gone when": "gone", "handed to": "handed" };
+const REQUEST_LINE = /^(for|as|when|about|asks|needs|by|gone\s+when|handed\s+to):\s*(.*)$/i;
 
 // Reads one file's text. parts come out in the shape src/scenes.js plays, and problems say what to fix.
 
@@ -693,7 +703,7 @@ export function parseSceneText(text, name = "the scene") {
         const key = REQUEST_KEYS[top[1].toLowerCase().replace(/\s+/g, " ")];
         if (scene.request[key] !== undefined) problem(line, `${top[1]}: is written twice`);
         scene.request[key] = top[2].trim();
-      } else problem(line, "before the first part, only a # title, a start: line and // comments go here, and in a request the when:, asks:, needs:, by:, gone when: and handed to: lines. A part starts with == and its name");
+      } else problem(line, "before the first part, only a # title, a start: line and // comments go here, and in a request the for:, as:, when:, about:, asks:, needs:, by:, gone when: and handed to: lines. A part starts with == and its name");
       return;
     }
     if (!trimmed) {

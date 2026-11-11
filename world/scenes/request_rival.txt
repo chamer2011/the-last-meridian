@@ -2,7 +2,7 @@
 // Draft by the AI (Claude), 2026-11-11, not yet edited by the owner. Whoever holds a post that someone is working
 // against (a rival, from the chain of command's reviews) asks anyone who lives aboard to have a word with them. Talking
 // to the rival is the word. Saying no takes the rival's side, a little. {about} is the rival, {post} the post.
-when: rival any
+for: the captain
 about: a rival
 asks: them
 needs: talk to {about}

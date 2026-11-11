@@ -2,7 +2,7 @@
 // Draft by the AI (Claude), 2026-11-11, not yet edited by the owner. Someone relieved of a post in the last two weeks
 // asks the captain for it back. A yes gives it back there and then (and {holder}, who has it now, goes back to a job,
 // as when anyone's relieved); a no leaves it with {holder}, and they remember. {post} is the post they lost.
-when: captain
+for: the captain
 about: someone relieved
 asks: them
 needs: your word

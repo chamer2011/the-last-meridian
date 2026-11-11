@@ -2,7 +2,8 @@
 // Draft by the AI (Claude), 2026-11-10, not yet edited by the owner. Whoever is chief engineer asks the captain when the jump fuel
 // is under three: keeping station burns it whether the ship goes anywhere or not. It's done when the captain has
 // bought three more at a port with a depot, and gone if the tank fills some other way.
-when: captain and fuel < 3
+for: the captain
+when: fuel < 3
 asks: the chief engineer
 needs: fuel in the tank +3
 by: 5 days

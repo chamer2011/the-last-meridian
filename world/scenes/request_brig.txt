@@ -2,7 +2,7 @@
 // Draft by the AI (Claude), 2026-11-11, not yet edited by the owner. Whoever's in the brig asks the captain, when the
 // captain comes by, to be let out before their days are done. A yes lets them out there and then, a spare hand on the
 // watch bill; a no leaves them to their days.
-when: captain
+for: the captain
 about: someone in the brig
 asks: them
 needs: your word

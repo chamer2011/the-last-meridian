@@ -18,24 +18,30 @@
 //          give, holder, reminded }
 //   rest:  by kind, the hour before which it won't be asked again
 //   asked: by kind, the hour it was last asked, so the one asked longest ago comes first
-//   day:   the day the last new ask came, since there's one a day at most
+//   day:   the day the last new ask came, since a quiet day comes between (src/requests.js's pacer)
+//   last:  the kind asked last, so the same kind isn't asked twice running
 //   n:     how many have been taken on, for the quests' ids
+//
+// Who's asked depends on the player's life (the for: line): the captain gets their officers' troubles to decide, crew
+// get orders from the officer over their job (as: an order, which costs more to refuse), and anyone whose life began
+// somewhere else is asked by the people where they are: their boss, or someone there.
 
 import { SKILLS } from "./character-data.js";
 import { findCharacter, fullName } from "./campaign.js";
 import { ITEMS, LOCATIONS } from "./data.js";
-import { TROUBLES, YOU, calledBy, commandOf, holderKey, jobByWords, jobOf, lostReason, onJob, personByWords, postById, postByWords, rememberRequest, stillAlive, storyCommand, tallyDuty, troublesOf } from "./command.js";
+import { TROUBLES, YOU, calledBy, commandOf, deposedStart, holderKey, jobByWords, jobOf, lostReason, onJob, personByWords, postById, postByWords, postOf, rememberRequest, stillAlive, storyCommand, tallyDuty, troublesOf } from "./command.js";
 import { FACT_ID, clearFact, recordFact } from "./record.js";
-import { dueWords } from "./quests.js";
-import { aboardShip } from "./role.js";
+import { dueWords, heldUp } from "./quests.js";
+import { START_LIST, aboardShip, isCaptain, startOf } from "./role.js";
 import { conditionHolds, parseCondition } from "./scene-text.js";
-import { loadScenes, withStandIns } from "./scenes.js";
+import { loadScenes, scenesUnderWay, withStandIns } from "./scenes.js";
 import { itemByWords, logisticsOf, storeByWords, storeNames } from "./logistics.js";
 import { notePut, putsOf } from "./puts.js";
 import { removeItem, tellRequests } from "./rules.js";
 import { partBroken, partByWords, partWords, partsWaitingIds } from "./systems.js";
 import { newTurnLimits, runTool } from "./tools.js";
-import { mapFor, roomOf, roomsOf } from "./walk.js";
+import { mapFor, personWhere, roomOf, roomsOf } from "./walk.js";
+import { WORLD_CHARACTERS } from "./world.js";
 
 const SHIP = "meridian";
 const PREFIX = "request_";
@@ -45,6 +51,10 @@ const MOST_OPEN = 3;
 const REST = { done: 48, gone: 48, failed: 96, no: 168, dropped: 12 };
 // "Not now" puts it off this long.
 const LATER = 24;
+// Days with nothing new between one new ask and the next, unless it can't wait (a request given less than a day).
+const QUIET_DAYS = 1;
+// Nobody brings something new in the middle of the night: only between these hours, unless it can't wait.
+const ASKING_HOURS = [7, 21];
 // A request ended long ago leaves the quest log after this many more have ended.
 const KEEP_ENDED = 8;
 // What a request handed to a post does to that post's duty on the day it ends: done, a little for them; left undone,
@@ -74,6 +84,10 @@ function readWho(words, problems, key) {
   const who = String(words ?? "").trim();
   if (/^\{asker\}$/i.test(who)) return { asker: true, words: who };
   if (/^\{about\}$/i.test(who)) return { about: true, words: who };
+  // The officer over the player's job on the watch bill, and the first person of their life (Chief Marrow for an engine
+  // hand, Dockmaster Jessup for a dock hand).
+  if (/^your\s+officer$/i.test(who)) return { officer: true, room: null, words: who };
+  if (/^your\s+boss$/i.test(who)) return { boss: true, room: null, words: who };
   const model = commandOf(SHIP);
   const post = postByWords(SHIP, who);
   if (post) return { post, room: model?.posts.find((one) => one.id === post)?.room ?? null, words: who };
@@ -95,13 +109,16 @@ function readAsks(words, problems) {
   }
   // Whoever the trouble in the about: line falls on: the one with a rival, the one relieved, the one in the brig.
   if (/^them$/i.test(who.trim())) return { them: true, room: null, words: "them" };
+  // Anyone with a name at the place the player is, other than their boss.
+  if (/^someone\s+here$/i.test(who.trim())) return { here: true, room: null, words: "someone here" };
   const asker = readWho(who, problems, "asks");
   if (!asker) return null;
   if (asker.asker) {
     problems.push("asks: can't be {asker}: it's who {asker} stands for");
     return null;
   }
-  if (roomWords) {
+  if (roomWords && (asker.officer || asker.boss)) problems.push("asks: your officer and your boss are found where they work, so leave out the room");
+  else if (roomWords) {
     const room = roomByWords(roomWords);
     if (!room) problems.push(`asks: the Meridian has no room called ${roomWords.trim()}`);
     else asker.room = room.id;
@@ -116,7 +133,8 @@ function readAsks(words, problems) {
 //   talk to the quartermaster                                                       (talk)
 //   go to haven                                                                     (go)
 //   pass engineering, pass engineering at the air plant, pass persuasion with {asker} (pass)
-const NEEDS_HELP = "needs: is what's wanted: medicine crates aboard +2, ration crates in the pantry +2, fuel in the tank +3, fix a part waiting for repairs, fix the air plant, give 1 medkit to {asker}, talk to the quartermaster, talk to {about}, go to haven, pass engineering at the air plant, carry {about} to the medbay, or your word";
+const NEEDS_HELP = "needs: is what's wanted: work a shift, work 2 shifts, medicine crates aboard +2, ration crates in the pantry +2, fuel in the tank +3, fix a part waiting for repairs, fix the air plant, give 1 medkit to {asker}, talk to the quartermaster, talk to {about}, go to haven, pass engineering at the air plant, carry {about} to the medbay, or your word";
+const COUNT_WORDS = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5 };
 function readNeeds(words, problems) {
   const text = String(words ?? "").trim();
   let found;
@@ -124,6 +142,15 @@ function readNeeds(words, problems) {
   if (/^carry\s+\{about\}\s+to\s+the\s+medbay$/i.test(text)) return { kind: "carry", n: 1 };
   // Nothing to fetch or do: the answer is the thing, settled once they've said yes.
   if (/^your\s+word$/i.test(text)) return { kind: "word", n: 1 };
+  // Shifts at the player's own job, from its button in What's here (workShift in src/rules.js counts them).
+  if ((found = text.match(/^work\s+(\S+)\s+shifts?$/i))) {
+    const n = COUNT_WORDS[found[1].toLowerCase()] ?? Number(found[1]);
+    if (!Number.isInteger(n) || n < 1) {
+      problems.push(`needs: work a shift, or work 2 shifts, not ${text}`);
+      return null;
+    }
+    return { kind: "shift", n };
+  }
   if ((found = text.match(/^fix\s+(.+)$/i))) {
     if (/^a part waiting for repairs$/i.test(found[1].trim())) return { kind: "fix", waiting: true, n: 1 };
     const part = partByWords(SHIP, found[1]);
@@ -251,6 +278,54 @@ function readHandedTo(words, problems) {
   return post;
 }
 
+// Which lives a kind is for, from its for: line: the captain; crew (anyone who lives aboard the Meridian and isn't the
+// captain, a captain the officers relieved included); outsiders (lives that begin somewhere else); anyone aboard;
+// anyone; or lives by their id or name, like engine hand or dock hand. A request with no for: line is for anyone aboard.
+const LIVES = ["the captain", "crew", "outsiders", "anyone aboard", "anyone"];
+const FOR_HELP = "for: is the captain, crew, outsiders, anyone aboard, anyone, or a life by its name, like engine hand or dock hand; several with commas";
+function lifeByWords(words) {
+  const want = String(words ?? "").trim().toLowerCase().replace(/^(a|an|the)\s+/, "");
+  return Object.keys(START_LIST).find((id) => id === want.replace(/\s+/g, "_") || String(START_LIST[id].short ?? "").toLowerCase() === want) ?? null;
+}
+function readFor(words, problems) {
+  const lives = [];
+  for (const one of String(words ?? "").split(/,|\bor\b/i).map((piece) => piece.trim().toLowerCase()).filter(Boolean)) {
+    const plain = one === "captain" ? "the captain" : one;
+    const life = LIVES.includes(plain) ? null : lifeByWords(one);
+    if (LIVES.includes(plain)) lives.push(plain);
+    else if (life === "captain") lives.push("the captain");
+    else if (life) lives.push(`life:${life}`);
+    else problems.push(`${FOR_HELP}, not ${one}`);
+  }
+  if (!lives.length) problems.push(FOR_HELP);
+  return lives;
+}
+// Whether the player started as crew aboard the Meridian, or is crew there now after the officers took the chair.
+const crewAboard = (game) => !isCaptain(game) && (startOf(game)?.place === SHIP || Boolean(deposedStart(game)));
+// Whether a kind is for the life the player is living.
+export function forLife(game, model) {
+  return (model.for ?? ["anyone aboard"]).some((one) => {
+    if (one === "the captain") return isCaptain(game);
+    if (one === "crew") return crewAboard(game);
+    if (one === "outsiders") return !isCaptain(game) && !crewAboard(game);
+    if (one === "anyone aboard") return aboardShip(game);
+    if (one === "anyone") return true;
+    return !isCaptain(game) && one === `life:${game.role?.id}`;
+  });
+}
+// Whether a life in a for: line is one aboard the Meridian, with an officer over their job on the watch bill.
+const crewLife = (one) => one === "crew" || (one.startsWith("life:") && START_LIST[one.slice(5)]?.place === SHIP && START_LIST[one.slice(5)]?.job);
+// Whether a life in a for: line has someone to call their boss: the people their life begins with.
+const bossLife = (one) => one === "crew" || one === "outsiders" || (one.startsWith("life:") && (START_LIST[one.slice(5)]?.people ?? []).length > 0);
+
+function readAs(words, problems) {
+  const want = String(words ?? "").trim().toLowerCase();
+  if (want === "an order") return true;
+  if (want === "a request") return false;
+  problems.push(`as: is an order, or a request (the same as no as: line), not ${String(words ?? "").trim() || "nothing"}`);
+  return false;
+}
+
 // A request's file, made into what the game plays: the kind, its title, the conditions, the asker, what's needed, how
 // long it's given and who it can be handed to. Problems say what's wrong, in plain words.
 const compiled = new WeakMap();
@@ -259,19 +334,27 @@ export function compileRequest(kind, scene) {
   const problems = [];
   const top = scene?.request ?? {};
   const parts = scene?.parts ?? {};
-  if (!scene?.request) problems.push("a request needs its lines on top: when:, asks:, needs: and by:, and gone when: or handed to: if it has them");
+  if (!scene?.request) problems.push("a request needs its lines on top: asks:, needs: and by:, and for:, as:, when:, about:, gone when: or handed to: if it has them");
   const model = {
     kind,
     title: scene?.title ?? kind.replaceAll("_", " "),
-    when: readCondition(top.when, "when", problems),
+    when: readCondition(top.when, "when", problems, false),
     gone: readCondition(top.gone, "gone when", problems, false),
     asker: top.asks ? readAsks(top.asks, problems) : (problems.push("asks: is missing"), null),
     need: top.needs ? readNeeds(top.needs, problems) : (problems.push("needs: is missing"), null),
     hours: top.by ? readBy(top.by, problems) : (problems.push("by: is missing"), null),
     handTo: top.handed ? readHandedTo(top.handed, problems) : null,
     about: top.about ? readAbout(top.about, problems) : null,
+    for: top.for !== undefined ? readFor(top.for, problems) : null,
+    order: top.as !== undefined ? readAs(top.as, problems) : false,
     problems,
   };
+  const lives = model.for ?? ["anyone aboard"];
+  const mentions = (name) => JSON.stringify(scene?.parts ?? {}).includes(`{${name}}`) || String(top.needs ?? "").toLowerCase().includes(name);
+  if (model.asker?.officer && !lives.every(crewLife)) problems.push("asks: your officer is for crew aboard the Meridian, so it needs for: crew, or lives like engine hand");
+  if ((model.asker?.boss || mentions("your boss") || mentions("boss")) && !lives.every(bossLife)) problems.push("your boss and {boss} are only for lives that have one, so it needs for: crew, outsiders, or lives like dock hand");
+  if (model.order && lives.some((one) => one === "the captain" || one === "anyone" || one === "anyone aboard")) problems.push("the captain takes no orders, so an order needs for: crew, outsiders, or lives like engine hand");
+  if (model.need?.kind === "shift" && lives.some((one) => one === "the captain" || one === "anyone" || one === "anyone aboard")) problems.push("the captain has no shifts to work, so work a shift needs for: crew, outsiders, or lives like dock hand");
   if (model.asker?.them && model.about && !ABOUT_ASKS.has(model.about)) problems.push(`asks: them is for a trouble that falls on someone (${[...ABOUT_ASKS].join(", ")}); for ${model.about}, say who asks`);
   if (model.asker?.them && !model.about) problems.push("asks: them needs an about: line saying whose trouble it is");
   if (model.need?.kind === "carry" && model.about !== DOWN) problems.push(`carry {about} to the medbay needs about: ${DOWN}`);
@@ -322,7 +405,33 @@ function requestKinds() {
 
 // ---- Who asks, and who's named --------------------------------------------------------------------------------
 
-const free = (game, key) => key && key !== YOU && stillAlive(game, key) && !["dead", "in the brig", "being patched up", "down", "laid up in the medbay"].includes(lostReason(game, SHIP, key));
+const free = (game, key, place = SHIP) => key && key !== YOU && stillAlive(game, key) && !["dead", "in the brig", "being patched up", "down", "laid up in the medbay"].includes(lostReason(game, place, key));
+
+// The officer over the player's job on the watch bill: whoever holds the post that heads it, or for a spare hand whoever
+// keeps the watch bill. Nobody for the captain, or for someone who isn't on the Meridian's watch bill.
+function officerOf(game) {
+  const model = commandOf(SHIP);
+  if (!model || isCaptain(game)) return null;
+  const job = jobOf(game, SHIP, YOU);
+  if (job === undefined) return null;
+  const post = job ? model.posts.find((one) => one.heads.includes(job)) : model.posts.find((one) => one.watchBill);
+  const key = post ? holderKey(game, SHIP, post.id) : null;
+  return free(game, key) ? key : null;
+}
+// The first of the people the player's life begins with: their boss, at the place their life is.
+function bossOf(game) {
+  const start = startOf(game);
+  const key = isCaptain(game) ? null : start?.people?.[0];
+  return key && free(game, key, start.place) ? key : null;
+}
+// Someone with a name at the place the player is now, found there, other than their boss: whoever asked already, or
+// one of them by the day, so it's someone different now and then.
+function someoneHere(game, already = null) {
+  const here = (key) => key !== YOU && key !== bossOf(game) && free(game, key, game.location) && personWhere(game, key)?.room && !personWhere(game, key)?.gone;
+  if (already) return here(already) ? already : null;
+  const keys = Object.keys(WORLD_CHARACTERS).filter((key) => WORLD_CHARACTERS[key].location === game.location && here(key)).sort();
+  return keys.length ? keys[dayOf(nowOf(game)) % keys.length] : null;
+}
 
 // Who someone named in a request is in this game: whoever's asking, whoever holds the post, the one of the job already
 // named or the first of them at work, or the person. Null when there's nobody.
@@ -332,6 +441,9 @@ function whoNow(game, who, { asker = null, already = null, about = null } = {}) 
   // Whoever the trouble falls on, kept from when they asked: in the brig too, as long as they're alive.
   if (who.them) return already && stillAlive(game, already) ? already : null;
   if (who.about) return about;
+  if (who.officer) return officerOf(game);
+  if (who.boss) return bossOf(game);
+  if (who.here) return someoneHere(game, already);
   if (who.post) {
     const key = holderKey(game, SHIP, who.post);
     return free(game, key) ? key : null;
@@ -356,6 +468,8 @@ const askedBy = (game, key) => (key ? upperFirst(calledBy(game, SHIP, key)) : "S
 // The stand-ins a request's lines can use: {asker}, and for a part to fix, {part} and {room}.
 function extrasFor(game, open) {
   const extra = { asker: askerStandIn(game, open.asker) };
+  const boss = isCaptain(game) ? null : startOf(game)?.people?.[0];
+  if (boss) extra.boss = askerStandIn(game, boss);
   const words = open.part ? partWords(SHIP, open.part) : null;
   if (words) Object.assign(extra, { part: { id: open.part, name: words.name }, room: { id: open.part, name: words.room } });
   if (open.about) extra.about = askerStandIn(game, open.about);
@@ -420,6 +534,8 @@ function objectiveOf(game, model, open, got) {
       return `Carry ${nameOf(game, open.about)} to the medbay`;
     case "word":
       return `Your word to ${nameOf(game, open.asker)}`;
+    case "shift":
+      return need.n === 1 ? "Work a shift" : `Work ${need.n} shifts${counted(need, got)}`;
     case "go":
       return `Go to ${LOCATIONS[need.place]?.name ?? need.place}`;
     case "pass": {
@@ -443,6 +559,7 @@ function totalOf(game, need, open) {
     case "go":
     case "word":
     case "carry": return 0;
+    case "shift": return putsOf(game, "shift", "any");
     case "pass": return putsOf(game, `check:${need.skill}`, need.at ? `at:thing:part:${need.at}` : need.with ? `with:${open.to}` : "any");
     default: return putsOf(game, need.where, need.item);
   }
@@ -509,6 +626,7 @@ function addQuest(game, model, open, { desc, objective }) {
     askedBy: askedBy(game, open.asker),
     due: open.due,
     ...(open.short ? { dueShort: true } : {}),
+    ...(model.order ? { order: true } : {}),
     ...(open.state === "handed" ? { handed: true } : {}),
   });
   keepFewEnded(game);
@@ -530,7 +648,11 @@ export function answerRequest(game, kind, answer) {
     state.rest[kind] = now + REST.no;
     // They remember being told no, and it's on the record.
     const model = requestKinds().find((one) => one.model.kind === kind)?.model;
-    if (model) {
+    if (model?.order) {
+      // An order refused costs more than a no, and they say so for a week.
+      rememberRequest(game, open.asker, "disobeyed", { words: aboutWords(model) });
+      leaveFact(game, kind, "refused", `You refused ${askedBy(game, open.asker)}'s orders about ${aboutWords(model)}, on day ${dayOf(now)}.`);
+    } else if (model) {
       rememberRequest(game, open.asker, "turned_down", { words: aboutWords(model) });
       leaveFact(game, kind, "refused", `You told ${askedBy(game, open.asker)} no about ${aboutWords(model)}, on day ${dayOf(now)}.`);
     }
@@ -560,7 +682,7 @@ export function answerRequest(game, kind, answer) {
   if (model.need.kind === "give") open.give = { item: model.need.item, n: model.need.n, to: open.to };
   open.base = totalOf(game, model.need, open);
   const objective = objectiveOf(game, model, open, 0);
-  addQuest(game, model, open, { desc: `${by} asked you on day ${dayOf(now)}.`, objective });
+  addQuest(game, model, open, { desc: model.order ? `${by} gave you the order on day ${dayOf(now)}.` : `${by} asked you on day ${dayOf(now)}.`, objective });
   const notes = [`[REQUEST] Taken on: ${model.title}. ${withoutCount(objective)}, by ${dueOf(open)}. It's in your quests (J), under Requests.`];
   // Given there and then: as many as the player has, up to what's wanted.
   if (answer === "given" && open.give) {
@@ -646,7 +768,7 @@ function endRequest(game, found, open, how, notes) {
   const by = askedBy(game, open.asker);
   const day = dayOf(nowOf(game));
   if (how === "done") {
-    rememberRequest(game, open.asker, "helped", { words: aboutWords(model) });
+    rememberRequest(game, open.asker, model.order ? "obeyed" : "helped", { words: aboutWords(model) });
     leaveFact(game, model.kind, "done", `${step.replace(/^Done: you/, "You").replace(/\.$/, "")}, when ${by} asked (day ${day}).`);
   } else if (how === "failed") {
     rememberRequest(game, open.asker, "let_down", { words: aboutWords(model) });
@@ -687,7 +809,7 @@ function settleOffered(game, found, one) {
   const { model } = found;
   // Nobody's waiting to be asked about something that's been put right, or by someone who can't ask any more.
   const asker = askerNow(game, model, one);
-  const stale = !asker || !conditionHolds(game, model.when) || (model.need.kind === "fix" && !partBroken(game, SHIP, one.part)) || Boolean(model.about && !troubleStands(game, model, one));
+  const stale = !asker || !whenHolds(game, model) || (model.need.kind === "fix" && !partBroken(game, SHIP, one.part)) || Boolean(model.about && !troubleStands(game, model, one));
   if (stale) {
     delete game.requests.open[one.kind];
     game.requests.rest[one.kind] = nowOf(game) + REST.dropped;
@@ -764,21 +886,67 @@ function partToFix(game, need) {
   return partsWaitingIds(game, SHIP).find((id) => !taken.has(id)) ?? null;
 }
 
-// Someone with a new trouble has something to ask: one a day at most, three waiting at most, never one that's resting
-// after it last ended, the one asked longest ago first, and only to someone who lives aboard.
+// Whether a kind's when: line holds now (a kind without one comes up whenever its life and its trouble allow).
+const whenHolds = (game, model) => !model.when || conditionHolds(game, model.when);
+// Whether the player is in the middle of something the story comes first for: a written scene being played with them
+// (not one waiting for someone elsewhere), a fight, a check, or a computer.
+const inTheMiddle = (game) => Boolean(game.combat || game.check || game.computer || (game.scene && !heldUp(game)));
+// Where whoever asks is found: their boss where the player's life is, someone here where the player is, and everyone
+// else aboard the Meridian.
+function askedAt(game, model) {
+  if (model.asker.boss) return startOf(game)?.place ?? null;
+  if (model.asker.here) return game.location;
+  return SHIP;
+}
+// Whether the player is where a kind can be asked: aboard (or, for the captain, anywhere: they're told when they're
+// back), or at the place where whoever asks is.
+const reachable = (game, model) => {
+  const place = askedAt(game, model);
+  return place === SHIP ? aboardShip(game) : Boolean(place) && game.location === place;
+};
+// The room someone asking is found in, for the line that says so.
+function roomWords(game, model, asker) {
+  if (model.asker.room) return roomOf(mapFor(SHIP), model.asker.room)?.name ?? null;
+  if (model.asker.officer) return postById(SHIP, postOf(game, SHIP, asker))?.roomName ?? null;
+  if (model.asker.boss) {
+    const start = startOf(game);
+    return start?.room ? roomOf(mapFor(start.place), start.room)?.name ?? null : null;
+  }
+  if (model.asker.here) return personWhere(game, asker)?.room ?? null;
+  return null;
+}
+// How the line puts it: orders from whoever's over the player, a decision for the captain from one of their officers,
+// or something to ask.
+function askWords(game, model, asker) {
+  if (model.order) return "has orders for you";
+  if (isCaptain(game) && postOf(game, SHIP, asker)) return "has something for you to decide";
+  return "has something to ask you";
+}
+
+// Someone with a new trouble has something to ask. The pacer: three waiting at most, a quiet day between one new ask and
+// the next (unless it can't wait: one given less than a day), nothing while a written scene is being played, never one
+// that's resting after it last ended, not the same kind twice running when there's another, and the one asked longest
+// ago first. Only kinds for the player's life, asked where whoever asks is.
 function newAsks(game, kinds) {
-  if (!aboardShip(game) || !kinds.length) return [];
+  if (!kinds.length || inTheMiddle(game)) return [];
   const now = nowOf(game);
   const today = dayOf(now);
   const waiting = Object.keys(game.requests?.open ?? {}).length;
-  if (waiting >= MOST_OPEN || game.requests?.day === today) return [];
+  if (waiting >= MOST_OPEN) return [];
+  const hourOfDay = now % 24;
+  const night = hourOfDay < ASKING_HOURS[0] || hourOfDay >= ASKING_HOURS[1];
+  const quiet = night || (game.requests?.day !== undefined && today - game.requests.day <= QUIET_DAYS);
   const asked = game.requests?.asked ?? {};
+  const last = game.requests?.last ?? null;
   const ready = kinds
     .filter(({ model }) => !game.requests?.open?.[model.kind] && !((game.requests?.rest?.[model.kind] ?? -Infinity) > now))
-    .sort((a, b) => (asked[a.model.kind] ?? -Infinity) - (asked[b.model.kind] ?? -Infinity));
+    .filter(({ model }) => (!quiet || model.hours < 24) && forLife(game, model) && reachable(game, model))
+    .sort((a, b) => (a.model.kind === last) - (b.model.kind === last) || (asked[a.model.kind] ?? -Infinity) - (asked[b.model.kind] ?? -Infinity));
+  // Someone a written scene is waiting on plays that scene when they're talked to, not a request.
+  const waitedOn = new Set(scenesUnderWay(game).map((scene) => scene.with).filter(Boolean));
   for (const found of ready) {
     const { model } = found;
-    if (!conditionHolds(game, model.when)) continue;
+    if (!whenHolds(game, model)) continue;
     // Whose trouble it is, when it's about someone: the first of them with someone free to ask about it, not asking
     // about something else already (asks: them is the trouble's own person, who may be the one it's about). Otherwise,
     // whoever the asks: line says.
@@ -792,16 +960,18 @@ function newAsks(game, kinds) {
     if (model.about && !trouble) continue;
     const asker = model.asker.them ? trouble.asker : askerNow(game, model);
     // One thing to ask at a time each.
-    if (!asker || busy(asker)) continue;
+    if (!asker || busy(asker) || waitedOn.has(asker)) continue;
     const part = model.need.kind === "fix" ? partToFix(game, model.need) : null;
     if (model.need.kind === "fix" && !part) continue;
     const state = stateOf(game);
     state.open[model.kind] = { kind: model.kind, asker, at: now, state: "offered", ...(part ? { part } : {}), ...(trouble ? { about: trouble.about, post: trouble.post ?? null } : {}) };
     state.asked[model.kind] = now;
-    state.day = today;
-    const room = model.asker.room ? roomOf(mapFor(SHIP), model.asker.room)?.name : null;
-    if (game.location !== SHIP) return [];
-    return [`[REQUEST] ${askedBy(game, asker)} has something to ask you${room ? `, in ${room.replace(/^The /, "the ")}` : ""}.`];
+    state.last = model.kind;
+    // What can't wait doesn't take a day from the pace.
+    if (model.hours >= 24) state.day = today;
+    const room = roomWords(game, model, asker);
+    if (game.location !== askedAt(game, model)) return [];
+    return [`[REQUEST] ${askedBy(game, asker)} ${askWords(game, model, asker)}${room ? `, in ${room.replace(/^The /, "the ")}` : ""}.`];
   }
   return [];
 }

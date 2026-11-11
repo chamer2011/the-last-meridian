@@ -1,0 +1,34 @@
+# Two more shifts
+// Draft by the AI (Claude), 2026-11-11, not yet edited by the owner. For anyone whose life began somewhere other than
+// the Meridian, with someone to work for (the dock hand's is Dockmaster Jessup): their boss, where their work is, asks
+// them to put in two more shifts in the next few days. A shift is the job's own button in What's here, under You can
+// (Work a shift on the docks). It's a request, not an order: a no is remembered, but not held against them as much.
+for: outsiders
+asks: your boss
+needs: work two shifts
+by: 3 days
+
+== ask
+@{asker}: "There's more work than hands this week. Two more shifts out of you, in the next few days? I'd take it kindly."
+> I'll do it -> yes
+> Not now -> later
+> I can't -> no
+
+== yes
+@{asker}: "Good. You know where to find the work."
+
+== later
+@{asker}: "Think on it."
+
+== no
+@{asker}: "Suit yourself."
+
+== done
+@{asker}: "Two shifts. That's what I asked, and that's what I got."
+* xp 10: Two more shifts
+
+== failed
+@{asker}: "You said two shifts. I'm still counting."
+
+== gone
+@{asker}: "Never mind the shifts. It's sorted."

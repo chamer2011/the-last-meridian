@@ -4,6 +4,7 @@
 // carries them, so this is for when nobody has. It's done when the player has carried two crates into the pantry
 // themselves (open the shuttle stores, take them, open the pantry, put them in), and gone if someone else does first.
 // The captain can leave it to the quartermaster instead, whose duty shows whether the pantry was filled in time.
+for: anyone aboard
 when: stock ration_crate < 1 in the pantry and stock produce < 1 in the pantry and stock ration_crate > 1 in the shuttle stores
 asks: a cook
 needs: ration crates in the pantry +2

@@ -1,0 +1,33 @@
+# An extra shift
+// Draft by the AI (Claude), 2026-11-11, not yet edited by the owner. For crew aboard the Meridian: when the job the
+// player does on the watch bill is short of hands (someone hurt, laid up, in the brig or dead), the officer over that
+// job orders them to put in a shift today. It's an order, so refusing it costs more than a plain no, and the officer
+// says so for a week. Working the shift is the job's own button in What's here, under You can.
+for: crew
+as: an order
+when: short your job
+asks: your officer
+needs: work a shift
+by: 1 day
+gone when: not short your job
+
+== ask
+@{asker}: "We're a pair of hands short, and the work doesn't care. I need you on a shift today. That's not a question."
+> Yes, I'll take it -> yes
+> I can't today -> no
+
+== yes
+@{asker}: "Good. Get to it."
+
+== no
+@{asker}: "I'll remember that."
+
+== done
+@{asker}: "That's the shift covered. Thank you."
+* xp 10: An extra shift
+
+== failed
+@{asker}: "The day's gone, and so was the shift. I told you we were short."
+
+== gone
+@{asker}: "We've got the hands back. You're off the hook."

@@ -812,6 +812,10 @@ const MEMORY = {
   seen_to: { weight: 4, words: "asked {by} for help ({words}), and {who} saw to it", recent: 3 },
   let_down: { weight: -10, words: "asked {by} for help ({words}), and was let down", recent: 3 },
   turned_down: { weight: -4, words: "asked {by} for help ({words}), and was told no", recent: 3 },
+  // An order, from whoever's over the player (a request written as: an order): carried out, or refused, which costs
+  // more than a plain no and is remembered aloud for a week.
+  obeyed: { weight: 6, words: "gave {by} orders ({words}), and saw them carried out", recent: 3 },
+  disobeyed: { weight: -12, words: "gave {by} orders ({words}), and was refused", recent: 7 },
 };
 const memoriesOf = (game, place, key) => stateOf(game, place)?.memory?.[key] ?? [];
 const fadeOf = (place) => commandOf(place)?.reviews?.fade || 30;
@@ -1518,6 +1522,18 @@ export function troublesOf(game, kind, place = SHIP_PLACE) {
 export function rivalHolds(game, postWords, place = SHIP_PLACE) {
   if (/^any$/i.test(postWords)) return troublesOf(game, "a rival", place).length > 0;
   return troublesOf(game, "a rival", place).some((one) => one.post === postByWords(place, postWords));
+}
+// Whether a job on the watch bill has fewer of its own people at work than it wants (spare hands the first officer has
+// put on to cover for someone don't count: they're covering, not the job's own): any job, one by its id, or the player's.
+export function shortHolds(game, words, place = SHIP_PLACE) {
+  const model = commandOf(place);
+  const want = String(words ?? "").trim().toLowerCase();
+  if (!model) return false;
+  const mine = want === "your job" ? jobOf(game, place, YOU) : undefined;
+  if (want === "your job" && !mine) return false;
+  const cover = stateOf(game, place)?.cover ?? {};
+  const short = (job) => onJob(game, place, job.id).filter((key) => !lostReason(game, place, key) && !cover[key]).length < job.wanted;
+  return model.jobs.some((job) => (want === "any" || job.id === (mine ?? want)) && short(job));
 }
 export function brigHolds(game, words, place = SHIP_PLACE) {
   const held = Object.keys(stateOf(game, place)?.brig ?? {});

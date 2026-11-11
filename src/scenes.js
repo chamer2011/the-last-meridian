@@ -688,8 +688,9 @@ export function sceneProblems(scene, id = "the scene", { talk = false } = {}) {
   const problems = [];
   // A scene's stand-ins are checked as if real people stood in them, and one the game doesn't fill in is a mistake.
   // A request has whoever's asking as well, checked as if Dr. Aduro were; what's broken, as if the speaker in the Galley
-  // were; and whose trouble it is, as if Kara Tarrow had lost the post of chief medical officer to Dr. Aduro.
-  const samples = { ...sampleStandIns(), ...(String(id).startsWith("request_") ? { asker: { id: "aduro", name: "Dr. Sen Aduro" }, part: { id: "speaker", name: "speaker" }, room: { id: "galley", name: "the Galley" }, about: { id: "tarrow", name: "Kara Tarrow" }, post: { id: "chief_medical_officer", name: "chief medical officer" }, holder: { id: "aduro", name: "Dr. Sen Aduro" } } : {}) };
+  // were; whose trouble it is, as if Kara Tarrow had lost the post of chief medical officer to Dr. Aduro; and the
+  // player's boss, as if they were a dock hand under Mott Jessup.
+  const samples = { ...sampleStandIns(), ...(String(id).startsWith("request_") ? { asker: { id: "aduro", name: "Dr. Sen Aduro" }, part: { id: "speaker", name: "speaker" }, room: { id: "galley", name: "the Galley" }, about: { id: "tarrow", name: "Kara Tarrow" }, post: { id: "chief_medical_officer", name: "chief medical officer" }, holder: { id: "aduro", name: "Dr. Sen Aduro" }, boss: { id: "mott", name: "Mott Jessup" } } : {}) };
   const unknown = [...new Set([...JSON.stringify(scene ?? {}).matchAll(/\{([a-z_]+)\}/g)].map((one) => one[1]).filter((name) => !samples[name]))];
   for (const name of unknown) problems.push(`${id}: {${name}} isn't a stand-in the game fills in: the stand-ins are ${Object.keys(samples).map((one) => `{${one}}`).join(", ")}`);
   scene = fillStandIns(scene, samples);

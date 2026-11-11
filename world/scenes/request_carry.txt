@@ -3,6 +3,7 @@
 // for a quarter of an hour with nobody coming for them (every nurse and spare hand busy or asleep), a nurse asks anyone
 // who lives aboard to carry them to the medbay: Carry them, on their right-click menu, then Put them down on a cot.
 // {about} is who's lying there, and {room} where.
+for: anyone aboard
 when: down any
 about: someone down with nobody coming
 asks: a nurse

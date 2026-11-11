@@ -33,6 +33,7 @@ import { buildLoreIndex, findLoreIds } from "../public/story.js";
 import { bagView, roomFor, tiring } from "./bag.js";
 import { heldUp, questsView } from "./quests.js";
 
+import { notePut } from "./puts.js";
 export { combatAction, startCombat } from "./combat.js";
 
 // Limits on what one turn of the story may do, so a mistake in a file can't hand out a fortune.
@@ -594,7 +595,9 @@ export function workShift(game) {
   const notes = passTime(game, 8, "work");
   const pay = job.pay + skillRank(game, job.skill);
   game.credits += pay;
-  notes.push(...practice(game, job.skill, 2));
+  // Counted for a request to put in a shift (src/requests.js), which hears of it at once.
+  notePut(game, "shift", "any", 1);
+  notes.push(...practice(game, job.skill, 2), ...requestsMove(game));
   return [`${job.done} You earn ${pay} credits. It's now ${clockLabel(game)}.`, ...notes].join("\n");
 }
 

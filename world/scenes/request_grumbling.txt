@@ -2,7 +2,8 @@
 // Draft by the AI (Claude), 2026-11-11, not yet edited by the owner. While there's grumbling aboard (a mutiny's first
 // stage), the first officer asks the captain to have a word with whichever officer is least loyal to them. Talking to
 // them is the word; it moves their loyalty a little, and the grumbling dying down ends it. {about} is the officer.
-when: captain and mutiny grumbling
+for: the captain
+when: mutiny grumbling
 about: the least loyal officer
 asks: the first officer
 needs: talk to {about}

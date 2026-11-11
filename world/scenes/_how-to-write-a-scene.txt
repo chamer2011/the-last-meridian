@@ -213,6 +213,9 @@ and join several with "and":
     rival any                        Someone aboard the Meridian is working against a post's holder (a rival,
                                      after a review). rival chief_medical_officer for that post's holder.
     brig any                         Someone's in the Meridian's brig. brig tarrow for that person.
+    short your job                   The player's job on the Meridian's watch bill has fewer of its own
+                                     people at work than it wants (spare hands covering for someone don't
+                                     count). Also short any, or short and a job by its id: short cook.
     down any                         Someone aboard the Meridian is lying where they fell, not on a cot and
                                      not being carried. down and a name for that person.
     mutiny brewing                   A mutiny's brewing aboard the Meridian. Also mutiny calm, grumbling,
@@ -355,21 +358,38 @@ person's line in the story:
 On top, before the first part, a few lines say when it comes up and what puts it right:
 
     # Medicine for the medbay
-    when: captain and stock medicine_crate < 2
+    for: the captain
+    when: stock medicine_crate < 2
     asks: the chief medical officer
     needs: medicine crates aboard +2
     by: 5 days
     gone when: stock medicine_crate >= 4
 
+for:        which lives it's for: the captain, crew (anyone who lives aboard the Meridian and isn't
+            the captain, a captain the officers relieved included), outsiders (lives that begin
+            somewhere else, like the dock hand), anyone aboard, anyone, or lives by name, like engine
+            hand or dock hand. Several with commas. Without it, anyone aboard.
+as:         an order, for one that crew are ordered to do by the officer over them. A no to an order
+            costs more than a plain no, and they say so for a week (see below, where they remember).
+            Without it, it's a request. The captain takes no orders.
 when:       a condition, as in a scene. While it holds, they ask. If it stops holding before the
-            player has said yes, they don't ask any more.
+            player has said yes, they don't ask any more. It can be left out, for a request that
+            only needs its life, or its trouble (about:).
 about:      for a request about someone's own trouble, which trouble it is (more under PEOPLE'S
             TROUBLES, below): a rival, someone relieved, someone in the brig, the least loyal officer,
             or someone down with nobody coming.
 asks:       who asks: a post (the chief medical officer: whoever holds it now), a job (a cook: one
             of the cooks at work), or someone by name. Add ", in The Galley" to say where to find
             them, if it isn't where their post or job is. With about:, "them" is the trouble's own
-            person (see below).
+            person (see below). And three that depend on the player's life:
+                your officer    for crew: whoever holds the post over the player's job on the watch
+                                bill (the chief engineer over a tech), or the first officer for a
+                                spare hand
+                your boss       the first of the people the player's life begins with, where their
+                                work is (Dockmaster Jessup for the dock hand, Chief Marrow for the
+                                engine hand); asked only when the player is at that place
+                someone here    anyone with a name at the place the player is now, other than their
+                                boss: someone different now and then
 needs:      what's wanted, one of these:
                 medicine crates aboard +2         bought for the ship from the Ship menu
                 ration crates in the pantry +2    carried into that store by hand, or bought into it
@@ -382,13 +402,16 @@ needs:      what's wanted, one of these:
                 give 1 medkit to {asker}          given to them with Give, on their right-click
                                                   menu, or there and then (see given, below);
                                                   someone else can be named instead of {asker}
-                talk to the quartermaster         a talk with them; a post, a job or a name
+                talk to the quartermaster         a talk with them; a post, a job, a name, your
+                                                  officer or your boss
                 go to haven                       the player there, however they got there
                 pass engineering                  a check of that skill passed; add "at the air
                                                   plant" for one on that part, or "with {asker}"
                                                   for one with that person
                 your word                         nothing more than a yes: the yes part's * lines
                                                   do what was asked, and it's done at once
+                work a shift                      shifts at the player's own job (its button in
+                work two shifts                   What's here, under You can); not for the captain
                 carry {about} to the medbay       the one lying there picked up by the player
                                                   (Carry them, on their right-click menu) and put
                                                   down on a cot (about: someone down with nobody
@@ -404,8 +427,8 @@ handed to:  a post the captain can leave it to instead, like the chief engineer.
             and five goes on that post's duty for the day; if not, it's failed, and fifteen comes off.
 
 Then the parts, in the talk window's way (see CONVERSATIONS), with {asker} for whoever's asking,
-in a request to fix something, {part} for what's broken and {room} for the room it's in, and in a
-request about someone, {about}, {post} and {holder} (below):
+in a request to fix something, {part} for what's broken and {room} for the room it's in, in a
+request about someone, {about}, {post} and {holder} (below), and for a life that has one, {boss}:
 
     == ask          what they ask. One of its choices goes to yes (or given).
     == yes          what they say to a yes. The player takes it on.
@@ -430,7 +453,10 @@ helped when it's done, let down when it fails, told no after a no, and seen to w
 someone who did it (let down, a little less, if they didn't). It counts for or against the player
 as any memory does, so an officer's loyalty to the captain moves with it, and it's on their card in
 the Command menu. For three days after, the first thing they say when they're talked to is about
-it; the lines are the grudge lines at the end of world/rooms.json (helped_by_you and the rest).
+it; the lines are the grudge lines at the end of world/rooms.json (helped_by_you and the rest). An
+order is remembered as carried out when it's done, and refused after a no, which counts three times
+as much against the player as a plain no and is the first thing they say for a week
+(obeyed_by_you and disobeyed_by_you).
 
 What came of it goes on the record too, for a scene or a story to ask about with ? flag, as the
 request's file name and how it went: request_medicine_done, request_medicine_failed,
@@ -463,11 +489,21 @@ rival's file has a no that the rival remembers kindly (* remember {about} you 4)
 * line is the post's id, so * appoint {post} {asker} gives someone their post back, and
 * rivalry ends {post} ends a rivalry.
 
-At most three requests wait at once, and someone new asks once a day at most. Each person asks one
-thing at a time. A request that's over rests for a while before it can come up again: two days if
-it was done or gone, four if it failed, a week after a no. Requests only come to someone who lives
-aboard the Meridian, captain or crew, and a when: line can say more, like captain for anything
-only the captain can buy.
+HOW THEY'RE PUT
+
+How someone asks shows in the line that says so: an officer brings the captain "something for you to
+decide", the officer over crew "has orders for you", and anyone else "has something to ask you". In
+the quest log, an order says whose orders it is ("Chief Engineer Marrow's orders. By day 4.").
+
+THE PACE
+
+At most three requests wait at once. A quiet day comes between one new ask and the next, and nobody
+brings something new between nine at night and seven in the morning, except for one that can't wait
+(given less than a day, like carrying someone down), which comes at once and doesn't count. Nothing new is asked while a written scene is being played with the player, or in a
+fight, a check or at a computer, and nobody a written scene is waiting on asks anything: talking to
+them plays the scene. The same kind isn't asked twice running when there's another to ask. Each
+person asks one thing at a time. A request that's over rests for a while before it can come up
+again: two days if it was done or gone, four if it failed, a week after a no.
 
 THINGS AND DOORS
 ----------------

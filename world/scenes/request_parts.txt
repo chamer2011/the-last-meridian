@@ -2,7 +2,8 @@
 // Draft by the AI (Claude), 2026-11-10, not yet edited by the owner. Whoever is chief engineer asks the captain when there are
 // fewer than four parts crates aboard, counting the shuttle stores: every repair takes one, and mending the hull takes
 // the rest. It's done when the captain has bought two at a port, and gone if they turn up some other way.
-when: captain and stock parts_crate < 4
+for: the captain
+when: stock parts_crate < 4
 asks: the chief engineer
 needs: parts crates aboard +2
 by: 7 days
