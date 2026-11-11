@@ -15,3 +15,6 @@ void_ops 2, piloting 1
 
 Effects:
 in a setting: vacuum 1, heavy_gravity -3
+
+Body:
+hit: head 10, chest 34, right arm 14, left arm 14, right leg 14, left leg 14

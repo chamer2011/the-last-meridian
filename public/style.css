@@ -630,6 +630,12 @@ button.watch-person.moving { background: var(--warn); color: var(--bg); }
 .bag-panel-body { padding: 5px; display: flex; flex-direction: column; gap: 4px; }
 .bag-figure { position: relative; width: 214px; height: 204px; }
 .bag-figure-art { position: absolute; left: 108px; top: 54px; margin: 0; font: 12px/1 var(--mono); color: var(--c-dim); pointer-events: none; }
+/* The player's body on the figure: old marks brighter, artificial parts blue, wounds yellow, serious wounds red. */
+.bag-bp { pointer-events: auto; cursor: help; }
+.bag-bp-old { color: var(--c); }
+.bag-bp-artificial { color: var(--info); }
+.bag-bp-hurt { color: var(--warn); font-weight: 700; }
+.bag-bp-bad { color: var(--bad); font-weight: 700; }
 .bag-tag { position: absolute; font-size: 10px; line-height: 12px; color: var(--c-dim); white-space: nowrap; }
 .bag-slot { position: absolute; border: 1px dashed var(--c-line); background: rgba(0, 0, 0, .3); }
 .bag-slot.ok { border: 1px solid var(--c-bright); background: color-mix(in srgb, var(--c) 22%, transparent); }

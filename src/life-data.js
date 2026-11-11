@@ -16,6 +16,9 @@
 //   contact   { role, attitude, note } someone you met ({name} is filled in with their name)
 //   hook      "..."                    a loose end for a story to pick up
 //   forcedOut true                     you can't continue this career next term
+//   marks     ["a leg: bad knee"]      what it leaves on the body, as body lines (public/health-text.js): the part,
+//                                      a colon and what's there; src/body.js finds the outcome by its bio in the
+//                                      player's biography, so a bio with marks should be the only one worded so
 
 export const CAREERS = {
   navy: {
@@ -67,7 +70,7 @@ export const CAREERS = {
       },
     ],
     mishaps: [
-      { text: "A reactor scram during fleet exercises fills your deck with coolant. You're pulled out alive, and medically discharged.", bio: "Medically discharged after a reactor accident.", attrs: { endurance: -1 }, traits: ["old_wound"], forcedOut: true },
+      { text: "A reactor scram during fleet exercises fills your deck with coolant. You're pulled out alive, and medically discharged.", bio: "Medically discharged after a reactor accident.", marks: ["an arm: old burns", "chest: weak lungs"], attrs: { endurance: -1 }, traits: ["old_wound"], forcedOut: true },
     ],
   },
 
@@ -91,7 +94,7 @@ export const CAREERS = {
           {
             id: "talk", label: "Lower your weapon and talk them down.", check: { attr: "presence", skill: "persuasion", dc: 12 },
             win: { text: "The rifle clatters to the deck. The kid's name is {name}, and you sign the waiver for the orphan transfer yourself.", bio: "Talked a child pirate into surrendering.", skills: { persuasion: 1 }, ideology: { mercy: 2 }, contact: { role: "Rescued kid", attitude: "ally", note: "A pirate child you talked down. Now grown, and working the Kessara docks." } },
-            lose: { text: "The kid panics and fires. The round goes through your hip, and your squad does what squads do.", bio: "Shot by a child pirate they tried to talk down.", attrs: { agility: -1 }, ideology: { mercy: 1 }, traits: ["old_wound"] },
+            lose: { text: "The kid panics and fires. The round goes through your hip, and your squad does what squads do.", bio: "Shot by a child pirate they tried to talk down.", marks: ["a leg: old bullet wound; limps"], attrs: { agility: -1 }, ideology: { mercy: 1 }, traits: ["old_wound"] },
           },
         ],
       },
@@ -117,7 +120,7 @@ export const CAREERS = {
       },
     ],
     mishaps: [
-      { text: "A breaching charge goes off early. When you wake up in the hospital ship, you're told how lucky you are, and handed your discharge papers.", bio: "Discharged after a breaching accident.", attrs: { perception: -1 }, traits: ["one_eyed"], forcedOut: true },
+      { text: "A breaching charge goes off early. When you wake up in the hospital ship, you're told how lucky you are, and handed your discharge papers.", bio: "Discharged after a breaching accident.", marks: ["head: an eye gone", "chest: scar"], attrs: { perception: -1 }, traits: ["one_eyed"], forcedOut: true },
     ],
   },
 
@@ -165,7 +168,7 @@ export const CAREERS = {
       },
     ],
     mishaps: [
-      { text: "A rival sells your flight plan to the Hegemony. You lose your ship in the ambush, and limp home in a lifepod with burns over half your body.", bio: "Lost their ship in an ambush.", credits: -200, attrs: { presence: -1 }, forcedOut: true, contact: { role: "Treacherous rival", attitude: "hostile", note: "Sold your flight plan to the Hegemony, and cost you your first ship." } },
+      { text: "A rival sells your flight plan to the Hegemony. You lose your ship in the ambush, and limp home in a lifepod with burns over half your body.", bio: "Lost their ship in an ambush.", marks: ["chest: old burns", "right arm: old burns", "left arm: old burns", "a leg: old burns"], credits: -200, attrs: { presence: -1 }, forcedOut: true, contact: { role: "Treacherous rival", attitude: "hostile", note: "Sold your flight plan to the Hegemony, and cost you your first ship." } },
     ],
   },
 
@@ -210,7 +213,7 @@ export const CAREERS = {
           { id: "expose", label: "Expose it to the Guild, whatever it costs.", result: { text: "The Guild closes ranks, and you're blacklisted on half the yards in the sector. The foreman's replaced, though, and tethers get checked.", bio: "Blew the whistle on deadly safety fraud at a salvage yard.", ideology: { community: 2, freedom: 1 }, skills: { leadership: 1 }, forcedOut: true } },
           { id: "takeover", label: "Force the foreman out and take over the crew.", check: { attr: "presence", skill: "intimidation", dc: 12 },
             win: { text: "One conversation in an unpressurized bay is all it takes. Your crew has the best safety record in the yard from then on.", bio: "Forced out a corrupt foreman and took over their crew.", rank: 1, skills: { intimidation: 1 }, ideology: { iron: 1 } },
-            lose: { text: "The foreman has friends. You wake up in a clinic with a broken jaw, and the job's gone.", bio: "Beaten for confronting a corrupt foreman.", attrs: { presence: -1 }, forcedOut: true },
+            lose: { text: "The foreman has friends. You wake up in a clinic with a broken jaw, and the job's gone.", bio: "Beaten for confronting a corrupt foreman.", marks: ["head: a jaw that was broken once and set crooked"], attrs: { presence: -1 }, forcedOut: true },
           },
         ],
       },
@@ -265,7 +268,7 @@ export const CAREERS = {
       },
     ],
     mishaps: [
-      { text: "A sample containment failure in your lab kills your assistant and leaves you with lungs that never quite recover.", bio: "Survived a lab containment failure that killed their assistant.", attrs: { endurance: -1 }, forcedOut: true },
+      { text: "A sample containment failure in your lab kills your assistant and leaves you with lungs that never quite recover.", bio: "Survived a lab containment failure that killed their assistant.", marks: ["chest: weak lungs"], attrs: { endurance: -1 }, forcedOut: true },
     ],
   },
 
@@ -310,7 +313,7 @@ export const CAREERS = {
       },
     ],
     mishaps: [
-      { text: "A field hospital you run takes a direct hit. You dig yourself out with one working arm and spend a month in your own ward.", bio: "Survived the shelling of their own field hospital.", attrs: { agility: -1 }, traits: ["survivors_guilt"], forcedOut: true },
+      { text: "A field hospital you run takes a direct hit. You dig yourself out with one working arm and spend a month in your own ward.", bio: "Survived the shelling of their own field hospital.", marks: ["an arm: old break"], attrs: { agility: -1 }, traits: ["survivors_guilt"], forcedOut: true },
     ],
   },
 
@@ -411,7 +414,7 @@ export const CAREERS = {
       },
     ],
     mishaps: [
-      { text: "A bomb at a state dinner kills your ambassador and leaves you with shrapnel near your spine. You're the only one they can blame who's still alive.", bio: "Survived a bombing at a state dinner, and took the blame.", traits: ["old_wound"], forcedOut: true },
+      { text: "A bomb at a state dinner kills your ambassador and leaves you with shrapnel near your spine. You're the only one they can blame who's still alive.", bio: "Survived a bombing at a state dinner, and took the blame.", marks: ["chest: shrapnel near the spine, too close to take out; hidden"], traits: ["old_wound"], forcedOut: true },
     ],
   },
 
@@ -505,7 +508,7 @@ export const CAREERS = {
           { id: "accept", label: "Accept. Someone will do it, and you'd do it humanely.", result: { text: "You do, by every standard the Ministry measures. The children call you sir. You've got a very nice house.", bio: "Oversaw the conscription of a refugee camp for the Hegemony.", rank: 1, credits: 300, ideology: { order: 2 }, factions: { hegemony: 8, fleet: -8 }, hook: "You ran a Hegemony conscription camp for refugees. Some of those refugees are in the fleet, and might recognize you." } },
           { id: "defect", label: "Refuse and defect, with whatever files you can carry.", check: { attr: "agility", skill: "stealth", dc: 12 },
             win: { text: "You cross the line with six years of Ministry files, and an offer the Concord can't refuse.", bio: "Defected from the Hegemony with six years of secret files.", skills: { lore: 1 }, ideology: { freedom: 3 }, factions: { hegemony: -20, fleet: 10 }, forcedOut: true, hook: "You defected from the Hegemony with secret files. The Ministry wants you back, alive if convenient." },
-            lose: { text: "You make it across, but not with the files, and not without a round through the knee. Nobody on either side trusts you.", bio: "Defected from the Hegemony, wounded and empty-handed.", attrs: { agility: -1 }, ideology: { freedom: 2 }, factions: { hegemony: -20 }, forcedOut: true, traits: ["wanted"] },
+            lose: { text: "You make it across, but not with the files, and not without a round through the knee. Nobody on either side trusts you.", bio: "Defected from the Hegemony, wounded and empty-handed.", marks: ["a leg: bad knee"], attrs: { agility: -1 }, ideology: { freedom: 2 }, factions: { hegemony: -20 }, forcedOut: true, traits: ["wanted"] },
           },
         ],
       },
@@ -544,7 +547,7 @@ export const CAREERS = {
         choices: [
           { id: "challenge", label: "Call the vote.", check: { attr: "might", skill: "melee", dc: 13 },
             win: { text: "It's over in a minute. You find you like the view from the captain's chair, and you make sure that the crew gets their share.", bio: "Took a raider ship from its captain by the knife.", rank: 2, skills: { melee: 1 }, ideology: { freedom: 1, iron: 1 } },
-            lose: { text: "It's over in a minute. You wake up in Kessara's cheapest clinic with a new scar, a limp and no ship.", bio: "Lost a knife vote for command of a raider ship.", attrs: { agility: -1 }, forcedOut: true, contact: { role: "Old captain", attitude: "hostile", note: "A raider captain who beat you in a knife vote and left you for dead." } },
+            lose: { text: "It's over in a minute. You wake up in Kessara's cheapest clinic with a new scar, a limp and no ship.", bio: "Lost a knife vote for command of a raider ship.", marks: ["chest: knife scar", "a leg: bad knee"], attrs: { agility: -1 }, forcedOut: true, contact: { role: "Old captain", attitude: "hostile", note: "A raider captain who beat you in a knife vote and left you for dead." } },
           },
           { id: "warn", label: "Warn the captain, and earn their trust.", result: { text: "Two of the conspirators go out of an airlock. The captain makes you first mate. The crew doesn't look at you at all any more.", bio: "Betrayed a mutiny to their raider captain.", rank: 1, ideology: { self: 2 }, contact: { role: "Raider captain", attitude: "friendly", note: "A raider captain whose life you saved by exposing a mutiny. Still sailing out of Kessara." } } },
         ],
@@ -562,7 +565,7 @@ export const CAREERS = {
       },
     ],
     mishaps: [
-      { text: "A boarding goes wrong when the merchant crew fight back with a plasma cutter. You survive it, and your crew doesn't wait around for you.", bio: "Left for dead by their own raider crew.", attrs: { presence: -1 }, traits: ["old_wound"], forcedOut: true },
+      { text: "A boarding goes wrong when the merchant crew fight back with a plasma cutter. You survive it, and your crew doesn't wait around for you.", bio: "Left for dead by their own raider crew.", marks: ["the chest or a limb: old burns"], attrs: { presence: -1 }, traits: ["old_wound"], forcedOut: true },
     ],
   },
 
@@ -586,7 +589,7 @@ export const CAREERS = {
           { id: "useful", label: "Feed those who can work. The rest will have to take their chances.", result: { text: "The colony survives, and it's stronger for it, as everyone keeps saying. The graves are all very small, and you dug most of them.", bio: "Rationed a colony's food by usefulness through a killing winter.", skills: { survival: 1 }, ideology: { iron: 2, reason: 1 }, traits: ["nightmares"] } },
           { id: "steal", label: "Ride out and raid the next valley's stores.", check: { attr: "agility", skill: "stealth", dc: 12 },
             win: { text: "Everyone in your settlement lives. Nobody asks where the grain came from, and you never go to that valley again.", bio: "Secretly raided a neighboring settlement to feed their own.", skills: { stealth: 1 }, ideology: { self: 2 } },
-            lose: { text: "They've posted guards. You come home with a bullet in your shoulder and no grain, and it's a very hard winter.", bio: "Shot during a failed raid on a neighboring settlement.", attrs: { might: -1 }, ideology: { self: 1 } },
+            lose: { text: "They've posted guards. You come home with a bullet in your shoulder and no grain, and it's a very hard winter.", bio: "Shot during a failed raid on a neighboring settlement.", marks: ["an arm: old bullet wound"], attrs: { might: -1 }, ideology: { self: 1 } },
           },
         ],
       },
@@ -614,7 +617,7 @@ export const CAREERS = {
       },
     ],
     mishaps: [
-      { text: "A dust storm catches you four days from anywhere with a broken rover. They find you on day nine. You lose two toes and your faith in the weather reports.", bio: "Survived nine days stranded in a dust storm.", attrs: { agility: -1 }, skills: { survival: 1 }, forcedOut: true },
+      { text: "A dust storm catches you four days from anywhere with a broken rover. They find you on day nine. You lose two toes and your faith in the weather reports.", bio: "Survived nine days stranded in a dust storm.", marks: ["a leg: toes gone"], attrs: { agility: -1 }, skills: { survival: 1 }, forcedOut: true },
     ],
   },
 };
@@ -691,8 +694,8 @@ export const GENERAL_EVENTS = [
     text: "A shipboard fire traps six crew behind a bulkhead. You could reach them, but the fire suppression system will vent the whole section in ninety seconds.",
     choices: [
       { id: "rescue", label: "Go in after them.", check: { attr: "endurance", skill: "athletics", dc: 12 },
-        win: { text: "You get all six, with four seconds left. The burn scars on your arms are something people notice at parties.", bio: "Saved six crew from a shipboard fire.", skills: { athletics: 1 }, ideology: { mercy: 1 }, factions: { fleet: 4 } },
-        lose: { text: "You get two out. The vent takes the rest, and takes a fair amount of your lungs along with it.", bio: "Tried to save six crew from a fire and saved two.", attrs: { endurance: -1 }, traits: ["survivors_guilt"] },
+        win: { text: "You get all six, with four seconds left. The burn scars on your arms are something people notice at parties.", bio: "Saved six crew from a shipboard fire.", marks: ["right arm: old burns", "left arm: old burns"], skills: { athletics: 1 }, ideology: { mercy: 1 }, factions: { fleet: 4 } },
+        lose: { text: "You get two out. The vent takes the rest, and takes a fair amount of your lungs along with it.", bio: "Tried to save six crew from a fire and saved two.", marks: ["chest: weak lungs"], attrs: { endurance: -1 }, traits: ["survivors_guilt"] },
       },
       { id: "seal", label: "Seal the section and save the ship.", result: { text: "The ship survives. The inquiry clears you completely, and it was absolutely the right call. Everyone says so.", bio: "Sealed six crew in a burning section to save the ship.", skills: { composure: 1 }, ideology: { reason: 1, iron: 1 }, traits: ["nightmares"] } },
     ],
@@ -701,7 +704,7 @@ export const GENERAL_EVENTS = [
 
 // For when a survival roll fails in any career.
 export const GENERAL_MISHAPS = [
-  { text: "A transit shuttle loses pressure on approach. You spend a very long time in a medical pod, and your position has been filled by the time you get out.", bio: "Badly hurt in a shuttle accident.", attrs: { might: -1 }, forcedOut: true },
+  { text: "A transit shuttle loses pressure on approach. You spend a very long time in a medical pod, and your position has been filled by the time you get out.", bio: "Badly hurt in a shuttle accident.", marks: ["a limb: old break"], attrs: { might: -1 }, forcedOut: true },
   { text: "A false accusation of theft follows you through a long inquiry. You're cleared in the end, but nobody wants you around any more.", bio: "Forced out by a false accusation.", credits: -100, forcedOut: true, ideology: { freedom: 1 } },
   { text: "A long illness takes the better part of a year. When you're well enough to come back, there's nothing to come back to.", bio: "Lost a year to serious illness.", attrs: { endurance: -1 }, forcedOut: true },
 ];

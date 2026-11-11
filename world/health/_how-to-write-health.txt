@@ -1,0 +1,119 @@
+HOW TO WRITE WOUNDS, MARKS AND BODIES
+=====================================
+
+Everyone in the game has a body: the people with files, the people with only a name who have days at a place, and
+the player. A body has six parts, the head, the chest, the right arm, the left arm, the right leg and the left leg,
+and each part can carry old marks from a life (a scar, an old break, two fingers gone) and wounds of now (a cut, a
+broken bone, a burn). Bodies are made up when a game begins, from a person's species, age, job and past, and from
+whatever their own file says, which always wins. The same person has the same body all game, and a different one in
+the next game.
+
+For now the game only shows bodies: on Look (right-click someone), on the registry printouts, and on the figure in
+the inventory. Nothing works differently yet. What the rules below do (bleeding, healing, limping, the medbay) comes
+in the later steps of the health plan, one at a time. npm run check-story reads all of it and says what's wrong,
+with the file and the line.
+
+Four kinds of file have a say:
+
+1. world/health/wounds.txt: the kinds of wound and old mark.
+2. world/health/<place>.txt: who starts the game hurt or marked at a place (meridian.txt is the Meridian).
+3. Each species file in world/species: its Body part.
+4. Each person's file in world/characters: their Body part, if they have one.
+
+
+1. WOUNDS.TXT
+-------------
+
+    # Wounds and old marks
+    draft: the AI's, not yet edited by the owner
+    old marks: one every 20 years after 20, at most 3
+    rough work: engine, tech, dock, guard, marine, miner
+
+    Wounds:
+    - deep cut, any part: a deep cut in the {part}; serious; bleeds 12 an hour; heals in 8 days once dressed
+
+    Old marks:
+    - bad knee, a leg: a bad {side} knee; limps; likelier in: dock, hauler, porter
+
+old marks: how often someone gathers an old mark: one for every so many years of their life after an age, and the
+most anyone carries, counting what their own file says.
+
+rough work: words in a job that make old marks come twice as often. A word counts when a job has a word starting
+with it, so engine counts for Engineer and Engine Hand.
+
+Each wound or mark is one line: its name, a comma, where it can be, a colon, what it looks like, and its rules after
+semicolons.
+
+Where it can be: any part, the head, the chest, an arm, a leg, a limb (an arm or a leg), or one of right arm, left
+arm, right leg and left leg, joined with "or" if it can be more than one: the chest or a limb. Two lines can have
+the same name for different parts, like broken bone on an arm and broken bone on a leg.
+
+What it looks like is the words the game shows, as a sentence. {part} is the part it's on (the right arm) and {side}
+is right or left: a bad {side} knee is "a bad left knee".
+
+The rules:
+    serious                         a badly hurt wound, shown in red
+    bleeds 4 an hour                (until treated, if you like)
+    heals in 4 days                 and heals in 4 days, 2 once dressed, or heals in 8 days once dressed (only once
+                                    treated); splinted instead of dressed for a broken bone
+    never heals
+    out cold for 1 to 4 hours
+    checks one step harder
+    the hand's no use
+    can't stand on it               someone with it can't walk
+    limps                           someone with it walks with a limp
+    comes after 2 days undressed    (for an infection)
+    worse every day
+    hidden                          it can't be seen by looking, only read on a printout
+    artificial                      an artificial part, shown pale
+    never at random                 only someone's own file, their past or a trait gives it
+    likelier in: dock, engine       four times as likely for someone whose job has one of these words
+    only for: synthetic             only that species has it
+    not for: synthetic              that species never has it
+
+
+2. A PLACE'S HEALTH, LIKE MERIDIAN.TXT
+--------------------------------------
+
+    # CFS Meridian
+    draft: the AI's, not yet edited by the owner
+
+    At the start:
+    - Vik, right leg: broken bone
+    - Hana, chest: deep burn
+
+Each line is someone at that place, a comma, and a body line (below). It's for the people with only a name, who have
+no file of their own; someone with a file can be named here too, by their id or their name. Later steps will add the
+medbay's cots and who answers a call.
+
+
+3. A SPECIES' BODY PART
+-----------------------
+
+    Body:
+    hit: head 10, chest 34, right arm 14, left arm 14, right leg 14, left leg 14
+    bones break: 0.5            (fractions of the usual: 0.5 is half as often)
+    wounds heal: 0.75           (three quarters the pace)
+    bleeds: no
+    own marks only: yes         (they only get the old marks that say only for: them)
+    mended by: the techs        (or the nurses, which is the usual)
+
+hit is how often a hit lands on each part, out of the total. Leave out any line that's as usual.
+
+
+4. A PERSON'S BODY PART
+-----------------------
+
+    Body:
+    - left arm: two fingers gone from the left hand
+    - a leg: a bad limp, and a stick he won't lean on in front of people; limps
+    - nothing else
+
+Each line is a body line: the part, a colon and what's there, with rules after semicolons if you like. The part can
+be any of the where words above, and then the game picks one for each game (a leg is the right leg in one game and
+the left in another). If what's there is the name of a wound or mark in wounds.txt, like broken bone, it's that, with
+its words and rules; anything else is shown as you wrote it, as an old mark. "nothing else" stops the game making up
+more marks for them. Leave the part out and the game makes up their whole body.
+
+The player's own body comes from their life story: the injuries in it (src/life-data.js), their traits (One-Eyed,
+Old Wound, the cybernetic arm and eye) and the wounds they have now.

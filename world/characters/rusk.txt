@@ -62,3 +62,7 @@ When they miss:
 
 When they're beaten:
 - Rusk sits down heavily and closes his good eye. "Tell Dell he was right," he says.
+
+Body:
+- head: one eye clouded from a suit breach
+- chest: scarred grey skin

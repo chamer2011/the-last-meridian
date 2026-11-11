@@ -1,6 +1,7 @@
 // The game's rules. Only this code changes health, money, items and so on, whatever the story's files say,
 // so nothing can cheat.
 
+import { bodyOf, bodyView, newBodySeed } from "./body.js";
 import { allCharacters, allEnemies, campaignCharacters, campaignEnemies, campaignFolderName, findCharacter, findEnemy, fullName } from "./campaign.js";
 import {
   ABILITIES, CORE_FACTIONS, FACTIONS, ITEMS, LOCATIONS, PERKS, STARTING_QUESTS, STATS, STAT_INFO,
@@ -697,7 +698,7 @@ export const tellStoryWaits = (fn) => {
 export function assembleGame(profile) {
   const start = START_LIST[profile.start] ?? START_LIST.captain;
   const game = {
-    version: 19,
+    version: 20,
     campaign: null,
     scene: null,
     flags: {},
@@ -745,6 +746,8 @@ export function assembleGame(profile) {
     story: emptyStory(),
     transcript: [],
     turn: 0,
+    // Everyone's body is made up from this (src/body.js), so it's the same all game and different in the next.
+    bodySeed: newBodySeed(),
   };
   for (const id of profile.items) addItem(game, id);
   equipBest(game);
@@ -1009,6 +1012,8 @@ export function publicState(game) {
     convictions: activeConvictions(game.ideology).map((c) => ({ id: c.id, name: c.name, pole: c.pole, effects: describeFx(c.fx) })),
     needs: game.needs,
     conditions: game.conditions.map((c) => ({ ...c, name: CONDITIONS[c.id]?.name, desc: CONDITIONS[c.id]?.desc, effects: describeFx(CONDITIONS[c.id]?.fx) })),
+    // The player's body: its parts, old marks and wounds, for the printout and the inventory's figure.
+    body: bodyView(bodyOf(game, "you")),
     clock: clockFor(game),
     hp: game.hp,
     maxHp: maxHp(game),

@@ -49,3 +49,7 @@ xp: 90
 credits: 0 to 30
 art: officer
 tags: 
+
+Body:
+- right arm: burn scars on the forearm
+- left arm: burn scars on the forearm

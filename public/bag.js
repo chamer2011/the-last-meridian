@@ -103,10 +103,38 @@ function slotNode(name, label, w, h, item, left, top, where = { at: name }) {
     item ? itemNode(item, where, true) : el("span", { class: "bag-slot-empty" }, label));
 }
 
+// Which of the body's parts each stretch of the figure is, row by row: [first column, last column, part]. It's seen
+// from in front, so the right arm is on the left.
+const FIGURE_PARTS = [
+  [[0, 99, "head"]], [[0, 99, "head"]], [[0, 99, "head"]],
+  [[0, 3, "right_arm"], [4, 5, "chest"], [6, 99, "left_arm"]],
+  [[0, 0, "right_arm"], [1, 8, "chest"], [9, 99, "left_arm"]],
+  [[0, 99, "chest"]], [[0, 99, "chest"]],
+  [[0, 4, "right_leg"], [5, 99, "left_leg"]],
+  [[0, 4, "right_leg"], [5, 99, "left_leg"]],
+];
+const PART_NAMES = { head: "Head", chest: "Chest", right_arm: "Right arm", left_arm: "Left arm", right_leg: "Right leg", left_leg: "Left leg" };
+// The figure, each part in the colour of the worst on it (src/body.js), with what's there when the pointer's over it.
+function figureNode(body) {
+  const rows = FIGURE.split("\n").map((row, y) => {
+    const pieces = [];
+    for (const [from, to, part] of FIGURE_PARTS[y]) {
+      const text = row.slice(from, to + 1);
+      if (!text) continue;
+      const marks = (body?.marks ?? []).filter((mark) => mark.part === part);
+      pieces.push(el("span", { class: `bag-bp bag-bp-${body?.parts?.[part] ?? "ok"}`, title: `${PART_NAMES[part]}: ${marks.length ? marks.map((mark) => mark.words).join("; ") : "fine"}` }, text));
+    }
+    return [...pieces, "\n"];
+  });
+  return el("pre", { class: "bag-figure-art", "aria-hidden": "true" }, rows);
+}
+const bodyNote = (body) => (body ? [body.status, body.blood !== null && body.blood < 100 ? `blood ${body.blood}` : null].filter(Boolean).join(", ") : null);
+
 // You, with the gear: the sidearm on the hip, the weapon in hand, the armor worn and the belt of supplies for a fight.
 function bodyPanel(b) {
-  return panel("On you", null, el("div", { class: "bag-figure" },
-    el("pre", { class: "bag-figure-art", "aria-hidden": "true" }, FIGURE),
+  const body = app.ui.game?.body;
+  return panel("On you", bodyNote(body), el("div", { class: "bag-figure" },
+    figureNode(body),
     el("span", { class: "bag-tag", style: "left:0px;top:0px" }, "Sidearm"),
     slotNode("sidearm", `${b.sidearmSquares} squares`, 58, 30, b.gear.sidearm, 0, 13),
     el("span", { class: "bag-tag", style: "left:96px;top:0px" }, "Weapon"),

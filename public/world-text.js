@@ -16,7 +16,8 @@ const listOf = (words) => words.split(",").map((one) => one.trim()).filter(Boole
 // ---- What each kind of file holds ------------------------------------------------------------
 // header: lines at the top, key: value. sections: parts under a heading. Types: string, number (unknown for none),
 // flag (yes or no), list (comma-separated), range (2 to 5), pairs (name number, name number), text (a paragraph),
-// items (one per line, starting with - ), named (name: words, one per line), fields (key: value lines of their own).
+// items (one per line, starting with - ), named (name: words, one per line), fields (key: value lines of their own),
+// parts (like pairs, but a name can be more than one word: head 10, right arm 15, kept as right_arm).
 
 const FIGHT_FIELDS = [
   { path: "threat", key: "threat", type: "number" }, { path: "hp", key: "hp", type: "number" }, { path: "attack", key: "attack", type: "number" }, { path: "defense", key: "defense", type: "number" },
@@ -46,6 +47,9 @@ export const PERSON = {
     { path: "combat.lines.intro", phrase: "When the fight starts", type: "items" }, { path: "combat.lines.hit", phrase: "When they hit", type: "items" },
     { path: "combat.lines.miss", phrase: "When they miss", type: "items" }, { path: "combat.lines.crit", phrase: "When they hit hard", type: "items" },
     { path: "combat.lines.defeated", phrase: "When they're beaten", type: "items" },
+    // What's always true of their body, which wins over what the game makes up: one per line, the part, a colon and
+    // what's there, like - left arm: two fingers gone from the left hand (public/health-text.js reads the lines).
+    { path: "body", phrase: "Body", type: "items" },
   ],
 };
 
@@ -78,6 +82,12 @@ export const SPECIES_SPEC = {
     { path: "fx", phrase: "Effects", type: "fields", fields: [
       { path: "maxHp", key: "max hp", type: "number" }, { path: "fatigueRate", key: "fatigue rate", type: "number" }, { path: "healRate", key: "heal rate", type: "number" }, { path: "stressRate", key: "stress rate", type: "number" },
       { path: "context", key: "in a setting", type: "pairs" }, { path: "factions", key: "standing with", type: "pairs" }, { path: "skills", key: "skills", type: "pairs" },
+    ] },
+    // Their bodies (src/body.js): how often a hit lands on each part, and what they do differently. Fractions are of
+    // the usual: 0.5 is half.
+    { path: "body", phrase: "Body", type: "fields", fields: [
+      { path: "hits", key: "hit", type: "parts" }, { path: "breaks", key: "bones break", type: "number" }, { path: "heals", key: "wounds heal", type: "number" },
+      { path: "bleeds", key: "bleeds", type: "flag" }, { path: "ownMarks", key: "own marks only", type: "flag" }, { path: "mendedBy", key: "mended by", type: "string" },
     ] },
   ],
 };
@@ -194,6 +204,15 @@ function readValue(type, text, problem) {
       if (!found) return problem("is written as two numbers: 2 to 5");
       return [Number(found[1]), Number(found[2])];
     }
+    case "parts": {
+      const parts = {};
+      for (const piece of listOf(value)) {
+        const found = piece.match(/^([A-Za-z][A-Za-z ]*?)\s+([+-]?\d+(?:\.\d+)?)$/);
+        if (!found) return problem(`has "${piece}", and each one is a part and a number, like right arm 15`);
+        parts[found[1].trim().toLowerCase().replace(/\s+/g, "_")] = Number(found[2]);
+      }
+      return parts;
+    }
     case "pairs": {
       const pairs = {};
       for (const piece of listOf(value)) {
@@ -214,6 +233,7 @@ function writeValue(type, value) {
     case "list": return (value ?? []).join(", ");
     case "range": return `${value[0]} to ${value[1]}`;
     case "pairs": return Object.entries(value ?? {}).map(([name, amount]) => `${name} ${amount}`).join(", ");
+    case "parts": return Object.entries(value ?? {}).map(([name, amount]) => `${name.replace(/_/g, " ")} ${amount}`).join(", ");
     default: return String(value ?? "");
   }
 }

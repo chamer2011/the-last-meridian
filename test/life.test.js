@@ -324,7 +324,7 @@ test("an older save moves up a version, and everyone starts from wherever this t
   const old = { ...newGame(), version: 10, clock: { hours: 12.5 } };
   delete old.life;
   const game = migrateGame(JSON.parse(JSON.stringify(old)));
-  assert.equal(game.version, 19);
+  assert.equal(game.version, 20);
   assert.equal(game.life, null);
   assert.equal(find(game, "voss").doing, "eating");
   assert.doesNotThrow(() => publicState(game));

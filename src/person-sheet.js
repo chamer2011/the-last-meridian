@@ -3,8 +3,10 @@
 // or secrets, which no registry has). Everyone else, the crowd with only a name, gets a record made up from their name,
 // the same every time, marked as thin: its fight numbers are the ones they'd really fight with (world/deeds.json's
 // stand-in enemy) and its Awareness matches how hard their pocket is, so nothing on it disagrees with the rules.
+// Everyone's printout carries the chart of their body (src/body.js), whose species and age agree with the printout.
 // Reading it writes nothing to the save.
 
+import { bodyOf, bodyView, crowdJob, crowdWho, seeded } from "./body.js";
 import { findCharacter, fullName } from "./campaign.js";
 import { SKILLS } from "./character-data.js";
 import { ENEMIES, FACTIONS, LOCATIONS, STATS } from "./data.js";
@@ -26,7 +28,8 @@ export function personSheet(game, key) {
   const name = person ? fullName(person) : here.view.name;
   const pocket = here ? here.view.pocket : pocketDetail(game, { id, name, asleep: false });
   const seen = here?.entry.doing ?? null;
-  return person ? namedSheet(game, person, pocket, seen) : crowdSheet(game, name, pocket, seen);
+  const sheet = person ? namedSheet(game, person, pocket, seen) : crowdSheet(game, name, pocket, seen);
+  return { ...sheet, body: bodyView(bodyOf(game, person ? { id: person.id } : { name, place: game.location })) };
 }
 
 function namedSheet(game, person, pocket, seen) {
@@ -57,29 +60,13 @@ function namedSheet(game, person, pocket, seen) {
 
 // ---- The crowd: a record made up from the name, the same every time -----------------------------------
 
-function seeded(text) {
-  let h = 2166136261;
-  for (const ch of String(text)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
-  return () => {
-    h = Math.imul(h ^ (h >>> 15), 2246822507);
-    h = Math.imul(h ^ (h >>> 13), 3266489909);
-    h ^= h >>> 16;
-    return (h >>> 0) / 4294967296;
-  };
-}
 const pick = (roll, list) => list[Math.floor(roll() * list.length)];
-const weighted = (roll, pairs) => {
-  const total = pairs.reduce((sum, [, w]) => sum + w, 0);
-  let at = roll() * total;
-  for (const [value, w] of pairs) if ((at -= w) < 0) return value;
-  return pairs[0][0];
-};
-const SPECIES_SHARE = { human: 55, korrun: 10, veshti: 12, ilari: 9, thessan: 6, synthetic: 8 };
 
 function crowdSheet(game, name, pocket, seen) {
   const roll = seeded(name.toLowerCase());
   const guard = watchful(name);
-  const species = weighted(roll, Object.keys(WORLD_SPECIES).map((id) => [id, SPECIES_SHARE[id] ?? 4]));
+  // Who they are (species, pronouns and age) is shared with their body, from src/body.js.
+  const { species, pronouns, age } = crowdWho(name);
   const attributes = {};
   for (const id of Object.keys(STATS)) {
     const nudge = WORLD_SPECIES[species]?.attrs?.[id] ?? 0;
@@ -100,10 +87,10 @@ function crowdSheet(game, name, pocket, seen) {
     name,
     aliases: [],
     species: speciesName(species),
-    pronouns: pick(roll, ["she/her", "he/him", "they/them"]),
-    age: species === "thessan" ? 60 + Math.floor(roll() * 140) : 18 + Math.floor(roll() * 50),
+    pronouns,
+    age,
     // A crowd name usually starts with the job, like Cook Imre or Mess Hand Bao.
-    post: name.trim().split(/s+/).length > 1 ? name.trim().split(/s+/).slice(0, -1).join(" ") : guard ? "Security, on watch" : null,
+    post: crowdJob(name) || (guard ? "Security, on watch" : null),
     faction: null,
     based: LOCATIONS[game.location]?.name ?? null,
     status: null,

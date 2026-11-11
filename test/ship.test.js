@@ -85,7 +85,7 @@ test("the ship's file: nine hundred aboard, four supplies, four ration levels, a
 test("a new game's ship carries her stores, with the day's clock set and nobody else in the chair", () => {
   const game = newGame();
   const s = game.ship;
-  assert.equal(game.version, 19);
+  assert.equal(game.version, 20);
   assert.equal(s.aboard, 900);
   assert.equal(s.food, SHIP_DATA.start.food);
   assert.equal(s.medicine, SHIP_DATA.start.medicine);
@@ -513,7 +513,7 @@ test("a save from before the ship kept her own stores loads, with nothing charge
   save.ship = { name: "CFS Meridian", hull: 40, maxHull: 100, fuel: 3, maxFuel: 12, morale: 31 };
   save.transcript = [{ role: "narrator", text: "The story so far.\n\n> Do something" }];
   const game = migrateGame(save);
-  assert.equal(game.version, 19);
+  assert.equal(game.version, 20);
   assert.equal(game.ship.day, 9);
   assert.equal(game.ship.at, "kessara");
   assert.equal(stock(game, "food"), 56, "her stores are full, from the logistics file");
@@ -539,7 +539,7 @@ test("a save with the fleet in it loses the fleet, and keeps what was the ship's
   };
   save.transcript = [{ role: "narrator", text: "The story so far." }];
   const game = migrateGame(save);
-  assert.equal(game.version, 19);
+  assert.equal(game.version, 20);
   assert.equal(game.fleet, undefined);
   assert.equal(game.ship.day, 12);
   assert.equal(game.ship.at, "cinder");
@@ -571,7 +571,7 @@ test("a captain's save aboard the Sundial docks the Meridian there, and one from
   const ancient = { ...oldSave(), version: 3, bestiary: undefined };
   delete ancient.campaign;
   const game = migrateGame(ancient);
-  assert.equal(game.version, 19);
+  assert.equal(game.version, 20);
   assert.ok(game.ship.day !== undefined);
   assert.doesNotThrow(() => publicState(game));
 });

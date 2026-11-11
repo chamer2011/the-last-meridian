@@ -51,3 +51,6 @@ xp: 90
 credits: 0 to 30
 art: officer
 tags: 
+
+Body:
+- head: a burn scar along one jaw

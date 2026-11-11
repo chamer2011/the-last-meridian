@@ -284,6 +284,9 @@ function personGraph() {
   add({ id: "numbers", kind: "route", col: 2, name: "Their numbers", text: ["beliefs", "attributes", "skills"].map((key) => `${key}: ${Object.entries(P[key] ?? {}).map(([name, amount]) => `${name} ${amount}`).join(", ") || "none"}`).join("\n"), label: "Beliefs, attributes and skills", bind: { numbers: true } });
   ws.push({ from: "note", to: "numbers" });
   const c = P.combat ?? {};
+  // What's always true of their body, one line each (the part, a colon and what's there); the game makes up the rest.
+  add({ id: "body", kind: "route", col: 2, name: `Body (${(P.body ?? []).length})`, text: (P.body ?? []).join("\n"), label: "What's always true of their body", bind: { items: "body" } });
+  ws.push({ from: "note", to: "body" });
   add({ id: "fight", kind: "ending", col: 2, name: "In a fight", text: `threat ${c.threat ?? 0}, hp ${c.hp ?? 0}, attack ${c.attack ?? 0}, defense ${c.defense ?? 0}${c.weapon ? `, ${c.weapon}` : ""}${c.lines ? `. ${Object.values(c.lines).flat().length} lines.` : ""}`, label: "What the dice decide", bind: { fight: true } });
   ws.push({ from: "note", to: "fight" });
   if (L.place) { add(linkNode(`link_place_${L.place.id}`, "place", L.place.name, "Where they are.", "Their place")); ws.push({ from: "note", to: `link_place_${L.place.id}` }); }
@@ -306,6 +309,10 @@ function speciesGraph() {
   ws.push({ from: "desc", to: "numbers" });
   add({ id: "effects", kind: "ending", col: 2, name: "Effects", text: Object.entries(fx).map(([key, value]) => `${spaced(key)}: ${typeof value === "object" ? Object.entries(value).map(([name, amount]) => `${name} ${amount}`).join(", ") : value}`).join("\n") || "none", label: "What's different for them", bind: { effects: true } });
   ws.push({ from: "desc", to: "effects" });
+  // Their bodies: how often a hit lands on each part, and what they do differently. Changed in the file for now.
+  const body = P.body ?? {};
+  add({ id: "body", kind: "route", col: 2, name: "Body", text: [`hit: ${Object.entries(body.hits ?? {}).map(([part, n]) => `${part.replace(/_/g, " ")} ${n}`).join(", ") || "as most"}`, body.breaks !== undefined && `bones break: ${body.breaks}`, body.heals !== undefined && `wounds heal: ${body.heals}`, body.bleeds === false && "bleeds: no", body.ownMarks && "own marks only: yes", body.mendedBy && `mended by: ${body.mendedBy}`].filter(Boolean).join("\n"), label: "Their bodies, changed in the file for now" });
+  ws.push({ from: "desc", to: "body" });
   for (const one of L.people ?? []) { add(linkNode(`link_person_${one.id}`, "person", one.name, one.role, "One of them")); ws.push({ from: "desc", to: `link_person_${one.id}` }); }
   return { list, ws };
 }

@@ -15,3 +15,6 @@ Skills:
 
 Effects:
 standing with: fleet 5
+
+Body:
+hit: head 10, chest 34, right arm 14, left arm 14, right leg 14, left leg 14

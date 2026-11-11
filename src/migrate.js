@@ -5,6 +5,7 @@ import { slugify } from "./campaign.js";
 import { ENEMIES, LOCATIONS, STARTING_FACTIONS } from "./data.js";
 import { newWorld } from "./daily.js";
 import { newShipState, shipOf } from "./ship.js";
+import { newBodySeed } from "./body.js";
 import { newCommandState } from "./command.js";
 import { noteLoreSeen, startingLoreIds } from "./lore.js";
 import { crewContacts, maxEnergy, maxHp } from "./rules.js";
@@ -254,6 +255,12 @@ function fromVersion18(save) {
   return game;
 }
 
+// Version 20 gives everyone a body (src/body.js), made up from the game's own seed: an older game gets one now, and the
+// wounds the player has (their conditions) show on their body's parts.
+function fromVersion19(save) {
+  return { ...save, version: 20, bodySeed: save.bodySeed ?? newBodySeed() };
+}
+
 export function migrateGame(save) {
   if (!save) return save;
   let game = save;
@@ -275,6 +282,7 @@ export function migrateGame(save) {
   if (game.version < 17) game = fromVersion16(game);
   if (game.version < 18) game = fromVersion17(game);
   if (game.version < 19) game = fromVersion18(game);
+  if (game.version < 20) game = fromVersion19(game);
   // A place that's gone from the world's files can't hold anyone, and factions added since this save was made need a standing.
   if (!LOCATIONS[game.location]) game.location = "meridian";
   game.factions ??= {};

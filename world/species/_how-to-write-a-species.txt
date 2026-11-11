@@ -36,6 +36,17 @@ files, and npm run check-story reads them all and says what's wrong, with the fi
     standing with: fleet 5, hegemony -15            (how factions start out feeling about them, by faction id)
     skills: deception -2, persuasion 1              (a bonus or penalty to a skill)
 
+    Body:
+    hit: head 10, chest 34, right arm 14, left arm 14, right leg 14, left leg 14     (how often a hit lands on each)
+    bones break: 0.5                    (fractions of the usual; leave out any line that's as usual)
+    wounds heal: 0.75
+    bleeds: no
+    own marks only: yes                 (only the old marks in world/health/wounds.txt that say only for: them)
+    mended by: the techs                (or the nurses)
+
 In a line is what the player reads when choosing. For the game master is a note for whoever writes on how they play
 in the story: the player never reads it. A part that has
 nothing in it can be left out.
+
+The Body part is for everyone's body, which world/health/_how-to-write-health.txt explains. For now the game only
+shows bodies, so these lines change nothing in play yet.

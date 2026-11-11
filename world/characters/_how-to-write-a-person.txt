@@ -83,6 +83,10 @@ A file starts with the name, then a few lines about them, then parts under headi
     When they're beaten:
     - ...
 
+    Body:
+    - left arm: two fingers gone from the left hand    (what's always true of their body: the part, a colon and
+    - a leg: a bad knee; limps                          what's there; the game makes up the rest of their body)
+
 In a line is how the game sees them, in one sentence. Appearance, Personality, Voice, Goals and Secrets are notes for
 whoever writes their lines and scenes: the player never reads them. The numbers are the same ones the player has. The fight lines are
 read out in a fight, one picked at random each time; a person with no lines gets plain ones.
@@ -92,3 +96,7 @@ A part that has nothing in it can be left out.
 Without a loot line, someone beaten leaves what world/inventory.json says anyone might (a ration pack, a medkit, an
 energy cell or a stim, each now and then), and now and then the weapon they fought with, if it's one of the game's
 items. A machine without a loot line leaves nothing.
+
+The Body part wins over the body the game makes up for them when a game begins: what's written there is always on
+them, and the game adds the old marks a life of their age and work would leave, unless a line says nothing else.
+world/health/_how-to-write-health.txt explains the lines.

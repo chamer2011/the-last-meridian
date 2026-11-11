@@ -7,6 +7,7 @@
 // for. world/rooms.json has the kinds of room the game can draw for anywhere that isn't on a map,
 // and a campaign can keep its own rooms in its folder, so they stay the same from then on.
 
+import { bodyOf, lookLine } from "./body.js";
 import { allCharacters, campaignRooms, findCampaignRoom, findCharacter, fullName, saveCampaignRoom } from "./campaign.js";
 import { startCheck, startChoiceCheck } from "./checks.js";
 import { useComputer } from "./computers.js";
@@ -1211,6 +1212,8 @@ export function walkFromOnePlan(game) {
 
 // ---- What the browser gets to see ---------------------------------------
 
+const withMarks = (line) => (line ? { marks: line } : {});
+
 function personView(game, entry, level = null) {
   const person = entry.id ? findCharacter(game.campaign, entry.id) : null;
   const name = person ? fullName(person) : entry.name;
@@ -1229,6 +1232,8 @@ function personView(game, entry, level = null) {
     ...(entry.crowd ? { crowd: true } : {}),
     // What the right-click menu needs: how they look, how hard their pocket is, and whether they're wary of it now.
     ...(person?.appearance ? { look: person.appearance } : {}),
+    // What anyone can see of their body at a glance (src/body.js): how they walk, and the worst of their marks.
+    ...withMarks(lookLine(bodyOf(game, entry.id ? { id: entry.id } : { name, place: game.location }))),
     pocket: pocketDetail(game, { id: entry.id ?? null, name, asleep: Boolean(entry.asleep) }),
     ...(isWary(game, game.location, key) ? { wary: true } : {}),
     // On a deck, which of its rooms they're in.

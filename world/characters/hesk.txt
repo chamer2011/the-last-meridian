@@ -65,3 +65,6 @@ When they hit hard:
 
 When they're beaten:
 - Hesk Varr goes down on one knee, slowly, and looks at your hands. "Pig," he says. It's the kindest thing he's said to you.
+
+Body:
+- head: burned hairless by sixty years of furnace light

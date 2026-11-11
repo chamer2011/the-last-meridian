@@ -9,6 +9,7 @@ import { parseStoryText } from "../public/story-text.js";
 import { parseSystemsText } from "../public/systems-text.js";
 import { parseLogisticsText } from "../public/logistics-text.js";
 import { parseCommandText } from "../public/command-text.js";
+import { parseHealthText, parseWoundsText } from "../public/health-text.js";
 import { COMPUTER, ENEMY, FACTION, ITEM, PERK, PERSON, PLACE, SPECIES_SPEC, parseWorldText } from "../public/world-text.js";
 
 // A file with a mistake in it is skipped, so one typo can't stop the whole game.
@@ -99,6 +100,29 @@ export function reloadCommand() {
   }
 }
 reloadCommand();
+// Bodies (src/body.js): the kinds of wound and old mark, in world/health/wounds.txt, and each place's health, in
+// world/health/<place>.txt, both read by public/health-text.js. Only the Meridian has a place file so far. Tests point
+// the folder at a copy.
+export const HEALTH_DIR = process.env.GAME_HEALTH_DIR ?? path.join(worldDir, "health");
+export const WOUNDS = {};
+export const WORLD_HEALTH = {};
+export const HEALTH_FILE_PROBLEMS = [];
+export function reloadHealth() {
+  for (const key of Object.keys(WOUNDS)) delete WOUNDS[key];
+  for (const key of Object.keys(WORLD_HEALTH)) delete WORLD_HEALTH[key];
+  HEALTH_FILE_PROBLEMS.splice(0);
+  if (!fs.existsSync(HEALTH_DIR)) return;
+  for (const name of fs.readdirSync(HEALTH_DIR).sort()) {
+    if (!name.endsWith(".txt") || name.startsWith("_")) continue;
+    const id = name.slice(0, -".txt".length);
+    const text = fs.readFileSync(path.join(HEALTH_DIR, name), "utf8");
+    const { value, problems } = id === "wounds" ? parseWoundsText(text) : parseHealthText(text, id);
+    for (const one of problems) HEALTH_FILE_PROBLEMS.push(`health/${name}${one.line ? ` (line ${one.line})` : ""}: ${one.message}`);
+    if (id === "wounds") Object.assign(WOUNDS, value);
+    else WORLD_HEALTH[id] = value;
+  }
+}
+reloadHealth();
 export function reloadSystems() {
   for (const key of Object.keys(WORLD_SYSTEMS)) delete WORLD_SYSTEMS[key];
   SYSTEMS_FILE_PROBLEMS.splice(0);

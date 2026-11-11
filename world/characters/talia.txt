@@ -48,3 +48,7 @@ xp: 40
 credits: 10 to 60
 art: scoundrel
 tags: syndicate
+
+Body:
+- right arm: a forearm scarred by broth splashes
+- left arm: a forearm scarred by broth splashes

@@ -48,3 +48,6 @@ xp: 40
 credits: 0 to 10
 art: brawler
 tags: 
+
+Body:
+- head: burn freckles and a singed braid

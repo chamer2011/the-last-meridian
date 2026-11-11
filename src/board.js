@@ -24,6 +24,7 @@ import { parseCommandText } from "../public/command-text.js";
 import { clearLogistics, logisticsOf, logisticsProblems } from "./logistics.js";
 import { clearMaps, mapFor, roomsOf } from "./walk.js";
 import { clearLife } from "./life.js";
+import { clearBodies, healthProblems } from "./body.js";
 import { LOGISTICS_DIR, SYSTEMS_DEFAULTS, SYSTEMS_DIR, WORLD_LOGISTICS, WORLD_SYSTEMS, reloadLogistics, reloadSystems } from "./world.js";
 import { parseLogisticsText } from "../public/logistics-text.js";
 import { COMPUTER, ENEMY, FACTION, ITEM, PERK, PERSON, PLACE, SPECIES_SPEC, parseWorldText, writeWorldText } from "../public/world-text.js";
@@ -412,7 +413,7 @@ function computerLinks(id, value) {
   };
 }
 // The checker's problems with one file: how it reads, and for a computer what it says too.
-const fileProblems = (kind, folder, id) => [...WORLD_FILE_PROBLEMS, ...(kind === "computer" ? computerProblems() : [])].filter((one) => one.startsWith(`${folder}/${id}.txt`));
+const fileProblems = (kind, folder, id) => [...WORLD_FILE_PROBLEMS, ...(kind === "computer" ? computerProblems() : []), ...(kind === "person" || kind === "species" ? healthProblems() : [])].filter((one) => one.startsWith(`${folder}/${id}.txt`));
 
 // One person, place or species as the board shows it: its file and what the game read, what it's linked to, what
 // there is to pick from, and the checker's problems with the file.
@@ -461,6 +462,7 @@ export function saveBoardWorldItem(kind, id, text) {
   fs.mkdirSync(dir(), { recursive: true });
   fs.writeFileSync(path.join(dir(), `${id}.txt`), text.endsWith("\n") ? text : `${text}\n`);
   reloadWorld();
+  clearBodies();
   refreshLocations();
   refreshFactions();
   refreshFactionBeliefs();

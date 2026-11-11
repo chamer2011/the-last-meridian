@@ -1,0 +1,41 @@
+# Wounds and old marks
+draft: the AI's, not yet edited by the owner
+old marks: one every 20 years after 20, at most 3
+rough work: engine, tech, dock, hauler, porter, deckhand, crane, rigger, cable, pump, sump, tube, guard, marine, security, soldier, sergeant, gunner, conscript, picket, rating, bosun, enforcer, miner, prospector, smelter, melt, salvage, diver, cutter, raider, smuggler, duelist, shipwright, yard, kelper, trawler, boatman, strike
+
+Wounds:
+- bruise, any part: a bruise on the {part}; heals in 2 days
+- cut, any part: a cut on the {part}; bleeds 4 an hour; heals in 4 days, 2 once dressed
+- deep cut, any part: a deep cut in the {part}; serious; bleeds 12 an hour; heals in 8 days once dressed
+- broken bone, an arm: a broken {side} arm; serious; the hand's no use; heals in 30 days once splinted
+- broken bone, a leg: a broken {side} leg; serious; can't stand on it; heals in 40 days once splinted
+- cracked ribs, the chest: cracked ribs; heals in 4 days
+- burn, any part: a burn on the {part}; heals in 14 days, 7 once dressed
+- deep burn, any part: a deep burn on the {part}; serious; heals in 30 days, 14 once dressed
+- knock, the head: a hard knock on the head; out cold for 1 to 4 hours
+- concussion, the head: a concussion; checks one step harder; heals in 2 days
+- lost, a limb: the {part} is gone; serious; bleeds 20 an hour until treated; never heals
+- infected, any part: the wound in the {part} has gone bad; serious; comes after 2 days undressed; worse every day
+
+Old marks:
+- scar, the chest or a limb: an old scar across the {part}; likelier in: guard, marine, security, soldier, raider, dock
+- facial scar, the head: a scar across the face; likelier in: guard, marine, raider, security, soldier, duelist
+- knife scar, the chest or a limb: a long knife scar on the {part}; likelier in: raider, smuggler, duelist, dock, enforcer
+- old bullet wound, the chest or a limb: an old bullet wound in the {part}; likelier in: marine, guard, soldier, raider, security, enforcer
+- old break, a limb: an old break in the {part}, long healed; likelier in: dock, hauler, marine, miner, porter, rigger
+- bad knee, a leg: a bad {side} knee; limps; likelier in: dock, hauler, porter, deckhand, gardener
+- old burns, any part: old burn scars on the {part}; likelier in: engine, tech, cook, galley, salvage, smelter, melt, cutter
+- fingers gone, an arm: two fingers gone from the {side} hand; likelier in: dock, engine, hauler, salvage, miner, crane, cutter
+- toes gone, a leg: two toes gone from the {side} foot; likelier in: settler, field, miner, prospector
+- broken nose, the head: a nose that's been broken more than once; likelier in: guard, dock, raider, marine, security, duelist
+- half deaf, the head: half deaf from an old blast; hidden; likelier in: engine, marine, gunner, miner, soldier
+- weak lungs, the chest: lungs that never quite recovered; hidden; likelier in: engine, miner, salvage, smelter, sump
+- bad back, the chest: a bad back from years of lifting; hidden; likelier in: dock, hauler, porter, cook, gardener, deckhand
+- an eye gone, the head: one eye gone, the lid long healed shut; never at random
+- old wound, the chest or a limb: an old wound in the {part} that aches when the air recyclers cycle; hidden; never at random
+- cybernetic arm, an arm: a cybernetic {side} arm; artificial; never at random
+- cybernetic eye, the head: a targeting lens where the left eye used to be; artificial; never at random
+- scuffed casing, any part: scuffed and patched casing on the {part}; only for: synthetic
+- replaced joint, a limb: a replaced joint in the {part} that doesn't match the rest; only for: synthetic
+- cracked faceplate, the head: a hairline crack across the faceplate; only for: synthetic
+- patched coolant line, the chest: a patched coolant line under the chest plate; hidden; only for: synthetic

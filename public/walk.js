@@ -1128,10 +1128,10 @@ function menuFor(target) {
   return { title: "The floor", theme: "green", items: [{ label: "Walk here", run: () => go({ action: "go", x: target.x, y: target.y }) }] };
 }
 
-// Someone looked at: their window beside them, with how they look and what they're doing.
+// Someone looked at: their window beside them, with how they look, what their body shows, and what they're doing.
 function lookAtPerson(person) {
   const now = person.asleep ? "Asleep." : sentence(person.doing);
-  walk.thing = { person: true, key: person.key, name: person.short, color: person.color, look: [person.look, now].filter(Boolean).join("\n") || person.name, confirm: false };
+  walk.thing = { person: true, key: person.key, name: person.short, color: person.color, look: [person.look, person.marks, now].filter(Boolean).join("\n") || person.name, confirm: false };
   walk.looked = true;
   app.render();
 }

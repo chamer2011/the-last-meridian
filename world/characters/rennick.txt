@@ -48,3 +48,6 @@ xp: 20
 credits: 50 to 200
 art: officer
 tags: 
+
+Body:
+- a leg: a bad limp, and a stick he won't lean on in front of people; limps

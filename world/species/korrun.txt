@@ -16,3 +16,7 @@ athletics 1
 Effects:
 max hp: 5
 in a setting: heavy_gravity 3
+
+Body:
+hit: head 10, chest 34, right arm 14, left arm 14, right leg 14, left leg 14
+bones break: 0.5

@@ -165,6 +165,7 @@ function printout(g) {
     rule(),
     ...traits(g),
     ...condition(g),
+    ...bodyBlock(g.body),
     rule(),
     ...fight(g),
     carrying(g),
@@ -274,6 +275,64 @@ function actions(g) {
   return el("div", { class: "sheet-actions" }, g.clock?.label ? dim(`${g.clock.label}  `) : "", ...parts);
 }
 
+// ---- The body chart ----------------------------------------------------------------------------------------
+
+// Everyone's body (src/body.js): a figure seen from in front, so their right arm is on the left, each part shaded by
+// the worst on it, with what's on a part when the pointer's over it and what their species does differently over the
+// rest; beside it how they walk, their blood, and every mark and wound. Old marks are plain, artificial parts pale,
+// wounds yellow and serious wounds red.
+const PART_SHAPES = [
+  ["head", "circle", { cx: 20, cy: 7, r: 5.5 }],
+  ["chest", "rect", { x: 13, y: 14, width: 14, height: 21, rx: 2 }],
+  ["right_arm", "rect", { x: 7, y: 14, width: 5, height: 20, rx: 2 }],
+  ["left_arm", "rect", { x: 28, y: 14, width: 5, height: 20, rx: 2 }],
+  ["right_leg", "rect", { x: 13.5, y: 36, width: 6, height: 22, rx: 2 }],
+  ["left_leg", "rect", { x: 20.5, y: 36, width: 6, height: 22, rx: 2 }],
+];
+const STATE_WORDS = { ok: "fine", old: "old marks", artificial: "artificial", hurt: "hurt", bad: "badly hurt" };
+const svgNode = (tag, attrs = {}) => {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+  return node;
+};
+function bodyFigure(body) {
+  const svg = svgNode("svg", { viewBox: "0 0 40 66", class: "sheet-figure", role: "img", "aria-label": `Their body: ${PART_SHAPES.map(([part]) => `${part.replace("_", " ")} ${STATE_WORDS[body.parts[part]]}`).join(", ")}.${body.notes.length ? ` ${body.notes.join(" ")}` : ""}` });
+  if (body.notes.length) {
+    const about = svgNode("title");
+    about.textContent = `${body.species}. ${body.notes.join(" ")}`;
+    svg.append(about);
+  }
+  for (const [part, shape, attrs] of PART_SHAPES) {
+    const node = svgNode(shape, { ...attrs, class: `bp bp-${body.parts[part]}` });
+    const marks = body.marks.filter((mark) => mark.part === part);
+    const title = svgNode("title");
+    title.textContent = `${part.charAt(0).toUpperCase()}${part.slice(1).replace("_", " ")}: ${marks.length ? marks.map((mark) => mark.words).join("; ") : "fine"}`;
+    node.append(title);
+    svg.append(node);
+  }
+  for (const [x, text] of [[9.5, "R"], [30.5, "L"]]) {
+    const label = svgNode("text", { x, y: 65, class: "bp-side" });
+    label.textContent = text;
+    svg.append(label);
+  }
+  return svg;
+}
+const MARK_CLASS = { old: "", artificial: "sheet-hi", hurt: "sheet-warn", bad: "sheet-red" };
+function bodyBlock(body) {
+  if (!body) return [];
+  const status = body.status === "Walks normally" ? hi(body.status.toUpperCase()) : body.status === "Walks with a limp" ? el("span", { class: "sheet-warn" }, body.status.toUpperCase()) : red(body.status.toUpperCase());
+  // The figure sits beside the BODY label, where the column is empty, so the words have the whole width.
+  return [
+    el("div", { class: "sheet-field sheet-body" },
+      el("div", { class: "sheet-label" }, "BODY", bodyFigure(body)),
+      el("div", { class: "sheet-body-text" },
+        el("div", {}, status, body.blood !== null ? ["  BLOOD ", el("span", { class: `sheet-bar${body.blood < 100 ? " sheet-red" : ""}` }, bar(body.blood, 100, 8)), ` ${body.blood}`] : ""),
+        body.lines.length
+          ? body.lines.map((mark) => el("div", { class: `sheet-mark ${MARK_CLASS[mark.state]}` }, `- ${mark.words}${mark.hoursLeft ? `, ${mark.hoursLeft}h left` : ""}`))
+          : el("div", { class: "sheet-dim" }, "No marks worth noting."))),
+  ];
+}
+
 // ---- Someone else's printout ------------------------------------------------------------------------------
 
 function personPrintout(p) {
@@ -306,6 +365,7 @@ function personPrintout(p) {
     f && field("ARMED", `${f.weapon ?? "Bare hands"}  ${signed(f.attack ?? 0)}${f.damage ? `, ${f.damage[0]}-${f.damage[1]} dmg` : ""}`),
     f && field("IN A FIGHT", [f.defense !== null ? `defense ${f.defense}` : null, f.hp ? `health ${f.hp}` : null].filter(Boolean).join("   ")),
     p.pocket && field("POCKETS", p.pocket),
+    ...bodyBlock(p.body),
     rule(),
     p.thin
       ? field("REMARKS", dim("No full record on file. Filled in from the general roll."))
@@ -391,5 +451,16 @@ style.textContent = `
 .sheet-btn:disabled { color: #6b4a1d; cursor: default; }
 .sheet-slot .sheet-btn { color: #ffb547; }
 .sheet-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; padding: 2px 0; }
+.sheet-body > .sheet-label { white-space: normal; display: flex; align-items: flex-start; gap: 1ch; }
+.sheet-figure { width: 2.5em; height: auto; flex: none; display: block; overflow: visible; margin-top: .15em; }
+.sheet-body-text { min-width: 0; }
+.sheet-mark { padding-left: 2ch; text-indent: -2ch; }
+.bp { stroke: #ffb547; stroke-width: .8; fill: transparent; }
+.bp-ok { stroke-dasharray: 1.2 1; }
+.bp-old { fill: rgba(255, 181, 71, .35); }
+.bp-artificial { stroke: #ffe0a3; stroke-dasharray: 2.4 1.2; fill: rgba(255, 224, 163, .18); }
+.bp-hurt { fill: #ffd36b; stroke: #ffd36b; }
+.bp-bad { fill: #ff7b6b; stroke: #ff7b6b; }
+.bp-side { fill: #a8732c; font: 6px var(--mono); text-anchor: middle; }
 `;
 document.head.append(style);

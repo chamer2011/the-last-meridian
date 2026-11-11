@@ -62,3 +62,6 @@ When they miss:
 
 When they're beaten:
 - Commodore Dorn sits down and feels inside his coat for the letters. "Someone ought to write to them," he says.
+
+Body:
+- head: a scarred face

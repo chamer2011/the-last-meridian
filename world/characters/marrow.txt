@@ -51,3 +51,6 @@ xp: 50
 credits: 0 to 20
 art: engineer
 tags: 
+
+Body:
+- left arm: two fingers gone from the left hand
