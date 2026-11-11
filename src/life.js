@@ -14,7 +14,7 @@ import { detourFor, partSquares } from "./systems.js";
 import { WORLD_LIFE } from "./world.js";
 import { jobsOf, movedDays } from "./command.js";
 import { bodyOf, hurtAt, paceOf, queueOf } from "./body.js";
-import { followCarriers, medbayDetour } from "./medbay.js";
+import { followCarriers, laidWhereTheyAre, medbayDetour } from "./medbay.js";
 
 const MINUTES_IN_A_DAY = 1440;
 const SQUARES_A_MINUTE = 18;
@@ -465,7 +465,8 @@ function peopleOf(game, place) {
   const saved = game.life?.places[place];
   const map = mapFor(place);
   if (saved && !Object.values(saved).some((state) => !map?.levels[state.level])) return saved;
-  return settledPlace(game, place, game.clock.hours);
+  // Whoever's down lies where they are from the start (src/medbay.js).
+  return laidWhereTheyAre(game, place, settledPlace(game, place, game.clock.hours));
 }
 
 // The same, for something that's about to move the clock. The save only ever holds the captain's place.

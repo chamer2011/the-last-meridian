@@ -153,6 +153,9 @@ last day's marks. Someone new in a post starts with a clean record. The measures
     thefts                  25 off for each pocket picked aboard
     medicine out            nothing while the medicine's out, and full marks otherwise
     errands left waiting    10 off for each hour errands stood waiting at an empty store
+    patients left waiting   10 off for each hour a patient lay in the medbay with nobody treating them,
+                            after their first hour there
+    people reached in time  25 off for each call the medics reached more than half an hour after someone fell
     the council's confidence  the council's confidence in the captain: see LOYALTY AND MUTINY
 
 Any other word is a problem the checker names.

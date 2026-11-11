@@ -260,7 +260,20 @@ export const MEDBAY_KEYS = {
   "the medbay": { path: "medbay", read: (text) => (String(text).trim() ? { room: String(text).trim() } : { problem: "is the medbay's room, like Medbay" }) },
   cots: { path: "cots", read: (text) => { const spots = listOf(text); return spots.length ? { spots } : { problem: "is a list of spots in the place's life file, like patient-1, patient-2" }; } },
   "who answers a call": { path: "answers", read: (text) => { const who = String(text).split(/,\s*then\s+|,\s*/i).map((one) => one.trim()).filter(Boolean); return who.length ? { who } : { problem: "is written like: a nurse, then a spare hand" }; } },
+  // Step 5: who treats the patients, where the medicine is and how many doses a crate holds, and how long someone with
+  // a serious wound stays laid up once it's treated.
+  "who treats": { path: "treaters", read: (text) => { const who = listOf(text); return who.length ? { who } : { problem: "is written like: the chief medical officer, a nurse" }; } },
+  medicine: { path: "medicine", read: (text) => { const f = lower(text).match(/^(?:the )?(.+?), (\d+) doses? to a crate$/); return f ? { store: f[1], doses: Number(f[2]) } : { problem: "is written like: the medicine cabinet, 20 doses to a crate" }; } },
+  "bed rest": { path: "rest", read: (text) => { const f = lower(text).match(/^(\S+) days? after a serious wound is treated$/); return f && numberOf(f[1]) !== null ? { days: numberOf(f[1]) } : { problem: "is written like: 3 days after a serious wound is treated" }; } },
 };
+
+// "deep cut: 2 doses, 30 minutes" or "broken bone: 2 doses, an hour": what treating a wound takes from the medicine,
+// and how long, for someone with a Medicine of 5.
+export function readTreatmentLine(text) {
+  const found = lower(text).match(/^([^:]+):\s*(\S+) doses?, (an|\S+) (minutes?|hours?)$/);
+  if (!found || numberOf(found[2]) === null || numberOf(found[3]) === null) return { problem: "each one is written: a wound, a colon, the doses and the time, like deep cut: 2 doses, 30 minutes" };
+  return { name: found[1].trim(), doses: numberOf(found[2]), minutes: numberOf(found[3]) * (/^hour/.test(found[4]) ? 60 : 1) };
+}
 
 // "07:45 to 10:30, at queue": when the hurt go to the medbay, and the spot or group of spots in the place's life file.
 export function readQueue(text) {
@@ -307,7 +320,7 @@ export function readStartLine(text) {
 
 export function parseHealthText(text, id = "it") {
   const problems = [];
-  const value = { name: id, draft: null, start: [] };
+  const value = { name: id, draft: null, start: [], treatments: [] };
   let part = null;
   let titled = false;
   for (const [index, raw] of String(text ?? "").replace(/\r\n?/g, "\n").split("\n").entries()) {
@@ -323,14 +336,14 @@ export function parseHealthText(text, id = "it") {
       }
       problems.push({ line: n, message: "the first line is the place's name, written # CFS Meridian" });
     }
-    if (/^At the start:$/i.test(line)) {
-      part = "start";
+    if (/^(At the start|Treatments):$/i.test(line)) {
+      part = /^treat/i.test(line) ? "treatments" : "start";
       continue;
     }
     if (part) {
       const entry = line.match(/^-\s+(.*)$/);
-      if (!entry) problems.push({ line: n, message: 'under "At the start", each one starts with - and a space' });
-      else value.start.push({ text: entry[1].trim(), line: n });
+      if (!entry) problems.push({ line: n, message: `under "${part === "start" ? "At the start" : "Treatments"}", each one starts with - and a space` });
+      else value[part].push({ text: entry[1].trim(), line: n });
       continue;
     }
     const field = line.match(/^([A-Za-z][A-Za-z ]{0,30}):\s*(.*)$/);
@@ -356,6 +369,7 @@ export function writeHealthText(value) {
   for (const [key, one] of Object.entries(MEDBAY_KEYS)) if (value[one.path]) out.push(`${key}: ${value[one.path]}`);
   if (value.queue) out.push(`the morning queue: ${value.queue}`);
   if (value.accidents) out.push(`accidents at work: ${value.accidents}`);
+  if (value.treatments?.length) out.push("", "Treatments:", ...value.treatments.map((one) => `- ${one.text}`));
   out.push("", "At the start:", ...(value.start ?? []).map((one) => `- ${one.text}`));
   return `${out.join("\n")}\n`;
 }

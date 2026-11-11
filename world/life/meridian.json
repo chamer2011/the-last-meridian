@@ -1581,6 +1581,14 @@
         [
           "Petra",
           780
+        ],
+        [
+          "Vik",
+          900
+        ],
+        [
+          "Hana",
+          1020
         ]
       ],
       "day": [
@@ -1639,38 +1647,6 @@
           "at": "22:00",
           "doing": "asleep",
           "go": "racks",
-          "asleep": true
-        }
-      ]
-    },
-    {
-      "names": [
-        [
-          "Vik",
-          0
-        ]
-      ],
-      "day": [
-        {
-          "at": "00:00",
-          "doing": "laid up on a cot",
-          "go": "patient-1",
-          "asleep": true
-        }
-      ]
-    },
-    {
-      "names": [
-        [
-          "Hana",
-          0
-        ]
-      ],
-      "day": [
-        {
-          "at": "00:00",
-          "doing": "laid up on a cot",
-          "go": "patient-2",
           "asleep": true
         }
       ]

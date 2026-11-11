@@ -1,7 +1,7 @@
 // The game's rules. Only this code changes health, money, items and so on, whatever the story's files say,
 // so nothing can cheat.
 
-import { advanceMedbay } from "./medbay.js";
+import { advanceMedbay, startHealth } from "./medbay.js";
 import { accidentsDay, bodyOf, bodyView, dressWounds, handsFree, newBodySeed, painADay, passWounds, woundEffects } from "./body.js";
 import { allCharacters, allEnemies, campaignCharacters, campaignEnemies, campaignFolderName, findCharacter, findEnemy, fullName } from "./campaign.js";
 import {
@@ -718,7 +718,7 @@ export const tellStoryWaits = (fn) => {
 export function assembleGame(profile) {
   const start = START_LIST[profile.start] ?? START_LIST.captain;
   const game = {
-    version: 21,
+    version: 22,
     campaign: null,
     scene: null,
     flags: {},
@@ -786,6 +786,7 @@ export function assembleGame(profile) {
   startLogistics(game);
   // Who holds which post aboard, as the chain of command's file has it, with the player or the chair's captain on top.
   startCommand(game);
+  startHealth(game);
   return game;
 }
 

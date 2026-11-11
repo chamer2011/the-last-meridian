@@ -182,11 +182,11 @@ test("Look, the printouts and the player's own state show the body, and reading 
 
 test("a new game has its seed, and an older save gets one and keeps it", () => {
   const game = newGame();
-  assert.equal(game.version, 21);
+  assert.equal(game.version, 22);
   assert.ok(Number.isInteger(game.bodySeed));
   const { bodySeed: _seed, ...old } = structuredClone(game);
   const migrated = migrateGame({ ...old, version: 19 });
-  assert.equal(migrated.version, 21);
+  assert.equal(migrated.version, 22);
   assert.ok(Number.isInteger(migrated.bodySeed));
   assert.equal(migrateGame(structuredClone(migrated)).bodySeed, migrated.bodySeed, "a seed once given stays");
 });

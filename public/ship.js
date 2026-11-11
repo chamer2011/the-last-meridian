@@ -47,7 +47,7 @@ function supplyLine(s) {
     muted(`Makes ${s.made}, uses ${s.used}, so ${signed(s.net)} a day.`));
 }
 
-const suppliesSection = (s) => section("Stores", s.supplies.map(supplyLine), muted("Food, medicine and parts are what's in the rooms' stores below, counted together, and fuel is the tank. The medbay and the engineers take a crate when they've used one up, at midnight, and the kettle feeds everyone through the day. With parts aboard the engineers mend the hull a little each day; without them, she wears."));
+const suppliesSection = (s) => section("Stores", s.supplies.map(supplyLine), muted("Food, medicine and parts are what's in the rooms' stores below, counted together, and fuel is the tank. The ship's daily needs and the engineers take a crate when they've used one up, at midnight, the medbay opens one from its cabinet when its doses run out, and the kettle feeds everyone through the day. With parts aboard the engineers mend the hull a little each day; without them, she wears."));
 
 // What's kept where, room by room, from world/logistics: each store is a thing in a room you can walk to and open,
 // each machine takes from one and puts into another on the clock, and the whole ship eats from the kettle.
@@ -83,6 +83,24 @@ function storesSection(s) {
     s.refills?.length ? [el("h4", { class: "small" }, "Refills"), s.refills.map(refill), muted("The one place things still come from nowhere, until trade off the ship is built. The manifest on the clip in the lighter bay, and the ship's computers, say what came and when.")] : null,
     repairs ? [el("h4", { class: "small" }, "Repairs"), repairs, muted("When something's been damaged, an engineer fetches what the repair takes from the stores and fixes it. With none aboard, it stays broken until some comes.")] : null,
     meals ? [el("h4", { class: "small" }, "The sittings"), meals, muted("Everyone aboard eats from the kettle at the sittings. Whoever finds it empty goes without, and the ship's morale feels that at midnight.")] : null);
+}
+
+// The medbay: who's on each cot and the floor, for what, how long, and whether they're being treated; the medicine; and
+// the last treatments.
+function medbaySection(s) {
+  const m = s.medbay;
+  if (!m) return null;
+  const patient = (label, p) => el("div", { class: "stack gap-small" },
+    el("div", { class: "menu-row small" },
+      el("span", {}, label, el("span", { class: "muted" }, p ? `: ${p.who}` : ": empty")),
+      p ? el("span", { class: /^waiting/.test(p.state) ? "tone-bad" : "" }, p.state) : null),
+    p ? muted(`${p.worst}, ${p.since === "just brought in" ? "just brought in" : `for ${p.since}`}`) : null);
+  const laid = m.cots.filter(Boolean).length + m.floor.length;
+  return section(`The medbay${laid ? ` (${laid} laid up)` : ""}`,
+    m.cots.map((p, i) => patient(`Cot ${i + 1}`, p)),
+    m.floor.map((p) => patient("On the floor", p)),
+    m.medicine ? el("div", { class: `small${m.medicine.short ? " tone-bad" : ""}` }, m.medicine.short ? `The ${m.medicine.store.toLowerCase()} is empty: nobody can be treated until a crate comes.` : m.medicine.doses ? `Open crate: ${m.medicine.doses} of ${m.medicine.perCrate} doses left.` : `No crate open: the next treatment opens one from the ${m.medicine.store.toLowerCase()}.`) : null,
+    m.log.length ? folded("ship-medbay-log", `Treated lately (${m.log.length})`, m.log.map((line) => muted(line))) : null);
 }
 
 function choiceCard({ current, name, detail, desc, onclick, disabled }) {
@@ -200,7 +218,7 @@ export function shipMenu() {
   const g = app.ui.game;
   if (!g.role.captain) return outsiderShip(g);
   return twoColumns(
-    [statusSection(g), suppliesSection(g.ship), storesSection(g.ship), systemsSection(g)],
+    [statusSection(g), suppliesSection(g.ship), storesSection(g.ship), medbaySection(g.ship), systemsSection(g)],
     [ordersSection(g), rationsSection(g.ship), councilSection(g.ship), logSection(g.ship), crewSection(g)],
   );
 }

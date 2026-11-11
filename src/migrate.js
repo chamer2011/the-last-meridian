@@ -7,6 +7,7 @@ import { newWorld } from "./daily.js";
 import { newShipState, shipOf } from "./ship.js";
 import { newBodySeed } from "./body.js";
 import { newCommandState } from "./command.js";
+import { startHealth } from "./medbay.js";
 import { noteLoreSeen, startingLoreIds } from "./lore.js";
 import { crewContacts, maxEnergy, maxHp } from "./rules.js";
 import { emptyStory } from "./story-library.js";
@@ -266,6 +267,14 @@ function fromVersion20(save) {
   return { ...save, version: 21, wounds: save.wounds ?? [], bodies: save.bodies ?? {} };
 }
 
+// Version 22 treats wounds in the medbay: the wounds the places' health files start people with become kept wounds, so
+// they heal, and whoever has a serious one (Vik and Hana) starts laid up on a cot there.
+function fromVersion21(save) {
+  const game = { ...save, version: 22 };
+  startHealth(game);
+  return game;
+}
+
 export function migrateGame(save) {
   if (!save) return save;
   let game = save;
@@ -289,6 +298,7 @@ export function migrateGame(save) {
   if (game.version < 19) game = fromVersion18(game);
   if (game.version < 20) game = fromVersion19(game);
   if (game.version < 21) game = fromVersion20(game);
+  if (game.version < 22) game = fromVersion21(game);
   // A place that's gone from the world's files can't hold anyone, and factions added since this save was made need a standing.
   if (!LOCATIONS[game.location]) game.location = "meridian";
   game.factions ??= {};

@@ -55,6 +55,9 @@ export const DUTY_MEASURES = {
   "thefts": (c) => 100 - 25 * c.tally.thefts,
   "medicine out": (c) => (c.ship.out?.medicine ? 0 : 100),
   "errands left waiting": (c) => 100 - c.tally.errandsWaiting / 6,
+  // The medbay (src/medbay.js): hours patients lay waiting with nobody treating them, and calls reached late.
+  "patients left waiting": (c) => 100 - 10 * c.tally.patientHours,
+  "people reached in time": (c) => 100 - 25 * c.tally.lateCalls,
   "the council's confidence": (c) => c.confidence,
 };
 // Words a post's duty may carry that a later step measures.
@@ -2044,7 +2047,7 @@ export function dutyDay(game, day) {
     const meals = game.logistics?.[place]?.meals?.days?.[ended];
     const c = {
       ship: game.ship,
-      tally: { powerShort: 0, errandsWaiting: 0, alarms: 0, tampering: 0, thefts: 0, deaths: 0, ...(state.tally?.[ended] ?? {}) },
+      tally: { powerShort: 0, errandsWaiting: 0, alarms: 0, tampering: 0, thefts: 0, deaths: 0, patientHours: 0, lateCalls: 0, ...(state.tally?.[ended] ?? {}) },
       staffed: staffedScore(game, place, model),
       sittings: meals && meals.served + meals.missed > 0 ? (100 * meals.served) / (meals.served + meals.missed) : null,
       waitingParts: waitingForParts(game, place).length,

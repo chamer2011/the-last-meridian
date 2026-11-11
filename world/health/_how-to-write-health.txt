@@ -135,8 +135,16 @@ How often is in a place's file, below.
     the medbay: Medbay
     cots: patient-1, patient-2, patient-3, patient-4
     who answers a call: a nurse, then a spare hand
+    who treats: the chief medical officer, a nurse
+    medicine: the medicine cabinet, 20 doses to a crate
+    bed rest: 3 days after a serious wound is treated
     the morning queue: 07:45 to 10:30, at queue
     accidents at work: 1 in 20 days in rough work, 1 in 100 for everyone else
+
+    Treatments:
+    - cut: 1 dose, 10 minutes
+    - deep cut: 2 doses, 30 minutes
+    - broken bone: 2 doses, an hour
 
     At the start:
     - Vik, right leg: broken bone
@@ -149,6 +157,15 @@ spare). Whoever's down there is carried to a free cot, or the medbay's floor whe
 awake, free and has a hand to carry with, and they stay until they can get up and aren't bleeding. A place without
 these lines has no medbay: someone down there comes round where they fell once they can get up.
 
+who treats, medicine, bed rest and Treatments (step 5 of the health plan): who treats the patients, posts and jobs from
+the place's command file (the chief medical officer, a nurse), and only while they're in the medbay by their day and
+not out on a call; the store in world/logistics whose crates hold the medicine, and how many doses a crate holds; how
+many days someone with a serious wound stays on their cot after it's treated; and under Treatments, one line for each
+wound the medbay treats, by its name in the wounds file, with the doses and the time it takes someone with a Medicine
+of 5 (a better medic is quicker, a worse one slower, as the command file's skill line says). A wound with no line here
+isn't treated in the medbay. The medics treat the laid up first, the worst off first, then the morning queue, then the
+player if they're standing in the medbay. Without who treats, the medicine or any Treatments, nobody is treated there.
+
 the morning queue: when anyone there who's hurt and on their feet goes to wait at the medbay, and where: a spot or a
 group of spots in the place's file in world/life (queue is the medbay's). Anyone asleep or laid up stays put.
 
@@ -156,8 +173,10 @@ accidents at work: how often someone there hurts themselves at their work, rough
 wound is one of the wounds file's Accidents, likelier the ones for their work, on a part at random.
 
 Each line under At the start is someone at that place, a comma, and a body line (below). It's for the people with only a name, who have
-no file of their own; someone with a file can be named here too, by their id or their name. Later steps will add the
-medbay's cots and who answers a call.
+no file of their own; someone with a file can be named here too, by their id or their name. A line that names one of
+the wounds file's wounds is a wound they start the game with, which heals like any other; someone whose wound is
+serious starts the game laid up on a cot in the medbay, if the place has one. Any other line is an old mark that's
+always part of their body.
 
 
 3. A SPECIES' BODY PART

@@ -17,7 +17,7 @@ Posts:
 - quartermaster in The Long Mess: chosen by the captain; heads cooks, mess hands, gardeners; picked from cooks, mess hands, gardeners, the deck chief; skills commerce; duty: sittings missed, stores run dry
 - chief engineer in Engineering: chosen by the captain; heads techs; picked from techs, the deck chief; skills engineering; duty: power short, repairs waiting, hull worn
 - chief of security in The Aft Holds: chosen by the captain; heads guards; keeps the brig; picked from guards, ensigns, deckhands; skills firearms, tactics; duty: alarms, tampering seen, thefts
-- chief medical officer in Medbay: chosen by the captain; heads nurses; picked from nurses; skills medicine; duty: medicine out, deaths aboard
+- chief medical officer in Medbay: chosen by the captain; heads nurses; picked from nurses; skills medicine; duty: medicine out, deaths aboard, patients left waiting, people reached in time
 - deck chief in Engineering: chosen by the captain; heads deckhands; picked from deckhands, techs; skills void ops, leadership; duty: errands left waiting
 - comms officer on The Bridge: chosen by the first officer; picked from ensigns; skills hacking, science
 - helm officer on The Bridge: chosen by the first officer; picked from ensigns; skills piloting, navigation

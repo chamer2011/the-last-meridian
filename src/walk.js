@@ -8,7 +8,7 @@
 // and a campaign can keep its own rooms in its folder, so they stay the same from then on.
 
 import { bleedingOf, bodyOf, keyAt, lookLine, paceOf } from "./body.js";
-import { carry, downRecord, putDown } from "./medbay.js";
+import { awakeInMedbay, carry, downForStory, downRecord, putDown } from "./medbay.js";
 import { allCharacters, campaignRooms, findCampaignRoom, findCharacter, fullName, saveCampaignRoom } from "./campaign.js";
 import { startCheck, startChoiceCheck } from "./checks.js";
 import { useComputer } from "./computers.js";
@@ -619,6 +619,10 @@ export function personWhere(game, id) {
   if (!person) return null;
   const status = contactOf(game, person.name)?.status;
   if (status && status !== "alive") return { gone: status };
+  // Someone down waits where they are: out cold, being carried, or laid up in a medbay at another place. Awake on a cot
+  // here, they're found like anyone else, and the player goes to them.
+  const down = downForStory(game, person.id);
+  if (down) return { gone: down };
   const walk = walkAt(game);
   const map = walk ? mapFor(game.location) : null;
   if (walk && map) {
@@ -657,7 +661,8 @@ export function bringOver(game, ids) {
   // On a deck, "here" is the room drawn around the player: someone in another room of the deck comes over too.
   const mine = walk.room ? null : level.roomAt(walk.x, walk.y);
   const here = new Set(peopleOnLevel(game, walk, level).filter((one) => walk.room || level.roomAt(one.x, one.y) === mine).map(keyOf));
-  const coming = peopleNamed(game, ids).filter((one) => !here.has(keyOf(one)));
+  // Someone down can't come over: the story waits for the player to go to them.
+  const coming = peopleNamed(game, ids).filter((one) => !here.has(keyOf(one)) && !(one.id && game.down?.[`id:${one.id}`]));
   if (!coming.length) return;
   if (walk.room) {
     walk.room.people.push(...coming);
@@ -1232,6 +1237,7 @@ function downView(game, key) {
     down: true,
     ...(d.carriedBy ? { carried: d.carriedBy } : {}),
     ...(d.bed ? { onCot: true } : {}),
+    ...(awakeInMedbay(game, keyAt(game.location, key)) ? { awake: true } : {}),
     downLook: [where, bleeding ? `Bleeding: ${bleeding.blood} blood left, losing ${bleeding.rate} an hour.` : null].filter(Boolean).join(" "),
   };
 }

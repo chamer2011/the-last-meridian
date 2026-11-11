@@ -937,6 +937,7 @@ function personChoices(thing) {
   if (person.down) {
     const carrying = app.ui.game.walk.carrying;
     return [
+      ...(person.onCot && person.awake ? [["Talk", "beside the cot", () => go({ action: "go", to })]] : []),
       person.carried === "you" ? ["Put them down", "on a cot, in the medbay", () => deed("putdown")] : ["Carry them", carrying ? "you're carrying someone" : "slowly, to the medbay", () => go({ action: "go", to }, () => deed("carry", person.key)), Boolean(carrying || person.carried || person.onCot)],
       ["Registry", "print their record", () => registry(person.key)],
       ["Close", "", closeWindow],
@@ -1060,6 +1061,7 @@ function menuFor(target) {
         theme: "person",
         color: person.color,
         items: [
+          ...(person.onCot && person.awake ? [{ label: "Talk", detail: "beside the cot", run: () => go({ action: "go", to }) }] : []),
           { label: "Look", run: () => lookAtPerson(person) },
           person.carried === "you"
             ? { label: "Put them down", detail: "on a cot, in the medbay", run: () => deed("putdown") }

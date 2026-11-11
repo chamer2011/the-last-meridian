@@ -12,14 +12,15 @@
 // call: { by, phase, since, bed }, going }. who is the key their day knows them by (an id, or a crowd name); bed is a cot
 // (a spot in the place's life file) or "@" and the medbay's room for its floor. Reading any of it writes nothing.
 
-import { beatenFor, bleedingOf, cantGetUp, handsFree, keyAt, woundsNow } from "./body.js";
+import { addWounds, beatenFor, bleedingOf, cantGetUp, handsFree, howBad, hurtAt, keyAt, queueOf, restingFrom, seriousWound, startWounds, treatmentFor, treatWound, waitingTreatment, woundKindNamed, woundsNow } from "./body.js";
 import { findCharacter, fullName } from "./campaign.js";
-import { jobByWords, lostReason, onJob } from "./command.js";
-import { hasReached, isAbout } from "./life.js";
+import { calledBy, holderKey, jobByWords, lostReason, onJob, postByWords, speedOf, tallyDuty } from "./command.js";
+import { hasReached, isAbout, whoIsIn } from "./life.js";
+import { logisticsOf, takeAboard } from "./logistics.js";
 import { passTime } from "./rules.js";
-import { canStand, mapFor, roomsOf, walkCommand } from "./walk.js";
+import { canStand, mapFor, roomOf, roomsOf, walkCommand } from "./walk.js";
 import { WORLD_HEALTH, WORLD_LIFE } from "./world.js";
-import { MEDBAY_KEYS } from "../public/health-text.js";
+import { MEDBAY_KEYS, readTreatmentLine } from "../public/health-text.js";
 
 const YOU = "you";
 const lower = (text) => String(text ?? "").trim().toLowerCase();
@@ -46,7 +47,27 @@ export function medbayOf(place) {
     const cots = MEDBAY_KEYS.cots.read(file.cots).spots ?? [];
     const who = file.answers ? MEDBAY_KEYS["who answers a call"].read(file.answers).who ?? [] : [];
     const answers = who.map((words) => (/spare hands?$/i.test(words) ? "spare" : jobByWords(place, words))).filter(Boolean);
-    found = { room: room?.id ?? null, cots: cots.filter((spot) => WORLD_LIFE[place]?.spots?.[spot]), answers };
+    // Who treats: posts and jobs, as the file names them. The medicine: the store its crates are in, by name, and the
+    // doses to a crate. The treatments, by wound.
+    const treaters = (file.treaters ? MEDBAY_KEYS["who treats"].read(file.treaters).who ?? [] : []).map((words) => {
+      const post = postByWords(place, words.replace(/^(a|an|the) /i, ""));
+      if (post) return { post };
+      const job = jobByWords(place, words);
+      return job ? { job } : null;
+    }).filter(Boolean);
+    const medicine = file.medicine ? MEDBAY_KEYS.medicine.read(file.medicine) : null;
+    const store = medicine && !medicine.problem ? logisticsOf(place)?.stores.find((one) => lower(one.name) === medicine.store) ?? null : null;
+    const rest = file.rest ? MEDBAY_KEYS["bed rest"].read(file.rest) : null;
+    const treatments = (file.treatments ?? []).map((raw) => readTreatmentLine(raw.text)).filter((one) => !one.problem);
+    found = {
+      room: room?.id ?? null,
+      cots: cots.filter((spot) => WORLD_LIFE[place]?.spots?.[spot]),
+      answers,
+      treaters,
+      medicine: store ? { store: store.id, name: store.name, doses: medicine.doses } : null,
+      rest: rest && !rest.problem ? rest.days : 0,
+      treatments,
+    };
   }
   medbays.set(place, found);
   return found;
@@ -67,6 +88,14 @@ export function medbayProblems() {
     for (const spot of MEDBAY_KEYS.cots.read(file.cots).spots ?? []) if (!WORLD_LIFE[place]?.spots?.[spot]) out.push(`${where}: the cot ${spot} isn't a spot in world/life/${place}.json`);
     const who = file.answers ? MEDBAY_KEYS["who answers a call"].read(file.answers).who ?? [] : [];
     for (const words of who) if (!/spare hands?$/i.test(words) && !jobByWords(place, words)) out.push(`${where}: who answers a call names ${words}, which isn't a job on the watch bill in world/command/${place}.txt`);
+    const treaters = file.treaters ? MEDBAY_KEYS["who treats"].read(file.treaters).who ?? [] : [];
+    for (const words of treaters) if (!postByWords(place, words.replace(/^(a|an|the) /i, "")) && !jobByWords(place, words)) out.push(`${where}: who treats names ${words}, which isn't a post or a job in world/command/${place}.txt`);
+    if (file.medicine && !medbay?.medicine) out.push(`${where}: the medicine is ${file.medicine}, and it should name one of the stores in world/logistics/${place}.txt`);
+    for (const raw of file.treatments ?? []) {
+      const line = readTreatmentLine(raw.text);
+      if (line.problem) out.push(`${where} (line ${raw.line}): ${line.problem}`);
+      else if (!woundKindNamed(line.name)) out.push(`${where} (line ${raw.line}): ${line.name} isn't one of the wounds in world/health/wounds.txt`);
+    }
   }
   return out;
 }
@@ -89,6 +118,21 @@ export function freeCot(game, place) {
 export const downAt = (game, place) => Object.entries(game.down ?? {}).filter(([, d]) => d.place === place);
 export const isDown = (game, place, who) => Boolean(game.down?.[keyAt(place, who)]);
 export const downRecord = (game, place, who) => game.down?.[keyAt(place, who)] ?? null;
+// Someone on a cot or the medbay's floor who isn't out cold: awake, and able to talk.
+export function awakeInMedbay(game, key) {
+  const d = game.down?.[key];
+  return Boolean(d?.bed && !d.going && !d.carriedBy && cantGetUp(game, key) !== "out cold");
+}
+// Where someone with a file is while they're down, for a story waiting on them: null if they aren't down, or are awake
+// in the medbay at the player's place; otherwise what they are, for the quest tracker to say why it waits.
+export function downForStory(game, id) {
+  const key = `id:${id}`;
+  const d = game.down?.[key];
+  if (!d || d.going) return null;
+  if (d.bed && d.place === game.location && awakeInMedbay(game, key)) return null;
+  if (d.bed) return d.place === game.location ? "out cold in the medbay" : "laid up in the medbay";
+  return d.carriedBy ? "being carried to the medbay" : `down, ${d.why ?? "hurt"}`;
+}
 const nameOf = (game, d) => {
   const person = findCharacter(game.campaign, d.who);
   return person && !person.crowd ? person.name : d.who;
@@ -151,7 +195,7 @@ export function advanceMedbay(game) {
     const medbay = medbayOf(d.place);
     // Getting up: once a beating's time is up, nothing keeps them down, and they've stopped bleeding. Someone beaten
     // makes their own way to the medbay, slowly, if there's one and they're hurt; anyone else goes back to their day.
-    if (!d.carriedBy && !d.going && now >= (d.until ?? 0) && !cantGetUp(game, key) && !bleedingOf(game, key)) {
+    if (!d.carriedBy && !d.going && now >= (d.until ?? 0) && !cantGetUp(game, key) && !bleedingOf(game, key) && !keptIn(game, key, d, medbay)) {
       if (medbay?.room && !d.bed && woundsNow(game, key).length) {
         game.down[key] = { ...d, going: true, since: now, call: null };
         if (d.place === here) notes.push(`[HEALTH] ${nameOf(game, d)} gets up, and makes their way to the medbay.`);
@@ -179,6 +223,7 @@ export function advanceMedbay(game) {
         if (now < due && !hasReached(game, d.place, d.call.by, `down:${key}`)) break;
         d.call = { ...d.call, phase: "carrying", since: Math.min(now, due), bed: freeCot(game, d.place) ?? `@${medbay.room}` };
         d.carriedBy = d.call.by;
+        if (d.call.since - d.since > LATE_HOURS) tallyDuty(game, d.place, Math.floor(d.call.since / 24), { lateCalls: 1 });
       } else {
         if (now < due && !hasReached(game, d.place, d.call.by, d.call.bed)) break;
         d.bed = d.call.bed;
@@ -189,7 +234,195 @@ export function advanceMedbay(game) {
       }
     }
   }
+  // In each medbay, whoever's waiting on the floor moves to a cot that's come free, the worst first, and the medics
+  // treat their patients.
+  for (const place of new Set([...Object.values(game.down ?? {}).map((d) => d.place), here])) {
+    const medbay = medbayOf(place);
+    if (!medbay?.room) continue;
+    const floor = downAt(game, place).filter(([, d]) => d.bed?.startsWith("@") && !d.going).sort(([a], [b]) => howBad(game, b) - howBad(game, a));
+    for (const [key, d] of floor) {
+      const cot = freeCot(game, place);
+      if (!cot) break;
+      game.down[key] = { ...d, bed: cot };
+      if (place === here) notes.push(`[HEALTH] ${nameOf(game, d)} is moved from the floor to a cot.`);
+    }
+    notes.push(...treatOnClock(game, place, medbay, now));
+  }
   return notes;
+}
+
+// Someone on a cot stays while a wound waits for the medbay's treatment, or for the bed rest after a serious one.
+function keptIn(game, key, d, medbay) {
+  if (!d.bed || !medbay) return false;
+  if (medbay.treatments.length && medbay.medicine && waitingTreatment(game, key, medbay.treatments).length) return true;
+  return medbay.rest > 0 && restingFrom(game, key, medbay.rest);
+}
+
+// ---- Treatment ---------------------------------------------------------------------------------------
+
+// A call answered more than this long after someone fell counts as late, against the chief medical officer's duty.
+const LATE_HOURS = 0.5;
+// A patient left this long with nobody treating them counts as left waiting.
+const WAIT_GRACE = 1;
+
+// The medbay's own state in the save: when it was last run, the doses left in the crate that's open, who's being
+// treated now, and the last few treatments, for the Ship menu.
+const stateFor = (game, place) => ((game.medbay ??= {})[place] ??= { at: null, doses: 0, treating: {}, log: [] });
+// Whether the player's standing in a place's medbay.
+function playerIn(game, place, medbay) {
+  const walk = game.walk;
+  return game.location === place && Boolean(walk) && !walk.room && mapFor(place)?.levels[walk.level]?.roomAt(walk.x, walk.y) === medbay.room;
+}
+// Who's waiting in the morning queue at a moment: whoever's hurt, on their feet and about, in the queue's hours.
+function queueAt(game, place, hours) {
+  const queue = queueOf(place);
+  if (!queue) return [];
+  const minute = (((hours % 24) + 24) % 24) * 60;
+  if (minute < queue.from || minute >= queue.to) return [];
+  return [...hurtAt(game, place)].filter((who) => isAbout(game, place, who, hours)).map((who) => keyAt(place, who)).filter((key) => key && !game.down?.[key]);
+}
+// Who's on the medbay's cots and floor at a place, by body key, then whoever's in the morning queue, and the player
+// while they're standing in the medbay.
+function patientsAt(game, place, medbay, hours = nowOf(game)) {
+  const keys = [...downAt(game, place).filter(([, d]) => d.bed && !d.going).map(([key]) => key), ...queueAt(game, place, hours)];
+  return playerIn(game, place, medbay) ? [...keys, YOU] : keys;
+}
+// The medics at work in the medbay at a moment: whoever holds a treating post or does a treating job, there by their
+// day, and not out on a call or down themselves.
+function medicsAt(game, place, medbay, hours) {
+  const there = new Set(whoIsIn(game, place, medbay.room, hours));
+  const busy = new Set(Object.values(game.down ?? {}).map((d) => d.call?.by).filter(Boolean));
+  const keys = medbay.treaters.flatMap((one) => (one.post ? [holderKey(game, place, one.post)] : onJob(game, place, one.job)));
+  return [...new Set(keys)].filter((key) => key && key !== YOU && there.has(key) && !busy.has(key) && !isDown(game, place, key) && !lostReason(game, place, key));
+}
+// Doses from the open crate, opening another from the medicine's store when it runs out. False when there aren't enough.
+function takeDoses(game, place, medbay, state, n) {
+  while (state.doses < n) {
+    if (takeAboard(game, place, "medicine_crate", 1, [medbay.medicine.store]) < 1) return false;
+    state.doses += medbay.medicine.doses;
+  }
+  state.doses -= n;
+  return true;
+}
+// A medic as the ship calls them: by their post (Dr. Aduro), else their title or name.
+const medicName = (game, place, key) => { const name = calledBy(game, place, key); return name.charAt(0).toUpperCase() + name.slice(1); };
+const whose = (game, key) => (key === YOU ? "your" : `${nameOf(game, { who: whoOf(game.down?.[key]?.place ?? game.location, key) ?? key })}'s`);
+const woundOf = (game, key, job) => (key === YOU ? game.wounds : game.bodies?.[key]?.wounds)?.find((wound) => wound.part === job.part && wound.kind === job.kind && wound.at === job.at && !wound.dressed) ?? null;
+
+// The medbay over the time since it was last run, step by step: each treatment ends when its time is up, and a free
+// medic starts on the worst patient still waiting, with the doses it takes, faster the better their Medicine. Lines for
+// the story while the player's in the medbay or on its cot.
+function treatOnClock(game, place, medbay, now) {
+  const notes = [];
+  if (!medbay.treatments.length || !medbay.medicine) return notes;
+  const state = stateFor(game, place);
+  const from = state.at === null ? now : Math.min(state.at, now);
+  let t = from;
+  if (state.treating[YOU] && !playerIn(game, place, medbay)) {
+    state.doses += state.treating[YOU].doses ?? 0;
+    delete state.treating[YOU];
+  }
+  for (let step = 0; step < 400; step += 1) {
+    for (const [key, job] of Object.entries(state.treating)) {
+      if (job.until > t) continue;
+      delete state.treating[key];
+      const wound = woundOf(game, key, job);
+      // Dressed meanwhile by its owner, or healed: the doses go back in the crate.
+      if (!wound) {
+        state.doses += job.doses ?? 0;
+        continue;
+      }
+      const word = treatWound(game, key, wound, job.until);
+      const line = `${medicName(game, place, job.by)} ${word === "splinted" ? "splints" : "dresses"} ${whose(game, key)} ${wound.words.replace(/^(an?|the) /, "")}`;
+      state.log = [...(state.log ?? []), { day: Math.floor(job.until / 24), line }].slice(-8);
+      if (place === game.location && (playerIn(game, place, medbay) || key === YOU)) notes.push(`[HEALTH] ${line}.`);
+    }
+    const free = medicsAt(game, place, medbay, t).filter((key) => !Object.values(state.treating).some((job) => job.by === key));
+    const waiting = patientsAt(game, place, medbay, t).filter((key) => !state.treating[key] && waitingTreatment(game, key, medbay.treatments).length).sort((a, b) => howBad(game, b) - howBad(game, a));
+    for (const key of waiting) {
+      if (!free.length) break;
+      const wound = waitingTreatment(game, key, medbay.treatments)[0];
+      const treatment = treatmentFor(wound, medbay.treatments);
+      if (!treatment) continue;
+      if (!takeDoses(game, place, medbay, state, treatment.doses)) {
+        if (!state.short) {
+          state.short = true;
+          if (place === game.location && playerIn(game, place, medbay)) notes.push(`[HEALTH] The medicine cabinet is empty. ${medicName(game, place, free[0])} can't treat anyone until a crate is brought.`);
+        }
+        break;
+      }
+      state.short = false;
+      const medic = free.shift();
+      const minutes = treatment.minutes / speedOf(game, place, [medic], "medicine");
+      state.treating[key] = { by: medic, part: wound.part, kind: wound.kind, at: wound.at, doses: treatment.doses, since: t, until: t + minutes / 60 };
+      if (key === YOU && place === game.location) notes.push(`[HEALTH] ${medicName(game, place, medic)} sees to your ${wound.words.replace(/^(an?|the) /, "")}.`);
+    }
+    const next = Math.min(Infinity, ...Object.values(state.treating).map((job) => job.until));
+    if (next > now) break;
+    t = Math.max(t, next);
+  }
+  // Patients left waiting past their first hour, with nobody treating them, count against the chief medical officer.
+  const gone = now - from;
+  if (gone > 0) {
+    const left = patientsAt(game, place, medbay).filter((key) => key !== YOU && !state.treating[key] && waitingTreatment(game, key, medbay.treatments).length && now - (game.down?.[key]?.since ?? now) > WAIT_GRACE).length;
+    if (left) tallyDuty(game, place, Math.floor(now / 24), { patientHours: left * gone });
+  }
+  state.at = now;
+  return notes;
+}
+
+// The wounds the places' health files start people with become kept wounds when a game begins, so they heal, and
+// anyone with a serious one starts laid up on a free cot in the place's medbay: Vik and Hana, aboard the Meridian.
+export function startHealth(game) {
+  if (game.healthStarted) return;
+  game.healthStarted = true;
+  const laidUp = new Map();
+  for (const one of startWounds()) {
+    addWounds(game, one.key, [one.wound]);
+    if (seriousWound(one.wound)) laidUp.set(one.key, one);
+  }
+  for (const [key, one] of laidUp) {
+    const medbay = medbayOf(one.place);
+    const who = whoOf(one.place, key);
+    if (!medbay?.room || !who || game.down?.[key]) continue;
+    const cot = freeCot(game, one.place);
+    const spot = cot ? WORLD_LIFE[one.place].spots[cot] : null;
+    game.down ??= {};
+    game.down[key] = { who, place: one.place, level: spot ? roomOf(mapFor(one.place), spot[0])?.levelId ?? spot[0] : null, x: spot?.[1] ?? 0, y: spot?.[2] ?? 0, since: nowOf(game), until: nowOf(game), why: "laid up", bed: cot ?? `@${medbay.room}` };
+  }
+}
+
+// ---- The medbay on the Ship menu ----------------------------------------------------------------------------
+
+// Who's on each cot and the floor, for what and for how long; who's treating whom; the medicine; and the last
+// treatments. Null at a place without a medbay. Reading it writes nothing.
+export function medbayView(game, place) {
+  const medbay = medbayOf(place);
+  if (!medbay?.room) return null;
+  const state = game.medbay?.[place] ?? { doses: 0, treating: {}, log: [] };
+  const now = nowOf(game);
+  const patient = ([key, d]) => {
+    const waiting = waitingTreatment(game, key, medbay.treatments);
+    const worst = waiting[0] ?? [...woundsNow(game, key)].sort((a, b) => (seriousWound(b) ? 1 : 0) - (seriousWound(a) ? 1 : 0))[0];
+    const job = state.treating?.[key];
+    const hours = now - d.since;
+    return {
+      who: nameOf(game, d),
+      worst: worst?.words ?? "resting",
+      since: hours < 1 ? "just brought in" : hours < 24 ? `${Math.floor(hours)} hour${Math.floor(hours) === 1 ? "" : "s"}` : `${Math.floor(hours / 24)} day${Math.floor(hours / 24) === 1 ? "" : "s"}`,
+      state: job ? `being treated by ${medicName(game, place, job.by)}` : waiting.length ? `waiting for treatment (${waiting.length})` : restingFrom(game, key, medbay.rest) ? "resting" : "getting up soon",
+    };
+  };
+  const here = downAt(game, place).filter(([, d]) => d.bed && !d.going);
+  return {
+    cots: medbay.cots.map((cot) => {
+      const on = here.find(([, d]) => d.bed === cot);
+      return on ? patient(on) : null;
+    }),
+    floor: here.filter(([, d]) => d.bed.startsWith("@")).sort(([a], [b]) => howBad(game, b) - howBad(game, a)).map(patient),
+    medicine: medbay.medicine ? { store: medbay.medicine.name, doses: state.doses ?? 0, perCrate: medbay.medicine.doses, short: Boolean(state.short) } : null,
+    log: (state.log ?? []).map((one) => `Day ${one.day + 1}: ${one.line}`).reverse(),
+  };
 }
 
 // The key someone's day knows them by, from their body's key, at a place.
@@ -220,8 +453,8 @@ export function medbayDetour(game, place) {
     if (own) {
       const [key, d] = own;
       if (d.going) return { where: `@${medbay?.room}`, doing: "making their way to the medbay, slowly" };
-      if (d.bed?.startsWith("@")) return { where: d.bed, doing: "lying on the medbay's floor", asleep: true };
-      if (d.bed) return { where: d.bed, doing: "laid up on a cot", asleep: true };
+      if (d.bed?.startsWith("@")) return { where: d.bed, doing: "lying on the medbay's floor", asleep: !awakeInMedbay(game, key) };
+      if (d.bed) return { where: d.bed, doing: "laid up on a cot", asleep: !awakeInMedbay(game, key) };
       return { where: `down:${key}`, spot: d, exact: true, doing: d.carriedBy ? "being carried to the medbay" : `lying where they fell, ${d.why ?? "down"}`, asleep: true };
     }
     const job = helping.get(who);
@@ -232,6 +465,33 @@ export function medbayDetour(game, place) {
     }
     return null;
   };
+}
+
+// Where someone down lies: on their cot, on the medbay's floor, or where they fell. Null when there's no telling.
+function lyingAt(place, d) {
+  const map = mapFor(place);
+  if (!map) return null;
+  if (d.bed && !d.bed.startsWith("@")) {
+    const spot = WORLD_LIFE[place]?.spots?.[d.bed];
+    return spot ? { level: roomOf(map, spot[0])?.levelId ?? spot[0], x: spot[1], y: spot[2] } : null;
+  }
+  if (d.bed) {
+    const room = roomOf(map, d.bed.slice(1));
+    return room?.start ? { level: room.levelId, x: room.start.x, y: room.start.y } : null;
+  }
+  return map.levels[d.level] ? { level: d.level, x: d.x, y: d.y } : null;
+}
+// Everyone at a place as their days would first put them, with whoever's down already lying where they are, so that a
+// game begins with Vik and Hana on their cots instead of walking there. It returns a new set and changes nothing given.
+export function laidWhereTheyAre(game, place, people) {
+  const records = downAt(game, place).filter(([, d]) => !d.going && !d.carriedBy && people[d.who]);
+  if (!records.length) return people;
+  const out = { ...people };
+  for (const [, d] of records) {
+    const at = lyingAt(place, d);
+    if (at) out[d.who] = { ...people[d.who], level: at.level, x: at.x, y: at.y, goal: { ...at }, path: null };
+  }
+  return out;
 }
 
 // Whoever's being carried goes where the one carrying them goes, the player included.
@@ -291,7 +551,6 @@ export function wakeInMedbay(game) {
   if (!by) return null;
   const knock = woundsNow(game, YOU).find((wound) => wound.kind === "knock");
   const hours = Math.max(knock ? knock.until - nowOf(game) : 0, beatenFor());
-  const notes = passTime(game, hours, "rest");
   walkCommand(game, { action: "room", to: medbay.room });
   const cot = freeCot(game, place);
   const spot = cot ? WORLD_LIFE[place].spots[cot] : null;
@@ -301,6 +560,7 @@ export function wakeInMedbay(game) {
     const near = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1]].map(([dx, dy]) => ({ x: spot[1] + dx, y: spot[2] + dy })).find((one) => canStand(level, one.x, one.y));
     if (near) Object.assign(game.walk, { x: near.x, y: near.y });
   }
+  const notes = passTime(game, hours, "rest");
   const whole = Math.round(hours * 10) / 10;
   return [`You come to on a cot in the medbay, ${whole < 2 ? "an hour or so" : `${Math.round(whole)} hours`} later. ${nameOf(game, { who: by })} carried you here.`, ...notes];
 }

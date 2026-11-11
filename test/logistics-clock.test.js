@@ -232,7 +232,7 @@ test("an old save comes up at version 17 with its stores full and its machines a
   const old = { ...newGame(), version: 16 };
   delete old.logistics;
   const migrated = migrateGame(old);
-  assert.equal(migrated.version, 21);
+  assert.equal(migrated.version, 22);
   assert.ok(storesView(migrated, "meridian").every((one) => one.full));
   const statuses = machinesView(migrated, "meridian").map((one) => one.status);
   assert.match(statuses[0], /^running, 8 h 0 min on this fuel cell, giving 100 power$/, "the generator starts with a cell in it");

@@ -127,6 +127,9 @@ test("now and then someone has an accident at their work, the same in a game wit
   const one = newGame();
   const two = newGame();
   two.bodySeed = one.bodySeed;
+  // Leave out the wounds Vik and Hana start the game with.
+  one.bodies = {};
+  two.bodies = {};
   for (let day = 1; day <= 40; day += 1) {
     body.accidentsDay(one, day);
     body.accidentsDay(two, day);

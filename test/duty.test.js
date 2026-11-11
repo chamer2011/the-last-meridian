@@ -165,7 +165,7 @@ test("an alarm and a pocket picked aboard go on the chief of security's record, 
   game.ship.health = 10;
   toMidnight(game);
   assert.equal(card(game, "chief_of_security").duty.last, "alarms 70/100, tampering seen 100/100, thefts 75/100");
-  assert.match(card(game, "chief_medical_officer").duty.last, /^medicine out 100\/100, deaths aboard \d+\/100$/);
+  assert.match(card(game, "chief_medical_officer").duty.last, /^medicine out 100\/100, deaths aboard \d+\/100, patients left waiting \d+\/100, people reached in time 100\/100$/);
   assert.ok(Number(card(game, "chief_medical_officer").duty.last.match(/deaths aboard (\d+)/)[1]) < 100, "people died aboard in the night");
 });
 
