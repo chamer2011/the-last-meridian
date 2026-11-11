@@ -1,6 +1,7 @@
-/* The menus scroll with no scroll bar, and leave no room for one: the rail of menu buttons and the open menu, with
-   everything inside it. spring.js does the scrolling there, and marks a part "springing" while its contents have run
-   past the top or the bottom, moving them by --spring until they've come back. */
-.rail, .drawer, .drawer * { scrollbar-width: none; }
-.rail::-webkit-scrollbar, .drawer::-webkit-scrollbar, .drawer *::-webkit-scrollbar { display: none; }
+/* Nothing shows a scroll bar or leaves room for one: the menus, the story, the talks, the checks, the computers, What's
+   here, the quest log, the inventory, the Story board, every window. spring.js does the wheel's scrolling, and marks a
+   part "springing" while its contents have run past the top or the bottom, moving them by --spring until they've come
+   back. */
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }
 .springing > * { translate: 0 var(--spring, 0px); }

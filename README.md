@@ -40,7 +40,7 @@ The story is written in advance, in files you can read and change: see [The stor
 
 ## Menus
 
-The buttons down the right edge open the menus, grouped under **You**, **The story**, **The ship**, **Gear** and **Game**. A menu slides out over the story and always takes up the same space: three quarters of the screen. To close one, press **Close** or Esc, click the story behind it, or click its button again. On a narrow window, press **Menu** instead, and the same groups run along the top. Inside a menu, the parts you don't need every time fold away behind a line like **[ + Ship's log ]**: click it to open them, and they stay open while the game's running. A menu that's longer than the screen, or the row of buttons on a short window, scrolls with the mouse wheel, with no scroll bar taking up room; at the top or the bottom it runs on a little past the end and springs back. Rest the mouse on a button to see what its menu holds.
+The buttons down the right edge open the menus, grouped under **You**, **The story**, **The ship**, **Gear** and **Game**. A menu slides out over the story and always takes up the same space: three quarters of the screen. To close one, press **Close** or Esc, click the story behind it, or click its button again. On a narrow window, press **Menu** instead, and the same groups run along the top. Inside a menu, the parts you don't need every time fold away behind a line like **[ + Ship's log ]**: click it to open them, and they stay open while the game's running. A menu that's longer than the screen scrolls with the mouse wheel, like every window in the game: none has a scroll bar taking up room, and at the top or the bottom each runs on a little past the end and springs back. Rest the mouse on a button to see what its menu holds.
 
 **Your own registry printout** isn't a menu: click your name at the top left of the screen, or press **C**. It slides down inside the map with who you are, your level, attributes, skills, condition, your body, gear, work and sleep, and a star by your name means there are attribute points to spend on it. Tear it off (or C, Esc) to put it away.
 
@@ -96,6 +96,18 @@ The quest you're following is in the top left corner of the room: its name, the 
 ## Fights
 
 In the isometric view, a fight happens in the room you're in, in real time, and it stops whenever you like. A simulated fight, and a fight in any other view, opens in its own window instead, played in rounds.
+
+### Hits land on the body
+
+In both kinds of fight, every hit lands on a part of whoever's hit: the head, the chest, an arm or a leg, at random, more often the chest and less often the head. Nobody aims. The fight says where: in the room after each line, as "(left arm)", and in the window in the numbers after it, as "6 damage to the left arm". Health, the chances to hit and the damage are as they always were.
+
+- **A hit that takes a fifth of someone's health leaves a wound,** and one that takes two fifths, or a hard hit, leaves a hard one. What it leaves depends on what it was done with: a club or fists leave a bruise, and hard, a broken bone in an arm or a leg, cracked ribs or a concussion; a knife, a claw or a gun leaves a cut, and hard, a deep cut; a laser or a torch leaves a burn, and hard, a deep burn. Synthetics take dents, cracked casing and ruined joints. A line says it: "That leaves the dock thug with a deep cut in the left arm."
+- **Wounds count in the fight.** A broken arm takes 2 off attacking, and a concussion 1, for you and for anyone. With a broken leg you can't **Run for it**, and in the room someone with one can't walk: they fight from where they stand, and you can only hit what you can reach from there. The fighters' cards in the window and their lines in the room's panel list the wounds that do something.
+- **Nobody dies in a fight.** Someone at no health goes down, and the fight says how: out cold if the hit that did it knocked them on the head, unable to stand with a broken leg, or just unable to get up. The hit that puts someone down always leaves a wound.
+- **The wounds stay** on you, on everyone with a file, and on anyone with only a name you went for from the right-click menu, and show on Look, the printouts and your inventory's figure (see [Bodies](#bodies)). Someone who's nobody in particular, like a raider in a story fight, takes theirs away with them, and machines break as they always have.
+- **Losing a fight** costs a quarter of your credits and leaves you with a quarter of your health, as before, and the wounds the hits left, instead of a wound picked at random.
+- **The simulator changes nothing:** a simulated fight's wounds go when it ends.
+- **What leaves what** is in `world/health/wounds.txt`: how much of someone's health a hit takes to wound, which words in a weapon's name make which kind of hit, and which wound each kind leaves. See [Bodies](#bodies).
 
 ### A fight in the room
 
@@ -234,7 +246,8 @@ Everyone in the game has a body, made up when a new game starts: the people with
 - **Your own body** comes from your life story. The injuries in it leave their marks, like the burns over half your body from losing your ship in an ambush, or the lungs that never quite recovered from a lab accident, and so do the traits One-Eyed, Old Wound and the cybernetic arm and eye. The wounds you have now sit on a part: a broken arm is on one of your arms, a concussion on your head, and blood loss lowers your blood.
 - **Where to see them.** **Look** at someone (right-click them) and you read how they walk if it isn't normally, and the worst of what can be seen on them. Their **Registry** printout has the chart of their body: a figure with each part shaded by the worst on it, how they walk, their blood, and every mark and wound, worst first. Your own is on your printout (**C**) and on the figure in your inventory (**I**).
 - **Vik and Hana**, on the medbay's cots, are there for a reason now: Vik has a broken leg and can't walk, and Hana has a deep burn.
-- **Nothing works differently yet.** This is the first step of the health plan. Wounds don't bleed or heal yet, a limp doesn't slow anyone down, and nobody is carried to the medbay. Those come in the next steps, one at a time.
+- **Fights land on the body.** Every hit lands on a part, and hard hits leave wounds that stay after the fight: see [Hits land on the body](#hits-land-on-the-body).
+- **Wounds heal by the clock, for now.** A wound is simply gone when its days are up: a bruise in 2 days, a cut in 4, a broken arm in 30, a broken leg in 40, since nothing treats anyone yet. When one of yours goes, the story says so. Bleeding, limping and the medbay come in the next steps of the health plan, one at a time; a limp doesn't slow anyone down yet, and nobody is carried to the medbay.
 - **Where they're written.** `world/health/wounds.txt` has every kind of wound and old mark, where on the body it can be, what it looks like and its rules, and how often people gather old marks. `world/health/meridian.txt` has who starts the game hurt aboard the Meridian. A species' file has a **Body** part with how often a hit lands on each part and what its people do differently, and a person's file can have a **Body** part with what's always true of them, which the game never changes. `world/health/_how-to-write-health.txt` explains all of it. `npm run check-story` checks it too.
 
 ## The ship
@@ -559,7 +572,7 @@ The Meridian is drawn in **Tiled**, a free map editor, one file to a deck, and y
 - `src/npc.js` generates the stats of people a campaign adds, such as those from your past, and `src/campaign.js` saves them to their files.
 - `src/tools.js` lists the game's actions a written scene can take, and the limits on them.
 - `public/story.js` and `public/story-view.js` turn the story's text into what you see in the main window.
-- `public/menus.js` holds what's inside each menu, and the groups they sit in on the rail down the right edge. `public/spring.js` scrolls the menus and the rail with the wheel, running on past the ends and springing back, and `public/scroll.css` hides their scroll bars.
+- `public/menus.js` holds what's inside each menu, and the groups they sit in on the rail down the right edge. `public/spring.js` scrolls every window with the wheel, running on past the ends and springing back, and `public/scroll.css` hides every scroll bar.
 - `data/saves/` holds your saved games.
 
 To check that the rules still work after a change, run:

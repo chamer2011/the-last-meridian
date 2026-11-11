@@ -1,15 +1,15 @@
-// The menus scroll with no scroll bar, and at the top or the bottom they run on a little past the end and spring back,
-// the way a phone's lists do. Inside a menu the wheel's scrolling is done here rather than by the browser, which can't
-// go past the end: the page scrolls as far as it can, and what's left over moves the menu's contents themselves, held
-// back harder the further they go, until the wheel rests and they come back. Nothing here changes what's in a menu.
+// Everything that scrolls does it with no scroll bar, and at the top or the bottom it runs on a little past the end and
+// springs back, the way a phone's lists do: the menus, the story, the talks, the checks, the computers, What's here,
+// the quest log, the inventory, the Story board, every window. The wheel's scrolling is done here rather than by the
+// browser, which can't go past the end: the page scrolls as far as it can, and what's left over moves the contents
+// themselves, held back harder the further they go, until the wheel rests and they come back. Nothing here changes
+// what's in a window.
 
-// Where it works, by id: the rail of menu buttons down the right edge, and the open menu.
-const ZONES = ["rail", "side"];
-// Where a zone's own scrolling part is, when the wheel turns over a part of it that doesn't scroll (the menu's title).
+// Where a window's own scrolling part is, when the wheel turns over a part of it that doesn't scroll (the menu's title).
 const MAIN = { side: ".menu-body" };
-// Kept when a zone is drawn again, since the page puts nobody back in their place on it: the rail.
-const KEEP = new Set(["rail"]);
-// How far past the end the contents can go, at most, in pixels (less on a short menu), and how much harder the wheel
+// Kept when it's drawn again, since the page puts nobody back in their place on it: the rail of menu buttons.
+const KEEP = ["rail"];
+// How far past the end the contents can go, at most, in pixels (less on a short window), and how much harder the wheel
 // pulls once they're past it.
 const STRETCH = 150;
 const PAST = 0.5;
@@ -25,9 +25,9 @@ const FRAME = 0.034;
 const FOLLOW = 24;
 const RETURN = 12;
 
-const states = new Map(); // a scrolling part's key → how it's moving
+const states = new Map(); // a scrolling part's key → how it's moving, while it moves
 const wired = new WeakSet();
-const kept = new Map(); // a kept zone's id → where it was scrolled to
+const kept = new Map(); // a kept part's id → where it was scrolled to
 const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
@@ -48,14 +48,29 @@ function scrollsDown(box) {
   return y === "auto" || y === "scroll" || y === "overlay";
 }
 
-// The part that scrolls under the mouse, inside a zone. A box someone types in keeps the browser's own scrolling.
-function scrollerFor(target, zone) {
-  for (let node = target; node && node !== zone.parentElement; node = node.parentElement) {
+// How the contents go past the end: moved, when they're pieces of their own, or pushed along by the part's own padding
+// when it holds its words straight (the file on the Story board), since words alone can't be moved. Moving is the
+// lighter of the two, since nothing has to be laid out again. Neither, for someone who's asked for less motion.
+function howItStretches(box) {
+  if (still()) return null;
+  for (const node of box.childNodes) if (node.nodeType === 3 && node.textContent.trim()) return "pad";
+  return "move";
+}
+
+// The part that scrolls under the mouse: the innermost one that has more than it shows. A box someone types in keeps
+// the browser's own scrolling, and so does anything that took the wheel for itself (the room's zoom).
+function scrollerFor(target) {
+  for (let node = target; node && node !== document.body && node !== document.documentElement; node = node.parentElement) {
     if (node.nodeType !== 1) continue;
     if (scrollsDown(node)) return /^(TEXTAREA|SELECT|INPUT)$/.test(node.tagName) ? null : node;
   }
-  const main = MAIN[zone.id] && zone.querySelector(MAIN[zone.id]);
-  return main && scrollsDown(main) ? main : null;
+  for (const [id, part] of Object.entries(MAIN)) {
+    const zone = document.getElementById(id);
+    if (!zone?.contains(target)) continue;
+    const main = zone.querySelector(part);
+    if (main && scrollsDown(main)) return main;
+  }
+  return null;
 }
 
 // A name for a scrolling part that finds it again when the page draws it afresh.
@@ -76,33 +91,30 @@ function findByKey(key) {
 }
 
 function stateFor(box) {
-  const key = keyOf(box);
-  let s = states.get(key);
-  if (s && s.box !== box) s.box = box;
-  if (!s) {
-    s = { key, box, x: box.scrollTop, v: 0, goal: box.scrollTop, written: box.scrollTop, max: 0, rest: 0, t: 0, frame: 0 };
-    states.set(key, s);
-  }
-  // At rest, it starts from wherever it's been scrolled to since, by the keyboard or by the page.
-  if (!s.frame) {
-    s.x = s.goal = s.written = box.scrollTop;
-    s.v = 0;
-  }
-  s.max = Math.max(0, box.scrollHeight - box.clientHeight);
+  for (const s of states.values()) if (s.box === box) return measure(s);
+  const s = { key: keyOf(box), box, x: box.scrollTop, v: 0, goal: box.scrollTop, written: box.scrollTop, max: 0, rest: 0, t: 0, frame: 0, stretch: howItStretches(box), pad: null };
+  states.set(s.key, s);
+  return measure(s);
+}
+
+function measure(s) {
+  if (s.x >= 0 && s.x <= s.max) s.max = Math.max(0, s.box.scrollHeight - s.box.clientHeight);
+  else s.max = Math.max(s.max, 0);
   return s;
 }
 
 function onWheel(event) {
-  if (event.ctrlKey || event.defaultPrevented) return;
+  if (event.ctrlKey || event.shiftKey || event.defaultPrevented) return;
   if (Math.abs(event.deltaX) > Math.abs(event.deltaY) || !event.deltaY) return;
-  const box = scrollerFor(event.target, event.currentTarget);
+  const box = scrollerFor(event.target);
   if (!box) return;
   event.preventDefault();
   const s = stateFor(box);
+  if (!s.frame) s.max = Math.max(0, box.scrollHeight - box.clientHeight);
   const unit = event.deltaMode === 1 ? LINE : event.deltaMode === 2 ? box.clientHeight * 0.9 : 1;
   let delta = event.deltaY * unit;
   if ((s.goal < 0 && delta < 0) || (s.goal > s.max && delta > 0)) delta *= PAST;
-  const reach = still() ? 0 : roomOf(box) * 2.5;
+  const reach = s.stretch ? roomOf(box) * 2.5 : 0;
   s.goal = clamp(s.goal + delta, -reach, s.max + reach);
   s.rest = 0;
   if (!s.frame) {
@@ -114,9 +126,14 @@ function onWheel(event) {
 function paint(s) {
   const { box, max } = s;
   box.scrollTop = clamp(s.x, 0, max);
-  s.written = box.scrollTop;
   const over = s.x < 0 ? s.x : s.x > max ? s.x - max : 0;
   const shown = Math.round(-band(over, roomOf(box)) * 10) / 10;
+  if (s.stretch === "pad") pad(s, shown);
+  else move(box, shown);
+  s.written = box.scrollTop;
+}
+
+function move(box, shown) {
   if (shown) {
     box.classList.add("springing");
     box.style.setProperty("--spring", `${shown}px`);
@@ -124,6 +141,20 @@ function paint(s) {
     box.classList.remove("springing");
     box.style.removeProperty("--spring");
   }
+}
+
+// The words pushed down by more padding at the top, or up by more at the bottom and scrolling into it.
+function pad(s, shown) {
+  const { box } = s;
+  if (shown && !s.pad) {
+    const style = getComputedStyle(box);
+    s.pad = { top: box.style.paddingTop, bottom: box.style.paddingBottom, baseTop: parseFloat(style.paddingTop) || 0, baseBottom: parseFloat(style.paddingBottom) || 0 };
+  }
+  if (!s.pad) return;
+  box.style.paddingTop = shown > 0 ? `${s.pad.baseTop + shown}px` : s.pad.top;
+  box.style.paddingBottom = shown < 0 ? `${s.pad.baseBottom - shown}px` : s.pad.bottom;
+  if (shown < 0) box.scrollTop = s.max - shown;
+  if (!shown) s.pad = null;
 }
 
 // One step of a spring damped just enough not to go past its goal, worked out exactly, so a long frame can't set it
@@ -149,7 +180,7 @@ function step(s, now) {
   // While nothing's past the end the page can say how far it scrolls; once something is, that's measured as it was.
   if (s.x >= 0 && s.x <= s.max) {
     s.max = Math.max(0, box.scrollHeight - box.clientHeight);
-    // Moved by something else meanwhile (the keyboard, the page): it goes on from there.
+    // Moved by something else meanwhile (the keyboard, the page following the story): it goes on from there.
     if (Math.abs(box.scrollTop - s.written) > 2) {
       s.x = s.goal = box.scrollTop;
       s.v = 0;
@@ -164,27 +195,25 @@ function step(s, now) {
     s.x = s.goal;
     s.v = 0;
     paint(s);
+    states.delete(s.key);
     return;
   }
   paint(s);
   s.frame = requestAnimationFrame((later) => step(s, later));
 }
 
-// Every zone gets the wheel's handler, whenever the page draws one afresh; a part caught mid-spring carries on in the
-// new one; and the rail stays where it was scrolled to.
-function wire() {
-  for (const id of ZONES) {
-    const zone = document.getElementById(id);
-    if (!zone || wired.has(zone)) continue;
-    wired.add(zone);
-    zone.addEventListener("wheel", onWheel, { passive: false });
-    if (KEEP.has(id)) {
-      if (kept.has(id) && !states.get(`#${id}`)?.frame) zone.scrollTop = kept.get(id);
-      zone.addEventListener("scroll", () => kept.set(id, zone.scrollTop), { passive: true });
-    }
+// A part caught mid-spring when the page draws it afresh carries on in the new one, and the rail stays where it was
+// scrolled to.
+function redrawn() {
+  for (const id of KEEP) {
+    const part = document.getElementById(id);
+    if (!part || wired.has(part)) continue;
+    wired.add(part);
+    if (kept.has(id) && !states.get(`#${id}`)) part.scrollTop = kept.get(id);
+    part.addEventListener("scroll", () => kept.set(id, part.scrollTop), { passive: true });
   }
   for (const s of states.values()) {
-    if (s.box.isConnected || !s.frame) continue;
+    if (s.box.isConnected) continue;
     const again = findByKey(s.key);
     if (!again) continue;
     s.box = again;
@@ -192,5 +221,7 @@ function wire() {
   }
 }
 
-new MutationObserver(wire).observe(document.documentElement, { childList: true, subtree: true });
-wire();
+// After every other handler, so the room's zoom and anything else that takes the wheel go first.
+document.addEventListener("wheel", onWheel, { passive: false });
+new MutationObserver(redrawn).observe(document.documentElement, { childList: true, subtree: true });
+redrawn();
