@@ -397,8 +397,7 @@ and in a request to fix something, {part} for what's broken and {room} for the r
                     ? captain on the choice.
     == later        what they say to "not now". They ask again a day later.
     == no           what they say to a no. They don't ask again for a week.
-    == done         what they say once it's done, with what the player gets: * xp 15: The reason,
-                    * remember {asker} you 10: what they'll remember.
+    == done         what they say once it's done, with what the player gets: * xp 15: The reason.
     == failed       what they say if the day comes first.
     == gone         what they say if it was put right without the player.
 
@@ -406,6 +405,19 @@ Given, handed, later and no are needed only if a choice goes there. A part with 
 the talk back to their own conversation. Done, failed and gone are said in the story, not in a
 talk, so their * lines can't move the clock or the player. A request handed on ends with the game's
 own line, saying who did or didn't do it.
+
+Whoever asked remembers what came of it by themselves, so there's no need for a * remember line:
+helped when it's done, let down when it fails, told no after a no, and seen to when it was left to
+someone who did it (let down, a little less, if they didn't). It counts for or against the player
+as any memory does, so an officer's loyalty to the captain moves with it, and it's on their card in
+the Command menu. For three days after, the first thing they say when they're talked to is about
+it; the lines are the grudge lines at the end of world/rooms.json (helped_by_you and the rest).
+
+What came of it goes on the record too, for a scene or a story to ask about with ? flag, as the
+request's file name and how it went: request_medicine_done, request_medicine_failed,
+request_medicine_refused, request_pantry_seen_to and request_pantry_left_undone. Each has a line of
+words the player can read under Facts on record in the quest log, and the latest time is the one
+kept.
 
 At most three requests wait at once, and someone new asks once a day at most. Each person asks one
 thing at a time. A request that's over rests for a while before it can come up again: two days if

@@ -29,7 +29,7 @@ import { medbayProblems } from "./medbay.js";
 import { deathFacts, deathProblems } from "./death.js";
 import { commandFacts, commandProblems, commandSceneDue, commandSceneStarted, mutinyOutcome, sampleStandIns, standIns, storyCommand } from "./command.js";
 import { storyHitsShip } from "./ship.js";
-import { requestProblems } from "./requests.js";
+import { requestFacts, requestProblems } from "./requests.js";
 import { FACT_LINES, MAP_FILE_PROBLEMS, SET_ASIDE, STORIES_DIR, STORY_CLOCK, STORY_FILE_PROBLEMS, WORLD_COMMAND, WORLD_COMPUTERS, WORLD_FILE_PROBLEMS, WORLD_MAPS, WORLD_THREADS, endingsOf } from "./world.js";
 
 // Something the player did that the written story has no answer to. The turn changes nothing, and they read this.
@@ -794,7 +794,7 @@ export function allSceneProblems(dir = SCENES_DIR) {
 // Every fact something in the world can leave on the record: a story's notes name it, a scene sets it with * flag,
 // or a door sets it when the player goes through.
 export function factsLeft(scenes) {
-  const names = new Set([...Object.keys(FACT_LINES), ...clockFacts(), ...commandFacts(), ...deathFacts()]);
+  const names = new Set([...Object.keys(FACT_LINES), ...clockFacts(), ...commandFacts(), ...deathFacts(), ...requestFacts(scenes)]);
   for (const scene of Object.values(scenes)) for (const part of Object.values(scene.parts ?? {})) for (const step of part.do ?? []) if (step.set) names.add(step.set);
   const walk = (node) => {
     if (!node || typeof node !== "object") return;

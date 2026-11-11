@@ -30,11 +30,9 @@ gone when: stock medicine_crate >= 1
 == done
 @{asker}: "That'll hold them. Thank you."
 * xp 10: A medkit for the ward
-* remember {asker} you 6: You gave up a medkit for a patient when the cabinet was empty
 
 == failed
 @{asker}: "They had a bad night. I asked you for that medkit."
-* remember {asker} you -4: You said you'd bring a medkit, and didn't
 
 == gone
 @{asker}: "Crates came in. Keep your medkit."

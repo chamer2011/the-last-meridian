@@ -22,16 +22,13 @@ gone when: stock medicine_crate >= 4
 
 == no
 @{asker}: "Then I'll make what's left go as far as it can, and some people won't get any."
-* remember {asker} you -3: You said the medbay would have to manage without medicine
 
 == done
 @{asker}: "Two crates, and a lock on the cabinet again. That's people I won't have to turn away."
 * xp 15: Medicine for the medbay
-* remember {asker} you 10: You brought medicine when the cabinet was nearly empty
 
 == failed
 @{asker}: "There's been nothing to give since the last crate went. You said you'd see to it."
-* remember {asker} you -8: You said you'd see to the medicine, and didn't
 
 == gone
 @{asker}: "Never mind the medicine. Someone found crates for the cabinet."

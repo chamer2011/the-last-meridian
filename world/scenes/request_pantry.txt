@@ -29,16 +29,13 @@ handed to: the quartermaster
 
 == no
 @{asker}: "Then they'll eat what's left in the kettle, and there's not much."
-* remember {asker} you -2: You wouldn't carry crates up to the bare pantry
 
 == done
 @{asker}: "That's the next sittings fed. Put them by the wall, there."
 * xp 10: A bare pantry
-* remember {asker} you 6: You carried crates up when the pantry was bare
 
 == failed
 @{asker}: "The kettle's been empty since this morning. People went back to work hungry."
-* remember {asker} you -4: You said you'd bring crates up, and didn't
 
 == gone
 @{asker}: "Someone brought crates up. Never mind."

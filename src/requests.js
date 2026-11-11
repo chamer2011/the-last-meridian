@@ -24,8 +24,8 @@
 import { SKILLS } from "./character-data.js";
 import { findCharacter, fullName } from "./campaign.js";
 import { ITEMS, LOCATIONS } from "./data.js";
-import { YOU, calledBy, commandOf, holderKey, jobByWords, jobOf, lostReason, onJob, personByWords, postByWords, stillAlive, storyCommand, tallyDuty } from "./command.js";
-import { clearFact, recordFact } from "./record.js";
+import { YOU, calledBy, commandOf, holderKey, jobByWords, jobOf, lostReason, onJob, personByWords, postByWords, rememberRequest, stillAlive, storyCommand, tallyDuty } from "./command.js";
+import { FACT_ID, clearFact, recordFact } from "./record.js";
 import { aboardShip } from "./role.js";
 import { conditionHolds, parseCondition } from "./scene-text.js";
 import { loadScenes, withStandIns } from "./scenes.js";
@@ -394,6 +394,26 @@ function progressOf(game, model, open) {
 // Whether what was wanted was put right without the player: the gone when: line, and for a part, its being fixed.
 const putRight = (game, model, open) => (model.need.kind === "fix" && !partBroken(game, SHIP, open.part)) || Boolean(model.gone && conditionHolds(game, model.gone));
 
+// ---- What's left behind -------------------------------------------------------------------------------------
+
+// What a request leaves on the record, for the scenes and the stories' notes to ask about with ? flag: done (the
+// player did it), failed (they said yes and the day came first), refused (they said no), seen_to and left_undone (left
+// to a post, which did or didn't). The latest time is the one on the record, with its words.
+export const REQUEST_FACTS = ["done", "failed", "refused", "seen_to", "left_undone"];
+const factOf = (kind, what) => `${PREFIX}${kind}_${what}`;
+function leaveFact(game, kind, what, text) {
+  const id = factOf(kind, what);
+  if (!FACT_ID.test(id)) return;
+  clearFact(game, id);
+  recordFact(game, { id, text, from: `${PREFIX}${kind}` });
+}
+// Every fact the request files can leave, for the checker: a scene can wait on these.
+export function requestFacts(scenes) {
+  return Object.keys(scenes ?? {}).filter((id) => id.startsWith(PREFIX)).flatMap((id) => REQUEST_FACTS.map((what) => factOf(id.slice(PREFIX.length), what))).filter((id) => FACT_ID.test(id));
+}
+// What it was, in a few words for a memory: "medicine for the medbay".
+const aboutWords = (model) => model.title.replace(/^./, (ch) => ch.toLowerCase());
+
 // ---- Answers -------------------------------------------------------------------------------------------------
 
 function stateOf(game) {
@@ -437,6 +457,12 @@ export function answerRequest(game, kind, answer) {
   if (answer === "no") {
     delete state.open[kind];
     state.rest[kind] = now + REST.no;
+    // They remember being told no, and it's on the record.
+    const model = requestKinds().find((one) => one.model.kind === kind)?.model;
+    if (model) {
+      rememberRequest(game, open.asker, "turned_down", { words: aboutWords(model) });
+      leaveFact(game, kind, "refused", `You told ${askedBy(game, open.asker)} no about ${aboutWords(model)}, on day ${dayOf(now)}.`);
+    }
     return [];
   }
   if (!["yes", "given", "handed"].includes(answer)) return [];
@@ -541,7 +567,19 @@ function endRequest(game, found, open, how, notes) {
   const words = partSays(part);
   notes.push(`[REQUEST] ${HEADLINE[how]}: ${model.title}.${words ? ` ${words}` : ""}`);
   playSteps(game, part, notes, `${PREFIX}${model.kind}`);
-  closeQuest(game, open, how === "failed" ? "failed" : "completed", how === "done" ? doneStep(game, model, open) : LAST_STEP[how](model, open));
+  const step = how === "done" ? doneStep(game, model, open) : LAST_STEP[how](model, open);
+  closeQuest(game, open, how === "failed" ? "failed" : "completed", step);
+  // Whoever asked remembers it, for or against the player, and it's on the record. Put right without them, there's
+  // nothing to remember.
+  const by = askedBy(game, open.asker);
+  const day = dayOf(nowOf(game));
+  if (how === "done") {
+    rememberRequest(game, open.asker, "helped", { words: aboutWords(model) });
+    leaveFact(game, model.kind, "done", `${step.replace(/^Done: you/, "You").replace(/\.$/, "")}, when ${by} asked (day ${day}).`);
+  } else if (how === "failed") {
+    rememberRequest(game, open.asker, "let_down", { words: aboutWords(model) });
+    leaveFact(game, model.kind, "failed", `You said you'd see to ${aboutWords(model)} for ${by}, and day ${dayOf(open.due)} came first.`);
+  }
   delete state.open[model.kind];
   state.rest[model.kind] = nowOf(game) + REST[how];
 }
@@ -554,6 +592,16 @@ function endHanded(game, found, open, how, notes) {
   notes.push(how === "done" ? `[REQUEST] Done by ${holder}: ${model.title}.` : `[REQUEST] Failed: ${model.title}. ${holder} didn't see to it by day ${dayOf(open.due)}.`);
   tallyDuty(game, SHIP, Math.floor(nowOf(game) / 24), { [`handed:${open.holder}`]: HANDED_DUTY[how] });
   closeQuest(game, open, how === "done" ? "completed" : "failed", how === "done" ? `Done by ${holder}.` : `Failed: ${holder} didn't see to it by day ${dayOf(open.due)}.`);
+  // Whoever asked remembers that it was seen to, or that it wasn't, a little less than if the player had done it or
+  // let it go themselves; and it's on the record.
+  const by = askedBy(game, open.asker);
+  if (how === "done") {
+    rememberRequest(game, open.asker, "seen_to", { words: aboutWords(model), about: holderKey(game, SHIP, open.holder) });
+    leaveFact(game, model.kind, "seen_to", `${holder} saw to ${aboutWords(model)} for ${by}, when you left it to them (day ${dayOf(nowOf(game))}).`);
+  } else {
+    rememberRequest(game, open.asker, "let_down", { words: aboutWords(model), w: -6 });
+    leaveFact(game, model.kind, "left_undone", `You left ${aboutWords(model)} to ${holder} for ${by}, and day ${dayOf(open.due)} came first.`);
+  }
   delete state.open[model.kind];
   state.rest[model.kind] = nowOf(game) + REST[how];
 }

@@ -22,16 +22,13 @@ gone when: fuel >= 6
 
 == no
 @{asker}: "Then I'll start shutting the lower decks down. Tell people to find a coat."
-* remember {asker} you -3: You told him to let the fuel run down
 
 == done
 @{asker}: "There's something in the tank again. I'll stop doing the sums in my sleep."
 * xp 15: Fuel for the jumps
-* remember {asker} you 8: You found fuel when the tank was nearly dry
 
 == failed
 @{asker}: "We're running on what's left in the lines, Captain. I told you days ago."
-* remember {asker} you -6: You said you'd find fuel, and didn't
 
 == gone
 @{asker}: "Fuel's come aboard. Never mind what I said."

@@ -1028,8 +1028,26 @@
         "{name} shrugs. {desc}",
         "{name} doesn't answer straight away. {desc}"
       ],
-      "_grudge": "What someone says first, before anything else, while something done to them in the chain of command is fresh in their mind (src/command.js), for anyone, with a conversation of their own or not. grumbling is for while a mutiny's brewing, said by officers whose loyalty is low and about half of everyone else. By what it was (relieved, passed over, refused, warned, promoted, restored to a post they lost, kept on against advice, arrested, heard out by a captain who gave ground, saw the captain step down, joined by the player in a mutiny, betrayed by the player to the captain, warned of a mutiny by the player), with _by_you for when the player did it. {title} is the post's name (quartermaster), {post} is the quartermaster's post, {by} is who did it and {who} is who it was for. Each person says the same line about the same thing.",
+      "_grudge": "What someone says first, before anything else, while something done to them in the chain of command is fresh in their mind (src/command.js), for anyone, with a conversation of their own or not. grumbling is for while a mutiny's brewing, said by officers whose loyalty is low and about half of everyone else. By what it was (relieved, passed over, refused, warned, promoted, restored to a post they lost, kept on against advice, arrested, heard out by a captain who gave ground, saw the captain step down, joined by the player in a mutiny, betrayed by the player to the captain, warned of a mutiny by the player, and for a few days after something they asked the player for: helped, seen to by whoever the captain left it to, let down or turned down), with _by_you for when the player did it. {title} is the post's name (quartermaster), {post} is the quartermaster's post, {by} is who did it and {who} is who it was for. Each person says the same line about the same thing.",
       "grudge": {
+        "helped_by_you": [
+          "You came through when I asked. I won't forget it.",
+          "Thank you again, for what you did when I asked. I mean it.",
+          "I owe you one. More than one, probably."
+        ],
+        "seen_to_by_you": [
+          "{who} saw to it in the end, what I asked you about. Thank you for passing it on.",
+          "It got done, what I asked you for. {who} saw to it."
+        ],
+        "let_down_by_you": [
+          "I asked you for help, and you said you'd see to it. I'm still waiting to hear why you didn't.",
+          "You said yes, and then nothing. I remember that.",
+          "Next time I need something, I'll ask someone who does it."
+        ],
+        "turned_down_by_you": [
+          "You told me no. Fair enough. I still think it was needed.",
+          "I asked, and you said no. I won't ask twice."
+        ],
         "relieved_by_you": [
           "You took {post} off me and gave it to {who}. I hope you counted what that cost, Captain.",
           "Captain. Come to see how {who} is managing my work?",

@@ -22,16 +22,13 @@ gone when: stock parts_crate >= 6
 
 == no
 @{asker}: "Then the next thing that breaks stays broken."
-* remember {asker} you -3: You told him to make do without parts
 
 == done
 @{asker}: "Two crates in the lockers. The next thing that breaks gets fixed."
 * xp 15: Parts for the engineers
-* remember {asker} you 8: You brought parts when the lockers were nearly bare
 
 == failed
 @{asker}: "Still no parts, and the hull's wearing where I can't mend it. You said you'd get them."
-* remember {asker} you -6: You said you'd get parts, and didn't
 
 == gone
 @{asker}: "Parts came aboard. That'll do for now."

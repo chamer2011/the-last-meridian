@@ -183,7 +183,7 @@ test("buying two crates of medicine at a port finishes it: their line, XP and a 
   const notes = rq.advanceRequests(game);
   assert.match(told(notes)[0], /^\[REQUEST\] Done: Medicine for the medbay\. Dr\. Sen Aduro: "Two crates/);
   assert.equal(game.xp, xp + 15);
-  assert.ok(notes.some((one) => /Dr\. Aduro will remember that of you/.test(one)));
+  assert.equal(game.command.meridian.memory.aduro.at(-1).kind, "helped", "Dr. Aduro remembers it");
   assert.equal(q.status, "completed");
   assert.equal(q.objective, "Done: you brought 2 medicine crates aboard.");
   assert.deepEqual(game.requests.open, {});

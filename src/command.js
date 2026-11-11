@@ -806,9 +806,21 @@ const MEMORY = {
   sided_against: { weight: 0, words: "saw {by} side against {faction}" },
   // Something the written story leaves them remembering, with its own weight and words.
   story: { weight: 0, words: "{words}" },
+  // What came of something they asked the player for (src/requests.js): {words} is what it was. Said with their first
+  // words only for a few days, the thanks or the reproach being for next time, not for every talk for a month.
+  helped: { weight: 10, words: "asked {by} for help ({words}), and got it", recent: 3 },
+  seen_to: { weight: 4, words: "asked {by} for help ({words}), and {who} saw to it", recent: 3 },
+  let_down: { weight: -10, words: "asked {by} for help ({words}), and was let down", recent: 3 },
+  turned_down: { weight: -4, words: "asked {by} for help ({words}), and was told no", recent: 3 },
 };
 const memoriesOf = (game, place, key) => stateOf(game, place)?.memory?.[key] ?? [];
 const fadeOf = (place) => commandOf(place)?.reviews?.fade || 30;
+// Someone aboard the Meridian left remembering what the player did about what they asked: helped, seen_to, let_down or
+// turned_down, with what it was in words (src/requests.js). w is a weight of its own, for a request handed on.
+export function rememberRequest(game, key, kind, { words = null, about = null, w = undefined } = {}) {
+  if (!MEMORY[kind] || !commandOf(SHIP_PLACE)) return;
+  remember(game, SHIP_PLACE, key, kind, { by: YOU, about, ...(w !== undefined ? { w } : {}), ...(words ? { words } : {}) });
+}
 const strengthOf = (game, place, one) => 0.5 ** (Math.max(0, dayNow(game) - one.day) / fadeOf(place));
 function remember(game, place, key, kind, { by = null, about = null, post = null, day = dayNow(game), w = undefined, words = undefined } = {}) {
   if (!key || key === YOU) return;
@@ -1292,11 +1304,13 @@ export function grudgeLine(game, key) {
   if (!lines || !key) return null;
   const linesFor = (one) => (one.by === YOU && lines[`${one.kind}_by_you`]) || lines[one.kind];
   for (const place of Object.keys(WORLD_COMMAND)) {
-    const fresh = memoriesOf(game, place, key).filter((one) => one.kind !== "asked" && strengthOf(game, place, one) >= 0.5 && Array.isArray(linesFor(one)) && linesFor(one).length).at(-1);
+    // A memory said only while it's recent (the thanks for a request) is said only in those first days.
+    const recent = (one) => MEMORY[one.kind]?.recent === undefined || dayNow(game) - one.day <= MEMORY[one.kind].recent;
+    const fresh = memoriesOf(game, place, key).filter((one) => one.kind !== "asked" && strengthOf(game, place, one) >= 0.5 && recent(one) && Array.isArray(linesFor(one)) && linesFor(one).length).at(-1);
     if (!fresh) continue;
     const list = linesFor(fresh);
     const post = postById(place, fresh.post);
-    const values = { title: post?.title ?? "", post: post ? `the ${post.title}'s post` : "the post", by: calledBy(game, place, fresh.by), who: calledBy(game, place, fresh.about) };
+    const values = { title: post?.title ?? "", post: post ? `the ${post.title}'s post` : "the post", by: calledBy(game, place, fresh.by), who: calledBy(game, place, fresh.about), words: fresh.words ?? "" };
     return list[seedFrom(`${key}/${fresh.day}/${fresh.kind}`) % list.length].replace(/\{(\w+)\}/g, (_, name) => values[name] ?? "");
   }
   // While a mutiny's brewing, the discontented grumble instead.

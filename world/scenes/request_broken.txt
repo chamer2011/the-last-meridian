@@ -28,16 +28,13 @@ handed to: the chief engineer
 
 == no
 @{asker}: "Then it stays broken till we've parts."
-* remember {asker} you -2: You left the {part} broken till there were parts
 
 == done
 @{asker}: "The {part}'s working. Not how I'd have done it, but working."
 * xp 20: Something broken
-* remember {asker} you 6: You bodged the {part} back to working when there were no parts
 
 == failed
 @{asker}: "The {part} in {room} is still dead. I thought you were seeing to it."
-* remember {asker} you -4: You said you'd fix the {part}, and didn't
 
 == gone
 @{asker}: "Never mind the {part}. A crate turned up, and it's fixed properly now."
