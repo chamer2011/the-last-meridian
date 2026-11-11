@@ -22,13 +22,18 @@
 //   last:  the kind asked last, so the same kind isn't asked twice running
 //   n:     how many have been taken on, for the quests' ids
 //
+// Off the ship, at the ports: someone there by name, or someone there, asks, about what the port is short of or the
+// trouble it's in (? supply, ? trouble), and can buy things from the player over the market price (needs: sell ...),
+// with standing at that port, with whoever holds it ({port}), as the reward.
+//
 // Who's asked depends on the player's life (the for: line): the captain gets their officers' troubles to decide, crew
 // get orders from the officer over their job (as: an order, which costs more to refuse), and anyone whose life began
 // somewhere else is asked by the people where they are: their boss, or someone there.
 
 import { SKILLS } from "./character-data.js";
 import { findCharacter, fullName } from "./campaign.js";
-import { ITEMS, LOCATIONS } from "./data.js";
+import { FACTIONS, ITEMS, LOCATIONS } from "./data.js";
+import { itemFactor } from "./daily.js";
 import { TROUBLES, YOU, calledBy, commandOf, deposedStart, holderKey, jobByWords, jobOf, lostReason, onJob, personByWords, postById, postByWords, postOf, rememberRequest, stillAlive, storyCommand, tallyDuty, troublesOf } from "./command.js";
 import { FACT_ID, clearFact, recordFact } from "./record.js";
 import { dueWords, heldUp } from "./quests.js";
@@ -95,7 +100,11 @@ function readWho(words, problems, key) {
   if (job) return { job, room: model?.jobs.find((one) => one.id === job)?.room ?? null, words: who };
   const person = personByWords(SHIP, who);
   if (person && person !== YOU && person !== "nobody") return { person, room: null, words: who };
-  problems.push(`${key}: there's no post, job or person aboard called ${who || "nothing"}`);
+  // Someone with a file at another place, by their name or another they go by: asked there, when the player's there.
+  const plainName = (words) => String(words ?? "").trim().toLowerCase();
+  const elsewhere = Object.keys(WORLD_CHARACTERS).find((one) => [WORLD_CHARACTERS[one].name, ...(WORLD_CHARACTERS[one].aliases ?? [])].some((name) => plainName(name) === plainName(who)));
+  if (elsewhere && WORLD_CHARACTERS[elsewhere].location && LOCATIONS[WORLD_CHARACTERS[elsewhere].location]) return { person: elsewhere, place: WORLD_CHARACTERS[elsewhere].location, room: null, words: who };
+  problems.push(`${key}: there's no post, job or person called ${who || "nothing"}`);
   return null;
 }
 
@@ -133,8 +142,10 @@ function readAsks(words, problems) {
 //   talk to the quartermaster                                                       (talk)
 //   go to haven                                                                     (go)
 //   pass engineering, pass engineering at the air plant, pass persuasion with {asker} (pass)
-const NEEDS_HELP = "needs: is what's wanted: work a shift, work 2 shifts, medicine crates aboard +2, ration crates in the pantry +2, fuel in the tank +3, fix a part waiting for repairs, fix the air plant, give 1 medkit to {asker}, talk to the quartermaster, talk to {about}, go to haven, pass engineering at the air plant, carry {about} to the medbay, or your word";
+const NEEDS_HELP = "needs: is what's wanted: sell 3 ration packs to {asker}, at half again the market price, work a shift, work 2 shifts, medicine crates aboard +2, ration crates in the pantry +2, fuel in the tank +3, fix a part waiting for repairs, fix the air plant, give 1 medkit to {asker}, talk to the quartermaster, talk to {about}, go to haven, pass engineering at the air plant, carry {about} to the medbay, or your word";
 const COUNT_WORDS = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5 };
+// What someone pays for what they buy from the player, against what it costs on the market where they are.
+const PRICE_WORDS = { "the market price": 1, "half again the market price": 1.5, "twice the market price": 2 };
 function readNeeds(words, problems) {
   const text = String(words ?? "").trim();
   let found;
@@ -167,6 +178,17 @@ function readNeeds(words, problems) {
     if (!item) problems.push(`needs: there's no item called ${found[2].trim()}`);
     const to = readWho(found[3], problems, "needs");
     return n && item && to ? { kind: "give", item, n, to } : null;
+  }
+  // Sold to someone there and then, paid at what it costs on that market, or over it.
+  if ((found = text.match(/^sell\s+(\S+)\s+(.+?)\s+to\s+(.+?)(?:,\s*at\s+(.+?))?$/i))) {
+    const n = COUNT_WORDS[found[1].toLowerCase()] ?? Number(found[1]);
+    const item = itemByWords(found[2]);
+    const factor = found[4] ? PRICE_WORDS[found[4].trim().toLowerCase()] : 1;
+    if (!Number.isInteger(n) || n < 1) problems.push("needs: sell needs a number more than 0");
+    if (!item) problems.push(`needs: there's no item called ${found[2].trim()}`);
+    if (!factor) problems.push(`needs: sell ends with at the market price, at half again the market price or at twice the market price, not at ${found[4].trim()}`);
+    const to = readWho(found[3], problems, "needs");
+    return n && item && to && factor ? { kind: "sell", item, n, to, factor } : null;
   }
   if ((found = text.match(/^talk\s+to\s+(.+)$/i))) {
     const to = readWho(found[1], problems, "needs");
@@ -236,12 +258,14 @@ function readBy(words, problems) {
   return Number(found[1]) * (/^day/i.test(found[2]) ? 24 : 1);
 }
 
+// A request's conditions can name {place}, the place it was asked at: supply food >= 100 at {place}.
+const placed = (text, place) => (text ? text.replaceAll("{place}", place) : text);
 function readCondition(text, key, problems, needed = true) {
   if (!text) {
     if (needed) problems.push(`${key}: is missing`);
     return null;
   }
-  for (const found of parseCondition(text).problems) problems.push(`${key}: ${found}`);
+  for (const found of parseCondition(placed(text, "haven")).problems) problems.push(`${key}: ${found}`);
   return text;
 }
 
@@ -366,7 +390,7 @@ export function compileRequest(kind, scene) {
   if (parts.handed && !top.handed) problems.push("it has a handed part, so it needs a handed to: line saying which post it goes to");
   if (top.handed && !parts.handed) problems.push("it has a handed to: line, so it needs a handed part for what they say when it's left to them");
   if (top.handed && !top.gone && model.need && model.need.kind !== "fix") problems.push("handed to: needs a gone when: line, which is how the game knows they got it done");
-  if (parts.given && model.need && model.need.kind !== "give") problems.push("a given part is for a request that needs something given");
+  if (parts.given && model.need && !["give", "sell"].includes(model.need.kind)) problems.push("a given part is for a request that needs something given or sold");
   if (model.need?.kind === "bring" && !top.gone) problems.push("gone when: is missing: a request to bring something needs it, so it can end when someone else brings it");
   compiled.set(scene, model);
   return model;
@@ -452,7 +476,7 @@ function whoNow(game, who, { asker = null, already = null, about = null } = {}) 
     if (already && jobOf(game, SHIP, already) === who.job && free(game, already)) return already;
     return onJob(game, SHIP, who.job).find((key) => free(game, key) && !lostReason(game, SHIP, key)) ?? onJob(game, SHIP, who.job).find((key) => free(game, key)) ?? null;
   }
-  return free(game, who.person) ? who.person : null;
+  return free(game, who.person, who.place ?? SHIP) ? who.person : null;
 }
 const askerNow = (game, model, open = null) => whoNow(game, model.asker, { already: open?.asker ?? null });
 
@@ -465,11 +489,25 @@ export function askerStandIn(game, key) {
 }
 const askedBy = (game, key) => (key ? upperFirst(calledBy(game, SHIP, key)) : "Someone");
 
+// Whoever holds a place, for standing there: the side that has the most say there now, if it's one of the factions,
+// or else the faction the place belongs to. A place run by people who aren't one of the factions (Cinder Reach's
+// company and strikers, Tessen's colonists) has no standing to gain, and a * faction {port} line there does nothing.
+function portOf(game, place) {
+  const holder = game.world?.places?.[place]?.holder;
+  if (FACTIONS[holder]) return holder;
+  return FACTIONS[LOCATIONS[place]?.faction] ? LOCATIONS[place].faction : null;
+}
+
 // The stand-ins a request's lines can use: {asker}, and for a part to fix, {part} and {room}.
 function extrasFor(game, open) {
   const extra = { asker: askerStandIn(game, open.asker) };
   const boss = isCaptain(game) ? null : startOf(game)?.people?.[0];
   if (boss) extra.boss = askerStandIn(game, boss);
+  // Where it was asked, and whoever holds it: in the words their names, in a * faction line the faction's id.
+  const place = open.place ?? SHIP;
+  extra.place = { id: place, name: LOCATIONS[place]?.name ?? place };
+  const port = portOf(game, place);
+  if (port) extra.port = { id: port, name: FACTIONS[port].name };
   const words = open.part ? partWords(SHIP, open.part) : null;
   if (words) Object.assign(extra, { part: { id: open.part, name: words.name }, room: { id: open.part, name: words.room } });
   if (open.about) extra.about = askerStandIn(game, open.about);
@@ -526,6 +564,8 @@ function objectiveOf(game, model, open, got) {
       const words = partWords(SHIP, open.part);
       return words ? `Fix the ${words.name} in ${words.room}` : "Fix what's broken";
     }
+    case "sell":
+      return `Sell ${nameOf(game, open.to)} ${need.n} ${itemName(need.item, need.n)} at ${open.give?.price ?? "?"} credits each${counted(need, got)}`;
     case "give":
       return need.n === 1 ? `Give ${nameOf(game, open.to)} the ${itemName(need.item, 1)}` : `Give ${nameOf(game, open.to)} ${need.n} ${itemName(need.item, need.n)}${counted(need, got)}`;
     case "talk":
@@ -553,7 +593,8 @@ const withoutCount = (text) => String(text ?? "").replace(/ \(\d+\/\d+\)$/, "");
 function totalOf(game, need, open) {
   switch (need.kind) {
     case "fix": return putsOf(game, `fixed:${SHIP}`, open.part);
-    case "give": return putsOf(game, `give:${open.to}`, need.item);
+    case "give":
+    case "sell": return putsOf(game, `give:${open.to}`, need.item);
     case "talk": return putsOf(game, "talk", open.to);
     // Being there is what counts, however they got there.
     case "go":
@@ -578,7 +619,7 @@ function progressOf(game, model, open) {
 // Whether what was wanted was put right without the player: the gone when: line, and for a part, its being fixed.
 // For a request about someone's trouble, the trouble being over: while the player carries them, it isn't.
 const putRight = (game, model, open) => (model.need.kind === "fix" && !partBroken(game, SHIP, open.part))
-  || Boolean(model.gone && conditionHolds(game, model.gone))
+  || Boolean(model.gone && conditionHolds(game, placed(model.gone, open.place ?? SHIP)))
   || Boolean(model.about && !open.carrying && !troubleStands(game, model, open));
 
 // ---- What's left behind -------------------------------------------------------------------------------------
@@ -680,6 +721,8 @@ export function answerRequest(game, kind, answer) {
   const to = model.need.to ?? model.need.with ?? null;
   if (to) open.to = whoNow(game, to, { asker: open.asker, about: open.about }) ?? open.asker;
   if (model.need.kind === "give") open.give = { item: model.need.item, n: model.need.n, to: open.to };
+  // What they'll pay for each, fixed now: what it costs on the market here, times what they offered.
+  if (model.need.kind === "sell") open.give = { item: model.need.item, n: model.need.n, to: open.to, price: Math.max(1, Math.round((ITEMS[model.need.item]?.price ?? 0) * itemFactor(game, ITEMS[model.need.item]) * model.need.factor)) };
   open.base = totalOf(game, model.need, open);
   const objective = objectiveOf(game, model, open, 0);
   addQuest(game, model, open, { desc: model.order ? `${by} gave you the order on day ${dayOf(now)}.` : `${by} asked you on day ${dayOf(now)}.`, objective });
@@ -717,6 +760,8 @@ function playSteps(game, part, notes, where) {
   const turn = newTurnLimits();
   for (const step of part?.do ?? []) {
     const { tool, set, clear, line, ...input } = step;
+    // Standing at a place nobody of the factions holds: there's nobody to have it with.
+    if (tool === "change_faction" && /^{/.test(String(input.faction ?? ""))) continue;
     try {
       if (set) recordFact(game, { id: set, text: step.text ?? null, from: where });
       else if (clear) clearFact(game, clear);
@@ -741,6 +786,7 @@ const LAST_STEP = {
 function doneStep(game, model, open) {
   const { need } = model;
   if (need.kind === "bring") return `Done: you brought ${needWords(need, need.n)} ${need.item === "fuel" ? "to the tank" : need.into}.`;
+  if (need.kind === "sell") return `Done: you sold ${nameOf(game, open.to)} ${need.n} ${itemName(need.item, need.n)} for ${(open.paid ?? need.n) * (open.give?.price ?? 0)} credits.`;
   return `Done: ${withoutCount(objectiveOf(game, model, open, need.n)).replace(/^./, (ch) => ch.toLowerCase())}.`;
 }
 
@@ -809,7 +855,7 @@ function settleOffered(game, found, one) {
   const { model } = found;
   // Nobody's waiting to be asked about something that's been put right, or by someone who can't ask any more.
   const asker = askerNow(game, model, one);
-  const stale = !asker || !whenHolds(game, model) || (model.need.kind === "fix" && !partBroken(game, SHIP, one.part)) || Boolean(model.about && !troubleStands(game, model, one));
+  const stale = !asker || !whenHolds(game, model, one) || (model.need.kind === "fix" && !partBroken(game, SHIP, one.part)) || Boolean(model.about && !troubleStands(game, model, one));
   if (stale) {
     delete game.requests.open[one.kind];
     game.requests.rest[one.kind] = nowOf(game) + REST.dropped;
@@ -826,6 +872,8 @@ function settleAccepted(game, found, one, notes) {
   }
   const got = progressOf(game, model, one);
   const quest = (game.quests ?? []).find((q) => q.id === one.quest);
+  // What's been sold is paid for as it's handed over.
+  if (model.need.kind === "sell") payFor(game, one, Math.min(model.need.n, Math.floor(got)), notes);
   if (got >= model.need.n) return endRequest(game, found, one, "done", notes);
   if (putRight(game, model, one)) return endRequest(game, found, one, got > 0 ? "done" : "gone", notes);
   if (nowOf(game) >= one.due) return endRequest(game, found, one, "failed", notes);
@@ -841,6 +889,15 @@ function settleAccepted(game, found, one, notes) {
     one.reminded = true;
     notes.push(`[REQUEST] Due tomorrow: ${model.title}. ${objective}.`);
   }
+}
+
+function payFor(game, one, sold, notes) {
+  const owed = sold - (one.paid ?? 0);
+  if (owed <= 0 || !one.give?.price) return;
+  const total = owed * one.give.price;
+  game.credits = (game.credits ?? 0) + total;
+  one.paid = (one.paid ?? 0) + owed;
+  notes.push(`[REQUEST] ${nameOf(game, one.to)} pays you ${total} credits for ${owed === 1 ? `the ${itemName(one.give.item, 1)}` : `${owed} ${itemName(one.give.item, owed)}`}.`);
 }
 
 function settleHanded(game, found, one, notes) {
@@ -887,13 +944,15 @@ function partToFix(game, need) {
 }
 
 // Whether a kind's when: line holds now (a kind without one comes up whenever its life and its trouble allow).
-const whenHolds = (game, model) => !model.when || conditionHolds(game, model.when);
+// Before anyone's asked, {place} is where the player is; once they have, where it was asked.
+const whenHolds = (game, model, open = null) => !model.when || conditionHolds(game, placed(model.when, open?.place ?? game.location));
 // Whether the player is in the middle of something the story comes first for: a written scene being played with them
 // (not one waiting for someone elsewhere), a fight, a check, or a computer.
 const inTheMiddle = (game) => Boolean(game.combat || game.check || game.computer || (game.scene && !heldUp(game)));
 // Where whoever asks is found: their boss where the player's life is, someone here where the player is, and everyone
 // else aboard the Meridian.
 function askedAt(game, model) {
+  if (model.asker.place) return model.asker.place;
   if (model.asker.boss) return startOf(game)?.place ?? null;
   if (model.asker.here) return game.location;
   return SHIP;
@@ -912,7 +971,7 @@ function roomWords(game, model, asker) {
     const start = startOf(game);
     return start?.room ? roomOf(mapFor(start.place), start.room)?.name ?? null : null;
   }
-  if (model.asker.here) return personWhere(game, asker)?.room ?? null;
+  if (model.asker.here || model.asker.place) return personWhere(game, asker)?.room ?? null;
   return null;
 }
 // How the line puts it: orders from whoever's over the player, a decision for the captain from one of their officers,
@@ -964,7 +1023,7 @@ function newAsks(game, kinds) {
     const part = model.need.kind === "fix" ? partToFix(game, model.need) : null;
     if (model.need.kind === "fix" && !part) continue;
     const state = stateOf(game);
-    state.open[model.kind] = { kind: model.kind, asker, at: now, state: "offered", ...(part ? { part } : {}), ...(trouble ? { about: trouble.about, post: trouble.post ?? null } : {}) };
+    state.open[model.kind] = { kind: model.kind, asker, at: now, place: askedAt(game, model), state: "offered", ...(part ? { part } : {}), ...(trouble ? { about: trouble.about, post: trouble.post ?? null } : {}) };
     state.asked[model.kind] = now;
     state.last = model.kind;
     // What can't wait doesn't take a day from the pace.

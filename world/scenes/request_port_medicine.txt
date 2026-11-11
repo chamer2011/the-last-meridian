@@ -1,0 +1,41 @@
+# Short of medicine
+// Draft by the AI (Claude), 2026-11-11, not yet edited by the owner. At any port that's short of medicine (under 80),
+// someone there with a name asks anyone who comes through to sell them a medkit, at half again what one costs on the
+// market here. Medkits are on the market at Haven, Vantor Prime, Tessen, Anselm's Mercy, Bastion Nine and Lumen
+// Sanctuary. {place} is the port, {port} whoever holds it.
+for: anyone
+when: supply medicine < 80
+asks: someone here
+needs: sell 1 medkit to {asker}, at half again the market price
+by: 3 days
+gone when: supply medicine >= 100 at {place}
+
+== ask
+@{asker}: "There's no medicine to be had on {place}, not at any price that makes sense. A medkit, if you've one, or can get one. I'll pay half again what they cost here."
+> Here, take mine -> given ? has medkit
+> I'll find one -> yes
+> Not now -> later
+> I can't -> no
+
+== yes
+@{asker}: "Thank you. Soon, if you can."
+
+== given
+@{asker}: "You've no idea. Here."
+
+== later
+@{asker}: "I'll still be here."
+
+== no
+@{asker}: "I understand. Everyone's keeping theirs."
+
+== done
+@{asker}: "It's done some good already. Thank you."
+* faction {port} 3: You sold medicine on {place} when it was short
+* xp 10: Short of medicine
+
+== failed
+@{asker}: "I'd have gone elsewhere, if I'd known you weren't coming."
+
+== gone
+@{asker}: "There's medicine on the market again. Never mind."

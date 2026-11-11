@@ -929,7 +929,11 @@ function thingLayer() {
 }
 
 // "Give the medkit", or "Give 2 ration crates".
-const giveLabel = (wants) => (wants.n === 1 ? `Give the ${wants.name.toLowerCase()}` : `Give ${wants.n} ${wants.name.toLowerCase()}s`);
+// Sold when they're paying for it, at so much each.
+const giveLabel = (wants) => {
+  const what = wants.n === 1 ? `the ${wants.name.toLowerCase()}` : `${wants.n} ${wants.name.toLowerCase()}s`;
+  return wants.sell ? `Sell ${what} (${wants.sell * wants.n} cr)` : `Give ${what}`;
+};
 
 // What can be done with someone from their window: the same as their menu, with Attack asking first.
 function personChoices(thing) {
@@ -958,7 +962,7 @@ function personChoices(thing) {
   return [
     ["Talk", "", () => go({ action: "go", to })],
     // Someone waiting for something the player has on them can be given it (src/requests.js).
-    ...(person.wants ? [[giveLabel(person.wants), "what they asked you for", () => go({ action: "go", to }, () => deed("give", person.key))]] : []),
+    ...(person.wants ? [[giveLabel(person.wants), person.wants.sell ? "what they'll pay for" : "what they asked you for", () => go({ action: "go", to }, () => deed("give", person.key))]] : []),
     ["Registry", "print their record", () => registry(person.key)],
     ["Pickpocket", person.wary ? "they're watching their pockets" : person.pocket, () => go({ action: "go", to }, () => deed("pickpocket", person.key)), person.wary],
     ["Attack", "starts a fight", asking(true)],
@@ -1085,7 +1089,7 @@ function menuFor(target) {
       color: person.color,
       items: [
         { label: "Talk", run: () => go({ action: "go", to }) },
-        ...(person.wants ? [{ label: giveLabel(person.wants), detail: "what they asked you for", run: () => go({ action: "go", to }, () => deed("give", person.key)) }] : []),
+        ...(person.wants ? [{ label: giveLabel(person.wants), detail: person.wants.sell ? "what they'll pay for" : "what they asked you for", run: () => go({ action: "go", to }, () => deed("give", person.key)) }] : []),
         { label: "Look", run: () => lookAtPerson(person) },
         { label: "Registry", detail: "print their record", run: () => registry(person.key) },
         { label: "Pickpocket", detail: person.wary ? "they're watching their pockets" : person.pocket, disabled: Boolean(person.wary), run: () => go({ action: "go", to }, () => deed("pickpocket", person.key)) },

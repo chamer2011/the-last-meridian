@@ -289,7 +289,7 @@ export function failForDeath(game, scene, emit = () => {}) {
 // words. A scene with none is itself, and a filled one is remembered for as long as the same people stand in.
 const STAND_IN = /\{([a-z_]+)\}/g;
 // A chain-of-command line's who and other ("* remember {asker} you 10") are filled with the id too.
-const ID_FIELDS = new Set(["with", "enemy", "allies", "enemy_followers", "check", "who", "other", "post"]);
+const ID_FIELDS = new Set(["with", "enemy", "allies", "enemy_followers", "check", "who", "other", "post", "faction"]);
 function fillStandIns(value, values, field = null) {
   if (typeof value === "string") {
     return value.replace(STAND_IN, (all, name) => {
@@ -689,8 +689,9 @@ export function sceneProblems(scene, id = "the scene", { talk = false } = {}) {
   // A scene's stand-ins are checked as if real people stood in them, and one the game doesn't fill in is a mistake.
   // A request has whoever's asking as well, checked as if Dr. Aduro were; what's broken, as if the speaker in the Galley
   // were; whose trouble it is, as if Kara Tarrow had lost the post of chief medical officer to Dr. Aduro; and the
-  // player's boss, as if they were a dock hand under Mott Jessup.
-  const samples = { ...sampleStandIns(), ...(String(id).startsWith("request_") ? { asker: { id: "aduro", name: "Dr. Sen Aduro" }, part: { id: "speaker", name: "speaker" }, room: { id: "galley", name: "the Galley" }, about: { id: "tarrow", name: "Kara Tarrow" }, post: { id: "chief_medical_officer", name: "chief medical officer" }, holder: { id: "aduro", name: "Dr. Sen Aduro" }, boss: { id: "mott", name: "Mott Jessup" } } : {}) };
+  // player's boss, as if they were a dock hand under Mott Jessup; and the place it's asked at, and whoever holds it, as if
+  // it were Haven Station under the Kessara Syndicate.
+  const samples = { ...sampleStandIns(), ...(String(id).startsWith("request_") ? { asker: { id: "aduro", name: "Dr. Sen Aduro" }, part: { id: "speaker", name: "speaker" }, room: { id: "galley", name: "the Galley" }, about: { id: "tarrow", name: "Kara Tarrow" }, post: { id: "chief_medical_officer", name: "chief medical officer" }, holder: { id: "aduro", name: "Dr. Sen Aduro" }, boss: { id: "mott", name: "Mott Jessup" }, place: { id: "haven", name: "Haven Station" }, port: { id: "drift", name: "the Kessara Syndicate" } } : {}) };
   const unknown = [...new Set([...JSON.stringify(scene ?? {}).matchAll(/\{([a-z_]+)\}/g)].map((one) => one[1]).filter((name) => !samples[name]))];
   for (const name of unknown) problems.push(`${id}: {${name}} isn't a stand-in the game fills in: the stand-ins are ${Object.keys(samples).map((one) => `{${one}}`).join(", ")}`);
   scene = fillStandIns(scene, samples);

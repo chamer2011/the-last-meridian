@@ -7,12 +7,14 @@ import { FACTIONS, ITEMS, LOCATIONS, STATS } from "./data.js";
 import { START_LIST } from "./role.js";
 import { endedWith } from "./record.js";
 import { DIFFICULTY, attr, maxHp, skillRank } from "./rules.js";
-import { WORLD_THREADS, endingsOf } from "./world.js";
+import { DAILY, WORLD_THREADS, endingsOf } from "./world.js";
 import { partsWaitingIds, systemHolds } from "./systems.js";
 import { stockOf, storeByWords, storeNames } from "./logistics.js";
 
 // The ship whose stores "stock" counts. Spelt here rather than taken from src/ship.js, which reads scenes itself.
 const SHIP_ID = "meridian";
+// What a port's supplies are, in world/daily.json.
+const SUPPLIES = ["food", "fuel", "medicine", "parts"];
 import { MUTINY_CONDITIONS, MUTINY_OUTCOMES, brigHolds, commandWords, knownPerson, loyaltyFor, mutinyHolds, rivalHolds, shortHolds, storyHolds } from "./command.js";
 
 // Two people written one after the other, as in "* remember marrow tarrow -10": the first split where both are someone.
@@ -165,6 +167,28 @@ export function parseCondition(text) {
         Object.assign(term, { id, op, amount: Number(amount), store });
         break;
       }
+      case "supply": {
+        // How much a port has of one of its supplies, where 100 is what's usual for it (under 80 is short, under 50
+        // scarce): supply food < 80 where the player is, or supply food < 80 at haven. world/daily.json has the places.
+        const cut = rest.findIndex((word) => word.toLowerCase() === "at");
+        const head = cut >= 0 ? rest.slice(0, cut) : rest;
+        const place = cut >= 0 ? rest.slice(cut + 1).join(" ") : null;
+        const [good, op, amount] = head;
+        if (head.length !== 3 || !COMPARE[op] || !/^\d+$/.test(amount ?? "")) problems.push(`"supply" needs food, fuel, medicine or parts, one of >= <= > < = !=, and a number, and can end with at and a place: "${raw.trim()}"`);
+        else if (!SUPPLIES.includes(good)) problems.push(`"supply" is followed by food, fuel, medicine or parts, not ${good}`);
+        if (place !== null && !LOCATIONS[place]) problems.push(`there's no place called ${place || "nothing"}`);
+        Object.assign(term, { id: good, op, amount: Number(amount), place });
+        break;
+      }
+      case "trouble": {
+        // Something bad going on at a port, a strike, a raid or a fight (the events marked trouble in world/daily.json):
+        // trouble here, or trouble at cinder.
+        const where = rest.join(" ").toLowerCase();
+        const place = where === "here" ? null : where.replace(/^at\s+/, "");
+        if (where !== "here" && (!/^at\s+/.test(where) || !LOCATIONS[place])) problems.push(`"trouble" is followed by here, or at and a place: "${raw.trim()}"`);
+        term.place = place;
+        break;
+      }
       case "fuel":
       case "credits":
       case "stress":
@@ -315,6 +339,16 @@ function termHolds(game, term, helpers) {
     case "mutiny": result = mutinyHolds(game, term.id); break;
     case "repairs": result = partsWaitingIds(game, SHIP_ID).length > 0; break;
     case "rival": result = rivalHolds(game, term.id); break;
+    case "supply": {
+      const level = game.world?.places?.[term.place ?? game.location]?.goods?.[term.id];
+      result = level !== undefined && COMPARE[term.op](level, term.amount);
+      break;
+    }
+    case "trouble": {
+      const going = game.world?.places?.[term.place ?? game.location]?.events ?? [];
+      result = going.some((event) => (DAILY.events ?? []).find((one) => one.id === event.id)?.trouble);
+      break;
+    }
     case "brig": result = brigHolds(game, term.who); break;
     case "short": result = shortHolds(game, term.id); break;
     case "down": {
@@ -400,7 +434,8 @@ export function parseEffect(text) {
     }
     case "faction": {
       const amount = signed(words[2] ?? "");
-      return FACTIONS[words[1]] && amount !== null && after ? { do: { tool: "change_faction", faction: words[1], amount, reason: after } } : { problem: "faction needs a faction's id, a number with - to lower it, then a colon and the reason: * faction fleet 2: They heard the truth" };
+      // A request's {port} is whoever holds the place it was asked at, filled in when it's played.
+      return (FACTIONS[words[1]] || words[1] === "{port}") && amount !== null && after ? { do: { tool: "change_faction", faction: words[1], amount, reason: after } } : { problem: "faction needs a faction's id, a number with - to lower it, then a colon and the reason: * faction fleet 2: They heard the truth" };
     }
     case "time": {
       const hours = signed(words[1] ?? "");

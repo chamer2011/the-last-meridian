@@ -1,0 +1,42 @@
+# Food for the ring
+// Draft by the AI (Claude), 2026-11-11, not yet edited by the owner. When Haven Station is short of food (under 80),
+// Dockmaster Jessup, on the Manifest Docks, asks anyone who comes through to sell him five ration packs at twice what
+// they cost on the market here. Ration packs are on Haven's own market too, but dearer while food's short; Tessen,
+// Bastion Nine, Cinder Reach, the Ghostlight, Maris Deep and the Sundial sell them as well. {port} is whoever holds
+// Haven.
+for: anyone
+when: at haven and supply food < 80
+asks: Mott Jessup
+needs: sell 5 ration packs to {asker}, at twice the market price
+by: 5 days
+gone when: supply food >= 100 at haven
+
+== ask
+@{asker}: "Food's short on the ring, and I've families on the docks counting what's left. Bring me five ration packs and I'll pay you twice what they cost on the market, and I'll remember who brought them."
+> Here, take them -> given ? has ration_pack
+> I'll bring them -> yes
+> Not now -> later
+> I can't -> no
+
+== yes
+@{asker}: "Five. I'll be on the docks."
+
+== given
+@{asker}: "There's a start. Here's yours."
+
+== later
+@{asker}: "The families won't wait forever."
+
+== no
+@{asker}: "Suit yourself. Someone will."
+
+== done
+@{asker}: "Five packs. That's five families fed this week. You'll find the docks friendlier for it."
+* faction {port} 5: You sold Dockmaster Jessup food for the docks when Haven was short
+* xp 15: Food for the ring
+
+== failed
+@{asker}: "You said five packs. I told the families."
+
+== gone
+@{asker}: "The supply runs are coming in again. Keep your packs."

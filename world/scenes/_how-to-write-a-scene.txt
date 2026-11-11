@@ -213,6 +213,13 @@ and join several with "and":
     rival any                        Someone aboard the Meridian is working against a post's holder (a rival,
                                      after a review). rival chief_medical_officer for that post's holder.
     brig any                         Someone's in the Meridian's brig. brig tarrow for that person.
+    supply food < 80                 How much of a supply the port the player is at has, where 100 is what's
+                                     usual for it (under 80 is short, under 50 scarce): food, fuel, medicine
+                                     or parts, with the same comparisons as credits. Add at and a place for
+                                     another port: supply food < 80 at haven. world/daily.json moves them.
+    trouble here                     Something bad is going on at the port the player is at: a strike turned
+                                     into a fight, a raid, a feud (the events marked trouble in
+                                     world/daily.json). Also trouble at and a place.
     short your job                   The player's job on the Meridian's watch bill has fewer of its own
                                      people at work than it wants (spare hands covering for someone don't
                                      count). Also short any, or short and a job by its id: short cook.
@@ -390,6 +397,8 @@ asks:       who asks: a post (the chief medical officer: whoever holds it now), 
                                 engine hand); asked only when the player is at that place
                 someone here    anyone with a name at the place the player is now, other than their
                                 boss: someone different now and then
+            Someone by name can be anyone with a file, at any place (Mott Jessup is at Haven): then they
+            ask only when the player is there.
 needs:      what's wanted, one of these:
                 medicine crates aboard +2         bought for the ship from the Ship menu
                 ration crates in the pantry +2    carried into that store by hand, or bought into it
@@ -410,6 +419,13 @@ needs:      what's wanted, one of these:
                                                   for one with that person
                 your word                         nothing more than a yes: the yes part's * lines
                                                   do what was asked, and it's done at once
+                sell 3 ration packs to {asker}    sold to them, by Sell on their right-click menu or
+                , at half again the market price  in their window, or there and then (see given,
+                                                  below), and paid for as they're handed over: at
+                                                  what they cost on the market where they asked,
+                                                  times what's offered (the market price, half
+                                                  again the market price, twice the market price;
+                                                  without it, the market price), fixed at the yes
                 work a shift                      shifts at the player's own job (its button in
                 work two shifts                   What's here, under You can); not for the captain
                 carry {about} to the medbay       the one lying there picked up by the player
@@ -428,7 +444,8 @@ handed to:  a post the captain can leave it to instead, like the chief engineer.
 
 Then the parts, in the talk window's way (see CONVERSATIONS), with {asker} for whoever's asking,
 in a request to fix something, {part} for what's broken and {room} for the room it's in, in a
-request about someone, {about}, {post} and {holder} (below), and for a life that has one, {boss}:
+request about someone, {about}, {post} and {holder} (below), for a life that has one, {boss}, and in
+any request {place}, the place it was asked at, and {port}, whoever holds it (see AT THE PORTS):
 
     == ask          what they ask. One of its choices goes to yes (or given).
     == yes          what they say to a yes. The player takes it on.
@@ -488,6 +505,17 @@ A request can take a side: what the yes and no parts' * lines do is the side tak
 rival's file has a no that the rival remembers kindly (* remember {about} you 4). {post} in a
 * line is the post's id, so * appoint {post} {asker} gives someone their post back, and
 * rivalry ends {post} ends a rivalry.
+
+AT THE PORTS
+
+A request can be about a port: for: anyone, a when: line that asks how the port is (supply food <
+80, trouble here), asks: someone here or someone there by name, and needs: sell, so they buy what's
+short from the player at more than it costs there. {place} is the port in what's said, and in a
+condition its id, so gone when: supply food >= 100 at {place} ends it once the port has food again,
+even if the player's gone elsewhere. {port} is whoever holds the place, one of the factions, and
+* faction {port} 3: The reason gives standing with them. A place run by people who aren't one of
+the factions (Cinder Reach's company and its strikers, Tessen's colonists, Maris Deep's kelpers,
+Saint Orrin's hermits) has nobody to have standing with, and the line does nothing there.
 
 HOW THEY'RE PUT
 

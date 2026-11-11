@@ -101,7 +101,7 @@ by: soon
   const { problems } = rq.compileRequest("broken", scene);
   const all = problems.join(" | ");
   assert.match(all, /there's no item called moonbeams/);
-  assert.match(all, /no post, job or person aboard called the ship's cat/);
+  assert.match(all, /no post, job or person called the ship's cat/);
   assert.match(all, /no store called the airlock/);
   assert.match(all, /by: is how long they give you/);
   assert.match(all, /needs a part called yes/);

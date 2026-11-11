@@ -1,0 +1,42 @@
+# Short of food
+// Draft by the AI (Claude), 2026-11-11, not yet edited by the owner. At any port that's short of food (under 80, where
+// 100 is what it usually has; world/daily.json moves the ports' supplies day by day), someone there with a name asks
+// anyone who comes through to sell them three ration packs, at half again what they cost on the market here. Ration
+// packs are on the market at Haven, Tessen, Bastion Nine, Cinder Reach, the Ghostlight, Maris Deep and the Sundial.
+// Haven has its own, from Dockmaster Jessup. {place} is the port, {port} whoever holds it.
+for: anyone
+when: supply food < 80 and not at haven
+asks: someone here
+needs: sell 3 ration packs to {asker}, at half again the market price
+by: 4 days
+gone when: supply food >= 100 at {place}
+
+== ask
+@{asker}: "Food's short on {place}, and it's getting shorter. If you've ration packs, or can find some, I'll take three off you, and pay half again what they cost here."
+> Here, take them -> given ? has ration_pack
+> I'll find some -> yes
+> Not now -> later
+> I can't -> no
+
+== yes
+@{asker}: "Three, then. I'll be here."
+
+== given
+@{asker}: "That's a weight off. Here's your money."
+
+== later
+@{asker}: "Don't leave it too long."
+
+== no
+@{asker}: "Then I'll ask someone else."
+
+== done
+@{asker}: "Three packs. My family will eat this week. I won't forget who brought them."
+* faction {port} 3: You sold food on {place} when it was short
+* xp 10: Short of food
+
+== failed
+@{asker}: "You said you'd bring them. I waited."
+
+== gone
+@{asker}: "The convoys are coming through again. Keep your packs."

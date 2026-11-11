@@ -622,7 +622,8 @@ function wantedFrom(game, key) {
     if (!give || give.to !== key) continue;
     const left = give.n - (putsOf(game, `give:${key}`, give.item) - (one.base ?? 0));
     const have = game.inventory?.[give.item] ?? 0;
-    if (left > 0 && have > 0) return { item: give.item, n: Math.min(left, have), name: ITEMS[give.item]?.name ?? give.item };
+    // Sold, not given, when they're paying for it (src/requests.js pays as it's handed over).
+    if (left > 0 && have > 0) return { item: give.item, n: Math.min(left, have), name: ITEMS[give.item]?.name ?? give.item, ...(give.price ? { sell: give.price } : {}) };
   }
   return null;
 }
@@ -1039,7 +1040,7 @@ export function walkCommand(game, body) {
       removeItem(game, wanted.item, wanted.n);
       notePut(game, `give:${key}`, wanted.item, wanted.n);
       const what = wanted.name.toLowerCase();
-      return { said: `[ITEM] You give ${shortName(game, entry)} ${wanted.n === 1 ? `the ${what}` : `${wanted.n} ${what}s`}.` };
+      return { said: `[ITEM] You ${wanted.sell ? "hand" : "give"} ${shortName(game, entry)} ${wanted.n === 1 ? `the ${what}` : `${wanted.n} ${what}s`}.` };
     }
     case "pickpocket":
     case "attack": {

@@ -1,0 +1,37 @@
+# Hurt in the trouble
+// Draft by the AI (Claude), 2026-11-11, not yet edited by the owner. While there's trouble at a port (a strike turned
+// into a fight, a raid, a feud: the events marked trouble in world/daily.json), someone there with a name asks anyone
+// who comes through for a medkit for someone hurt in it. Given, not sold: what they get back is standing with whoever
+// holds the place. {place} is the port, {port} whoever holds it.
+for: anyone
+when: trouble here
+asks: someone here
+needs: give 1 medkit to {asker}
+by: 1 day
+gone when: not trouble at {place}
+
+== ask
+@{asker}: "You'll have heard what's going on on {place}. Someone I know got caught in it, and there's nothing to patch them up with. A medkit, if you've one to spare?"
+> Here, take mine -> given ? has medkit
+> I'll find one -> yes
+> I can't -> no
+
+== yes
+@{asker}: "Quick as you can."
+
+== given
+@{asker}: "Thank you. I'll take it to them now."
+
+== no
+@{asker}: "No. Nobody has, these days."
+
+== done
+@{asker}: "They're patched up. People here will hear who did that."
+* faction {port} 5: You gave a medkit for someone hurt in the trouble on {place}
+* xp 10: Hurt in the trouble
+
+== failed
+@{asker}: "It was too late by then."
+
+== gone
+@{asker}: "It's quieter now, and they've been seen to. Thank you for meaning to."
