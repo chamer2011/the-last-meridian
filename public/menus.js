@@ -453,7 +453,6 @@ export const MENUS = {
   beliefs: { label: "Beliefs", command: "beliefs", about: "Where you stand, and your standing with each faction", view: beliefsMenu },
   dossier: { label: "Your past", command: "dossier", about: "Your record, career and life history", view: dossierMenu },
   people: { label: "People", command: "people", about: "Everyone you've met or heard of", view: peopleMenu },
-  quests: { label: "Quests", command: "quests", about: "What you've taken on, what each needs next, and the journal, or press J", window: "quests" },
   board: { label: "Story board", command: "board", about: "Every story as boxes and arrows, to read and change, saved to its file", board: true, view: () => el("div") },
   leads: { label: "Leads", command: "leads", about: "Stories you could start here, and what people are saying", view: leadsMenu },
   codex: { label: "What you know", command: "codex", about: "Places, factions, ships and ideas you've come across", view: codexMenu },
@@ -469,7 +468,7 @@ export const MENUS = {
 // The groups the menus sit in on the rail, each under its own heading.
 export const MENU_GROUPS = [
   { title: "You", ids: ["skills", "traits", "perks", "beliefs", "dossier"] },
-  { title: "The story", ids: ["quests", "leads", "board", "people", "codex", "bestiary"] },
+  { title: "The story", ids: ["leads", "board", "people", "codex", "bestiary"] },
   { title: "The ship", ids: ["ship", "command", "map"] },
   { title: "Gear", ids: ["inventory", "market"] },
   { title: "Game", ids: ["settings"] },

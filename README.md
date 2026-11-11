@@ -54,7 +54,6 @@ In the views with a prompt under the story, each menu also has a command you can
 | `/beliefs` | Beliefs | Where you stand on each axis, and your standing with each faction |
 | `/dossier` | Your past | Your personal record, career and life history |
 | `/people` | People | Everyone you've met or heard of |
-| `/quests` | Quests | Your quests, what each needs next, what happened in them, and the journal. It's the tracker in the room's corner, grown: **J** opens it too |
 | `/leads` | Leads | Stories you could start here, what people are saying, and the stories you're following |
 | `/codex` | What you know | Places, factions, ships and ideas you've come across, with a search box |
 | `/inv` | Inventory | What you're carrying and wearing, on a grid, in a window over the room. **I** opens it too |
@@ -83,7 +82,7 @@ Press **I**, or **Inventory** under **Gear**, and your inventory opens over the 
 
 ## Quests
 
-The quest you're following is in the top left corner of the room: its name, the last thing you did for it, and what it needs now, with where. **J**, **Quests** under **The story**, or a click on it opens the quest log: the same box slides wider and taller, with the quest's steps staying on the left, and your other quests and what happened in them unfolding on the right. **J**, Esc or **Close** slides it back.
+The quest you're following is in the top left corner of the room: its name, the last thing you did for it, and what it needs now, with where. **J** or a click on it opens the quest log (it isn't on the menu): the same box slides wider and taller, with the quest's steps staying on the left, and your other quests and what happened in them unfolding on the right. **J**, Esc or **Close** slides it back.
 
 - **The story goes on with the person it needs.** When a quest needs you to talk to someone, the tracker says who and where, such as **Talk to Commander Ilya Voss** and **She's at the Bridge.** Walk over and click them, in the room or in **What's here**: the scene plays there, with their words on the pane by their head and your answers hanging off it. While whoever the next part needs is in the same room, it goes straight on. When it needs someone elsewhere, it waits for you there.
 - **Doing what it asks:** when a quest needs you somewhere, such as at Kessara, or needs the Star map, its step says so, and the story goes on when you do it.

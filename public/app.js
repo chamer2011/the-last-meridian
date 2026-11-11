@@ -14,7 +14,7 @@ import { focusTalk, initTalk, resetTalk, startTalk, talkNode, talkOpen } from ".
 import { computerNode, computerOpen, focusComputer, initComputer, resetComputer } from "./computer.js";
 import { bagNode, bagOpen, initBag, openBag, resetBag, toggleBag } from "./bag.js";
 import { initSheet, openPersonSheet, resetSheet, sheetNode, toggleSheet } from "./sheet.js";
-import { drawQuests, initQuests, questTrackerNode, questsOpen, resetQuests, toggleQuests } from "./quests.js";
+import { drawQuests, initQuests, questTrackerNode, questsOpen, resetQuests } from "./quests.js";
 import { beginScene, initPopups, openPopups, popupDrawn, popupNext, popupsAttached, updatePopups } from "./popups.js";
 import { INTERFACE_SIZES, interfaceZoom } from "./scene.js";
 import { focusThing, initWalk, keepClear, markPoint, newsBehindMenu, placeHere, popupsShown, putAwayRoomWindows, renderWalk, resetWalk, roomShownForFight, showWholeStory, thingNode, thingOpen, toggleClock, walkShown, walkViewNode } from "./walk.js";
@@ -554,18 +554,8 @@ function openMenu(id, focus = null) {
     openBoard();
     return;
   }
-  // The inventory is a window over the room, and the quest log is the tracker in its corner, grown: neither is a drawer.
-  if (MENUS[id]?.window === "quests") {
-    closeMenu();
-    toggleQuests();
-    return;
-  }
-  // The character sheet is a printout that feeds down inside the map.
-  if (MENUS[id]?.window === "sheet") {
-    closeMenu();
-    toggleSheet();
-    return;
-  }
+  // The inventory is a window over the room, not a drawer. (The quest log is the tracker in the corner, grown, and the
+  // registry printout opens from the player's name: neither is on the menu.)
   if (MENUS[id]?.window) {
     closeMenu();
     toggleBag();
