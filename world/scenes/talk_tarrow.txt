@@ -42,10 +42,46 @@
 > Ask how she's doing -> doing ? not seen doing
 > Thank her, and go -> done
 
+// Added for the health plan's step 9, as the test its plan asks for: how she answers depends on how she is, laid up in
+// the medbay, unable to walk, badly hurt or a little hurt, and the old answer when she's well. Draft by the AI
+// (Claude), 2026-11-11, not yet edited by the owner.
 == doing
+? laid up tarrow -> doing_laid_up
+? can't walk tarrow -> doing_down
+? badly hurt tarrow -> doing_badly
+? hurt tarrow -> doing_scratched
 For a moment she's very still, even for her.
 
 @Lieutenant Kara Tarrow: "Well, Captain. Thank you for asking." It's the politest thing she's ever said to you, and it closes like a hatch.
+
+> Ask what help she wants -> help ? not seen help
+> Ask about the synthetics aboard -> synthetics ? not seen synthetics
+> Thank her, and go -> done
+
+== doing_laid_up
+She's propped on the cot with the curtain half drawn, and she's drawn it so she can see the hatch.
+
+@Lieutenant Kara Tarrow: "The doctor says I'm to lie still, Captain. I'm lying still." Her eyes don't leave the hatch. "Whoever has my watch: the forward lockers are checked on the hour. Not when they remember. On the hour."
+
+> Ask what help she wants -> help ? not seen help
+> Ask about the synthetics aboard -> synthetics ? not seen synthetics
+> Tell her to rest, and go -> done
+
+== doing_down
+@Lieutenant Kara Tarrow: "I can't stand, Captain. I've tried twice." She says it the way she'd read out a log. "Someone's coming. Until they do, I'd be grateful if you stood where I can see the corridor."
+
+> Ask what help she wants -> help ? not seen help
+> Stay with her a while, and go -> done
+
+== doing_badly
+@Lieutenant Kara Tarrow: "It's been seen to. It'll hold." Her jaw is set hard. "I've stood my post with worse, Captain, and I'd rather stand it than lie down."
+
+> Ask what help she wants -> help ? not seen help
+> Ask about the synthetics aboard -> synthetics ? not seen synthetics
+> Thank her, and go -> done
+
+== doing_scratched
+@Lieutenant Kara Tarrow: "A scratch, Captain. It's in the log." Something close to a smile, gone at once. "Everything is in the log."
 
 > Ask what help she wants -> help ? not seen help
 > Ask about the synthetics aboard -> synthetics ? not seen synthetics

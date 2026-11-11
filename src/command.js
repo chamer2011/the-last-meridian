@@ -19,6 +19,7 @@ import { waitingForParts } from "./systems.js";
 import { atPost, mapFor, roomsOf, seedFrom, walkCommand } from "./walk.js";
 import { COMMAND_FILE_PROBLEMS, ROOM_TALK, WORLD_CHARACTERS, WORLD_COMMAND, WORLD_LIFE } from "./world.js";
 import { BODIES, SPARE, THE_CHAIR, readHolderLine, readJobLine, readPostLine, readWorkersLine, slugOf } from "../public/command-text.js";
+import { storyHealth } from "./story-health.js";
 
 // The player, when they hold a post.
 export const YOU = "you";
@@ -1408,6 +1409,8 @@ export function loyaltyFor(game, words, place = SHIP_PLACE) {
 // "* remember". Whoever chooses for a post is the one who appoints or relieves, as if they'd chosen to. Gives the lines
 // the player reads.
 export function storyCommand(game, step, place = SHIP_PLACE) {
+  // Someone's body, as the story changes it, anywhere: src/story-health.js.
+  if (step.command === "wound" || step.command === "heal" || step.command === "dies") return storyHealth(game, step);
   const notes = [];
   const model = commandOf(place);
   if (!model) return notes;

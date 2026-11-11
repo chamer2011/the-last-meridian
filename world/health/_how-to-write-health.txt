@@ -274,3 +274,18 @@ more marks for them. Leave the part out and the game makes up their whole body.
 
 The player's own body comes from their life story: the injuries in it (src/life-data.js), their traits (One-Eyed,
 Old Wound, the cybernetic arm and eye) and the wounds they have now.
+
+
+5. THE STORY BOARD AND THE WRITTEN STORY
+----------------------------------------
+
+The Story board's Health page shows this file and each place's file as boxes: a box for each line at the top,
+one for each wound, old mark, weapon, hit, accident, treatment, kind of mending and person hurt at the start,
+with arrows from a weapon to the hits it makes and from a hit or an accident to the wounds it leaves. Click a
+box to change its line; the board won't keep a line the game can't read, and says how it's written. A
+species' board has a Their bodies box for its Body part, and a person's board a Body box for theirs.
+
+A written scene can ask how someone is (? hurt tarrow, ? badly hurt, ? ill, ? can walk, ? can't walk,
+? laid up, ? dead) and can wound, heal or kill them (* wound tarrow deep cut on the left arm: reason,
+* heal tarrow: reason, * dies tarrow: of her wounds). The wound is one of this file's, by its name, on a part
+it can be on. world/scenes/_how-to-write-a-scene.txt has the rest.

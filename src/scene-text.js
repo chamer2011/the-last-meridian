@@ -27,6 +27,7 @@ function splitPeople(words) {
   return null;
 }
 import { systemIdOf } from "../public/systems-text.js";
+import { healthHolds, readHealthAsk, readHealthEffect } from "./story-health.js";
 
 // The place's systems, in conditions and effects: "power off in The Docks", "alarm ringing at haven", "door locked
 // The Hook". What each one's state can be, asked about and made so.
@@ -287,6 +288,21 @@ export function parseCondition(text) {
         term.id = words;
         break;
       }
+      case "hurt":
+      case "badly":
+      case "ill":
+      case "can":
+      case "can't":
+      case "can’t":
+      case "cannot":
+      case "laid":
+      case "dead": {
+        // How someone is (src/story-health.js): hurt, badly hurt, ill, can walk or can't walk, laid up, dead.
+        const read = readHealthAsk(term.kind.replace("’", "'"), rest);
+        if (read.problem) problems.push(`${read.problem}: "${raw.trim()}"`);
+        else Object.assign(term, { kind: "body", id: read.id, who: read.who, not: read.flip ? !term.not : term.not });
+        break;
+      }
       default:
         problems.push(`"${raw.trim()}" isn't a condition the game knows`);
     }
@@ -350,6 +366,8 @@ function termHolds(game, term, helpers) {
       break;
     }
     case "brig": result = brigHolds(game, term.who); break;
+    // "health" is the player's own health, as a number; "body" is how someone is.
+    case "body": result = healthHolds(game, term); break;
     case "short": result = shortHolds(game, term.id); break;
     case "down": {
       // Lying where they fell, not yet in the medbay or on the way: game.down, kept by src/medbay.js.
@@ -491,6 +509,11 @@ export function parseEffect(text) {
       if (words[1]?.toLowerCase() !== "ends" || !post || (!posts.has(post) && post !== "{post}") || words.length > 3) return { problem: `rivalry is written * rivalry ends a_post: reason, with the post by its id (${[...posts].join(", ")}) or {post}` };
       return after ? { do: { command: "rivalry_ends", post, reason: after } } : { problem: "rivalry ends needs a colon and the reason after it" };
     }
+    case "wound":
+    case "heal":
+    case "dies":
+      // Someone's body, as the story changes it (src/story-health.js): wounded, healed, or dead.
+      return readHealthEffect(verb, words.slice(1), after);
     case "release": {
       // Someone let out of the brig before their days are done: * release tarrow: reason.
       const who = words.slice(1).join(" ");

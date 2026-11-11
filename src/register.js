@@ -62,6 +62,8 @@ function nameOfIndex(seed, i) {
   return `${FIRSTS[a]} ${LASTS[b]}${i >= PAIRS ? ` ${Math.floor(i / PAIRS) + 1}` : ""}`;
 }
 const made = new Map();
+// Forgotten when the health files are read again, since the quarters may have changed.
+export const clearRegister = () => made.clear();
 // Everyone on the register, made up from the seed: the same list every time for the same game.
 export function registerPeople(game) {
   const reg = game.register;

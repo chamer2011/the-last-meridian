@@ -110,14 +110,15 @@ export function settleDeaths(game) {
 // Someone dies: at a time, of a cause. Returns lines for the story.
 // An illness by its id, in words: "a fever".
 const illnessWords = (id) => illnessKinds().find((one) => one.id === id)?.words ?? "an illness";
-export function die(game, key, { at = nowOf(game), cause = "bled", part = null, kind = null } = {}) {
+// A story's death says in its own words how it happened, and comes from its scene.
+export function die(game, key, { at = nowOf(game), cause = "bled", part = null, kind = null, words: told = null, from = "the medbay" } = {}) {
   if (!key || key === "you" || deathOf(game, key)) return [];
   const { who, place: crowdPlace } = whoOf(key);
   const down = game.down?.[key] ?? null;
   const place = down?.place ?? crowdPlace ?? WORLD_CHARACTERS[who]?.location ?? game.location;
   const rules = deathRulesOf(place) ?? { room: null, names: null, morale: 0 };
   const name = nameOf(game, who);
-  const words = causeWords({ cause, part, kind }, down);
+  const words = told ?? causeWords({ cause, part, kind }, down);
   const day = Math.floor(at / 24);
   game.dead = { ...(game.dead ?? {}), [key]: { who, name, place, at, day, cause: words, ...(part ? { part } : {}), room: rules.room } };
   const notes = [];
@@ -129,7 +130,7 @@ export function die(game, key, { at = nowOf(game), cause = "bled", part = null, 
   else if (place === SHIP && aboardShip(game)) notes.push(`[HEALTH] Word comes from the medbay: ${name} has died, ${words}.`);
   // On the record, for the stories to react to.
   try {
-    recordFact(game, { id: deathFact(who), text: `${name} died on day ${day + 1}, ${words}.`, from: "the medbay" });
+    recordFact(game, { id: deathFact(who), text: `${name} died on day ${day + 1}, ${words}.`, from });
   } catch {
     // The record is full: the death still happens.
   }
@@ -191,15 +192,28 @@ export function readNames(game, place, thing) {
 // ---- What the checker needs ----------------------------------------------------------------------------
 
 // Every fact a death can leave: one for each person at a place with a medbay, so a scene or a story's reaction can ask
-// for it.
+// for it. And what else happens to a body that goes on the record (step 9): a limb lost, and a story's own wounds and
+// heals, for everyone there, every story person and the player.
 export function deathFacts() {
   const names = new Set();
+  const more = (base) => { for (const what of ["wounded", "healed", "lost_a_limb"]) names.add(`${base.slice(0, 39 - what.length)}_${what}`); };
   for (const [place, file] of Object.entries(WORLD_HEALTH)) {
     if (!file.medbay) continue;
     const life = WORLD_LIFE[place] ?? {};
-    for (const id of Object.keys(life.people ?? {})) names.add(deathFact(id));
-    for (const group of life.crowd ?? []) for (const [name] of group.names) names.add(deathFact(name));
+    for (const id of Object.keys(life.people ?? {})) {
+      names.add(deathFact(id));
+      more(id);
+    }
+    for (const group of life.crowd ?? []) for (const [name] of group.names) {
+      names.add(deathFact(name));
+      more(slugOf(name));
+    }
   }
+  for (const id of Object.keys(WORLD_CHARACTERS)) {
+    names.add(deathFact(id));
+    more(id);
+  }
+  more("you");
   return names;
 }
 

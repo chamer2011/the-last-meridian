@@ -162,6 +162,13 @@ Lines starting with * happen when the part begins, and the player sees each as a
     * rivalry ends chief_medical_officer: The reason   (whoever was working against that post's holder stops)
     * release tarrow: The reason                (someone let out of the brig before their days are done, a spare
                                                 hand on the watch bill)
+    * wound tarrow deep cut on the left arm: The reason   (someone's body: a wound from world/health/wounds.txt on
+                                                the part it names, or a part the game picks where that wound can be;
+                                                tarrow_wounded goes on the record; you for the player)
+    * heal tarrow: The reason                   (all their wounds gone and their blood back, or heal tarrow fever for one
+                                                kind; a lost limb stays lost; tarrow_healed goes on the record)
+    * dies tarrow: of her wounds, before anyone came   (they fall where they stand and die, in those words, which the
+                                                record and the chalked names say, tarrow_died; never the player)
     * mutiny give ground: The reason      (the ship's chain of command, for the scenes it plays: give ground,
                                           calmed, arrest, crushed, step down, refused, taken, released, join,
                                           stay out or warn; world/command/_how-to-write-command.txt says what each does)
@@ -225,6 +232,15 @@ and join several with "and":
                                      count). Also short any, or short and a job by its id: short cook.
     down any                         Someone aboard the Meridian is lying where they fell, not on a cot and
                                      not being carried. down and a name for that person.
+    hurt tarrow                      Someone has a wound now, an illness aside: you, someone aboard by their
+                                     id or name, a crowd name (Mess Hand Bao), a story person anywhere, a
+                                     stand-in, or any. badly hurt for a serious wound, ill for an illness,
+                                     laid up for on a cot or the floor of the medbay (or the Repair Bay's
+                                     bench), dead for dead.
+    can walk tarrow                  On their feet, or able to be: not out cold or still down from a beating,
+                                     with a leg to stand on (one broken leg is a hobble; two aren't) and the
+                                     blood to stand. can't walk for the opposite. A limb lost in a fight or to
+                                     rot leaves a fact, tarrow_lost_a_limb, for flag to ask about.
     mutiny brewing                   A mutiny's brewing aboard the Meridian. Also mutiny calm, grumbling,
                                      refusing orders and delegation (how far it's got), taken (the officers
                                      relieved the player of command, and they're crew now), can arrest (the

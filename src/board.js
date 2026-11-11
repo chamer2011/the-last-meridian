@@ -24,7 +24,12 @@ import { parseCommandText } from "../public/command-text.js";
 import { clearLogistics, logisticsOf, logisticsProblems } from "./logistics.js";
 import { clearMaps, mapFor, roomsOf } from "./walk.js";
 import { clearLife } from "./life.js";
-import { clearBodies, healthProblems } from "./body.js";
+import { clearBodies, healthProblems, woundNames } from "./body.js";
+import { clearMedbays, medbayProblems } from "./medbay.js";
+import { clearWorkshops } from "./workshop.js";
+import { clearRegister } from "./register.js";
+import { HEALTH_DIR, WORLD_HEALTH, WOUNDS, reloadHealth } from "./world.js";
+import { PARTS, parseHealthText, parseWoundsText } from "../public/health-text.js";
 import { LOGISTICS_DIR, SYSTEMS_DEFAULTS, SYSTEMS_DIR, WORLD_LOGISTICS, WORLD_SYSTEMS, reloadLogistics, reloadSystems } from "./world.js";
 import { parseLogisticsText } from "../public/logistics-text.js";
 import { COMPUTER, ENEMY, FACTION, ITEM, PERK, PERSON, PLACE, SPECIES_SPEC, parseWorldText, writeWorldText } from "../public/world-text.js";
@@ -193,7 +198,7 @@ const WORLD_KINDS = {
   computer: { dir: () => COMPUTERS_DIR, spec: COMPUTER, all: WORLD_COMPUTERS, folder: "computers", what: "computer" },
 };
 const kindOf = (kind) => {
-  if (!WORLD_KINDS[kind]) throw new Error("The board knows stories, people, places, species, enemies, items, factions, perks, computers, systems, logistics and the chain of command.");
+  if (!WORLD_KINDS[kind]) throw new Error("The board knows stories, people, places, species, enemies, items, factions, perks, computers, systems, logistics, the chain of command and health.");
   return WORLD_KINDS[kind];
 };
 const talkIds = () => new Set(fs.existsSync(SCENES_DIR) ? fs.readdirSync(SCENES_DIR).map((name) => name.match(/^talk_(.+)\.txt$/)?.[1]).filter(Boolean) : []);
@@ -308,6 +313,50 @@ function saveLogistics(id, text) {
   return { saved: true, problems: logisticsFileProblems(id) };
 }
 
+// ---- Bodies and the medbay (health step 9) ---------------------------------------------------------------
+
+// The wounds file, the kinds of wound and old mark everyone's body can have, and each place's health file, its medbay.
+function healthList() {
+  const list = fs.existsSync(path.join(HEALTH_DIR, "wounds.txt")) ? [{ id: "wounds", name: WOUNDS.name ?? "Wounds and old marks", kind: "the kinds of wound", written: true }] : [];
+  for (const [id, one] of Object.entries(WORLD_HEALTH)) list.push({ id, name: LOCATIONS[id]?.name ?? one.name ?? id, kind: "a place's medbay", written: true });
+  return list;
+}
+const healthFileProblems = (id) => [...new Set([...healthProblems(), ...medbayProblems()])].filter((one) => one.startsWith(`health/${id}.txt`));
+const healthRead = (id, text) => (id === "wounds" ? parseWoundsText(text) : parseHealthText(text, id));
+
+function healthItem(id) {
+  checkId(id);
+  const file = path.join(HEALTH_DIR, `${id}.txt`);
+  if (!fs.existsSync(file)) throw new Error(`There's no health file called ${id}. world/health/_how-to-write-health.txt says how to write one.`);
+  const text = fs.readFileSync(file, "utf8");
+  const { value } = healthRead(id, text);
+  return {
+    id, kind: "health", text, value,
+    links: id === "wounds" ? { species: Object.entries(WORLD_SPECIES).map(([speciesId, one]) => ({ id: speciesId, name: one.name })) } : { place: { id, name: LOCATIONS[id]?.name ?? id } },
+    lists: { ...boardLists(), parts: PARTS, wounds: woundNames() },
+    layout: readLayout()[`health/${id}`] ?? {},
+    problems: healthFileProblems(id),
+  };
+}
+
+// Only a file that's there already is saved, and only once it reads: the kinds of wound, the bodies made from them, the
+// medbay, the workshop and the register are all worked out again from it.
+function saveHealth(id, text) {
+  checkId(id);
+  const file = path.join(HEALTH_DIR, `${id}.txt`);
+  if (!fs.existsSync(file)) throw new Error(`There's no health file called ${id} to save.`);
+  if (typeof text !== "string" || !text.trim()) throw new Error("There's nothing to save.");
+  const { problems } = healthRead(id, text);
+  if (problems.length) return { saved: false, problems: problems.map(lineOf) };
+  fs.writeFileSync(file, text.endsWith("\n") ? text : `${text}\n`);
+  reloadHealth();
+  clearBodies();
+  clearMedbays();
+  clearWorkshops();
+  clearRegister();
+  return { saved: true, problems: healthFileProblems(id) };
+}
+
 // ---- A place's chain of command --------------------------------------------------------------------
 
 function commandList() {
@@ -364,6 +413,7 @@ export function boardWorldList(kind) {
   if (kind === "systems") return systemsList();
   if (kind === "logistics") return logisticsList();
   if (kind === "command") return commandList();
+  if (kind === "health") return healthList();
   const { all } = kindOf(kind);
   const written = kind === "person" ? talkIds() : new Set();
   const groupOf = (one) => (kind === "person" || kind === "place" ? one.faction ?? "none" : kind === "enemy" ? one.motive ?? "other" : kind === "item" ? one.type ?? "other" : kind === "perk" ? (one.starting ? "starting" : one.ability ? "with an ability" : "learned") : kind === "computer" ? (LOCATIONS[one.place]?.name ?? one.place ?? "anywhere") : kind);
@@ -421,6 +471,7 @@ export function boardWorldItem(kind, id) {
   if (kind === "systems") return systemsItem(id);
   if (kind === "logistics") return logisticsItem(id);
   if (kind === "command") return commandItem(id);
+  if (kind === "health") return healthItem(id);
   const { all, dir, spec, folder } = kindOf(kind);
   checkId(id);
   const value = all[id];
@@ -454,6 +505,7 @@ export function saveBoardWorldItem(kind, id, text) {
   if (kind === "systems") return saveSystems(id, text);
   if (kind === "logistics") return saveLogistics(id, text);
   if (kind === "command") return saveCommand(id, text);
+  if (kind === "health") return saveHealth(id, text);
   const { dir, spec, folder } = kindOf(kind);
   checkId(id);
   if (typeof text !== "string" || !text.trim()) throw new Error("There's nothing to save.");

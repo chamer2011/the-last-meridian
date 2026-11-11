@@ -9,6 +9,8 @@
 // writes nothing to the save.
 
 import { findCharacter, fullName } from "./campaign.js";
+import { recordFact } from "./record.js";
+import { slugOf } from "../public/command-text.js";
 import { CAREERS, FALL_CHOICES, GENERAL_EVENTS, GENERAL_MISHAPS } from "./life-data.js";
 import { HEALTH_FILE_PROBLEMS, WORLD_CHARACTERS, WORLD_HEALTH, WORLD_LIFE, WORLD_PLACES, WORLD_SPECIES, WOUNDS } from "./world.js";
 import { DEFAULT_HITS, PARTS, PART_WORDS, careOf, readAccidentLine, readAccidents, readBodyLine, readHitLine, readKindLine, readOldMarks, readQueue, readShare, readStartLine, readWeaponLine } from "../public/health-text.js";
@@ -366,6 +368,7 @@ const stamped = (game, key, wound, at = nowOf(game)) => {
 export function addWounds(game, key, list, at = undefined) {
   if (!key || !list.length) return;
   const kept = list.map((wound) => stamped(game, key, wound, at ?? nowOf(game)));
+  for (const wound of kept) if (wound.kind === "lost") limbOnRecord(game, key, wound.part, wound.at);
   if (key === "you") {
     game.wounds = [...(game.wounds ?? []), ...kept];
     return;
@@ -406,6 +409,36 @@ export function waitingTreatment(game, key, treatments = null) {
 export const treatmentFor = (wound, treatments) => treatments.find((one) => normal(one.name) === normal(kindOf(wound.kind, wound.part)?.name ?? wound.kind)) ?? null;
 // Whether a kind of wound by this name is in the wounds file, for the checker.
 export const woundKindNamed = (name) => findKind(name)?.section === "wound";
+// The wounds file's wounds by a name, for the written story: "broken bone" is two, the arm's and the leg's.
+export const woundKindsByName = (words) => kindsNow().all.filter((kind) => kind.section === "wound" && kind.key === normal(words));
+// The names of the wounds the file has, for the checker to offer.
+export const woundNames = () => [...new Set(kindsNow().all.filter((kind) => kind.section === "wound").map((kind) => kind.key))];
+// A wound's rules as the file has them, and whether it's an illness, which is caught rather than given.
+export const woundRules = (wound) => rulesOfWound(wound);
+export const isIllness = (wound) => Boolean(rulesOfWound(wound).catches);
+// The name a fact on the record gives someone, with what happened after it: their id, their crowd name in lowercase
+// and underscores, or you; kept to the record's 40 letters.
+export function factNameOf(key, what) {
+  const base = key === "you" ? "you" : key.startsWith("id:") ? key.slice(3) : slugOf(key.split(":").slice(2).join(":"));
+  return `${base.slice(0, 39 - what.length)}_${what}`;
+}
+// Someone's name as the record's words say it: their file's name, their crowd name as the life file writes it, or You.
+export function nameOfKey(game, key) {
+  if (key === "you") return "You";
+  if (key.startsWith("id:")) return findCharacter(game.campaign, key.slice(3))?.name ?? WORLD_CHARACTERS[key.slice(3)]?.name ?? key.slice(3);
+  const [, place, ...rest] = key.split(":");
+  const name = rest.join(":");
+  for (const group of WORLD_LIFE[place]?.crowd ?? []) for (const [one] of group.names) if (lower(one) === name) return one;
+  return name;
+}
+// A limb lost goes on the record, for the stories to react to: in a fight, to rot, or by the story's own hand.
+function limbOnRecord(game, key, part, at) {
+  try {
+    recordFact(game, { id: factNameOf(key, "lost_a_limb"), text: `${nameOfKey(game, key)} lost the ${PART_WORDS[part] ?? part.replace("_", " ")} on day ${Math.floor(at / 24) + 1}.`, from: "the medbay" });
+  } catch {
+    // The record is full: the limb is gone all the same.
+  }
+}
 // Whether a wound is a serious one, which keeps someone laid up once it's treated.
 export const seriousWound = (wound) => Boolean(rulesOfWound(wound).serious);
 // How bad someone is, for who's seen first: serious wounds count most, then bleeding, then the rest.
@@ -483,6 +516,7 @@ export function takeLimb(game, key, part, at) {
   const lost = { ...stamped(game, key, newWound(kind, part), at), dressed: true, dressedAt: at };
   if (key === "you") game.wounds = [...kept, lost];
   else game.bodies[key] = { ...game.bodies[key], wounds: [...kept, lost] };
+  limbOnRecord(game, key, part, at);
   return lost.words;
 }
 // An artificial limb fitted where one was lost: the stump's wound goes, and the limb is kept on the body. It returns

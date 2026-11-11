@@ -11,6 +11,7 @@ import { LINE_PHRASES, PERK_NUMBERS, SPECS, writeWorldText } from "./world-text.
 import { KNOWN_SYSTEMS, readComputerLine, systemIdOf, writeSystemsText } from "./systems-text.js";
 import { LOGISTICS_PARTS, PART_TITLES, readErrandLine, readLoadsLine, readMachineLine, readRefillLine, readRepair, readSittings, readStoreLine, writeLogisticsText, writeRepair, writeSittings } from "./logistics-text.js";
 import { COMMAND_HEADER, SPARE, readHolderLine, readJobLine, readPostLine, readWorkersLine, slugOf, writeCommandText, writeJobLine, writePostLine } from "./command-text.js";
+import { CARE, MEDBAY_KEYS, PARTS, readAccidentLine, readAccidents, readHitLine, readKindLine, readMendingLine, readOldMarks, readQueue, readShare, readStartLine, readTreatmentLine, readWeaponLine, writeHealthText, writeWoundsText } from "./health-text.js";
 
 const state = {
   kind: "story", id: null, lists: {},
@@ -26,7 +27,7 @@ const spaced = (id) => String(id ?? "").replaceAll("_", " ");
 const fill = (parent, ...children) => { for (const child of children.flat()) if (child !== null && child !== undefined && child !== false) parent.append(child); return parent; };
 const STOP = new Set("if the they she he it you someone anyone a an and or of is are that this their them its in on at for as has have then when there".split(" "));
 const KIND_WORDS = { story: "The story", place: "The place", person: "The person", species: "The species", enemy: "The enemy", item: "The item", faction: "The faction", perk: "The perk", computer: "The computer", systems: "The systems", logistics: "The logistics", command: "The chain of command" };
-const FOLDERS = { story: "stories", person: "characters", place: "places", species: "species", enemy: "enemies", item: "items", faction: "factions", perk: "perks", computer: "computers", systems: "systems", logistics: "logistics", command: "command" };
+const FOLDERS = { story: "stories", person: "characters", place: "places", species: "species", enemy: "enemies", item: "items", faction: "factions", perk: "perks", computer: "computers", systems: "systems", logistics: "logistics", command: "command", health: "health" };
 
 // A name made from words, for an ending or a fact, so nobody has to type one.
 export function nameFrom(text) {
@@ -106,7 +107,7 @@ function boardNode() {
     el("header", { class: "board-head" },
       el("h2", {}, "Story board"),
       el("select", { id: "board-what", title: "Stories, places, people or species", onchange: (event) => changeKind(event.target.value) },
-        ...[["story", "Stories"], ["place", "Places"], ["person", "People"], ["species", "Species"], ["enemy", "Enemies"], ["item", "Items"], ["faction", "Factions"], ["perk", "Perks"], ["computer", "Computers"], ["systems", "Systems"], ["logistics", "Logistics"], ["command", "Command"]].map(([kind, label]) => el("option", { value: kind }, label))),
+        ...[["story", "Stories"], ["place", "Places"], ["person", "People"], ["species", "Species"], ["enemy", "Enemies"], ["item", "Items"], ["faction", "Factions"], ["perk", "Perks"], ["computer", "Computers"], ["systems", "Systems"], ["logistics", "Logistics"], ["command", "Command"], ["health", "Health"]].map(([kind, label]) => el("option", { value: kind }, label))),
       el("select", { id: "board-pick", title: "Which one", onchange: (event) => load(state.kind, event.target.value) }),
       el("nav", { class: "board-tabs", role: "tablist" },
         ...[["notes", "The story"], ["scene", "The written scene"], ["file", "As the file"]].map(([tab, label]) => el("button", { class: "board-tab", role: "tab", "data-tab": tab, "aria-selected": "false", onclick: () => showTab(tab) }, label))),
@@ -309,9 +310,9 @@ function speciesGraph() {
   ws.push({ from: "desc", to: "numbers" });
   add({ id: "effects", kind: "ending", col: 2, name: "Effects", text: Object.entries(fx).map(([key, value]) => `${spaced(key)}: ${typeof value === "object" ? Object.entries(value).map(([name, amount]) => `${name} ${amount}`).join(", ") : value}`).join("\n") || "none", label: "What's different for them", bind: { effects: true } });
   ws.push({ from: "desc", to: "effects" });
-  // Their bodies: how often a hit lands on each part, and what they do differently. Changed in the file for now.
+  // Their bodies: how often a hit lands on each part, and what they do differently.
   const body = P.body ?? {};
-  add({ id: "body", kind: "route", col: 2, name: "Body", text: [`hit: ${Object.entries(body.hits ?? {}).map(([part, n]) => `${part.replace(/_/g, " ")} ${n}`).join(", ") || "as most"}`, body.breaks !== undefined && `bones break: ${body.breaks}`, body.heals !== undefined && `wounds heal: ${body.heals}`, body.bleeds === false && "bleeds: no", body.ownMarks && "own marks only: yes", body.mendedBy && `mended by: ${body.mendedBy}`].filter(Boolean).join("\n"), label: "Their bodies, changed in the file for now" });
+  add({ id: "body", kind: "route", col: 2, name: "Body", text: [`hit: ${Object.entries(body.hits ?? {}).map(([part, n]) => `${part.replace(/_/g, " ")} ${n}`).join(", ") || "as most"}`, body.breaks !== undefined && `bones break: ${body.breaks}`, body.heals !== undefined && `wounds heal: ${body.heals}`, body.bleeds === false && "bleeds: no", body.ownMarks && "own marks only: yes", body.mendedBy && `mended by: ${body.mendedBy}`].filter(Boolean).join("\n"), label: "Their bodies", bind: { speciesBody: true } });
   ws.push({ from: "desc", to: "body" });
   for (const one of L.people ?? []) { add(linkNode(`link_person_${one.id}`, "person", one.name, one.role, "One of them")); ws.push({ from: "desc", to: `link_person_${one.id}` }); }
   return { list, ws };
@@ -537,7 +538,7 @@ function sceneGraph() {
 }
 
 function build() {
-  const builders = { story: notesGraph, place: placeGraph, person: personGraph, species: speciesGraph, enemy: enemyGraph, item: itemGraph, faction: factionGraph, perk: perkGraph, computer: computerGraph, systems: systemsGraph, logistics: logisticsGraph, command: commandGraph };
+  const builders = { story: notesGraph, place: placeGraph, person: personGraph, species: speciesGraph, enemy: enemyGraph, item: itemGraph, faction: factionGraph, perk: perkGraph, computer: computerGraph, systems: systemsGraph, logistics: logisticsGraph, command: commandGraph, health: healthGraph };
   const graph = state.tab === "scene" ? sceneGraph() : builders[state.kind]();
   nodes = graph.list;
   wires = graph.ws;
@@ -679,6 +680,7 @@ function fileText() {
   if (state.kind === "systems") return writeSystemsText(state.item);
   if (state.kind === "logistics") return writeLogisticsText(state.item);
   if (state.kind === "command") return writeCommandText(state.item);
+  if (state.kind === "health") return writeHealthOf();
   return writeWorldText(state.item, SPECS[state.kind]);
 }
 const sceneText = () => (state.scene ? [state.scene.header, ...state.scene.parts.map((part) => `== ${part.name}\n${part.raw}`)].join("\n") : "");
@@ -947,6 +949,7 @@ function remove(node) {
   else if (b.computer !== undefined) state.item.computers.splice(b.computer, 1);
   else if (b.store !== undefined) state.item.stores.splice(b.store, 1);
   else if (b.logLine) state.item[b.logLine[0]].splice(b.logLine[1], 1);
+  else if (b.healthLine) state.item[b.healthLine[0]].splice(b.healthLine[1], 1);
   else if (b.post !== undefined) {
     // A post goes with the line that says who holds it.
     const read = readPostLine(state.item.posts[b.post]?.text ?? state.item.posts[b.post]);
@@ -1075,12 +1078,15 @@ function inspect() {
   if (state.tab === "scene") return inspectPart(inspector, node);
   if (node.kind === "link") return inspectLink(inspector, node);
   if (node.lines) return fill(inspector, h2("Written lines"), hint(node.text), state.written ? row(button("Open the written lines", () => showTab("scene"))) : hint("A file called talk_<id>.txt in world/scenes gives them written lines; the how-to there explains it."));
-  if (node.kind === "about") return state.kind === "story" ? inspectAbout(inspector) : state.kind === "systems" ? inspectSystemsAbout(inspector) : state.kind === "logistics" ? inspectLogisticsAbout(inspector) : state.kind === "command" ? inspectCommandAbout(inspector) : inspectWorldAbout(inspector);
+  if (node.kind === "about") return state.kind === "story" ? inspectAbout(inspector) : state.kind === "systems" ? inspectSystemsAbout(inspector) : state.kind === "logistics" ? inspectLogisticsAbout(inspector) : state.kind === "command" ? inspectCommandAbout(inspector) : state.kind === "health" ? inspectHealthAbout(inspector) : inspectWorldAbout(inspector);
   if (node.bind?.post !== undefined) return inspectPostLine(inspector, node);
   if (node.bind?.job !== undefined) return inspectJobLine(inspector, node);
   if (node.bind?.spare) return inspectSpareLine(inspector);
   if (node.bind?.store !== undefined) return inspectStoreLine(inspector, node);
   if (node.bind?.logLine) return inspectLogisticsLine(inspector, node);
+  if (node.bind?.healthTop) return inspectHealthTop(inspector, node);
+  if (node.bind?.healthLine) return inspectHealthLine(inspector, node);
+  if (node.bind?.speciesBody) return inspectSpeciesBody(inspector);
   if (node.bind?.numbers) return inspectNumbers(inspector, node);
   if (node.bind?.fight) return inspectFight(inspector, node);
   if (node.bind?.speciesNumbers) return inspectSpeciesNumbers(inspector, node);
@@ -1109,6 +1115,8 @@ function inspectNothing(inspector) {
                     : state.kind === "perk" ? "The perk as a board: what the player reads, what it changes, and the perks it needs or leads to. What it needs is in the box on the left."
                       : state.kind === "systems" ? "A place's systems as a board: who keeps it running, each system with its parts and the rooms they're in, each computer with arrows to what it runs, and the rooms with what's in each. Click any box to read it and change it."
                       : state.kind === "logistics" ? "The ship's logistics as a board: each store with what it holds and the room it's in, and the machines, errands, loads and refills, each with arrows to the stores its words name. Click any box to read it and change it."
+                      : state.kind === "health" && state.id === "wounds" ? "The kinds of wound and old mark as a board: the lines at the top that say how blood, healing, walking and pain go, every wound and old mark, the weapons and the hits, with arrows from a weapon to the hits it makes and from a hit or an accident to the wounds it leaves, and the species, whose Body parts say how often each part is hit. Click any box to read it and change it."
+                      : state.kind === "health" ? "A place's medbay as a board: the lines at the top that say where it is and how it works, each treatment and each kind of mending, and who starts the game hurt. Click any box to read it and change it."
                       : state.kind === "command" ? "The chain of command as a board: each post with who holds it when a game begins, and an arrow from whoever chooses it; each job with who does it, and an arrow from the post that heads it; and the spare hands. Click any box to read it and change it."
                       : "The computer as a board: what the player sees when they sit down, its files, letters, logs and programs, and the computers it reaches over its network. Click any box to read all of it and change it; its class, place and login are in the box on the left."),
     el("div", { class: "legend" }, ...(state.tab === "scene" ? [["beat", "parts"], ["ending", "checks and fights"], ["end", "ends"], ["clock", "missing"]]
@@ -1116,6 +1124,8 @@ function inspectNothing(inspector) {
         : state.kind === "systems" ? [["beat", "systems"], ["route", "its own systems"], ["fact", "computers"], ["clock", "rooms"], ["next", "links to open"]]
         : state.kind === "logistics" ? [["beat", "stores"], ["route", "machines"], ["fact", "errands"], ["clock", "loads"], ["consequence", "refills"], ["next", "links to open"]]
         : state.kind === "command" ? [["lead", "who chooses"], ["beat", "posts"], ["route", "jobs"], ["fact", "spare hands"]]
+        : state.kind === "health" && state.id === "wounds" ? [["lead", "lines at the top"], ["beat", "wounds"], ["fact", "weapons"], ["route", "hits"], ["clock", "accidents"], ["consequence", "old marks"], ["next", "links to open"]]
+        : state.kind === "health" ? [["lead", "lines at the top"], ["beat", "treatments"], ["route", "mending"], ["fact", "hurt at the start"], ["next", "links to open"]]
         : state.kind === "computer" ? [["lead", "what they see"], ["beat", "files"], ["fact", "letters"], ["clock", "logs"], ["route", "programs"], ["next", "links to open"]]
           : [["lead", "for the player"], ["beat", "for the game master"], ["route", "lists and numbers"], ["ending", "the dice"], ["next", "links to open"]]).map(([kind, words]) => el("span", { class: `l-${kind}` }, words))),
     state.tab === "notes" && state.kind === "story" ? row(button("+ an ending", addEnding), button("+ a fact", () => addFact()), button("+ something days later", () => addConsequence()), button("+ a stage of the clock", addStage), button("+ what changes this story", addReaction)) : null,
@@ -1123,6 +1133,7 @@ function inspectNothing(inspector) {
     state.tab === "notes" && state.kind === "systems" ? row(button("+ a system", addSystem), button("+ a computer", addComputerLine)) : null,
     state.tab === "notes" && state.kind === "logistics" ? row(button("+ a store", addStore), ...["machines", "errands", "loads", "refills"].map((part) => button(`+ ${PART_TITLES[part].toLowerCase().replace(/s$/, "")}`, () => addLogisticsLine(part)))) : null,
     state.tab === "notes" && state.kind === "command" ? row(button("+ a post", addPost), button("+ a job", addJob)) : null,
+    state.tab === "notes" && state.kind === "health" ? row(...healthParts().map(([part, , label]) => button(`+ ${label.toLowerCase()}`, () => addHealthLine(part)))) : null,
     state.tab === "notes" && state.kind === "computer" ? row(button("+ a file", () => addEntry("files")), button("+ a letter", () => addEntry("mail")), button("+ a program", () => addEntry("programs"))) : null,
     state.problems.length ? el("div", { class: "problems" }, h2("The checker says"), ...state.problems.map((one) => el("div", {}, one))) : hint("The checker has nothing to say about this one."),
     hint(`Save writes the file in world/${FOLDERS[state.kind]}, and the game uses the new version from the next turn.`));
@@ -1414,6 +1425,204 @@ function addStore() {
   state.item.stores.push({ text: `new store in ${room}: holds 6 ration crates` });
   state.selected = { node: `store${state.item.stores.length - 1}` };
   changed();
+}
+// ---- Bodies and the medbay (health step 9) -------------------------------------------------------------
+// The parts of a health file that are lists of lines: the wounds file's, or a place's. [part, heading, a box's label, reader]
+const WOUNDS_PARTS = [["wounds", "Wounds", "A wound", readKindLine], ["weapons", "Weapons", "A weapon's hit", readWeaponLine], ["hits", "Hits", "What a hit leaves", readHitLine], ["accidents", "Accidents", "An accident at work", readAccidentLine], ["marks", "Old marks", "An old mark", readKindLine]];
+const PLACE_HEALTH_PARTS = [["treatments", "Treatments", "A treatment", readTreatmentLine], ["mending", "Mending", "Mending", readMendingLine], ["start", "At the start", "Someone hurt at the start", readStartLine]];
+const healthParts = () => (state.id === "wounds" ? WOUNDS_PARTS : PLACE_HEALTH_PARTS);
+const writeHealthOf = () => (state.id === "wounds" ? writeWoundsText(state.item) : writeHealthText(state.item));
+// How each line at the top is read, so the board can say what's wrong with it and how it's written.
+function healthTopReader(key) {
+  if (state.id === "wounds") {
+    if (key === "old marks") return readOldMarks;
+    if (key === "a wound from a hit") return (text) => readShare(text);
+    if (key === "a hard wound") return (text) => readShare(text, true);
+    return CARE[key] ? (text) => CARE[key].read(text) : null;
+  }
+  if (MEDBAY_KEYS[key]) return (text) => MEDBAY_KEYS[key].read(text);
+  if (key === "the morning queue") return readQueue;
+  if (key === "accidents at work") return readAccidents;
+  return null;
+}
+// The lines at the top, with what each says now: [key, words].
+function healthTops() {
+  const P = state.item;
+  if (state.id === "wounds") return [["old marks", P.oldMarks ?? ""], ["a wound from a hit", P.light ?? ""], ["a hard wound", P.hard ?? ""], ...Object.keys(CARE).map((key) => [key, P.care?.[key] ?? ""]), ["rough work", (P.rough ?? []).join(", ")]];
+  return [...Object.entries(MEDBAY_KEYS).map(([key, one]) => [key, P[one.path] ?? ""]), ["the morning queue", P.queue ?? ""], ["accidents at work", P.accidents ?? ""]];
+}
+function setHealthTop(key, words) {
+  const P = state.item;
+  if (state.id === "wounds") {
+    if (key === "old marks") P.oldMarks = words || undefined;
+    else if (key === "a wound from a hit") P.light = words || undefined;
+    else if (key === "a hard wound") P.hard = words || undefined;
+    else if (key === "rough work") P.rough = words.split(/\s*,\s*/).filter(Boolean);
+    else if (words) (P.care ??= {})[key] = words;
+    else delete P.care?.[key];
+    return;
+  }
+  const path = MEDBAY_KEYS[key]?.path ?? (key === "the morning queue" ? "queue" : "accidents");
+  if (words) P[path] = words;
+  else delete P[path];
+}
+function healthGraph() {
+  const P = state.item, L = state.links;
+  const list = [], ws = [];
+  const add = (node) => { list.push(node); return node.id; };
+  add({ id: "about", kind: "about", col: 0, name: P.name ?? state.id, text: P.draft ? `Written by ${P.draft}.` : "", label: "The file" });
+  healthTops().forEach(([key, words], i) => {
+    const read = healthTopReader(key);
+    const problem = words && read ? read(words).problem : null;
+    add({ id: `top${i}`, kind: "lead", col: 0, name: key, text: problem ? `${words}\n${problem}` : words || "Not in the file: as the game has it.", label: "A line at the top", bind: { healthTop: key }, problem: Boolean(problem) });
+  });
+  const cols = state.id === "wounds" ? { wounds: 1, weapons: 2, hits: 2, accidents: 3, marks: 3 } : { treatments: 1, mending: 2, start: 3 };
+  const kinds = { wounds: "beat", weapons: "fact", hits: "route", accidents: "clock", marks: "consequence", treatments: "beat", mending: "route", start: "fact" };
+  const woundBoxes = {};
+  for (const [part, , label, read] of healthParts()) {
+    (P[part] ?? []).forEach((one, i) => {
+      const words = one.text ?? one;
+      const problem = read(words)?.problem;
+      const name = words.split(/[:;]/)[0].trim().slice(0, 40);
+      add({ id: `${part}${i}`, kind: kinds[part], col: cols[part], name, text: problem ? `${words}\n${problem}` : words, label, bind: { healthLine: [part, i] }, problem: Boolean(problem) });
+      if (part === "wounds") (woundBoxes[plainWords(name.split(",")[0])] ??= []).push(`${part}${i}`);
+    });
+  }
+  if (state.id === "wounds") {
+    // From a hit or an accident to each wound it leaves, the longest names first so that a deep cut isn't a cut too;
+    // and from a weapon's kind of hit to the hits of that kind.
+    const names = Object.keys(woundBoxes).sort((a, b) => b.length - a.length);
+    for (const part of ["hits", "accidents"]) (P[part] ?? []).forEach((one, i) => {
+      const words = plainWords(one.text ?? one);
+      let rest = ` ${part === "hits" ? words.slice(words.indexOf(":") + 1) : words.split(":")[0]} `;
+      for (const name of names) {
+        const at = new RegExp(`[^a-z]${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[^a-z]`);
+        if (!at.test(rest)) continue;
+        for (const to of woundBoxes[name]) ws.push({ from: `${part}${i}`, to });
+        rest = rest.replace(new RegExp(at, "g"), " ");
+      }
+    });
+    (P.weapons ?? []).forEach((one, i) => {
+      const kind = plainWords((one.text ?? one).split(":")[0]);
+      (P.hits ?? []).forEach((hit, k) => { if (plainWords((hit.text ?? hit).split(":")[0]).split(" ")[0] === kind) ws.push({ from: `weapons${i}`, to: `hits${k}` }); });
+    });
+    for (const one of L.species ?? []) add(linkNode(`link_species_${one.id}`, "species", one.name, "Its Body part says how often each part is hit, and what its people do differently.", "A species"));
+  } else if (L.place) add(linkNode(`link_place_${L.place.id}`, "place", L.place.name, "The place itself.", "The place"));
+  return { list, ws };
+}
+function inspectHealthAbout(inspector) {
+  const P = state.item;
+  const name = textBox("edit-title", P.name ?? "");
+  const draft = textBox("edit-draft", P.draft ?? "");
+  fill(inspector, h2("The file"),
+    el("label", { for: "edit-title" }, "Its name, on the first line"), name,
+    el("label", { for: "edit-draft" }, "Who wrote it (the game doesn't read this)"), draft,
+    row(button("Keep", () => { P.name = name.value.trim() || P.name; P.draft = draft.value.trim() || null; changed(); }), button("Undo", () => inspect())));
+}
+function inspectHealthTop(inspector, node) {
+  const key = node.bind.healthTop;
+  const now = healthTops().find(([one]) => one === key)?.[1] ?? "";
+  const read = healthTopReader(key);
+  const like = read ? read("?").problem : null;
+  const said = like ? (like.startsWith(key) ? like : `${key} ${like}`) : "rough work: the words in a job that make old marks come twice as often, with commas between them. A word counts when a job has a word starting with it, so engine counts for Engine Hand.";
+  const box = textBox("edit-line", now);
+  const trouble = el("div", { class: "hint tone-bad" });
+  fill(inspector, h2(key), el("label", { for: "edit-line" }, `${key}:`), box,
+    hint(`${said}${said.endsWith(".") ? "" : "."} ${state.id === "wounds" ? "Leave it empty for what the game has without it." : "Leave it empty to take the line out."}`),
+    trouble,
+    row(button("Keep", () => {
+      const words = box.value.trim();
+      const problem = words && read ? read(words).problem : null;
+      if (problem) {
+        trouble.textContent = problem.startsWith(key) ? problem : `${key} ${problem}`;
+        return;
+      }
+      setHealthTop(key, words);
+      changed();
+    }), button("Undo", () => inspect())));
+}
+const HEALTH_LINE_HINTS = {
+  wounds: "A wound: its name, a comma, where it can be (any part, the head, the chest, an arm, a leg, a limb, or right arm, left arm, right leg or left leg, joined with or), a colon, what it looks like ({part} is the part it's on), and its rules after semicolons, like serious; bleeds 4 an hour; can go bad; heals in 4 days, 2 once dressed. world/health/_how-to-write-health.txt has all the rules.",
+  marks: "An old mark, written as a wound is: its name, a comma, where it can be, a colon, what it looks like, and its rules after semicolons, like likelier in: dock, engine, or never at random.",
+  weapons: "A kind of hit, a colon, and the words in a weapon's name that make it: burn: laser, plasma, cutter. The kinds are yours to name; the line that says anything else is for every weapon the others don't name.",
+  hits: "A kind of hit (or anything, and for and a species), a colon, the wound a light hit leaves; then hard: the wounds a hard hit leaves, each with on and where; and down: the wound the hit that puts them down leaves.",
+  accidents: "A wound people get at their work, a colon, likelier in: and the words of the work it's likelier in.",
+  treatments: "A wound the medbay treats, by its name in the wounds file, a colon, the doses and the time it takes someone with a Medicine of 5: deep cut: 2 doses, 30 minutes. A wound with no line isn't treated in the medbay.",
+  mending: "A synthetic's wound, or an artificial arm or leg, a colon, the parts crates and the time it takes someone with an Engineering of 5: cracked casing: 1 parts crate, an hour.",
+  start: "Someone at the place, a comma, and a body line: Vik, right leg: broken bone. A wound from the wounds file is one they start the game with, and a serious one starts them laid up; anything else is an old mark.",
+};
+function inspectHealthLine(inspector, node) {
+  const P = state.item;
+  const [part, i] = node.bind.healthLine;
+  const entry = P[part]?.[i];
+  if (!entry) return inspectNothing(inspector);
+  const [, title, , read] = healthParts().find(([one]) => one === part);
+  const box = textarea("edit-line", entry.text ?? entry, 3);
+  const trouble = el("div", { class: "hint tone-bad" });
+  fill(inspector, h2(node.label), el("label", { for: "edit-line" }, `The line, under ${title}`), box, hint(HEALTH_LINE_HINTS[part]), trouble,
+    row(button("Keep", () => {
+      const words = box.value.trim().replace(/\n+/g, " ");
+      const problem = read(words)?.problem;
+      if (problem) {
+        trouble.textContent = problem;
+        return;
+      }
+      P[part][i] = { ...(typeof entry === "object" ? entry : {}), text: words };
+      changed();
+    }), button("Undo", () => inspect())),
+    row(button(`+ another under ${title}`, () => addHealthLine(part)), button("Remove", () => remove(node), { class: "danger" })));
+}
+function addHealthLine(part) {
+  const fresh = { wounds: "graze, any part: a graze on the {part}; heals in 1 day", marks: "old graze, any part: an old graze on the {part}", weapons: "blunt: club", hits: "blunt: bruise", accidents: "bruise: likelier in: dock", treatments: "cut: 1 dose, 10 minutes", mending: "dent: 20 minutes", start: "Vik, chest: bruise" };
+  (state.item[part] ??= []).push({ text: fresh[part] });
+  state.selected = { node: `${part}${state.item[part].length - 1}` };
+  changed();
+}
+// A species' Body part: how often a hit lands on each part, and what its people do differently.
+function inspectSpeciesBody(inspector) {
+  const P = state.item;
+  const body = P.body ?? {};
+  const hits = textBox("edit-hits", Object.entries(body.hits ?? {}).map(([part, n]) => `${part.replace(/_/g, " ")} ${n}`).join(", "));
+  const breaks = numberBox("edit-breaks", body.breaks ?? "", 0.05);
+  const heals = numberBox("edit-heals", body.heals ?? "", 0.05);
+  const bleeds = picker("edit-bleeds", [["yes", "yes, as usual"], ["no", "no"]], body.bleeds === false ? "no" : "yes");
+  const own = picker("edit-own", [["no", "no, the usual ones too"], ["yes", "yes"]], body.ownMarks ? "yes" : "no");
+  const mended = picker("edit-mended", [["the nurses", "the nurses, with medicine, as usual"], ["the techs", "the techs, with parts crates"]], /tech/i.test(body.mendedBy ?? "") ? "the techs" : "the nurses");
+  const trouble = el("div", { class: "hint tone-bad" });
+  const partNames = PARTS.map((part) => part.replace(/_/g, " "));
+  fill(inspector, h2("Their bodies"), hint("How often a hit lands on each part, out of the total, and what this species' people do differently. Leave a box empty for what's usual."),
+    el("label", { for: "edit-hits" }, `hit: how often each part is hit, like head 10, chest 34, right arm 14, left arm 14, right leg 14, left leg 14 (empty for as most are)`), hits,
+    row(el("label", { for: "edit-breaks" }, "bones break, as a share of the usual (0.5 is half as often)"), breaks),
+    row(el("label", { for: "edit-heals" }, "wounds heal, as a share of the usual pace"), heals),
+    row(el("label", { for: "edit-bleeds" }, "bleeds"), bleeds),
+    row(el("label", { for: "edit-own" }, "own marks only (only the old marks that say only for them)"), own),
+    row(el("label", { for: "edit-mended" }, "mended by"), mended),
+    trouble,
+    row(button("Keep", () => {
+      const next = {};
+      const words = hits.value.trim();
+      if (words) {
+        const found = {};
+        for (const piece of words.split(/\s*,\s*/)) {
+          const got = piece.toLowerCase().match(/^(.+?)\s+(\d+(?:\.\d+)?)$/);
+          const part = got ? got[1].trim().replace(/\s+/g, "_") : null;
+          if (!part || !PARTS.includes(part)) {
+            trouble.textContent = `"${piece}" isn't a part and a number: the parts are ${partNames.join(", ")}`;
+            return;
+          }
+          found[part] = Number(got[2]);
+        }
+        next.hits = found;
+      }
+      if (breaks.value !== "") next.breaks = Number(breaks.value);
+      if (heals.value !== "") next.heals = Number(heals.value);
+      if (bleeds.value === "no") next.bleeds = false;
+      if (own.value === "yes") next.ownMarks = true;
+      if (mended.value === "the techs") next.mendedBy = /tech/i.test(body.mendedBy ?? "") ? body.mendedBy : "the techs";
+      if (Object.keys(next).length) P.body = next;
+      else delete P.body;
+      changed();
+    }), button("Undo", () => inspect())));
 }
 function addLogisticsLine(part) {
   (state.item[part] ??= []).push({ text: `new ${PART_TITLES[part].toLowerCase().replace(/s$/, "")}: what it does, in words` });
@@ -1917,7 +2126,7 @@ async function save() {
       state.items = state.stories;
       say(result.problems.length ? `Saved. ${result.problems.length} ${result.problems.length === 1 ? "thing" : "things"} the checker would like changed.` : "Saved. The game plays the new version from the next turn.");
     } else {
-      const result = await call(`/api/board/world/${state.kind}/${state.id}`, { text: state.kind === "systems" ? writeSystemsText(state.item) : state.kind === "logistics" ? writeLogisticsText(state.item) : state.kind === "command" ? writeCommandText(state.item) : writeWorldText(state.item, SPECS[state.kind]) });
+      const result = await call(`/api/board/world/${state.kind}/${state.id}`, { text: state.kind === "systems" ? writeSystemsText(state.item) : state.kind === "logistics" ? writeLogisticsText(state.item) : state.kind === "command" ? writeCommandText(state.item) : state.kind === "health" ? writeHealthOf() : writeWorldText(state.item, SPECS[state.kind]) });
       if (!result.saved) return say(`Not saved: ${result.problems[0]}`, false);
       state.dirty = false;
       state.problems = result.problems;
