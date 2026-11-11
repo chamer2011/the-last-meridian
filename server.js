@@ -252,8 +252,8 @@ async function boardApi(req, res, route) {
     const body = await readBody(req);
     return json(res, 200, saveBoardStory(id, body.text));
   }
-  if ((what === "scene" || what === "talk") && id) {
-    const prefix = what === "talk" ? "talk" : "thread";
+  if ((what === "scene" || what === "talk" || what === "request") && id) {
+    const prefix = what === "talk" ? "talk" : what === "request" ? "request" : "thread";
     if (req.method === "GET") return json(res, 200, boardScene(id, prefix));
     const body = await readBody(req);
     return json(res, 200, body.check ? checkBoardScene(id, body.text, prefix) : saveBoardScene(id, body.text, prefix));

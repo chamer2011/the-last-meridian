@@ -6,6 +6,7 @@
 // story needs them, so a change shows up without restarting the game. world/scenes/_how-to-write-a-scene.txt
 // explains how to write one.
 
+import { storyRequest } from "./request-hook.js";
 import fs from "node:fs";
 import path from "node:path";
 import { SKILLS } from "./character-data.js";
@@ -384,6 +385,11 @@ function enterPart(game, scene, id, { emit, turn }, hops = 0) {
       for (const text of notes) emit({ type: "notice", text });
       continue;
     }
+    if (step.request) {
+      // A request started now, or a kind turned off or on (src/requests.js, through src/request-hook.js).
+      for (const text of storyRequest(game, step)) emit({ type: "notice", text });
+      continue;
+    }
     if (step.mutiny) {
       // The ship's chain of command: a delegation, a quiet word or a captain's days in the brig, ending one way.
       for (const text of mutinyOutcome(game, step.mutiny, step.reason)) emit({ type: "notice", text });
@@ -759,7 +765,7 @@ export function sceneProblems(scene, id = "the scene", { talk = false } = {}) {
       }
       // The effects the game plays itself, with no tool behind them: a door, the place's systems, a password, a
       // computer, and the ship's stores. The parser has already said what's wrong with their words.
-      if (input.door !== undefined || input.systems || input.password || input.computer || input.mutiny || input.command) continue;
+      if (input.door !== undefined || input.systems || input.password || input.computer || input.mutiny || input.command || input.request) continue;
       if (input.stores) {
         for (const [what, amount] of Object.entries(input.stores)) if (!["food", "medicine", "parts"].includes(what) || !Number.isFinite(amount)) problems.push(`${at(step, `${where}, effect ${i + 1}`)}: stores can change food, medicine or parts by a number, not ${what}`);
         continue;

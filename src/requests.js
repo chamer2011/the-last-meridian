@@ -20,6 +20,8 @@
 //   asked: by kind, the hour it was last asked, so the one asked longest ago comes first
 //   day:   the day the last new ask came, since a quiet day comes between (src/requests.js's pacer)
 //   last:  the kind asked last, so the same kind isn't asked twice running
+//   ended: by kind, how it last ended (done, seen_to, failed, left_undone, refused or gone) and the day, for ? request
+//   off:   by kind, true while the written story has turned it off (* request <kind> off)
 //   n:     how many have been taken on, for the quests' ids
 //
 // Off the ship, at the ports: someone there by name, or someone there, asks, about what the port is short of or the
@@ -45,6 +47,7 @@ import { notePut, putsOf } from "./puts.js";
 import { removeItem, tellRequests } from "./rules.js";
 import { partBroken, partByWords, partWords, partsWaitingIds } from "./systems.js";
 import { newTurnLimits, runTool } from "./tools.js";
+import { tellStoryRequests } from "./request-hook.js";
 import { mapFor, personWhere, roomOf, roomsOf } from "./walk.js";
 import { WORLD_CHARACTERS } from "./world.js";
 
@@ -399,6 +402,7 @@ export function compileRequest(kind, scene) {
 // Everything wrong with the request files, for npm run check-story: what the scene checker doesn't already say.
 export function requestProblems(scenes = loadScenes().scenes) {
   const out = [];
+  out.push(...storyRequestProblems(scenes));
   for (const [id, scene] of Object.entries(scenes)) {
     const isRequest = id.startsWith(PREFIX);
     if (!isRequest && scene.request) out.push(`${id}: only a request (a file called request_ and its kind) has when:, asks:, needs:, by:, gone when: and handed to: lines`);
@@ -652,6 +656,11 @@ function stateOf(game) {
   game.requests.n ??= 0;
   return game.requests;
 }
+// How a kind last ended, for the written story to ask about (? request medicine done).
+function noteEnded(game, kind, how) {
+  const state = stateOf(game);
+  state.ended = { ...(state.ended ?? {}), [kind]: { how, day: dayOf(nowOf(game)) } };
+}
 
 // The quest a request taken on or handed on is, under Requests in the log.
 function addQuest(game, model, open, { desc, objective }) {
@@ -689,6 +698,7 @@ export function answerRequest(game, kind, answer) {
     state.rest[kind] = now + REST.no;
     // They remember being told no, and it's on the record.
     const model = requestKinds().find((one) => one.model.kind === kind)?.model;
+    noteEnded(game, kind, "refused");
     if (model?.order) {
       // An order refused costs more than a no, and they say so for a week.
       rememberRequest(game, open.asker, "disobeyed", { words: aboutWords(model) });
@@ -766,6 +776,7 @@ function playSteps(game, part, notes, where) {
       if (set) recordFact(game, { id: set, text: step.text ?? null, from: where });
       else if (clear) clearFact(game, clear);
       else if (step.command) notes.push(...storyCommand(game, step));
+      else if (step.request) notes.push(...storyRequestStep(game, step));
       else if (tool) {
         const outcome = runTool(game, tool, input, turn);
         if (outcome.isError) throw new Error(outcome.result);
@@ -820,6 +831,7 @@ function endRequest(game, found, open, how, notes) {
     rememberRequest(game, open.asker, "let_down", { words: aboutWords(model) });
     leaveFact(game, model.kind, "failed", `You said you'd see to ${aboutWords(model)} for ${by}, and ${dueOf(open)} came first.`);
   }
+  noteEnded(game, model.kind, how);
   delete state.open[model.kind];
   state.rest[model.kind] = nowOf(game) + REST[how];
 }
@@ -842,6 +854,7 @@ function endHanded(game, found, open, how, notes) {
     rememberRequest(game, open.asker, "let_down", { words: aboutWords(model), w: -6 });
     leaveFact(game, model.kind, "left_undone", `You left ${aboutWords(model)} to ${holder} for ${by}, and ${dueOf(open)} came first.`);
   }
+  noteEnded(game, model.kind, how === "done" ? "seen_to" : "left_undone");
   delete state.open[model.kind];
   state.rest[model.kind] = nowOf(game) + REST[how];
 }
@@ -855,7 +868,8 @@ function settleOffered(game, found, one) {
   const { model } = found;
   // Nobody's waiting to be asked about something that's been put right, or by someone who can't ask any more.
   const asker = askerNow(game, model, one);
-  const stale = !asker || !whenHolds(game, model, one) || (model.need.kind === "fix" && !partBroken(game, SHIP, one.part)) || Boolean(model.about && !troubleStands(game, model, one));
+  // One the written story started is asked whatever its when: line says, as long as there's someone to ask it.
+  const stale = !asker || Boolean(game.requests.off?.[one.kind]) || (!one.story && !whenHolds(game, model, one)) || (model.need.kind === "fix" && !partBroken(game, SHIP, one.part)) || Boolean(model.about && !troubleStands(game, model, one));
   if (stale) {
     delete game.requests.open[one.kind];
     game.requests.rest[one.kind] = nowOf(game) + REST.dropped;
@@ -998,7 +1012,7 @@ function newAsks(game, kinds) {
   const asked = game.requests?.asked ?? {};
   const last = game.requests?.last ?? null;
   const ready = kinds
-    .filter(({ model }) => !game.requests?.open?.[model.kind] && !((game.requests?.rest?.[model.kind] ?? -Infinity) > now))
+    .filter(({ model }) => !game.requests?.open?.[model.kind] && !game.requests?.off?.[model.kind] && !((game.requests?.rest?.[model.kind] ?? -Infinity) > now))
     .filter(({ model }) => (!quiet || model.hours < 24) && forLife(game, model) && reachable(game, model))
     .sort((a, b) => (a.model.kind === last) - (b.model.kind === last) || (asked[a.model.kind] ?? -Infinity) - (asked[b.model.kind] ?? -Infinity));
   // Someone a written scene is waiting on plays that scene when they're talked to, not a request.
@@ -1033,6 +1047,58 @@ function newAsks(game, kinds) {
     return [`[REQUEST] ${askedBy(game, asker)} ${askWords(game, model, asker)}${room ? `, in ${room.replace(/^The /, "the ")}` : ""}.`];
   }
   return [];
+}
+
+// ---- The written story ---------------------------------------------------------------------------------------
+
+// A line of a scene, a conversation or a computer's program: * request <kind> has someone ask it now, without waiting
+// their turn (the pacer, its rest, and its when: line are passed over, but someone has to be there to ask it, and a
+// trouble it's about has to be there); * request <kind> off turns the kind off, so a written scene can take that
+// trouble over (one waiting to be asked goes, one taken on goes on), and * request <kind> on turns it on again.
+function storyRequestStep(game, step) {
+  const found = requestKinds().find((one) => one.model.kind === step.request);
+  const title = found?.model.title ?? String(step.request).replaceAll("_", " ");
+  if (!found) return [`[REQUEST] There's no request called ${step.request}: ${step.reason}`];
+  const state = stateOf(game);
+  const { model } = found;
+  if (step.turn === "off") {
+    state.off = { ...(state.off ?? {}), [model.kind]: true };
+    if (state.open[model.kind]?.state === "offered") delete state.open[model.kind];
+    return [];
+  }
+  if (step.turn === "on") {
+    if (state.off) delete state.off[model.kind];
+    return [];
+  }
+  if (state.open[model.kind]) return [];
+  const busy = (key) => Object.values(state.open).some((one) => one.asker === key);
+  const trouble = model.about ? troublesFor(game, model).find((one) => {
+    const key = model.asker.them ? one.asker : askerNow(game, model);
+    return key && (model.asker.them || key !== one.about) && !busy(key);
+  }) : null;
+  const asker = model.about ? (trouble && (model.asker.them ? trouble.asker : askerNow(game, model))) : askerNow(game, model);
+  const part = model.need.kind === "fix" ? partToFix(game, model.need) : null;
+  if (!asker || busy(asker) || (model.about && !trouble) || (model.need.kind === "fix" && !part)) return [`[REQUEST] Nobody can ask about ${title.toLowerCase()} just now.`];
+  if (state.off) delete state.off[model.kind];
+  const now = nowOf(game);
+  state.open[model.kind] = { kind: model.kind, asker, at: now, place: askedAt(game, model), state: "offered", story: true, ...(part ? { part } : {}), ...(trouble ? { about: trouble.about, post: trouble.post ?? null } : {}) };
+  state.asked[model.kind] = now;
+  state.last = model.kind;
+  const room = roomWords(game, model, asker);
+  return game.location === askedAt(game, model) ? [`[REQUEST] ${askedBy(game, asker)} ${askWords(game, model, asker)}${room ? `, in ${room.replace(/^The /, "the ")}` : ""}.`] : [];
+}
+tellStoryRequests(storyRequestStep);
+
+// The kinds the written story names, with ? request or * request, that have no request file: for npm run check-story.
+export function storyRequestProblems(scenes) {
+  const kinds = new Set(Object.keys(scenes).filter((id) => id.startsWith(PREFIX)).map((id) => id.slice(PREFIX.length)));
+  const out = [];
+  for (const [id, scene] of Object.entries(scenes)) {
+    const text = JSON.stringify(scene);
+    const named = new Set([...text.matchAll(/\brequest ([a-z0-9_]+) (?:asked|taken|done|failed|refused|gone|off|none)\b/g), ...text.matchAll(/"request":"([a-z0-9_]+)"/g)].map((one) => one[1]));
+    for (const kind of named) if (!kinds.has(kind)) out.push(`${id}: there's no request called ${kind}: the requests are ${[...kinds].sort().join(", ")}`);
+  }
+  return out;
 }
 
 // The clock moves the requests on (src/rules.js can't import this file, since it reads the scenes).

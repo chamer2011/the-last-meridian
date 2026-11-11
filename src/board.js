@@ -10,6 +10,7 @@ import { dataDir } from "./paths.js";
 import { writtenThreadIds } from "./scene-files.js";
 import { parseSceneText } from "./scene-text.js";
 import { SCENES_DIR, factsLeft, loadScenes, sceneProblems } from "./scenes.js";
+import { compileRequest } from "./requests.js";
 import { classKeyOf, classKeys, classNameOf, computerProblems, programOf } from "./computers.js";
 import { clockProblems } from "./story-clock.js";
 import { notesProblems } from "./story-library.js";
@@ -171,8 +172,13 @@ export function checkBoardScene(id, text, prefix = "thread") {
   const name = sceneName(id, prefix);
   const view = sceneBoardView(text, name);
   const parsed = parseSceneText(text, name);
-  const problems = parsed.problems?.length ? view.problems : sceneProblems(parsed.scene, name, { talk: prefix === "talk" });
+  const problems = parsed.problems?.length ? view.problems : sceneChecked(parsed.scene, id, name, prefix);
   return { ...view, problems };
+}
+// What the checker says about a scene file: a request's is checked as a conversation, and its lines on top as a request.
+function sceneChecked(scene, id, name, prefix) {
+  if (prefix !== "request") return sceneProblems(scene, name, { talk: prefix === "talk" });
+  return [...sceneProblems(scene, name, { talk: true }), ...compileRequest(id, scene).problems.map((one) => `${name}: ${one}`)];
 }
 
 export function saveBoardScene(id, text, prefix = "thread") {
@@ -182,7 +188,39 @@ export function saveBoardScene(id, text, prefix = "thread") {
   const parsed = parseSceneText(text, name);
   if (parsed.problems?.length) return { saved: false, problems: parsed.problems.map(lineOf) };
   fs.writeFileSync(file, text.endsWith("\n") ? text : `${text}\n`);
-  return { saved: true, problems: sceneProblems(parsed.scene, name, { talk: prefix === "talk" }) };
+  return { saved: true, problems: sceneChecked(parsed.scene, id, name, prefix) };
+}
+
+// ---- Requests: world/scenes/request_<kind>.txt ------------------------------------------------------------
+
+// Every kind, read the way the game reads them: its title, its lines on top as written, and how many things the
+// checker would like changed. Grouped by the lives it's for.
+const requestIds = () => (fs.existsSync(SCENES_DIR) ? fs.readdirSync(SCENES_DIR).map((name) => name.match(/^request_(.+)\.txt$/)?.[1]).filter(Boolean).sort() : []);
+function requestKindsView() {
+  return requestIds().map((id) => {
+    const text = fs.readFileSync(sceneFile(id, "request"), "utf8");
+    const { scene, problems } = parseSceneText(text, sceneName(id, "request"));
+    const top = scene?.request ?? {};
+    const all = problems?.length ? problems : sceneChecked(scene, id, sceneName(id, "request"), "request");
+    return { id, title: scene?.title ?? id, group: top.for ? top.for.trim() : "anyone aboard", order: /^an order$/i.test(String(top.as ?? "").trim()), asks: top.asks ?? null, needs: top.needs ?? null, by: top.by ?? null, when: top.when ?? null, problems: all.length };
+  });
+}
+function requestList() {
+  return [{ id: "every", name: "Every request", kind: "all of them" }, ...requestKindsView().map((one) => ({ id: one.id, name: one.title, kind: `for ${one.group}` }))];
+}
+// One kind as the board shows it, the same as a scene's parts, with its title; or, for "every", each kind as a box.
+function requestItem(id) {
+  if (id === "every") return { id, kind: "request", text: "", value: { overview: true, title: "Every request", kinds: requestKindsView() }, links: {}, lists: boardLists(), layout: readLayout()["request/every"] ?? {}, problems: [] };
+  const file = sceneFile(id, "request");
+  if (!fs.existsSync(file)) throw new Error(`There's no request called ${id}. A file called request_${id}.txt in world/scenes would be one.`);
+  const text = fs.readFileSync(file, "utf8");
+  const view = checkBoardScene(id, text, "request");
+  const title = parseSceneText(text, sceneName(id, "request")).scene?.title ?? id;
+  return { id, kind: "request", text, value: { ...view, title }, links: { written: true }, lists: boardLists(), layout: readLayout()[`request/${id}`] ?? {}, problems: view.problems };
+}
+function saveRequestItem(id, text) {
+  if (id === "every") throw new Error("The list of every request is made from their files: open one of them to change it.");
+  return saveBoardScene(id, text, "request");
 }
 
 // ---- People, places and species ------------------------------------------------------------------
@@ -413,6 +451,7 @@ export function boardWorldList(kind) {
   if (kind === "systems") return systemsList();
   if (kind === "logistics") return logisticsList();
   if (kind === "command") return commandList();
+  if (kind === "request") return requestList();
   if (kind === "health") return healthList();
   const { all } = kindOf(kind);
   const written = kind === "person" ? talkIds() : new Set();
@@ -471,6 +510,7 @@ export function boardWorldItem(kind, id) {
   if (kind === "systems") return systemsItem(id);
   if (kind === "logistics") return logisticsItem(id);
   if (kind === "command") return commandItem(id);
+  if (kind === "request") return requestItem(id);
   if (kind === "health") return healthItem(id);
   const { all, dir, spec, folder } = kindOf(kind);
   checkId(id);
@@ -505,6 +545,7 @@ export function saveBoardWorldItem(kind, id, text) {
   if (kind === "systems") return saveSystems(id, text);
   if (kind === "logistics") return saveLogistics(id, text);
   if (kind === "command") return saveCommand(id, text);
+  if (kind === "request") return saveRequestItem(id, text);
   if (kind === "health") return saveHealth(id, text);
   const { dir, spec, folder } = kindOf(kind);
   checkId(id);

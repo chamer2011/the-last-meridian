@@ -26,8 +26,8 @@ const $ = (id) => document.getElementById(id);
 const spaced = (id) => String(id ?? "").replaceAll("_", " ");
 const fill = (parent, ...children) => { for (const child of children.flat()) if (child !== null && child !== undefined && child !== false) parent.append(child); return parent; };
 const STOP = new Set("if the they she he it you someone anyone a an and or of is are that this their them its in on at for as has have then when there".split(" "));
-const KIND_WORDS = { story: "The story", place: "The place", person: "The person", species: "The species", enemy: "The enemy", item: "The item", faction: "The faction", perk: "The perk", computer: "The computer", systems: "The systems", logistics: "The logistics", command: "The chain of command" };
-const FOLDERS = { story: "stories", person: "characters", place: "places", species: "species", enemy: "enemies", item: "items", faction: "factions", perk: "perks", computer: "computers", systems: "systems", logistics: "logistics", command: "command", health: "health" };
+const KIND_WORDS = { story: "The story", place: "The place", person: "The person", species: "The species", enemy: "The enemy", item: "The item", faction: "The faction", perk: "The perk", computer: "The computer", systems: "The systems", logistics: "The logistics", command: "The chain of command", request: "The request" };
+const FOLDERS = { story: "stories", person: "characters", place: "places", species: "species", enemy: "enemies", item: "items", faction: "factions", perk: "perks", computer: "computers", systems: "systems", logistics: "logistics", command: "command", health: "health", request: "scenes" };
 
 // A name made from words, for an ending or a fact, so nobody has to type one.
 export function nameFrom(text) {
@@ -107,7 +107,7 @@ function boardNode() {
     el("header", { class: "board-head" },
       el("h2", {}, "Story board"),
       el("select", { id: "board-what", title: "Stories, places, people or species", onchange: (event) => changeKind(event.target.value) },
-        ...[["story", "Stories"], ["place", "Places"], ["person", "People"], ["species", "Species"], ["enemy", "Enemies"], ["item", "Items"], ["faction", "Factions"], ["perk", "Perks"], ["computer", "Computers"], ["systems", "Systems"], ["logistics", "Logistics"], ["command", "Command"], ["health", "Health"]].map(([kind, label]) => el("option", { value: kind }, label))),
+        ...[["story", "Stories"], ["place", "Places"], ["person", "People"], ["species", "Species"], ["enemy", "Enemies"], ["item", "Items"], ["faction", "Factions"], ["perk", "Perks"], ["computer", "Computers"], ["systems", "Systems"], ["logistics", "Logistics"], ["command", "Command"], ["request", "Requests"], ["health", "Health"]].map(([kind, label]) => el("option", { value: kind }, label))),
       el("select", { id: "board-pick", title: "Which one", onchange: (event) => load(state.kind, event.target.value) }),
       el("nav", { class: "board-tabs", role: "tablist" },
         ...[["notes", "The story"], ["scene", "The written scene"], ["file", "As the file"]].map(([tab, label]) => el("button", { class: "board-tab", role: "tab", "data-tab": tab, "aria-selected": "false", onclick: () => showTab(tab) }, label))),
@@ -178,6 +178,8 @@ async function load(kind, id) {
     }
   }
   Object.assign(state, { selected: null, expanded: null, dirty: false, sceneDirty: false, scene: null, positions: state.layout });
+  // A request is a scene file with lines on top: the request's board and the board of every part read the same parts.
+  if (kind === "request" && state.item && !state.item.overview) Object.assign(state, { scene: state.item, written: true, scenePrefix: "request" });
   $("board-what").value = kind;
   const pick = $("board-pick");
   const groups = kind === "story" ? ["main", "crew", "dilemma", "mystery", "exploration", "survival", "politics", "job", "faction"] : [...new Set(state.items.map((one) => one.kind))];
@@ -189,7 +191,9 @@ async function load(kind, id) {
   pick.value = id;
   for (const button of document.querySelectorAll(".board-tab")) {
     if (button.dataset.tab === "notes") button.textContent = KIND_WORDS[kind];
-    if (button.dataset.tab === "scene") { button.textContent = kind === "person" ? "The written lines" : "The written scene"; button.hidden = !["story", "person"].includes(kind); }
+    if (button.dataset.tab === "scene") { button.textContent = kind === "person" ? "The written lines" : kind === "request" ? "Every part" : "The written scene"; button.hidden = !["story", "person", "request"].includes(kind) || Boolean(state.item?.overview); }
+    // The list of every request is made from the files: there's no file of its own to show.
+    if (button.dataset.tab === "file") { button.hidden = Boolean(state.item?.overview); }
   }
   showTab(state.tab === "scene" && !state.written ? "notes" : state.tab);
   say(state.problems.length ? `${state.problems.length} ${state.problems.length === 1 ? "thing" : "things"} the checker would like changed. They're marked in red.` : "");
@@ -512,8 +516,9 @@ function sceneGraph() {
   const scene = state.scene;
   const list = [], ws = [];
   const byName = Object.fromEntries(scene.parts.map((part) => [part.name, part]));
-  const depth = { start: 0 };
-  const queue = ["start"];
+  const first = state.kind === "request" ? "ask" : "start";
+  const depth = { [first]: 0 };
+  const queue = [first];
   const targets = (part) => [...part.choices.flatMap((one) => [one.to, one.pass, one.fail]), ...part.when.map((one) => one.to), part.pass, part.fail, part.won, part.lost, part.fled, part.gaveUp, part.talked].filter(Boolean);
   while (queue.length) {
     const name = queue.shift();
@@ -538,7 +543,7 @@ function sceneGraph() {
 }
 
 function build() {
-  const builders = { story: notesGraph, place: placeGraph, person: personGraph, species: speciesGraph, enemy: enemyGraph, item: itemGraph, faction: factionGraph, perk: perkGraph, computer: computerGraph, systems: systemsGraph, logistics: logisticsGraph, command: commandGraph, health: healthGraph };
+  const builders = { story: notesGraph, place: placeGraph, person: personGraph, species: speciesGraph, enemy: enemyGraph, item: itemGraph, faction: factionGraph, perk: perkGraph, computer: computerGraph, systems: systemsGraph, logistics: logisticsGraph, command: commandGraph, request: requestGraph, health: healthGraph };
   const graph = state.tab === "scene" ? sceneGraph() : builders[state.kind]();
   nodes = graph.list;
   wires = graph.ws;
@@ -679,12 +684,13 @@ function fileText() {
   if (state.kind === "story") return writeStoryText(S(), C());
   if (state.kind === "systems") return writeSystemsText(state.item);
   if (state.kind === "logistics") return writeLogisticsText(state.item);
+  if (state.kind === "request") return sceneText();
   if (state.kind === "command") return writeCommandText(state.item);
   if (state.kind === "health") return writeHealthOf();
   return writeWorldText(state.item, SPECS[state.kind]);
 }
 const sceneText = () => (state.scene ? [state.scene.header, ...state.scene.parts.map((part) => `== ${part.name}\n${part.raw}`)].join("\n") : "");
-const sceneRoute = () => `/api/board/${state.scenePrefix === "talk" ? "talk" : "scene"}/${state.id}`;
+const sceneRoute = () => `/api/board/${state.scenePrefix === "talk" ? "talk" : state.scenePrefix === "request" ? "request" : "scene"}/${state.id}`;
 
 // ---- Tabs, zoom and looking around ------------------------------------------------------------
 async function showTab(tab) {
@@ -1076,6 +1082,7 @@ function inspect() {
   const node = nodes.find((one) => one.id === sel.node);
   if (!node) return inspectNothing(inspector);
   if (state.tab === "scene") return inspectPart(inspector, node);
+  if (state.kind === "request") return inspectRequestNode(inspector, node);
   if (node.kind === "link") return inspectLink(inspector, node);
   if (node.lines) return fill(inspector, h2("Written lines"), hint(node.text), state.written ? row(button("Open the written lines", () => showTab("scene"))) : hint("A file called talk_<id>.txt in world/scenes gives them written lines; the how-to there explains it."));
   if (node.kind === "about") return state.kind === "story" ? inspectAbout(inspector) : state.kind === "systems" ? inspectSystemsAbout(inspector) : state.kind === "logistics" ? inspectLogisticsAbout(inspector) : state.kind === "command" ? inspectCommandAbout(inspector) : state.kind === "health" ? inspectHealthAbout(inspector) : inspectWorldAbout(inspector);
@@ -1117,12 +1124,16 @@ function inspectNothing(inspector) {
                       : state.kind === "logistics" ? "The ship's logistics as a board: each store with what it holds and the room it's in, and the machines, errands, loads and refills, each with arrows to the stores its words name. Click any box to read it and change it."
                       : state.kind === "health" && state.id === "wounds" ? "The kinds of wound and old mark as a board: the lines at the top that say how blood, healing, walking and pain go, every wound and old mark, the weapons and the hits, with arrows from a weapon to the hits it makes and from a hit or an accident to the wounds it leaves, and the species, whose Body parts say how often each part is hit. Click any box to read it and change it."
                       : state.kind === "health" ? "A place's medbay as a board: the lines at the top that say where it is and how it works, each treatment and each kind of mending, and who starts the game hurt. Click any box to read it and change it."
+                      : state.kind === "request" && state.item?.overview ? "Every kind of request as a box, in a column for the lives it's for, with who asks, what's wanted and how long they give. An order is in its own colour. Click one to open it."
+                      : state.kind === "request" ? "A request as a board: its lines on top, which say who it's for, when it comes up, who asks and what's wanted; what they ask, with an arrow for each answer the player can give; and how it ends, done, failed or no longer needed. Click a line or a part to read it and change it. Every part shows the file's parts the way a written scene's are."
                       : state.kind === "command" ? "The chain of command as a board: each post with who holds it when a game begins, and an arrow from whoever chooses it; each job with who does it, and an arrow from the post that heads it; and the spare hands. Click any box to read it and change it."
                       : "The computer as a board: what the player sees when they sit down, its files, letters, logs and programs, and the computers it reaches over its network. Click any box to read all of it and change it; its class, place and login are in the box on the left."),
     el("div", { class: "legend" }, ...(state.tab === "scene" ? [["beat", "parts"], ["ending", "checks and fights"], ["end", "ends"], ["clock", "missing"]]
       : state.kind === "story" ? [["lead", "the lead"], ["beat", "beats"], ["route", "ways through"], ["ending", "endings"], ["fact", "facts"], ["consequence", "consequences"], ["clock", "the clock"], ["next", "other stories"]]
         : state.kind === "systems" ? [["beat", "systems"], ["route", "its own systems"], ["fact", "computers"], ["clock", "rooms"], ["next", "links to open"]]
         : state.kind === "logistics" ? [["beat", "stores"], ["route", "machines"], ["fact", "errands"], ["clock", "loads"], ["consequence", "refills"], ["next", "links to open"]]
+        : state.kind === "request" && state.item?.overview ? [["beat", "requests"], ["route", "orders"]]
+        : state.kind === "request" ? [["lead", "lines on top"], ["beat", "what they ask"], ["route", "the answers"], ["ending", "how it ends"], ["clock", "not written"]]
         : state.kind === "command" ? [["lead", "who chooses"], ["beat", "posts"], ["route", "jobs"], ["fact", "spare hands"]]
         : state.kind === "health" && state.id === "wounds" ? [["lead", "lines at the top"], ["beat", "wounds"], ["fact", "weapons"], ["route", "hits"], ["clock", "accidents"], ["consequence", "old marks"], ["next", "links to open"]]
         : state.kind === "health" ? [["lead", "lines at the top"], ["beat", "treatments"], ["route", "mending"], ["fact", "hurt at the start"], ["next", "links to open"]]
@@ -2062,6 +2073,116 @@ function inspectPart(inspector, node) {
     node.problem ? el("div", { class: "problems" }, ...state.scene.problems.filter((one) => one.includes(`part ${part.name}`)).map((one) => el("div", {}, one))) : null,
     hint("Keep changes the part and the file together. Save writes the file, and it plays the new version from the next turn."));
 }
+// ---- A request (world/scenes/request_<kind>.txt), and every request -----------------------------------------------
+const REQUEST_LINES = [
+  ["for", "For", "Which lives it's for: the captain, crew, outsiders, anyone aboard, anyone, or lives by name, like engine hand or dock hand. Several with commas. Without it, anyone aboard."],
+  ["as", "As", "an order, for one that crew are ordered to do by the officer over them. Without it, it's a request."],
+  ["when", "When", "A condition, as in a scene: while it holds, they ask. Without it, the life and the trouble decide."],
+  ["about", "About", "Whose trouble it is: a rival, someone relieved, someone in the brig, the least loyal officer, or someone down with nobody coming."],
+  ["asks", "Asks", "Who asks: a post (the chief medical officer), a job (a cook), someone by name, your officer, your boss, someone here, or them (with about:)."],
+  ["needs", "Needs", "What's wanted: medicine crates aboard +2, ration crates in the pantry +2, fix a part waiting for repairs, give 1 medkit to {asker}, sell 3 ration packs to {asker}, at half again the market price, talk to the quartermaster, go to haven, pass engineering, work a shift, your word, or carry {about} to the medbay."],
+  ["by", "By", "How long they give once the player says yes: 5 days, or 12 hours."],
+  ["gone when", "Gone when", "A condition that means it's been put right without the player: supply food >= 100 at {place}, or stock medicine_crate >= 4."],
+  ["handed to", "Handed to", "A post the captain can leave it to instead, like the chief engineer. It needs a part called handed."],
+];
+const REQUEST_ANSWERS = { yes: "Yes", given: "Given there and then", handed: "Left to a post", later: "Not now", no: "No" };
+const REQUEST_ENDINGS = { done: "Done", failed: "Failed", gone: "No longer needed" };
+const topPattern = (key) => new RegExp(`^\\s*${key.replace(" ", "\\s+")}:\\s*(.*)$`, "i");
+function topLineOf(key) {
+  for (const line of String(state.scene?.header ?? "").split("\n")) {
+    const found = line.match(topPattern(key));
+    if (found) return found[1].trim();
+  }
+  return null;
+}
+// A line on top written, changed or taken out: after the others, in the order they're explained, or after the title.
+function setTopLine(key, words) {
+  const lines = String(state.scene.header ?? "").split("\n");
+  const at = lines.findIndex((line) => topPattern(key).test(line));
+  if (at >= 0 && !words) lines.splice(at, 1);
+  else if (at >= 0) lines[at] = `${key}: ${words}`;
+  else if (words) {
+    const others = lines.map((line, i) => (REQUEST_LINES.some(([one]) => topPattern(one).test(line)) ? i : -1)).filter((i) => i >= 0);
+    const after = others.length ? others.at(-1) : Math.max(0, ...lines.map((line, i) => (/^\s*(#|\/\/)/.test(line) ? i : 0)));
+    lines.splice(after + 1, 0, `${key}: ${words}`);
+  }
+  state.scene.header = lines.join("\n");
+}
+function requestGraph() {
+  if (state.item?.overview) return requestsOverviewGraph();
+  const scene = state.scene;
+  const list = [], ws = [];
+  const problems = scene.problems ?? [];
+  REQUEST_LINES.forEach(([key, label], i) => {
+    const words = topLineOf(key);
+    list.push({ id: `top_${i}`, kind: words === null ? "clock" : "lead", col: 0, name: `${label}:`, text: words ?? "Not written. Click to write it.", label: "A line on top", bind: { requestTop: key }, problem: problems.some((one) => one.includes(` ${key}: `) || one.includes(`: ${key}:`)) });
+  });
+  const add = (name, kind, col, title) => {
+    const i = scene.parts.findIndex((one) => one.name === name);
+    if (i < 0) return null;
+    const part = scene.parts[i];
+    const label = REQUEST_ANSWERS[name] ? `What they say to ${REQUEST_ANSWERS[name] === "Yes" ? "a yes" : REQUEST_ANSWERS[name].toLowerCase()}` : REQUEST_ENDINGS[name] ? `How it ends: ${REQUEST_ENDINGS[name].toLowerCase()}` : name === "ask" ? "What they ask" : "A part";
+    list.push({ id: `p_${name}`, kind, col, name: title, text: part.text || "...", label, part: i, bind: { requestPart: name }, problem: problems.some((one) => one.includes(`part ${name} `) || one.includes(`part ${name},`) || one.includes(`part called ${name}`)) });
+    return `p_${name}`;
+  };
+  const ask = add("ask", "beat", 1, "What they ask");
+  for (const [name, title] of Object.entries(REQUEST_ANSWERS)) add(name, "route", 2, title);
+  for (const [name, title] of Object.entries(REQUEST_ENDINGS)) add(name, "ending", 3, title);
+  scene.parts.forEach((part) => { if (part.name !== "ask" && !REQUEST_ANSWERS[part.name] && !REQUEST_ENDINGS[part.name]) add(part.name, "fact", 2, part.name); });
+  const has = (id) => list.some((one) => one.id === id);
+  if (ask && has("top_4")) ws.push({ from: "top_4", to: ask, words: "asks" });
+  const askPart = scene.parts.find((one) => one.name === "ask");
+  for (const one of askPart?.choices ?? []) if (one.to && has(`p_${one.to}`)) ws.push({ from: ask, to: `p_${one.to}`, words: one.say });
+  for (const [to, words] of [["done", "it's done"], ["failed", "the day comes first"], ["gone", "put right without the player"]]) if (has("p_yes") && has(`p_${to}`)) ws.push({ from: "p_yes", to: `p_${to}`, words });
+  for (const from of ["given", "handed"]) if (has(`p_${from}`) && has("p_done")) ws.push({ from: `p_${from}`, to: "p_done", words: "it's done" });
+  return { list, ws };
+}
+function requestsOverviewGraph() {
+  const list = [];
+  const groups = [...new Set(state.item.kinds.map((one) => one.group))];
+  for (const one of state.item.kinds) {
+    const said = [one.asks && `${/^them$/i.test(one.asks.trim()) ? "Whoever it's about" : firstUp(one.asks)} asks.`, one.needs && `Wanted: ${one.needs}.`, one.by && `By ${one.by}.`, one.when && `When ${one.when}.`].filter(Boolean).join(" ");
+    list.push({ id: `kind_${one.id}`, kind: one.order ? "route" : "beat", col: groups.indexOf(one.group), name: one.title, text: said || "...", label: `For ${one.group}${one.order ? ", an order" : ""}`, bind: { requestKind: one.id }, problem: one.problems > 0 });
+  }
+  return { list, ws: [] };
+}
+const firstUp = (text) => String(text ?? "").replace(/^./, (ch) => ch.toUpperCase());
+// Words that can be picked with a click, for the lines on top that have only a few answers.
+const REQUEST_PICKS = {
+  for: ["the captain", "crew", "outsiders", "anyone aboard", "anyone"],
+  as: ["an order"],
+  about: ["a rival", "someone relieved", "someone in the brig", "the least loyal officer", "someone down with nobody coming"],
+  by: ["3 hours", "12 hours", "1 day", "2 days", "3 days", "5 days", "7 days"],
+};
+function inspectRequestNode(inspector, node) {
+  if (node.bind?.requestKind) {
+    const one = state.item.kinds.find((kind) => kind.id === node.bind.requestKind);
+    return fill(inspector, h2(one.title), hint(node.label), hint(node.text), one.problems ? el("div", { class: "problems" }, el("div", {}, `The checker would like ${one.problems} ${one.problems === 1 ? "thing" : "things"} changed in it.`)) : null, row(button("Open it", () => load("request", one.id))), hint(`Its file is world/scenes/request_${one.id}.txt.`));
+  }
+  if (node.bind?.requestTop) {
+    const key = node.bind.requestTop;
+    const [, label, help] = REQUEST_LINES.find(([one]) => one === key);
+    const now = topLineOf(key);
+    const box = textBox("edit-top", now ?? "");
+    const keep = async () => {
+      setTopLine(key, box.value.trim());
+      await refreshScene();
+    };
+    const optional = !["asks", "needs", "by"].includes(key);
+    return fill(inspector,
+      h2(`${label}:`),
+      hint(help),
+      el("label", { for: "edit-top" }, now === null ? "Write it here, and Keep adds the line" : "The words after it"),
+      box,
+      REQUEST_PICKS[key] ? fill(el("div", { class: "choices" }), el("label", {}, "Or pick, then Keep"), ...REQUEST_PICKS[key].map((words) => button(words, () => { box.value = words; }, { class: "small" }))) : null,
+      row(button("Keep", keep), button("Undo", () => inspect()), optional && now !== null ? button("Take it out", async () => { setTopLine(key, ""); await refreshScene(); }) : null),
+      node.problem ? el("div", { class: "problems" }, ...(state.scene.problems ?? []).filter((one) => one.includes(`${key}:`)).map((one) => el("div", {}, one))) : null,
+      hint("Keep changes the line and the file together. Save writes the file, and the game uses the new version from the next time it's asked."));
+  }
+  if (node.bind?.requestPart) return inspectPart(inspector, node);
+  return inspectNode(inspector, node);
+}
+
 async function keepPart(index, raw) {
   state.scene.parts[index].raw = raw;
   await refreshScene();
@@ -2126,7 +2247,7 @@ async function save() {
       state.items = state.stories;
       say(result.problems.length ? `Saved. ${result.problems.length} ${result.problems.length === 1 ? "thing" : "things"} the checker would like changed.` : "Saved. The game plays the new version from the next turn.");
     } else {
-      const result = await call(`/api/board/world/${state.kind}/${state.id}`, { text: state.kind === "systems" ? writeSystemsText(state.item) : state.kind === "logistics" ? writeLogisticsText(state.item) : state.kind === "command" ? writeCommandText(state.item) : state.kind === "health" ? writeHealthOf() : writeWorldText(state.item, SPECS[state.kind]) });
+      const result = await call(`/api/board/world/${state.kind}/${state.id}`, { text: state.kind === "request" ? sceneText() : state.kind === "systems" ? writeSystemsText(state.item) : state.kind === "logistics" ? writeLogisticsText(state.item) : state.kind === "command" ? writeCommandText(state.item) : state.kind === "health" ? writeHealthOf() : writeWorldText(state.item, SPECS[state.kind]) });
       if (!result.saved) return say(`Not saved: ${result.problems[0]}`, false);
       state.dirty = false;
       state.problems = result.problems;

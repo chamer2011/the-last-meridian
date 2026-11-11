@@ -3,6 +3,7 @@
 // together from who they are and what they're doing, from the templates in world/rooms.json. Either way
 // the clock stays still, and the person's words come up in the talk window.
 
+import { storyRequest } from "./request-hook.js";
 import { findCharacter } from "./campaign.js";
 import { clearFact, recordFact } from "./record.js";
 import { toOutsider } from "./role.js";
@@ -115,6 +116,11 @@ function enterTalkPart(game, talk, scene, id, emit, hops = 0) {
     // The ship's chain of command, as a conversation changes it: a memory, someone's loyalty.
     if (step.command) {
       for (const notice of storyCommand(game, step)) emit({ type: "notice", text: notice });
+      continue;
+    }
+    // A request started now, or a kind turned off or on.
+    if (step.request) {
+      for (const notice of storyRequest(game, step)) emit({ type: "notice", text: notice });
       continue;
     }
     const outcome = runTool(game, tool, input, turn);

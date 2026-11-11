@@ -27,6 +27,7 @@ function splitPeople(words) {
   return null;
 }
 import { systemIdOf } from "../public/systems-text.js";
+import { REQUEST_STATES } from "./request-hook.js";
 import { healthHolds, readHealthAsk, readHealthEffect } from "./story-health.js";
 
 // The place's systems, in conditions and effects: "power off in The Docks", "alarm ringing at haven", "door locked
@@ -179,6 +180,14 @@ export function parseCondition(text) {
         else if (!SUPPLIES.includes(good)) problems.push(`"supply" is followed by food, fuel, medicine or parts, not ${good}`);
         if (place !== null && !LOCATIONS[place]) problems.push(`there's no place called ${place || "nothing"}`);
         Object.assign(term, { id: good, op, amount: Number(amount), place });
+        break;
+      }
+      case "request": {
+        // How a request (world/scenes/request_<kind>.txt) stands: asked (someone has it to ask), taken (taken on, or
+        // handed on), done, failed, refused or gone (how it last ended), off (a scene turned it off), or none.
+        const [kind, state] = rest.map((word) => word.toLowerCase());
+        if (rest.length !== 2 || !/^[a-z0-9_]+$/.test(kind ?? "") || !REQUEST_STATES.includes(state)) problems.push(`"request" is followed by a request's name, like medicine, and one of ${REQUEST_STATES.join(", ")}: "${raw.trim()}"`);
+        Object.assign(term, { id: kind, state });
         break;
       }
       case "trouble": {
@@ -358,6 +367,18 @@ function termHolds(game, term, helpers) {
     case "supply": {
       const level = game.world?.places?.[term.place ?? game.location]?.goods?.[term.id];
       result = level !== undefined && COMPARE[term.op](level, term.amount);
+      break;
+    }
+    case "request": {
+      const open = game.requests?.open?.[term.id];
+      const ended = game.requests?.ended?.[term.id]?.how;
+      result = term.state === "asked" ? open?.state === "offered"
+        : term.state === "taken" ? ["accepted", "handed"].includes(open?.state)
+          : term.state === "off" ? Boolean(game.requests?.off?.[term.id])
+            : term.state === "none" ? !open && !ended
+              : term.state === "done" ? ["done", "seen_to"].includes(ended)
+                : term.state === "failed" ? ["failed", "left_undone"].includes(ended)
+                  : ended === term.state;
       break;
     }
     case "trouble": {
@@ -552,6 +573,14 @@ export function parseEffect(text) {
       if (amount === null || amount === 0) return { problem: "remember is written * remember someone someone_else -10: reason, with a number, a minus sign for a grudge" };
       if (!pair || /^(you|nobody)$/i.test(pair[0]) || /^nobody$/i.test(pair[1])) return { problem: "remember needs who remembers it and who it's of, each someone aboard by their id or name (or you, for who it's of)" };
       return after ? { do: { command: "remember", who: pair[0], other: pair[1], amount, reason: after } } : { problem: "remember needs a colon and the reason after it" };
+    }
+    case "request": {
+      // A request the written story starts now (someone has it to ask, without waiting their turn), or a kind it turns
+      // off, so a scene of its own can take that trouble over, and on again: src/requests.js plays each.
+      const kind = words[1]?.toLowerCase();
+      const turn = words[2]?.toLowerCase() ?? null;
+      if (!kind || !/^[a-z0-9_]+$/.test(kind) || words.length > 3 || (turn && !["on", "off"].includes(turn))) return { problem: "request is written * request medicine: The reason, to have someone ask it now, or * request medicine off: The reason, and * request medicine on: The reason" };
+      return after ? { do: { request: kind, turn, reason: after } } : { problem: "request needs a colon and the reason after it" };
     }
     case "mutiny": {
       // How a delegation, a quiet word or a captain's days in the brig end: src/command.js plays each.

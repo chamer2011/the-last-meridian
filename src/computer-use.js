@@ -4,6 +4,7 @@
 // which is why this sits apart from src/computers.js: that file is read by the rules and the walk,
 // and the tools read those.
 
+import { storyRequest } from "./request-hook.js";
 import { LOCATIONS } from "./data.js";
 import { placeNow, worldOf } from "./daily.js";
 import { clearFact, recordFact } from "./record.js";
@@ -193,6 +194,10 @@ function runProgram(game, session, content, id) {
       continue;
     }
     if (step.computer) continue;
+    if (step.request) {
+      notes.push(...storyRequest(game, step));
+      continue;
+    }
     if (step.systems) {
       notes.push(...applySystemsEffect(game, step.systems, { by: session.yours ? "owner" : "player" }));
       continue;

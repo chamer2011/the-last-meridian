@@ -169,6 +169,9 @@ Lines starting with * happen when the part begins, and the player sees each as a
                                                 kind; a lost limb stays lost; tarrow_healed goes on the record)
     * dies tarrow: of her wounds, before anyone came   (they fall where they stand and die, in those words, which the
                                                 record and the chalked names say, tarrow_died; never the player)
+    * request medicine: The reason              (someone has that request to ask now: see THE WRITTEN STORY, under
+    * request medicine off: The reason           REQUESTS; off keeps it from being asked, so a scene of yours can
+    * request medicine on: The reason            take that trouble over, and on lets it be asked again)
     * mutiny give ground: The reason      (the ship's chain of command, for the scenes it plays: give ground,
                                           calmed, arrest, crushed, step down, refused, taken, released, join,
                                           stay out or warn; world/command/_how-to-write-command.txt says what each does)
@@ -224,6 +227,11 @@ and join several with "and":
                                      usual for it (under 80 is short, under 50 scarce): food, fuel, medicine
                                      or parts, with the same comparisons as credits. Add at and a place for
                                      another port: supply food < 80 at haven. world/daily.json moves them.
+    request medicine done            How a request stands, by its file's name (request_medicine.txt):
+                                     asked (someone has it to ask), taken (taken on, or left to a post),
+                                     done, failed, refused or gone (how it last ended; done counts one a post
+                                     saw to, failed one a post didn't), off (a scene turned it off), or none
+                                     (nothing's come of it yet).
     trouble here                     Something bad is going on at the port the player is at: a strike turned
                                      into a fight, a raid, a feud (the events marked trouble in
                                      world/daily.json). Also trouble at and a place.
@@ -532,6 +540,26 @@ even if the player's gone elsewhere. {port} is whoever holds the place, one of t
 * faction {port} 3: The reason gives standing with them. A place run by people who aren't one of
 the factions (Cinder Reach's company and its strikers, Tessen's colonists, Maris Deep's kelpers,
 Saint Orrin's hermits) has nobody to have standing with, and the line does nothing there.
+
+THE WRITTEN STORY
+
+A scene, a conversation or a computer's program can do three things with a request, by the name of its
+file without request_ (medicine, port_food):
+
+    * request medicine: The reason        someone has it to ask now, without waiting their turn: the
+                                          pace, its rest and its when: line are passed over. Someone has
+                                          to be there to ask it, and the trouble it's about, if it has
+                                          an about: line; if not, the story says nobody can ask it now.
+    * request medicine off: The reason    it isn't asked any more, so a scene of yours can take that
+                                          trouble over. One waiting to be asked goes; one taken on goes
+                                          on to its end.
+    * request medicine on: The reason     it can be asked again.
+
+And a condition asks how it stands: ? request medicine done, or asked, taken, failed, refused, gone,
+off or none (see CONDITIONS). The same goes for what came of it on the record (request_medicine_done
+and the rest, under they remember, above). check-story says when a scene names a request there's no
+file for. To change what a request says, change its file: it's the same as any other scene file, and
+the Story board opens it under Requests.
 
 HOW THEY'RE PUT
 
