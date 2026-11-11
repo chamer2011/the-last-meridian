@@ -10,6 +10,7 @@ import { after, test } from "node:test";
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-ship-"));
 process.env.GAME_DATA_DIR = dataDir;
 
+const { illnessPenalty } = await import("../src/register.js");
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const { storePut } = await import("../src/bag.js");
 const { countAboard, fillStores, logisticsOf, putAboard, takeAboard } = await import("../src/logistics.js");
@@ -85,7 +86,7 @@ test("the ship's file: nine hundred aboard, four supplies, four ration levels, a
 test("a new game's ship carries her stores, with the day's clock set and nobody else in the chair", () => {
   const game = newGame();
   const s = game.ship;
-  assert.equal(game.version, 22);
+  assert.equal(game.version, 23);
   assert.equal(s.aboard, 900);
   assert.equal(s.food, SHIP_DATA.start.food);
   assert.equal(s.medicine, SHIP_DATA.start.medicine);
@@ -120,13 +121,17 @@ test("supplies drain at midnight, and only then", () => {
   passTime(game, 13);
   assert.equal(game.ship.owed, undefined, "it isn't midnight yet");
   passTime(game, 2);
-  assert.ok(game.ship.owed.medicine > 0 && game.ship.owed.parts > 0, "and now a day has gone by: the medbay and the engineers have used a little");
+  // The engineers have used a little of a parts crate. The medicine goes a dose at a time through the medbay now.
+  assert.ok(game.ship.owed.parts > 0, "and now a day has gone by: the engineers have used a little");
+  assert.equal(game.ship.owed.medicine, undefined);
   assert.equal(game.ship.day, 1);
 });
 
 test("passing many days at once runs each one", () => {
   const one = newGame();
   const many = newGame();
+  // The same game: who falls ill, and takes the medicine, is made up from the game's own seed.
+  many.bodySeed = one.bodySeed;
   for (let i = 0; i < 5; i += 1) days(one, 1);
   days(many, 5);
   assert.equal(stock(one, "food"), stock(many, "food"));
@@ -150,7 +155,8 @@ test("left alone, the numbers hold: about two weeks of fuel keeping station, thr
     const starved = shipView(game).supplies.find((s) => s.id === "food");
     assert.ok(starved.days >= 5 && starved.days <= 7, `with nothing coming aboard, food lasts ${starved.days} days`);
   });
-  assert.ok(row("medicine").days > 35 && row("medicine").days < 50, `medicine lasts ${row("medicine").days} days`);
+  // The medicine goes a dose at a time through the medbay, and a ship of nine hundred mostly well takes few doses.
+  assert.ok(row("medicine").days > 200, `medicine lasts ${row("medicine").days} days`);
   assert.ok(row("parts").days > 60 && row("parts").days < 100, `parts last ${row("parts").days} days`);
   assert.ok(row("fuel").days >= 12 && row("fuel").days <= 16, "about two weeks of fuel keeping station");
   assert.equal(row("fuel").days, Math.floor(game.ship.fuel / -ledger.net.fuel));
@@ -262,13 +268,14 @@ test("morale and health settle where the rations put them", () => {
   const near = (value, target) => Math.abs(value - target) <= 3;
   for (let day = 0; day < 40; day += 1) { stocked(); days(game, 1); }
   assert.ok(near(game.ship.morale, SHIP_DATA.rations.standard.morale), `morale ${game.ship.morale}`);
-  assert.equal(game.ship.health, SHIP_DATA.rations.standard.health);
+  // Health settles where the rations put it, less a point for each in a hundred sick and three for the seriously sick.
+  assert.equal(game.ship.health, SHIP_DATA.rations.standard.health - illnessPenalty(game));
   shipCommand(game, { action: "rations", id: "generous" });
   for (let day = 0; day < 40; day += 1) { stocked(); days(game, 1); }
   // Generous rations are a quarter more to serve, and the galley's kettle can't quite keep up through the sittings, so
   // some find it empty and morale settles a little under what the rations promise: better than standard, not the full way.
   assert.ok(game.ship.morale > SHIP_DATA.rations.standard.morale + 3 && game.ship.morale <= SHIP_DATA.rations.generous.morale, `morale ${game.ship.morale}`);
-  assert.equal(game.ship.health, SHIP_DATA.rations.generous.health);
+  assert.ok(Math.abs(game.ship.health - (SHIP_DATA.rations.generous.health - illnessPenalty(game))) <= 1, `health ${game.ship.health}`);
 });
 
 test("ration levels have a visible cost and benefit, and do what they say", () => {
@@ -513,7 +520,7 @@ test("a save from before the ship kept her own stores loads, with nothing charge
   save.ship = { name: "CFS Meridian", hull: 40, maxHull: 100, fuel: 3, maxFuel: 12, morale: 31 };
   save.transcript = [{ role: "narrator", text: "The story so far.\n\n> Do something" }];
   const game = migrateGame(save);
-  assert.equal(game.version, 22);
+  assert.equal(game.version, 23);
   assert.equal(game.ship.day, 9);
   assert.equal(game.ship.at, "kessara");
   assert.equal(stock(game, "food"), 56, "her stores are full, from the logistics file");
@@ -524,7 +531,7 @@ test("a save from before the ship kept her own stores loads, with nothing charge
   assert.equal(game.fleet, undefined);
   assert.equal(publicState(game).storyWaiting, false, "nothing's waiting on the player");
   passTime(game, 24);
-  assert.ok(game.ship.owed?.medicine > 0, "and a day has been charged since");
+  assert.ok(game.ship.owed?.parts > 0, "and a day has been charged since");
 });
 
 test("a save with the fleet in it loses the fleet, and keeps what was the ship's", () => {
@@ -539,7 +546,7 @@ test("a save with the fleet in it loses the fleet, and keeps what was the ship's
   };
   save.transcript = [{ role: "narrator", text: "The story so far." }];
   const game = migrateGame(save);
-  assert.equal(game.version, 22);
+  assert.equal(game.version, 23);
   assert.equal(game.fleet, undefined);
   assert.equal(game.ship.day, 12);
   assert.equal(game.ship.at, "cinder");
@@ -571,7 +578,7 @@ test("a captain's save aboard the Sundial docks the Meridian there, and one from
   const ancient = { ...oldSave(), version: 3, bestiary: undefined };
   delete ancient.campaign;
   const game = migrateGame(ancient);
-  assert.equal(game.version, 22);
+  assert.equal(game.version, 23);
   assert.ok(game.ship.day !== undefined);
   assert.doesNotThrow(() => publicState(game));
 });
@@ -581,5 +588,5 @@ test("sleeping pays for the day too", () => {
   game.location = "meridian";
   game.clock.hours = 20;
   rest(game);
-  assert.ok(game.ship.owed?.medicine > 0, "midnight went by in the sleep, and the day was charged");
+  assert.ok(game.ship.owed?.parts > 0, "midnight went by in the sleep, and the day was charged");
 });

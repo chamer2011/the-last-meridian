@@ -12,7 +12,7 @@
  "infinite": false,
  "compressionlevel": -1,
  "nextlayerid": 6,
- "nextobjectid": 52,
+ "nextobjectid": 53,
  "properties": [
   {
    "name": "name",
@@ -5306,6 +5306,35 @@
        "name": "mark",
        "type": "string",
        "value": "2"
+      }
+     ]
+    },
+    {
+     "id": 52,
+     "name": "The records terminal",
+     "type": "",
+     "gid": 2,
+     "x": 1104,
+     "y": 736,
+     "width": 40,
+     "height": 56,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "look",
+       "type": "string",
+       "value": "A records terminal bolted beside the scan bed, its keys worn shiny. Everyone aboard is on it somewhere: who they are, where they sleep, and how they are."
+      },
+      {
+       "name": "use",
+       "type": "string",
+       "value": "I sit down at the records terminal."
+      },
+      {
+       "name": "mark",
+       "type": "string",
+       "value": "r"
       }
      ]
     }

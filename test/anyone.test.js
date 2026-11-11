@@ -123,7 +123,7 @@ test("three people could have the chair, each with a file, a post, a day, and th
 
 test("a captain's game hasn't changed: it starts where it always did, with the people it always had", () => {
   const game = createGameFromDraft(randomDraft({ seed: 21, archetype: "officer" }));
-  assert.equal(game.version, 22);
+  assert.equal(game.version, 23);
   assert.deepEqual(game.role, { id: "captain", captain: true });
   assert.equal(isCaptain(game), true);
   assert.equal(game.location, "meridian");
@@ -469,6 +469,8 @@ test("a year of it under each of them never breaks anything, and comes out the s
   const one = newGame("docker");
   days(one, 70);
   const two = newGame("docker");
+  // The same game: everyone's body, and who falls ill, are made up from the game's own seed.
+  two.bodySeed = one.bodySeed;
   days(two, 30);
   const loaded = JSON.parse(JSON.stringify(two));
   for (let day = 0; day < 40; day += 1) days(loaded, 1);
@@ -606,7 +608,7 @@ test("a save from before all this is a captain's, and stays one", () => {
   old.clock.hours = 300;
   old.location = "meridian";
   const game = migrateGame(JSON.parse(JSON.stringify(old)));
-  assert.equal(game.version, 22);
+  assert.equal(game.version, 23);
   assert.deepEqual(game.role, { id: "captain", captain: true });
   assert.equal(isCaptain(game), true);
   assert.equal(chairOf(game), null);

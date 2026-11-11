@@ -79,11 +79,13 @@ The parts, each under its heading with a colon:
     Files                   Each is "a_name: its text", and the text can go on for several lines.
     Mail                    Each is "From someone to someone: the letter", over several lines if
                             needed. Names link to lore, as they do in the story.
-    Logs                    Each line starting with - is a log. Four are made by the game from what
+    Logs                    Each line starting with - is a log. Seven are made by the game from what
                             it knows: berths (whether the Meridian is at this place's berths),
-                            prices (today's supplies and prices here), people (who's here now) and
-                            news (what's been heard of this place). Any other line is a log of your
-                            own words.
+                            prices (today's supplies and prices here), people (who's here now),
+                            news (what's been heard of this place), readouts (the ship's gauges),
+                            manifest (what the shuttle stores have been refilled with) and register
+                            (everyone aboard and how they are, sorted by clicking a heading). Any
+                            other line is a log of your own words.
     Programs                Each is "Its name: what the screen says when it runs", then -> and the
                             effects, separated by ;, then ? and a condition if it's only offered
                             when that holds. The effects and conditions are the ones a scene can

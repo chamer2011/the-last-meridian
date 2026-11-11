@@ -3,6 +3,7 @@
 
 import { advanceMedbay, startHealth } from "./medbay.js";
 import { settleDeaths } from "./death.js";
+import { registerDay, startRegister } from "./register.js";
 import { accidentsDay, bodyOf, bodyView, dressWounds, handsFree, newBodySeed, painADay, passWounds, woundEffects } from "./body.js";
 import { allCharacters, allEnemies, campaignCharacters, campaignEnemies, campaignFolderName, findCharacter, findEnemy, fullName } from "./campaign.js";
 import {
@@ -347,6 +348,8 @@ function hoursPass(game, hours, activity) {
     notes.push(...advanceLogistics(game, day * 24), ...advanceShip(game, day), ...dutyDay(game, day), ...reviewDay(game, day), ...moodDay(game, day), ...advanceWorld(game, day), ...advanceStories(game, day, told));
     // Now and then someone hurts themselves at their work, at a place whose health file says how often.
     accidentsDay(game, day);
+    // Illness moves among everyone aboard, on the register and off it (src/register.js).
+    notes.push(...registerDay(game, day));
     // And now and then something wears out by itself, at a place whose systems file says how often.
     notes.push(...wearDay(game, day));
   }
@@ -733,7 +736,7 @@ export const tellStoryWaits = (fn) => {
 export function assembleGame(profile) {
   const start = START_LIST[profile.start] ?? START_LIST.captain;
   const game = {
-    version: 22,
+    version: 23,
     campaign: null,
     scene: null,
     flags: {},
@@ -802,6 +805,7 @@ export function assembleGame(profile) {
   // Who holds which post aboard, as the chain of command's file has it, with the player or the chair's captain on top.
   startCommand(game);
   startHealth(game);
+  startRegister(game);
   return game;
 }
 

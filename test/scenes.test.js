@@ -462,7 +462,7 @@ test("an older save, even one the AI game master was running, opens as a written
   old.ai = { provider: "claude", messages: [{ role: "user", content: "x" }], written: ["what the story told"] };
   old.pendingEvents = ["A fight, for the AI to tell."];
   const migrated = migrateGame(old);
-  assert.equal(migrated.version, 22);
+  assert.equal(migrated.version, 23);
   assert.equal(migrated.mode, undefined);
   assert.equal(migrated.ai, undefined, "what was kept for the AI goes");
   assert.equal(migrated.pendingEvents, undefined);

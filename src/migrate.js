@@ -8,6 +8,7 @@ import { newShipState, shipOf } from "./ship.js";
 import { newBodySeed } from "./body.js";
 import { newCommandState } from "./command.js";
 import { startHealth } from "./medbay.js";
+import { startRegister } from "./register.js";
 import { noteLoreSeen, startingLoreIds } from "./lore.js";
 import { crewContacts, maxEnergy, maxHp } from "./rules.js";
 import { emptyStory } from "./story-library.js";
@@ -275,6 +276,13 @@ function fromVersion21(save) {
   return game;
 }
 
+// Version 23 puts everyone aboard without a day of their own on the register (src/register.js), sized to who's aboard now.
+function fromVersion22(save) {
+  const game = { ...save, version: 23 };
+  startRegister(game);
+  return game;
+}
+
 export function migrateGame(save) {
   if (!save) return save;
   let game = save;
@@ -299,6 +307,7 @@ export function migrateGame(save) {
   if (game.version < 20) game = fromVersion19(game);
   if (game.version < 21) game = fromVersion20(game);
   if (game.version < 22) game = fromVersion21(game);
+  if (game.version < 23) game = fromVersion22(game);
   // A place that's gone from the world's files can't hold anyone, and factions added since this save was made need a standing.
   if (!LOCATIONS[game.location]) game.location = "meridian";
   game.factions ??= {};

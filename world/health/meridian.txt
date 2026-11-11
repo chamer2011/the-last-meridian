@@ -8,11 +8,13 @@ medicine: the medicine cabinet, 20 doses to a crate
 bed rest: 3 days after a serious wound is treated
 the dead are laid out in: The Quiet Room
 the names go up on: The chalked names
-a death aboard costs: 3 morale
+a death aboard costs: 3 morale, 1 for someone on the register
 fitting a limb: 1 dose, 2 hours
 the workshop: The Repair Bay
 who mends: the chief engineer, a tech
 parts from: the parts lockers, the shuttle stores
+quarters: The Overflow 5, The Hot Bunks 4, The Aft Holds 1
+the doctor's rounds: 1 dose for each serious illness, once a day
 the morning queue: 07:45 to 10:30, at queue
 accidents at work: 1 in 20 days in rough work, 1 in 100 for everyone else
 

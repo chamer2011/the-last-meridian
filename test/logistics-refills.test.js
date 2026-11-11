@@ -110,19 +110,20 @@ test("the Ship menu's food, medicine and parts are the rooms' stores: counted in
   assert.ok(food.used >= 8.9 && food.used <= 9.1, `${food.used} crates a day at nine hundred mouths`);
   assert.equal(food.days, null, "holding: the refills from nothing bring more than the kettle eats, so there are no days to count");
   assert.equal(food.made, food.used);
-  assert.equal(supply(game, "medicine").days, 42, "nothing refills the medicine");
+  // Nothing refills the medicine, but it goes a dose at a time through the medbay, and a well ship takes few doses.
+  assert.ok(supply(game, "medicine").days > 200, `medicine for ${supply(game, "medicine").days} days`);
   assert.deepEqual([supply(game, "medicine").stock, supply(game, "medicine").max], [5, 5]);
   assert.deepEqual([supply(game, "parts").stock, supply(game, "parts").max], [12, 12]);
   takeAboard(game, SHIP_ID, "ration_crate", 20);
   assert.equal(supply(game, "food").stock, 36, "and the count follows the stores at once");
-  // Nine days on, the ship's daily needs have used up one crate of medicine, and the medbay has opened another from the
-  // cabinet to treat Vik's leg and Hana's burns, and nothing else.
+  // Nine days on, the medbay has opened one crate from the cabinet, to treat Vik's leg and Hana's burns, and the ship
+  // takes no daily crate of its own: the medicine goes a dose at a time.
   const before = JSON.stringify(game);
   publicState(game);
   assert.equal(JSON.stringify(game), before, "reading changes nothing");
   passTime(game, 24 * 9, "routine");
-  assert.equal(countAboard(game, SHIP_ID, ["medicine_crate"]).n, 3);
-  assert.ok(game.ship.owed.medicine >= 0 && game.ship.owed.medicine < 1);
+  assert.equal(countAboard(game, SHIP_ID, ["medicine_crate"]).n, 4);
+  assert.equal(game.ship.owed.medicine ?? 0, 0);
   assert.ok(countAboard(game, SHIP_ID, ["parts_crate"]).n >= 10, "the engineers take a crate about once a week");
   // The shuttle stores are kept full and Brandt keeps the pantry at about four crates, while the produce goes as fast
   // as the garden grows it: the food settles at twenty-odd crates, holding.
@@ -138,9 +139,12 @@ test("while a store is out nothing's owed, so the first crates to come aboard ar
   assert.equal(game.ship.owed.medicine ?? 0, 0);
   putAboard(game, SHIP_ID, "medicine_crate", 3);
   passTime(game, 24 * 2, "routine");
-  assert.equal(countAboard(game, SHIP_ID, ["medicine_crate"]).n, 2, "two still in the cabinet: the ship's daily needs open none yet, and the medbay opens one for Vik and Hana, who waited twenty days for it");
+  // The medbay opens one for Vik and Hana, who waited twenty days for it, and the doctor's rounds take one of their own
+  // if anyone on the register has fallen seriously ill since, which is up to the game's seed.
+  const forTheRounds = game.medbay.meridian.rounds === undefined ? 0 : 1;
+  assert.equal(countAboard(game, SHIP_ID, ["medicine_crate"]).n, 2 - forTheRounds, "the rest still in the cabinet");
   assert.equal(game.ship.out.medicine, undefined);
-  assert.ok(game.ship.owed.medicine > 0 && game.ship.owed.medicine < 1);
+  assert.equal(game.ship.owed.medicine ?? 0, 0, "nothing's owed: the medbay takes its doses from the crate it's opened");
 });
 
 test("buying puts crates into the stores that keep them, selling takes them out, and a story's food is ten crates a unit", () => {

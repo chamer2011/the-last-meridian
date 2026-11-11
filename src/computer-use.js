@@ -136,6 +136,11 @@ function logLines(game, session, content, log) {
 function openLog(game, session, content, id) {
   const log = content.logs.find((one) => one.id === id);
   if (!log) return { over: false, said: "No such log." };
+  // The register is a table, made afresh each time it's shown (src/register.js).
+  if (log.kind === "register") {
+    showScreen(session, { kind: "register", id, title: log.name });
+    return act(game, session, 0) ?? { over: false };
+  }
   showScreen(session, { kind: "log", id, title: log.name, lines: logLines(game, session, content, log) });
   const out = act(game, session, 0);
   return out ?? { over: false };

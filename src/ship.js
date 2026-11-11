@@ -13,7 +13,9 @@ import { aboardShip, isCaptain } from "./role.js";
 import { addCondition, buyPrice, changeStress, clamp, clockLabel, jumpHours, passTime, sellPrice, travel } from "./rules.js";
 import { navigationDown } from "./systems.js";
 import { YOU, commandOf, councilRefuses, holderKey, officerName, officerNames, postAndName, riskyJump, setHolder, stillAlive, tallyDuty } from "./command.js";
-import { medbayView } from "./medbay.js";
+import { dosesADay, medbayDoses, medbayOf, medbayView } from "./medbay.js";
+import { illnessPenalty, registerStarves } from "./register.js";
+import { illnessKinds } from "./body.js";
 import { workshopView } from "./workshop.js";
 import { countAboard, errandsView, foodADay, machinesView, mealsOfDay, mealsView, putAboard, refilledADay, refillsView, repairsView, storesView, takeAboard } from "./logistics.js";
 import { SHIP_DATA, STAR_MAP } from "./world.js";
@@ -123,6 +125,16 @@ const placeName = (ship) => LOCATIONS[ship.at]?.name ?? STAR_MAP.openSpace;
 
 // ---- A day's numbers ----------------------------------------------------
 
+// The medicine the medbay's been getting through, in crates a day: what it used over the last week, or, with no week
+// behind it yet, what the register's serious cases would take.
+function medicineADay(game) {
+  const perCrate = medbayOf(SHIP_ID)?.medicine?.doses ?? 20;
+  const used = dosesADay(game, SHIP_ID);
+  if (used > 0) return used / perCrate;
+  const alive = game.register ? game.register.size - Object.keys(game.register.dead).length : game.ship?.aboard ?? 0;
+  return (alive * illnessKinds().filter((kind) => kind.serious && kind.dosed !== null).reduce((sum, kind) => sum + kind.catches, 0)) / perCrate;
+}
+
 // What a day does right now, or what it would do if the rations changed.
 export function shipLedger(game, change = {}) {
   const ship = shipOf(game);
@@ -134,7 +146,7 @@ export function shipLedger(game, change = {}) {
   // What the whole ship eats at the kettle in a day, in crates, or the old tonnes where there are no sittings.
   used.food = foodADay(game, SHIP_ID, rations.food) ?? people * SUPPLIES.food.perPerson * rations.food;
   // Sick people need more medicine, so a medicine shortage feeds itself.
-  used.medicine = people * SUPPLIES.medicine.perPerson * (1 + (100 - ship.health) / 100);
+  used.medicine = medbayDoses(SHIP_ID) && aboardCount(game, "medicine") ? medicineADay(game) : people * SUPPLIES.medicine.perPerson * (1 + (100 - ship.health) / 100);
   for (const [id, amount] of Object.entries(SHIP.uses ?? {})) used[id] += amount;
   for (const [id, amount] of Object.entries(SHIP.produces ?? {})) made[id] += amount;
   // What the refills from nothing bring to the stores counts as made, up to what's used: while they keep up, a store
@@ -142,7 +154,7 @@ export function shipLedger(game, change = {}) {
   for (const id of STORES) if (aboardCount(game, id)) made[id] += Math.min(used[id], refilledADay(game, SHIP_ID, STORE_ITEMS[id]));
   const net = Object.fromEntries(SUPPLY_IDS.map((id) => [id, made[id] - used[id]]));
   let moraleTarget = rations.morale;
-  let healthTarget = rations.health;
+  let healthTarget = rations.health - illnessPenalty(game);
   for (const id of shortages) {
     moraleTarget += RULES.shortage[id]?.morale ?? 0;
     healthTarget += RULES.shortage[id]?.health ?? 0;
@@ -216,6 +228,8 @@ function payForDay(game, ledger) {
     // out of the stores each time a whole one's been used up. With none left, nothing's used and nothing's owed: the
     // shortage shows instead, and the first crates to come aboard last their whole time.
     if (id === "food") continue;
+    // The medbay takes medicine a dose at a time from its cabinet, so there's no daily crate of the ship's own.
+    if (id === "medicine" && medbayDoses(SHIP_ID)) continue;
     if (isOut(game, id)) {
       ship.owed[id] = 0;
       continue;
@@ -277,10 +291,12 @@ function countTheDead(game, notes) {
   const ship = game.ship;
   if (ship.health < RULES.deadlyHealth && ship.aboard > RULES.peopleFloor) {
     const dead = Math.min(ship.aboard - RULES.peopleFloor, Math.max(1, Math.round(ship.aboard * (RULES.deadlyHealth - ship.health) * 0.0004)));
-    ship.aboard -= dead;
+    // With the register, they're people with names (src/register.js), who count themselves off.
+    const named = game.register ? registerStarves(game, dead, ship.day - 1) : 0;
+    ship.aboard -= dead - named;
     ship.deaths += dead;
     // The day that's just ended, for the captain's and the doctor's duty.
-    tallyDuty(game, SHIP_ID, ship.day - 1, { deaths: dead });
+    if (dead - named) tallyDuty(game, SHIP_ID, ship.day - 1, { deaths: dead - named });
   }
   if (ship.deaths >= 5 && ship.day % 3 === 0) {
     note(game, notes, "SHIP", say("deaths", { dead: ship.deaths.toLocaleString("en-US") }));

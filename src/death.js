@@ -9,7 +9,8 @@
 // game.dead holds them by body key: { who, name, place, at, day, cause, part, room }. A new object each time someone
 // dies, so that whatever's remembered about the living knows it's out of date. Reading any of it writes nothing.
 
-import { deathOf } from "./body.js";
+import { deathOf, illnessKinds } from "./body.js";
+import { registerDead } from "./register.js";
 import { findCharacter } from "./campaign.js";
 import { afterDeath, tallyDuty } from "./command.js";
 import { recordFact } from "./record.js";
@@ -48,6 +49,7 @@ export function deathRulesOf(place) {
     room: room?.id ?? null,
     names: names && !names.problem ? names.thing : null,
     morale: cost && !cost.problem ? cost.morale : 0,
+    registerMorale: cost && !cost.problem ? cost.register ?? cost.morale : 0,
   };
 }
 
@@ -87,6 +89,7 @@ export const deathFact = (who) => `${(WORLD_CHARACTERS[who] ? who : slugOf(who))
 // How they died, in words: bled to death where they fell, on a cot, or on the medbay's floor; or of a wound gone bad.
 function causeWords(died, down) {
   if (died.cause === "infection") return `of the wound in the ${PART_WORDS[died.part] ?? "body"} gone bad`;
+  if (died.cause === "illness") return `of ${illnessWords(died.kind)}, with nobody to dose it`;
   if (down?.bed?.startsWith("@")) return "bled to death on the medbay's floor";
   if (down?.bed) return "bled to death on a cot in the medbay";
   if (down) return "bled to death where they fell";
@@ -105,14 +108,16 @@ export function settleDeaths(game) {
 }
 
 // Someone dies: at a time, of a cause. Returns lines for the story.
-export function die(game, key, { at = nowOf(game), cause = "bled", part = null } = {}) {
+// An illness by its id, in words: "a fever".
+const illnessWords = (id) => illnessKinds().find((one) => one.id === id)?.words ?? "an illness";
+export function die(game, key, { at = nowOf(game), cause = "bled", part = null, kind = null } = {}) {
   if (!key || key === "you" || deathOf(game, key)) return [];
   const { who, place: crowdPlace } = whoOf(key);
   const down = game.down?.[key] ?? null;
   const place = down?.place ?? crowdPlace ?? WORLD_CHARACTERS[who]?.location ?? game.location;
   const rules = deathRulesOf(place) ?? { room: null, names: null, morale: 0 };
   const name = nameOf(game, who);
-  const words = causeWords({ cause, part }, down);
+  const words = causeWords({ cause, part, kind }, down);
   const day = Math.floor(at / 24);
   game.dead = { ...(game.dead ?? {}), [key]: { who, name, place, at, day, cause: words, ...(part ? { part } : {}), room: rules.room } };
   const notes = [];
@@ -150,7 +155,7 @@ export function die(game, key, { at = nowOf(game), cause = "bled", part = null }
 // ---- The names -----------------------------------------------------------------------------------------
 
 // The dead of a place, oldest first.
-export const deadAt = (game, place) => Object.values(game.dead ?? {}).filter((one) => one.place === place).sort((a, b) => a.at - b.at);
+export const deadAt = (game, place) => [...Object.values(game.dead ?? {}), ...registerDead(game)].filter((one) => one.place === place).sort((a, b) => a.at - b.at);
 
 // Whether a thing is where a place's dead have their names put up.
 function isNamesThing(place, thing) {
@@ -163,7 +168,8 @@ function namesWords(game, place) {
   const dead = deadAt(game, place);
   if (!dead.length) return null;
   const line = (one) => `${one.name}, day ${one.day + 1}`;
-  return `Newest, low down and still sharp: ${dead.map(line).join("; ")}.`;
+  const shown = dead.slice(-6);
+  return `Newest, low down and still sharp: ${shown.map(line).join("; ")}.${dead.length > shown.length ? ` ${dead.length - shown.length} more since you came aboard, further up.` : ""}`;
 }
 
 // A thing's look, with the names that have gone up on it if it's the place's names.
@@ -178,7 +184,8 @@ export function readNames(game, place, thing) {
   if (!isNamesThing(place, thing)) return null;
   const dead = deadAt(game, place);
   if (!dead.length) return "You read down the names, all of them from before your time. Nobody's added one since you came aboard.";
-  return `You read the newest names, chalked low on the bulkhead:\n${dead.map((one) => `- ${one.name}, day ${one.day + 1}: ${one.cause}.`).join("\n")}`;
+  const shown = dead.slice(-12);
+  return `You read the newest names, chalked low on the bulkhead:\n${shown.map((one) => `- ${one.name}, day ${one.day + 1}: ${one.cause}.`).join("\n")}${dead.length > shown.length ? `\nAnd ${dead.length - shown.length} more since you came aboard.` : ""}`;
 }
 
 // ---- What the checker needs ----------------------------------------------------------------------------

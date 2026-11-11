@@ -284,6 +284,8 @@ test("it comes out the same however the time is cut up, and after saving and loa
   const one = newGame();
   days(one, 90);
   const two = newGame();
+  // The same game: everyone's body, and who falls ill, are made up from the game's own seed.
+  two.bodySeed = one.bodySeed;
   days(two, 30);
   const loaded = JSON.parse(JSON.stringify(two));
   days(loaded, 20);
@@ -356,7 +358,7 @@ test("an old save picks it all up from today, with nothing happening at once", (
   old.ship.day = 300;
   old.world.day = 300;
   const game = migrateGame(JSON.parse(JSON.stringify(old)));
-  assert.equal(game.version, 22);
+  assert.equal(game.version, 23);
   assert.equal(game.story.clock.start, 300);
   assert.equal(game.story.clock.day, 300);
   comfortable(game);
@@ -364,7 +366,7 @@ test("an old save picks it all up from today, with nothing happening at once", (
   assert.deepEqual(game.story.clock.moved, []);
   assert.deepEqual(shipView(game).council, { off: false, recent: [] });
   until(game, () => clockOf(game).moved.length > 0);
-  assert.equal(game.version, 22);
+  assert.equal(game.version, 23);
   assert.equal(JSON.parse(JSON.stringify(game)).story.clock.start, 300);
 });
 

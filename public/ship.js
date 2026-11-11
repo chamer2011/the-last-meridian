@@ -99,9 +99,17 @@ function medbaySection(s) {
   return section(`The medbay${laid ? ` (${laid} laid up)` : ""}`,
     m.cots.map((p, i) => patient(`Cot ${i + 1}`, p)),
     m.floor.map((p) => patient("On the floor", p)),
-    m.medicine ? el("div", { class: `small${m.medicine.short ? " tone-bad" : ""}` }, m.medicine.short ? `The ${m.medicine.store.toLowerCase()} is empty: nobody can be treated until a crate comes.` : m.medicine.doses ? `Open crate: ${m.medicine.doses} of ${m.medicine.perCrate} doses left.` : `No crate open: the next treatment opens one from the ${m.medicine.store.toLowerCase()}.`) : null,
+    m.medicine ? el("div", { class: `small${m.medicine.short ? " tone-bad" : ""}` }, m.medicine.short ? `The ${m.medicine.store.toLowerCase()} is empty: nobody can be treated until a crate comes.` : `${m.medicine.doses ? `Open crate: ${m.medicine.doses} of ${m.medicine.perCrate} doses left.` : `No crate open: the next treatment opens one from the ${m.medicine.store.toLowerCase()}.`}${m.medicine.rounds ? ` The rounds carry ${m.medicine.rounds} more.` : ""}`) : null,
+    m.rounds ? el("div", { class: `small${m.rounds.serious > m.rounds.dosed ? " tone-bad" : ""}` }, roundsLine(m.rounds)) : null,
     m.log.length ? folded("ship-medbay-log", `Treated lately (${m.log.length})`, m.log.map((line) => muted(line))) : null,
     m.dead?.length ? folded("ship-medbay-dead", `Died (${m.dead.length})`, m.dead.map((one) => muted(`Day ${one.day}: ${one.name}, ${one.cause}.`))) : null);
+}
+
+// The doctor's rounds among the register: how many of everyone aboard are sick, with what, how many of the serious
+// cases have had a dose, and who died this week.
+function roundsLine(r) {
+  const what = r.byKind.map((one) => `${one.n} with a ${one.name}`).join(", ");
+  return `On the doctor's rounds: ${r.sick ? `${r.sick} of ${r.aboard.toLocaleString("en-US")} on the register sick (${what})${r.serious ? `, ${r.serious} seriously, ${r.dosed} of them dosed` : ""}` : `nobody of ${r.aboard.toLocaleString("en-US")} on the register sick`}.${r.died ? ` ${r.died} died this week.` : ""}`;
 }
 
 // The workshop: who's being mended, the limbs being built and ready, the parts crates aboard, and what was done lately.

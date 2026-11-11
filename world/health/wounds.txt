@@ -17,6 +17,7 @@ pain: 2 stress a day for a wound, 5 for a serious one
 losing a limb to a hit: 1 time in 4, a hard hit on a limb that's already broken
 losing a limb to rot: the doctor takes it after 3 days gone bad
 artificial limbs from before: 1 in 60 have one, 1 in 25 in rough work
+illness when hungry: twice as likely on half rations, half again as likely on reduced
 rough work: engine, tech, dock, hauler, porter, deckhand, crane, rigger, cable, pump, sump, tube, guard, marine, security, soldier, sergeant, gunner, conscript, picket, rating, bosun, enforcer, miner, prospector, smelter, melt, salvage, diver, cutter, raider, smuggler, duelist, shipwright, yard, kelper, trawler, boatman, strike
 
 Wounds:
@@ -32,6 +33,8 @@ Wounds:
 - concussion, the head: a concussion; checks one step harder; in a fight: attack -1; heals in 2 days
 - lost, an arm: the {side} arm is gone; serious; the hand's no use; in a fight: attack -3; bleeds 20 an hour until treated; can go bad; never heals; not for: synthetic
 - lost, a leg: the {side} leg is gone; serious; can't stand on it; bleeds 20 an hour until treated; can go bad; never heals; not for: synthetic
+- cough, the chest: a cough that won't shift; catches 1 in 3000 a day; spreads 1 in 4000 a day in the same quarters; worse when hungry; heals in 6 days
+- fever, the chest: a fever; serious; catches 1 in 8000 a day; spreads 1 in 6000 a day in the same quarters; worse when hungry; checks one step harder; heals in 8 days, 3 once dosed; kills 1 in 3 left untreated 5 days
 - infected, any part: the wound in the {part} has gone bad; serious; comes after 2 days undressed; kills after 5 days undressed; worse every day; checks one step harder; heals in 7 days once dressed
 - dent, any part: a dent in the casing of the {part}; heals in 3 days, 0 once mended; only for: synthetic
 - cracked casing, any part: cracked casing on the {part}; serious; heals in 10 days, 1 once mended; only for: synthetic

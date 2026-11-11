@@ -5,6 +5,7 @@
 // of the computer's class, and what they can do once in is src/computer-use.js. This file is read by
 // the rules and the walk, so it reads nothing that reads the tools.
 
+import { registerTable } from "./register.js";
 import { LOCATIONS } from "./data.js";
 import { placeNow, worldOf } from "./daily.js";
 import { DIFFICULTY } from "./rules.js";
@@ -66,7 +67,7 @@ export function mailOf(entry) {
   return { from: found ? found[1].trim() : String(entry.name).trim(), to: found ? found[2].trim() : null, subject: found ? null : String(entry.name).trim(), text: String(entry.desc ?? "").trim() };
 }
 
-const LOG_KINDS = { berths: "The berth log", prices: "Today's prices", people: "Who's here", news: "What's been heard", readouts: "The ship's readouts", manifest: "The lighter's manifest" };
+const LOG_KINDS = { berths: "The berth log", prices: "Today's prices", people: "Who's here", news: "What's been heard", readouts: "The ship's readouts", manifest: "The lighter's manifest", register: "The register of everyone aboard" };
 const logOf = (text, i) => {
   const key = String(text).trim().toLowerCase();
   return LOG_KINDS[key] ? { id: key, name: LOG_KINDS[key], kind: key } : { id: `log_${i + 1}`, name: String(text).trim().slice(0, 48), kind: "text", text: String(text).trim() };
@@ -384,7 +385,7 @@ export function computerView(game) {
     logs: content.logs.map((one) => ({ id: one.id, name: one.name })),
     programs: content.programs.filter((one) => programOffered(game, one)).map((one) => ({ id: one.id, name: one.name, about: one.text, ran: memory.ran.includes(one.id) })),
     network: content.network.filter((one) => WORLD_COMPUTERS[one.id]).map((one) => ({ id: one.id, name: WORLD_COMPUTERS[one.id].name, about: one.desc, className: classNameOf(classKeyOf(WORLD_COMPUTERS[one.id].class)), known: Boolean(WORLD_COMPUTERS[one.id].yours) || knowsPassword(game, one.id) })),
-    screen: session.screen,
+    screen: session.screen?.kind === "register" ? { ...session.screen, table: registerTable(game) } : session.screen,
     log: session.log,
     actions: session.actions,
     tier: tierFor(game, "hacking"),
@@ -402,7 +403,7 @@ export function computerProblems() {
   const problems = [];
   for (const [id, c] of Object.entries(WORLD_COMPUTERS)) {
     const at = (message) => problems.push(`computers/${id}.txt: ${message}`);
-    if (c.class && !classKeys().includes(String(c.class).trim().toLowerCase().replace(/s+/g, "_"))) at(`the class "${c.class}" isn't one of ${classKeys().join(", ")}`);
+    if (c.class && !classKeys().includes(String(c.class).trim().toLowerCase().replace(/\s+/g, "_"))) at(`the class "${c.class}" isn't one of ${classKeys().join(", ")}`);
     if (c.place && !LOCATIONS[c.place] && !WORLD_MAPS[c.place]) at(`there's no place with the id ${c.place}`);
     const levels = c.place ? roomsOfPlace(c.place) : [];
     const level = c.room ? levels.find((one) => sameName(one.name, c.room)) : null;

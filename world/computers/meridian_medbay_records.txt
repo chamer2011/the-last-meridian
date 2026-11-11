@@ -1,0 +1,19 @@
+# The records terminal
+class: easy
+owner: fleet
+yours: yes
+place: meridian
+room: Medbay
+thing: The records terminal
+login: medbay
+flavor: yours
+
+What the player sees:
+A records terminal beside the scan bed, with the register of everyone aboard on it: who they are, where they sleep, and how they are. Dr. Aduro keeps it up to date at three in the morning, when nobody's queueing.
+
+Files:
+triage.txt: The doctor's standing orders, typed and then corrected in pen. The serious ones get a dose first; the coughs sit it out; nobody who can walk takes a cot. Underneath, in a different pen: "when the cabinet's empty, the fevers kill. Get me medicine."
+
+Logs:
+- register
+- news

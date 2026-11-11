@@ -170,11 +170,11 @@ test("a simulated fight leaves no wounds behind", () => {
 
 test("save version 21 keeps the wounds", () => {
   const game = newGame();
-  assert.equal(game.version, 22);
+  assert.equal(game.version, 23);
   // Nobody's hurt but the two the health file starts laid up.
   assert.deepEqual([game.wounds, Object.keys(game.bodies)], [[], ["crowd:meridian:vik", "crowd:meridian:hana"]]);
   const { wounds: _w, bodies: _b, down: _d, healthStarted: _h, ...old } = structuredClone(game);
   const migrated = migrateGame({ ...old, version: 20 });
-  assert.equal(migrated.version, 22);
+  assert.equal(migrated.version, 23);
   assert.deepEqual([migrated.wounds, Object.keys(migrated.bodies)], [[], ["crowd:meridian:vik", "crowd:meridian:hana"]]);
 });

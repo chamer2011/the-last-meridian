@@ -149,6 +149,38 @@ function listScreen(title, items, kind, empty) {
   ];
 }
 
+// The register of everyone aboard: a table, sorted by whichever heading was clicked last, the same heading again
+// turning it round. How they are sorts the dead first, then the laid up, the seriously sick, the sick and the well.
+function registerScreen(screen) {
+  const table = screen.table;
+  if (!table) return [el("div", { class: "computer-screen-title" }, screen.title ?? ""), el("div", { class: "tone-dim" }, "The register is empty.")];
+  const sort = comp.registerSort ?? { column: 4, down: false };
+  const key = (row) => (sort.column === 4 ? row[5] : row[sort.column]);
+  const rows = [...table.rows].sort((a, b) => {
+    const x = key(a);
+    const y = key(b);
+    const by = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y));
+    return (sort.down ? -by : by) || String(a[0]).localeCompare(String(b[0]));
+  });
+  const heading = (name, i) => el("button", {
+    class: `check-link register-heading${sort.column === i ? " sorted" : ""}`,
+    title: `Sort by ${name.toLowerCase()}`,
+    onclick: (event) => {
+      event.stopPropagation();
+      comp.registerSort = { column: i, down: sort.column === i ? !sort.down : false };
+      draw();
+    },
+  }, `${name}${sort.column === i ? (sort.down ? " v" : " ^") : ""}`);
+  const tone = (order) => ["bad", "warn", "bad", "warn", "info"][order] ?? "info";
+  return [
+    el("div", { class: "computer-screen-title" }, screen.title ?? ""),
+    el("div", { class: "tone-dim" }, table.summary),
+    el("div", { class: "register-table", role: "table" },
+      el("div", { class: "register-row register-head", role: "row" }, table.columns.map(heading)),
+      rows.map((row) => el("div", { class: `register-row tone-${tone(row[5])}`, role: "row" }, row.slice(0, 5).map((cell) => el("span", { role: "cell" }, String(cell)))))),
+  ];
+}
+
 function screenNode(view) {
   const { screen } = view;
   switch (screen.kind) {
@@ -163,6 +195,7 @@ function screenNode(view) {
     case "logs": return listScreen("Logs", view.logs, "log", "No logs.");
     case "network": return listScreen("Network", view.network, "connect", "Nothing reachable from here.");
     case "system": return systemScreen(view, screen);
+    case "register": return registerScreen(screen);
     default:
       return [
         el("div", { class: "computer-screen-title" }, screen.title ?? ""),

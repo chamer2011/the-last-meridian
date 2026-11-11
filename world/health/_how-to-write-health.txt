@@ -11,7 +11,7 @@ the next game.
 Bodies show on Look (right-click someone), on the registry printouts, and on the figure in the inventory, and since
 step 2 of the health plan every hit in a fight lands on a part and can leave a wound there, which stays after the
 fight. Since step 3 wounds bleed, get dressed, go bad, heal at their own pace, slow a limping walker and keep a useless
-hand off errands and work. The medbay, carrying the fallen and treatment come in the later steps, one at a time; what
+hand off errands and work. Since step 8 illnesses go round the ship, among the nine hundred on the register too. The medbay, carrying the fallen and treatment come in the later steps, one at a time; what
 works now is said where it's explained. npm run check-story reads all of it and
 says what's wrong, with the file and the line.
 
@@ -66,11 +66,15 @@ Living with wounds (step 3 of the health plan), the lines at the top that say:
     losing a limb to a hit: 1 time in 4, a hard hit on a limb that's already broken
     losing a limb to rot: the doctor takes it after 3 days gone bad
     artificial limbs from before: 1 in 60 have one, 1 in 25 in rough work
+    illness when hungry: twice as likely on half rations, half again as likely on reduced
 Losing a limb (step 7 of the health plan): a hard hit on an arm or a leg that already has a broken bone on it takes it
 that often (the lost line for the arm or the leg), and a wound gone bad on a limb that's still bad after those days is
 treated by taking the limb. Artificial limbs from before: how many people the game makes up with an artificial arm or
 leg (the artificial limb lines under Old marks), more in rough work; a roll of its own, so nobody's other marks change.
 A synthetic's wounds say "heals in N days, M once mended": mended in the workshop (below), they heal in M days.
+Illness when hungry (step 8): how much likelier an illness that's worse when hungry is caught on half and reduced
+rations; a kettle that ran dry for some of yesterday's sittings counts as that share of the way to half rations, and
+a ship out of food as half rations.
 
 A wound that bleeds lowers its owner's blood every hour until it's dressed. Someone dresses a wound that isn't serious
 themselves after the time it says; a serious one waits for someone else: for the player, a medkit, which dresses or
@@ -132,6 +136,15 @@ The rules:
     likelier in: dock, engine       four times as likely for someone whose job has one of these words
     only for: synthetic             only that species has it
     not for: synthetic              that species never has it
+    catches 1 in 3000 a day         an illness (step 8): this often, someone aboard a place with quarters catches it,
+                                    on the register and in the crew alike; synthetics never do
+    spreads 1 in 4000 a day in the same quarters
+                                    and this much likelier again for each who has it where they sleep
+    worse when hungry               likelier on short rations, by the illness when hungry line
+    heals in 8 days, 3 once dosed   an illness the doctor's rounds can dose
+    kills 1 in 3 left untreated 5 days
+                                    a serious illness left undosed that long kills one time in that many; the rounds
+                                    settle it at midnight, and the player never dies of it
 
 
 Accidents (in wounds.txt, before Old marks): the wounds people get at their work, each likelier in the work it names:
@@ -151,11 +164,13 @@ How often is in a place's file, below.
     bed rest: 3 days after a serious wound is treated
     the dead are laid out in: The Quiet Room
     the names go up on: The chalked names
-    a death aboard costs: 3 morale
+    a death aboard costs: 3 morale, 1 for someone on the register
     fitting a limb: 1 dose, 2 hours
     the workshop: The Repair Bay
     who mends: the chief engineer, a tech
     parts from: the parts lockers, the shuttle stores
+    quarters: The Overflow 5, The Hot Bunks 4, The Aft Holds 1
+    the doctor's rounds: 1 dose for each serious illness, once a day
     the morning queue: 07:45 to 10:30, at queue
     accidents at work: 1 in 20 days in rough work, 1 in 100 for everyone else
 
@@ -191,7 +206,7 @@ player if they're standing in the medbay. Without who treats, the medicine or an
 the dead are laid out in, the names go up on and a death aboard costs (step 6 of the health plan): the room whoever
 answers a call carries the dead to (they're gone once they're there; without this line they're gone at once), the thing
 in one of the place's rooms whose Look and Use list the dead (by its name on the map), and how much morale a death
-there costs the ship. Someone dies at a place with a medbay when their blood runs out (bleeding to death, in the wounds
+there costs the ship, and after a comma how much a death on the register costs (the same, if it doesn't say). Someone dies at a place with a medbay when their blood runs out (bleeding to death, in the wounds
 file) or a wound gone bad is left undressed too long (kills after, on the infected line). The player never dies, for now.
 
 the morning queue: when anyone there who's hurt and on their feet goes to wait at the medbay, and where: a spot or a
@@ -208,6 +223,19 @@ medbay. A place without these lines builds no limbs, and its synthetics heal by 
 
 accidents at work: how often someone there hurts themselves at their work, rough work being the wounds file's. The
 wound is one of the wounds file's Accidents, likelier the ones for their work, on a part at random.
+
+quarters and the doctor's rounds (step 8 of the health plan): a place with a quarters line has a register: everyone
+aboard who has no day of their own in the place's file in world/life, made up when a game begins (a name, an age, a
+species and the quarters they sleep in, the rooms here with how many of every ten). Only who's sick and who's dead is
+kept in the save. The wounds file's illnesses go round them, more where they sleep together, and the people with days
+and the player catch them too, as wounds. Once a day, at midnight, the doctor's rounds give each serious illness this
+many doses, on the register and off it, from a crate the rounds take from the medicine's store for themselves; a dosed
+illness heals in its dosed days, and one left undosed long enough may kill (its kills line). An illness isn't one of the
+Treatments: the rounds see to it, not the medbay's table. The ship's health settles a point lower for every hundredth
+of the register sick, three for every hundredth seriously sick, and when it's low enough that people die of it, the
+dead are people on the register, the worst off and the oldest first. Everyone is listed on any computer with a
+register log (world/computers), like the records terminal in the Meridian's medbay. A place without a quarters line
+has no register.
 
 Each line under At the start is someone at that place, a comma, and a body line (below). It's for the people with only a name, who have
 no file of their own; someone with a file can be named here too, by their id or their name. A line that names one of

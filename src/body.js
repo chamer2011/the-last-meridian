@@ -46,7 +46,7 @@ export const newBodySeed = () => Math.floor(Math.random() * 4294967296);
 // ---- The crowd: who they are, made up from their name ---------------------------------------------
 
 // How common each species is among people with only a name. Their registry printout uses the same.
-const SPECIES_SHARE = { human: 55, korrun: 10, veshti: 12, ilari: 9, thessan: 6, synthetic: 8 };
+export const SPECIES_SHARE = { human: 55, korrun: 10, veshti: 12, ilari: 9, thessan: 6, synthetic: 8 };
 
 // Someone the game knows only by name: their species, pronouns and age, the same every game, so their printout and
 // their body agree. "Old Marta" is old and "Young Tam" is young.
@@ -121,8 +121,14 @@ function findKind(words, parts = null) {
   }
   return best;
 }
-const RULE_KEYS = ["serious", "fightAttack", "goesBad", "limps", "hidden", "artificial", "notRandom", "never", "worsens", "noHand", "noStand", "bleeds", "heals", "treated", "treatment", "out", "harder", "after", "kills", "pace"];
-const rulesOf = (kind) => Object.fromEntries(RULE_KEYS.filter((key) => kind[key] !== undefined).map((key) => [key, kind[key]]));
+const RULE_KEYS = ["serious", "fightAttack", "goesBad", "limps", "hidden", "artificial", "notRandom", "never", "worsens", "noHand", "noStand", "bleeds", "heals", "treated", "treatment", "out", "harder", "after", "kills", "pace", "killsOneIn", "catches", "spreads", "hungry"];
+// Worked out once for each kind as the file was read (a file read again makes new kinds), and never changed after.
+const rulesMade = new WeakMap();
+const rulesOf = (kind) => {
+  let rules = rulesMade.get(kind);
+  if (!rules) rulesMade.set(kind, (rules = Object.freeze(Object.fromEntries(RULE_KEYS.filter((key) => kind[key] !== undefined).map((key) => [key, kind[key]])))));
+  return rules;
+};
 
 // A species' body: its parts' hit weights, and what it does differently.
 export function speciesBody(id) {
@@ -320,9 +326,15 @@ let care = null;
 const careNow = () => (care ??= careOf(WOUNDS.care ?? {}));
 
 // A kind by its id, on that part if there's one for it.
+// Remembered for as long as the file reads the same, since it's asked for every wound, many times an hour.
+const kindsFound = new WeakMap();
 export function kindOf(id, part) {
   const all = kindsNow().all;
-  return all.find((kind) => kind.id === id && kind.parts.includes(part)) ?? all.find((kind) => kind.id === id) ?? null;
+  let found = kindsFound.get(all);
+  if (!found) kindsFound.set(all, (found = new Map()));
+  const key = `${id}|${part}`;
+  if (!found.has(key)) found.set(key, all.find((kind) => kind.id === id && kind.parts.includes(part)) ?? all.find((kind) => kind.id === id) ?? null);
+  return found.get(key);
 }
 const rulesOfWound = (wound) => {
   const kind = kindOf(wound.kind, wound.part);
@@ -369,7 +381,7 @@ const treatable = (wound) => {
   return !wound.dressed && Boolean(rules.bleeds || rules.goesBad || rules.treated);
 };
 const bleedingNow = (wound) => !wound.dressed && Boolean(rulesOfWound(wound).bleeds);
-const treatedWord = (wound) => ({ splinted: "splinted", mended: "mended" })[rulesOfWound(wound).treatment] ?? "dressed";
+const treatedWord = (wound) => ({ splinted: "splinted", mended: "mended", dosed: "dosed" })[rulesOfWound(wound).treatment] ?? "dressed";
 
 // Dressed or splinted at a time: it stops bleeding, won't go bad, and from then heals at its treated pace.
 function dress(game, key, wound, at) {
@@ -408,6 +420,44 @@ export function treatWound(game, key, wound, at) {
   dress(game, key, wound, at);
   return treatedWord(wound);
 }
+// ---- Illness (step 8) ---------------------------------------------------------------------------------
+
+// The illnesses in the wounds file: the kinds that are caught, with what they do on the register.
+export function illnessKinds() {
+  return kindsNow().all.filter((kind) => kind.section === "wound" && kind.catches).map((kind) => ({
+    id: kind.id,
+    name: kind.name,
+    words: kind.words,
+    serious: Boolean(kind.serious),
+    catches: 1 / kind.catches,
+    spreads: kind.spreads ? 1 / kind.spreads : 0,
+    hungry: Boolean(kind.hungry),
+    days: kind.heals ?? (kind.treated ? kind.treated * careNow()["left alone"].factor : 7),
+    dosed: kind.treatment === "dosed" ? kind.treated : null,
+    kills: kind.kills ?? null,
+    killsOneIn: kind.killsOneIn ?? 1,
+    part: kind.parts[0],
+  }));
+}
+// How much likelier hunger makes an illness that's worse when hungry: on half rations, reduced rations, or a kettle
+// that ran dry for some share of the sittings.
+export function hungerFactor(rations, missedShare = 0) {
+  const care = careNow()["illness when hungry"];
+  const base = rations === "half" ? care.half : rations === "reduced" ? care.reduced : 1;
+  return base + Math.max(0, Math.min(1, missedShare)) * (care.half - 1);
+}
+// Someone catches an illness: a kept wound of its kind on its part, from that moment.
+// Not while they've still got it at that moment, whatever the clock says now, so that it comes out the same however the
+// time is cut up.
+export function catchIllness(game, key, id, at) {
+  const kind = kindsNow().all.find((one) => one.id === id && one.section === "wound");
+  if (!kind || storeOf(game, key).some((wound) => wound.kind === id && lasts(wound, at))) return false;
+  addWounds(game, key, [newWound(kind, kind.parts[0])], at);
+  return true;
+}
+// Someone's illnesses as they're kept, whether or not their time is up yet: for the doctor's rounds.
+export const illnessesOf = (game, key) => storeOf(game, key).filter((wound) => rulesOfWound(wound).catches);
+
 // ---- Limbs lost and fitted (step 7) ------------------------------------------------------------------
 
 const storeFitted = (game, key) => (key === "you" ? (game.fitted ??= []) : ((game.bodies ??= {})[key] ??= { wounds: [] }).fitted ??= []);
@@ -492,8 +542,10 @@ export function passWounds(game, hours, { speed = 1 } = {}) {
       const kind = kindOf(wound.kind, wound.part);
       const own = kind ? rulesOf(kind) : {};
       // A wound gone bad and still undressed after so many days kills, where help could have come.
-      const killsAt = own.kills ? wound.at + own.kills * 24 : null;
-      if (deadly && killsAt !== null && !wound.dressed && killsAt <= to && (!died || killsAt < died.at)) died = { at: Math.max(from, killsAt), cause: "infection", part: wound.part };
+      // An illness is the doctor's rounds' to settle, once a day (src/register.js), so it doesn't kill here.
+      const killsAt = own.kills && !own.catches ? wound.at + own.kills * 24 : null;
+      const fated = !own.killsOneIn || seeded(`${game.bodySeed ?? 1}|${key}|${wound.at}|kills`)() < 1 / own.killsOneIn;
+      if (deadly && killsAt !== null && fated && !wound.dressed && killsAt <= to && (!died || killsAt < died.at)) died = { at: Math.max(from, killsAt), cause: own.catches ? "illness" : "infection", part: wound.part, kind: wound.kind };
       // Someone dresses what isn't serious themselves, once a little time has gone by.
       const selfAt = wound.at + rules["they dress their own"].hours;
       if (!wound.dressed && !own.serious && treatable(wound) && selfAt <= to) {

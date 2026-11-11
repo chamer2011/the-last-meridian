@@ -52,7 +52,7 @@ test("the files say how death comes, where the dead go and what it costs", () =>
   assert.equal(care["bleeding to death"].at, 0);
   assert.equal(care["bleeding stops at"].floor, 35);
   assert.deepEqual(health.readRule("kills after 5 days undressed"), { kills: 5 });
-  assert.deepEqual(death.deathRulesOf("meridian"), { room: "quiet", names: "The chalked names", morale: 3 });
+  assert.deepEqual(death.deathRulesOf("meridian"), { room: "quiet", names: "The chalked names", morale: 3, registerMorale: 1 });
   assert.match(health.MEDBAY_KEYS["a death aboard costs"].read("a lot").problem, /3 morale/);
   assert.deepEqual(death.deathProblems(), []);
   assert.ok(death.deathFacts().has("mess_hand_bao_died"));

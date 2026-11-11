@@ -21,6 +21,7 @@ import { passTime } from "./rules.js";
 import { canStand, mapFor, roomOf, roomsOf, walkCommand } from "./walk.js";
 import { doorLocked, roomPowered } from "./systems.js";
 import { deathRulesOf, deathsView } from "./death.js";
+import { roundsView } from "./register.js";
 import { advanceWorkshop, limbFitted, limbReady, waitsInWorkshop, workshopBedFor, workshopOf, workshopProblems } from "./workshop.js";
 import { WORLD_HEALTH, WORLD_LIFE } from "./world.js";
 import { MEDBAY_KEYS, readTreatmentLine } from "../public/health-text.js";
@@ -71,6 +72,8 @@ export function medbayOf(place) {
       rest: rest && !rest.problem ? rest.days : 0,
       fitting: file.fitting && !MEDBAY_KEYS["fitting a limb"].read(file.fitting).problem ? MEDBAY_KEYS["fitting a limb"].read(file.fitting) : null,
       treatments,
+      // The doses the doctor's rounds give a serious illness, once a day (step 8): 1 if the file doesn't say.
+      rounds: file.rounds && !MEDBAY_KEYS["the doctor's rounds"].read(file.rounds).problem ? MEDBAY_KEYS["the doctor's rounds"].read(file.rounds).doses : 1,
     };
   }
   medbays.set(place, found);
@@ -398,14 +401,56 @@ function medicsAt(game, place, medbay, hours) {
   return [...new Set(keys)].filter((key) => key && key !== YOU && there.has(key) && !busy.has(key) && !isDown(game, place, key) && !lostReason(game, place, key));
 }
 // Doses from the open crate, opening another from the medicine's store when it runs out. False when there aren't enough.
-function takeDoses(game, place, medbay, state, n) {
+function takeDoses(game, place, medbay, state, n, at = nowOf(game)) {
   while (state.doses < n) {
     if (takeAboard(game, place, "medicine_crate", 1, [medbay.medicine.store]) < 1) return false;
     state.doses += medbay.medicine.doses;
   }
   state.doses -= n;
+  countUsed(state, at, n);
   return true;
 }
+// Doses counted by the day they were given, for what the ship's medicine goes on (step 8).
+function countUsed(state, at, n) {
+  const day = Math.floor(at / 24);
+  state.used = { ...Object.fromEntries(Object.entries(state.used ?? {}).filter(([d]) => Number(d) >= day - 8)), [day]: (state.used?.[day] ?? 0) + n };
+}
+// The doses the doctor's rounds give a serious illness, once a day, from the health file: true if there were enough.
+// The rounds carry a crate of their own from the cabinet, so that what the medbay's table gets through over a long
+// wait, which is worked out more roughly than hour by hour, never decides who on the rounds gets a dose.
+export function roundsDose(game, place, at = nowOf(game)) {
+  const medbay = medbayOf(place);
+  if (!medbay?.medicine) return false;
+  const n = medbay.rounds ?? 1;
+  const state = stateFor(game, place);
+  while ((state.rounds ?? 0) < n) {
+    if (takeAboard(game, place, "medicine_crate", 1, [medbay.medicine.store]) < 1) return false;
+    state.rounds = (state.rounds ?? 0) + medbay.medicine.doses;
+  }
+  state.rounds -= n;
+  countUsed(state, at, n);
+  return true;
+}
+// The rounds dose someone with a day of their own, or the player, for a serious illness at midnight: the doses, the
+// wound treated from then, and a line in the medbay's log. False when there was no medicine to be had.
+export function doseOnRounds(game, place, key, wound, at) {
+  if (!roundsDose(game, place, at)) return false;
+  treatWound(game, key, wound, at);
+  const state = stateFor(game, place);
+  const line = `On the rounds, ${key === YOU ? "you're" : `${nameOf(game, { who: whoOf(place, key) ?? key })} is`} dosed for ${wound.words}`;
+  state.log = [...(state.log ?? []), { day: Math.floor(at / 24), line }].slice(-8);
+  return true;
+}
+// How many doses a day the medbay's been getting through, over the last week: for the ship's days of medicine left.
+export function dosesADay(game, place) {
+  const used = game.medbay?.[place]?.used ?? {};
+  const today = Math.floor(nowOf(game) / 24);
+  let sum = 0;
+  for (let day = today - 7; day < today; day += 1) sum += used[day] ?? 0;
+  return sum / 7;
+}
+// Whether the medbay takes its medicine a dose at a time, so the ship needs no daily crate of its own.
+export const medbayDoses = (place) => Boolean(medbayOf(place)?.medicine);
 // A medic as the ship calls them: by their post (Dr. Aduro), else their title or name.
 const medicName = (game, place, key) => { const name = calledBy(game, place, key); return name.charAt(0).toUpperCase() + name.slice(1); };
 const whose = (game, key) => (key === YOU ? "your" : `${nameOf(game, { who: whoOf(game.down?.[key]?.place ?? game.location, key) ?? key })}'s`);
@@ -470,7 +515,7 @@ function treatOnClock(game, place, medbay, now) {
     const fitting = medbay.fitting ? patients.filter((key) => !waiting.includes(key) && limbReady(game, place, key)) : [];
     for (const key of fitting) {
       if (!free.length) break;
-      if (!takeDoses(game, place, medbay, state, medbay.fitting.doses)) break;
+      if (!takeDoses(game, place, medbay, state, medbay.fitting.doses, t)) break;
       const medic = free.shift();
       const minutes = medbay.fitting.minutes / speedOf(game, place, [medic], "medicine");
       state.treating[key] = { by: medic, fit: true, part: limbReady(game, place, key), doses: medbay.fitting.doses, since: t, until: t + minutes / 60 };
@@ -481,7 +526,7 @@ function treatOnClock(game, place, medbay, now) {
       const wound = waitingTreatment(game, key, medbay.treatments)[0];
       const treatment = treatmentFor(wound, medbay.treatments);
       if (!treatment) continue;
-      if (!takeDoses(game, place, medbay, state, treatment.doses)) {
+      if (!takeDoses(game, place, medbay, state, treatment.doses, t)) {
         if (!state.short) {
           state.short = true;
           if (place === game.location && playerIn(game, place, medbay)) notes.push(`[HEALTH] The medicine cabinet is empty. ${medicName(game, place, free[0])} can't treat anyone until a crate is brought.`);
@@ -526,6 +571,9 @@ export function startHealth(game) {
     const spot = cot ? WORLD_LIFE[one.place].spots[cot] : null;
     game.down ??= {};
     game.down[key] = { who, place: one.place, level: spot ? roomOf(mapFor(one.place), spot[0])?.levelId ?? spot[0] : null, x: spot?.[1] ?? 0, y: spot?.[2] ?? 0, since: nowOf(game), until: nowOf(game), why: "laid up", bed: cot ?? `@${medbay.room}` };
+    // The medbay's clock starts now, so that however long the first wait, they're seen to from its start.
+    const state = stateFor(game, one.place);
+    if (state.at === null) state.at = nowOf(game);
   }
 }
 
@@ -558,9 +606,11 @@ export function medbayView(game, place) {
       return on ? patient(on) : null;
     }),
     floor: here.filter(([, d]) => d.bed === `@${medbay.room}`).sort(([a], [b]) => howBad(game, b) - howBad(game, a)).map(patient),
-    medicine: medbay.medicine ? { store: medbay.medicine.name, doses: state.doses ?? 0, perCrate: medbay.medicine.doses, short: Boolean(state.short) } : null,
+    medicine: medbay.medicine ? { store: medbay.medicine.name, doses: state.doses ?? 0, rounds: state.rounds ?? 0, perCrate: medbay.medicine.doses, short: Boolean(state.short) } : null,
     log: (state.log ?? []).map((one) => `Day ${one.day + 1}: ${one.line}`).reverse(),
     dead: deathsView(game, place),
+    // The register's sick, seen on the doctor's rounds (src/register.js).
+    rounds: roundsView(game),
   };
 }
 

@@ -55,22 +55,27 @@ export function readRule(text) {
   if (rule === "the hand's no use" || rule === "the hand’s no use") return { noHand: true };
   if (rule === "can't stand on it" || rule === "can’t stand on it") return { noStand: true };
   if ((found = rule.match(/^bleeds (\S+) an hour( until treated)?$/)) && numberOf(found[1]) !== null) return { bleeds: numberOf(found[1]) };
-  if ((found = rule.match(/^heals in (\S+) days?(?:, (\S+) once (dressed|splinted|mended))?$/)) && numberOf(found[1]) !== null && (!found[2] || numberOf(found[2]) !== null)) {
+  if ((found = rule.match(/^heals in (\S+) days?(?:, (\S+) once (dressed|splinted|mended|dosed))?$/)) && numberOf(found[1]) !== null && (!found[2] || numberOf(found[2]) !== null)) {
     return found[2] ? { heals: numberOf(found[1]), treated: numberOf(found[2]), treatment: found[3] } : { heals: numberOf(found[1]) };
   }
-  if ((found = rule.match(/^heals in (\S+) days? once (dressed|splinted|mended)$/)) && numberOf(found[1]) !== null) return { heals: null, treated: numberOf(found[1]), treatment: found[2] };
+  if ((found = rule.match(/^heals in (\S+) days? once (dressed|splinted|mended|dosed)$/)) && numberOf(found[1]) !== null) return { heals: null, treated: numberOf(found[1]), treatment: found[2] };
   if ((found = rule.match(/^walks at (\d+(?:\.\d+)?)% of the pace$/))) return { pace: Number(found[1]) / 100 };
   if ((found = rule.match(/^out cold for (\S+) to (\S+) hours?$/)) && numberOf(found[1]) !== null && numberOf(found[2]) !== null) return { out: [numberOf(found[1]), numberOf(found[2])] };
   if ((found = rule.match(/^checks (\S+) steps? harder$/)) && numberOf(found[1]) !== null) return { harder: numberOf(found[1]) };
   if ((found = rule.match(/^comes after (\S+) days? undressed$/)) && numberOf(found[1]) !== null) return { after: numberOf(found[1]) };
   if ((found = rule.match(/^kills after (\S+) days? undressed$/)) && numberOf(found[1]) !== null) return { kills: numberOf(found[1]) };
+  // Step 8: illnesses.
+  if ((found = rule.match(/^kills 1 in (\d+) left untreated (\S+) days?$/)) && numberOf(found[2]) !== null) return { kills: numberOf(found[2]), killsOneIn: Number(found[1]) };
+  if ((found = rule.match(/^catches 1 in (\d+) a day$/))) return { catches: Number(found[1]) };
+  if ((found = rule.match(/^spreads 1 in (\d+) a day in the same quarters$/))) return { spreads: Number(found[1]) };
+  if (rule === "worse when hungry") return { hungry: true };
   if ((found = rule.match(/^likelier in:\s*(.+)$/))) return { likelier: listOf(found[1]).map(lower) };
   if ((found = rule.match(/^only for:\s*(.+)$/))) return { only: listOf(found[1]).map(lower) };
   if ((found = rule.match(/^not for:\s*(.+)$/))) return { not: listOf(found[1]).map(lower) };
   if ((found = rule.match(/^in a fight: attack ([+-]?\d+)$/))) return { fightAttack: Number(found[1]) };
   return { problem: `I don't know the rule "${String(text).trim()}"` };
 }
-export const RULE_WORDS = "in a fight: attack -2; serious; bleeds 4 an hour; heals in 4 days, 2 once dressed; heals in 8 days once dressed; never heals; heals in 10 days, 1 once mended; walks at 90% of the pace; out cold for 1 to 4 hours; checks one step harder; the hand's no use; can't stand on it; limps; hidden; artificial; never at random; comes after 2 days undressed; kills after 5 days undressed; worse every day; likelier in: dock, engine; only for: synthetic; not for: synthetic";
+export const RULE_WORDS = "in a fight: attack -2; serious; bleeds 4 an hour; heals in 4 days, 2 once dressed; heals in 8 days once dressed; never heals; heals in 10 days, 1 once mended; walks at 90% of the pace; catches 1 in 3000 a day; spreads 1 in 4000 a day in the same quarters; worse when hungry; kills 1 in 3 left untreated 5 days; out cold for 1 to 4 hours; checks one step harder; the hand's no use; can't stand on it; limps; hidden; artificial; never at random; comes after 2 days undressed; kills after 5 days undressed; worse every day; likelier in: dock, engine; only for: synthetic; not for: synthetic";
 
 // Words, then rules, separated by semicolons: "a bad {side} knee; limps; likelier in: dock".
 function readWordsAndRules(text) {
@@ -250,6 +255,8 @@ export const CARE = {
   "losing a limb to a hit": { read: (text) => { const f = lower(text).match(/^1 time in (\d+), a hard hit on a limb that['’]s already broken$/); return f ? { oneIn: Number(f[1]) } : { problem: "is written like: 1 time in 4, a hard hit on a limb that's already broken" }; }, default: "1 time in 4, a hard hit on a limb that's already broken" },
   "losing a limb to rot": { read: (text) => { const f = lower(text).match(/^the doctor takes it after (\S+) days? gone bad$/); return f && numberOf(f[1]) !== null ? { days: numberOf(f[1]) } : { problem: "is written like: the doctor takes it after 3 days gone bad" }; }, default: "the doctor takes it after 3 days gone bad" },
   "artificial limbs from before": { read: (text) => { const f = lower(text).match(/^1 in (\d+) have one, 1 in (\d+) in rough work$/); return f ? { oneIn: Number(f[1]), rough: Number(f[2]) } : { problem: "is written like: 1 in 60 have one, 1 in 25 in rough work" }; }, default: "1 in 60 have one, 1 in 25 in rough work" },
+  // Step 8: half rations make an illness that's worse when hungry so many times as likely, reduced rations so many.
+  "illness when hungry": { read: (text) => { const f = lower(text).match(/^(twice|three times|half again|\d+(?:\.\d+)? times) as likely on half rations, (twice|three times|half again|\d+(?:\.\d+)? times) as likely on reduced$/); return f ? { half: TIMES[f[1]] ?? Number(f[1].split(" ")[0]), reduced: TIMES[f[2]] ?? Number(f[2].split(" ")[0]) } : { problem: "is written like: twice as likely on half rations, half again as likely on reduced" }; }, default: "twice as likely on half rations, half again as likely on reduced" },
 };
 export const careOf = (care = {}) => Object.fromEntries(Object.entries(CARE).map(([key, one]) => {
   const read = one.read(care[key] ?? one.default);
@@ -277,13 +284,17 @@ export const MEDBAY_KEYS = {
   // Step 6: where the dead are carried and laid out, the thing their names go up on, and what a death aboard costs.
   "the dead are laid out in": { path: "laidOut", read: (text) => (String(text).trim() ? { room: String(text).trim() } : { problem: "is a room at the place, like The Quiet Room" }) },
   "the names go up on": { path: "names", read: (text) => (String(text).trim() ? { thing: String(text).trim() } : { problem: "is a thing in one of the place's rooms, like The chalked names" }) },
-  "a death aboard costs": { path: "deathCost", read: (text) => { const f = lower(text).match(/^(\S+) morale$/); return f && numberOf(f[1]) !== null ? { morale: numberOf(f[1]) } : { problem: "is written like: 3 morale" }; } },
+  "a death aboard costs": { path: "deathCost", read: (text) => { const f = lower(text).match(/^(\S+) morale(?:, (\S+) for someone on the register)?$/); return f && numberOf(f[1]) !== null && (!f[2] || numberOf(f[2]) !== null) ? { morale: numberOf(f[1]), register: f[2] ? numberOf(f[2]) : numberOf(f[1]) } : { problem: "is written like: 3 morale, 1 for someone on the register" }; } },
   // Step 7: fitting an artificial limb in the medbay, by whoever treats; and the workshop, where whoever mends works with
   // parts crates from the stores named.
   "fitting a limb": { path: "fitting", read: (text) => { const f = lower(text).match(/^(\S+) doses?, (an|\S+) (minutes?|hours?)$/); return f && numberOf(f[1]) !== null && numberOf(f[2]) !== null ? { doses: numberOf(f[1]), minutes: numberOf(f[2]) * (/^hour/.test(f[3]) ? 60 : 1) } : { problem: "is written like: 1 dose, 2 hours" }; } },
   "the workshop": { path: "workshop", read: (text) => (String(text).trim() ? { room: String(text).trim() } : { problem: "is the room the techs mend and build in, like The Repair Bay" }) },
   "who mends": { path: "menders", read: (text) => { const who = listOf(text); return who.length ? { who } : { problem: "is written like: the chief engineer, a tech" }; } },
   "parts from": { path: "partsFrom", read: (text) => { const from = listOf(text); return from.length ? { from: from.map(lower) } : { problem: "is written like: the parts lockers, the shuttle stores" }; } },
+  // Step 8: where everyone on the register sleeps, rooms with how many of every ten, for how an illness spreads.
+  quarters: { path: "quarters", read: (text) => { const found = listOf(text).map((one) => one.match(/^(.+?)\s+(\d+(?:\.\d+)?)$/)); return found.length && found.every(Boolean) ? { rooms: found.map((f) => ({ room: f[1].trim(), weight: Number(f[2]) })) } : { problem: "is written like: The Overflow 5, The Hot Bunks 4, The Aft Holds 1" }; } },
+  // And the doctor's rounds, once a day at midnight: the doses a serious illness gets, aboard and on the register alike.
+  "the doctor's rounds": { path: "rounds", read: (text) => { const f = lower(text).match(/^(\S+) doses? for each serious illness, once a day$/); return f && numberOf(f[1]) !== null ? { doses: numberOf(f[1]) } : { problem: "is written like: 1 dose for each serious illness, once a day" }; } },
 };
 
 // "cracked casing: 1 parts crate, an hour", "dent: 20 minutes" or "artificial arm: 2 parts crates, 6 hours": what mending
@@ -373,7 +384,7 @@ export function parseHealthText(text, id = "it") {
       else value[part].push({ text: entry[1].trim(), line: n });
       continue;
     }
-    const field = line.match(/^([A-Za-z][A-Za-z ]{0,30}):\s*(.*)$/);
+    const field = line.match(/^([A-Za-z][A-Za-z' ]{0,30}):\s*(.*)$/);
     const key = field ? lower(field[1]) : null;
     if (key === "draft") value.draft = field[2].trim();
     else if (MEDBAY_KEYS[key]) {
