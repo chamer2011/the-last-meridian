@@ -14,6 +14,7 @@ import { addCondition, buyPrice, changeStress, clamp, clockLabel, jumpHours, pas
 import { navigationDown } from "./systems.js";
 import { YOU, commandOf, councilRefuses, holderKey, officerName, officerNames, postAndName, riskyJump, setHolder, stillAlive, tallyDuty } from "./command.js";
 import { medbayView } from "./medbay.js";
+import { workshopView } from "./workshop.js";
 import { countAboard, errandsView, foodADay, machinesView, mealsOfDay, mealsView, putAboard, refilledADay, refillsView, repairsView, storesView, takeAboard } from "./logistics.js";
 import { SHIP_DATA, STAR_MAP } from "./world.js";
 import { notePut } from "./puts.js";
@@ -801,6 +802,8 @@ export function shipView(game) {
     repairs: repairsView(game, SHIP_ID),
     // Who's on the medbay's cots and floor, and what the medics are doing (src/medbay.js).
     medbay: medbayView(game, SHIP_ID),
+    // What the techs are mending and building in the Repair Bay (src/workshop.js).
+    workshop: workshopView(game, SHIP_ID),
     shortages: SUPPLY_IDS.filter((id) => isOut(game, id) || (daysLeft(game, id, ledger) ?? Infinity) <= RULES.warnAtDays),
     trade: Object.entries(spot?.trade ?? {}).map(([id, each]) => {
       const supply = SUPPLIES[id];

@@ -12,7 +12,7 @@
 // call: { by, phase, since, bed }, going }. who is the key their day knows them by (an id, or a crowd name); bed is a cot
 // (a spot in the place's life file) or "@" and the medbay's room for its floor. Reading any of it writes nothing.
 
-import { addWounds, beatenFor, bleedingOf, cantGetUp, deathOf, handsFree, howBad, hurtAt, keyAt, queueOf, restingFrom, seriousWound, startWounds, treatmentFor, treatWound, waitingTreatment, woundKindNamed, woundsNow } from "./body.js";
+import { addWounds, beatenFor, bleedingOf, cantGetUp, deathOf, fitLimb, mendedByTechs, takeLimb, tooFarGone, handsFree, howBad, hurtAt, keyAt, queueOf, restingFrom, seriousWound, startWounds, treatmentFor, treatWound, waitingTreatment, woundKindNamed, woundsNow } from "./body.js";
 import { findCharacter, fullName } from "./campaign.js";
 import { calledBy, holderKey, jobByWords, lostReason, onJob, postByWords, speedOf, tallyDuty } from "./command.js";
 import { hasReached, isAbout, whoIsIn } from "./life.js";
@@ -21,6 +21,7 @@ import { passTime } from "./rules.js";
 import { canStand, mapFor, roomOf, roomsOf, walkCommand } from "./walk.js";
 import { doorLocked, roomPowered } from "./systems.js";
 import { deathRulesOf, deathsView } from "./death.js";
+import { advanceWorkshop, limbFitted, limbReady, waitsInWorkshop, workshopBedFor, workshopOf, workshopProblems } from "./workshop.js";
 import { WORLD_HEALTH, WORLD_LIFE } from "./world.js";
 import { MEDBAY_KEYS, readTreatmentLine } from "../public/health-text.js";
 
@@ -68,6 +69,7 @@ export function medbayOf(place) {
       treaters,
       medicine: store ? { store: store.id, name: store.name, doses: medicine.doses } : null,
       rest: rest && !rest.problem ? rest.days : 0,
+      fitting: file.fitting && !MEDBAY_KEYS["fitting a limb"].read(file.fitting).problem ? MEDBAY_KEYS["fitting a limb"].read(file.fitting) : null,
       treatments,
     };
   }
@@ -77,7 +79,10 @@ export function medbayOf(place) {
 
 // What's wrong with a place's medbay lines, for npm run check-story.
 export function medbayProblems() {
-  const out = [];
+  const out = [...workshopProblems(woundKindNamed)];
+  for (const [place, file] of Object.entries(WORLD_HEALTH)) {
+    if (file.fitting && MEDBAY_KEYS["fitting a limb"].read(file.fitting).problem) out.push(`health/${place}.txt: fitting a limb ${MEDBAY_KEYS["fitting a limb"].read(file.fitting).problem}`);
+  }
   for (const [place, file] of Object.entries(WORLD_HEALTH)) {
     if (!file.medbay && !file.cots && !file.answers) continue;
     const where = `health/${place}.txt`;
@@ -212,8 +217,9 @@ export function advanceMedbay(game) {
     // makes their own way to the medbay, slowly, if there's one and they're hurt; anyone else goes back to their day.
     if (!d.carriedBy && !d.going && now >= (d.until ?? 0) && !cantGetUp(game, key) && !bleedingOf(game, key) && !keptIn(game, key, d, medbay)) {
       if (medbay?.room && !d.bed && woundsNow(game, key).length) {
-        game.down[key] = { ...d, going: true, since: now, call: null };
-        if (d.place === here) notes.push(`[HEALTH] ${nameOf(game, d)} gets up, and makes their way to the medbay.`);
+        const to = workshopBedFor(game, d.place, key)?.slice(1) ?? medbay.room;
+        game.down[key] = { ...d, going: true, since: now, call: null, to };
+        if (d.place === here) notes.push(`[HEALTH] ${nameOf(game, d)} gets up, and makes their way to ${to === medbay.room ? "the medbay" : roomNameOf(d.place, to)}.`);
       } else {
         delete game.down[key];
         if (d.place === here) notes.push(`[HEALTH] ${nameOf(game, d)} gets up${d.bed ? " and leaves the medbay" : ""}.`);
@@ -221,7 +227,7 @@ export function advanceMedbay(game) {
       continue;
     }
     if (d.going) {
-      if (now - d.since >= OWN_WAY_HOURS || hasReached(game, d.place, d.who, `@${medbay?.room}`)) delete game.down[key];
+      if (now - d.since >= OWN_WAY_HOURS || hasReached(game, d.place, d.who, `@${d.to ?? medbay?.room}`)) delete game.down[key];
       continue;
     }
     if (d.carriedBy === YOU || d.bed || !medbay?.room) continue;
@@ -251,7 +257,7 @@ export function advanceMedbay(game) {
       const due = d.call.since + WALK_HOURS;
       if (d.call.phase === "going") {
         if (now < due && !hasReached(game, d.place, d.call.by, `down:${key}`)) break;
-        d.call = { ...d.call, phase: "carrying", since: Math.min(now, due), bed: freeCot(game, d.place) ?? `@${medbay.room}` };
+        d.call = { ...d.call, phase: "carrying", since: Math.min(now, due), bed: workshopBedFor(game, d.place, key) ?? freeCot(game, d.place) ?? `@${medbay.room}` };
         d.carriedBy = d.call.by;
         if (d.call.since - d.since > LATE_HOURS) tallyDuty(game, d.place, Math.floor(d.call.since / 24), { lateCalls: 1 });
       } else {
@@ -260,7 +266,7 @@ export function advanceMedbay(game) {
         d.carriedBy = null;
         const by = d.call.by;
         d.call = null;
-        if (d.place === here) notes.push(`[HEALTH] ${nameOf(game, { who: by })} lays ${nameOf(game, d)} ${d.bed.startsWith("@") ? "on the medbay's floor, the cots all taken" : "on a cot in the medbay"}.`);
+        if (d.place === here) notes.push(`[HEALTH] ${nameOf(game, { who: by })} lays ${nameOf(game, d)} ${d.bed === `@${medbay.room}` ? "on the medbay's floor, the cots all taken" : d.bed.startsWith("@") ? `on the bench in ${roomNameOf(d.place, d.bed.slice(1))}` : "on a cot in the medbay"}.`);
       }
     }
   }
@@ -269,7 +275,7 @@ export function advanceMedbay(game) {
   for (const place of new Set([...Object.values(game.down ?? {}).map((d) => d.place), here])) {
     const medbay = medbayOf(place);
     if (!medbay?.room) continue;
-    const floor = downAt(game, place).filter(([, d]) => d.bed?.startsWith("@") && !d.going && !d.dead).sort(([a], [b]) => howBad(game, b) - howBad(game, a));
+    const floor = downAt(game, place).filter(([, d]) => d.bed === `@${medbay.room}` && !d.going && !d.dead).sort(([a], [b]) => howBad(game, b) - howBad(game, a));
     for (const [key, d] of floor) {
       const cot = freeCot(game, place);
       if (!cot) break;
@@ -277,6 +283,7 @@ export function advanceMedbay(game) {
       if (place === here) notes.push(`[HEALTH] ${nameOf(game, d)} is moved from the floor to a cot.`);
     }
     notes.push(...treatOnClock(game, place, medbay, now));
+    if (workshopOf(place)?.room) notes.push(...advanceWorkshop(game, place, now));
   }
   return notes;
 }
@@ -344,6 +351,7 @@ function carryAway(game, key, d, medbay, now) {
 // Someone on a cot stays while a wound waits for the medbay's treatment, or for the bed rest after a serious one.
 function keptIn(game, key, d, medbay) {
   if (!d.bed || !medbay) return false;
+  if (d.bed.startsWith("@") && d.bed !== `@${medbay.room}`) return waitsInWorkshop(game, d.place, key);
   if (medbay.treatments.length && medbay.medicine && waitingTreatment(game, key, medbay.treatments).length) return true;
   return medbay.rest > 0 && restingFrom(game, key, medbay.rest);
 }
@@ -373,12 +381,12 @@ function queueAt(game, place, medbay, hours) {
   const arrived = (who) => hours >= Math.max(opens, ...woundsNow(game, keyAt(place, who)).map((wound) => wound.at)) + WALK_HOURS;
   const minute = (((hours % 24) + 24) % 24) * 60;
   if (minute < queue.from || minute >= queue.to) return [];
-  return [...hurtAt(game, place)].filter((who) => isAbout(game, place, who, hours) && arrived(who)).map((who) => keyAt(place, who)).filter((key) => key && !game.down?.[key]);
+  return [...hurtAt(game, place)].filter((who) => isAbout(game, place, who, hours) && arrived(who)).map((who) => keyAt(place, who)).filter((key) => key && !game.down?.[key] && !mendedByTechs(game, key));
 }
 // Who's on the medbay's cots and floor at a place, by body key, then whoever's in the morning queue, and the player
 // while they're standing in the medbay.
 function patientsAt(game, place, medbay, hours = nowOf(game)) {
-  const keys = [...downAt(game, place).filter(([, d]) => d.bed && !d.going && !d.dead).map(([key]) => key), ...queueAt(game, place, medbay, hours)];
+  const keys = [...downAt(game, place).filter(([, d]) => d.bed && !d.going && !d.dead && (!d.bed.startsWith("@") || d.bed === `@${medbay.room}`)).map(([key]) => key), ...queueAt(game, place, medbay, hours)];
   return playerIn(game, place, medbay) ? [...keys, YOU] : keys;
 }
 // The medics at work in the medbay at a moment: whoever holds a treating post or does a treating job, there by their
@@ -420,14 +428,36 @@ function treatOnClock(game, place, medbay, now) {
     for (const [key, job] of Object.entries(state.treating)) {
       if (job.until > t) continue;
       delete state.treating[key];
+      if (job.fit) {
+        const words = limbReady(game, place, key) === job.part ? fitLimb(game, key, job.part, job.until) : null;
+        if (!words) {
+          state.doses += job.doses ?? 0;
+          continue;
+        }
+        limbFitted(game, place, key);
+        const line = `${medicName(game, place, job.by)} fits ${whose(game, key)} ${words.replace(/^(an?|the) /, "")}`;
+        state.log = [...(state.log ?? []), { day: Math.floor(job.until / 24), line }].slice(-8);
+        if (place === game.location && (playerIn(game, place, medbay) || key === YOU)) notes.push(`[HEALTH] ${line}. It works nearly as well.`);
+        continue;
+      }
       const wound = woundOf(game, key, job);
       // Dressed meanwhile by its owner, or healed: the doses go back in the crate.
       if (!wound) {
         state.doses += job.doses ?? 0;
         continue;
       }
+      // A wound gone bad on a limb, and left too long, takes the limb with it.
+      if (tooFarGone(wound, job.until)) {
+        const lost = takeLimb(game, key, wound.part, job.until);
+        const line = `${medicName(game, place, job.by)} takes ${whose(game, key)} ${lost.replace(/^the /, "").replace(/ is gone$/, "")}: the wound had gone too far`;
+        state.log = [...(state.log ?? []), { day: Math.floor(job.until / 24), line }].slice(-8);
+        if (place === game.location && (playerIn(game, place, medbay) || key === YOU)) notes.push(`[HEALTH] ${line}.`);
+        continue;
+      }
       const word = treatWound(game, key, wound, job.until);
-      const line = `${medicName(game, place, job.by)} ${word === "splinted" ? "splints" : "dresses"} ${whose(game, key)} ${wound.words.replace(/^(an?|the) /, "").replace(/ has gone bad$/, " gone bad")}`;
+      const line = wound.kind === "lost"
+        ? `${medicName(game, place, job.by)} dresses the stump of ${whose(game, key)} ${wound.part.replace("_", " ")}`
+        : `${medicName(game, place, job.by)} ${word === "splinted" ? "splints" : "dresses"} ${whose(game, key)} ${wound.words.replace(/^(an?|the) /, "").replace(/ has gone bad$/, " gone bad")}`;
       state.log = [...(state.log ?? []), { day: Math.floor(job.until / 24), line }].slice(-8);
       if (place === game.location && (playerIn(game, place, medbay) || key === YOU)) notes.push(`[HEALTH] ${line}.`);
     }
@@ -435,7 +465,17 @@ function treatOnClock(game, place, medbay, now) {
     if (dark && !state.dark && place === game.location && playerIn(game, place, medbay)) notes.push("[HEALTH] The medbay has no power. Nobody can be treated until it comes back.");
     state.dark = dark;
     const free = dark ? [] : medicsAt(game, place, medbay, t).filter((key) => !Object.values(state.treating).some((job) => job.by === key));
-    const waiting = patientsAt(game, place, medbay, t).filter((key) => !state.treating[key] && waitingTreatment(game, key, medbay.treatments).length).sort((a, b) => howBad(game, b) - howBad(game, a));
+    const patients = patientsAt(game, place, medbay, t).filter((key) => !state.treating[key]);
+    const waiting = patients.filter((key) => waitingTreatment(game, key, medbay.treatments).length).sort((a, b) => howBad(game, b) - howBad(game, a));
+    const fitting = medbay.fitting ? patients.filter((key) => !waiting.includes(key) && limbReady(game, place, key)) : [];
+    for (const key of fitting) {
+      if (!free.length) break;
+      if (!takeDoses(game, place, medbay, state, medbay.fitting.doses)) break;
+      const medic = free.shift();
+      const minutes = medbay.fitting.minutes / speedOf(game, place, [medic], "medicine");
+      state.treating[key] = { by: medic, fit: true, part: limbReady(game, place, key), doses: medbay.fitting.doses, since: t, until: t + minutes / 60 };
+      if (key === YOU && place === game.location) notes.push(`[HEALTH] ${medicName(game, place, medic)} starts fitting your new limb.`);
+    }
     for (const key of waiting) {
       if (!free.length) break;
       const wound = waitingTreatment(game, key, medbay.treatments)[0];
@@ -517,7 +557,7 @@ export function medbayView(game, place) {
       const on = here.find(([, d]) => d.bed === cot);
       return on ? patient(on) : null;
     }),
-    floor: here.filter(([, d]) => d.bed.startsWith("@")).sort(([a], [b]) => howBad(game, b) - howBad(game, a)).map(patient),
+    floor: here.filter(([, d]) => d.bed === `@${medbay.room}`).sort(([a], [b]) => howBad(game, b) - howBad(game, a)).map(patient),
     medicine: medbay.medicine ? { store: medbay.medicine.name, doses: state.doses ?? 0, perCrate: medbay.medicine.doses, short: Boolean(state.short) } : null,
     log: (state.log ?? []).map((one) => `Day ${one.day + 1}: ${one.line}`).reverse(),
     dead: deathsView(game, place),
@@ -551,9 +591,10 @@ export function medbayDetour(game, place) {
     const own = mine.get(who);
     if (own) {
       const [key, d] = own;
-      if (d.going) return { where: `@${medbay?.room}`, doing: "making their way to the medbay, slowly" };
+      if (d.going) return { where: `@${d.to ?? medbay?.room}`, doing: d.to && d.to !== medbay?.room ? `making their way to ${roomNameOf(place, d.to)}, slowly` : "making their way to the medbay, slowly" };
       if (d.dead && d.carriedBy) return { where: d.call?.bed ?? `down:${key}`, spot: d, exact: true, doing: "dead, being carried away", asleep: true };
       if (d.dead) return { where: d.bed ?? `down:${key}`, spot: d.bed ? undefined : d, exact: !d.bed, doing: "dead, under a blanket", asleep: true };
+      if (d.bed?.startsWith("@") && d.bed !== `@${medbay?.room}`) return { where: d.bed, doing: `lying on the bench in ${roomNameOf(place, d.bed.slice(1))}`, asleep: !awakeInMedbay(game, key) };
       if (d.bed?.startsWith("@")) return { where: d.bed, doing: "lying on the medbay's floor", asleep: !awakeInMedbay(game, key) };
       if (d.bed) return { where: d.bed, doing: "laid up on a cot", asleep: !awakeInMedbay(game, key) };
       return { where: `down:${key}`, spot: d, exact: true, doing: d.carriedBy ? "being carried to the medbay" : `lying where they fell, ${d.why ?? "down"}`, asleep: true };

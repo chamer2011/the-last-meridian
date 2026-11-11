@@ -13,7 +13,8 @@ import { atPost, canStand, findPath, mapFor, roomOf, seedFrom } from "./walk.js"
 import { detourFor, doorLocked, partSquares } from "./systems.js";
 import { WORLD_LIFE } from "./world.js";
 import { jobsOf, movedDays } from "./command.js";
-import { bodyOf, hurtAt, paceOf, queueOf } from "./body.js";
+import { bodyOf, hurtAt, keyAt, mendedByTechs, paceOf, queueOf } from "./body.js";
+import { workshopDetour, workshopOf } from "./workshop.js";
 import { followCarriers, laidWhereTheyAre, medbayDetour, medbayOf } from "./medbay.js";
 
 const MINUTES_IN_A_DAY = 1440;
@@ -182,9 +183,11 @@ function detoursFor(game, place) {
   const down = medbayDetour(game, place);
   const systems = detourFor(game, place);
   const errands = errandDetour(game, place);
+  // Whoever's mending or building in the workshop (src/workshop.js).
+  const workshop = workshopDetour(game, place);
   const queue = queueDetour(game, place);
-  if (!down && !systems && !errands && !queue) return null;
-  return (key, room, asleep) => down?.(key, room, asleep) ?? systems?.(key, room, asleep) ?? errands?.(key, room, asleep) ?? queue?.(key, room, asleep) ?? null;
+  if (!down && !systems && !errands && !workshop && !queue) return null;
+  return (key, room, asleep) => down?.(key, room, asleep) ?? systems?.(key, room, asleep) ?? errands?.(key, room, asleep) ?? workshop?.(key, room, asleep) ?? queue?.(key, room, asleep) ?? null;
 }
 
 // In the morning, whoever's hurt and on their feet goes and waits at the medbay, as the place's health file says
@@ -199,7 +202,14 @@ function queueDetour(game, place) {
   if (minute < queue.from || minute >= queue.to) return null;
   const hurt = hurtAt(game, place);
   if (!hurt.size) return null;
-  return (key, room, asleep) => (!asleep && hurt.has(key) ? { where: queue.at, doing: "waiting in the medbay queue" } : null);
+  // A synthetic goes to the workshop to be mended instead, unless its door is locked (src/workshop.js).
+  const shop = workshopOf(place);
+  const toShop = shop?.room && !doorLocked(game, place, shop.room) ? shop.room : null;
+  return (key, room, asleep) => {
+    if (asleep || !hurt.has(key)) return null;
+    if (mendedByTechs(game, keyAt(place, key))) return toShop ? { where: `@${toShop}`, doing: `waiting in ${shop.roomName.replace(/^The /, "the ")} to be mended` } : null;
+    return { where: queue.at, doing: "waiting in the medbay queue" };
+  };
 }
 
 // How fast each person at a place walks, as a share of the usual, from their body: a limp slows them, and a leg they

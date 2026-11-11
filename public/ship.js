@@ -104,6 +104,16 @@ function medbaySection(s) {
     m.dead?.length ? folded("ship-medbay-dead", `Died (${m.dead.length})`, m.dead.map((one) => muted(`Day ${one.day}: ${one.name}, ${one.cause}.`))) : null);
 }
 
+// The workshop: who's being mended, the limbs being built and ready, the parts crates aboard, and what was done lately.
+function workshopSection(s) {
+  const w = s.workshop;
+  if (!w) return null;
+  return section(w.room,
+    w.lines.length ? w.lines.map((line) => small(`${line}.`)) : muted("Nobody's being mended, and no limb is being built."),
+    el("div", { class: `small${w.short ? " tone-bad" : ""}` }, w.short ? "There aren't the parts crates for what's waiting." : `Parts crates aboard: ${w.crates}.`),
+    w.log.length ? folded("ship-workshop-log", `Done lately (${w.log.length})`, w.log.map((line) => muted(line))) : null);
+}
+
 function choiceCard({ current, name, detail, desc, onclick, disabled }) {
   return el("button", { class: `card selectable${current ? " selected" : ""}`, "aria-pressed": String(Boolean(current)), disabled, onclick },
     el("strong", {}, name), muted(desc), detail);
@@ -219,7 +229,7 @@ export function shipMenu() {
   const g = app.ui.game;
   if (!g.role.captain) return outsiderShip(g);
   return twoColumns(
-    [statusSection(g), suppliesSection(g.ship), storesSection(g.ship), medbaySection(g.ship), systemsSection(g)],
+    [statusSection(g), suppliesSection(g.ship), storesSection(g.ship), medbaySection(g.ship), workshopSection(g.ship), systemsSection(g)],
     [ordersSection(g), rationsSection(g.ship), councilSection(g.ship), logSection(g.ship), crewSection(g)],
   );
 }

@@ -121,7 +121,7 @@ function findKind(words, parts = null) {
   }
   return best;
 }
-const RULE_KEYS = ["serious", "fightAttack", "goesBad", "limps", "hidden", "artificial", "notRandom", "never", "worsens", "noHand", "noStand", "bleeds", "heals", "treated", "treatment", "out", "harder", "after", "kills"];
+const RULE_KEYS = ["serious", "fightAttack", "goesBad", "limps", "hidden", "artificial", "notRandom", "never", "worsens", "noHand", "noStand", "bleeds", "heals", "treated", "treatment", "out", "harder", "after", "kills", "pace"];
 const rulesOf = (kind) => Object.fromEntries(RULE_KEYS.filter((key) => kind[key] !== undefined).map((key) => [key, kind[key]]));
 
 // A species' body: its parts' hit weights, and what it does differently.
@@ -230,6 +230,23 @@ function madeUpMarks(roll, { species: id, age, job }, written) {
   return marks;
 }
 
+// Now and then someone has an artificial limb from before they came aboard, more often in rough work: on an arm or a leg
+// with no other mark, by the species' hit weights. Not for a species with only its own marks.
+const LIMBS = ["right_arm", "left_arm", "right_leg", "left_leg"];
+function limbFromBefore(roll, { species: id, job }, marks) {
+  const species = speciesBody(id);
+  if (species.ownMarks) return [];
+  const rate = careNow()["artificial limbs from before"];
+  const work = lower(job);
+  const rough = kindsNow().rough.some((word) => Boolean(work) && new RegExp(`\\b${escaped(word)}`).test(work));
+  if (roll() >= 1 / Math.max(1, rough ? rate.rough : rate.oneIn)) return [];
+  const free = LIMBS.filter((part) => !marks.some((mark) => mark.part === part));
+  if (!free.length) return [];
+  const part = pickPart(roll, free, species.hits);
+  const kind = findKind("artificial limb", [part]);
+  return kind ? [markOfKind(kind, part, "made up")] : [];
+}
+
 // A body from who someone is: written lines first, then made-up marks unless a line says nothing else.
 function makeBody(seed, key, who, lines) {
   const roll = seeded(`${seed}|${key}`);
@@ -241,6 +258,7 @@ function makeBody(seed, key, who, lines) {
     else if (!line.problem) marks.push(markFrom(line, roll, species.hits, line.from ?? "written"));
   }
   if (more) marks.push(...madeUpMarks(roll, who, marks.length));
+  if (more) marks.push(...limbFromBefore(seeded(`${seed}|${key}|artificial`), who, marks));
   return { species: who.species, age: who.age ?? null, marks, blood: 100 };
 }
 
@@ -351,7 +369,7 @@ const treatable = (wound) => {
   return !wound.dressed && Boolean(rules.bleeds || rules.goesBad || rules.treated);
 };
 const bleedingNow = (wound) => !wound.dressed && Boolean(rulesOfWound(wound).bleeds);
-const treatedWord = (wound) => (rulesOfWound(wound).treatment === "splinted" ? "splinted" : "dressed");
+const treatedWord = (wound) => ({ splinted: "splinted", mended: "mended" })[rulesOfWound(wound).treatment] ?? "dressed";
 
 // Dressed or splinted at a time: it stops bleeding, won't go bad, and from then heals at its treated pace.
 function dress(game, key, wound, at) {
@@ -390,6 +408,54 @@ export function treatWound(game, key, wound, at) {
   dress(game, key, wound, at);
   return treatedWord(wound);
 }
+// ---- Limbs lost and fitted (step 7) ------------------------------------------------------------------
+
+const storeFitted = (game, key) => (key === "you" ? (game.fitted ??= []) : ((game.bodies ??= {})[key] ??= { wounds: [] }).fitted ??= []);
+// The artificial limbs fitted aboard, as marks.
+export function fittedMarks(game, key) {
+  const list = (key === "you" ? game.fitted : game.bodies?.[key]?.fitted) ?? [];
+  return list.map((one) => {
+    const kind = findKind("artificial limb", [one.part]);
+    return kind ? { ...markOfKind(kind, one.part, "fitted"), fittedAt: one.at } : null;
+  }).filter(Boolean);
+}
+// The limbs someone has lost and had seen to, with nothing fitted yet: the parts an artificial one is wanted for.
+export const limbsWanted = (game, key) => woundsNow(game, key).filter((wound) => wound.kind === "lost" && wound.dressed).map((wound) => wound.part);
+// An arm or a leg, for the workshop's recipe.
+export const limbOf = (part) => (part.endsWith("_arm") ? "arm" : part.endsWith("_leg") ? "leg" : null);
+// The doctor takes a limb whose wound has gone too far: whatever's on it goes, and a lost limb's stump is dressed at once.
+// It returns the words for what's gone, or null where no lost kind fits.
+export function takeLimb(game, key, part, at) {
+  const kind = findKind("lost", [part]);
+  if (!kind) return null;
+  const store = key === "you" ? (game.wounds ??= []) : (((game.bodies ??= {})[key] ??= { wounds: [] }).wounds ??= []);
+  const kept = store.filter((wound) => wound.part !== part);
+  const lost = { ...stamped(game, key, newWound(kind, part), at), dressed: true, dressedAt: at };
+  if (key === "you") game.wounds = [...kept, lost];
+  else game.bodies[key] = { ...game.bodies[key], wounds: [...kept, lost] };
+  return lost.words;
+}
+// An artificial limb fitted where one was lost: the stump's wound goes, and the limb is kept on the body. It returns
+// the limb's words.
+export function fitLimb(game, key, part, at) {
+  const kind = findKind("artificial limb", [part]);
+  if (!kind) return null;
+  if (key === "you") game.wounds = (game.wounds ?? []).filter((wound) => !(wound.part === part && wound.kind === "lost"));
+  else if (game.bodies?.[key]) game.bodies[key].wounds = (game.bodies[key].wounds ?? []).filter((wound) => !(wound.part === part && wound.kind === "lost"));
+  storeFitted(game, key).push({ part, at });
+  return markOfKind(kind, part, "fitted").words;
+}
+// Whether a wound gone bad on a limb has been bad long enough that treating it means taking the limb.
+export const tooFarGone = (wound, at) => wound.kind === "infected" && LIMBS.includes(wound.part) && at - wound.at >= careNow()["losing a limb to rot"].days * 24;
+// Whether someone's body is mended by the techs with parts, as their species file says, rather than by the nurses.
+export const mendedByTechs = (game, key) => !/nurses/i.test(speciesBody(speciesOfKey(game, key)).mendedBy ?? "the nurses");
+// What someone's wounds still need from the workshop: those its list knows how to mend, worst first.
+export function waitingMending(game, key, mending) {
+  if (!mendedByTechs(game, key)) return [];
+  const now = nowOf(game);
+  return storeOf(game, key).filter((wound) => lasts(wound, now) && treatable(wound) && mending.some((one) => normal(one.name) === normal(kindOf(wound.kind, wound.part)?.name ?? wound.kind))).sort((a, b) => (rulesOfWound(b).serious ? 1 : 0) - (rulesOfWound(a).serious ? 1 : 0));
+}
+
 // Whether someone has a serious wound treated within so many days.
 export const restingFrom = (game, key, days) => woundsNow(game, key).some((wound) => rulesOfWound(wound).serious && wound.dressed && nowOf(game) - wound.dressedAt < days * 24);
 
@@ -479,6 +545,7 @@ export function passWounds(game, hours, { speed = 1 } = {}) {
     if (held.died || deathOf(game, key)) continue;
     const now = live(key, held);
     if (now && (now.died || now.wounds.length || now.blood < 100)) game.bodies[key] = { ...held, ...now };
+    else if (held.fitted?.length) game.bodies[key] = { fitted: held.fitted, ...(now ? { wounds: now.wounds, blood: now.blood } : { wounds: [] }) };
     else delete game.bodies[key];
   }
   return told;
@@ -492,7 +559,8 @@ export function paceOf(body) {
   const rules = careNow();
   if (body.marks.some((mark) => mark.section === "wound" && mark.rules.noStand)) return rules["on a leg they can't stand on"].pace;
   if (statusOf(body) === "Walks with a limp") return rules["with a limp"].pace;
-  return 1;
+  const paces = body.marks.map((mark) => mark.rules.pace).filter((pace) => pace > 0);
+  return paces.length ? Math.min(...paces) : 1;
 }
 
 // Why someone can't get up, or null: out cold, with no leg they can stand on, or with too little blood to stand.
@@ -519,9 +587,12 @@ export function bleedingOf(game, key) {
 // The same, from a fighter's wounds alone: a wound on a leg is a limp.
 export function woundsPace(wounds = []) {
   const rules = careNow();
-  if (wounds.some((wound) => rulesOfWound(wound).noStand)) return rules["on a leg they can't stand on"].pace;
-  if (wounds.some((wound) => wound.part.endsWith("_leg") || rulesOfWound(wound).limps)) return rules["with a limp"].pace;
-  return 1;
+  // An artificial limb isn't a wound: it only walks at its own pace.
+  const real = wounds.filter((wound) => !wound.artificial);
+  if (real.some((wound) => rulesOfWound(wound).noStand)) return rules["on a leg they can't stand on"].pace;
+  if (real.some((wound) => wound.part.endsWith("_leg") || rulesOfWound(wound).limps)) return rules["with a limp"].pace;
+  const paces = wounds.filter((wound) => wound.artificial).map((wound) => rulesOfWound(wound).pace).filter((pace) => pace > 0);
+  return paces.length ? Math.min(...paces) : 1;
 }
 
 // A person's body key at a place, from the name or id their day knows them by.
@@ -534,7 +605,7 @@ export function handsFree(game, place, who) {
 // a wound gone bad, or too little blood.
 export function woundEffects(game) {
   const wounds = woundsNow(game, "you");
-  const attack = fightAttackOf(wounds);
+  const attack = fightAttackOf([...wounds, ...artificialLimbs(playerBody(game))]);
   const low = careNow()["low on blood"];
   const harder = fightRules(wounds).reduce((sum, rules) => sum + (rules.harder ?? 0), 0) + (bloodOf(game, "you") < low.under ? low.harder : 0);
   if (!attack && !harder) return null;
@@ -608,6 +679,8 @@ export function accidentsDay(game, day) {
 function withWounds(game, key, body) {
   const now = woundsNow(game, key);
   const blood = bloodOf(game, key);
+  const fitted = fittedMarks(game, key);
+  if (fitted.length) body = { ...body, marks: [...body.marks.filter((mark) => !fitted.some((one) => one.part === mark.part && mark.section !== "wound")), ...fitted] };
   if (!now.length && blood >= 100) return body;
   // The dead bleed no more.
   const dead = Boolean(deathOf(game, key) || game.bodies?.[key]?.died);
@@ -662,7 +735,7 @@ const fitsBody = (kind, species) => (kind.only ? kind.only.includes(species) : !
 // Where a hit lands, and the wound it leaves: a part at random by the body's sizes, never chosen by anyone, and a wound
 // by how much of their health it took, what it was with, and whether it put them down. Null for a machine, which has no
 // body and breaks as it always has.
-export function landHit(body, { weapon = null, damage = 0, maxHp = 1, critical = false, down = false, roll = Math.random } = {}) {
+export function landHit(body, { weapon = null, damage = 0, maxHp = 1, critical = false, down = false, wounds = [], roll = Math.random } = {}) {
   if (!body) return null;
   const species = speciesBody(body.species);
   const part = weighted(roll, PARTS.map((one) => [one, Math.max(0, species.hits[one] ?? 0)]));
@@ -686,6 +759,11 @@ export function landHit(body, { weapon = null, damage = 0, maxHp = 1, critical =
     if (!wound && hard) wound = pick(line.hard);
     if (!wound && line.light && (hard || down || share >= rules.light)) wound = pick([{ name: line.light, parts: PARTS }]);
   }
+  // A hard hit on a limb that's already broken takes it, now and then (step 7).
+  if (hard && LIMBS.includes(part) && wounds.some((one) => one.part === part && one.kind === "broken_bone")) {
+    const lost = findKind("lost", [part]);
+    if (lost && fitsBody(lost, body.species) && roll() < 1 / Math.max(1, careNow()["losing a limb to a hit"].oneIn)) wound = lost;
+  }
   return { part, where: PART_WORDS[part], wound: wound ? newWound(wound, part, roll) : null };
 }
 
@@ -699,10 +777,13 @@ export function fighterBody(game, { id = null, name = null, place = null, machin
   const person = id ? findCharacter(game.campaign, id) : null;
   const key = person ? `id:${person.id}` : name && place ? crowdKey(place, name) : null;
   const kind = person ? person.species ?? "human" : name && place ? crowdWho(name).species : species ?? "human";
-  return { body: { key, species: kind, who: person ? person.id : name && place ? name : null }, wounds: key ? woundsNow(game, key).map((wound) => ({ ...wound })) : [] };
+  const limbs = key ? artificialLimbs(bodyOf(game, person ? { id: person.id } : { name, place })) : [];
+  return { body: { key, species: kind, who: person ? person.id : name && place ? name : null }, wounds: key ? [...woundsNow(game, key).map((wound) => ({ ...wound })), ...limbs] : [] };
 }
 
 const fightRules = (wounds = []) => wounds.map(rulesOfWound);
+// Someone's artificial limbs, from before or fitted aboard, as what a fight counts: an arm's attack, never kept.
+const artificialLimbs = (body) => (body?.marks ?? []).filter((mark) => mark.kind === "artificial_limb").map((mark) => ({ part: mark.part, kind: "artificial_limb", words: mark.words, artificial: true }));
 // What their wounds take off their attack in a fight.
 export const fightAttackOf = (wounds = []) => fightRules(wounds).reduce((sum, rules) => sum + (rules.fightAttack ?? 0), 0);
 // A wound that won't let them stand: they can't walk in a fight in the room, or run from one.
@@ -782,8 +863,8 @@ function playerBody(game) {
     if (!text) continue;
     body.marks.push({ ...markFrom(readBodyLine(text), seeded(`${seed}|you|${condition.id}`), sizes, "now"), hoursLeft: condition.hoursLeft });
   }
-  // The wounds fights have left.
-  body.marks.push(...woundsNow(game, "you").map((wound) => markOfWound(game, wound)));
+  // The wounds fights have left, and any limb fitted aboard.
+  body.marks.push(...woundsNow(game, "you").map((wound) => markOfWound(game, wound)), ...fittedMarks(game, "you"));
   if ((game.conditions ?? []).some((c) => c.id === "infected")) {
     const kind = findKind("infected");
     const under = body.marks.find((mark) => mark.section === "wound");
@@ -805,6 +886,7 @@ export function statusOf(body) {
   if (wounds.some((mark) => mark.rules.out)) return "Out cold";
   if (wounds.some((mark) => mark.rules.noStand)) return "Can barely walk";
   if (body.marks.some((mark) => mark.rules.limps) || wounds.some((mark) => mark.part.endsWith("_leg"))) return "Walks with a limp";
+  if (body.marks.some((mark) => mark.rules.pace < 1)) return "Walks a little stiffly";
   return "Walks normally";
 }
 

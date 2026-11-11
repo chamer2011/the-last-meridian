@@ -245,7 +245,7 @@ function woundLine(fighter, hit, tone) {
 // weapon is what it was done with, by name, which says what kind of wound it leaves.
 function hurtEnemy(target, damage, log, line, { weapon = null, critical = false } = {}) {
   target.hp = Math.max(0, target.hp - damage);
-  const hit = landHit(target.body, { weapon, damage, maxHp: target.maxHp, critical, down: target.hp <= 0 });
+  const hit = landHit(target.body, { weapon, damage, maxHp: target.maxHp, critical, down: target.hp <= 0, wounds: target.wounds ?? [] });
   log.push({ ...line, damage, hp: { [target.key]: target.hp }, ...(hit ? { math: toThePart(line.math, hit), where: hit.where } : {}) });
   const wound = woundLine(target, hit, "good");
   if (wound) log.push(wound);
@@ -370,7 +370,7 @@ export function attackPlayer(game, c, enemy, log) {
     log.push({ hp: { [YOU]: 1 }, text: pickFrom(COMBAT_TEXT.player.survivor), tone: "good", math: "Survivor: 1 health" });
   }
   // Where it landed, and the wound it left, which stays: a simulated fight puts everything back afterwards.
-  const hit = landHit(yourBody(game), { weapon: enemy.weapon, damage, maxHp: maxHp(game), critical, down: game.hp <= 0 });
+  const hit = landHit(yourBody(game), { weapon: enemy.weapon, damage, maxHp: maxHp(game), critical, down: game.hp <= 0, wounds: woundsNow(game, YOU) });
   if (hit) {
     struck.math = toThePart(struck.math, hit);
     struck.where = hit.where;
@@ -394,7 +394,7 @@ export function attackFollower(c, enemy, ally, log) {
   const critical = die === 20;
   const damage = roll(...enemy.damage) * (critical ? 2 : 1);
   ally.hp = Math.max(0, ally.hp - damage);
-  const hit = landHit(ally.body, { weapon: enemy.weapon, damage, maxHp: ally.maxHp, critical, down: ally.hp <= 0 });
+  const hit = landHit(ally.body, { weapon: enemy.weapon, damage, maxHp: ally.maxHp, critical, down: ally.hp <= 0, wounds: ally.wounds ?? [] });
   const math = `${damage} damage${critical ? ", critical" : ""}`;
   log.push({ by: enemy.key, on: ally.key, damage, hp: { [ally.key]: ally.hp }, text: fill(critical ? COMBAT_TEXT.enemyVsAlly.crit : COMBAT_TEXT.enemyVsAlly.hit, words), tone: "bad", math: toThePart(math, hit), ...(hit ? { where: hit.where } : {}) });
   const wound = woundLine(ally, hit, "bad");

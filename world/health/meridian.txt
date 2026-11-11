@@ -9,6 +9,10 @@ bed rest: 3 days after a serious wound is treated
 the dead are laid out in: The Quiet Room
 the names go up on: The chalked names
 a death aboard costs: 3 morale
+fitting a limb: 1 dose, 2 hours
+the workshop: The Repair Bay
+who mends: the chief engineer, a tech
+parts from: the parts lockers, the shuttle stores
 the morning queue: 07:45 to 10:30, at queue
 accidents at work: 1 in 20 days in rough work, 1 in 100 for everyone else
 
@@ -21,6 +25,13 @@ Treatments:
 - deep burn: 3 doses, an hour
 - infected: 1 dose, 20 minutes
 - lost: 4 doses, 2 hours
+
+Mending:
+- dent: 20 minutes
+- cracked casing: 1 parts crate, an hour
+- ruined joint: 1 parts crate, 2 hours
+- artificial arm: 2 parts crates, 6 hours
+- artificial leg: 2 parts crates, 6 hours
 
 At the start:
 - Vik, right leg: broken bone

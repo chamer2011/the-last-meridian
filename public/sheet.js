@@ -513,7 +513,7 @@ const timeLeft = (hours) => (hours < 48 ? `${hours}h left` : `${Math.round(hours
 const MARK_CLASS = { old: "", artificial: "sheet-hi", hurt: "sheet-warn", bad: "sheet-red" };
 function bodyBlock(body) {
   if (!body) return [];
-  const status = body.status === "Walks normally" ? hi(body.status.toUpperCase()) : body.status === "Walks with a limp" ? el("span", { class: "sheet-warn" }, body.status.toUpperCase()) : red(body.status.toUpperCase());
+  const status = body.status === "Walks normally" ? hi(body.status.toUpperCase()) : body.status === "Walks with a limp" || body.status === "Walks a little stiffly" ? el("span", { class: "sheet-warn" }, body.status.toUpperCase()) : red(body.status.toUpperCase());
   // The figure sits beside the BODY label, where the column is empty, so the words have the whole width.
   return [
     el("div", { class: "sheet-field sheet-body" },

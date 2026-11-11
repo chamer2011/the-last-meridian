@@ -63,6 +63,15 @@ Living with wounds (step 3 of the health plan), the lines at the top that say:
     too weak to stand: under 40 blood      (they go down where they are, and stay down while they're bleeding)
     beaten in a fight: down for 1 to 3 hours                 (how long someone beaten lies where they fell, at least)
     pain: 2 stress a day for a wound, 5 for a serious one      (the player's stress)
+    losing a limb to a hit: 1 time in 4, a hard hit on a limb that's already broken
+    losing a limb to rot: the doctor takes it after 3 days gone bad
+    artificial limbs from before: 1 in 60 have one, 1 in 25 in rough work
+Losing a limb (step 7 of the health plan): a hard hit on an arm or a leg that already has a broken bone on it takes it
+that often (the lost line for the arm or the leg), and a wound gone bad on a limb that's still bad after those days is
+treated by taking the limb. Artificial limbs from before: how many people the game makes up with an artificial arm or
+leg (the artificial limb lines under Old marks), more in rough work; a roll of its own, so nobody's other marks change.
+A synthetic's wounds say "heals in N days, M once mended": mended in the workshop (below), they heal in M days.
+
 A wound that bleeds lowers its owner's blood every hour until it's dressed. Someone dresses a wound that isn't serious
 themselves after the time it says; a serious one waits for someone else: for the player, a medkit, which dresses or
 splints their worst wound (its effect line says dress 1), and later the medbay. A wound that can go bad goes bad if
@@ -143,6 +152,10 @@ How often is in a place's file, below.
     the dead are laid out in: The Quiet Room
     the names go up on: The chalked names
     a death aboard costs: 3 morale
+    fitting a limb: 1 dose, 2 hours
+    the workshop: The Repair Bay
+    who mends: the chief engineer, a tech
+    parts from: the parts lockers, the shuttle stores
     the morning queue: 07:45 to 10:30, at queue
     accidents at work: 1 in 20 days in rough work, 1 in 100 for everyone else
 
@@ -150,6 +163,10 @@ How often is in a place's file, below.
     - cut: 1 dose, 10 minutes
     - deep cut: 2 doses, 30 minutes
     - broken bone: 2 doses, an hour
+
+    Mending:
+    - cracked casing: 1 parts crate, an hour
+    - artificial arm: 2 parts crates, 6 hours
 
     At the start:
     - Vik, right leg: broken bone
@@ -179,6 +196,15 @@ file) or a wound gone bad is left undressed too long (kills after, on the infect
 
 the morning queue: when anyone there who's hurt and on their feet goes to wait at the medbay, and where: a spot or a
 group of spots in the place's file in world/life (queue is the medbay's). Anyone asleep or laid up stays put.
+
+fitting a limb, the workshop, who mends, parts from and Mending (step 7 of the health plan): how many doses and how
+long the medbay's medics take to fit an artificial limb that's ready; the room the techs mend and build in; who mends,
+posts and jobs from the command file, who walk there when there's work; the stores in world/logistics whose parts crates
+it uses; and under Mending, one line for each of a synthetic's wounds the workshop mends, by its name in the wounds file,
+and for an artificial arm and an artificial leg, with the parts crates and the time each takes someone with an
+Engineering of 5. A synthetic who can't get up is carried to the workshop's bench, and one on their feet goes there in
+the morning queue's hours. A limb is built for anyone who's lost one and had the stump dressed, then fitted in the
+medbay. A place without these lines builds no limbs, and its synthetics heal by themselves.
 
 accidents at work: how often someone there hurts themselves at their work, rough work being the wounds file's. The
 wound is one of the wounds file's Accidents, likelier the ones for their work, on a part at random.

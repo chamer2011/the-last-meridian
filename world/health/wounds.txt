@@ -14,6 +14,9 @@ on a leg they can't stand on: 30% of the pace
 too weak to stand: under 40 blood
 beaten in a fight: down for 1 to 3 hours
 pain: 2 stress a day for a wound, 5 for a serious one
+losing a limb to a hit: 1 time in 4, a hard hit on a limb that's already broken
+losing a limb to rot: the doctor takes it after 3 days gone bad
+artificial limbs from before: 1 in 60 have one, 1 in 25 in rough work
 rough work: engine, tech, dock, hauler, porter, deckhand, crane, rigger, cable, pump, sump, tube, guard, marine, security, soldier, sergeant, gunner, conscript, picket, rating, bosun, enforcer, miner, prospector, smelter, melt, salvage, diver, cutter, raider, smuggler, duelist, shipwright, yard, kelper, trawler, boatman, strike
 
 Wounds:
@@ -27,12 +30,13 @@ Wounds:
 - deep burn, any part: a deep burn on the {part}; serious; can go bad; heals in 30 days, 14 once dressed
 - knock, the head: a hard knock on the head; out cold for 1 to 4 hours
 - concussion, the head: a concussion; checks one step harder; in a fight: attack -1; heals in 2 days
-- lost, a limb: the {part} is gone; serious; bleeds 20 an hour until treated; can go bad; never heals
+- lost, an arm: the {side} arm is gone; serious; the hand's no use; in a fight: attack -3; bleeds 20 an hour until treated; can go bad; never heals; not for: synthetic
+- lost, a leg: the {side} leg is gone; serious; can't stand on it; bleeds 20 an hour until treated; can go bad; never heals; not for: synthetic
 - infected, any part: the wound in the {part} has gone bad; serious; comes after 2 days undressed; kills after 5 days undressed; worse every day; checks one step harder; heals in 7 days once dressed
-- dent, any part: a dent in the casing of the {part}; heals in 3 days; only for: synthetic
-- cracked casing, any part: cracked casing on the {part}; serious; heals in 10 days; only for: synthetic
-- ruined joint, an arm: a ruined joint in the {side} arm; serious; the hand's no use; in a fight: attack -2; heals in 20 days; only for: synthetic
-- ruined joint, a leg: a ruined joint in the {side} leg; serious; can't stand on it; heals in 20 days; only for: synthetic
+- dent, any part: a dent in the casing of the {part}; heals in 3 days, 0 once mended; only for: synthetic
+- cracked casing, any part: cracked casing on the {part}; serious; heals in 10 days, 1 once mended; only for: synthetic
+- ruined joint, an arm: a ruined joint in the {side} arm; serious; the hand's no use; in a fight: attack -2; heals in 20 days, 1 once mended; only for: synthetic
+- ruined joint, a leg: a ruined joint in the {side} leg; serious; can't stand on it; heals in 20 days, 1 once mended; only for: synthetic
 
 Weapons:
 - burn: laser, plasma, flame, torch, beam, arc, incendiary, fire, cutter, scorch, burning
@@ -69,6 +73,8 @@ Old marks:
 - an eye gone, the head: one eye gone, the lid long healed shut; never at random
 - old wound, the chest or a limb: an old wound in the {part} that aches when the air recyclers cycle; hidden; never at random
 - cybernetic arm, an arm: a cybernetic {side} arm; artificial; never at random
+- artificial limb, an arm: an artificial {side} arm; artificial; in a fight: attack -1; never at random
+- artificial limb, a leg: an artificial {side} leg; artificial; walks at 90% of the pace; never at random
 - cybernetic eye, the head: a targeting lens where the left eye used to be; artificial; never at random
 - scuffed casing, any part: scuffed and patched casing on the {part}; only for: synthetic
 - replaced joint, a limb: a replaced joint in the {part} that doesn't match the rest; only for: synthetic
