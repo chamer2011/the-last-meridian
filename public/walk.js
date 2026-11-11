@@ -384,7 +384,7 @@ function roomNote(room) {
 }
 
 // Who's listed in the room's panel, and what they're doing. It's only redrawn when this changes.
-const listOf = (view) => JSON.stringify(view.people.map((person) => (person.crowd && !person.asks ? 0 : [person.key, person.doing, Boolean(person.asks)])));
+const listOf = (view) => JSON.stringify(view.people.map((person) => (person.crowd && !person.asks && !person.wants ? 0 : [person.key, person.doing, Boolean(person.asks), person.wants?.item ?? null])));
 
 // A system in the room, as a small tag that walks you over to it: teal when it works, amber when it's off or broken,
 // red when it's ringing, with its state when it isn't the usual one.
@@ -427,8 +427,8 @@ function hereNode() {
   // On a deck, it's the room the player's in, not the whole deck.
   const inRoom = (one) => !view.here.deck || one.room === view.here.id;
   const people = view.people.filter(inRoom);
-  // Anyone with something to ask is listed by name, crowd or not.
-  const named = people.filter((person) => !person.crowd || person.asks);
+  // Anyone with something to ask, or waiting for something the player has on them, is listed by name, crowd or not.
+  const named = people.filter((person) => !person.crowd || person.asks || person.wants);
   const others = people.length - named.length;
   const crowd = others === 1 && !named.length ? "One other person" : others && !named.length ? `${others} other people` : others === 1 ? "and one other" : `and ${others} others`;
   const parts = view.things.filter((thing) => thing.part && inRoom(thing));
@@ -928,6 +928,9 @@ function thingLayer() {
   return el("div", { class: "walk-things", id: "walk-thing" }, thingPane(walk.thing));
 }
 
+// "Give the medkit", or "Give 2 ration crates".
+const giveLabel = (wants) => (wants.n === 1 ? `Give the ${wants.name.toLowerCase()}` : `Give ${wants.n} ${wants.name.toLowerCase()}s`);
+
 // What can be done with someone from their window: the same as their menu, with Attack asking first.
 function personChoices(thing) {
   const person = app.ui.game.walk.people.find((one) => one.key === thing.key);
@@ -954,6 +957,8 @@ function personChoices(thing) {
   }
   return [
     ["Talk", "", () => go({ action: "go", to })],
+    // Someone waiting for something the player has on them can be given it (src/requests.js).
+    ...(person.wants ? [[giveLabel(person.wants), "what they asked you for", () => go({ action: "go", to }, () => deed("give", person.key))]] : []),
     ["Registry", "print their record", () => registry(person.key)],
     ["Pickpocket", person.wary ? "they're watching their pockets" : person.pocket, () => go({ action: "go", to }, () => deed("pickpocket", person.key)), person.wary],
     ["Attack", "starts a fight", asking(true)],
@@ -1080,6 +1085,7 @@ function menuFor(target) {
       color: person.color,
       items: [
         { label: "Talk", run: () => go({ action: "go", to }) },
+        ...(person.wants ? [{ label: giveLabel(person.wants), detail: "what they asked you for", run: () => go({ action: "go", to }, () => deed("give", person.key)) }] : []),
         { label: "Look", run: () => lookAtPerson(person) },
         { label: "Registry", detail: "print their record", run: () => registry(person.key) },
         { label: "Pickpocket", detail: person.wary ? "they're watching their pockets" : person.pocket, disabled: Boolean(person.wary), run: () => go({ action: "go", to }, () => deed("pickpocket", person.key)) },

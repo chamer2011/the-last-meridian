@@ -3,20 +3,26 @@
 // nothing left to cook and the shuttle stores in the lighter bay still have ration crates. The quartermaster usually
 // carries them, so this is for when nobody has. It's done when the player has carried two crates into the pantry
 // themselves (open the shuttle stores, take them, open the pantry, put them in), and gone if someone else does first.
+// The captain can leave it to the quartermaster instead, whose duty shows whether the pantry was filled in time.
 when: stock ration_crate < 1 in the pantry and stock produce < 1 in the pantry and stock ration_crate > 1 in the shuttle stores
 asks: a cook
 needs: ration crates in the pantry +2
 by: 1 day
 gone when: stock ration_crate >= 2 in the pantry
+handed to: the quartermaster
 
 == ask
 @{asker}: "There's nothing in the pantry. Not a crate. The shuttle stores down in the lighter bay are full of them, and nobody's brought any up. Could you carry a couple? They're heavy."
 > I'll bring two up -> yes
+> Have the quartermaster see to it -> handed ? captain
 > Not now -> later
 > Not my job -> no
 
 == yes
 @{asker}: "Two will do the next sittings. Thank you."
+
+== handed
+@{asker}: "I'll tell {quartermaster} you said so."
 
 == later
 @{asker}: "Soon, or the next sitting gets water."

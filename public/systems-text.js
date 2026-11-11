@@ -33,6 +33,7 @@ export const SYSTEMS_HEADER = [
   { key: "alarm rings", path: "numbers.alarm", type: "number", unit: "minutes" },
   { key: "air goes bad", path: "numbers.air", type: "number", unit: "minutes" },
   { key: "repairs take", path: "numbers.repair", type: "number", unit: "hours" },
+  { key: "a part wears out every", path: "numbers.wear", type: "number", unit: "days" },
 ];
 
 const get = (obj, path) => path.split(".").reduce((holder, key) => (holder == null ? undefined : holder[key]), obj);

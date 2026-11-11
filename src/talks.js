@@ -12,7 +12,8 @@ import { seedFrom, talkHeard, walkView } from "./walk.js";
 import { ROOM_TALK } from "./world.js";
 import { systemsTalk } from "./systems.js";
 import { grudgeLine, storyCommand } from "./command.js";
-import { ANSWERS, answerRequest, askerStandIn, requestFor, requestScene } from "./requests.js";
+import { ANSWERS, answerRequest, requestFor, requestScene, requestSceneOf } from "./requests.js";
+import { notePut } from "./puts.js";
 
 const helpersFor = (talk) => ({ ...HELPERS, seen: talk.written?.seen ?? [] });
 
@@ -51,9 +52,8 @@ export function stockTalk(game, talk) {
 function sceneOf(game, talk) {
   if (talk.written?.stock) return talk.written.stock;
   // A conversation can leave people for the game to fill in, as a scene can: {quartermaster} is whoever holds the post,
-  // and in a request, {asker} is whoever's asking.
-  const extra = talk.written?.request ? { asker: askerStandIn(game, talk.written.asker) } : null;
-  const scene = withStandIns(game, loadScenes().scenes[talk.written?.id], extra);
+  // and in a request, {asker} is whoever's asking, and {part} and {room} what's broken.
+  const scene = talk.written?.request ? requestSceneOf(game, talk.written.request) : withStandIns(game, loadScenes().scenes[talk.written?.id]);
   if (!scene) throw new StoryError(`The conversation file ${talk.written?.id} has gone, or can't be read any more. Run npm run check-story to see why.`);
   return scene;
 }
@@ -134,6 +134,8 @@ function enterTalkPart(game, talk, scene, id, emit, hops = 0) {
 export function openWrittenTalk(game) {
   const talk = game.talk;
   if (!talk) return false;
+  // Talking to someone counts for anything someone's asked the player to do that by (src/requests.js).
+  notePut(game, "talk", talk.key, 1);
   const id = talk.personId ? `talk_${talk.personId}` : null;
   const { scenes, broken } = loadScenes();
   const own = id ? withStandIns(game, scenes[id] ?? null) : null;

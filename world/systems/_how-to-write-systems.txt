@@ -69,6 +69,12 @@ The first line is the place's name. Then, all of them can be left out:
     alarm rings     How many minutes the alarm rings before it stops by itself.
     air goes bad    How many minutes a room's air takes to go bad once it stops moving.
     repairs take    How many hours the engineers take to fix something.
+    a part wears out every
+                    How many days, on average, before something wears out by itself: a junction
+                    box, the air plant, a speaker, the comms relay or the engines, whichever has a
+                    worn line in _defaults.json. It breaks the way that kind breaks, so the engineers
+                    mend it as they would, with a parts crate where a repair takes one. Left out,
+                    nothing wears out. The Meridian has a part wear out every 10 days.
 
 The numbers every place starts from are in _defaults.json, with how long air takes to come back and
 how long before the place's people switch back what the player switched off.

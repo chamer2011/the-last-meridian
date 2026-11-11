@@ -18,7 +18,7 @@ import { clearLogistics, logisticsOf, storeLook } from "./logistics.js";
 import { ITEMS, LOCATIONS } from "./data.js";
 import { clearLife, hasADay, livesHere, peopleAboard } from "./life.js";
 import { isCaptain, toOutsider } from "./role.js";
-import { addItem, audienceBonus, clockRuns } from "./rules.js";
+import { addItem, audienceBonus, clockRuns, removeItem } from "./rules.js";
 import { conditionHolds } from "./scene-text.js";
 import { recordFact } from "./record.js";
 import { attackPerson, isHurt, isWary, pickPocket, pocketDetail } from "./deeds.js";
@@ -26,6 +26,7 @@ import { rumorsFrom } from "./story-library.js";
 import { pilesIn } from "./bag.js";
 import { colorForName, parseNarration } from "../public/story.js";
 import { COMBAT_ART, LOOKS, ROOM_KINDS, ROOM_TALK, WORLD_MAPS, roomsRedrawn } from "./world.js";
+import { notePut, putsOf } from "./puts.js";
 
 const STEPS = [[0, -1], [-1, 0], [1, 0], [0, 1]];
 const DOOR = "+";
@@ -613,6 +614,18 @@ function peopleOnLevel(game, walk, level) {
 const keyOf = (entry) => entry.id ?? entry.name;
 // Whether someone has something to ask the player: asked, and not put off (src/requests.js keeps game.requests, and
 // can't be read from here, since it reads the scenes).
+// What someone's waiting for the player to give them, that the player has on them: the item, how many to give (as many
+// as are still wanted and the player has), and its name. Null if nothing.
+function wantedFrom(game, key) {
+  for (const one of Object.values(game.requests?.open ?? {})) {
+    const give = one.state === "accepted" ? one.give : null;
+    if (!give || give.to !== key) continue;
+    const left = give.n - (putsOf(game, `give:${key}`, give.item) - (one.base ?? 0));
+    const have = game.inventory?.[give.item] ?? 0;
+    if (left > 0 && have > 0) return { item: give.item, n: Math.min(left, have), name: ITEMS[give.item]?.name ?? give.item };
+  }
+  return null;
+}
 const asksNow = (game, key) => Object.values(game.requests?.open ?? {}).some((one) => one.state === "offered" && one.asker === key && !(one.later > (game.clock?.hours ?? 0)));
 const shortName = (game, entry) => entry.label ?? (entry.id ? findCharacter(game.campaign, entry.id)?.name : null) ?? entry.name;
 
@@ -1016,6 +1029,18 @@ export function walkCommand(game, body) {
     }
     case "putdown":
       return { said: putDown(game) };
+    // Giving someone what they asked the player for (src/requests.js): as many as are still wanted and the player has.
+    case "give": {
+      const key = String(body.key ?? "").replace(/^person:/, "");
+      const entry = people.find((one) => keyOf(one) === key);
+      if (!entry) throw new Error("They aren't there any more.");
+      const wanted = wantedFrom(game, key);
+      if (!wanted) throw new Error("They aren't waiting for anything you have.");
+      removeItem(game, wanted.item, wanted.n);
+      notePut(game, `give:${key}`, wanted.item, wanted.n);
+      const what = wanted.name.toLowerCase();
+      return { said: `[ITEM] You give ${shortName(game, entry)} ${wanted.n === 1 ? `the ${what}` : `${wanted.n} ${what}s`}.` };
+    }
     case "pickpocket":
     case "attack": {
       if (game.carrying) throw new Error("Put them down first.");
@@ -1275,8 +1300,10 @@ function personView(game, entry, level = null) {
     // (src/medbay.js).
     ...downView(game, key),
     pocket: pocketDetail(game, { id: entry.id ?? null, name, asleep: Boolean(entry.asleep) }),
-    // Someone with something to ask the player has a mark on their tag (src/requests.js).
+    // Someone with something to ask the player has a mark on their tag (src/requests.js), and someone waiting for
+    // something the player has on them can be given it.
     ...(asksNow(game, key) ? { asks: true } : {}),
+    ...(wantedFrom(game, key) ? { wants: wantedFrom(game, key) } : {}),
     ...(isWary(game, game.location, key) ? { wary: true } : {}),
     // On a deck, which of its rooms they're in.
     ...(level?.areas.length ? { room: level.roomAt(entry.x, entry.y) } : {}),

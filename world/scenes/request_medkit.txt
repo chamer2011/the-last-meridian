@@ -1,0 +1,40 @@
+# A medkit for the ward
+// Draft by the AI (Claude), 2026-11-10, not yet edited by the owner. A nurse asks anyone who lives aboard and carries a
+// medkit, when the medicine cabinet is empty: it would tide a patient over until crates come. The player can hand it
+// over there and then, or say they'll bring one and give it later (Give, on the nurse's right-click menu).
+when: stock medicine_crate < 1 and has medkit
+asks: a nurse
+needs: give 1 medkit to {asker}
+by: 1 day
+gone when: stock medicine_crate >= 1
+
+== ask
+@{asker}: "The cabinet's empty, and there's someone on a cot I've nothing to give. You carry a medkit, don't you? It would hold them till the crates come."
+> Here, take mine -> given
+> I'll bring you one -> yes
+> Not now -> later
+> I need it myself -> no
+
+== given
+@{asker}: "Thank you. I'll put it to use straight away."
+
+== yes
+@{asker}: "Quickly, if you can."
+
+== later
+@{asker}: "Not too much later."
+
+== no
+@{asker}: "Fair enough. It's yours."
+
+== done
+@{asker}: "That'll hold them. Thank you."
+* xp 10: A medkit for the ward
+* remember {asker} you 6: You gave up a medkit for a patient when the cabinet was empty
+
+== failed
+@{asker}: "They had a bad night. I asked you for that medkit."
+* remember {asker} you -4: You said you'd bring a medkit, and didn't
+
+== gone
+@{asker}: "Crates came in. Keep your medkit."

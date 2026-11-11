@@ -4,7 +4,7 @@
     "numbers: how many minutes the alarm rings before it stops by itself; how many minutes a room's air takes to go bad once it stops moving, and to come back once it moves again; how many hours the place's engineers take to fix something broken; and how many hours before the place's people switch back what the player switched off. thin and bad are how good the air is (out of 100) when it starts to hurt, and how much stress and health it costs each 10 minutes.",
     "dark and watched are what a dark room and a camera on the player do to their checks. seen is what being seen tampering costs with whoever holds the place.",
     "open air are the places where the air needs no machine; no systems are the places whose machinery isn't wired the way anyone's is; cameras everywhere are the places with a camera in every room. guard words and engineer words find the guards and engineers in the people's days, when a place's file doesn't name them.",
-    "parts: each kind of part, by its name in the files, with other names it can go by. look is what the player reads, and on, off and damaged are what's added for its state. switch is a switch the player can work by hand, break is tampering with it, which takes a check, and fix is putting it right; tampering where a camera can see raises the alarm. A part whose name isn't here behaves like the first part of its system."
+    "parts: each kind of part, by its name in the files, with other names it can go by. look is what the player reads, and on, off and damaged are what's added for its state. worn is what's added instead when it wore out by itself, and only a kind with a worn line wears out, at a place whose file says how often. switch is a switch the player can work by hand, break is tampering with it, which takes a check, and fix is putting it right; tampering where a camera can see raises the alarm. A part whose name isn't here behaves like the first part of its system."
   ],
   "numbers": { "alarm rings": 30, "air goes bad": 20, "air comes back": 10, "repairs take": 3, "switched back": 6 },
   "air": { "thin": 60, "bad": 30, "stress": 2, "health": 2 },
@@ -36,6 +36,7 @@
       "on": "It hums, and the rooms it feeds have power.",
       "off": "Its lever is down, and the rooms it feeds are dead.",
       "damaged": "Its cables are cut, and it's dead.",
+      "worn": "A breaker inside has burnt out, and it's dead.",
       "switch": { "off": "Pull the lever down", "on": "Push the lever back up", "tampering": true },
       "break": { "label": "Cut the cables", "check": "engineering:easy", "damage": "cut", "done": "The cables part with a crack and a smell of burnt plastic, and everything it feeds goes dead.", "failed": "The cables are thicker than they looked, and nothing gives." },
       "fix": { "label": "Splice the cables back together", "check": "engineering:easy", "done": "The splice holds, and the box hums again.", "failed": "The splice won't take. It needs another go, or someone who does this for a living." }
@@ -46,6 +47,7 @@
       "on": "Its fans are turning.",
       "off": "It's been shut down, and nothing's moving in the ducts.",
       "damaged": "Its intake is jammed, and it's straining against nothing.",
+      "worn": "Its intake has clogged up, and it's straining against nothing.",
       "switch": { "off": "Hit the shutdown switch", "on": "Start it up again", "tampering": true },
       "break": { "label": "Jam the intake", "check": "engineering:moderate", "damage": "jammed", "done": "The intake chokes on what you've fed it, and the fans wind down.", "failed": "The intake spits it back out. It's built for worse than you." },
       "fix": { "label": "Clear the intake", "check": "engineering:moderate", "done": "The intake clears, and the fans spin up.", "failed": "Whatever's in the intake is wedged too deep for now." }
@@ -83,6 +85,7 @@
       "on": "It's quiet, and it's working.",
       "off": "It's been switched off.",
       "damaged": "Its wires are cut.",
+      "worn": "It's given out, and only crackles.",
       "break": { "label": "Cut its wires", "check": "engineering:easy", "damage": "cut", "done": "The wires part. Whatever happens now, this room won't hear about it.", "failed": "The wires are behind a plate you can't get off." },
       "fix": { "label": "Rewire it", "check": "engineering:easy", "done": "It crackles, and it's working again.", "failed": "You can't get the wires to meet." }
     },
@@ -92,6 +95,7 @@
       "on": "Its lights are green. Calls are going in and out.",
       "off": "It's been switched off, and nobody's calling anyone.",
       "damaged": "It's jammed, and every channel is noise.",
+      "worn": "A board inside has burnt out, and every channel is noise.",
       "words": { "on": "on", "off": "jammed" },
       "switch": { "off": "Switch it off", "on": "Switch it back on", "tampering": true },
       "break": { "label": "Jam the relay", "check": "engineering:moderate", "damage": "jammed", "done": "Every light goes amber, and every channel fills with noise.", "failed": "It reroutes around whatever you do faster than you can do it." },
@@ -103,6 +107,7 @@
       "on": "It's running.",
       "off": "It's been shut down.",
       "damaged": "An injector's missing, and it won't light.",
+      "worn": "An injector has worn through, and it won't light.",
       "break": { "label": "Pull an injector", "check": "engineering:hard", "damage": "crippled", "done": "The injector comes out hot. Nothing's jumping anywhere until it goes back in.", "failed": "The grating's locked, and the heat drives you back." },
       "fix": { "label": "Refit the injector", "check": "engineering:moderate", "done": "It seats with a clunk, and the drive comes back.", "failed": "It won't seat." }
     },

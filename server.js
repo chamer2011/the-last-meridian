@@ -409,7 +409,12 @@ async function handleApi(req, res, route) {
         reply.outcome.notes.push(`[COMPUTER] ${err.message}`);
       }
     }
-    if (reply.over) autosave();
+    // A check passed, or a part fixed by hand, may be what someone asked for.
+    if (reply.over) {
+      const asked = advanceRequests(game);
+      if (asked.length) game.transcript.push({ role: "notice", text: asked.join("\n") });
+      autosave();
+    }
     return json(res, 200, { game: publicState(game), ...reply });
   }
   // The captain runs the Meridian's systems from the Ship menu: no hack, and nobody switches back what they do.
@@ -482,8 +487,11 @@ async function handleApi(req, res, route) {
     if (game.computer) throw new Error(COMPUTER_WAITING);
     const reply = walkCommand(game, body);
     // Using a thing or asking at a door changes more than where the player stands, and the story keeps a line about it.
-    if (["use", "ask", "work", "pickpocket", "attack", "carry", "putdown"].includes(body.action)) {
+    if (["use", "ask", "work", "pickpocket", "attack", "carry", "putdown", "give"].includes(body.action)) {
       if (reply.said) log("notice", reply.said);
+      // Something fixed or given may be what someone asked for, so it's counted at once.
+      const asked = advanceRequests(game);
+      if (asked.length) log("notice", asked.join("\n"));
       autosave();
       return json(res, 200, { game: publicState(game), said: reply.said ?? null, check: Boolean(game.check), computer: Boolean(game.computer), combat: Boolean(game.combat) });
     }

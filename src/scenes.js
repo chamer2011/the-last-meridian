@@ -687,8 +687,9 @@ function checkProblem(text) {
 export function sceneProblems(scene, id = "the scene", { talk = false } = {}) {
   const problems = [];
   // A scene's stand-ins are checked as if real people stood in them, and one the game doesn't fill in is a mistake.
-  // A request has whoever's asking as well, checked as if Dr. Aduro were.
-  const samples = { ...sampleStandIns(), ...(String(id).startsWith("request_") ? { asker: { id: "aduro", name: "Dr. Sen Aduro" } } : {}) };
+  // A request has whoever's asking as well, checked as if Dr. Aduro were, and what's broken, as if the speaker in the
+  // Galley were.
+  const samples = { ...sampleStandIns(), ...(String(id).startsWith("request_") ? { asker: { id: "aduro", name: "Dr. Sen Aduro" }, part: { id: "speaker", name: "speaker" }, room: { id: "galley", name: "the Galley" } } : {}) };
   const unknown = [...new Set([...JSON.stringify(scene ?? {}).matchAll(/\{([a-z_]+)\}/g)].map((one) => one[1]).filter((name) => !samples[name]))];
   for (const name of unknown) problems.push(`${id}: {${name}} isn't a stand-in the game fills in: the stand-ins are ${Object.keys(samples).map((one) => `{${one}}`).join(", ")}`);
   scene = fillStandIns(scene, samples);

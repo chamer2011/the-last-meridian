@@ -28,7 +28,7 @@ import { advanceStories, clockOf } from "./story-clock.js";
 import { emptyStory, storyView } from "./story-library.js";
 import { checkTarget, startInRoom, talkView, walkView } from "./walk.js";
 import { computerView } from "./computers.js";
-import { advanceSystems, jumpBlocked, roomEdge, shipSystemsView } from "./systems.js";
+import { advanceSystems, jumpBlocked, roomEdge, shipSystemsView, wearDay } from "./systems.js";
 import { buildLoreIndex, findLoreIds } from "../public/story.js";
 import { bagView, roomFor, tiring } from "./bag.js";
 import { heldUp, questsView } from "./quests.js";
@@ -346,6 +346,8 @@ function hoursPass(game, hours, activity) {
     notes.push(...advanceLogistics(game, day * 24), ...advanceShip(game, day), ...dutyDay(game, day), ...reviewDay(game, day), ...moodDay(game, day), ...advanceWorld(game, day), ...advanceStories(game, day, told));
     // Now and then someone hurts themselves at their work, at a place whose health file says how often.
     accidentsDay(game, day);
+    // And now and then something wears out by itself, at a place whose systems file says how often.
+    notes.push(...wearDay(game, day));
   }
   syncVitals(game);
   return notes;

@@ -1,0 +1,43 @@
+# Something broken
+// Draft by the AI (Claude), 2026-11-10, not yet edited by the owner. Whoever is chief engineer asks anyone who lives
+// aboard when something has broken and there's no parts crate to mend it with. The player can bodge it by hand, which
+// takes no crate: the part's own fix, in its window or on its right-click menu. The captain can leave it to the
+// engineers instead, and the chief engineer's duty shows whether they managed (they need a crate to, so someone has to
+// bring one aboard). {part} is what's broken and {room} where it is.
+when: repairs waiting
+asks: the chief engineer
+needs: fix a part waiting for repairs
+by: 2 days
+handed to: the chief engineer
+
+== ask
+@{asker}: "The {part} in {room} has gone, and there's not a parts crate aboard to mend it with. It can be bodged by hand, if you've the knack. My techs are stretched as it is."
+> I'll see to it -> yes
+> Leave it to your engineers -> handed ? captain
+> Not now -> later
+> It'll have to wait for parts -> no
+
+== yes
+@{asker}: "Good. Mind your fingers in there."
+
+== handed
+@{asker}: "Then we'll need a crate from somewhere. I'll keep looking."
+
+== later
+@{asker}: "Don't leave it long. Broken things have friends."
+
+== no
+@{asker}: "Then it stays broken till we've parts."
+* remember {asker} you -2: You left the {part} broken till there were parts
+
+== done
+@{asker}: "The {part}'s working. Not how I'd have done it, but working."
+* xp 20: Something broken
+* remember {asker} you 6: You bodged the {part} back to working when there were no parts
+
+== failed
+@{asker}: "The {part} in {room} is still dead. I thought you were seeing to it."
+* remember {asker} you -4: You said you'd fix the {part}, and didn't
+
+== gone
+@{asker}: "Never mind the {part}. A crate turned up, and it's fixed properly now."

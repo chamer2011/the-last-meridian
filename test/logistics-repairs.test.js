@@ -121,6 +121,8 @@ test("a cut junction box is fixed with a parts crate from the parts lockers, whi
 
 test("with no parts in the stores a repair waits, says so once, and is done within the hour after a crate comes", () => {
   const game = newGame();
+  // Nothing wears out by itself here, so the junction box is all that's broken.
+  game.wearDay = Infinity;
   const box = partNamed("junction box", "engineering");
   takeAboard(game, "meridian", "parts_crate", 999);
   sys.damagePart(game, "meridian", box.id, "broken", { by: "story" });

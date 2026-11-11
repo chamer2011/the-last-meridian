@@ -2105,11 +2105,13 @@ export function dutyDay(game, day) {
       }
       const values = Object.values(parts);
       if (!values.length) continue;
-      // A rival working against them takes ten off the day.
+      // A rival working against them takes ten off the day, and a request the captain handed them that ended that day
+      // counts for or against them (src/requests.js).
       const rival = rivalOf(game, place, post.id, day + 1);
-      const score = Math.round(values.reduce((sum, one) => sum + one, 0) / values.length) - (rival ? 10 : 0);
+      const handed = c.tally[`handed:${post.id}`] ?? 0;
+      const score = Math.round(values.reduce((sum, one) => sum + one, 0) / values.length) - (rival ? 10 : 0) + handed;
       const list = (state.duty[post.id] ??= []);
-      list.push({ day: ended, key, score: Math.max(0, score), parts, ...(rival ? { against: rival } : {}) });
+      list.push({ day: ended, key, score: Math.max(0, Math.min(100, score)), parts, ...(rival ? { against: rival } : {}), ...(handed ? { handed } : {}) });
       if (list.length > 7) list.splice(0, list.length - 7);
       // What the post was excused is over once a day's marked well on it again.
       const excused = state.excused?.[post.id];
@@ -2127,6 +2129,7 @@ function dutyOf(game, place, post, key) {
   const last = days.at(-1);
   const marks = Object.entries(last.parts).map(([word, score]) => `${word} ${score}/100`);
   if (last.against) marks.push(`10 off for ${calledBy(game, place, last.against)} working against them`);
+  if (last.handed) marks.push(last.handed > 0 ? `${last.handed} more for a request you handed them, done` : `${-last.handed} off for a request you handed them, left undone`);
   return { score: Math.round(days.reduce((sum, one) => sum + one.score, 0) / days.length), days: days.length, last: marks.join(", ") };
 }
 

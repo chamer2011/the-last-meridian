@@ -104,10 +104,12 @@ by: soon
   assert.match(all, /no post, job or person aboard called the ship's cat/);
   assert.match(all, /no store called the airlock/);
   assert.match(all, /by: is how long they give you/);
-  assert.match(all, /gone when: is missing/);
   assert.match(all, /needs a part called yes/);
   assert.match(all, /needs a part called done/);
   assert.match(all, /its ask needs a choice that goes to yes/);
+  // A request to bring something has to say when it's no longer needed.
+  const { scene: bring } = parseSceneText(`# Short\nwhen: captain\nasks: the quartermaster\nneeds: medicine crates aboard +1\nby: 2 days\n\n== ask\n@{asker}: "Well?"\n> Yes -> yes\n\n== yes\n@{asker}: "Good."\n\n== done\n@{asker}: "Done."\n\n== failed\n@{asker}: "No."\n\n== gone\n@{asker}: "Gone."\n`, "request_short");
+  assert.match(rq.compileRequest("short", bring).problems.join(" | "), /gone when: is missing/);
   // A scene that isn't a request can't have the lines on top.
   const { scene: other } = parseSceneText("# Not one\nwhen: captain\n\n== start\nHello.\nEND\n", "thread_x");
   assert.match(rq.requestProblems({ thread_x: other }).join(" "), /only a request/);
@@ -250,9 +252,11 @@ test("one new ask a day, one thing at a time each: fuel and parts both wait on t
   at(game, 34.5);
   assert.equal(Object.keys(game.requests.open).length, 2, "another the next");
   at(game, 58.5);
+  at(game, 82.5);
   const open = Object.values(game.requests.open);
-  assert.equal(open.length, 2, "the chief engineer asks one thing at a time");
-  assert.equal(open.filter((one) => one.asker === "marrow").length, 1);
+  assert.ok(open.length <= 3, "three at most");
+  assert.equal(open.filter((one) => one.asker === "marrow").length, 1, "the chief engineer asks one thing at a time");
+  assert.ok(!(game.requests.open.fuel && game.requests.open.parts), "so fuel and parts don't both wait at once");
 });
 
 test("only the captain is asked to buy for the ship; anyone aboard can be asked to carry crates to a bare pantry", () => {
@@ -260,7 +264,11 @@ test("only the captain is asked to buy for the ship; anyone aboard can be asked 
   lowOnMedicine(crew);
   crew.ship.fuel = 2;
   at(crew, 10.5);
-  assert.equal(crew.requests, undefined);
+  // A nurse may ask for their medkit, but nobody asks them to buy medicine or fuel.
+  assert.equal(crew.requests?.open?.medicine, undefined);
+  assert.equal(crew.requests?.open?.fuel, undefined);
+  delete crew.requests;
+  delete crew.inventory.medkit;
   // The pantry empty, and the quartermaster and the cooks' own errands kept from filling it.
   emptyPantry(crew);
   assert.equal(lg.stockOf(crew, "meridian", "ration_crate", "the pantry"), 0);

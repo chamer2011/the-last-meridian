@@ -8,7 +8,7 @@ import { START_LIST } from "./role.js";
 import { endedWith } from "./record.js";
 import { DIFFICULTY, attr, maxHp, skillRank } from "./rules.js";
 import { WORLD_THREADS, endingsOf } from "./world.js";
-import { systemHolds } from "./systems.js";
+import { partsWaitingIds, systemHolds } from "./systems.js";
 import { stockOf, storeByWords, storeNames } from "./logistics.js";
 
 // The ship whose stores "stock" counts. Spelt here rather than taken from src/ship.js, which reads scenes itself.
@@ -226,6 +226,10 @@ export function parseCondition(text) {
         Object.assign(term, { who, op, amount: Number(amount) });
         break;
       }
+      case "repairs":
+        // Something aboard the Meridian is broken and the engineers can't mend it for want of a parts crate.
+        if (rest.join(" ").toLowerCase() !== "waiting") problems.push(`"repairs" is followed by waiting: "${raw.trim()}"`);
+        break;
       case "mutiny": {
         // The ship's chain of command: how far a mutiny's got, whether security would arrest its ringleader, and
         // whether the officers would have the player back in the chair.
@@ -284,6 +288,7 @@ function termHolds(game, term, helpers) {
       break;
     }
     case "mutiny": result = mutinyHolds(game, term.id); break;
+    case "repairs": result = partsWaitingIds(game, SHIP_ID).length > 0; break;
     case "holds":
     case "job": result = storyHolds(game, term); break;
     case "loyalty": result = COMPARE[term.op](loyaltyFor(game, term.who), term.amount); break;
@@ -561,10 +566,11 @@ function parseChoice(text, line) {
   return { choice, problems };
 }
 
-// Reads one file's text. parts come out in the shape src/scenes.js plays, and problems say what to fix.
 // The lines on top of a request, and what each is kept as.
-const REQUEST_KEYS = { when: "when", asks: "asks", needs: "needs", by: "by", "gone when": "gone" };
-const REQUEST_LINE = /^(when|asks|needs|by|gone\s+when):\s*(.*)$/i;
+const REQUEST_KEYS = { when: "when", asks: "asks", needs: "needs", by: "by", "gone when": "gone", "handed to": "handed" };
+const REQUEST_LINE = /^(when|asks|needs|by|gone\s+when|handed\s+to):\s*(.*)$/i;
+
+// Reads one file's text. parts come out in the shape src/scenes.js plays, and problems say what to fix.
 
 export function parseSceneText(text, name = "the scene") {
   const scene = { title: null, start: null, parts: {} };
@@ -649,7 +655,7 @@ export function parseSceneText(text, name = "the scene") {
         const key = REQUEST_KEYS[top[1].toLowerCase().replace(/\s+/g, " ")];
         if (scene.request[key] !== undefined) problem(line, `${top[1]}: is written twice`);
         scene.request[key] = top[2].trim();
-      } else problem(line, "before the first part, only a # title, a start: line and // comments go here, and in a request the when:, asks:, needs:, by: and gone when: lines. A part starts with == and its name");
+      } else problem(line, "before the first part, only a # title, a start: line and // comments go here, and in a request the when:, asks:, needs:, by:, gone when: and handed to: lines. A part starts with == and its name");
       return;
     }
     if (!trimmed) {

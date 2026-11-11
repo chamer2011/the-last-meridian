@@ -23,6 +23,7 @@ import { isCaptain } from "./role.js";
 import { changeStanding, changeStress, hoursNow } from "./rules.js";
 import { holderOf } from "./daily.js";
 import { atPost, mapFor, roomOf, roomsOf, roomsOn, thingsIn } from "./walk.js";
+import { notePut } from "./puts.js";
 import { SYSTEMS_DEFAULTS, SYSTEMS_FILE_PROBLEMS, WORLD_CHARACTERS, WORLD_COMPUTERS, WORLD_LIFE, WORLD_SYSTEMS } from "./world.js";
 import { KNOWN_SYSTEMS, SYSTEM_TITLES, readComputerLine, readDoorLine, readLocksLine, readPartLine, slugOf } from "../public/systems-text.js";
 
@@ -64,6 +65,8 @@ function numbersOf(file) {
     air: pick(file.numbers?.air, "air goes bad", 20),
     airBack: pick(null, "air comes back", 10),
     repair: pick(file.numbers?.repair, "repairs take", 3),
+    // How often something wears out by itself, in days; none unless the place's file says.
+    wear: pick(file.numbers?.wear, "a part wears out every", 0),
     back: pick(null, "switched back", 6),
   };
 }
@@ -1138,7 +1141,7 @@ export function lookAt(game, place, part) {
   const spec = kindSpec(part.kind);
   const s = partState(game, place, part.id);
   const works = partWorks(game, place, part);
-  const state = s.damage ? spec.damaged ?? "It's broken." : s.on === false ? spec.off ?? "It's off." : !works ? deadWords(game, place, part) : ringingNow(game, place, part) ? "It's ringing." : spec.on ?? "It's working.";
+  const state = s.damage ? (s.by === "wear" && spec.worn) || spec.damaged || "It's broken." : s.on === false ? spec.off ?? "It's off." : !works ? deadWords(game, place, part) : ringingNow(game, place, part) ? "It's ringing." : spec.on ?? "It's working.";
   return `${part.look ?? spec.look ?? `The ${part.name}.`} ${state}${s.damage ? repairWords(game, place, s) : ""}`;
 }
 
@@ -1201,6 +1204,8 @@ function doWork(game, place, part, action, success) {
       lines.push(`[SYSTEMS] ${spec.break.done ?? "Done."}`, ...damagePart(game, place, part.id, spec.break.damage ?? "broken", { by: "player" }));
     } else if (action.id === "fix") {
       lines.push(`[SYSTEMS] ${spec.fix.done ?? "It's working again."}`, ...repairPart(game, place, part.id));
+      // Fixed by the player's own hands, for anything someone's asked them to fix (src/requests.js).
+      notePut(game, `fixed:${place}`, part.id, 1);
     }
   } else lines.push(`[SYSTEMS] ${(action.id === "fix" ? spec.fix?.failed : spec.break?.failed) ?? "Nothing gives."}`);
   if (seen) lines.push(...caught(game, place, part.room));
@@ -1578,3 +1583,84 @@ export function systemsProblems() {
   }
   return problems;
 }
+
+// ---- Wearing out ----------------------------------------------------------------------------------------------
+
+// A number from 0 to 1 for some words, the same every time: the same game, place and day wear the same way.
+function unitOf(text) {
+  let h = 2166136261;
+  for (const ch of text) h = Math.imul(h ^ ch.codePointAt(0), 16777619) >>> 0;
+  // Stirred, so that words that differ only in their last digit don't land close together.
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x85ebca6b) >>> 0;
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35) >>> 0;
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+
+// Now and then something wears out by itself, at a place whose file says how often ("a part wears out every: 10", in
+// days): one of the kinds with a worn line in world/systems/_defaults.json, picked among the parts that are working, a
+// kind first so the many speakers don't crowd out the few junction boxes. It breaks the way its kind breaks, so the
+// engineers mend it as they would, with a parts crate where a repair takes one. Once a day, the same way for the same
+// game and day. Says what the player hears, if they're there.
+export function wearDay(game, day) {
+  if ((game.wearDay ?? -1) >= day) return [];
+  game.wearDay = day;
+  const lines = [];
+  for (const place of Object.keys(WORLD_SYSTEMS)) {
+    const model = systemsOf(place);
+    const every = model?.numbers.wear;
+    if (!every || unitOf(`${game.name}|wear|${place}|${day}`) >= 1 / every) continue;
+    const working = Object.values(model.parts).filter((part) => {
+      const spec = kindSpec(part.kind);
+      const s = partState(game, place, part.id);
+      return !part.unplaced && spec.worn && spec.break && !s.damage && s.on !== false;
+    });
+    const kinds = [...new Set(working.map((part) => part.kind))];
+    if (!kinds.length) continue;
+    const kind = kinds[Math.floor(unitOf(`${game.name}|wear kind|${place}|${day}`) * kinds.length)];
+    const ofKind = working.filter((part) => part.kind === kind);
+    const part = ofKind[Math.floor(unitOf(`${game.name}|wear part|${place}|${day}`) * ofKind.length)];
+    const spec = kindSpec(kind);
+    const where = roomNameOf(place, part.room);
+    const what = `the ${part.name} in ${where}`;
+    const said = damagePart(game, place, part.id, spec.break.damage ?? "broken", { by: "wear" });
+    // The engineers replace it the same day where they have what it takes, so a day's wear is all settled on its own
+    // day and it comes out the same however the time is cut up. With no parts crate aboard it stays broken, waiting.
+    const s = game.systems[place].parts[part.id];
+    const engineer = personName(place, staffOf(game, place, model.engineers)[0] ?? "Someone");
+    const waiting = [];
+    const took = model.engineers.length ? repairWith(game, place, model, s, s.damage, what, (...text) => waiting.push(...text)) : null;
+    const gave = `${upperFirst(what)} ${/s$/.test(part.name) ? "have" : "has"} given out`;
+    if (took !== null) {
+      const mended = repairPart(game, place, part.id);
+      if (place === game.location) lines.push(`[SYSTEMS] ${gave}, and ${engineer} has replaced what wore out${took ? `, with ${took}` : ""}.`, ...mended);
+    } else if (place === game.location) lines.push(`[SYSTEMS] ${gave}. ${spec.worn}`, ...said, ...waiting);
+  }
+  return lines;
+}
+
+// ---- For the requests people make (src/requests.js) -----------------------------------------------------------
+
+// The parts the engineers can't fix for want of a parts crate, by id.
+export function partsWaitingIds(game, place) {
+  const model = systemsOf(place);
+  const parts = game.systems?.[place]?.parts ?? {};
+  return Object.entries(parts).filter(([id, s]) => s.noParts && s.damage && model?.parts[id]).map(([id]) => id);
+}
+// A part by what it's called ("the air plant", "junction box in Engineering") or its id; the first that matches.
+export function partByWords(place, words) {
+  const model = systemsOf(place);
+  if (!model) return null;
+  const [name, roomWords] = String(words ?? "").split(/\s+in\s+/i);
+  const want = plain(name);
+  return Object.values(model.parts).find((part) => (part.id === want.replace(/ /g, "_") || plain(part.name) === want) && (!roomWords || plain(roomNameOf(place, part.room)) === plain(roomWords))) ?? null;
+}
+// A part's name and its room's, for what's said: { name: "speaker", room: "the Galley" }.
+export function partWords(place, id) {
+  const part = systemsOf(place)?.parts[id];
+  return part ? { name: part.name, room: roomNameOf(place, part.room).replace(/^The /, "the ") } : null;
+}
+// Whether a part is broken.
+export const partBroken = (game, place, id) => Boolean(game.systems?.[place]?.parts?.[id]?.damage);

@@ -5,6 +5,7 @@ engineers: the chief engineer, the techs
 alarm rings: 20
 air goes bad: 25
 repairs take: 2
+a part wears out every: 10
 
 Power:
 - junction box in Engineering for Engineering, The Aft Holds, The Crawlways: The main bus, a cabinet of breakers older than anyone aboard, with Marrow's handwriting on half the labels.

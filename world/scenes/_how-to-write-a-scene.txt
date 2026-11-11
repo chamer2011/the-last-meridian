@@ -196,6 +196,8 @@ and join several with "and":
                                      here, or in and a room, and at and a place. world/systems has the rest.
     act < 2                          The main story's act, with the same comparisons as credits.
     fuel < 3                         The Meridian's jump fuel, with the same comparisons.
+    repairs waiting                  Something aboard the Meridian is broken, and the engineers can't mend
+                                     it for want of a parts crate.
     stock medicine_crate < 2         How many of an item the Meridian's stores hold, all of them together,
                                      by the item's id. Add in and a store for one of them: stock
                                      ration_crate < 1 in the pantry. The stores are in world/logistics.
@@ -335,13 +337,14 @@ matters to has something to ask the player. While they do, there's an amber ! on
 the room, and on their line in What's here, and the story says so once. When the player talks to
 them, they ask first; once the player has answered, their own conversation goes on as usual.
 Saying yes puts it in the player's quests, under Requests, with what's wanted and the day it's
-due. It ends one of three ways, with that person's line in the story:
+due, and a day before that day the story reminds them once. It ends one of three ways, with that
+person's line in the story:
 
-    done      the player brought what was needed
+    done      the player did what was wanted
     gone      it was put right some other way first, so it isn't needed (no harm done)
     failed    the day came and it still wasn't done
 
-On top, before the first part, five lines say when it comes up and what puts it right:
+On top, before the first part, a few lines say when it comes up and what puts it right:
 
     # Medicine for the medbay
     when: captain and stock medicine_crate < 2
@@ -355,36 +358,60 @@ when:       a condition, as in a scene. While it holds, they ask. If it stops ho
 asks:       who asks: a post (the chief medical officer: whoever holds it now), a job (a cook: one
             of the cooks at work), or someone by name. Add ", in The Galley" to say where to find
             them, if it isn't where their post or job is.
-needs:      what's wanted, where, and how many, with a + before the number:
+needs:      what's wanted, one of these:
                 medicine crates aboard +2         bought for the ship from the Ship menu
                 ration crates in the pantry +2    carried into that store by hand, or bought into it
                 fuel in the tank +3               bought for the ship
-            Only what the player brings counts. Taking something back out of a store takes it off.
+                fix a part waiting for repairs    something broken that the engineers can't mend
+                                                  for want of a parts crate, fixed by the player's
+                                                  own hands (its own fix, in its window or menu)
+                fix the air plant                 that part, by its name, fixed by hand; add "in"
+                                                  and a room when there's more than one
+                give 1 medkit to {asker}          given to them with Give, on their right-click
+                                                  menu, or there and then (see given, below);
+                                                  someone else can be named instead of {asker}
+                talk to the quartermaster         a talk with them; a post, a job or a name
+                go to haven                       the player there, however they got there
+                pass engineering                  a check of that skill passed; add "at the air
+                                                  plant" for one on that part, or "with {asker}"
+                                                  for one with that person
+            Only what the player does counts. Taking something back out of a store takes it off.
 by:         how long they give, once the player says yes: 5 days, or 12 hours.
 gone when:  a condition that means it's been put right without the player. If it holds while the
-            player hasn't brought anything yet, the request is gone; if they'd brought some, it's done.
+            player hasn't done any of it yet, the request is gone; if they'd done some, it's done.
+            A request to bring something needs it. A part that's fixed by anyone counts too, with
+            no line needed.
+handed to:  a post the captain can leave it to instead, like the chief engineer. If whoever holds
+            it gets it done by the day (gone when: holds, or the part's fixed), it's done by them,
+            and five goes on that post's duty for the day; if not, it's failed, and fifteen comes off.
 
-Then the parts, in the talk window's way (see CONVERSATIONS), with {asker} for whoever's asking:
+Then the parts, in the talk window's way (see CONVERSATIONS), with {asker} for whoever's asking,
+and in a request to fix something, {part} for what's broken and {room} for the room it's in:
 
-    == ask          what they ask. One of its choices goes to yes.
+    == ask          what they ask. One of its choices goes to yes (or given).
     == yes          what they say to a yes. The player takes it on.
-    == later        what they say to "not now". They ask again a day later. (Needed only if a
-                    choice goes there.)
+    == given        what they say when the player gives what's wanted there and then: for a give
+                    request, the player takes it on and hands over what they have of it at once.
+                    Put ? has medkit on the choice so it's only offered when they've got one.
+    == handed       what they say when the captain leaves it to the post in handed to:. Put
+                    ? captain on the choice.
+    == later        what they say to "not now". They ask again a day later.
     == no           what they say to a no. They don't ask again for a week.
     == done         what they say once it's done, with what the player gets: * xp 15: The reason,
                     * remember {asker} you 10: what they'll remember.
     == failed       what they say if the day comes first.
     == gone         what they say if it was put right without the player.
 
-A part with no choices hands the talk back to their own conversation. Done, failed and gone are
-said in the story, not in a talk, so their * lines can't move the clock or the player.
+Given, handed, later and no are needed only if a choice goes there. A part with no choices hands
+the talk back to their own conversation. Done, failed and gone are said in the story, not in a
+talk, so their * lines can't move the clock or the player. A request handed on ends with the game's
+own line, saying who did or didn't do it.
 
 At most three requests wait at once, and someone new asks once a day at most. Each person asks one
 thing at a time. A request that's over rests for a while before it can come up again: two days if
 it was done or gone, four if it failed, a week after a no. Requests only come to someone who lives
 aboard the Meridian, captain or crew, and a when: line can say more, like captain for anything
 only the captain can buy.
-
 
 THINGS AND DOORS
 ----------------

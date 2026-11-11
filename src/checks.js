@@ -28,6 +28,7 @@ import sneak from "./check-games/sneak.js";
 import switches from "./check-games/switches.js";
 import target from "./check-games/target.js";
 import tune from "./check-games/tune.js";
+import { notePut } from "./puts.js";
 
 export const CHECK_GAMES = { appeal, balance, codebreak, cover, crack, duel, haggle, plain, push, route, runner, scan, sneak, switches, target, tune };
 
@@ -227,6 +228,13 @@ function finishCheck(game) {
   };
   game.check = null;
   if (practiceOnly) return { over: true, outcome };
+  // A check passed counts for anything someone's asked the player to pass (src/requests.js): any of that skill, the one
+  // at a thing, and the one with a person.
+  if (r.success && check.skill) {
+    notePut(game, `check:${check.skill}`, "any", 1);
+    if (check.target) notePut(game, `check:${check.skill}`, `at:${check.target}`, 1);
+    if (check.audience) notePut(game, `check:${check.skill}`, `with:${check.audience}`, 1);
+  }
   // Work on a part of the place's systems is settled by src/systems.js, which says what came of it; neither the written
   // story is waiting on it.
   if (check.source === "part") {
