@@ -1,0 +1,6 @@
+/* The menus scroll with no scroll bar, and leave no room for one: the rail of menu buttons and the open menu, with
+   everything inside it. spring.js does the scrolling there, and marks a part "springing" while its contents have run
+   past the top or the bottom, moving them by --spring until they've come back. */
+.rail, .drawer, .drawer * { scrollbar-width: none; }
+.rail::-webkit-scrollbar, .drawer::-webkit-scrollbar, .drawer *::-webkit-scrollbar { display: none; }
+.springing > * { translate: 0 var(--spring, 0px); }

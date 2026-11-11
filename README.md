@@ -40,7 +40,7 @@ The story is written in advance, in files you can read and change: see [The stor
 
 ## Menus
 
-The buttons down the right edge open the menus, grouped under **You**, **The story**, **The ship**, **Gear** and **Game**. A menu slides out over the story and always takes up the same space: three quarters of the screen. To close one, press **Close** or Esc, click the story behind it, or click its button again. On a narrow window, press **Menu** instead, and the same groups run along the top. Inside a menu, the parts you don't need every time fold away behind a line like **[ + Ship's log ]**: click it to open them, and they stay open while the game's running. Rest the mouse on a button to see what its menu holds.
+The buttons down the right edge open the menus, grouped under **You**, **The story**, **The ship**, **Gear** and **Game**. A menu slides out over the story and always takes up the same space: three quarters of the screen. To close one, press **Close** or Esc, click the story behind it, or click its button again. On a narrow window, press **Menu** instead, and the same groups run along the top. Inside a menu, the parts you don't need every time fold away behind a line like **[ + Ship's log ]**: click it to open them, and they stay open while the game's running. A menu that's longer than the screen, or the row of buttons on a short window, scrolls with the mouse wheel, with no scroll bar taking up room; at the top or the bottom it runs on a little past the end and springs back. Rest the mouse on a button to see what its menu holds.
 
 **Your own registry printout** isn't a menu: click your name at the top left of the screen, or press **C**. It slides down inside the map with who you are, your level, attributes, skills, condition, your body, gear, work and sleep, and a star by your name means there are attribute points to spend on it. Tear it off (or C, Esc) to put it away.
 
@@ -560,7 +560,7 @@ The Meridian is drawn in **Tiled**, a free map editor, one file to a deck, and y
 - `src/npc.js` generates the stats of people a campaign adds, such as those from your past, and `src/campaign.js` saves them to their files.
 - `src/tools.js` lists the game's actions a written scene can take, and the limits on them.
 - `public/story.js` and `public/story-view.js` turn the story's text into what you see in the main window.
-- `public/menus.js` holds what's inside each menu, and the groups they sit in on the rail down the right edge.
+- `public/menus.js` holds what's inside each menu, and the groups they sit in on the rail down the right edge. `public/spring.js` scrolls the menus and the rail with the wheel, running on past the ends and springing back, and `public/scroll.css` hides their scroll bars.
 - `data/saves/` holds your saved games.
 
 To check that the rules still work after a change, run:
