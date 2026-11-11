@@ -2,7 +2,7 @@
 // game's state, so a menu can never disagree with the rules.
 
 import { checkStyle, setCheckStyle } from "./check.js";
-import { api, beliefBar, columns, el, folded, meter, signed, strainMeter } from "./dom.js";
+import { api, columns, el, folded, meter, signed, strainMeter } from "./dom.js";
 import { mapMenu } from "./map.js";
 import { shipMenu } from "./ship.js";
 import { commandMenu } from "./command.js";
@@ -18,7 +18,6 @@ export function initMenus(hooks) {
 // ---- Shared pieces ------------------------------------------------------
 
 const section = (title, ...children) => el("section", { class: "menu-section" }, title && el("h3", {}, title), children);
-const effects = (list) => (list?.length ? el("div", { class: "effects small" }, list.join(" | ")) : null);
 const muted = (text) => el("div", { class: "muted small" }, text);
 const small = (text) => el("div", { class: "small" }, text);
 const empty = (text) => el("div", { class: "muted" }, text);
@@ -29,137 +28,6 @@ function row(label, value, hint) {
     el("strong", {}, String(value)));
 }
 
-function asciiBar(value, max, width = 10) {
-  const filled = Math.round(Math.max(0, Math.min(1, value / max)) * width);
-  return `[${"#".repeat(filled)}${"-".repeat(width - filled)}]`;
-}
-
-// ---- Skills -------------------------------------------------------------
-
-function skillsMenu() {
-  const { ui, act } = app;
-  const g = ui.game;
-  const { difficulty, stats } = ui.setup;
-  return [
-    el("div", { class: "menu-intro small" },
-      `Skill points: ${g.skillPoints}. You earn more each level, and skills also improve as you use them. Tagged skills (*) improve 50% faster.`,
-      g.dossier.learning !== 1 && ` At your age, you're learning at ${Math.round(g.dossier.learning * 100)}% speed.`),
-    columns(Object.entries(g.skillGroups).map(([group, label]) => section(label,
-      g.skills.filter((s) => s.group === group).map((s) => el("div", { class: `menu-entry${s.tagged ? " tagged" : ""}` },
-        el("div", { class: "menu-row" },
-          el("span", {}, el("strong", {}, `${s.tagged ? "*" : ""}${s.name}`), el("span", { class: "muted small" }, ` ${stats[s.attr]}`)),
-          el("span", { class: "row" },
-            el("span", { class: "skill-bar", title: `Rank ${s.rank} of 10` }, asciiBar(s.rank, 10)),
-            el("strong", { title: "Your total bonus on checks with this skill" }, signed(s.bonus)),
-            s.raiseCost && g.skillPoints >= s.raiseCost && el("button", { "aria-label": `Raise ${s.name}`, title: `Costs ${s.raiseCost} skill point${s.raiseCost === 1 ? "" : "s"}`, onclick: act({ action: "skill", id: s.id }) }, "+"))),
-        muted(s.desc),
-        s.id === "hacking" && ui.setup.hackingClasses?.length
-          ? el("div", { class: "row small practice-classes" }, el("span", { class: "muted" }, "Practice on:"), ui.setup.hackingClasses.map((one) => el("button", { class: "small", disabled: Boolean(g.combat || g.check), title: `A ${one.difficulty.replace("_", " ")} hack. Nothing that happens in practice counts.`, onclick: () => app.startPractice(s.id, one.difficulty) }, one.name)))
-          : el("div", {}, el("button", { class: "small", disabled: Boolean(g.combat || g.check), title: "Try this skill's check window. Nothing that happens in practice counts.", onclick: () => app.startPractice(s.id) }, "Practice")),
-        el("div", { class: "small" }, `Moderate ${oddsFor(s.bonus, difficulty.moderate)}%, hard ${oddsFor(s.bonus, difficulty.hard)}%, very hard ${oddsFor(s.bonus, difficulty.very_hard)}%`),
-        s.raiseCost && el("div", { class: "muted small" }, `Practice ${asciiBar(s.xp, s.xpNext)} ${s.xp}/${s.xpNext}. Next rank costs ${s.raiseCost} point${s.raiseCost === 1 ? "" : "s"}.`)))))),
-  ];
-}
-
-// ---- Traits and perks ---------------------------------------------------
-
-function traitsMenu() {
-  const g = app.ui.game;
-  return columns(
-    section("Traits",
-      g.traits.length ? g.traits.map((t) => el("div", { class: "card" },
-        el("strong", {}, t.name), muted(t.desc), effects(t.effects))) : empty("You have no traits.")),
-    section("Convictions",
-      g.convictions.length ? g.convictions.map((c) => el("div", { class: "card" },
-        el("strong", {}, c.name), el("span", { class: "muted small" }, ` (${c.pole})`), effects(c.effects))) : muted("None. A belief of 5 or more becomes a conviction.")),
-    folded("traits-effects", `Everything affecting you (${g.effects.length})`,
-      g.effects.length ? g.effects.map((e) => el("div", { class: "menu-entry" },
-        el("div", { class: "spread" }, el("span", {}, e.name), el("span", { class: "tag" }, e.source)),
-        effects(e.effects))) : muted("Nothing at the moment.")),
-  );
-}
-
-function perksMenu() {
-  const { ui, act } = app;
-  const g = ui.game;
-  const owned = g.perks.filter((p) => p.owned);
-  const ready = g.perks.filter((p) => !p.owned && p.ok);
-  const locked = g.perks.filter((p) => !p.owned && !p.ok);
-  const card = (p, control) => el("div", { class: "card" },
-    el("div", { class: "spread" }, el("strong", {}, p.name), p.career && el("span", { class: "tag on" }, "career")),
-    muted(p.desc),
-    control);
-  return [
-    el("div", { class: "menu-intro small" }, `Perk points: ${g.perkPoints}. You earn one each level.`),
-    columns(
-      section(`Learned (${owned.length})`, owned.length ? owned.map((p) => card(p)) : empty("Nothing yet.")),
-      section(`Ready to learn (${ready.length})`, ready.length
-        ? ready.map((p) => card(p, el("div", { class: "card-action" }, el("button", { onclick: act({ action: "perk", id: p.id }) }, "Learn"))))
-        : muted(g.perkPoints ? "Nothing you qualify for yet." : "You need a perk point. You get one each level.")),
-      section(`Locked (${locked.length})`, locked.map((p) => card(p, el("div", { class: "small notice-inline fail" }, p.why)))),
-    ),
-  ];
-}
-
-// ---- Beliefs ------------------------------------------------------------
-
-function beliefsMenu() {
-  const { ui } = app;
-  const g = ui.game;
-  const { axes, limits } = ui.setup;
-  return columns(
-    section("Where you stand",
-      el("div", { class: "card" }, el("strong", {}, g.ideologyTitle), muted("Your choices move these. Acting against a strong belief causes stress, and acting on one steadies you.")),
-      Object.values(axes).map((axis) => {
-        const value = g.ideology.find((i) => i.id === axis.id)?.value ?? 0;
-        const pole = value < 0 ? axis.low : axis.high;
-        const active = Math.abs(value) >= limits.convictionThreshold;
-        return el("div", { class: "menu-entry" },
-          el("div", {}, el("strong", {}, axis.name), el("span", { class: "muted small" }, ` ${axis.question}`)),
-          el("div", { class: "spread small" }, el("span", {}, axis.low.name), el("strong", {}, signed(value)), el("span", {}, axis.high.name)),
-          el("div", { class: "axis-bar side-bar", role: "img", "aria-label": `${axis.name}: ${value}` }, beliefBar(value)),
-          muted(`${axis.low.name}: ${axis.low.desc}`),
-          muted(`${axis.high.name}: ${axis.high.desc}`),
-          value !== 0 && (active
-            ? el("div", { class: "effects small" }, `Conviction: ${pole.conviction}. ${pole.effects.join(" | ")}`)
-            : muted(`At ${limits.convictionThreshold}, you'd gain the conviction ${pole.conviction}: ${pole.effects.join(" | ")}`)));
-      })),
-    section("Factions",
-      g.factions.filter((f) => f.known).map((f) => el("div", { class: "menu-entry" },
-        el("div", { class: "menu-row" }, el("strong", {}, f.name), el("strong", {}, signed(f.value))),
-        el("div", { class: "axis-bar side-bar", role: "img", "aria-label": `Standing with ${f.name}: ${f.value}` }, beliefBar(Math.round(f.value / 10))),
-        f.holds.length > 0 && el("div", { class: "muted small" }, `Holds ${f.holds.join(", ")}.`),
-        muted(f.desc),
-        small(`Shared beliefs: ${signed(f.sharedBeliefs)}%`),
-        f.relationship !== 0 && el("div", { class: "effects small" }, `${signed(f.relationship)} on social checks with them`)))),
-  );
-}
-
-// ---- Dossier ------------------------------------------------------------
-
-function dossierMenu() {
-  const g = app.ui.game;
-  const d = g.dossier;
-  return columns(
-    section("Personal record",
-      row("Name", g.name),
-      d.callsign && row("Callsign", d.callsign),
-      row("Pronouns", g.pronouns),
-      row("Age", g.age),
-      row("Species", g.species),
-      row("Homeworld", d.homeworld ?? "Unknown"),
-      row("Upbringing", d.upbringing ?? "Unknown"),
-      d.appearance && el("div", { class: "menu-entry" }, muted(d.appearance))),
-    d.speciesFx.length > 0 && section(g.species, effects(d.speciesFx)),
-    d.drive && section("What drives you", el("div", { class: "card" }, el("strong", {}, d.drive), muted(d.driveDesc), effects(d.driveFx))),
-    d.bond && section("Closest bond", small(d.bond)),
-    d.careers.length > 0 && section("Career",
-      d.careers.map((c) => row(c.name, c.rankTitle, `${c.terms * 4} years`))),
-    d.biography.length > 0 && folded("past-history", `Life history (${d.biography.length})`, el("ul", { class: "bio small" }, d.biography.map((line) => el("li", {}, line)))),
-    d.hooks.length > 0 && folded("past-loose-ends", `Loose ends (${d.hooks.length})`, el("ul", { class: "bio small" }, d.hooks.map((line) => el("li", {}, line)))),
-    d.legacy && muted("This captain was created before the deep character creator. Start a new game to build one."),
-  );
-}
 
 // ---- People -------------------------------------------------------------
 
@@ -447,11 +315,6 @@ function settingsMenu() {
 
 // about is what a menu holds, for the tooltip on its button: it isn't written on the screen.
 export const MENUS = {
-  skills: { label: "Skills", command: "skills", about: "What you're good at, your odds, and practice", view: skillsMenu },
-  traits: { label: "Traits", command: "traits", about: "Traits, convictions, and everything affecting you", view: traitsMenu },
-  perks: { label: "Perks", command: "perks", about: "What you've learned, and what you can learn now", view: perksMenu },
-  beliefs: { label: "Beliefs", command: "beliefs", about: "Where you stand, and your standing with each faction", view: beliefsMenu },
-  dossier: { label: "Your past", command: "dossier", about: "Your record, career and life history", view: dossierMenu },
   people: { label: "People", command: "people", about: "Everyone you've met or heard of", view: peopleMenu },
   board: { label: "Story board", command: "board", about: "Every story as boxes and arrows, to read and change, saved to its file", board: true, view: () => el("div") },
   leads: { label: "Leads", command: "leads", about: "Stories you could start here, and what people are saying", view: leadsMenu },
@@ -467,7 +330,6 @@ export const MENUS = {
 
 // The groups the menus sit in on the rail, each under its own heading.
 export const MENU_GROUPS = [
-  { title: "You", ids: ["skills", "traits", "perks", "beliefs", "dossier"] },
   { title: "The story", ids: ["leads", "board", "people", "codex", "bestiary"] },
   { title: "The ship", ids: ["ship", "command", "map"] },
   { title: "Gear", ids: ["inventory", "market"] },

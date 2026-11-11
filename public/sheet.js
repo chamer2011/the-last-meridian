@@ -4,13 +4,20 @@
 // from five examples on 2026-11-08 ("the registry printout", in the map and not a menu on the right). Everything on it
 // comes from the game view the menus used; the buttons do what the old Character menu's did. Anyone else's printout
 // opens from the right-click menu on them (Registry), from the server's /api/person-sheet (src/person-sheet.js).
+// Since 2026-11-10 the player's own record is printed in pages, RECORD, SKILLS, PERKS, BELIEFS and PAST, which took
+// over from the menus under You (Skills, Traits, Perks, Beliefs, Your past) at the owner's word, after a mockup.
 
 import { api, el, signed } from "./dom.js";
+import { oddsFor } from "./story.js";
 
 const FEED_MS = 520;
 const RULE = "-".repeat(56);
 // subject is null for the player's own printout, or { key, data } for someone else's.
 const state = { open: false, openedAt: 0, closing: false, subject: null };
+// Which page of the player's own record is printed, and the parts folded open on it. Kept while the game runs, so the
+// printout comes back where it was left.
+const PAGES = [["record", "RECORD"], ["skills", "SKILLS"], ["perks", "PERKS"], ["beliefs", "BELIEFS"], ["past", "PAST"]];
+const pages = { now: "record", locked: false, affecting: false };
 let app;
 
 export function initSheet(hooks) {
@@ -47,8 +54,20 @@ export function closeSheet() {
   paper.addEventListener("animationend", done, { once: true });
   setTimeout(done, FEED_MS + 200);
 }
-// C and the Character button: the player's own printout, or put away. Over someone else's, it prints the player's.
+// C and the player's name: the player's own printout, or put away. Over someone else's, it prints the player's.
 export const toggleSheet = () => (state.open && !state.closing && !state.subject ? closeSheet() : openSheet());
+
+// The player's own record at one of its pages, for what used to open a menu under You (a command like /skills).
+export function openSheetAt(page) {
+  pages.now = PAGES.some(([id]) => id === page) ? page : "record";
+  openSheet();
+}
+// Another page comes out of the printer, as a fresh sheet would.
+function turnTo(page) {
+  if (pages.now === page && !state.subject) return;
+  pages.now = page;
+  openSheet();
+}
 
 // The right-click menu's Registry: someone else's printout, or put away if it's theirs already showing.
 export async function openPersonSheet(key) {
@@ -67,7 +86,7 @@ export function sheetNode({ inMap = false } = {}) {
     return null;
   }
   const elapsed = performance.now() - state.openedAt;
-  const paper = el("div", { class: `sheet-paper${elapsed < FEED_MS ? " feeding" : ""}${state.closing ? " rewinding" : ""}` }, ...(state.subject ? personPrintout(state.subject.data) : printout(g)));
+  const paper = el("div", { class: `sheet-paper${elapsed < FEED_MS ? " feeding" : ""}${state.closing ? " rewinding" : ""}` }, ...(state.subject ? personPrintout(state.subject.data) : ownPrintout(g)));
   // A redraw while it's still feeding carries on from where it was, instead of starting again.
   if (elapsed < FEED_MS) paper.style.animationDelay = `-${Math.round(elapsed)}ms`;
   setTimeout(placeSheet, 0);
@@ -164,6 +183,7 @@ function printout(g) {
     el("div", {}, line(hi("SKILLS"), dim("   click one to train it")), skills(g)),
     rule(),
     ...traits(g),
+    ...affecting(g),
     ...condition(g),
     ...bodyBlock(g.body),
     rule(),
@@ -181,9 +201,9 @@ function pointsLine(g) {
     [g.skillPoints, "skill", "skills"],
     [g.perkPoints, "perk", "perks"],
   ];
-  return field("POINTS", ...parts.map(([n, word, menu], i) => {
+  return field("POINTS", ...parts.map(([n, word, page], i) => {
     const text = `${n} ${word}${i < parts.length - 1 ? "   " : ""}`;
-    return n > 0 && menu ? el("button", { class: "sheet-link", title: `Spend them in ${menu === "skills" ? "Skills" : "Perks"}`, onclick: () => app.openMenu(menu) }, text) : text;
+    return n > 0 && page ? el("button", { class: "sheet-link", title: `Spend them on the ${page.toUpperCase()} page`, onclick: () => turnTo(page) }, text) : text;
   }));
 }
 
@@ -208,7 +228,7 @@ function skills(g) {
   return el("div", { class: "sheet-skills" }, known.map((s) => el("button", {
     class: "sheet-skill",
     title: `${s.desc ?? ""} Bonus on checks ${signed(s.bonus)}.`.trim(),
-    onclick: () => app.openMenu("skills"),
+    onclick: () => turnTo("skills"),
   }, `${s.tagged ? "*" : ""}${s.name.toUpperCase()} `.padEnd(15, ".") + String(s.rank).padStart(2))));
 }
 
@@ -273,6 +293,177 @@ function actions(g) {
     parts.push(button("SLEEP ROUGH, 8H", app.act({ action: "rest", rough: true }), { disabled: busy, title: "Free, but you won't wake up much better for it" }));
   }
   return el("div", { class: "sheet-actions" }, g.clock?.label ? dim(`${g.clock.label}  `) : "", ...parts);
+}
+
+// Everything that changes the player's numbers right now (traits, convictions, perks, conditions), folded under the
+// traits: it was the Traits menu's last part.
+function affecting(g) {
+  const list = g.effects ?? [];
+  if (!list.length) return [];
+  const flip = () => { pages.affecting = !pages.affecting; app.render(); };
+  return [
+    field("", el("button", { class: "sheet-link", title: "Everything changing your numbers right now", onclick: flip }, `[ ${pages.affecting ? "-" : "+"} AFFECTING YOU, ${list.length} ]`)),
+    ...(pages.affecting ? list.map((e) => el("div", { class: "sheet-mark" }, `  ${e.name}`, dim(` (${e.source})`), e.effects?.length ? dim(`: ${e.effects.join(", ")}`) : "")) : []),
+  ];
+}
+
+// ---- The pages of the player's own record ---------------------------------------------------------------------
+
+// The row of pages along the top of the paper. A page with points to spend on it says how many.
+function pageButtons(g) {
+  const waiting = { record: g.statPoints, skills: g.skillPoints, perks: g.perkPoints };
+  return el("div", { class: "sheet-pages", role: "tablist" }, PAGES.map(([id, label]) => el("button", {
+    class: `sheet-btn sheet-page${pages.now === id ? " on" : ""}`,
+    role: "tab",
+    "aria-selected": String(pages.now === id),
+    title: id === "record" ? "Who you are, your numbers, condition, body and gear" : `Print your ${label.toLowerCase()}`,
+    onclick: () => turnTo(id),
+  }, `[ ${label}${waiting[id] > 0 ? ` ${waiting[id]}` : ""} ]`)));
+}
+
+function ownPrintout(g) {
+  const page = { skills: skillsPage, perks: perksPage, beliefs: beliefsPage, past: pastPage }[pages.now] ?? printout;
+  return [pageButtons(g), ...page(g).filter(Boolean)];
+}
+
+const heading = (title) => line(dim(`==== ${title} `.padEnd(56, "=")));
+const ending = () => line(dim("==== END OF PAGE ".padEnd(56, "=")));
+// A belief or a standing as a line of dashes, with the middle marked and a # where it stands.
+function scale(value, limit, half = 8) {
+  const at = Math.max(-half, Math.min(half, Math.round((value / limit) * half)));
+  return Array.from({ length: half * 2 + 1 }, (_, i) => (i - half === at ? "#" : i === half ? "|" : "-")).join("");
+}
+
+// Every skill, its odds at each difficulty, a [+] to raise it with points, and practice. It was the Skills menu.
+function skillsPage(g) {
+  const setup = app.ui.setup ?? {};
+  const dc = setup.difficulty ?? {};
+  const busy = Boolean(g.combat || g.check);
+  const learning = g.dossier?.learning;
+  // Hacking is practised on a class of computer, everything else on its own check window.
+  const practice = (s) => (s.id === "hacking" && setup.hackingClasses?.length
+    ? [dim("practise on:"), ...setup.hackingClasses.map((one) => button(one.name.toUpperCase(), () => app.startPractice(s.id, one.difficulty), { disabled: busy, title: `A ${one.difficulty.replace("_", " ")} hack. Nothing that happens in practice counts.` }))]
+    : [button("PRACTICE", () => app.startPractice(s.id), { disabled: busy, title: "Try this skill's check window. Nothing that happens in practice counts." })]);
+  // One line a skill while there's room for it; on a narrow paper its buttons go under it.
+  const skillLine = (s) => {
+    const odds = [dc.moderate, dc.hard, dc.very_hard].map((d) => String(oddsFor(s.bonus, d))).join("/");
+    const raise = s.raiseCost && g.skillPoints >= s.raiseCost
+      ? el("button", { class: "sheet-btn", onclick: app.act({ action: "skill", id: s.id }), "aria-label": `Raise ${s.name}`, title: `Raise it: costs ${s.raiseCost} skill point${s.raiseCost === 1 ? "" : "s"}` }, "[+]")
+      : null;
+    const tip = `${s.desc ?? ""} Practice ${s.xp}/${s.xpNext}${s.raiseCost ? `; the next rank costs ${s.raiseCost} point${s.raiseCost === 1 ? "" : "s"}` : ""}.`;
+    return el("div", { class: "sheet-skill-row", title: tip },
+      el("span", {}, `${s.tagged ? "*" : ""}${s.name.toUpperCase()}`.padEnd(13, ".")),
+      el("span", { class: "sheet-bar" }, bar(s.rank, 10, 6)),
+      el("span", {}, signed(s.bonus).padStart(3)),
+      raise,
+      dim(odds.padEnd(8)),
+      ...practice(s));
+  };
+  return [
+    heading("SKILLS"),
+    field("POINTS", hi(String(g.skillPoints ?? 0)), dim(g.skillPoints ? "   [+] by a skill raises it" : "   more each level, and as you use them")),
+    learning && learning !== 1 && field("", dim(`At your age you're learning at ${Math.round(learning * 100)}% speed.`)),
+    line(dim("% to pass: moderate/hard/very hard   * learns faster")),
+    rule(),
+    ...Object.entries(g.skillGroups ?? {}).map(([id, label]) => el("div", { class: "sheet-group" },
+      line(hi(label.toUpperCase())),
+      ...(g.skills ?? []).filter((s) => s.group === id).map(skillLine))),
+    ending(),
+  ];
+}
+
+// What's been learned, what can be learned now, and what's still locked, folded. It was the Perks menu.
+function perksPage(g) {
+  const all = g.perks ?? [];
+  const owned = all.filter((p) => p.owned);
+  const ready = all.filter((p) => !p.owned && p.ok);
+  const locked = all.filter((p) => !p.owned && !p.ok);
+  const perk = (p, before, note) => el("div", { class: "sheet-perk", title: p.desc ?? "" },
+    line(before ?? "  ", hi(p.name.toUpperCase()), p.career ? dim("  career") : ""),
+    el("div", { class: "sheet-note sheet-dim" }, note ?? p.desc ?? ""));
+  const flip = () => { pages.locked = !pages.locked; app.render(); };
+  return [
+    heading("PERKS"),
+    field("POINTS", hi(String(g.perkPoints ?? 0)), dim("   one each level")),
+    rule(),
+    line(hi(`LEARNED (${owned.length})`)),
+    ...(owned.length ? owned.map((p) => perk(p)) : [line(dim("  Nothing yet."))]),
+    rule(),
+    line(hi(`READY TO LEARN (${ready.length})`)),
+    ...(ready.length
+      ? ready.map((p) => perk(p, el("span", {}, "  ", button("LEARN", app.act({ action: "perk", id: p.id }), { title: `Learn ${p.name}` }), " ")))
+      : [line(dim(g.perkPoints ? "  Nothing you qualify for yet." : "  You need a perk point. You get one each level."))]),
+    rule(),
+    locked.length && line(el("button", { class: "sheet-link", title: "What each one needs", onclick: flip }, `[ ${pages.locked ? "-" : "+"} LOCKED, ${locked.length} ]`)),
+    ...(pages.locked ? locked.map((p) => perk(p, null, p.why)) : []),
+    ending(),
+  ];
+}
+
+// Where the player stands on each belief, and with each faction. It was the Beliefs menu, and the Traits menu's
+// convictions.
+function beliefsPage(g) {
+  const { axes = {}, limits = {} } = app.ui.setup ?? {};
+  const threshold = limits.convictionThreshold ?? 5;
+  const list = Object.values(axes);
+  const wide = (key) => Math.max(0, ...list.map((axis) => key(axis).length));
+  const [nameW, lowW, highW] = [wide((a) => a.name), wide((a) => a.low.name), wide((a) => a.high.name)];
+  const axisLine = (axis) => {
+    const value = g.ideology?.find((one) => one.id === axis.id)?.value ?? 0;
+    const pole = value < 0 ? axis.low : axis.high;
+    const held = Math.abs(value) >= threshold;
+    const next = value === 0 ? "" : held ? `Conviction: ${pole.conviction}. ${pole.effects.join(", ")}.` : `At ${threshold}, the conviction ${pole.conviction}: ${pole.effects.join(", ")}.`;
+    return el("div", { class: "sheet-line", title: `${axis.question} ${axis.low.name}: ${axis.low.desc} ${axis.high.name}: ${axis.high.desc} ${next}`.trim() },
+      `${axis.name.toUpperCase().padEnd(nameW)} ${axis.low.name.padEnd(lowW)} `, held ? hi(scale(value, 10)) : scale(value, 10), ` ${axis.high.name.padEnd(highW)} ${signed(value).padStart(3)}`);
+  };
+  const known = (g.factions ?? []).filter((f) => f.known);
+  const factionW = Math.max(0, ...known.map((f) => f.name.length)) + 2;
+  const factionLine = (f) => el("div", {
+    class: "sheet-line",
+    title: [f.desc, f.holds?.length ? `Holds ${f.holds.join(", ")}.` : "", `Shared beliefs ${signed(f.sharedBeliefs)}%.`, f.relationship ? `${signed(f.relationship)} on social checks with them.` : ""].filter(Boolean).join(" "),
+  }, `  ${f.name.toUpperCase().padEnd(factionW)}`, scale(f.value, 100), ` ${signed(f.value).padStart(4)}`);
+  return [
+    heading("BELIEFS"),
+    g.ideologyTitle && field("STANDS FOR", hi(g.ideologyTitle)),
+    ...(g.convictions?.length
+      ? g.convictions.map((c, i) => field(i ? "" : "HOLDS TO", hi(c.name), dim(` (${c.pole})${c.effects?.length ? ` ${c.effects.join(", ")}` : ""}`)))
+      : [field("HOLDS TO", dim(`Nothing yet. At ${threshold} either way, a belief becomes a conviction.`))]),
+    el("div", { class: "sheet-dim" }, "Your choices move these. Acting against a strong belief causes stress, and acting on one steadies you."),
+    rule(),
+    ...list.map(axisLine),
+    rule(),
+    line(hi("FACTIONS")),
+    ...(known.length ? known.map(factionLine) : [line(dim("  None you know of yet."))]),
+    line(dim("rest the pointer on a line for more")),
+    ending(),
+  ];
+}
+
+// Where the player came from, and the life that brought them here. It was the Your past menu.
+function pastPage(g) {
+  const d = g.dossier ?? {};
+  const listOf = (items) => items.map((text) => el("div", { class: "sheet-mark" }, `- ${text}`));
+  return [
+    heading("PAST"),
+    field("NAME", hi(`${g.name}`.toUpperCase()), d.callsign ? ` "${d.callsign}"` : ""),
+    field("BORN", `${g.species}`, dim(`   ${g.pronouns}, age ${g.age}`)),
+    (d.homeworld || d.upbringing) && field("FROM", [d.homeworld, d.upbringing].filter(Boolean).join(" · ")),
+    d.appearance && field("LOOKS", d.appearance),
+    d.speciesFx?.length && field(`${g.species}`.toUpperCase().slice(0, 10), dim(d.speciesFx.join(", "))),
+    d.drive && field("DRIVEN TO", hi(d.drive)),
+    d.driveDesc && field("", dim(d.driveDesc)),
+    d.driveFx?.length && field("", dim(d.driveFx.join(", "))),
+    d.bond && field("CLOSEST", d.bond),
+    ...(d.careers ?? []).map((c, i) => field(i ? "" : "CAREER", `${c.name}, ${c.rankTitle}, ${c.terms * 4} years`)),
+    d.biography?.length && rule(),
+    d.biography?.length && line(hi("LIFE")),
+    ...listOf(d.biography ?? []),
+    d.hooks?.length && rule(),
+    d.hooks?.length && line(hi("LOOSE ENDS")),
+    ...listOf(d.hooks ?? []),
+    d.legacy && line(dim("Made before the deep character creator. Start a new game to build one.")),
+    ending(),
+  ];
 }
 
 // ---- The body chart ----------------------------------------------------------------------------------------
@@ -451,6 +642,12 @@ style.textContent = `
 .sheet-btn:disabled { color: #6b4a1d; cursor: default; }
 .sheet-slot .sheet-btn { color: #ffb547; }
 .sheet-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; padding: 2px 0; }
+.sheet-pages { display: flex; flex-wrap: wrap; gap: 2px 6px; padding: 0 0 4px; margin-bottom: 4px; border-bottom: 1px dashed #3a2709; column-span: all; }
+.sheet-page.on { background: #ffb547; color: #120b02; text-shadow: none; }
+.sheet-skill-row { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 1ch; }
+.sheet-skill-row > * { white-space: pre; }
+.sheet-group { margin-bottom: 2px; }
+.sheet-note { padding-left: 4ch; }
 .sheet-body > .sheet-label { white-space: normal; display: flex; align-items: flex-start; gap: 1ch; }
 .sheet-figure { width: 2.5em; height: auto; flex: none; display: block; overflow: visible; margin-top: .15em; }
 .sheet-body-text { min-width: 0; }

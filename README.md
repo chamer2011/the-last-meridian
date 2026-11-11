@@ -40,19 +40,24 @@ The story is written in advance, in files you can read and change: see [The stor
 
 ## Menus
 
-The buttons down the right edge open the menus, grouped under **You**, **The story**, **The ship**, **Gear** and **Game**. A menu slides out over the story and always takes up the same space: three quarters of the screen. To close one, press **Close** or Esc, click the story behind it, or click its button again. On a narrow window, press **Menu** instead, and the same groups run along the top. Inside a menu, the parts you don't need every time fold away behind a line like **[ + Ship's log ]**: click it to open them, and they stay open while the game's running. A menu that's longer than the screen scrolls with the mouse wheel, like every window in the game: none has a scroll bar taking up room, and at the top or the bottom each runs on a little past the end and springs back. Rest the mouse on a button to see what its menu holds.
+The buttons down the right edge open the menus, grouped under **The story**, **The ship**, **Gear** and **Game**. A menu slides out over the story and always takes up the same space: three quarters of the screen. To close one, press **Close** or Esc, click the story behind it, or click its button again. On a narrow window, press **Menu** instead, and the same groups run along the top. Inside a menu, the parts you don't need every time fold away behind a line like **[ + Ship's log ]**: click it to open them, and they stay open while the game's running. A menu that's longer than the screen scrolls with the mouse wheel, like every window in the game: none has a scroll bar taking up room, and at the top or the bottom each runs on a little past the end and springs back. Rest the mouse on a button to see what its menu holds.
 
-**Your own registry printout** isn't a menu: click your name at the top left of the screen, or press **C**. It slides down inside the map with who you are, your level, attributes, skills, condition, your body, gear, work and sleep, and a star by your name means there are attribute points to spend on it. Tear it off (or C, Esc) to put it away.
+**Your own registry printout** isn't a menu: click your name at the top left of the screen, or press **C**. It slides down inside the map, and a star by your name means there are points to spend on it. It's printed in five pages, with their buttons along its top; a page with points to spend on it says how many, and the printout comes back at the page you left it on. Tear it off (or C, Esc) to put it away.
+
+| Page | What's on it |
+|---|---|
+| **RECORD** | Who you are, your level and points, attributes with a **[ + ]** to raise each when you have points, your skills at a glance (click one for the SKILLS page), traits and convictions, **[ + AFFECTING YOU ]** for everything changing your numbers, your condition and body, gear, work and sleep |
+| **SKILLS** | Every skill with its bar, its bonus and your chances on a moderate, hard and very hard check, a **[+]** to raise it with skill points, and **PRACTICE** to try its check window (for Hacking, one button for each class of computer). Rest the pointer on a skill for what it does and how far it is to the next rank |
+| **PERKS** | What you've learned, what you can learn now with a **LEARN** button, and **[ + LOCKED ]** for the rest with what each one needs |
+| **BELIEFS** | Where you stand on each belief, with your convictions, and your standing with each faction you know. Rest the pointer on a line for what it means, what a faction holds and how much of what you believe they share |
+| **PAST** | Where you're from, what drives you, your closest bond, your career, your life story and its loose ends |
+
+These pages took the place of the menus that were under **You** (Skills, Traits, Perks, Beliefs and Your past), and their commands, `/skills`, `/traits`, `/perks`, `/beliefs` and `/dossier`, open the matching page.
 
 In the views with a prompt under the story, each menu also has a command you can type:
 
 | Command | Menu | What's in it |
 |---|---|---|
-| `/skills` | Skills | Every skill, your odds at each difficulty, your progress, and practice for each check window |
-| `/traits` | Traits | Traits, convictions, and everything currently affecting you |
-| `/perks` | Perks | What you've learned, what you can learn now, and what's locked |
-| `/beliefs` | Beliefs | Where you stand on each axis, and your standing with each faction |
-| `/dossier` | Your past | Your personal record, career and life history |
 | `/people` | People | Everyone you've met or heard of |
 | `/leads` | Leads | Stories you could start here, what people are saying, and the stories you're following |
 | `/codex` | What you know | Places, factions, ships and ideas you've come across, with a search box |
@@ -193,7 +198,7 @@ When a choice has a check on it, or a written scene calls for one, a window open
 - **Hacking decides itself.** There's no odds bar and no button: find the password and you're in, let the trace complete and you're caught, or **Disconnect** to give up quietly. What you're breaking into sets the whole session, and the title bar names it: a *door panel* (easy), a *crew terminal* (moderate), a *ship's main system* (hard), a *Ministry or Navy server* (very hard), or *the Beacon or the Choir* (nearly impossible). The class sets how long the password is, how big the dump is, how many wrong tries the trace allows, how many words look nearly right, and how many passwords stand between you and the inside: a ship's main system has two, the account and then root, and the worst have three. Your training adds tries and tools. An **advisor** slides in from the right with hints that grow with your training, from how likeness works to which word to try next and how many tries are left; its tab slides it away and back. If the trace completes on a ship's main system or worse, a fact goes on the record that the stories can read. All the numbers and the hints' words are in `world/checks.json`.
 - **It's never a race:** nothing in the window moves until you do, and everything can be clicked as well as typed. The room's clock runs on behind every check, the story's own as well as those on something in the room, such as a junction box or a locked door, so the world doesn't wait for you. If you do type, part of a word is enough, and a typo won't cost you anything. Number keys pick commands, and the arrow keys work wherever there's a direction to choose.
 - **When it's over:** if a written scene is waiting on the result, **Continue the story** goes on from it. Otherwise **Close** takes you back to the room, and the result is in the story.
-- **To try them:** every skill in the **Skills** menu has a **Practice** button, and nothing in practice counts. For Hacking it's a row of buttons, one for each class of computer.
+- **To try them:** every skill on the SKILLS page of your registry printout (click your name, or press C) has a **PRACTICE** button, and nothing in practice counts. For Hacking it's a row of buttons, one for each class of computer.
 - **To skip them:** in **Settings**, set **Skill checks** to **Just a roll**, and checks go straight to the roll at your character's own odds, hacking included.
 
 ## Computers
@@ -393,7 +398,7 @@ Every place has its own supplies, prices and factions, and they change at each m
 - **Whoever holds a place sets your prices there.** If they hate you, everything costs a quarter more, and if they like you, a little less.
 - **Things happen,** each place with its own: raiders at Tessen, a fight on the picket at Cinder Reach, a bloom at Maris Deep, high season at the Gilded Wheel. Trouble makes a place one step more dangerous while it lasts.
 - **News** is at the bottom of the **Star map** menu, for the places you know of. You're only told in the story about what's happening where you or the Meridian are, or anything big. People also pass the latest on when you ask what they've heard.
-- **The Star map** shows all of this for each place, and which supplies are short. The list of factions in the **Beliefs** menu says what each one holds.
+- **The Star map** shows all of this for each place, and which supplies are short. The list of factions on the BELIEFS page of your registry printout says what each one holds.
 - **The story can change it.** When the story changes things, it changes them for real, so if you help the strikers take the Stack, they hold it from then on.
 - **The rest:** the Choir's places, the Pale Gate, the Sundial, Anselm's Mercy and the Meridian herself have no daily supplies of their own. The Meridian runs on her own stores, on the Ship menu.
 

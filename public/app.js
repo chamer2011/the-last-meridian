@@ -13,7 +13,7 @@ import { choicesFor, dropStaleTooltip, initStory, loreCatalog, optionContent, se
 import { focusTalk, initTalk, resetTalk, startTalk, talkNode, talkOpen } from "./talk.js";
 import { computerNode, computerOpen, focusComputer, initComputer, resetComputer } from "./computer.js";
 import { bagNode, bagOpen, initBag, openBag, resetBag, toggleBag } from "./bag.js";
-import { initSheet, openPersonSheet, resetSheet, sheetNode, toggleSheet } from "./sheet.js";
+import { initSheet, openPersonSheet, openSheetAt, resetSheet, sheetNode, toggleSheet } from "./sheet.js";
 import { drawQuests, initQuests, questTrackerNode, questsOpen, resetQuests } from "./quests.js";
 import { beginScene, initPopups, openPopups, popupDrawn, popupNext, popupsAttached, updatePopups } from "./popups.js";
 import { INTERFACE_SIZES, interfaceZoom } from "./scene.js";
@@ -29,7 +29,7 @@ const ui = {
   saves: [],
   setup: null,
   screen: "title",
-  tab: "skills",
+  tab: "leads",
   sideOpen: false,
   streaming: false,
   waiting: false,
@@ -243,7 +243,7 @@ async function startNewGame(draft) {
   ui.game = game;
   ui.saves = saves;
   ui.screen = "game";
-  ui.tab = "skills";
+  ui.tab = "leads";
   ui.sideOpen = false;
   ui.error = null;
   ui.consoleLines = [];
@@ -257,8 +257,8 @@ async function startNewGame(draft) {
 function statusNode() {
   const g = ui.game;
   return el("div", { class: "statusbar", id: "status" },
-    // The player's name opens their registry printout, as C does. A star by it says there are attribute points to spend.
-    el("button", { class: "status-name", title: "Your registry printout (C)", onclick: (event) => { event.currentTarget.blur(); toggleSheet(); } }, g.name, g.statPoints > 0 && el("span", { class: "status-alert", title: `${g.statPoints} attribute point${g.statPoints === 1 ? "" : "s"} to spend` }, " *")),
+    // The player's name opens their registry printout, as C does. A star by it says there are points to spend on it.
+    el("button", { class: "status-name", title: "Your registry printout (C): your record, skills, perks, beliefs and past", onclick: (event) => { event.currentTarget.blur(); toggleSheet(); } }, g.name, pointsWaiting(g) && el("span", { class: "status-alert", title: pointsWaiting(g) }, " *")),
     el("span", { class: "muted" }, `LVL ${g.level}`),
     meter("HP", g.hp, g.maxHp), meter("EN", g.energy, g.maxEnergy),
     el("span", { class: g.needs.stress >= 50 ? "meter low" : "" }, `STRESS ${g.needs.stress}`),
@@ -321,9 +321,24 @@ ${Object.values(MENUS).filter((m) => !m.captainOnly || g.role.captain).map((m) =
 /clear     clear this help text
 /help      show this list`;
 
+// Points to spend on the registry printout, in words, or nothing.
+function pointsWaiting(g) {
+  const parts = [[g.statPoints, "attribute"], [g.skillPoints, "skill"], [g.perkPoints, "perk"]].filter(([n]) => n > 0).map(([n, word]) => `${n} ${word} point${n === 1 ? "" : "s"}`);
+  return parts.length ? `${parts.join(", ")} to spend` : "";
+}
+
+// What used to be menus under You are pages of the registry printout now, and their old commands still open them.
+const SHEET_PAGES = { char: "record", character: "record", traits: "record", skills: "skills", perks: "perks", beliefs: "beliefs", dossier: "past", past: "past" };
+
 function runCommand(text) {
   const name = text.slice(1).split(/\s+/)[0].toLowerCase();
-  const menu = Object.entries(MENUS).find(([, m]) => (!m.captainOnly || ui.game.role.captain) && (m.command === name || m.label.toLowerCase() === name));
+  if (SHEET_PAGES[name]) {
+    ui.consoleLines = [];
+    render();
+    openSheetAt(SHEET_PAGES[name]);
+    return;
+  }
+  const menu =Object.entries(MENUS).find(([, m]) => (!m.captainOnly || ui.game.role.captain) && (m.command === name || m.label.toLowerCase() === name));
   if (name === "help") ui.consoleLines = [{ role: "console", text: helpText(ui.game) }];
   else if (name === "clear") ui.consoleLines = [];
   else if (name === "close") closeMenu();
@@ -479,7 +494,7 @@ const act = (body) => runAction(async () => {
   if (message) ui.menuMessage = { ok: true, text: message };
 });
 
-const menuAlerts = (g) => ({ skills: g.skillPoints, perks: g.perkPoints, ship: g.role.captain ? g.ship.shortages.length : 0 });
+const menuAlerts = (g) => ({ ship: g.role.captain ? g.ship.shortages.length : 0 });
 
 // The menus, in their groups, each group under its own heading, on the rail down the right edge and on the tabs of a
 // narrow window. What a menu holds is on its tooltip, not on the screen.
@@ -548,6 +563,11 @@ function showFocusedCard() {
 }
 
 function openMenu(id, focus = null) {
+  if (SHEET_PAGES[id]) {
+    closeMenu();
+    openSheetAt(SHEET_PAGES[id]);
+    return;
+  }
   // The story board is a whole screen of its own, not a drawer.
   if (MENUS[id]?.board) {
     closeMenu();
@@ -763,7 +783,7 @@ initPopups({
 initTalk({ ui, reading, render, openMenu, popupsShown });
 initComputer({ ui, render, openMenu });
 initBag({ ui, render, renderStatus, renderWalk, putAway: putAwayRoomWindows });
-initSheet({ ui, render, act, openMenu });
+initSheet({ ui, render, act, openMenu, startPractice: (skill, difficulty) => runAction(() => startPractice(skill, difficulty))() });
 initQuests({ ui, render, placed: popupDrawn });
 aimWith(markPoint, keepClear);
 
