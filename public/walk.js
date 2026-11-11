@@ -934,6 +934,14 @@ function personChoices(thing) {
     walk.thing = { ...thing, confirm };
     drawThingPane();
   };
+  if (person.down) {
+    const carrying = app.ui.game.walk.carrying;
+    return [
+      person.carried === "you" ? ["Put them down", "on a cot, in the medbay", () => deed("putdown")] : ["Carry them", carrying ? "you're carrying someone" : "slowly, to the medbay", () => go({ action: "go", to }, () => deed("carry", person.key)), Boolean(carrying || person.carried || person.onCot)],
+      ["Registry", "print their record", () => registry(person.key)],
+      ["Close", "", closeWindow],
+    ];
+  }
   if (thing.confirm) {
     return [
       [`Attack ${person.short}`, "it starts a fight, and everyone here sees it", () => go({ action: "go", to }, () => deed("attack", person.key))],
@@ -1044,6 +1052,22 @@ function menuFor(target) {
   if (target.kind === "person") {
     const person = target.person;
     const to = `person:${person.key}`;
+    if (person.down) {
+      const carrying = app.ui.game.walk.carrying;
+      return {
+        title: person.short,
+        word: person.carried === "you" ? "carried" : person.onCot ? "laid up" : "down",
+        theme: "person",
+        color: person.color,
+        items: [
+          { label: "Look", run: () => lookAtPerson(person) },
+          person.carried === "you"
+            ? { label: "Put them down", detail: "on a cot, in the medbay", run: () => deed("putdown") }
+            : { label: "Carry them", detail: carrying ? "you're carrying someone" : person.carried || person.onCot ? "they're being looked after" : "slowly, to the medbay", disabled: Boolean(carrying || person.carried || person.onCot), run: () => go({ action: "go", to }, () => deed("carry", person.key)) },
+          { label: "Registry", detail: "print their record", run: () => registry(person.key) },
+        ],
+      };
+    }
     return {
       title: person.short,
       word: person.asleep ? "asleep" : null,
@@ -1125,13 +1149,21 @@ function menuFor(target) {
     }
     return { title: exit.label, theme: "green", items: [{ label: "Go through", run: () => go({ action: "go", to }) }] };
   }
-  return { title: "The floor", theme: "green", items: [{ label: "Walk here", run: () => go({ action: "go", x: target.x, y: target.y }) }] };
+  const carried = app.ui.game.walk.carrying ? app.ui.game.walk.people.find((one) => one.key === app.ui.game.walk.carrying.key) : null;
+  return {
+    title: "The floor",
+    theme: "green",
+    items: [
+      { label: "Walk here", run: () => go({ action: "go", x: target.x, y: target.y }) },
+      ...(carried ? [{ label: `Put ${carried.short} down`, detail: "where you stand, or on a cot in the medbay", run: () => deed("putdown") }] : []),
+    ],
+  };
 }
 
 // Someone looked at: their window beside them, with how they look, what their body shows, and what they're doing.
 function lookAtPerson(person) {
   const now = person.asleep ? "Asleep." : sentence(person.doing);
-  walk.thing = { person: true, key: person.key, name: person.short, color: person.color, look: [person.look, person.marks, now].filter(Boolean).join("\n") || person.name, confirm: false };
+  walk.thing = { person: true, key: person.key, name: person.short, color: person.color, look: [person.look, person.downLook, person.marks, person.down ? null : now].filter(Boolean).join("\n") || person.name, confirm: false };
   walk.looked = true;
   app.render();
 }

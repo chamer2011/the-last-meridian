@@ -238,6 +238,8 @@ export const CARE = {
   "left alone": { read: (text) => { const f = lower(text).match(/^(twice|three times|four times|half again|\d+(?:\.\d+)? times) as long, for a wound that heals once treated$/); return f ? { factor: TIMES[f[1]] ?? Number(f[1].split(" ")[0]) } : { problem: "is written like: twice as long, for a wound that heals once treated" }; }, default: "twice as long, for a wound that heals once treated" },
   "with a limp": { read: share, default: "60% of the pace" },
   "on a leg they can't stand on": { read: share, default: "30% of the pace" },
+  "too weak to stand": { read: (text) => { const f = lower(text).match(/^under (\d+) blood$/); return f ? { under: Number(f[1]) } : { problem: "is written like: under 40 blood" }; }, default: "under 40 blood" },
+  "beaten in a fight": { read: (text) => { const f = lower(text).match(/^down for (\S+) to (\S+) hours?$/); return f && numberOf(f[1]) !== null && numberOf(f[2]) !== null ? { from: numberOf(f[1]), to: numberOf(f[2]) } : { problem: "is written like: down for 1 to 3 hours" }; }, default: "down for 1 to 3 hours" },
   pain: { read: (text) => { const f = lower(text).match(/^(\S+) stress a day for a wound, (\S+) for a serious one$/); return f && numberOf(f[1]) !== null && numberOf(f[2]) !== null ? { wound: numberOf(f[1]), serious: numberOf(f[2]) } : { problem: "is written like: 2 stress a day for a wound, 5 for a serious one" }; }, default: "2 stress a day for a wound, 5 for a serious one" },
 };
 export const careOf = (care = {}) => Object.fromEntries(Object.entries(CARE).map(([key, one]) => {
@@ -251,6 +253,14 @@ export function readAccidentLine(text) {
   if (!found || !found[1].trim()) return { problem: "each one is written: a wound, and likelier in: and the work, like burn: likelier in: engine, cook" };
   return { name: lower(found[1]), likelier: found[2] ? listOf(found[2]).map(lower) : [] };
 }
+
+// The medbay's lines in a place's health file: its room, its cots (spots in the place's life file), and who answers a
+// call to someone down, in order ("a nurse, then a spare hand", jobs on the place's watch bill).
+export const MEDBAY_KEYS = {
+  "the medbay": { path: "medbay", read: (text) => (String(text).trim() ? { room: String(text).trim() } : { problem: "is the medbay's room, like Medbay" }) },
+  cots: { path: "cots", read: (text) => { const spots = listOf(text); return spots.length ? { spots } : { problem: "is a list of spots in the place's life file, like patient-1, patient-2" }; } },
+  "who answers a call": { path: "answers", read: (text) => { const who = String(text).split(/,\s*then\s+|,\s*/i).map((one) => one.trim()).filter(Boolean); return who.length ? { who } : { problem: "is written like: a nurse, then a spare hand" }; } },
+};
 
 // "07:45 to 10:30, at queue": when the hurt go to the medbay, and the spot or group of spots in the place's life file.
 export function readQueue(text) {
@@ -326,11 +336,15 @@ export function parseHealthText(text, id = "it") {
     const field = line.match(/^([A-Za-z][A-Za-z ]{0,30}):\s*(.*)$/);
     const key = field ? lower(field[1]) : null;
     if (key === "draft") value.draft = field[2].trim();
-    else if (key === "the morning queue" || key === "accidents at work") {
+    else if (MEDBAY_KEYS[key]) {
+      const read = MEDBAY_KEYS[key].read(field[2]);
+      if (read.problem) problems.push({ line: n, message: `${key} ${read.problem}` });
+      value[MEDBAY_KEYS[key].path] = field[2].trim();
+    } else if (key === "the morning queue" || key === "accidents at work") {
       const read = key === "the morning queue" ? readQueue(field[2]) : readAccidents(field[2]);
       if (read.problem) problems.push({ line: n, message: `${key} ${read.problem}` });
       value[key === "the morning queue" ? "queue" : "accidents"] = field[2].trim();
-    } else problems.push({ line: n, message: field ? `I don't know "${field[1]}": the lines at the top are draft, the morning queue and accidents at work, and the only part is At the start` : "before At the start, each line is draft, the morning queue or accidents at work, then a colon and its value" });
+    } else problems.push({ line: n, message: field ? `I don't know "${field[1]}": the lines at the top are draft, the medbay, cots, who answers a call, the morning queue and accidents at work, and the only part is At the start` : "before At the start, each line is draft, the medbay, cots, who answers a call, the morning queue or accidents at work, then a colon and its value" });
   }
   if (!titled) problems.push({ line: 1, message: "the file is empty: it starts with # and the place's name" });
   return { value, problems };
@@ -339,6 +353,7 @@ export function parseHealthText(text, id = "it") {
 export function writeHealthText(value) {
   const out = [`# ${value.name ?? ""}`];
   if (value.draft) out.push(`draft: ${value.draft}`);
+  for (const [key, one] of Object.entries(MEDBAY_KEYS)) if (value[one.path]) out.push(`${key}: ${value[one.path]}`);
   if (value.queue) out.push(`the morning queue: ${value.queue}`);
   if (value.accidents) out.push(`accidents at work: ${value.accidents}`);
   out.push("", "At the start:", ...(value.start ?? []).map((one) => `- ${one.text}`));

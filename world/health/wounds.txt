@@ -10,6 +10,8 @@ they dress their own: wounds that aren't serious, after an hour
 left alone: twice as long, for a wound that heals once treated
 with a limp: 60% of the pace
 on a leg they can't stand on: 30% of the pace
+too weak to stand: under 40 blood
+beaten in a fight: down for 1 to 3 hours
 pain: 2 stress a day for a wound, 5 for a serious one
 rough work: engine, tech, dock, hauler, porter, deckhand, crane, rigger, cable, pump, sump, tube, guard, marine, security, soldier, sergeant, gunner, conscript, picket, rating, bosun, enforcer, miner, prospector, smelter, melt, salvage, diver, cutter, raider, smuggler, duelist, shipwright, yard, kelper, trawler, boatman, strike
 

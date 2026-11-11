@@ -4,6 +4,7 @@
 // is there for the written stories.
 
 import { fighterBody } from "./body.js";
+import { isDown } from "./medbay.js";
 import { findCharacter, findEnemy } from "./campaign.js";
 import { SKILLS } from "./character-data.js";
 import { startCheck } from "./checks.js";
@@ -123,12 +124,14 @@ export function attackPerson(game, who, where) {
   return { said: lines.join("\n"), combat: true };
 }
 
-// A fight the player started is over. Someone beaten is out of sight for a while, to get patched up.
+// A fight the player started is over. Someone beaten lies where they fell (src/medbay.js), where the medics come for
+// them aboard; someone with no day at the place, who can't be laid down, is out of sight for a while, as before.
 export function afterDeedFight(game, outcome) {
   const deed = game.deedFight;
   if (!deed || !outcome?.over) return [];
   game.deedFight = null;
   if (outcome.training || outcome.result !== "victory") return [];
+  if (isDown(game, deed.place, deed.key)) return [`[COMBAT] ${deed.short} lies where they fell.`];
   markFor(game, "hurt", deed.place, deed.key, DEEDS.attack.hurt_hours ?? 12);
   return [`[COMBAT] ${deed.short} is out of it, and gone to get patched up.`];
 }

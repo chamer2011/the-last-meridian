@@ -7,7 +7,8 @@
 // for. world/rooms.json has the kinds of room the game can draw for anywhere that isn't on a map,
 // and a campaign can keep its own rooms in its folder, so they stay the same from then on.
 
-import { bodyOf, lookLine, paceOf } from "./body.js";
+import { bleedingOf, bodyOf, keyAt, lookLine, paceOf } from "./body.js";
+import { carry, downRecord, putDown } from "./medbay.js";
 import { allCharacters, campaignRooms, findCampaignRoom, findCharacter, fullName, saveCampaignRoom } from "./campaign.js";
 import { startCheck, startChoiceCheck } from "./checks.js";
 import { useComputer } from "./computers.js";
@@ -994,8 +995,17 @@ export function walkCommand(game, body) {
       return workOnDoor(game, level.id, exit, String(body.how ?? ""));
     }
     // The right-click menu's two deeds against someone in the room: a pocket picked, in the check window, or a fight.
+    // Picking up someone down, slowly, and putting them down again: on a cot in the medbay (src/medbay.js).
+    case "carry": {
+      const key = String(body.key ?? "").replace(/^person:/, "");
+      if (!people.some((one) => keyOf(one) === key)) throw new Error("They aren't there any more.");
+      return { said: carry(game, key) };
+    }
+    case "putdown":
+      return { said: putDown(game) };
     case "pickpocket":
     case "attack": {
+      if (game.carrying) throw new Error("Put them down first.");
       const key = String(body.key ?? "").replace(/^person:/, "");
       const entry = people.find((one) => keyOf(one) === key);
       if (!entry) throw new Error("They aren't there any more.");
@@ -1213,6 +1223,18 @@ export function walkFromOnePlan(game) {
 // ---- What the browser gets to see ---------------------------------------
 
 const withMarks = (line) => (line ? { marks: line } : {});
+function downView(game, key) {
+  const d = downRecord(game, game.location, key);
+  if (!d || d.going) return {};
+  const bleeding = bleedingOf(game, keyAt(game.location, key));
+  const where = d.carriedBy ? (d.carriedBy === "you" ? "You're carrying them." : "Being carried to the medbay.") : d.bed ? (d.bed.startsWith("@") ? "Lying on the medbay's floor." : "Laid up on a cot.") : `Lying where they fell, ${d.why ?? "down"}.`;
+  return {
+    down: true,
+    ...(d.carriedBy ? { carried: d.carriedBy } : {}),
+    ...(d.bed ? { onCot: true } : {}),
+    downLook: [where, bleeding ? `Bleeding: ${bleeding.blood} blood left, losing ${bleeding.rate} an hour.` : null].filter(Boolean).join(" "),
+  };
+}
 
 function personView(game, entry, level = null) {
   const person = entry.id ? findCharacter(game.campaign, entry.id) : null;
@@ -1233,7 +1255,10 @@ function personView(game, entry, level = null) {
     // What the right-click menu needs: how they look, how hard their pocket is, and whether they're wary of it now.
     ...(person?.appearance ? { look: person.appearance } : {}),
     // What anyone can see of their body at a glance (src/body.js): how they walk, and the worst of their marks.
-    ...withMarks(lookLine(bodyOf(game, entry.id ? { id: entry.id } : { name, place: game.location }))),
+    ...withMarks(lookLine(bodyOf(game, entry.id ? { id: entry.id } : { name, place: game.location }), { walking: !downRecord(game, game.location, key) || downRecord(game, game.location, key).going })),
+    // Someone down lies where they fell, with a mark over them, and Look says how they are and how fast they're bleeding
+    // (src/medbay.js).
+    ...downView(game, key),
     pocket: pocketDetail(game, { id: entry.id ?? null, name, asleep: Boolean(entry.asleep) }),
     ...(isWary(game, game.location, key) ? { wary: true } : {}),
     // On a deck, which of its rooms they're in.
@@ -1400,7 +1425,9 @@ export function walkView(game) {
     overview: overviewView(game, walk, map),
     ...(livesHere(walk.place) ? { life: true } : {}),
     // How fast the player walks, as a share of the usual: slower with a limp, slower still on a leg they can't stand on.
-    pace: paceOf(bodyOf(game, "you")),
+    pace: paceOf(bodyOf(game, "you")) * (game.carrying ? 0.5 : 1),
+    // Who the player's carrying, by the key the room knows them by.
+    ...(game.carrying && game.down?.[game.carrying] ? { carrying: { key: game.down[game.carrying].who } } : {}),
   };
 }
 

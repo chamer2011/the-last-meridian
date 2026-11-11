@@ -14,6 +14,7 @@ import { detourFor, partSquares } from "./systems.js";
 import { WORLD_LIFE } from "./world.js";
 import { jobsOf, movedDays } from "./command.js";
 import { bodyOf, hurtAt, paceOf, queueOf } from "./body.js";
+import { followCarriers, medbayDetour } from "./medbay.js";
 
 const MINUTES_IN_A_DAY = 1440;
 const SQUARES_A_MINUTE = 18;
@@ -169,18 +170,21 @@ function planFor(map, file, entry, hours, detour) {
   if (!detour) return plan;
   const turn = detour(entry.key, levelOfPlan(map, file, entry, plan), Boolean(plan.block.asleep));
   // A detour names a room, or a spot the file knows, such as the square beside one of the ship's stores.
-  const known = turn && (/^[@>]/.test(turn.where) ? roomOf(map, turn.where.slice(1)) : file.spots[turn.where] ?? file.groups[turn.where]);
-  return known ? { key: `systems:${turn.where}:${turn.doing}`, block: { doing: turn.doing, go: turn.where }, where: turn.where } : plan;
+  // A detour can also name a square itself, such as where someone fell, and lay them down there.
+  const known = turn && (turn.spot ?? (/^[@>]/.test(turn.where) ? roomOf(map, turn.where.slice(1)) : file.spots[turn.where] ?? file.groups[turn.where]));
+  return known ? { key: `systems:${turn.where}:${turn.doing}`, block: { doing: turn.doing, go: turn.where, ...(turn.asleep ? { asleep: true } : {}) }, where: turn.where, ...(turn.spot ? { spot: { level: turn.spot.level, x: turn.spot.x, y: turn.spot.y }, exact: Boolean(turn.exact) } : {}) } : plan;
 }
 
 // Everything that turns someone aside from their day: the place's systems first (the alarm, a repair, bad air), then
 // the ship's errands, then the morning queue at the medbay. Null when nothing's going on.
 function detoursFor(game, place) {
+  // Whoever's down, and whoever's gone to help them, comes before anything else (src/medbay.js).
+  const down = medbayDetour(game, place);
   const systems = detourFor(game, place);
   const errands = errandDetour(game, place);
   const queue = queueDetour(game, place);
-  if (!systems && !errands && !queue) return null;
-  return (key, room, asleep) => systems?.(key, room, asleep) ?? errands?.(key, room, asleep) ?? queue?.(key, room, asleep) ?? null;
+  if (!down && !systems && !errands && !queue) return null;
+  return (key, room, asleep) => down?.(key, room, asleep) ?? systems?.(key, room, asleep) ?? errands?.(key, room, asleep) ?? queue?.(key, room, asleep) ?? null;
 }
 
 // In the morning, whoever's hurt and on their feet goes and waits at the medbay, as the place's health file says
@@ -403,6 +407,7 @@ function closeTo(map, entry, spot, taken) {
 
 // Where this person goes for what they're doing now. In a group, they take the next place that's free.
 function spotFor(file, map, entry, plan, taken) {
+  if (plan.spot) return plan.exact ? plan.spot : closeTo(map, entry, plan.spot, taken);
   if (plan.where === "post") return postOf(map, entry.home ?? entry.id);
   // A room that isn't on the map leaves them where they are, so a typing mistake in the file can't stop the game.
   if (/^[@>]/.test(plan.where) && !roomOf(map, plan.where.slice(1))) return null;
@@ -593,6 +598,8 @@ export function advanceLife(game) {
   const roster = livesHere(place) ? rosterFor(game, place) : [];
   if (livesHere(place) && people && gap <= LONG_GAP) moveOn(place, people, hours, steps, detour, roster, pacesFor(game, place, roster));
   life.places = livesHere(place) ? { [place]: people && gap <= LONG_GAP ? people : settle(place, hours, people, detour, roster) } : {};
+  // Whoever's being carried is wherever the one carrying them has got to.
+  if (life.places[place]) followCarriers(game, place, life.places[place]);
   companyMovesOn(game, hours);
 }
 

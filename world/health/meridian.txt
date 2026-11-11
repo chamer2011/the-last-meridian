@@ -1,5 +1,8 @@
 # CFS Meridian
 draft: the AI's, not yet edited by the owner
+the medbay: Medbay
+cots: patient-1, patient-2, patient-3, patient-4
+who answers a call: a nurse, then a spare hand
 the morning queue: 07:45 to 10:30, at queue
 accidents at work: 1 in 20 days in rough work, 1 in 100 for everyone else
 

@@ -69,6 +69,8 @@
     "medbay-door": ["medbay", 23, 4],
     "patient-1": ["medbay", 10, 6],
     "patient-2": ["medbay", 10, 12],
+    "patient-3": ["medbay", 10, 9],
+    "patient-4": ["medbay", 15, 6],
     "naomi-nook": ["crawlways", 29, 18],
     "duct-north": ["crawlways", 17, 6],
     "duct-east": ["crawlways", 38, 6],

@@ -2280,6 +2280,20 @@ function drawPerson(ctx, x, y, unit, person) {
     ctx.beginPath();
     ctx.arc(7, -2, 2.4, 0, Math.PI * 2);
     ctx.fill();
+    // Someone lying where they fell has a mark over them: a red cross, for anyone to see from across the room.
+    if (person.mark) {
+      ctx.lineWidth = 3.6;
+      ctx.strokeStyle = "rgba(20,6,4,.85)";
+      ctx.beginPath();
+      ctx.moveTo(0, -16);
+      ctx.lineTo(0, -8);
+      ctx.moveTo(-4, -12);
+      ctx.lineTo(4, -12);
+      ctx.stroke();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#ff6b5b";
+      ctx.stroke();
+    }
     ctx.restore();
     return;
   }
@@ -2810,7 +2824,7 @@ function draw(now, dt) {
       const { person, shown, wx, wy } = item;
       const [x, y] = at(wx, wy);
       const hovered = hoverKey === `person:${person.key}`;
-      drawPerson(ctx, x, y, unit, { look: shown.look, flip: shown.flip, back: shown.back, walking: shown.walking, step: shown.step, asleep: person.asleep, ring: hovered ? "rgba(255,250,220,.9)" : null });
+      drawPerson(ctx, x, y, unit, { look: shown.look, flip: shown.flip, back: shown.back, walking: shown.walking, step: shown.step, asleep: person.asleep || person.down, mark: person.down && !person.onCot && !person.carried, ring: hovered ? "rgba(255,250,220,.9)" : null });
       hits.push({ kind: "person", key: `person:${person.key}`, person, x: x - unit * 0.22, y: y - unit * 0.92, w: unit * 0.44, h: unit * 1, floorX: x, floorY: y });
     } else {
       const [x, y] = at(item.wx, item.wy);

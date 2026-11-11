@@ -423,6 +423,27 @@ export function paceOf(body) {
   return 1;
 }
 
+// Why someone can't get up, or null: out cold, with no leg they can stand on, or with too little blood to stand.
+export function cantGetUp(game, key) {
+  const wounds = woundsNow(game, key);
+  const rules = wounds.map(rulesOfWound);
+  if (rules.some((one) => one.out)) return "out cold";
+  const legs = new Set(wounds.filter((wound, i) => rules[i].noStand).map((wound) => wound.part));
+  if (legs.has("right_leg") && legs.has("left_leg")) return "with no leg to stand on";
+  if (bloodOf(game, key) < careNow()["too weak to stand"].under) return "too weak to stand";
+  return null;
+}
+// How many hours a beating keeps someone down, from the wounds file.
+export function beatenFor(roll = Math.random) {
+  const beaten = careNow()["beaten in a fight"];
+  return beaten.from + roll() * (beaten.to - beaten.from);
+}
+// How fast someone's blood is going, for Look: how much it's at, and what an hour of bleeding takes.
+export function bleedingOf(game, key) {
+  const rate = woundsNow(game, key).filter(bleedingNow).reduce((sum, wound) => sum + (rulesOfWound(wound).bleeds ?? 0), 0);
+  return rate ? { blood: Math.round(bloodOf(game, key)), rate } : null;
+}
+
 // The same, from a fighter's wounds alone: a wound on a leg is a limp.
 export function woundsPace(wounds = []) {
   const rules = careNow();
@@ -432,7 +453,7 @@ export function woundsPace(wounds = []) {
 }
 
 // A person's body key at a place, from the name or id their day knows them by.
-const keyAt = (place, who) => (who === "you" ? "you" : WORLD_CHARACTERS[who] ? `id:${who}` : crowdKey(place, who));
+export const keyAt = (place, who) => (who === "you" ? "you" : WORLD_CHARACTERS[who] ? `id:${who}` : crowdKey(place, who));
 // Whether someone has a hand free to carry or work with: no wound that leaves a hand no use, kept or written for them.
 export function handsFree(game, place, who) {
   const key = keyAt(place, who);
@@ -606,7 +627,7 @@ export function fighterBody(game, { id = null, name = null, place = null, machin
   const person = id ? findCharacter(game.campaign, id) : null;
   const key = person ? `id:${person.id}` : name && place ? crowdKey(place, name) : null;
   const kind = person ? person.species ?? "human" : name && place ? crowdWho(name).species : species ?? "human";
-  return { body: { key, species: kind }, wounds: key ? woundsNow(game, key).map((wound) => ({ ...wound })) : [] };
+  return { body: { key, species: kind, who: person ? person.id : name && place ? name : null }, wounds: key ? woundsNow(game, key).map((wound) => ({ ...wound })) : [] };
 }
 
 const fightRules = (wounds = []) => wounds.map(rulesOfWound);
@@ -752,12 +773,20 @@ function markLines(marks) {
     if (same) same.parts.push(mark.part);
     else lines.push({ template: joins ? mark.template : null, words: mark.words, parts: [mark.part], state: stateOf(mark), hidden: Boolean(mark.rules.hidden), hoursLeft: mark.hoursLeft });
   }
-  return lines.map((line) => ({
+  const read = lines.map((line) => ({
     words: upperFirst(line.parts.length > 1 ? line.template.replaceAll("{part}", partsInWords(line.parts)).replace(/\s{2,}/g, " ").trim() : line.words),
     state: line.state,
     ...(line.hidden ? { hidden: true } : {}),
     ...(line.hoursLeft !== undefined ? { hoursLeft: Math.ceil(line.hoursLeft) } : {}),
   }));
+  // The same wound twice on the same part, like two deep cuts in an arm, is one line that says so.
+  const out = [];
+  for (const line of read) {
+    const same = out.find((one) => one.words === line.words && one.state === line.state);
+    if (same) same.times = (same.times ?? 1) + 1;
+    else out.push({ ...line });
+  }
+  return out.map(({ times, ...line }) => (times ? { ...line, words: `${line.words} (${times === 2 ? "twice" : `${times} times`})` } : line));
 }
 
 // For the printouts and the inventory: each part's state, every mark on it, the marks as lines to read, walking,
@@ -787,10 +816,11 @@ export function bodyView(body) {
 
 // For Look: what anyone can see at a glance, worst first, three lines at most, with how they walk if it isn't normally.
 // The old marks a person's own file gives them are left out, since Look shows their appearance, which says them.
-export function lookLine(body) {
+// Someone lying down isn't walking at all, so walking says nothing then.
+export function lookLine(body, { walking = true } = {}) {
   if (!body) return null;
   const seen = markLines(body.marks.filter((mark) => !mark.rules.hidden && !(mark.from === "file" && mark.section === "mark"))).slice(0, 3).map((line) => `${line.words}.`);
-  const status = statusOf(body);
+  const status = walking ? statusOf(body) : "Walks normally";
   const words = [status === "Walks normally" ? null : `${status}.`, ...seen].filter(Boolean);
   return words.length ? words.join(" ") : null;
 }

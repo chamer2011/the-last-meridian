@@ -476,7 +476,7 @@ async function handleApi(req, res, route) {
     if (game.computer) throw new Error(COMPUTER_WAITING);
     const reply = walkCommand(game, body);
     // Using a thing or asking at a door changes more than where the player stands, and the story keeps a line about it.
-    if (["use", "ask", "work", "pickpocket", "attack"].includes(body.action)) {
+    if (["use", "ask", "work", "pickpocket", "attack", "carry", "putdown"].includes(body.action)) {
       if (reply.said) log("notice", reply.said);
       autosave();
       return json(res, 200, { game: publicState(game), said: reply.said ?? null, check: Boolean(game.check), computer: Boolean(game.computer), combat: Boolean(game.combat) });

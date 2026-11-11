@@ -1,6 +1,7 @@
 // The game's rules. Only this code changes health, money, items and so on, whatever the story's files say,
 // so nothing can cheat.
 
+import { advanceMedbay } from "./medbay.js";
 import { accidentsDay, bodyOf, bodyView, dressWounds, handsFree, newBodySeed, painADay, passWounds, woundEffects } from "./body.js";
 import { allCharacters, allEnemies, campaignCharacters, campaignEnemies, campaignFolderName, findCharacter, findEnemy, fullName } from "./campaign.js";
 import {
@@ -272,9 +273,10 @@ export function passTime(game, hours, activity = "active") {
   const systems = advanceSystems(game);
   // The first officer covers for anyone lost from their job before everyone's days move on.
   const command = advanceCommand(game);
+  const medbay = advanceMedbay(game);
   advanceLife(game);
   const notes = hoursPass(game, hours, activity);
-  return [...systems, ...command, ...notes, ...advanceLogistics(game)];
+  return [...systems, ...command, ...medbay, ...notes, ...advanceLogistics(game)];
 }
 
 // The clock running by itself while the player explores. It moves in moments, and every two hours
@@ -285,6 +287,7 @@ export function clockRuns(game, minutes) {
   game.clock.hours = Math.round((game.clock.hours + minutes / 60) * 3600) / 3600;
   const notes = advanceSystems(game);
   notes.push(...advanceCommand(game));
+  notes.push(...advanceMedbay(game));
   advanceLife(game);
   for (let hour = before + 1; hour <= Math.floor(game.clock.hours + 1e-6); hour += 1) {
     if (hour % 2 === 0) notes.push(...hoursPass(game, 2, "active"));

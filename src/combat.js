@@ -6,7 +6,9 @@
 // show, and can say who acted, who was affected and what their health is now.
 
 import { findCharacter, findEnemy } from "./campaign.js";
-import { addWounds, downState, fightAttackOf, fightWords, fighterBody, landHit, legWound, woundsNow } from "./body.js";
+import { addWounds, beatenFor, downState, fightAttackOf, fightWords, fighterBody, landHit, legWound, woundsNow } from "./body.js";
+import { fallDown, hasADayAt, wakeInMedbay } from "./medbay.js";
+import { personHere } from "./walk.js";
 import { ATTITUDE_VALUES, FACTION_BELIEFS, NOTABLES, SKILLS } from "./character-data.js";
 import { ABILITIES, ENEMIES, ITEMS, STATS } from "./data.js";
 import { THREAT_LABELS } from "./npc.js";
@@ -679,6 +681,19 @@ export function endCombat(game, ended, log) {
   // The wounds the fight left stay on everyone whose body is kept: people with files, and someone with only a name who
   // was gone for from the right-click menu. An enemy who's nobody in particular takes theirs away with them.
   for (const fighter of [...c.allies, ...c.enemies]) addWounds(game, fighter.body?.key, (fighter.wounds ?? []).filter((wound) => wound.fresh));
+  // Whoever was beaten lies where they fell, anyone whose day is here, followers too: in the room, where the fight left
+  // them, and in the window, where they stood (src/medbay.js).
+  for (const fighter of [...c.allies, ...c.enemies]) {
+    const who = fighter.body?.who;
+    if (fighter.hp > 0 || fighter.out || !who || !hasADayAt(game.location, who)) continue;
+    // Where they stood: their day's square, or else the room's, before anyone's day has been walked.
+    const state = game.life?.places?.[game.location]?.[who];
+    const shown = state ? null : personHere(game, who)?.entry;
+    const stood = state ?? (shown && game.walk ? { level: game.walk.level, x: shown.x, y: shown.y } : null);
+    if (!stood) continue;
+    const at = fighter.live && game.walk && !game.walk.room ? { level: game.walk.level, x: Math.round(fighter.live.x), y: Math.round(fighter.live.y) } : { level: stood.level, x: stood.x, y: stood.y };
+    fallDown(game, { who, place: game.location, ...at, why: downState(fighter.wounds), hours: beatenFor() });
+  }
   const side = followers.length ? "You and your followers" : "You";
   // Those who went away are still out there, and the summary says how they went.
   const done = Object.keys(APPROACHES).filter((id) => wentAway.some((enemy) => enemy.out === id)).map((id) => {
@@ -719,14 +734,23 @@ export function endCombat(game, ended, log) {
     summary = PARLEY.surrender.done.replaceAll("{enemy}", listOf(takers.map((enemy) => enemy.prose)));
     tone = "warn";
   } else if (result === "defeat") {
-    // Losing a fight isn't game over. It's a setback: hurt, and poorer. The wounds are the ones the hits left.
-    const lost = Math.floor(game.credits * 0.25);
-    game.credits -= lost;
-    math = `-${lost} credits`;
-    log.push({ text: pickFrom(COMBAT_TEXT.player.defeat), tone: "bad", math });
+    // Losing a fight isn't game over. The wounds are the ones the hits left. Where there's a medbay, someone carries the
+    // player there and they come to on a cot hours later, with what they had (src/medbay.js); anywhere else it's a
+    // setback where they fell: hurt, and poorer.
     game.hp = Math.max(1, Math.floor(maxHp(game) * 0.25));
+    const woke = wakeInMedbay(game);
+    if (woke) {
+      log.push({ text: pickFrom(COMBAT_TEXT.player.defeat), tone: "bad" });
+      for (const line of woke) log.push({ text: line, tone: "info" });
+      summary = `You lost the fight against ${prose}, and came to in the medbay.`;
+    } else {
+      const lost = Math.floor(game.credits * 0.25);
+      game.credits -= lost;
+      math = `-${lost} credits`;
+      log.push({ text: pickFrom(COMBAT_TEXT.player.defeat), tone: "bad", math });
+      summary = `You lost the fight against ${prose}.`;
+    }
     addNotes(c, log, changeStress(game, 15));
-    summary = `You lost the fight against ${prose}.`;
     tone = "bad";
   } else {
     addNotes(c, log, changeStress(game, 3));

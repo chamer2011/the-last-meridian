@@ -10,6 +10,7 @@
 import { FACTION_BELIEFS, SKILLS } from "./character-data.js";
 import { FACTIONS, LOCATIONS } from "./data.js";
 import { isHurt } from "./deeds.js";
+import { downRecord } from "./medbay.js";
 import { aboardShip, isCaptain, startOf } from "./role.js";
 import { beliefAffinity } from "./rules.js";
 import { handChair, raiseRations } from "./ship.js";
@@ -502,6 +503,8 @@ export function lostReason(game, place, key) {
   if (!stillAlive(game, key)) return "dead";
   if (stateOf(game, place)?.brig?.[key]) return "in the brig";
   if (isHurt(game, place, key)) return "being patched up";
+  const down = downRecord(game, place, key);
+  if (down && !down.going) return down.bed ? "laid up in the medbay" : "down";
   if (WORLD_CHARACTERS[key] && !atPost(game, key)) return "away";
   return null;
 }

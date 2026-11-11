@@ -59,6 +59,8 @@ Living with wounds (step 3 of the health plan), the lines at the top that say:
     left alone: twice as long, for a wound that heals once treated
     with a limp: 60% of the pace           (how fast someone walks with a limp: a wound on a leg, or a mark that limps)
     on a leg they can't stand on: 30% of the pace
+    too weak to stand: under 40 blood      (they go down where they are, and stay down while they're bleeding)
+    beaten in a fight: down for 1 to 3 hours                 (how long someone beaten lies where they fell, at least)
     pain: 2 stress a day for a wound, 5 for a serious one      (the player's stress)
 A wound that bleeds lowers its owner's blood every hour until it's dressed. Someone dresses a wound that isn't serious
 themselves after the time it says; a serious one waits for someone else: for the player, a medkit, which dresses or
@@ -130,12 +132,22 @@ How often is in a place's file, below.
 
     # CFS Meridian
     draft: the AI's, not yet edited by the owner
+    the medbay: Medbay
+    cots: patient-1, patient-2, patient-3, patient-4
+    who answers a call: a nurse, then a spare hand
     the morning queue: 07:45 to 10:30, at queue
     accidents at work: 1 in 20 days in rough work, 1 in 100 for everyone else
 
     At the start:
     - Vik, right leg: broken bone
     - Hana, chest: deep burn
+
+the medbay, cots and who answers a call (step 4 of the health plan): the medbay's room, its cots as spots in the
+place's file in world/life (a cot that someone's day already has them on, like Vik's, stays theirs), and who goes out
+to someone down, in order, jobs from the place's watch bill in world/command (a spare hand is anyone the watch bill has
+spare). Whoever's down there is carried to a free cot, or the medbay's floor when they're all taken, by the first who's
+awake, free and has a hand to carry with, and they stay until they can get up and aren't bleeding. A place without
+these lines has no medbay: someone down there comes round where they fell once they can get up.
 
 the morning queue: when anyone there who's hurt and on their feet goes to wait at the medbay, and where: a spot or a
 group of spots in the place's file in world/life (queue is the medbay's). Anyone asleep or laid up stays put.
