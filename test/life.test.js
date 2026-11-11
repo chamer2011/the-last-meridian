@@ -169,7 +169,7 @@ test("at eight in the morning everyone's at their post, any day, so the story st
 
 test("a few days a minute at a time: everyone eats, sleeps, walks, and always gets there", () => {
   const game = newGame();
-  const seen = Object.fromEntries(CREW.map((id) => [id, { slept: false, ate: false, rooms: new Set(), walking: 0, longest: 0 }]));
+  const seen = Object.fromEntries(CREW.map((id) => [id, { slept: false, ate: false, rooms: new Set(), walk: null, longest: null }]));
   let last = structuredClone(walkOf(game) && everyone(game));
   for (let minute = 0; minute < 3 * 1440; minute += 1) {
     clockRuns(game, 1);
@@ -183,16 +183,28 @@ test("a few days a minute at a time: everyone eats, sleeps, walks, and always ge
       if (person.asleep) one.slept = true;
       if (/\beat|cadging/.test(person.doing)) one.ate = true;
       one.rooms.add(person.room);
-      one.walking = person.walking ? one.walking + 1 : 0;
-      one.longest = Math.max(one.longest, one.walking);
+      // A walk is to one place. Someone whose day moves on before they get there (lunch, say, before a limper has
+      // reached the last stop of a round) turns round for the next place, and that's a walk of its own.
+      const goal = game.life.places.meridian?.[person.key]?.goal;
+      const to = person.walking && goal ? `${goal.level}:${goal.x},${goal.y}` : null;
+      if (!to) one.walk = null;
+      else {
+        if (one.walk?.to !== to) one.walk = { to, from: clockLabel(game), minutes: 0, effort: 0 };
+        one.walk.minutes += 1;
+        // Counted at the pace they walk at that minute: someone limping on a knock from work is slow only while it lasts.
+        one.walk.effort += paceOf(bodyOf(game, { id: person.key }));
+        if (one.walk.effort > (one.longest?.effort ?? 0)) one.longest = { ...one.walk };
+      }
     }
     // Someone out of sight, gone to bed behind a door, isn't on the way anywhere.
-    for (const [id, one] of Object.entries(seen)) if (!now.some((person) => person.key === id)) one.walking = 0;
+    for (const [id, one] of Object.entries(seen)) if (!now.some((person) => person.key === id)) one.walk = null;
     last = now;
   }
   for (const [id, one] of Object.entries(seen)) {
-    // Someone with a limp takes longer to get anywhere.
-    assert.ok(one.longest <= 15 / paceOf(bodyOf(game, { id })), `${id} was still on the way somewhere after ${one.longest} minutes`);
+    // Nobody's on the way to one place for longer than a quarter of an hour at a full walk. Someone with a limp takes
+    // longer to get there.
+    const walk = one.longest;
+    assert.ok(!walk || walk.effort <= 15 + 1e-9, `${id} was still on the way to ${walk?.to} after ${walk?.minutes} minutes, from ${walk?.from}`);
     assert.ok(one.rooms.size >= 2, `${id} never leaves one room`);
     if (id !== "seven") assert.ok(one.ate, `${id} never eats`);
     if (id !== "seven" && id !== "iven") assert.ok(one.slept, `${id} never sleeps`);
