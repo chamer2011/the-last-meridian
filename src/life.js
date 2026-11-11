@@ -10,11 +10,11 @@
 import { LOCATIONS } from "./data.js";
 import { errandDetour, logisticsOf, mealWords } from "./logistics.js";
 import { atPost, canStand, findPath, mapFor, roomOf, seedFrom } from "./walk.js";
-import { detourFor, partSquares } from "./systems.js";
+import { detourFor, doorLocked, partSquares } from "./systems.js";
 import { WORLD_LIFE } from "./world.js";
 import { jobsOf, movedDays } from "./command.js";
 import { bodyOf, hurtAt, paceOf, queueOf } from "./body.js";
-import { followCarriers, laidWhereTheyAre, medbayDetour } from "./medbay.js";
+import { followCarriers, laidWhereTheyAre, medbayDetour, medbayOf } from "./medbay.js";
 
 const MINUTES_IN_A_DAY = 1440;
 const SQUARES_A_MINUTE = 18;
@@ -192,6 +192,9 @@ function detoursFor(game, place) {
 function queueDetour(game, place) {
   const queue = queueOf(place);
   if (!queue) return null;
+  // Nobody queues at a medbay whose door is locked.
+  const medbay = medbayOf(place);
+  if (medbay?.room && doorLocked(game, place, medbay.room)) return null;
   const minute = ((game.clock.hours % 24) + 24) % 24 * 60;
   if (minute < queue.from || minute >= queue.to) return null;
   const hurt = hurtAt(game, place);
@@ -609,8 +612,8 @@ export function advanceLife(game) {
 function seenAs(game, map, entry, state, detour = null) {
   const plan = detour ? planFor(map, lifeFileFor(game.location), entry, game.clock.hours, detour) : planAt(entry, game.clock.hours);
   const settled = atGoal(state);
-  // Someone going out of sight can still be seen on their way there.
-  if (settled && plan.block.hidden) return null;
+  // Someone going out of sight can still be seen on their way there. The dead, once carried away, aren't seen at all.
+  if (plan.block.dead || (settled && plan.block.hidden)) return null;
   const home = entry.id ? homeOf(map, entry.id) : null;
   const heading = roomNameAt(map, state.goal).replace(/^The /, "the ");
   // Someone on one of the ship's errands says what they're carrying as they go.

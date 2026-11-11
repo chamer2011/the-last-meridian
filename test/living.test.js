@@ -146,7 +146,7 @@ test("now and then someone has an accident at their work, the same in a game wit
 });
 
 test("the files' new lines say what's wrong with them", () => {
-  assert.match(health.CARE["bleeding stops at"].read("thirty").problem, /35, for now/);
+  assert.match(health.CARE["bleeding stops at"].read("thirty").problem, /35, for you and away from a medbay, for now/);
   assert.match(health.readQueue("in the morning").problem, /07:45 to 10:30/);
   assert.match(health.readAccidents("often").problem, /1 in 20 days/);
   assert.deepEqual(health.readAccidentLine("cut: likelier in: cook"), { name: "cut", likelier: ["cook"] });

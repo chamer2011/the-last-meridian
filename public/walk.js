@@ -941,7 +941,7 @@ function personChoices(thing) {
     const carrying = app.ui.game.walk.carrying;
     return [
       ...(person.onCot && person.awake ? [["Talk", "beside the cot", () => go({ action: "go", to })]] : []),
-      person.carried === "you" ? ["Put them down", "on a cot, in the medbay", () => deed("putdown")] : ["Carry them", carrying ? "you're carrying someone" : "slowly, to the medbay", () => go({ action: "go", to }, () => deed("carry", person.key)), Boolean(carrying || person.carried || person.onCot)],
+      person.carried === "you" ? ["Put them down", "on a cot, in the medbay", () => deed("putdown")] : ["Carry them", person.dead ? "they're dead" : carrying ? "you're carrying someone" : "slowly, to the medbay", () => go({ action: "go", to }, () => deed("carry", person.key)), Boolean(person.dead || carrying || person.carried || person.onCot)],
       ["Registry", "print their record", () => registry(person.key)],
       ["Close", "", closeWindow],
     ];
@@ -1060,7 +1060,7 @@ function menuFor(target) {
       const carrying = app.ui.game.walk.carrying;
       return {
         title: person.short,
-        word: person.carried === "you" ? "carried" : person.onCot ? "laid up" : "down",
+        word: person.dead ? "dead" : person.carried === "you" ? "carried" : person.onCot ? "laid up" : "down",
         theme: "person",
         color: person.color,
         items: [
@@ -1068,7 +1068,7 @@ function menuFor(target) {
           { label: "Look", run: () => lookAtPerson(person) },
           person.carried === "you"
             ? { label: "Put them down", detail: "on a cot, in the medbay", run: () => deed("putdown") }
-            : { label: "Carry them", detail: carrying ? "you're carrying someone" : person.carried || person.onCot ? "they're being looked after" : "slowly, to the medbay", disabled: Boolean(carrying || person.carried || person.onCot), run: () => go({ action: "go", to }, () => deed("carry", person.key)) },
+            : { label: "Carry them", detail: person.dead ? "they're dead" : carrying ? "you're carrying someone" : person.carried || person.onCot ? "they're being looked after" : "slowly, to the medbay", disabled: Boolean(person.dead || carrying || person.carried || person.onCot), run: () => go({ action: "go", to }, () => deed("carry", person.key)) },
           { label: "Registry", detail: "print their record", run: () => registry(person.key) },
         ],
       };

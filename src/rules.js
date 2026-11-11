@@ -2,6 +2,7 @@
 // so nothing can cheat.
 
 import { advanceMedbay, startHealth } from "./medbay.js";
+import { settleDeaths } from "./death.js";
 import { accidentsDay, bodyOf, bodyView, dressWounds, handsFree, newBodySeed, painADay, passWounds, woundEffects } from "./body.js";
 import { allCharacters, allEnemies, campaignCharacters, campaignEnemies, campaignFolderName, findCharacter, findEnemy, fullName } from "./campaign.js";
 import {
@@ -331,6 +332,8 @@ function hoursPass(game, hours, activity) {
   for (const words of lived.dressed) notes.push(`[HEALTH] You dress ${words.replace(/^an? /, "the ")}.`);
   for (const words of lived.bad) notes.push(`[HEALTH] ${words.replace(/^an? /, "The ")} has gone bad.`);
   for (const words of lived.healed) notes.push(`[HEALTH] Healed: ${words}.`);
+  // Whoever's bled out or died of a wound gone bad, where help could have come, dies of it now (src/death.js).
+  notes.push(...settleDeaths(game));
   const pain = painADay(game);
   if (pain) notes.push(...changeStress(game, (pain * hours) / 24));
   // The ship, the world and the stories go through each day together, so it makes no difference how a long wait is cut up.

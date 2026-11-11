@@ -26,6 +26,7 @@ import { applySystemsEffect, placesWithSystems, systemsProblems } from "./system
 import { logisticsProblems, placesWithLogistics } from "./logistics.js";
 import { healthFiles, healthProblems } from "./body.js";
 import { medbayProblems } from "./medbay.js";
+import { deathFacts, deathProblems } from "./death.js";
 import { commandFacts, commandProblems, commandSceneDue, commandSceneStarted, mutinyOutcome, sampleStandIns, standIns, storyCommand } from "./command.js";
 import { storyHitsShip } from "./ship.js";
 import { requestProblems } from "./requests.js";
@@ -792,7 +793,7 @@ export function allSceneProblems(dir = SCENES_DIR) {
 // Every fact something in the world can leave on the record: a story's notes name it, a scene sets it with * flag,
 // or a door sets it when the player goes through.
 export function factsLeft(scenes) {
-  const names = new Set([...Object.keys(FACT_LINES), ...clockFacts(), ...commandFacts()]);
+  const names = new Set([...Object.keys(FACT_LINES), ...clockFacts(), ...commandFacts(), ...deathFacts()]);
   for (const scene of Object.values(scenes)) for (const part of Object.values(scene.parts ?? {})) for (const step of part.do ?? []) if (step.set) names.add(step.set);
   const walk = (node) => {
     if (!node || typeof node !== "object") return;
@@ -816,7 +817,7 @@ export function allStoryProblems(dir = SCENES_DIR) {
       for (const text of conditions) for (const flag of flagsIn(text)) if (!known.has(flag)) problems.push(`${id}, part ${name}: nothing leaves the fact ${flag}. Set it with * flag in a scene, or name it in a story's facts in world/stories`);
     }
   }
-  problems.push(...STORY_FILE_PROBLEMS, ...WORLD_FILE_PROBLEMS, ...MAP_FILE_PROBLEMS, ...notesProblems(known), ...clockProblems(known), ...computerProblems(), ...systemsProblems(), ...logisticsProblems(), ...commandProblems(), ...healthProblems(), ...medbayProblems());
+  problems.push(...STORY_FILE_PROBLEMS, ...WORLD_FILE_PROBLEMS, ...MAP_FILE_PROBLEMS, ...notesProblems(known), ...clockProblems(known), ...computerProblems(), ...systemsProblems(), ...logisticsProblems(), ...commandProblems(), ...healthProblems(), ...medbayProblems(), ...deathProblems());
   const drawn = Object.values(WORLD_MAPS).flatMap((map) => Object.values(map.levels ?? {})).filter((level) => level.drawn).length;
   return { count, requests, stories: Object.keys(WORLD_THREADS).length, computers: Object.keys(WORLD_COMPUTERS).length, systems: placesWithSystems(), logistics: placesWithLogistics(), command: Object.keys(WORLD_COMMAND).length, health: healthFiles(), drawn, problems, fleet: fleetLeftovers(dir) };
 }

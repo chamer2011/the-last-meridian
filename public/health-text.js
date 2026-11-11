@@ -62,13 +62,14 @@ export function readRule(text) {
   if ((found = rule.match(/^out cold for (\S+) to (\S+) hours?$/)) && numberOf(found[1]) !== null && numberOf(found[2]) !== null) return { out: [numberOf(found[1]), numberOf(found[2])] };
   if ((found = rule.match(/^checks (\S+) steps? harder$/)) && numberOf(found[1]) !== null) return { harder: numberOf(found[1]) };
   if ((found = rule.match(/^comes after (\S+) days? undressed$/)) && numberOf(found[1]) !== null) return { after: numberOf(found[1]) };
+  if ((found = rule.match(/^kills after (\S+) days? undressed$/)) && numberOf(found[1]) !== null) return { kills: numberOf(found[1]) };
   if ((found = rule.match(/^likelier in:\s*(.+)$/))) return { likelier: listOf(found[1]).map(lower) };
   if ((found = rule.match(/^only for:\s*(.+)$/))) return { only: listOf(found[1]).map(lower) };
   if ((found = rule.match(/^not for:\s*(.+)$/))) return { not: listOf(found[1]).map(lower) };
   if ((found = rule.match(/^in a fight: attack ([+-]?\d+)$/))) return { fightAttack: Number(found[1]) };
   return { problem: `I don't know the rule "${String(text).trim()}"` };
 }
-export const RULE_WORDS = "in a fight: attack -2; serious; bleeds 4 an hour; heals in 4 days, 2 once dressed; heals in 8 days once dressed; never heals; out cold for 1 to 4 hours; checks one step harder; the hand's no use; can't stand on it; limps; hidden; artificial; never at random; comes after 2 days undressed; worse every day; likelier in: dock, engine; only for: synthetic; not for: synthetic";
+export const RULE_WORDS = "in a fight: attack -2; serious; bleeds 4 an hour; heals in 4 days, 2 once dressed; heals in 8 days once dressed; never heals; out cold for 1 to 4 hours; checks one step harder; the hand's no use; can't stand on it; limps; hidden; artificial; never at random; comes after 2 days undressed; kills after 5 days undressed; worse every day; likelier in: dock, engine; only for: synthetic; not for: synthetic";
 
 // Words, then rules, separated by semicolons: "a bad {side} knee; limps; likelier in: dock".
 function readWordsAndRules(text) {
@@ -233,7 +234,9 @@ const TIMES = { twice: 2, "three times": 3, "four times": 4, "half again": 1.5 }
 export const CARE = {
   "blood comes back": { read: (text) => { const f = lower(text).match(/^(\S+) an hour(, once nothing bleeds)?$/); return f && numberOf(f[1]) !== null ? { perHour: numberOf(f[1]) } : { problem: "is written like: 2 an hour, once nothing bleeds" }; }, default: "2 an hour, once nothing bleeds" },
   "low on blood": { read: (text) => { const f = lower(text).match(/^under (\d+), checks (\S+) steps? harder$/); return f && numberOf(f[2]) !== null ? { under: Number(f[1]), harder: numberOf(f[2]) } : { problem: "is written like: under 60, checks one step harder" }; }, default: "under 60, checks one step harder" },
-  "bleeding stops at": { read: (text) => { const f = lower(text).match(/^(\d+)(, for now)?$/); return f ? { floor: Number(f[1]) } : { problem: "is written like: 35, for now" }; }, default: "35, for now" },
+  // Step 6: someone whose blood runs out dies, where there's a medbay to have reached them in time.
+  "bleeding to death": { read: (text) => { const f = lower(text).match(/^at (\d+) blood$/); return f ? { at: Number(f[1]) } : { problem: "is written like: at 0 blood" }; }, default: "at 0 blood" },
+  "bleeding stops at": { read: (text) => { const f = lower(text).match(/^(\d+)(, for you and away from a medbay)?(, for now)?$/); return f ? { floor: Number(f[1]) } : { problem: "is written like: 35, for you and away from a medbay, for now" }; }, default: "35, for you and away from a medbay, for now" },
   "they dress their own": { read: (text) => { const f = lower(text).match(/^wounds that aren['’]t serious, after (an|\S+) hours?$/); return f && numberOf(f[1]) !== null ? { hours: numberOf(f[1]) } : { problem: "is written like: wounds that aren't serious, after an hour" }; }, default: "wounds that aren't serious, after an hour" },
   "left alone": { read: (text) => { const f = lower(text).match(/^(twice|three times|four times|half again|\d+(?:\.\d+)? times) as long, for a wound that heals once treated$/); return f ? { factor: TIMES[f[1]] ?? Number(f[1].split(" ")[0]) } : { problem: "is written like: twice as long, for a wound that heals once treated" }; }, default: "twice as long, for a wound that heals once treated" },
   "with a limp": { read: share, default: "60% of the pace" },
@@ -265,6 +268,10 @@ export const MEDBAY_KEYS = {
   "who treats": { path: "treaters", read: (text) => { const who = listOf(text); return who.length ? { who } : { problem: "is written like: the chief medical officer, a nurse" }; } },
   medicine: { path: "medicine", read: (text) => { const f = lower(text).match(/^(?:the )?(.+?), (\d+) doses? to a crate$/); return f ? { store: f[1], doses: Number(f[2]) } : { problem: "is written like: the medicine cabinet, 20 doses to a crate" }; } },
   "bed rest": { path: "rest", read: (text) => { const f = lower(text).match(/^(\S+) days? after a serious wound is treated$/); return f && numberOf(f[1]) !== null ? { days: numberOf(f[1]) } : { problem: "is written like: 3 days after a serious wound is treated" }; } },
+  // Step 6: where the dead are carried and laid out, the thing their names go up on, and what a death aboard costs.
+  "the dead are laid out in": { path: "laidOut", read: (text) => (String(text).trim() ? { room: String(text).trim() } : { problem: "is a room at the place, like The Quiet Room" }) },
+  "the names go up on": { path: "names", read: (text) => (String(text).trim() ? { thing: String(text).trim() } : { problem: "is a thing in one of the place's rooms, like The chalked names" }) },
+  "a death aboard costs": { path: "deathCost", read: (text) => { const f = lower(text).match(/^(\S+) morale$/); return f && numberOf(f[1]) !== null ? { morale: numberOf(f[1]) } : { problem: "is written like: 3 morale" }; } },
 };
 
 // "deep cut: 2 doses, 30 minutes" or "broken bone: 2 doses, an hour": what treating a wound takes from the medicine,

@@ -440,13 +440,14 @@ export function postAndName(game, place, postId) {
   return key === YOU ? "You" : `${titleCase(post.title)} ${shortName(game, key)}`;
 }
 
-// Whether someone's still with the ship: the story's people are, until their contact says otherwise, and so are the
-// crowd, whom nothing kills yet.
+// Whether someone's still with the ship: the story's people are, until their contact says otherwise or they die of
+// their wounds, and so are the crowd, until they die of theirs (game.dead, src/death.js).
 export function stillAlive(game, key) {
   if (!key) return false;
   if (key === YOU) return true;
   const person = WORLD_CHARACTERS[key];
-  if (!person) return true;
+  if (!person) return !Object.values(game.dead ?? {}).some((dead) => dead.who === key);
+  if (game.dead?.[`id:${key}`]) return false;
   const status = game.contacts?.find((contact) => contact.name.toLowerCase() === person.name.toLowerCase())?.status;
   return !status || status === "alive";
 }
@@ -541,8 +542,12 @@ export function movedDays(game, place) {
   const jobs = jobsOf(game, place);
   const holders = stateOf(game, place)?.holders ?? null;
   const kept = movedKept.get(jobs);
-  if (kept && kept.model === model && kept.holders === holders && kept.brig === (stateOf(game, place)?.brig ?? null) && kept.chair === (game.ship?.chair?.id ?? null)) return kept.moved;
+  if (kept && kept.model === model && kept.holders === holders && kept.brig === (stateOf(game, place)?.brig ?? null) && kept.chair === (game.ship?.chair?.id ?? null) && kept.dead === (game.dead ?? null)) return kept.moved;
   let moved = null;
+  // The dead have no day: once their body's been carried away, nobody sees them again (src/death.js).
+  for (const dead of Object.values(game.dead ?? {})) {
+    if (dead.place === place && dead.who) (moved ??= {})[dead.who] = { job: "dead", day: [{ at: "00:00", doing: "dead", go: dead.room ? `@${dead.room}` : "post", hidden: true, dead: true, stays: true }] };
+  }
   // Whoever's in the brig spends the day there.
   for (const key of Object.keys(stateOf(game, place)?.brig ?? {})) {
     if (model.brig) (moved ??= {})[key] = { job: "brig", day: [{ at: "00:00", doing: "locked in the brig", go: `@${model.brig.room}`, stays: true }] };
@@ -566,7 +571,7 @@ export function movedDays(game, place) {
     const day = job === null ? model.spareDay : model.jobs.find((one) => one.id === job)?.day;
     if (day) (moved ??= {})[key] = { job, day };
   }
-  movedKept.set(jobs, { model, holders, moved, brig: stateOf(game, place)?.brig ?? null, chair: game.ship?.chair?.id ?? null });
+  movedKept.set(jobs, { model, holders, moved, brig: stateOf(game, place)?.brig ?? null, chair: game.ship?.chair?.id ?? null, dead: game.dead ?? null });
   return moved;
 }
 
@@ -691,6 +696,40 @@ export function setHolder(game, place, postId, key, { by = null, day = dayNow(ga
   if (key) holders[postId] = { key, since: day, by };
   else delete holders[postId];
   state.holders = holders;
+}
+
+// ---- After a death ----------------------------------------------------------------------------------
+
+// Someone has died (src/death.js): whatever post they held goes to whoever its chooser picks, and they leave the watch
+// bill, a spare hand who was covering for them keeping their job for good. It returns lines for the story.
+export function afterDeath(game, place, key) {
+  const model = commandOf(place);
+  if (!model || !key || key === YOU) return [];
+  const notes = [];
+  const state = commandState(game, place);
+  for (const post of model.posts) {
+    if (post.id === model.chairPost || holderKey(game, place, post.id) !== key) continue;
+    setHolder(game, place, post.id, null);
+    fillPost(game, place, post.id, { notes });
+  }
+  if (key in state.jobs) {
+    const job = jobById(place, state.jobs[key]);
+    const jobs = { ...state.jobs };
+    delete jobs[key];
+    const cover = { ...state.cover };
+    const filler = Object.keys(cover).find((one) => cover[one] === key);
+    if (filler) delete cover[filler];
+    // Whoever they were covering for is uncovered again, for the watch bill to see to.
+    delete cover[key];
+    state.jobs = jobs;
+    state.cover = cover;
+    if (filler && job) {
+      const text = `${upperFirst(personCalled(game, filler))} stays on as ${jobWords(job)} for good, in ${personCalled(game, key)}'s place.`;
+      logCommand(state, game, text);
+      if (aboardShip(game)) notes.push(`[COMMAND] ${text}`);
+    }
+  }
+  return notes;
 }
 
 // ---- Rising and falling -------------------------------------------------------------------------

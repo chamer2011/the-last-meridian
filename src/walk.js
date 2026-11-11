@@ -9,6 +9,7 @@
 
 import { bleedingOf, bodyOf, keyAt, lookLine, paceOf } from "./body.js";
 import { awakeInMedbay, carry, downForStory, downRecord, putDown } from "./medbay.js";
+import { namesLook, readNames } from "./death.js";
 import { allCharacters, campaignRooms, findCampaignRoom, findCharacter, fullName, saveCampaignRoom } from "./campaign.js";
 import { startCheck, startChoiceCheck } from "./checks.js";
 import { useComputer } from "./computers.js";
@@ -385,6 +386,9 @@ export function useThing(game, key) {
     return { said: `[ITEM] Received: ${ITEMS[thing.item]?.name ?? thing.item}. ${thing.used ?? ""}`.trim() };
   }
   if (thing.item) return { said: "You've already got one." };
+  // The place's names, where the dead go up: using them reads them (src/death.js).
+  const names = readNames(game, game.location, thing);
+  if (names) return { said: names };
   // A thing with a computer file of its own is a computer: the player sits down at it, or hacks it. A console or
   // a panel nobody has written is one too, unless the map file already says what using it does.
   const written = (!isCaptain(game) && thing.usedOther) || thing.used;
@@ -622,6 +626,7 @@ export function personWhere(game, id) {
   if (!person) return null;
   const status = contactOf(game, person.name)?.status;
   if (status && status !== "alive") return { gone: status };
+  if (game.dead?.[`id:${person.id}`]) return { gone: "dead" };
   // Someone down waits where they are: out cold, being carried, or laid up in a medbay at another place. Awake on a cot
   // here, they're found like anyone else, and the player goes to them.
   const down = downForStory(game, person.id);
@@ -1235,13 +1240,14 @@ function downView(game, key) {
   const d = downRecord(game, game.location, key);
   if (!d || d.going) return {};
   const bleeding = bleedingOf(game, keyAt(game.location, key));
-  const where = d.carriedBy ? (d.carriedBy === "you" ? "You're carrying them." : "Being carried to the medbay.") : d.bed ? (d.bed.startsWith("@") ? "Lying on the medbay's floor." : "Laid up on a cot.") : `Lying where they fell, ${d.why ?? "down"}.`;
+  const where = d.dead ? `Dead, under a blanket. They ${game.dead?.[keyAt(game.location, key)]?.cause ?? "died"}.` : d.carriedBy ? (d.carriedBy === "you" ? "You're carrying them." : "Being carried to the medbay.") : d.bed ? (d.bed.startsWith("@") ? "Lying on the medbay's floor." : "Laid up on a cot.") : `Lying where they fell, ${d.why ?? "down"}.`;
   return {
     down: true,
     ...(d.carriedBy ? { carried: d.carriedBy } : {}),
     ...(d.bed ? { onCot: true } : {}),
+    ...(d.dead ? { dead: true } : {}),
     ...(awakeInMedbay(game, keyAt(game.location, key)) ? { awake: true } : {}),
-    downLook: [where, bleeding ? `Bleeding: ${bleeding.blood} blood left, losing ${bleeding.rate} an hour.` : null].filter(Boolean).join(" "),
+    downLook: [where, bleeding && !d.dead ? `Bleeding: ${bleeding.blood} blood left, losing ${bleeding.rate} an hour.` : null].filter(Boolean).join(" "),
   };
 }
 
@@ -1282,7 +1288,7 @@ const thingView = (game, thing, level = null) => ({
   id: thing.id,
   name: thing.name,
   // One of the ship's stores says how it stands now: a kettle how much is left in it, an emptied store that it's empty.
-  look: storeLook(game, game.location, thing, (!isCaptain(game) && thing.lookOther) || thing.look),
+  look: namesLook(game, game.location, thing, storeLook(game, game.location, thing, (!isCaptain(game) && thing.lookOther) || thing.look)),
   use: (!isCaptain(game) && thing.useOther) || thing.use,
   x: thing.x,
   y: thing.y,
@@ -1503,6 +1509,9 @@ function openTalk(game, key) {
   const level = levelOf(game, walk, map);
   const entry = peopleOnLevel(game, walk, level).find((one) => keyOf(one) === key);
   if (!entry) throw new Error("They aren't here right now.");
+  // Nobody talks lying dead or out cold; someone awake on a cot does.
+  const down = downRecord(game, game.location, key);
+  if (down && !down.going && !awakeInMedbay(game, keyAt(game.location, key))) throw new Error(down.dead ? "They're dead." : "They can't talk just now.");
   const person = entry.id ? findCharacter(game.campaign, entry.id) : null;
   const name = person ? fullName(person) : entry.name;
   const short = shortName(game, entry);

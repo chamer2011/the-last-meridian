@@ -16,6 +16,7 @@ import {
   removeCondition, removeItem, shiftIdeology, startCombat, travel,
 } from "./rules.js";
 import { setScene } from "./walk.js";
+import { tellContactDied } from "./death.js";
 import { PARLEY, ROOM_KINDS, WORLD_THREADS } from "./world.js";
 
 const obj = (properties, required = Object.keys(properties)) => ({
@@ -557,3 +558,12 @@ export function runTool(game, name, input, turn) {
     return { result: err.message, isError: true };
   }
 }
+
+// A story person who dies of their wounds (src/death.js): their contact is dead, and so is any story that was waiting on
+// them. The rules can't load this file, so it tells the deaths what to do.
+tellContactDied((game, name) => {
+  const contact = findContact(game, name);
+  const before = contact?.status ?? "alive";
+  if (contact) contact.status = "dead";
+  return [...(contact && before !== "dead" ? [`[RELATION] ${contact.name} is now dead.`] : []), ...failStoriesWaitingOn(game, name)];
+});

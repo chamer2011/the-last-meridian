@@ -6,6 +6,9 @@ who answers a call: a nurse, then a spare hand
 who treats: the chief medical officer, a nurse
 medicine: the medicine cabinet, 20 doses to a crate
 bed rest: 3 days after a serious wound is treated
+the dead are laid out in: The Quiet Room
+the names go up on: The chalked names
+a death aboard costs: 3 morale
 the morning queue: 07:45 to 10:30, at queue
 accidents at work: 1 in 20 days in rough work, 1 in 100 for everyone else
 

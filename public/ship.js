@@ -94,13 +94,14 @@ function medbaySection(s) {
     el("div", { class: "menu-row small" },
       el("span", {}, label, el("span", { class: "muted" }, p ? `: ${p.who}` : ": empty")),
       p ? el("span", { class: /^waiting/.test(p.state) ? "tone-bad" : "" }, p.state) : null),
-    p ? muted(`${p.worst}, ${p.since === "just brought in" ? "just brought in" : `for ${p.since}`}`) : null);
+    p ? muted(!p.since ? p.worst : `${p.worst}, ${p.since === "just brought in" ? "just brought in" : `for ${p.since}`}`) : null);
   const laid = m.cots.filter(Boolean).length + m.floor.length;
   return section(`The medbay${laid ? ` (${laid} laid up)` : ""}`,
     m.cots.map((p, i) => patient(`Cot ${i + 1}`, p)),
     m.floor.map((p) => patient("On the floor", p)),
     m.medicine ? el("div", { class: `small${m.medicine.short ? " tone-bad" : ""}` }, m.medicine.short ? `The ${m.medicine.store.toLowerCase()} is empty: nobody can be treated until a crate comes.` : m.medicine.doses ? `Open crate: ${m.medicine.doses} of ${m.medicine.perCrate} doses left.` : `No crate open: the next treatment opens one from the ${m.medicine.store.toLowerCase()}.`) : null,
-    m.log.length ? folded("ship-medbay-log", `Treated lately (${m.log.length})`, m.log.map((line) => muted(line))) : null);
+    m.log.length ? folded("ship-medbay-log", `Treated lately (${m.log.length})`, m.log.map((line) => muted(line))) : null,
+    m.dead?.length ? folded("ship-medbay-dead", `Died (${m.dead.length})`, m.dead.map((one) => muted(`Day ${one.day}: ${one.name}, ${one.cause}.`))) : null);
 }
 
 function choiceCard({ current, name, detail, desc, onclick, disabled }) {

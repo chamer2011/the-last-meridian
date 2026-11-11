@@ -2827,7 +2827,7 @@ function draw(now, dt) {
       const { person, shown, wx, wy } = item;
       const [x, y] = at(wx, wy);
       const hovered = hoverKey === `person:${person.key}`;
-      drawPerson(ctx, x, y, unit, { look: shown.look, flip: shown.flip, back: shown.back, walking: shown.walking, step: shown.step, asleep: person.asleep || person.down, mark: person.down && !person.onCot && !person.carried, ring: hovered ? "rgba(255,250,220,.9)" : null });
+      drawPerson(ctx, x, y, unit, { look: shown.look, flip: shown.flip, back: shown.back, walking: shown.walking, step: shown.step, asleep: person.asleep || person.down, mark: person.down && !person.onCot && !person.carried && !person.dead, ring: hovered ? "rgba(255,250,220,.9)" : null });
       hits.push({ kind: "person", key: `person:${person.key}`, person, x: x - unit * 0.22, y: y - unit * 0.92, w: unit * 0.44, h: unit * 1, floorX: x, floorY: y });
     } else {
       const [x, y] = at(item.wx, item.wy);
@@ -3034,6 +3034,7 @@ function underPointer() {
 function titleFor(hit) {
   if (hit?.kind === "fighter") return hit.side === "enemy" ? "Click to go for them." : "";
   if (iso.hooks?.fighting?.()) return "";
+  if (hit?.kind === "person" && hit.person.down && !hit.person.awake) return `${hit.person.name}${hit.person.doing ? `, ${hit.person.doing}` : ""}. Click for what you can do.`;
   if (hit?.kind === "person") return `${hit.person.name}${hit.person.doing ? `, ${hit.person.doing}` : ""}. Click to walk over and talk, or right-click for more.`;
   if (hit?.kind === "thing" && hit.thing.part) return `${hit.thing.name}, ${hit.thing.part.word}. Click to walk over and work it, or right-click for more.`;
   if (hit?.kind === "thing") return `${hit.thing.name}. Click to walk over and take a look, or right-click for more.`;
@@ -3075,6 +3076,8 @@ function onClick(event) {
   if (iso.hooks.fightClick?.(hit)) return;
   if (!hit || iso.hooks.blocked()) return;
   if (hit.kind === "floor") iso.hooks.go({ action: "go", x: hit.x, y: hit.y }, null, hit.point);
+  // Someone down who can't talk, the dead among them, has their menu instead.
+  else if (hit.kind === "person" && hit.person.down && !hit.person.awake) iso.hooks.menu?.(hit.key, { x: event.clientX, y: event.clientY });
   else iso.hooks.go({ action: "go", to: hit.key });
 }
 

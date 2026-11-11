@@ -121,7 +121,7 @@ function findKind(words, parts = null) {
   }
   return best;
 }
-const RULE_KEYS = ["serious", "fightAttack", "goesBad", "limps", "hidden", "artificial", "notRandom", "never", "worsens", "noHand", "noStand", "bleeds", "heals", "treated", "treatment", "out", "harder", "after"];
+const RULE_KEYS = ["serious", "fightAttack", "goesBad", "limps", "hidden", "artificial", "notRandom", "never", "worsens", "noHand", "noStand", "bleeds", "heals", "treated", "treatment", "out", "harder", "after", "kills"];
 const rulesOf = (kind) => Object.fromEntries(RULE_KEYS.filter((key) => kind[key] !== undefined).map((key) => [key, kind[key]]));
 
 // A species' body: its parts' hit weights, and what it does differently.
@@ -285,6 +285,17 @@ const lasts = (wound, now) => wound.until === null || wound.until === undefined 
 const storeOf = (game, key) => (key === "you" ? game.wounds : game.bodies?.[key]?.wounds) ?? [];
 export const woundsNow = (game, key) => storeOf(game, key).filter((wound) => lasts(wound, nowOf(game)));
 export const bloodOf = (game, key) => (key === "you" ? game.blood : game.bodies?.[key]?.blood) ?? 100;
+// Someone who has died (step 6): when, where and of what, from game.dead, or null.
+export const deathOf = (game, key) => game.dead?.[key] ?? null;
+// Where someone's body is kept, for whether help could have come: a crowd key's place, else where they're lying down,
+// else the place their file gives them. Null for the player.
+function placeOfKey(game, key) {
+  if (key === "you") return null;
+  if (key.startsWith("crowd:")) return key.split(":")[1];
+  return game.down?.[key]?.place ?? WORLD_CHARACTERS[key.slice(3)]?.location ?? null;
+}
+// Death comes only where a medbay could have reached them in time, and never to the player, for now.
+const canDieAt = (game, key) => key !== "you" && Boolean(WORLD_HEALTH[placeOfKey(game, key)]?.medbay);
 
 // The lines at the top of the wounds file about living with wounds, read once until it changes.
 let care = null;
@@ -409,9 +420,14 @@ export function passWounds(game, hours, { speed = 1 } = {}) {
     const added = [];
     let bled = 0;
     let stopped = from;
+    const deadly = canDieAt(game, key);
+    let died = null;
     for (const wound of wounds) {
       const kind = kindOf(wound.kind, wound.part);
       const own = kind ? rulesOf(kind) : {};
+      // A wound gone bad and still undressed after so many days kills, where help could have come.
+      const killsAt = own.kills ? wound.at + own.kills * 24 : null;
+      if (deadly && killsAt !== null && !wound.dressed && killsAt <= to && (!died || killsAt < died.at)) died = { at: Math.max(from, killsAt), cause: "infection", part: wound.part };
       // Someone dresses what isn't serious themselves, once a little time has gone by.
       const selfAt = wound.at + rules["they dress their own"].hours;
       if (!wound.dressed && !own.serious && treatable(wound) && selfAt <= to) {
@@ -438,21 +454,31 @@ export function passWounds(game, hours, { speed = 1 } = {}) {
     const all = [...wounds, ...added];
     const left = all.filter((wound) => lasts(wound, to));
     if (key === "you") told.healed.push(...all.filter((wound) => !lasts(wound, to)).map((wound) => wound.words));
-    // Blood goes with the bleeding, never under the file's line for now, and comes back once nothing bleeds.
-    const floor = rules["bleeding stops at"].floor;
+    // Blood goes with the bleeding and comes back once nothing bleeds. Where help could have come, it runs out and they
+    // die; for the player, and anywhere without a medbay, it stops at the file's line, for now.
+    const floor = deadly ? rules["bleeding to death"].at : rules["bleeding stops at"].floor;
     let blood = held.blood ?? 100;
-    if (bled) blood = Math.max(Math.min(blood, floor), blood - bled);
+    if (bled) {
+      if (deadly && blood - bled <= floor) {
+        const rate = bled / Math.max(1e-6, to - from);
+        const at = Math.min(to, from + Math.max(0, blood - floor) / rate);
+        if (!died || at < died.at) died = { at, cause: "bled" };
+      }
+      blood = Math.max(Math.min(blood, floor), blood - bled);
+    }
     const quiet = left.some(bleedingNow) ? 0 : Math.max(0, to - stopped);
-    blood = Math.min(100, blood + rules["blood comes back"].perHour * quiet);
-    return { wounds: left, blood: Math.round(blood * 10) / 10 };
+    if (!died) blood = Math.min(100, blood + rules["blood comes back"].perHour * quiet);
+    return { wounds: died ? all : left, blood: Math.round(blood * 10) / 10, ...(died ? { died } : {}) };
   };
   const mine = live("you", { wounds: game.wounds ?? [], blood: game.blood ?? 100 });
   game.wounds = mine?.wounds ?? [];
   if (mine && mine.blood < 100) game.blood = mine.blood;
   else delete game.blood;
   for (const [key, held] of Object.entries(game.bodies ?? {})) {
+    // The dead are left as they died.
+    if (held.died || deathOf(game, key)) continue;
     const now = live(key, held);
-    if (now && (now.wounds.length || now.blood < 100)) game.bodies[key] = { ...held, ...now };
+    if (now && (now.died || now.wounds.length || now.blood < 100)) game.bodies[key] = { ...held, ...now };
     else delete game.bodies[key];
   }
   return told;
@@ -530,6 +556,7 @@ export function hurtAt(game, place) {
   const people = [...Object.keys(life.people ?? {}), ...(life.crowd ?? []).flatMap((group) => group.names.map(([name]) => name))];
   for (const who of people) {
     const key = keyAt(place, who);
+    if (deathOf(game, key) || game.bodies?.[key]?.died) continue;
     const kept = woundsNow(game, key);
     if (!kept.length || kept.some((wound) => rulesOfWound(wound).noStand)) continue;
     keys.add(who);
@@ -566,6 +593,7 @@ export function accidentsDay(game, day) {
       const inWork = (word) => Boolean(work) && new RegExp(`\\b${escaped(word)}`).test(work);
       if (roll() >= (rough.some(inWork) ? rates.rough : rates.anyone)) continue;
       const key = keyAt(place, who);
+      if (deathOf(game, key) || game.bodies?.[key]?.died) continue;
       const species = speciesOfKey(game, key);
       const part = weighted(roll, PARTS.map((one) => [one, speciesBody(species).hits[one] ?? 0]));
       const pickKind = weighted(roll, kinds.map((one) => [one, one.likelier.some(inWork) ? 4 : 1]));
@@ -581,12 +609,14 @@ function withWounds(game, key, body) {
   const now = woundsNow(game, key);
   const blood = bloodOf(game, key);
   if (!now.length && blood >= 100) return body;
-  return { ...body, blood, marks: [...body.marks, ...now.map((wound) => markOfWound(game, wound))] };
+  // The dead bleed no more.
+  const dead = Boolean(deathOf(game, key) || game.bodies?.[key]?.died);
+  return { ...body, blood, marks: [...body.marks, ...now.map((wound) => markOfWound(game, wound, dead))] };
 }
 // A wound kept, as a mark: its words say whether it's still bleeding, or dressed or splinted.
-const markOfWound = (game, wound) => ({
+const markOfWound = (game, wound, dead = false) => ({
   part: wound.part, kind: wound.kind, section: "wound", template: null, rules: rulesOfWound(wound), from: "now",
-  words: bleedingNow(wound) ? `${wound.words}, bleeding` : wound.dressed ? `${wound.words}, ${treatedWord(wound)}` : wound.words,
+  words: bleedingNow(wound) && !dead ? `${wound.words}, bleeding` : wound.dressed ? `${wound.words}, ${treatedWord(wound)}` : wound.words,
   ...(wound.until === null || wound.until === undefined ? {} : { hoursLeft: Math.max(0, wound.until - nowOf(game)) }),
 });
 

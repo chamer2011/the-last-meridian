@@ -54,7 +54,8 @@ most anyone carries, counting what their own file says.
 Living with wounds (step 3 of the health plan), the lines at the top that say:
     blood comes back: 2 an hour, once nothing bleeds
     low on blood: under 60, checks one step harder
-    bleeding stops at: 35, for now         (nobody bleeds lower than this until the medbay steps; later, 0)
+    bleeding to death: at 0 blood          (where there's a medbay, someone whose blood runs this low dies)
+    bleeding stops at: 35, for you and away from a medbay, for now   (the player, and anyone at a place without one)
     they dress their own: wounds that aren't serious, after an hour
     left alone: twice as long, for a wound that heals once treated
     with a limp: 60% of the pace           (how fast someone walks with a limp: a wound on a leg, or a mark that limps)
@@ -65,7 +66,8 @@ Living with wounds (step 3 of the health plan), the lines at the top that say:
 A wound that bleeds lowers its owner's blood every hour until it's dressed. Someone dresses a wound that isn't serious
 themselves after the time it says; a serious one waits for someone else: for the player, a medkit, which dresses or
 splints their worst wound (its effect line says dress 1), and later the medbay. A wound that can go bad goes bad if
-it's still undressed when the infected line's days are up. A wound heals in its days, faster once dressed, and a
+it's still undressed when the infected line's days are up, and the infected line's "kills after 5 days undressed" is
+how long a wound gone bad can be left undressed before it kills, where there's a medbay. A wound heals in its days, faster once dressed, and a
 species' Body part can make it slower; one that only heals once treated takes the left alone times as long untreated.
 One step harder on a check is 2 off the roll.
 
@@ -138,6 +140,9 @@ How often is in a place's file, below.
     who treats: the chief medical officer, a nurse
     medicine: the medicine cabinet, 20 doses to a crate
     bed rest: 3 days after a serious wound is treated
+    the dead are laid out in: The Quiet Room
+    the names go up on: The chalked names
+    a death aboard costs: 3 morale
     the morning queue: 07:45 to 10:30, at queue
     accidents at work: 1 in 20 days in rough work, 1 in 100 for everyone else
 
@@ -165,6 +170,12 @@ wound the medbay treats, by its name in the wounds file, with the doses and the 
 of 5 (a better medic is quicker, a worse one slower, as the command file's skill line says). A wound with no line here
 isn't treated in the medbay. The medics treat the laid up first, the worst off first, then the morning queue, then the
 player if they're standing in the medbay. Without who treats, the medicine or any Treatments, nobody is treated there.
+
+the dead are laid out in, the names go up on and a death aboard costs (step 6 of the health plan): the room whoever
+answers a call carries the dead to (they're gone once they're there; without this line they're gone at once), the thing
+in one of the place's rooms whose Look and Use list the dead (by its name on the map), and how much morale a death
+there costs the ship. Someone dies at a place with a medbay when their blood runs out (bleeding to death, in the wounds
+file) or a wound gone bad is left undressed too long (kills after, on the infected line). The player never dies, for now.
 
 the morning queue: when anyone there who's hurt and on their feet goes to wait at the medbay, and where: a spot or a
 group of spots in the place's file in world/life (queue is the medbay's). Anyone asleep or laid up stays put.
