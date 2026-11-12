@@ -63,7 +63,7 @@ The rules that still hold for all of it: no AI, everything by clicking, nothing 
 |---|------|-------|
 | 0 | The plug-in points | built (`src/room-hooks.js`, and insertions in `src/walk.js`, `public/walk.js`, `server.js`, `src/rules.js`) |
 | 1 | The crew's jobs by hand | built: `src/hands.js`, `treatByHand` and `treatableByHand` in `src/medbay.js`, `test/hands.test.js` (5 tests). Checked on a test copy at 1400 and 810 wide: Cook a pot under You can, its line in the story and the hour on the clock, Treat with your medkit on a hurt cook's right-click menu and what came of it. Not seen on screen: Treat them yourself in the medbay, and the piecework lines (the tests play both) |
-| 2 | A use for every object | planned |
+| 2 | A use for every object | built: `src/uses.js`, `world/uses.txt`, `addMapWork` and `addChecker` in `src/room-hooks.js`, `test/uses.test.js` (7 tests). What changed from the plan: the things in the rooms turned out to be story props (the sack under a rack is somebody's, the warm bedrolls are people's homes), so the words are conservative, 24 things have a line of their own, and the Meridian's stash, basins, tea urn and quiet bench are things the file stands in the rooms. Eating aboard takes a real sitting out of the kettle. Checked on a test copy at 1400 and 810 wide: a mess table's right-click menu (Look, Eat here, no dead Use), the meal's line, the half hour and the stress, and the Sitting rota read with today's sittings. Not seen on screen: sleeping in the bunk, the footlocker's grid, the basins and the bench (the tests play them) |
 | 3 | Questions and asks | planned |
 | 4 | Emergencies | planned |
 | 5 | What's yours | planned |

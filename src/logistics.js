@@ -65,6 +65,8 @@ const compiling = new Set();
 export function clearLogistics() {
   models.clear();
 }
+// Whether a place's stores are being stood in its map right now (src/room-hooks.js waits for them).
+export const logisticsPending = (place) => compiling.has(place);
 
 export function logisticsOf(place) {
   if (!place || !WORLD_LOGISTICS[place]) return null;

@@ -1,0 +1,72 @@
+# What the things in the rooms do
+draft: the AI's, not yet edited by the owner
+
+# A thing in a room does something by what it's called. Each line under Uses names one use and the words that mean
+# it: a thing whose name has one of those words in it gets that use, beside whatever its own file says. The first
+# use that fits is the one it gets. Under Things, a line names one thing at one place and says what it does instead,
+# or "nothing". Under Put in the rooms, a line stands a thing of its own on a free square of a room.
+#
+# The uses the game knows: sleep, sit, eat, drink, wash, read, stash and quiet. On a use's line, after its words:
+#   30 minutes / 1 hour      how long it takes
+#   stress -4, tiredness -2  what it takes off
+#   once a sitting           aboard the ship, only while a sitting's on, and once for each
+#   once every 4 hours       not again before then
+#   once a day               not again the same day
+#   2 credits off the ship   what it costs anywhere but aboard the Meridian
+# Sleeping is the game's own eight hours, wherever you'd sleep anyway. A stash is a thing you can open and leave your
+# own things in; a thing that already gives something or has words of its own when used is never made one.
+#
+# After changing this file, run "npm run check-story", and close and reopen the game.
+
+Uses:
+- sleep: called bunk, bunks, bed, cot, hammock, bedroll, bedrolls
+- sit: called chair, armchair, bench, stool, seat, couch; 1 hour; stress -1, tiredness -3
+- eat: called mess table, kitchen, noodle stall, food, bread; 30 minutes; stress -4, tiredness -2; once a sitting; 2 credits off the ship
+- drink: called tea, kettle, coffee, bar, beer, urn; 15 minutes; stress -2; once every 4 hours
+- wash: called baths, bath, shower, basin, basins, washroom; 20 minutes; stress -2; once a day
+- read: called board, blackboard, slate, rota, schedule, notice, list, lists, ledger, ledgers, register, logbook, log, timetable, record, manifest, sign, label, contract, orders; 5 minutes
+- stash: called locker, footlocker, chest, trunk, cabinet, cupboard
+- quiet: called shrine, bell, viewport, window, view, photograph, garden, fountain, singer, singing, game, card table; 15 minutes; stress -5; once a day
+
+Buttons and lines:
+- sleep: Sleep here
+- sit: Sit a while: You sit for an hour and let everything go on without you.
+- eat: Eat here: You eat what there is, and it's hot, and for half an hour nobody wants anything from you.
+- drink: Have a cup: You drink it slowly, while it's still warm.
+- wash: Wash: You wash, and come away feeling more like a person.
+- read: Read it: You read it through.
+- quiet: Take a moment here: You stay a while, and say nothing, and nobody asks you to.
+
+Things:
+- meridian, A wobbling table: eat
+- meridian, The far table: eat
+- meridian, Sitting rota: read, shows the sittings
+- meridian, Hot-bunk slate: read
+- meridian, The scan bed: nothing
+- meridian, A cot with its curtain drawn: nothing
+- meridian, Warm bedrolls: nothing
+- meridian, Tool roll on the bench: nothing
+- anselm, An empty cot in Ward Six: nothing
+- asterion, A medal on the front bench: nothing
+- bastion, Window Thirty-Nine: nothing
+- cinder, A flower bed: quiet
+- deepyards, The drinking table: drink
+- ghostlight, The stalker bell: nothing
+- graveyard, The arbiters' bench: nothing
+- haven, The fee schedule: read, shows the supplies
+- ilun, A bed of grey lichen: nothing
+- lumen, A low bench of small shoes: nothing
+- maris, The tide table: read
+- maris, A filing cabinet: nothing
+- orrin, Spare robes on a cot: nothing
+- pale_gate, The still: drink
+- sarn, The Keeper on the stool: nothing
+- vantor, A window with no view: nothing
+- wheel, The price board: read, shows the supplies
+
+Put in the rooms:
+- meridian, The Hot Bunks: A footlocker with no name on it: stash: A dented footlocker at the end of the racks. Whoever it belonged to isn't aboard any more, and nobody's said you can't.
+- meridian, The Wardroom: The captain's sea chest: stash: A sea chest against the wardroom bulkhead, older than the ship, where the last captain left it. Its lid doesn't quite shut.
+- meridian, The Heads: A row of basins: wash: Four steel basins and one tap that runs warm, if you wait.
+- meridian, The Long Mess: The tea urn: drink: A dented urn of something brown and hot, with a string of mugs beside it.
+- meridian, The Quiet Room: A bench facing the bulkhead: quiet: A bench bolted to the deck, facing a blank bulkhead. People come here to sit and look at nothing.

@@ -1177,7 +1177,8 @@ function menuFor(target) {
         { label: "Look", run: () => openThing(thing.id) },
         { label: "Use", detail: thing.have ? "you're already carrying one" : "", disabled: Boolean(thing.have), run: there(() => useThing()) },
         ...does,
-      ],
+        // A thing with nothing written for it, and something of its own to do, offers only that.
+      ].filter((item) => item.label !== "Use" || thing.written || !does.length),
     };
   }
   if (target.kind === "exit") {

@@ -13,6 +13,8 @@ const rooms = [];
 const orders = new Map();
 const clocks = [];
 const days = [];
+const maps = [];
+const checkers = [];
 
 // (game, entry, key) => the acts for someone, or nothing. entry is the room's own entry for them, key their key there.
 export const addPersonActs = (fn) => { people.push(fn); };
@@ -27,6 +29,22 @@ export const addOrder = (id, fn) => { orders.set(id, fn); };
 export const addClockWork = (fn) => { clocks.push(fn); };
 // (game, day) => lines for the story, once for each day that ends.
 export const addDayWork = (fn) => { days.push(fn); };
+
+// (place, map) => nothing, or false for "not yet": once for each place's map, after its systems and its stores are
+// stood in it. For giving the things drawn there something more, or standing something of its own on a free square.
+export const addMapWork = (fn) => { maps.push(fn); };
+// () => what's wrong in a file of its own, in plain words, for npm run check-story.
+export const addChecker = (fn) => { checkers.push(fn); };
+
+// Each map's work is done once. A part that says false isn't ready (the place's systems or stores are still being
+// stood in the map), and is asked again the next time the map is.
+const mapped = new WeakMap();
+export function mapExtras(place, map) {
+  const done = mapped.get(map) ?? mapped.set(map, new Set()).get(map);
+  if (done.size === maps.length) return;
+  for (const fn of maps) if (!done.has(fn) && fn(place, map) !== false) done.add(fn);
+}
+export const checkExtras = () => checkers.flatMap((fn) => fn() ?? []);
 
 export const orderFor = (id) => orders.get(String(id ?? "")) ?? null;
 export const isOrder = (id) => orders.has(String(id ?? ""));

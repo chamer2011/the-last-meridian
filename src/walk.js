@@ -30,6 +30,8 @@ import { notePut, putsOf } from "./puts.js";
 import { orderFor, personExtras, roomExtras, thingExtras } from "./room-hooks.js";
 // The parts of the game that add to a room: each registers itself with src/room-hooks.js when it's read.
 import "./hands.js";
+import "./uses.js";
+import { mapExtras } from "./room-hooks.js";
 
 const STEPS = [[0, -1], [-1, 0], [1, 0], [0, 1]];
 const DOOR = "+";
@@ -309,6 +311,9 @@ export function mapFor(place) {
     if (map) systemsOf(place);
     if (map) logisticsOf(place);
   }
+  // And whatever the parts of the game that add to a room give its things, or stand in it, once those are in
+  // (src/room-hooks.js). Asked every time, since it's nothing once it's done.
+  if (maps.get(place)) mapExtras(place, maps.get(place));
   return maps.get(place);
 }
 

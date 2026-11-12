@@ -338,6 +338,8 @@ const compiling = new Set();
 export function clearSystems() {
   models.clear();
 }
+// Whether a place's systems are being made right now, so its map isn't whole yet (src/room-hooks.js waits for it).
+export const systemsPending = (place) => compiling.has(place);
 
 export function systemsOf(place) {
   if (!place) return null;
