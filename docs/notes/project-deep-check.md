@@ -62,8 +62,9 @@ Second round:
 - **The medbay handles a long wait in one piece.** `advanceMedbay` looks once at the time the wait ends, so seventy
   days in one go and seventy single days don't treat and release people at the same moments, and now and then the
   medicine used differs enough that whoever has the chair buys differently. `test/anyone.test.js`'s "a year of it...
-  comes out the same however it's cut up" fails about one run in twelve because of it, and did before this work (3 or
-  4 of 40 either way, counted on copies from before and after). A body seed that shows it by day 4: 3271021635, with
+  comes out the same however it's cut up" fails now and then because of it: 3 of the 8 runs of the whole suite on the
+  clean copy, 1 of 22 on its own, and 3 or 4 of 40 when only its last part is repeated, the same on copies from before
+  this work and after. Why the whole suite sees it more often isn't known. A body seed that shows it by day 4: 3271021635, with
   the docker's game and seed 21. It's the health system's to settle: step the medbay through a long wait the way the
   logistics are stepped, or keep the test to waits cut the same way.
 - On a ship left starving, the deck chief is relieved once over "errands left waiting", because the tech sent for
