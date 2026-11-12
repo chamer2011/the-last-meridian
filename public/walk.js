@@ -442,6 +442,8 @@ function hereNode() {
     role.rest > 0 && el("button", { disabled: cannotWalk() || credits < role.rest, onclick: app.act({ action: "rest" }) }, `Rent a bunk (${role.rest} cr)`),
     role.rest > 0 && el("button", { disabled: cannotWalk(), onclick: app.act({ action: "rest", rough: true }) }, "Sleep rough"),
   ].filter(Boolean);
+  // And what the parts of the game that add to a room offer here, to anyone (src/room-hooks.js).
+  for (const act of view.acts ?? []) acts.push(el("button", { disabled: cannotWalk() || Boolean(act.disabled), title: act.detail ?? "", onclick: () => deed(act.id, act.key ?? null) }, act.label));
   // In a fight in the room, the panel has the two sides instead (public/live-fight.js).
   const roster = isoShown() ? liveRosterNode() : null;
   if (roster) {
@@ -837,6 +839,31 @@ async function workOn(thing, how) {
   app.render();
 }
 
+// One of the things a thing does besides (src/room-hooks.js): the order goes to the room, and what comes of it is said in
+// the thing's window, unless it opened a window of its own.
+async function doWith(thing, id) {
+  if (walk.working) return;
+  walk.working = true;
+  try {
+    const reply = await api("/api/walk", { action: id, key: thing.id });
+    app.ui.game = reply.game;
+    if (reply.check || reply.computer || reply.combat || reply.opened) {
+      walk.thing = null;
+      walk.looked = false;
+      if (reply.opened) app.openBag();
+    } else {
+      const fresh = reply.game.walk?.things.find((one) => one.id === thing.id);
+      walk.thing = { ...(fresh ?? thing), said: reply.said ?? null };
+      walk.looked = true;
+    }
+  } catch (err) {
+    walk.thing = { ...thing, said: err.message };
+    walk.looked = true;
+  }
+  walk.working = false;
+  app.render();
+}
+
 // ---- A thing's window, beside it ------------------------------------------
 
 // A thing, a part or a door answers in a window beside it, on a line, like the people's speech: the game's console
@@ -869,6 +896,12 @@ async function openStore(thing) {
 
 function thingChoices(thing) {
   if (thing.person) return personChoices(thing);
+  // What a thing does besides what its file says, from the parts of the game that add to a room: each an order of its own.
+  const more = (thing.does ?? []).map((act) => [act.label, act.detail ?? "", () => doWith(thing, act.id), Boolean(act.disabled)]);
+  if (more.length && !thing.part) {
+    const usual = thing.holds ? [["Open", "look through it, beside your pack", () => openStore(thing)]] : thing.done || !thing.written ? [] : [["Use", thing.have ? "you're already carrying one" : "", useThing, thing.have]];
+    return [...more, ...usual, ["Close", "", closeWindow]];
+  }
   if (thing.holds) return [["Open", "look through it, beside your pack", () => openStore(thing)], ["Close", "", closeWindow]];
   if (thing.actions || thing.part) return [...(thing.actions ?? []).map((action) => [action.label, action.detail, () => workOn(thing, action.id)]), ["Close", "", closeWindow]];
   return [
@@ -928,6 +961,12 @@ function thingLayer() {
   return el("div", { class: "walk-things", id: "walk-thing" }, thingPane(walk.thing));
 }
 
+// What else can be done with someone, from the parts of the game that add to a room (src/room-hooks.js): each an order
+// of its own, carried out once the player has walked over.
+const actRun = (person, act) => () => go({ action: "go", to: `person:${person.key}` }, () => deed(act.id, person.key));
+const actChoices = (person) => (person.acts ?? []).map((act) => [act.label, act.detail ?? "", actRun(person, act), Boolean(act.disabled)]);
+const actItems = (person) => (person.acts ?? []).map((act) => ({ label: act.label, detail: act.detail, disabled: Boolean(act.disabled), ...(act.ask ? { ask: act.ask } : {}), run: actRun(person, act) }));
+
 // "Give the medkit", or "Give 2 ration crates".
 // Sold when they're paying for it, at so much each.
 const giveLabel = (wants) => {
@@ -948,6 +987,7 @@ function personChoices(thing) {
     const carrying = app.ui.game.walk.carrying;
     return [
       ...(person.onCot && person.awake ? [["Talk", "beside the cot", () => go({ action: "go", to })]] : []),
+      ...actChoices(person),
       person.carried === "you" ? ["Put them down", "on a cot, in the medbay", () => deed("putdown")] : ["Carry them", person.dead ? "they're dead" : carrying ? "you're carrying someone" : "slowly, to the medbay", () => go({ action: "go", to }, () => deed("carry", person.key)), Boolean(person.dead || carrying || person.carried || person.onCot)],
       ["Registry", "print their record", () => registry(person.key)],
       ["Close", "", closeWindow],
@@ -963,6 +1003,7 @@ function personChoices(thing) {
     ["Talk", "", () => go({ action: "go", to })],
     // Someone waiting for something the player has on them can be given it (src/requests.js).
     ...(person.wants ? [[giveLabel(person.wants), person.wants.sell ? "what they'll pay for" : "what they asked you for", () => go({ action: "go", to }, () => deed("give", person.key))]] : []),
+    ...actChoices(person),
     ["Registry", "print their record", () => registry(person.key)],
     ["Pickpocket", person.wary ? "they're watching their pockets" : person.pocket, () => go({ action: "go", to }, () => deed("pickpocket", person.key)), person.wary],
     ["Attack", "starts a fight", asking(true)],
@@ -1074,6 +1115,7 @@ function menuFor(target) {
         color: person.color,
         items: [
           ...(person.onCot && person.awake ? [{ label: "Talk", detail: "beside the cot", run: () => go({ action: "go", to }) }] : []),
+          ...actItems(person),
           { label: "Look", run: () => lookAtPerson(person) },
           person.carried === "you"
             ? { label: "Put them down", detail: "on a cot, in the medbay", run: () => deed("putdown") }
@@ -1090,6 +1132,7 @@ function menuFor(target) {
       items: [
         { label: "Talk", run: () => go({ action: "go", to }) },
         ...(person.wants ? [{ label: giveLabel(person.wants), detail: person.wants.sell ? "what they'll pay for" : "what they asked you for", run: () => go({ action: "go", to }, () => deed("give", person.key)) }] : []),
+        ...actItems(person),
         { label: "Look", run: () => lookAtPerson(person) },
         { label: "Registry", detail: "print their record", run: () => registry(person.key) },
         { label: "Pickpocket", detail: person.wary ? "they're watching their pockets" : person.pocket, disabled: Boolean(person.wary), run: () => go({ action: "go", to }, () => deed("pickpocket", person.key)) },
@@ -1103,6 +1146,8 @@ function menuFor(target) {
       openThing(thing.id);
       then();
     });
+    // What the thing does besides, in its menu too.
+    const does = (thing.does ?? []).map((act) => ({ label: act.label, detail: act.detail, disabled: Boolean(act.disabled), run: there(() => doWith(walk.thing, act.id)) }));
     if (thing.part) {
       return {
         title: thing.name,
@@ -1121,6 +1166,7 @@ function menuFor(target) {
         items: [
           { label: "Look", run: () => openThing(thing.id) },
           { label: "Open", detail: "beside your pack", run: () => go({ action: "go", to: `thing:${thing.id}` }, () => openStore(thing)) },
+          ...does,
         ],
       };
     }
@@ -1130,6 +1176,7 @@ function menuFor(target) {
       items: [
         { label: "Look", run: () => openThing(thing.id) },
         { label: "Use", detail: thing.have ? "you're already carrying one" : "", disabled: Boolean(thing.have), run: there(() => useThing()) },
+        ...does,
       ],
     };
   }

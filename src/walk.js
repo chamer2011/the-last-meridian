@@ -27,6 +27,9 @@ import { pilesIn } from "./bag.js";
 import { colorForName, parseNarration } from "../public/story.js";
 import { COMBAT_ART, LOOKS, ROOM_KINDS, ROOM_TALK, WORLD_MAPS, roomsRedrawn } from "./world.js";
 import { notePut, putsOf } from "./puts.js";
+import { orderFor, personExtras, roomExtras, thingExtras } from "./room-hooks.js";
+// The parts of the game that add to a room: each registers itself with src/room-hooks.js when it's read.
+import "./hands.js";
 
 const STEPS = [[0, -1], [-1, 0], [1, 0], [0, 1]];
 const DOOR = "+";
@@ -1056,8 +1059,12 @@ export function walkCommand(game, body) {
       if (lying && !lying.going) throw new Error(lying.dead ? "They're dead." : body.action === "attack" ? "They're down already." : "Not while they're lying there, with everyone looking.");
       return body.action === "pickpocket" ? pickPocket(game, who, where) : attackPerson(game, who, where);
     }
-    default:
-      throw new Error("Unknown order.");
+    default: {
+      // An order one of the parts of the game that add to a room carries out (src/room-hooks.js).
+      const order = orderFor(body.action);
+      if (!order) throw new Error("Unknown order.");
+      return order(game, body, { walk, map, level, spot, people, room: walk.room ? null : level.roomAt(spot.x, spot.y) });
+    }
   }
 }
 
@@ -1309,6 +1316,8 @@ function personView(game, entry, level = null) {
     ...(asksNow(game, key) ? { asks: true } : {}),
     ...(wantedFrom(game, key) ? { wants: wantedFrom(game, key) } : {}),
     ...(isWary(game, game.location, key) ? { wary: true } : {}),
+    // What else can be done with them, from the parts of the game that add to a room (src/room-hooks.js).
+    ...personExtras(game, entry, key),
     // On a deck, which of its rooms they're in.
     ...(level?.areas.length ? { room: level.roomAt(entry.x, entry.y) } : {}),
   };
@@ -1328,6 +1337,8 @@ const thingView = (game, thing, level = null) => ({
   written: Boolean(thing.item || thing.used || thing.holds || (!isCaptain(game) && thing.usedOther)),
   // A thing with a holds line can be opened, and this is what the inventory calls it.
   ...(thing.holds ? { holds: true, store: `thing:${game.location}:${thing.id}` } : {}),
+  // What it does besides what its file says (src/room-hooks.js).
+  ...thingExtras(game, thing, level),
 });
 
 function exitView(game, exit, levelId) {
@@ -1476,6 +1487,8 @@ export function walkView(game) {
     pace: paceOf(bodyOf(game, "you")) * (game.carrying ? 0.5 : 1),
     // Who the player's carrying, by the key the room knows them by.
     ...(game.carrying && game.down?.[game.carrying] ? { carrying: { key: game.down[game.carrying].who } } : {}),
+    // What can be done in this room, from the parts of the game that add to one (src/room-hooks.js).
+    ...roomExtras(game, { place: game.location, room: roomNow, level }),
   };
 }
 

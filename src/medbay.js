@@ -488,6 +488,39 @@ export function doseOnRounds(game, place, key, wound, at) {
   state.log = [...(state.log ?? []), { day: Math.floor(at / 24), line }].slice(-8);
   return true;
 }
+// The player treats a patient with their own hands (src/hands.js): the next wound the medbay can treat, with its
+// doses, in its minutes over the player's own Medicine. It says what was done and how long it takes; the time is the
+// caller's to pass. A wound gone too far is the doctor's to deal with.
+export function treatByHand(game, place, key) {
+  const medbay = medbayOf(place);
+  if (!medbay?.room || !medbay.medicine || !medbay.treatments.length) throw new Error("There's nothing here to treat them with.");
+  if (key === YOU) throw new Error("Not your own: the medics see to you.");
+  if (!playerIn(game, place, medbay)) throw new Error(`They have to be treated in ${medbayCalled(place)}.`);
+  const state = stateFor(game, place);
+  if (state.treating[key]) throw new Error(`${medicName(game, place, state.treating[key].by)} is already seeing to them.`);
+  if (!roomPowered(game, place, medbay.room)) throw new Error(`${MedbayCalled(place)} has no power.`);
+  const wound = waitingTreatment(game, key, medbay.treatments)[0];
+  const treatment = wound ? treatmentFor(wound, medbay.treatments) : null;
+  if (!treatment) throw new Error("There's nothing more to do for them here.");
+  const hours = treatment.minutes / speedOf(game, place, [YOU], "medicine") / 60;
+  if (tooFarGone(wound, nowOf(game) + hours)) throw new Error("That wound has gone too far for you. It needs the doctor.");
+  if (!takeDoses(game, place, medbay, state, treatment.doses)) throw new Error(medbay.medicine.own ? "There's no medicine left here." : "The medicine cabinet is empty.");
+  const word = treatWound(game, key, wound, nowOf(game) + hours);
+  const what = wound.kind === "lost" ? `the stump of ${whose(game, key)} ${wound.part.replace("_", " ")}` : `${whose(game, key)} ${wound.words.replace(/^(an?|the) /, "").replace(/ has gone bad$/, " gone bad")}`;
+  const line = `You ${word === "splinted" && wound.kind !== "lost" ? "splint" : "dress"} ${what}`;
+  state.log = [...(state.log ?? []), { day: Math.floor(nowOf(game) / 24), line }].slice(-8);
+  return { line, hours, doses: treatment.doses };
+}
+// What the medbay could do for someone the player's standing beside, without doing it: the wound and what it takes, or
+// null. Reading it changes nothing.
+export function treatableByHand(game, place, key) {
+  const medbay = medbayOf(place);
+  if (!medbay?.room || !medbay.medicine || !medbay.treatments.length || key === YOU || !playerIn(game, place, medbay)) return null;
+  if (game.medbay?.[place]?.treating?.[key]) return null;
+  const wound = waitingTreatment(game, key, medbay.treatments)[0];
+  const treatment = wound ? treatmentFor(wound, medbay.treatments) : null;
+  return treatment ? { words: wound.words, doses: treatment.doses, minutes: Math.round(treatment.minutes / speedOf(game, place, [YOU], "medicine")) } : null;
+}
 // How many doses a day the medbay's been getting through, over the last week: for the ship's days of medicine left.
 export function dosesADay(game, place) {
   const used = game.medbay?.[place]?.used ?? {};

@@ -33,6 +33,7 @@ import { advanceSystems, jumpBlocked, roomEdge, shipSystemsView, wearDay } from 
 import { buildLoreIndex, findLoreIds } from "../public/story.js";
 import { bagView, roomFor, tiring } from "./bag.js";
 import { heldUp, questsView } from "./quests.js";
+import { clockExtras, dayExtras } from "./room-hooks.js";
 
 import { notePut } from "./puts.js";
 export { combatAction, startCombat } from "./combat.js";
@@ -280,7 +281,7 @@ export function passTime(game, hours, activity = "active") {
   advanceLife(game);
   const notes = hoursPass(game, hours, activity);
   // Last, anyone with something to ask the player, and anything they've asked that's done, put right or overdue.
-  return [...systems, ...command, ...medbay, ...notes, ...advanceLogistics(game), ...requestsMove(game)];
+  return [...systems, ...command, ...medbay, ...notes, ...advanceLogistics(game), ...clockExtras(game), ...requestsMove(game)];
 }
 
 // The clock running by itself while the player explores. It moves in moments, and every two hours
@@ -297,6 +298,8 @@ export function clockRuns(game, minutes) {
     if (hour % 2 === 0) notes.push(...hoursPass(game, 2, "active"));
   }
   notes.push(...advanceLogistics(game));
+  // What the parts of the game that add to a room do each time the clock has moved (src/room-hooks.js).
+  notes.push(...clockExtras(game));
   notes.push(...requestsMove(game));
   return notes;
 }
@@ -354,6 +357,8 @@ function hoursPass(game, hours, activity) {
     notes.push(...registerDay(game, day));
     // And now and then something wears out by itself, at a place whose systems file says how often.
     notes.push(...wearDay(game, day));
+    // And what they do once for each day that ends.
+    notes.push(...dayExtras(game, day));
   }
   syncVitals(game);
   return notes;

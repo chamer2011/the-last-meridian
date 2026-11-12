@@ -5,6 +5,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { boardScene, boardStories, boardStory, boardWorldItem, boardWorldList, checkBoardScene, saveBoardScene, saveBoardStory, saveBoardWorldItem, saveLayout } from "./src/board.js";
+import { isOrder } from "./src/room-hooks.js";
 import { ensureContactFiles, newCampaignId, saveCaptainSheet } from "./src/campaign.js";
 import { SKILLS } from "./src/character-data.js";
 import { checkCommand, startCheck, startChoiceCheck } from "./src/checks.js";
@@ -487,7 +488,7 @@ async function handleApi(req, res, route) {
     if (game.computer) throw new Error(COMPUTER_WAITING);
     const reply = walkCommand(game, body);
     // Using a thing or asking at a door changes more than where the player stands, and the story keeps a line about it.
-    if (["use", "ask", "work", "pickpocket", "attack", "carry", "putdown", "give"].includes(body.action)) {
+    if (["use", "ask", "work", "pickpocket", "attack", "carry", "putdown", "give"].includes(body.action) || isOrder(body.action)) {
       if (reply.said) log("notice", reply.said);
       // Something fixed or given may be what someone asked for, so it's counted at once.
       const asked = advanceRequests(game);
