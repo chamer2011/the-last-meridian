@@ -1,0 +1,34 @@
+# A salvage run
+draft: the AI's, not yet edited by the owner
+
+# At the place named here, You can offers a run out to a dead ship. It's played from the You can list, one job at a
+# time, against the air in your suit's bottle, which runs down with the clock whatever you're doing (pausing with
+# Space stops it, like everything). What you take is carried back when you go back to the shuttle. If the air runs
+# out first, the shuttle's crew haul you out and what you were carrying stays behind.
+#
+# The jobs: bring the power back at the junction box (it makes the hatch quick and wakes the bridge console), get the
+# hatch to the engine room open, go through the crew lockers, strip the engine room for parts (the big prize, behind
+# the hatch, and where something may still be aboard), and pull the log from the bridge console (it needs the power,
+# and some Hacking). A tool roll in your pack halves the junction box, the hatch and the engine room.
+#
+# Every number here is a first guess. "holds" are item ids from world/items, with commas between.
+#
+# After changing this file, run "npm run check-story", and close and reopen the game.
+
+at: graveyard
+the wreck: the hulk of the Harrow
+air: 90 minutes
+the shuttle: 20 minutes each way
+junction box: 15 minutes
+hatch by hand: 30 minutes
+hatch with power: 5 minutes
+lockers: 10 minutes
+lockers hold: medkit, emergency_patch
+engine room: 25 minutes
+engine room holds: parts_crate, parts_crate
+bridge console: 15 minutes
+bridge console needs: hacking 2
+bridge console pays: 60 credits
+something aboard: 1 in 4, scrap_rat
+out of air: stress 15
+again: after 3 days

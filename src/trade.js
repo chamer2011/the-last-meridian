@@ -151,7 +151,8 @@ const portsFrom = (place) => Object.entries(STAR_MAP.places ?? {}).filter(([id, 
 // What a port offers this week: the same all week, and gone once it's taken.
 export function offersAt(game, place) {
   const rules = tradeRules();
-  if (!rules || !isCaptain(game) || game.ship?.at !== place || game.location !== place) return { cargo: [], party: null };
+  // Nothing's offered to someone who's out at a wreck (src/salvage.js): they aren't on the dock to hear it.
+  if (!rules || !isCaptain(game) || game.ship?.at !== place || game.location !== place || game.salvage) return { cargo: [], party: null };
   const ports = portsFrom(place);
   if (!ports.length) return { cargo: [], party: null };
   const week = Math.floor(dayOf(game) / 7);
