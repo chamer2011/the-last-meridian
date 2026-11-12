@@ -8,6 +8,7 @@
 // question to put first for something that can't be taken back. This file imports nothing, so anything can import it.
 
 const people = [];
+const notes = [];
 const things = [];
 const rooms = [];
 const orders = new Map();
@@ -69,6 +70,10 @@ export function detourExtras(game, place) {
 // (game, place, room) => true while something spoils a room's air whatever its vents are doing: a fire, a hole.
 export const addAirSpoiler = (fn) => { spoilers.push(fn); };
 export const airSpoiled = (game, place, room) => spoilers.some((fn) => fn(game, place, room));
+
+// (game, place, room) => a line more for a room's description, or nothing: who's held in the brig (src/aftermath.js).
+export const addRoomNote = (fn) => { notes.push(fn); };
+export const roomNotes = (game, place, room) => notes.map((fn) => fn(game, place, room)).filter(Boolean);
 
 // (game, place) => true while a place's stores aren't to be refilled from nothing: something else supplies them.
 export const addRefillHold = (fn) => { holds.push(fn); };

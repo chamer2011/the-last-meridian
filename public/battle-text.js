@@ -11,6 +11,8 @@
 //     crew fight as: ship_hand
 //     the rest take cover in: The Quiet Room
 //     when they give up: The rest of them throw their sidearms down.
+//     morale falls by: 5, and 2 for each of yours who went down, and 5 more if you went down
+//     the council's confidence falls by: 10, and 5 more if you went down
 //
 //     Against you:
 //     - 6 mutineer_crew, up The Upper Forward Stair
@@ -31,8 +33,10 @@ export const BATTLE_HEADER = {
   "crew fight as": "crewAs",
   "the rest take cover in": "cover",
   "when they give up": "gaveUpLine",
+  "morale falls by": "morale",
+  "the council's confidence falls by": "confidence",
 };
-const HEADER_ORDER = ["draft", "place", "deck", "target", "giveUp", "crewAs", "cover", "gaveUpLine"];
+const HEADER_ORDER = ["draft", "place", "deck", "target", "giveUp", "crewAs", "cover", "gaveUpLine", "morale", "confidence"];
 const WORDS_FOR = Object.fromEntries(Object.entries(BATTLE_HEADER).map(([words, key]) => [key, words]));
 // The two lists, by their headings.
 export const BATTLE_SIDES = { "against you": "against", "with you": "with" };
@@ -40,6 +44,10 @@ export const BATTLE_SIDES = { "against you": "against", "with you": "with" };
 export const EVERYONE = "everyone on the deck who can fight";
 
 const GIVE_UP = /^when\s+(\d+)\s+in\s+(\d+)\s+of\s+them\s+are\s+(?:out\s+of\s+it|down)$/i;
+// What a battle costs aboard afterwards: so much, so much more for each on the player's side who went down, and so much
+// more if the player went down too (src/aftermath.js).
+const MORALE = /^(\d+)(?:,\s*and\s+(\d+)\s+for\s+each\s+of\s+yours\s+who\s+went\s+down)?(?:,\s*and\s+(\d+)\s+more\s+if\s+you\s+went\s+down)?$/i;
+const CONFIDENCE = /^(\d+)(?:,\s*and\s+(\d+)\s+more\s+if\s+you\s+went\s+down)?$/i;
 // A group's line: how many and who, or who; where they come in; when, if not at the start; and what's said as they come.
 const AGAINST = /^(\d+)\s+([a-z][a-z0-9_]*)\s*,\s*(up|in)\s+([^,:]+?)\s*(?:,\s*(\d+)\s+seconds?\s+in)?\s*(?::\s*(.+))?$/i;
 const WITH = /^(.+?)\s*,\s*(up|in)\s+([^,:]+?)\s*(?:,\s*(\d+)\s+seconds?\s+in)?\s*(?::\s*(.+))?$/i;
@@ -80,6 +88,18 @@ export function parseBattleText(text, id = "battle") {
       const value = top[2].trim();
       if (!value) {
         problem(line, `${top[1]}: needs something after the colon`);
+        return;
+      }
+      if (key === "morale") {
+        const found = value.match(MORALE);
+        if (!found) problem(line, 'morale falls by: is written as a number, then if you like ", and 2 for each of yours who went down" and ", and 5 more if you went down"');
+        else battle.morale = { base: Number(found[1]), each: Number(found[2] ?? 0), you: Number(found[3] ?? 0) };
+        return;
+      }
+      if (key === "confidence") {
+        const found = value.match(CONFIDENCE);
+        if (!found) problem(line, "the council's confidence falls by: is written as a number, then if you like: , and 5 more if you went down");
+        else battle.confidence = { base: Number(found[1]), you: Number(found[2] ?? 0) };
         return;
       }
       if (key === "giveUp") {
@@ -144,6 +164,16 @@ export function writeBattleText(battle) {
     if (key === "giveUp") {
       if (battle.giveUp === null) lines.push(`${WORDS_FOR.giveUp}: never`);
       else if (battle.giveUp) lines.push(`${WORDS_FOR.giveUp}: when ${battle.giveUp.of} in ${battle.giveUp.in} of them are out of it`);
+      continue;
+    }
+    if (key === "morale") {
+      const m = battle.morale;
+      if (m) lines.push(`${WORDS_FOR.morale}: ${[m.base, m.each ? `and ${m.each} for each of yours who went down` : null, m.you ? `and ${m.you} more if you went down` : null].filter((one) => one !== null).join(", ")}`);
+      continue;
+    }
+    if (key === "confidence") {
+      const m = battle.confidence;
+      if (m) lines.push(`${WORDS_FOR.confidence}: ${[m.base, m.you ? `and ${m.you} more if you went down` : null].filter((one) => one !== null).join(", ")}`);
       continue;
     }
     if (battle[key]) lines.push(`${WORDS_FOR[key]}: ${battle[key]}`);

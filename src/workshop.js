@@ -10,7 +10,7 @@
 // game.workshop[place] = { at, jobs: { [id]: { kind: "mend"|"build", key, by, part, wound, at, crates, since, until } },
 // ready: { [key]: { part, at } }, log, short }. Reading any of it writes nothing.
 
-import { hurtAt, keyAt, limbOf, limbsWanted, mendedByTechs, queueOf, treatWound, waitingMending, woundsNow } from "./body.js";
+import { hurtAt, keyAt, limbOf, limbsWanted, mendedByTechs, nameOfKey, queueOf, treatWound, waitingMending, woundsNow } from "./body.js";
 import { findCharacter } from "./campaign.js";
 import { calledBy, holderKey, jobByWords, lostReason, onJob, postByWords, speedOf } from "./command.js";
 import { isAbout } from "./life.js";
@@ -104,7 +104,7 @@ const nameOf = (game, place, key) => {
   if (key === YOU) return "you";
   const who = whoOf(place, key);
   const person = findCharacter(game.campaign, who);
-  return person && !person.crowd ? person.name : who;
+  return person && !person.crowd ? person.name : key.startsWith("id:") ? who : nameOfKey(game, key);
 };
 const whose = (game, place, key) => (key === YOU ? "your" : `${nameOf(game, place, key)}'s`);
 const menderName = (game, place, key) => {

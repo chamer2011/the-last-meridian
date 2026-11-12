@@ -9,6 +9,8 @@ they give up: when 2 in 3 of them are out of it
 crew fight as: ship_hand
 the rest take cover in: The Quiet Room
 when they give up: The rest of them throw their sidearms down on the deck plates and put their hands on their heads.
+morale falls by: 5, and 2 for each of yours who went down, and 5 more if you went down
+the council's confidence falls by: 10, and 5 more if you went down
 
 Against you:
 - 6 mutineer_crew, up The Upper Forward Stair

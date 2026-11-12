@@ -71,13 +71,14 @@ export function deathProblems() {
 
 // ---- Dying ---------------------------------------------------------------------------------------------
 
-// The key someone's day knows them by, and what they're called, from their body key.
-function whoOf(key) {
+// The key someone's day knows them by, and what they're called, from their body key. Someone with no day anywhere, such
+// as a mutineer beaten in a battle, goes by the name kept on their body's record or where they lie (src/aftermath.js).
+function whoOf(key, game) {
   if (key.startsWith("id:")) return { who: key.slice(3), place: null };
   const [, place, ...rest] = key.split(":");
   const name = rest.join(":");
   for (const group of WORLD_LIFE[place]?.crowd ?? []) for (const [one] of group.names) if (lower(one) === name) return { who: one, place };
-  return { who: name, place };
+  return { who: game?.bodies?.[key]?.name ?? game?.down?.[key]?.who ?? name, place };
 }
 const nameOf = (game, who) => {
   const person = findCharacter(game.campaign, who) ?? (WORLD_CHARACTERS[who] ? { name: WORLD_CHARACTERS[who].name } : null);
@@ -115,7 +116,7 @@ const illnessWords = (id) => illnessKinds().find((one) => one.id === id)?.words 
 // A story's death says in its own words how it happened, and comes from its scene.
 export function die(game, key, { at = nowOf(game), cause = "bled", part = null, kind = null, words: told = null, from = "the medbay" } = {}) {
   if (!key || key === "you" || deathOf(game, key)) return [];
-  const { who, place: crowdPlace } = whoOf(key);
+  const { who, place: crowdPlace } = whoOf(key, game);
   const down = game.down?.[key] ?? null;
   const place = down?.place ?? crowdPlace ?? WORLD_CHARACTERS[who]?.location ?? game.location;
   const rules = deathRulesOf(place) ?? { room: null, names: null, morale: 0 };

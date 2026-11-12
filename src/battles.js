@@ -15,6 +15,8 @@ import { lifeOf } from "./life.js";
 import { ROUND_SECONDS, goBattle } from "./live-fight.js";
 import { worldDir } from "./paths.js";
 import { canStand, fightGround, mapFor, roomsOn, startInRoom, walkOf } from "./walk.js";
+// What happens to the people afterwards: the fallen, the prisoners, what it costs aboard.
+import "./aftermath.js";
 
 export const BATTLES_DIR = process.env.GAME_BATTLES_DIR ?? path.join(worldDir, "battles");
 
@@ -241,6 +243,8 @@ export function startBattle(game, id, { leadIn = null } = {}) {
       total,
       giveUp: battle.giveUp ?? null,
       ...(battle.gaveUpLine ? { gaveUpLine: battle.gaveUpLine } : {}),
+      ...(battle.morale ? { morale: battle.morale } : {}),
+      ...(battle.confidence ? { confidence: battle.confidence } : {}),
       waves,
     },
   });

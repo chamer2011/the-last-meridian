@@ -479,8 +479,23 @@ const paneCalled = (id) => {
   return node?.classList.contains("pop-balloon") ? node : null;
 };
 
+// The notes at the top left keep out from under the story's words over the room. With a quest tracker in the corner
+// they're under it and the words are beside it; with none (a game with no quest yet) they'd be at the top, right where
+// the words go, so they go under the words instead, for as long as the words are there.
+function placeNotes() {
+  const notes = document.getElementById("pop-notes");
+  if (!notes) return;
+  notes.style.top = "";
+  const caption = document.getElementById("pop-story");
+  if (!caption?.offsetHeight || !notes.offsetHeight) return;
+  const a = notes.getBoundingClientRect();
+  const b = caption.getBoundingClientRect();
+  if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) notes.style.top = `${notes.offsetTop + (b.bottom - a.top) + 6}px`;
+}
+
 function placeAll() {
   const { game } = app.ui;
+  placeNotes();
   placePane(paneCalled("pop-balloon"), speakerHere(current())?.key ?? null);
   placePane(paneCalled("pop-answer"), document.getElementById("pop-answer")?.dataset.key ?? null, { choices: true, anywhere: true });
   placePane(paneCalled("talk"), game?.talk?.key ?? null, { choices: true, anywhere: true });

@@ -12,7 +12,7 @@
 // call: { by, phase, since, bed }, going }. who is the key their day knows them by (an id, or a crowd name); bed is a cot
 // (a spot in the place's life file) or "@" and the medbay's room for its floor. Reading any of it writes nothing.
 
-import { addWounds, beatenFor, bleedingOf, cantGetUp, deathOf, fitLimb, mendedByTechs, takeLimb, tooFarGone, handsFree, howBad, hurtAt, keyAt, queueOf, restingFrom, seriousWound, startWounds, treatmentFor, treatWound, waitingTreatment, woundKindNamed, woundsNow } from "./body.js";
+import { addWounds, beatenFor, bleedingOf, cantGetUp, deathOf, fitLimb, mendedByTechs, takeLimb, tooFarGone, handsFree, howBad, hurtAt, keyAt, nameOfKey, queueOf, restingFrom, seriousWound, startWounds, treatmentFor, treatWound, waitingTreatment, woundKindNamed, woundsNow } from "./body.js";
 import { findCharacter, fullName } from "./campaign.js";
 import { calledBy, deposedStart, holderKey, jobByWords, lostReason, onJob, postByWords, speedOf, tallyDuty } from "./command.js";
 import { hasReached, isAbout, whoIsIn } from "./life.js";
@@ -488,7 +488,7 @@ export function doseOnRounds(game, place, key, wound, at) {
   if (!roundsDose(game, place, at)) return false;
   treatWound(game, key, wound, at);
   const state = stateFor(game, place);
-  const line = `On the rounds, ${key === YOU ? "you're" : `${nameOf(game, { who: whoOf(place, key) ?? key })} is`} dosed for ${wound.words}`;
+  const line = `On the rounds, ${key === YOU ? "you're" : `${nameOf(game, { who: whoOf(place, key) ?? nameOfKey(game, key) })} is`} dosed for ${wound.words}`;
   state.log = [...(state.log ?? []), { day: Math.floor(at / 24), line }].slice(-8);
   return true;
 }
@@ -537,7 +537,7 @@ export function dosesADay(game, place) {
 export const medbayDoses = (place) => Boolean(medbayOf(place)?.medicine);
 // A medic as the ship calls them: by their post (Dr. Aduro), else their title or name.
 const medicName = (game, place, key) => { const name = calledBy(game, place, key); return name.charAt(0).toUpperCase() + name.slice(1); };
-const whose = (game, key) => (key === YOU ? "your" : `${nameOf(game, { who: whoOf(game.down?.[key]?.place ?? game.location, key) ?? key })}'s`);
+const whose = (game, key) => (key === YOU ? "your" : `${nameOf(game, { who: whoOf(game.down?.[key]?.place ?? game.location, key) ?? nameOfKey(game, key) })}'s`);
 const woundOf = (game, key, job) => (key === YOU ? game.wounds : game.bodies?.[key]?.wounds)?.find((wound) => wound.part === job.part && wound.kind === job.kind && wound.at === job.at && !wound.dressed) ?? null;
 
 // The medbay over the time since it was last run, step by step: each treatment ends when its time is up, and a free
@@ -759,6 +759,27 @@ function lyingAt(place, d) {
   }
   return map.levels[d.level] ? { level: d.level, x: d.x, y: d.y } : null;
 }
+// Whoever's down at a place with no day there, such as a mutineer beaten in a battle (src/aftermath.js): the life engine
+// doesn't walk them, so they're drawn where their record says, on their cot, or with whoever's carrying them. Someone
+// with a file is left out, since the story keeps them. Each is as the life engine would show them.
+export function unlistedDown(game, place, levelId) {
+  const people = game.life?.places?.[place] ?? {};
+  const medbay = medbayOf(place);
+  const out = [];
+  for (const [, d] of downAt(game, place)) {
+    if (!d.who || d.going || hasADayAt(place, d.who) || WORLD_CHARACTERS[d.who]) continue;
+    const carrier = d.carriedBy === YOU ? (game.walk && !game.walk.room ? game.walk : null) : d.carriedBy ? people[d.carriedBy] : null;
+    const at = d.carriedBy ? (carrier ? { level: carrier.level, x: carrier.x, y: carrier.y } : null) : lyingAt(place, d);
+    if (!at || at.level !== levelId) continue;
+    const doing = d.dead ? "dead, under a blanket"
+      : d.carriedBy ? `being carried to ${medbayCalled(place)}`
+        : d.bed?.startsWith("@") && d.bed === `@${medbay?.room}` ? `lying on ${medbayCalled(place)}'s floor`
+          : d.bed ? "laid up on a cot" : `lying where they fell, ${d.why ?? "down"}`;
+    out.push({ id: null, name: d.who, x: at.x, y: at.y, crowd: true, asleep: true, doing });
+  }
+  return out;
+}
+
 // Everyone at a place as their days would first put them, with whoever's down already lying where they are, so that a
 // game begins with Vik and Hana on their cots instead of walking there. It returns a new set and changes nothing given.
 export function laidWhereTheyAre(game, place, people) {

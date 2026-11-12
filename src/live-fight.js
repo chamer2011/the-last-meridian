@@ -787,6 +787,13 @@ function foughtWithoutYou(game, ground, log) {
 
 const listed = (words) => (words.length < 2 ? words.join("") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`);
 
+// What happens to the people when a battle ends, before the fight itself is put away (src/aftermath.js): the fallen
+// laid down, the other side's taken prisoner, what it costs aboard. The rules can't load that file, so it says.
+let battleEnding = null;
+export const tellBattleEnding = (fn) => {
+  battleEnding = fn;
+};
+
 // A battle's over: everyone on the player's side who's still standing stays where it left them, and goes back to their
 // day from there; the rest is src/combat.js's, as for any fight; then what the story keeps of it, in a line and a record.
 function finishBattle(game, ground, ended, log) {
@@ -804,6 +811,7 @@ function finishBattle(game, ground, ended, log) {
     if (one.hp > 0 && state && spot && canStand(ground.level, spot.x, spot.y)) Object.assign(state, { level: ground.level.id, x: spot.x, y: spot.y, path: null });
   }
   // Two of the fallen don't lie on one square: the second is moved to the nearest one free, which is where they fell.
+  // (This comes before the people are laid down, so they lie where they're drawn.)
   const lying = new Set();
   for (const one of [...c.allies, ...c.enemies]) {
     if (one.hp > 0 || !one.live) continue;
@@ -816,14 +824,18 @@ function finishBattle(game, ground, ended, log) {
     one.live.x = spot.x;
     one.live.y = spot.y;
   }
+  // The people first: the fallen laid down, the other side's taken prisoner, and what it costs aboard, so that the hours
+  // a player who went down spends on a cot are hours the medics spend on everyone.
+  if (battleEnding) addNotes(c, log, battleEnding(game, c, ground, ended) ?? []);
   const outcome = finish(game, ended, log);
   outcome.battle = battle.title;
   const them = [`${down} of them down`, gaveUp ? `${gaveUp} gave up` : null, talked ? `${talked} talked out of it` : null].filter(Boolean).join(", ");
   const ours = fallen.length ? `Down on your side: ${listed(fallen)}.` : "Nobody on your side went down.";
+  const brig = gaveUp + talked ? ` ${gaveUp + talked === 1 ? "The one who gave up is" : "Those who gave up are"} taken to the brig${down ? ", and the rest will follow once they're on their feet" : ""}.` : "";
   const woke = /came to/.test(outcome.summary ?? "");
   const summary = ended === "defeat"
-    ? `You went down in ${battle.title}, and it was fought out without you: ${them}. ${ours}${woke ? " You came to in the medbay." : ""}`
-    : `${battle.title} is over: ${them}. ${ours}`;
+    ? `You went down in ${battle.title}, and it was fought out without you: ${them}. ${ours}${brig}${woke ? " You came to in the medbay." : ""}`
+    : `${battle.title} is over: ${them}. ${ours}${brig}`;
   outcome.summary = summary;
   if (game.lastFight) game.lastFight.summary = summary;
   // What the story after it can read: how it ended, how many on each side, and who went down.

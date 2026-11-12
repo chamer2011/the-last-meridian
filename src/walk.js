@@ -8,7 +8,7 @@
 // and a campaign can keep its own rooms in its folder, so they stay the same from then on.
 
 import { bleedingOf, bodyOf, keyAt, lookLine, paceOf } from "./body.js";
-import { awakeInMedbay, carry, downForStory, downRecord, putDown } from "./medbay.js";
+import { awakeInMedbay, carry, downForStory, downRecord, putDown, unlistedDown } from "./medbay.js";
 import { namesLook, readNames } from "./death.js";
 import { allCharacters, campaignRooms, findCampaignRoom, findCharacter, fullName, saveCampaignRoom } from "./campaign.js";
 import { startCheck, startChoiceCheck } from "./checks.js";
@@ -27,7 +27,7 @@ import { pilesIn } from "./bag.js";
 import { colorForName, parseNarration } from "../public/story.js";
 import { COMBAT_ART, LOOKS, ROOM_KINDS, ROOM_TALK, WORLD_MAPS, roomsRedrawn } from "./world.js";
 import { notePut, putsOf } from "./puts.js";
-import { orderFor, personExtras, roomExtras, thingExtras } from "./room-hooks.js";
+import { orderFor, personExtras, roomExtras, roomNotes, thingExtras } from "./room-hooks.js";
 // The parts of the game that add to a room: each registers itself with src/room-hooks.js when it's read.
 import "./hands.js";
 import "./uses.js";
@@ -621,7 +621,9 @@ function peopleOnLevel(game, walk, level) {
   const posted = level.homes.filter((home) => !moved.has(home.id) && atPost(game, home.id) && !hasADay(walk.place, home.id));
   const living = livesHere(walk.place) ? peopleAboard(game, walk.place, level.id).filter((one) => !moved.has(keyOf(one))) : [];
   // Someone the player has beaten in a fight is off getting patched up for a while.
-  return [...posted, ...living, ...(walk.withLevel === level.id ? walk.with : [])].filter((one) => !isHurt(game, walk.place, keyOf(one)));
+  // Whoever's down with no day here, such as a mutineer beaten in a battle, lies where their record has them.
+  const fallen = livesHere(walk.place) ? unlistedDown(game, walk.place, level.id) : [];
+  return [...posted, ...living, ...(walk.withLevel === level.id ? walk.with : []), ...fallen].filter((one) => !isHurt(game, walk.place, keyOf(one)));
 }
 
 const keyOf = (entry) => entry.id ?? entry.name;
@@ -1485,7 +1487,9 @@ export function walkView(game) {
     // Where the player can walk, a row of the room to a line: "." for floor, a space for anything else. Ways out are
     // under exits, and people under people, since they move. A door the systems have locked isn't floor.
     floor: floorOf(level, locked),
-    here: { id: roomNow, name: room?.name ?? level.name, desc: room?.desc ?? level.desc, ...(level.drawn ? { drawn: level.drawn } : {}), ...(onDeck ? { deck: { id: level.id, name: level.name } } : {}) },
+    // A room's description, with what the parts of the game that add to a room have to say about it now: who's held in
+    // the brig (src/room-hooks.js).
+    here: { id: roomNow, name: room?.name ?? level.name, desc: [room?.desc ?? level.desc, ...roomNotes(game, game.location, roomNow)].filter(Boolean).join(" "), ...(level.drawn ? { drawn: level.drawn } : {}), ...(onDeck ? { deck: { id: level.id, name: level.name } } : {}) },
     people: peopleOnLevel(game, walk, level).map((entry) => personView(game, entry, level)),
     things: [...level.things.map((thing) => thingView(game, thing, level)), ...(walk.room ? [] : roomsOn(map, level.id).flatMap((one) => partThings(game, game.location, one.id).map((thing) => (onDeck ? { ...thing, room: one.id } : thing)))), ...pilesIn(game, game.location, roomId(walk, level)).map((pile) => ({ ...pile, store: pile.id }))],
     // On a deck, each way out says which room it's in, a shut door between rooms counting as in the player's room.

@@ -204,8 +204,14 @@ test("fought out, it ends, the record keeps how, the fallen lie where they fell,
   // Whoever went down on the player's side and has a day aboard lies where they fell, and no two on one square.
   const lying = Object.values(game.down ?? {}).filter((one) => one.level === "deck1");
   assert.equal(new Set(lying.map((one) => `${one.x},${one.y}`)).size, lying.length, "nobody lies on top of anyone");
-  // With no time gone by, every one of them is still lying on the deck: everyone on the player's side has a day aboard.
-  if (outcome.result !== "defeat") assert.equal(lying.length, record.fallen.length, `${record.fallen.join(", ")} went down, and ${lying.length} lie on the deck`);
+  // With no time gone by, every one of them is still lying on the deck: everyone on the player's side has a day aboard,
+  // and the beaten of the other side lie there too, under the fight's names (src/aftermath.js).
+  const theirs = lying.filter((one) => /^Mutineer( #\d+)?$/.test(one.who));
+  const ours = lying.filter((one) => !theirs.includes(one));
+  if (outcome.result !== "defeat") {
+    assert.equal(ours.length, record.fallen.length, `${record.fallen.join(", ")} went down, and ${ours.length} lie on the deck`);
+    assert.equal(theirs.length, record.down, `${record.down} of them went down, and ${theirs.length} lie on the deck`);
+  }
   // The story goes on from how it ended.
   assert.equal(publicState(game).storyWaiting, true);
   const said = play(game, { event: "continue" });

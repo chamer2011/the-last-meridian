@@ -20,6 +20,10 @@ Here is mutiny.txt, the battle that opens the game:
                                                   own fight as, under their own names, with their own bodies)
     the rest take cover in: The Quiet Room       (a room on that deck: anyone there who doesn't fight goes there)
     when they give up: The rest of them throw their sidearms down.    (said when they give up)
+    morale falls by: 5, and 2 for each of yours who went down, and 5 more if you went down
+    the council's confidence falls by: 10, and 5 more if you went down
+                                                 (what the battle costs aboard, when it's over: the
+                                                  ship's morale and the council's confidence in you)
 
     Against you:
     - 6 mutineer_crew, up The Upper Forward Stair
@@ -36,8 +40,9 @@ The lines at the top
 
 place, deck and they make for are needed. The others can be left out: without they give up, they fight until the
 last of them is down; without crew fight as, a crew member with no fight of their own stays out of it and takes
-cover; without the rest take cover in, whoever doesn't fight stays where they are. A line that starts with // is a
-note for whoever writes, and draft: says who wrote it.
+cover; without the rest take cover in, whoever doesn't fight stays where they are; without morale falls by or the
+council's confidence falls by, the battle costs nothing aboard. A line that starts with // is a note for whoever
+writes, and draft: says who wrote it.
 
 Against you
 -----------
@@ -66,5 +71,15 @@ How it ends
 
 When everyone against you is down, talked out of it or has given up, it's won. If you go down, it goes on without
 you, and you come to in the medbay once it's over: whoever's still against you when it's done gives up to the rest
-of the crew. Whoever's beaten on either side lies where they fell, and the medics come for them, as after any fight.
-The scene that started the battle goes on from won, lost or talked.
+of the crew. The scene that started the battle goes on from won, lost or talked.
+
+Afterwards
+----------
+
+Whoever's beaten on your side lies where they fell, and the medics come for them, as after any fight. Whoever's
+beaten on the other side lies there too, under the name the fight gave them (Mutineer #3), and the medics come for
+them as well, after your own: they're carried to the medbay, treated with its medicine, and can bleed to death like
+anyone, when their name goes up as an unnamed mutineer. Once they're on their feet they're walked to the brig. Those
+who gave up, or were talked out of it, go straight there. The brig keeps them as a number, without names: the room
+says how many, and so does the Command menu. Morale and the council's confidence fall as the file says, and everyone
+who fought beside you remembers it.

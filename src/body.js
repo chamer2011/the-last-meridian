@@ -293,7 +293,9 @@ export function bodyOf(game, who) {
   const person = who.id ? findCharacter(game.campaign, who.id) : null;
   if (who.id && !person) return null;
   const key = person ? `id:${person.id}` : crowdKey(who.place ?? game.location, who.name);
-  const cached = made.get(`${seed}|${key}`);
+  // Someone with no day anywhere, such as a mutineer beaten in a battle, keeps the species they fought as.
+  const kept = person ? null : game.bodies?.[key]?.species ?? null;
+  const cached = made.get(`${seed}|${key}|${kept ?? ""}`);
   if (cached) return withWounds(game, key, cached);
   let body;
   if (person) {
@@ -303,10 +305,10 @@ export function bodyOf(game, who) {
     body = makeBody(seed, key, { species: person.species ?? "human", age, job: [person.title, person.role].filter(Boolean).join(" ") }, lines);
   } else {
     if (!who.name) return null;
-    body = makeBody(seed, key, { ...crowdWho(who.name), job: crowdJob(who.name) }, startMarks(key));
+    body = makeBody(seed, key, { ...crowdWho(who.name), ...(kept ? { species: kept } : {}), job: crowdJob(who.name) }, startMarks(key));
   }
   if (made.size >= MOST_MADE) made.clear();
-  made.set(`${seed}|${key}`, body);
+  made.set(`${seed}|${key}|${kept ?? ""}`, body);
   return withWounds(game, key, body);
 }
 
@@ -362,7 +364,7 @@ const rulesOfWound = (wound) => {
 function speciesOfKey(game, key) {
   if (key === "you") return game.character?.species ?? "human";
   if (key.startsWith("id:")) return findCharacter(game.campaign, key.slice(3))?.species ?? "human";
-  return crowdWho(key.split(":").slice(2).join(":")).species;
+  return game.bodies?.[key]?.species ?? crowdWho(key.split(":").slice(2).join(":")).species;
 }
 
 // How many hours a wound of a kind lasts left to itself, at the usual pace: its days untreated, or the file's "left alone"
@@ -444,7 +446,9 @@ export function nameOfKey(game, key) {
   const [, place, ...rest] = key.split(":");
   const name = rest.join(":");
   for (const group of WORLD_LIFE[place]?.crowd ?? []) for (const [one] of group.names) if (lower(one) === name) return one;
-  return name;
+  // Someone with no day anywhere keeps the name they were given on their body's record, or on the record of where they
+  // lie: their key only has it in small letters.
+  return game.bodies?.[key]?.name ?? game.down?.[key]?.who ?? name;
 }
 // A limb lost goes on the record, for the stories to react to: in a fight, to rot, or by the story's own hand.
 function limbOnRecord(game, key, part, at) {
@@ -648,7 +652,8 @@ export function passWounds(game, hours, { speed = 1 } = {}) {
     if (held.died || deathOf(game, key)) continue;
     const now = live(key, held);
     if (now && (now.died || now.wounds.length || now.blood < 100)) game.bodies[key] = { ...held, ...now };
-    else if (held.fitted?.length) game.bodies[key] = { fitted: held.fitted, ...(now ? { wounds: now.wounds, blood: now.blood } : { wounds: [] }) };
+    // Fitted limbs are kept, and so is the name and species of someone with no day anywhere (src/aftermath.js).
+    else if (held.fitted?.length || held.name) game.bodies[key] = { ...(held.fitted?.length ? { fitted: held.fitted } : {}), ...(held.name ? { name: held.name, species: held.species } : {}), ...(now ? { wounds: now.wounds, blood: now.blood } : { wounds: [] }) };
     else delete game.bodies[key];
   }
   return told;

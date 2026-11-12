@@ -2330,9 +2330,10 @@ export function commandView(game, place = "meridian") {
     candidate: shortName(game, one.candidate),
     by: one.by ? shortName(game, one.by) : null,
   })) : [];
-  // How things stand aboard: the mutiny's stage, the officers' loyalty, the council's confidence, who's in the brig,
-  // and whether the player was relieved of command.
+  // How things stand aboard: the mutiny's stage, the officers' loyalty, the council's confidence, who's in the brig
+  // (the prisoners without names among them), and whether the player was relieved of command.
   const m = state?.mutiny;
+  const held = state?.prisoners;
   const mood = model.mutiny ? {
     stage: m?.stage ?? 0,
     words: STAGE_WORDS[m?.stage ?? 0],
@@ -2340,8 +2341,34 @@ export function commandView(game, place = "meridian") {
     confidence: confidenceOf(game, place),
     brews: { morale: model.mutiny.morale, loyalty: model.mutiny.loyalty },
     due: m?.due && m.due !== "brig" && m.ringleader ? `${upperFirst(calledBy(game, place, m.ringleader))} ${m.due === "delegation" ? "and some of the officers are asking to see you, together" : "wants a quiet word with you"}: carry on with the story.` : null,
-    brig: Object.entries(state?.brig ?? {}).map(([key, held]) => `${personCalled(game, key)}, until day ${held.until}`),
+    brig: [...Object.entries(state?.brig ?? {}).map(([key, one]) => `${personCalled(game, key)}, until day ${one.until}`), ...prisonerWords(held)],
     deposed: state?.deposed && !captain ? `You were relieved of command on day ${state.deposed.day}, when ${personCalled(game, state.deposed.by)} ${state.deposed.stepped ? "took the chair you gave up" : "and the officers took the ship"}.` : null,
   } : null;
   return { place, name: model.name, groups, watchBill, reviews, waiting, mood };
+}
+
+// ---- Prisoners without names ------------------------------------------------------------------------------------
+
+// The brig also holds prisoners without names, as a number: the other side of a battle (src/aftermath.js). Those who
+// gave up are held at once; those who were beaten lie where they fell, go to the medbay like anyone, and are walked to
+// the brig once they're on their feet (coming, by the name the fight gave them); died counts those who didn't live.
+export function prisonersState(game, place) {
+  const state = commandState(game, place);
+  state.prisoners ??= { held: 0, coming: [], died: 0, since: dayNow(game) };
+  return state.prisoners;
+}
+export const prisonersAt = (game, place) => stateOf(game, place)?.prisoners ?? null;
+// What the Command menu says about them, beside whoever's in the brig by name.
+function prisonerWords(held) {
+  if (!held || (!held.held && !held.coming?.length)) return [];
+  const count = (n) => `${n} mutineer${n === 1 ? "" : "s"}`;
+  const coming = held.coming?.length ? `${held.held ? ", and " : ""}${count(held.coming.length)} still down or in the medbay, to follow` : "";
+  return [`${held.held ? `${count(held.held)}, without names, since day ${held.since}` : ""}${coming}`];
+}
+
+// The council's confidence in the captain, moved by something that happened: a battle aboard (src/aftermath.js).
+export function shakeConfidence(game, place, by) {
+  const state = commandState(game, place);
+  state.confidence = Math.max(0, Math.min(100, confidenceOf(game, place) + by));
+  return state.confidence;
 }
