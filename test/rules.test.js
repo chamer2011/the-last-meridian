@@ -326,15 +326,19 @@ test("a fight always finishes, and losing is not game over", () => {
     startCombat(game, "choir_hunter");
     let outcome;
     let rounds = 0;
+    const events = [];
     do {
       outcome = combatAction(game, { type: "attack" });
+      events.push(...outcome.events);
       rounds += 1;
     } while (!outcome.over && rounds < 500);
     assert.ok(outcome.over);
     assert.equal(game.combat, null);
     assert.ok(game.hp >= 1);
-    // Losing leaves the wounds the hits left, and the hit that put the player down always leaves one.
-    if (outcome.result === "defeat") assert.ok(game.wounds.length >= 1);
+    // Losing leaves the wounds the hits left, and the hit that put the player down always leaves one. Beaten aboard,
+    // they come to in the medbay hours later, where a small one may have been seen to already, so it's the fight's own
+    // lines that are asked.
+    if (outcome.result === "defeat") assert.ok(events.some((event) => event.wound && event.on === "you"), "the fight left the player a wound");
   }
 });
 
