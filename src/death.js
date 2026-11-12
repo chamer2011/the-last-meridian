@@ -92,6 +92,8 @@ function causeWords(died, down) {
   if (died.cause === "illness") return `of ${illnessWords(died.kind)}, with nobody to dose it`;
   if (down?.bed?.startsWith("@")) return "bled to death on the medbay's floor";
   if (down?.bed) return "bled to death on a cot in the medbay";
+  if (down?.carriedBy === "you") return "bled to death in your arms";
+  if (down?.carriedBy) return "bled to death on the way to help";
   if (down) return "bled to death where they fell";
   return "bled to death";
 }

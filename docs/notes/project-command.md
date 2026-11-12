@@ -31,3 +31,7 @@ Flagged to them on the page: their own rule that nothing from another game goes 
 **Why:** they want a living chain of command on the ship, where posts change hands by how well people do, the captain can lose the ship, and jobs are assigned from the bridge.
 
 **How to apply:** build nothing until they name a step, then only that step, tested with a stand-in AI; tell them before any change to the AI's instructions or tools. It leans on [project-logistics](project-logistics.md) (the machines' workers and the errands' carriers), [project-fleet-layer](project-fleet-layer.md) (the council and the chair now in src/ship.js) and [project-world-engine](project-world-engine.md) (people with days).
+
+## From the deep check (2026-11-12)
+
+See `project-deep-check.md`. The mutiny was played every way by script, from the captain's side and from below, with a month after each ending: nothing broke. Two things changed: the delegation keeps its ringleader while its scene is open (`commandSceneOpen`), since stepping down, an arrest or the fight happened to nobody once things had eased under an unanswered delegation; and the line that says the chair changed hands, or who was arrested, now comes before the line about who was given the post they left. A job nobody starts the game in (`plainDay`) had a step with no place, which stopped the clock for good. Left: a post emptied while there's no first officer waits for the captain, and a starving ship's deck chief is relieved once over "errands left waiting" at empty shuttle stores.

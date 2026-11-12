@@ -185,7 +185,9 @@ test("a follower can be knocked out, and then stops fighting while the fight goe
 test("the fight is lost when the player falls, even with followers still standing", () => {
   const game = newGame();
   startCombat(game, "choir_hunter", { allies: ["voss"] });
+  // The follower can't be brought down: nothing gets past their guard but a lucky blow, and they can take any number of those.
   game.combat.allies[0].defense = 1000;
+  game.combat.allies[0].hp = game.combat.allies[0].maxHp = 100000;
   game.combat.enemies[0].attack = 100;
   game.combat.enemies[0].hp = 100000;
   let outcome;
@@ -419,6 +421,8 @@ test("running away takes the followers along", () => {
   startCombat(game, "dock_thug", { allies: ["voss"] });
   // Otherwise a follower might win the fight before the player gets away.
   game.combat.enemies[0].hp = 100000;
+  // And nothing the thug lands breaks a leg, which would stop the running.
+  game.combat.enemies[0].damage = [0, 0];
   const outcome = playOut(game, { type: "flee" });
   assert.equal(outcome.result, "fled");
   assert.match(outcome.summary, /^You got away/);

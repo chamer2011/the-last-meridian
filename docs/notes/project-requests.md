@@ -81,3 +81,7 @@ The plan, in order: (1) the first asks, the ship's stores; (2) every kind of goa
 **Why:** they asked how organic quests would look before anything was built, and big updates are planned, chosen, then built a step at a time after their test.
 
 **How to apply:** all seven steps are built; anything more (the plan's later list) only if they ask. The words of the nineteen requests are my drafts; theirs to rewrite. The fuel can run out in open space before the captain reaches a depot, and then a request can't be done; the dead end CLAUDE.md mentions is still there. See also [project-quests](project-quests.md), [project-logistics](project-logistics.md), [project-command](project-command.md) and [project-health](project-health.md).
+
+## From the deep check (2026-11-12)
+
+See `project-deep-check.md`. Nobody dead, or lying where they fell, is picked to ask (`requestFor`, and `lyingSilent` for the mark in the room); a request taken on passes to whoever takes a dead asker's post, and with nobody to take it ends as **Over** (`endWithNobody`: the quest failed, `gone` for `? request`, nothing remembered, and no words from the dead); and someone here asks for a word with the player's boss only at the boss's own place.

@@ -108,6 +108,9 @@ test("an artificial leg walks a little slower, and nobody gets one with no parts
   assert.match(workshop.workshopView(game, "meridian").lines.join(" "), /Mess Hand Bao is waiting for an artificial right leg/);
   // Once there are crates, it's built and, when Bao's in the medbay, fitted.
   const fitted = newGame();
+  // A game whose seed made Bao up with nothing else wrong with their legs: an old limp would be the slower of the two.
+  fitted.bodySeed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].find((seed) => body.paceOf(body.bodyOf({ ...fitted, bodySeed: seed }, { name: "Mess Hand Bao", place: "meridian" })) === 1);
+  assert.ok(fitted.bodySeed, "one of a dozen seeds leaves Bao walking freely");
   fitted.bodies[BAO] = { wounds: [wound(fitted, "lost", "right_leg", { dressed: true, dressedAt: fitted.clock.hours })] };
   fitted.down = { ...fitted.down, [BAO]: { who: "Mess Hand Bao", place: "meridian", level: "deck2", x: 12, y: 8, since: fitted.clock.hours, until: fitted.clock.hours, why: "laid up", bed: "patient-3" } };
   hours(fitted, 12);

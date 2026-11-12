@@ -27,7 +27,12 @@ let app;
 const calm = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const pen = newPen({
   speed: () => (calm() ? Infinity : WRITING_SPEEDS[app.reading.writing] ?? WRITING_SPEEDS.normal),
-  draw: (count) => pop.words?.show(count),
+  draw: (count) => {
+    pop.words?.show(count);
+    // Once the last of it is written, what the player can answer comes up beside it. (An answer that led straight to
+    // more choices used to leave only the words on screen: the choices came with whatever next redrew the room.)
+    if (!pen.busy && pop.open && !document.getElementById("pop-answer") && choicesNow().length) drawScene();
+  },
 });
 
 export function initPopups(hooks) {

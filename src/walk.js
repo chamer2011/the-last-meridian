@@ -636,7 +636,13 @@ function wantedFrom(game, key) {
   }
   return null;
 }
-const asksNow = (game, key) => Object.values(game.requests?.open ?? {}).some((one) => one.state === "offered" && one.asker === key && !(one.later > (game.clock?.hours ?? 0)));
+// Whether someone has something to ask the player now (src/requests.js keeps what, and says the same): not while they
+// lie where they fell, or dead. Someone awake on a cot still asks.
+const lyingSilent = (game, place, key) => {
+  const d = downRecord(game, place, key);
+  return Boolean(d && !d.going && (!d.bed || d.dead));
+};
+const asksNow = (game, key) => Object.values(game.requests?.open ?? {}).some((one) => one.state === "offered" && one.asker === key && !(one.later > (game.clock?.hours ?? 0)) && !lyingSilent(game, one.place ?? game.location, key));
 const shortName = (game, entry) => entry.label ?? (entry.id ? findCharacter(game.campaign, entry.id)?.name : null) ?? entry.name;
 
 // ---- Where someone is, for the story waiting on them ------------------------
@@ -1057,12 +1063,12 @@ export function walkCommand(game, body) {
       const key = String(body.key ?? "").replace(/^person:/, "");
       const entry = people.find((one) => keyOf(one) === key);
       if (!entry) throw new Error("They aren't there any more.");
-      const shown = personView(game, entry);
-      const who = { key, id: entry.id ?? null, name: shown.name, short: shown.short, asleep: Boolean(entry.asleep), doing: entry.doing ?? null };
-      const where = { place: game.location, room: walk.room ? null : level.roomAt(spot.x, spot.y) };
       // Nobody lying down is fought or robbed: the page doesn't offer it, and neither do the rules.
       const lying = downRecord(game, game.location, key);
       if (lying && !lying.going) throw new Error(lying.dead ? "They're dead." : body.action === "attack" ? "They're down already." : "Not while they're lying there, with everyone looking.");
+      const shown = personView(game, entry);
+      const who = { key, id: entry.id ?? null, name: shown.name, short: shown.short, asleep: Boolean(entry.asleep), doing: entry.doing ?? null };
+      const where = { place: game.location, room: walk.room ? null : level.roomAt(spot.x, spot.y) };
       return body.action === "pickpocket" ? pickPocket(game, who, where) : attackPerson(game, who, where);
     }
     default: {

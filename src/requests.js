@@ -878,8 +878,23 @@ function settleOffered(game, found, one) {
   } else one.asker = asker;
 }
 
+// Whoever asked has died, and nobody has taken their place to ask it: the request is over, with nobody left to thank the
+// player or hold it against them. (A dead chief engineer once told the captain off for the parts, five days on.)
+function endWithNobody(game, found, open, notes) {
+  const { model } = found;
+  const state = stateOf(game);
+  const name = nameOf(game, open.asker);
+  notes.push(`[REQUEST] Over: ${model.title}. ${name} is dead, and nobody else is asking.`);
+  closeQuest(game, open, "failed", `Over: ${name} died before it was done.`);
+  noteEnded(game, model.kind, "gone");
+  delete state.open[model.kind];
+  state.rest[model.kind] = nowOf(game) + REST.gone;
+}
+const askerDied = (game, one) => Boolean(one.asker) && (!stillAlive(game, one.asker) || lostReason(game, one.place ?? SHIP, one.asker) === "dead");
+
 function settleAccepted(game, found, one, notes) {
   const { model } = found;
+  if (!askerNow(game, model, one) && askerDied(game, one)) return endWithNobody(game, found, one, notes);
   if (model.need.kind === "carry") {
     const d = downOf(game, one.about);
     if (d?.carriedBy === YOU) one.carrying = true;

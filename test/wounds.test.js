@@ -101,9 +101,13 @@ test("the player keeps the wounds the hits left, losing gives no other, and they
     startCombat(game, "choir_hunter");
     const { outcome, events } = fightOut(game, { keepUp: false });
     const mine = events.filter((event) => event.wound && event.on === "you").map((event) => event.wound);
-    assert.deepEqual(game.wounds.map((one) => one.words).sort(), [...mine].sort(), `seed ${seed}`);
+    const kept = game.wounds.map((one) => one.words).sort();
+    // Beaten aboard, they come to in the medbay hours later, where some of it may have been seen to already: what's
+    // left is still only what the hits left.
+    if (outcome.result === "defeat") assert.ok(kept.every((words) => mine.includes(words)), `seed ${seed}: ${kept.join(", ")} of ${mine.join(", ")}`);
+    else assert.deepEqual(kept, [...mine].sort(), `seed ${seed}`);
     if (outcome.result === "defeat") {
-      assert.ok(game.wounds.length >= 1, "the hit that put them down left one");
+      assert.ok(mine.length >= 1, "the hit that put them down left one");
       assert.equal(game.conditions.length, conditions, "and no random wound on top");
       assert.ok(events.some((event) => /^You go down/.test(event.text ?? "")));
     }

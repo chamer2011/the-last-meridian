@@ -664,7 +664,8 @@ export function peopleAboard(game, place, levelId) {
   const people = peopleOf(game, place);
   const detour = place === game.location ? detoursFor(game, place) : null;
   return rosterFor(game, place)
-    .filter((entry) => people[entry.key]?.level === levelId && (!entry.id || atPost(game, entry.id)))
+    // Someone with a file who's died is gone from their post, but lies where they are until they're carried away.
+    .filter((entry) => people[entry.key]?.level === levelId && (!entry.id || atPost(game, entry.id) || Boolean(game.down?.[keyAt(place, entry.id)]?.dead)))
     .map((entry) => seenAs(game, map, entry, people[entry.key], detour))
     .filter(Boolean);
 }

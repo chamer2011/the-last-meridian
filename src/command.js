@@ -1729,6 +1729,8 @@ export function commandSceneStarted(game, place = SHIP_PLACE) {
   const m = stateOf(game, place)?.mutiny;
   if (m) m.due = null;
 }
+// A delegation or a quiet word the player hasn't answered yet: its choices need whoever leads it.
+const commandSceneOpen = (game) => [COMMAND_SCENES.delegation, COMMAND_SCENES.conspiracy].some((id) => game.scene?.id === id || Boolean(game.parked?.[id]));
 // A delegation or a quiet word that was under way is over once the ship's been taken.
 function dropCommandScenes(game) {
   const ids = Object.values(COMMAND_SCENES);
@@ -1871,7 +1873,8 @@ function takeShip(game, place, today, notes, { scene = true } = {}) {
   const name = calledBy(game, place, leader);
   const aboard = game.location === place;
   dropCommandScenes(game);
-  handOver(game, place, leader, today, notes);
+  const moved = [];
+  handOver(game, place, leader, today, moved);
   state.deposed = { day: today, by: leader };
   state.jobs = { ...state.jobs, [YOU]: null };
   if (aboard && model.brig) {
@@ -1885,6 +1888,7 @@ function takeShip(game, place, today, notes, { scene = true } = {}) {
   const due = scene && aboard ? "brig" : null;
   calmDown(state, today, { due });
   tell(game, place, notes, `The officers have taken the ship. ${upperFirst(name)} has the chair now${aboard ? ", and you're under guard in the brig" : ", and you aren't the captain any more"}.`, today);
+  notes.push(...moved);
 }
 
 // The officers take the ship from a captain who isn't the player: whoever led them has the chair. An officer who'd
@@ -1894,11 +1898,13 @@ function takenFromCaptain(game, place, leader, today, notes) {
   const state = commandState(game, place);
   const oldName = officerName(game, place, model.chairPost);
   const name = calledBy(game, place, leader);
-  const old = handOver(game, place, leader, today, notes);
-  if (old && old !== YOU && WORLD_CHARACTERS[old] && !WORLD_CHARACTERS[old].chair) arrest(game, place, old, { by: leader, today, notes });
+  const moved = [];
+  const old = handOver(game, place, leader, today, moved);
+  if (old && old !== YOU && WORLD_CHARACTERS[old] && !WORLD_CHARACTERS[old].chair) arrest(game, place, old, { by: leader, today, notes: moved });
   onRecord(game, "captain_overthrown", `The officers took the ship from ${oldName} on day ${today}, and ${personCalled(game, leader)} has the chair.`);
   calmDown(state, today);
   tell(game, place, notes, `The officers have taken the ship from ${oldName}. ${upperFirst(name)} has the chair now.`, today);
+  notes.push(...moved);
 }
 
 // The officers give the chair back to the player, a captain they'd relieved: whoever had it goes to the brig.
@@ -1906,12 +1912,14 @@ function restore(game, place, today, notes) {
   const model = commandOf(place);
   const state = commandState(game, place);
   const oldName = officerName(game, place, model.chairPost);
-  const old = handOver(game, place, YOU, today, notes);
+  const moved = [];
+  const old = handOver(game, place, YOU, today, moved);
   state.deposed = null;
-  if (old && old !== YOU && WORLD_CHARACTERS[old] && !WORLD_CHARACTERS[old].chair) arrest(game, place, old, { by: YOU, today, notes });
+  if (old && old !== YOU && WORLD_CHARACTERS[old] && !WORLD_CHARACTERS[old].chair) arrest(game, place, old, { by: YOU, today, notes: moved });
   onRecord(game, "chair_given_back", `The officers gave you back the chair on day ${today}, taking it from ${oldName}.`);
   calmDown(state, today);
   tell(game, place, notes, `The officers have taken the ship back from ${oldName}, and given it to you. You have the chair again.`, today);
+  notes.push(...moved);
 }
 
 // A delegation's time has come. To the player as captain, it's the officers at the door; to the player as crew aboard,
@@ -1975,7 +1983,9 @@ function pressureDay(game, place, state, today, notes) {
   } else if (now < was) {
     if (now === 0) tell(game, place, notes, "The grumbling in the mess has died down.", today);
     if (now < 3 && m.due && m.due !== "brig") m.due = null;
-    if (now < 3) m.ringleader = null;
+    // While the officers are still waiting for an answer, they keep whoever speaks for them: stepping down, having
+    // them arrested or throwing them out would otherwise happen to nobody.
+    if (now < 3 && !commandSceneOpen(game)) m.ringleader = null;
   }
 }
 
@@ -2039,7 +2049,8 @@ export function mutinyOutcome(game, word, reason, place = SHIP_PLACE) {
         tell(game, place, notes, `Nobody moves to take ${name} anywhere. The officers leave together, and it'll come to the ship being taken.`, today);
         break;
       }
-      arrest(game, place, leader, { by: captain, today, notes });
+      const moved = [];
+      arrest(game, place, leader, { by: captain, today, notes: moved });
       onRecord(game, "mutiny_put_down", `You put the officers' delegation down on day ${today}, and ${personCalled(game, leader)} went to the brig.`);
       if (word === "crushed") calmDown(state, today);
       else {
@@ -2049,17 +2060,20 @@ export function mutinyOutcome(game, word, reason, place = SHIP_PLACE) {
         m.due = null;
       }
       tell(game, place, notes, word === "crushed" ? `You've put the delegation down. ${upperFirst(name)} is in the brig.` : `${upperFirst(name)} is in the brig, at your word. The rest of the officers have gone back to their posts, for now.`, today);
+      notes.push(...moved);
       break;
     }
     case "step down":
       if (!leader || !isCaptain(game)) break;
       for (const key of trackedOf(game, place)) remember(game, place, key, "stood_down", { by: YOU, day: today });
-      handOver(game, place, leader, today, notes);
+      const moved = [];
+      handOver(game, place, leader, today, moved);
       state.deposed = { day: today, by: leader, stepped: true };
       onRecord(game, "captain_stepped_down", `You stepped down on day ${today}, and ${personCalled(game, leader)} took the chair.`);
       state.jobs = { ...state.jobs, [YOU]: null };
       calmDown(state, today);
       tell(game, place, notes, `You've stepped down. ${upperFirst(name)} has the chair now, and you're crew, one of the spare hands.`, today);
+      notes.push(...moved);
       break;
     case "refused":
       m.pressure = model.mutiny.stages[3] - 1;
@@ -2092,9 +2106,11 @@ export function mutinyOutcome(game, word, reason, place = SHIP_PLACE) {
       m.due = null;
       if (securityLoyal(game, place)) {
         remember(game, place, captain, "informed", { by: YOU, day: today });
-        arrest(game, place, leader, { by: captain, today, notes });
+        const moved = [];
+        arrest(game, place, leader, { by: captain, today, notes: moved });
         calmDown(state, today);
         tell(game, place, notes, `${upperFirst(captainWords(game, place))} heard you out, and ${name} is in the brig.`, today);
+        notes.push(...moved);
       } else {
         m.pressure = model.mutiny.stages[3] - 1;
         tell(game, place, notes, `${upperFirst(captainWords(game, place))} heard you out, but there's nobody left who'd lock ${name} up.`, today);

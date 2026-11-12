@@ -824,7 +824,8 @@ export function putDown(game, { quiet = false } = {}) {
 export function wakeInMedbay(game) {
   const place = game.location;
   const medbay = medbayOf(place);
-  if (!medbay?.room || !game.walk) return null;
+  // Someone who hasn't walked a step yet still stands somewhere: where their life begins.
+  if (!medbay?.room || !walkOf(game)) return null;
   const by = answerer(game, place, medbay, nowOf(game))?.key;
   if (!by) return null;
   const knock = woundsNow(game, YOU).find((wound) => wound.kind === "knock");

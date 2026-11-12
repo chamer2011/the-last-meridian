@@ -338,10 +338,10 @@ function hoursPass(game, hours, activity) {
   for (const words of lived.dressed) notes.push(`[HEALTH] You dress ${words.replace(/^an? /, "the ")}.`);
   for (const words of lived.bad) notes.push(`[HEALTH] ${words.replace(/^an? /, "The ")} has gone bad.`);
   for (const words of lived.healed) notes.push(`[HEALTH] Healed: ${words}.`);
+  if (lived.low) notes.push("[HEALTH] You've lost a lot of blood, and everything's harder for it. You're still bleeding: dress the wound with a medkit, or get to a medbay.");
   // Whoever's bled out or died of a wound gone bad, where help could have come, dies of it now (src/death.js).
   notes.push(...settleDeaths(game));
   const pain = painADay(game);
-  if (lived.low) notes.push("[HEALTH] You've lost a lot of blood, and everything's harder for it. You're still bleeding: dress the wound with a medkit, or get to a medbay.");
   if (pain) notes.push(...changeStress(game, (pain * hours) / 24));
   // The ship, the world and the stories go through each day together, so it makes no difference how a long wait is cut up.
   const today = Math.floor(game.clock.hours / 24);
@@ -1064,15 +1064,15 @@ export function publicState(game) {
     conditions: game.conditions.map((c) => ({ ...c, name: CONDITIONS[c.id]?.name, desc: CONDITIONS[c.id]?.desc, effects: describeFx(CONDITIONS[c.id]?.fx) })),
     // The player's body: its parts, old marks and wounds, for the printout and the inventory's figure.
     body: bodyView(bodyOf(game, "you")),
+    // What the top bar says of it: how many things are wrong with them, conditions and wounds together, and how fast
+    // they're losing blood while a wound is still open.
+    hurt: game.conditions.length + woundsNow(game, "you").length,
+    bleeding: bleedingOf(game, "you"),
     clock: clockFor(game),
     hp: game.hp,
     maxHp: maxHp(game),
     energy: game.energy,
     maxEnergy: maxEnergy(game),
-    // What the top bar says of it: how many things are wrong with them, conditions and wounds together, and how fast
-    // they're losing blood while a wound is still open.
-    hurt: game.conditions.length + woundsNow(game, "you").length,
-    bleeding: bleedingOf(game, "you"),
     defense: defense(game),
     credits: game.credits,
     ship: shipView(game),
