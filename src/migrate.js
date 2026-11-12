@@ -291,10 +291,14 @@ function fromVersion22(save) {
 // once, which also stops the old scene's last choices being offered.
 export const OLD_STORY_NOTICE = "[STORY] The written main story has been taken out of the game, and its quests are closed. Everything else goes on as it was: the ship, her people, and what they ask of you.";
 const CLOSED_WITH_THE_STORY = "Closed: the written story this belonged to has been taken out of the game.";
+// The old story's scenes, by the names their files had. The captain's opening has a file of that name again since the
+// mutiny opening (2026-11-12), a different story, so a scene of the old one is dropped by its name, not only when its
+// file has gone.
+const OLD_STORY_SCENES = new Set(["opening", "opening_captain", "opening_docker", "opening_engine_hand", "arrive_haven", "thread_main_the_old_scholar", "thread_main_two_weeks_of_fuel", "thread_main_visiting_hours", "thread_main_the_council", "thread_crew_naomi_under_crew", "talk_tharel"]);
 function fromVersion23(save) {
   const game = { ...save, version: 24 };
   const there = sceneFileIds();
-  const gone = (scene) => Boolean(scene?.id) && !there.has(scene.id);
+  const gone = (scene) => Boolean(scene?.id) && (!there.has(scene.id) || OLD_STORY_SCENES.has(scene.id));
   let told = false;
   if (gone(game.scene)) {
     game.scene = null;

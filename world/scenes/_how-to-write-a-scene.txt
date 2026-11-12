@@ -342,6 +342,27 @@ guarding, cause, belief, grudge or honor. The first line of text in a part with 
 needed: the lead_in is what the player reads as it starts.
 
 
+A BATTLE
+--------
+
+A battle is a fight fought by everyone on a deck at once, in the room, with as many on each side as it
+brings. Who fights it, where they come in and when is in the battle's own file in world/battles
+(world/battles/_how-to-write-a-battle.txt says how), so the line only names it:
+
+    == fight
+    WITH: nobody
+    BATTLE mutiny: Boots on the forward stair, and the first of them come up into the Names Bulkhead.
+      won -> held
+      talked -> held
+      lost -> woke
+
+The words after the colon are what the player reads as it starts. won and lost are needed, and
+talked is for when nobody against you was beaten, only talked out of it or given up. There's no
+fled or gaveUp: nobody runs from a battle or gives up in it. lost is when the player went down: the
+battle is fought out without them, and they come to in the medbay before the story goes on.
+opening_captain.txt starts the mutiny that opens the game this way.
+
+
 CONVERSATIONS
 -------------
 

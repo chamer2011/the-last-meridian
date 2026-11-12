@@ -558,8 +558,11 @@ export function placeHere() {
     return;
   }
   let cover = 0;
+  // What happens over the room starts under the clock, which on a narrow room is two lines when it's stopped.
+  const shownClock = popupsShown() ? document.getElementById("walk-clock") : null;
+  view.style.setProperty("--clock-bottom", `${shownClock?.offsetHeight ? shownClock.offsetTop + shownClock.offsetHeight + 6 : 0}px`);
   if (getComputedStyle(here).position === "absolute") {
-    const clock = popupsShown() ? document.getElementById("walk-clock") : null;
+    const clock = shownClock;
     const top = clock?.offsetHeight ? clock.offsetTop + clock.offsetHeight + 14 : 18;
     here.style.top = `${top}px`;
     // Short of the typing window over the room, or of the bar of orders in a fight.

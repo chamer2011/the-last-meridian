@@ -1222,7 +1222,7 @@ body:has(.qt.open) .pop-notes { visibility: hidden; }
 /* What happens, over the top of the room, for as long as it's being read: out of the tracker's way, under the clock, and
    clear of the room's panel on the right (--here-room, from public/walk.js). */
 .pop-caption {
-  position: absolute; z-index: 4; top: 38px; left: 318px; right: calc(10px + var(--here-room, 0px)); margin: 0 auto; max-width: 64ch; pointer-events: auto; cursor: pointer;
+  position: absolute; z-index: 4; top: max(38px, var(--clock-bottom, 0px)); left: 318px; right: calc(10px + var(--here-room, 0px)); margin: 0 auto; max-width: 64ch; pointer-events: auto; cursor: pointer;
   padding: 8px 14px 6px; background: rgba(4, 8, 6, .88); border: 1px solid #2a3d31; box-shadow: 0 8px 26px rgba(0, 0, 0, .5);
   animation: pop-caption-in .25s ease-out;
 }
@@ -1231,7 +1231,7 @@ body:has(.qt.open) .pop-notes { visibility: hidden; }
 .pop-caption .pop-hint { display: flex; gap: 12px; justify-content: flex-end; padding: 4px 0 0; color: var(--muted); font: 12px/1.4 var(--mono); }
 .pop-caption .pop-back { color: var(--muted); font-size: 12px; }
 .pop-waiting {
-  position: absolute; z-index: 4; top: 38px; left: 318px; right: calc(10px + var(--here-room, 0px)); margin: 0 auto; width: max-content; max-width: 40ch; pointer-events: auto;
+  position: absolute; z-index: 4; top: max(38px, var(--clock-bottom, 0px)); left: 318px; right: calc(10px + var(--here-room, 0px)); margin: 0 auto; width: max-content; max-width: 40ch; pointer-events: auto;
   padding: 3px 10px; background: rgba(3, 17, 10, .92); border: 1px solid #2a6a43; color: #8df5ac; font: 13px/1.4 var(--mono);
 }
 .pop-waiting:hover, .pop-waiting:focus-visible { background: #8df5ac; color: #03110a; outline: 0; }
@@ -1357,7 +1357,7 @@ body:has(.qt.open) .pop-notes { visibility: hidden; }
 .live-note.bad { color: var(--bad); }
 .live-note.dim { color: var(--muted); }
 .live-note.info { color: var(--info); }
-.live-layer .live-orders { position: absolute; left: 5px; right: 5px; bottom: 5px; max-height: 45%; display: flex; flex-direction: column; pointer-events: auto; }
+.live-layer .live-orders { position: absolute; left: 5px; right: 5px; bottom: 5px; width: auto; max-width: min(132ch, calc(100% - 10px)); max-height: 45%; display: flex; flex-direction: column; pointer-events: auto; }
 .live-layer .live-orders .check-title { padding: 1px 10px; }
 .live-options { min-height: 0; overflow-y: auto; flex-direction: row; flex-wrap: wrap; gap: 2px 4px; padding: 4px 6px 2px; }
 .live-options button { font-size: 13px; padding: 1px 7px; flex-wrap: nowrap; white-space: nowrap; }
@@ -1380,6 +1380,7 @@ body:has(.qt.open) .pop-notes { visibility: hidden; }
 .live-ending .live-options { padding-top: 6px; }
 .walk-here.live-here .live-tag { cursor: default; }
 .live-roster { display: flex; flex-direction: column; gap: 2px; }
+.live-rest { padding: 2px 4px 0 25px; color: var(--muted); font-size: 12px; }
 .live-roster .walk-here-head { margin-top: 6px; }
 .live-roster .walk-here-head:first-child { margin-top: 0; }
 .live-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 1px 7px; width: 100%; padding: 2px 4px; text-align: left; }

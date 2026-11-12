@@ -1,0 +1,50 @@
+# The Red Cloth
+// How the game opens for the captain: a mutiny on deck 1, fought by everyone on the deck. Claude's draft, not yet
+// edited by the owner. Who fights the battle, where they come from and when is in world/battles/mutiny.txt.
+start: alarm
+
+== alarm
+The bridge is cold enough to see your breath, and quiet the way it only is at the start of a watch. Then every speaker on the deck gives the same flat chime, twice, and the lights go to red.
+
+@Ensign Lira Vey: "Movement on both stairs. A lot of it, coming up from deck 2."
+
+@Lieutenant Iven Sorel: "I've got the forward stair on the camera, Captain. They're armed. Sidearms from the armory, and red cloth round their arms." He swallows. "Some of them are ours. I know their faces."
+
+@Commander Ilya Voss: "That's a mutiny." She's already drawing her sidearm. "They'll want the bridge, and whoever's in the chair. Your orders, Captain."
+
+> Hold the bridge. Nobody takes it -> battle
+> Get on the speakers first, and tell them to stand down -> speakers
+
+== speakers
+You key the channel for the whole ship and tell them to stand down: whatever this is, it can be talked about with the sidearms on the deck. The channel stays open a second too long.
+
+Somebody on the forward stair laughs. Then the first shot rings off the bulkhead outside.
+
+@Commander Ilya Voss: "That's an answer." She doesn't look at you. "To cover."
+
+> Hold the bridge -> battle
+
+== battle
+WITH: nobody
+BATTLE mutiny: Boots on the forward stair, and the first of them come up into the Names Bulkhead with their sidearms raised.
+  won -> held
+  talked -> held
+  lost -> woke
+
+== held
+WITH: nobody
+The last sidearm clatters onto the deck plates, and then it's quiet enough to hear the air plant again. The corridor smells of scorched paint. Somewhere down the Names Bulkhead, someone is calling for a medic, and someone else is already answering.
+
+The bridge is still yours. Now the rest of the ship is too, whatever's left of her after this.
+
+NOTE: [STORY] The mutiny is put down. Whoever went down lies where they fell, and the medbay has been called.
+END
+
+== woke
+WITH: nobody
+You come back slowly, to the smell of antiseptic and the hum of the medbay's lights. Someone has cut your sleeve away and dressed what was under it.
+
+Whoever's on duty tells you it's over: the mutiny was put down without you, by the people you left standing on the deck and the ones who came up from below. The bridge is still the ship's. Nobody will say yet what it cost.
+
+NOTE: [STORY] The mutiny was put down while you were down. You've come to in the medbay.
+END

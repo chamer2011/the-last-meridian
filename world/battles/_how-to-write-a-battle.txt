@@ -1,0 +1,70 @@
+HOW TO WRITE A BATTLE
+=====================
+
+A battle is a fight fought by everyone on a deck at once, in the room, in real time with a pause, like any fight in
+the room: the same rules, the same dice, the same numbers. What's different is that it isn't held to four on a side,
+it's fought across the whole deck instead of one room, people come up the stairs as it goes, and there's no running
+from it or giving up in it. Each battle is one file in this folder, named by its id: mutiny.txt is the battle
+mutiny. A written scene starts one with a BATTLE line (world/scenes/_how-to-write-a-scene.txt says how), and npm run
+check-story reads every battle and says what's wrong, with the file and the line.
+
+Here is mutiny.txt, the battle that opens the game:
+
+    # The Red Cloth
+    place: meridian                              (the place it's fought at, by its id in world/places)
+    deck: deck1                                  (the deck, by its id in the place's map: deck1 is Deck 1: Command)
+    they make for: The Bridge                    (a room on that deck: whoever's against you heads for it, and
+                                                  whoever's with you and already in it holds it)
+    they give up: when 2 in 3 of them are out of it    (or never: out of it is down, or talked out of it)
+    crew fight as: ship_hand                     (an enemy from world/enemies that the crew without a fight of their
+                                                  own fight as, under their own names, with their own bodies)
+    the rest take cover in: The Quiet Room       (a room on that deck: anyone there who doesn't fight goes there)
+    when they give up: The rest of them throw their sidearms down.    (said when they give up)
+
+    Against you:
+    - 6 mutineer_crew, up The Upper Forward Stair
+    - 6 mutineer_crew, up The Upper Aft Stair, 12 seconds in: More of them come up the aft stair.
+
+    With you:
+    - everyone on the deck who can fight
+    - tarrow, up The Upper Aft Stair, 60 seconds in: Lieutenant Tarrow comes up from below.
+    - the guards, up The Upper Aft Stair, 60 seconds in
+    - the ensigns, up The Upper Forward Stair, 60 seconds in
+
+The lines at the top
+--------------------
+
+place, deck and they make for are needed. The others can be left out: without they give up, they fight until the
+last of them is down; without crew fight as, a crew member with no fight of their own stays out of it and takes
+cover; without the rest take cover in, whoever doesn't fight stays where they are. A line that starts with // is a
+note for whoever writes, and draft: says who wrote it.
+
+Against you
+-----------
+
+Each line is a group: how many, the enemy from world/enemies by its id, and where they come in: up a room (at its way
+down to another deck, as if they'd come up the stairs) or in a room (anywhere in it). A group that comes later says
+how many seconds in; one that comes at the start says nothing. The first line, or one of them, has to come at the
+start. After a colon, what's said when they come.
+
+People come in on the nearest six seconds: 12 seconds in is 12, 10 seconds in is 12 as well.
+
+With you
+--------
+
+everyone on the deck who can fight is everyone on that deck when the battle starts who's on their feet: someone with
+a fight in their file fights from it, and a crew member on the watch bill fights as the enemy crew fight as names.
+The spare hands, and anyone else, take cover.
+
+Any other line is someone who comes later, the same way as a group against you: a person by their id or name, like
+tarrow, or a job on the watch bill, like the ensigns or the guards, which is everyone doing that job. Someone already
+on the deck is already in it, and someone who's dead, down, in the brig or away doesn't come. A job nobody's doing
+brings nobody, and its words aren't said.
+
+How it ends
+-----------
+
+When everyone against you is down, talked out of it or has given up, it's won. If you go down, it goes on without
+you, and you come to in the medbay once it's over: whoever's still against you when it's done gives up to the rest
+of the crew. Whoever's beaten on either side lies where they fell, and the medics come for them, as after any fight.
+The scene that started the battle goes on from won, lost or talked.

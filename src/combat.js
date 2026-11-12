@@ -21,7 +21,9 @@ import { COMBAT_ART, COMBAT_TEXT, PARLEY } from "./world.js";
 import { beltSupplies, drawnWeapon, leaveLoot, spendFromBelt } from "./bag.js";
 import { liveActions, liveView } from "./live-fight.js";
 
-// The most fighters a side can have, counting the player. More wouldn't fit in the window.
+// The most fighters a side can have, counting the player. More wouldn't fit in the window. A battle (the mutiny that
+// opens the game, src/opening.js) is the one fight this doesn't hold for: it's fought in the room, across a whole
+// deck, by everyone on it, at the owner's word of 2026-11-12. Every other fight keeps the limit.
 const MAX_PER_SIDE = 4;
 const MAX_ARRIVALS = 3;
 const FLEE_DC = 12;
@@ -43,7 +45,7 @@ export const FIGHT_DIFFICULTIES = {
     5: { hp: 2.5, attack: 6, damage: 8 },
   },
 };
-const ORDINALS = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth"];
+const ORDINALS = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth", "thirteenth", "fourteenth", "fifteenth", "sixteenth", "seventeenth", "eighteenth", "nineteenth", "twentieth"];
 const YOU = "you";
 
 export const pickFrom = (pool) => pool[roll(0, pool.length - 1)];
@@ -121,7 +123,7 @@ function newFighter(c, side, { source, called, asName = false, body = null }) {
     base,
     name: sameName ? `${base} #${sameName + 1}` : base,
     // A name of someone's own, like Docker Pav, goes without "the".
-    prose: named ? source.shortName : asName && renamed ? renamed : `the ${sameName ? `${ORDINALS[sameName]} ` : ""}${base}`,
+    prose: named ? source.shortName : asName && renamed ? renamed : `the ${sameName ? `${ORDINALS[sameName] ?? "next"} ` : ""}${base}`,
     named,
     hp: numbers.hp,
     maxHp: numbers.hp,
@@ -150,7 +152,9 @@ function newFighter(c, side, { source, called, asName = false, body = null }) {
 
 // Sets up a fight. Everyone is checked before anything changes, so a bad request leaves no fight behind.
 // asName says the main enemy's "as" is a person's own name, like "dock_thug as Docker Pav", not a kind of enemy.
-export function startCombat(game, enemyId, { training = false, called = null, followers = [], allies = [], arrivals = [], leadIn = null, why = null, reason = null, faction = null, asName = false } = {}) {
+// battle is for the one fight that's a battle (src/opening.js): what it's called and how far anyone can see in it. It
+// lifts the limits on how many can be in a fight, and nothing else here.
+export function startCombat(game, enemyId, { training = false, called = null, followers = [], allies = [], arrivals = [], leadIn = null, why = null, reason = null, faction = null, asName = false, battle = null } = {}) {
   if (game.combat) throw new Error("A fight is already underway.");
   // Whoever's walking with the player and can fight stands with them (src/room-hooks.js), unless they're in it already.
   if (!training) {
@@ -163,9 +167,12 @@ export function startCombat(game, enemyId, { training = false, called = null, fo
   const main = withBody(findFighter(game, enemyId));
   const foes = followers.map((who) => withBody(findFighter(game, who)));
   const friends = allies.map((who) => withBody(findFighter(game, who)));
-  const later = arrivals.map(({ who, side, round }) => ({ ...withBody(findFighter(game, who)), side: side === "enemy" ? "enemy" : "ally", round: Math.max(2, round ?? 2) }));
-  if (foes.length + 1 > MAX_PER_SIDE || friends.length + 1 > MAX_PER_SIDE) throw new Error(`Each side can have at most ${MAX_PER_SIDE} fighters, counting the player.`);
-  if (later.length > MAX_ARRIVALS) throw new Error(`At most ${MAX_ARRIVALS} people can arrive during a fight.`);
+  // A battle can say more about someone who comes later (extra): where they come in, and who they are in the room.
+  const later = arrivals.map(({ who, side, round, extra = null }) => ({ ...withBody(findFighter(game, who)), side: side === "enemy" ? "enemy" : "ally", round: Math.max(2, round ?? 2), ...(battle && extra ? { extra } : {}) }));
+  if (!battle) {
+    if (foes.length + 1 > MAX_PER_SIDE || friends.length + 1 > MAX_PER_SIDE) throw new Error(`Each side can have at most ${MAX_PER_SIDE} fighters, counting the player.`);
+    if (later.length > MAX_ARRIVALS) throw new Error(`At most ${MAX_ARRIVALS} people can arrive during a fight.`);
+  }
   const people = [main, ...foes, ...friends, ...later].filter(({ source }) => source.named).map(({ source }) => source.id);
   if (new Set(people).size !== people.length) throw new Error("A person can only be in a fight once.");
 
@@ -183,6 +190,7 @@ export function startCombat(game, enemyId, { training = false, called = null, fo
     notes: [],
     leadIn,
     story: { why, reason: reason ? String(reason).slice(0, 160) : null, faction },
+    ...(battle && !training ? { battle } : {}),
     // A simulated fight leaves everything exactly as it was.
     ...(training ? {
       snapshot: structuredClone({ hp: game.hp, energy: game.energy, needs: game.needs, conditions: game.conditions, wounds: game.wounds ?? [], inventory: game.inventory, skills: game.skills, skillXp: game.skillXp, credits: game.credits, xp: game.xp, level: game.level, perkPoints: game.perkPoints, statPoints: game.statPoints, skillPoints: game.skillPoints, traits: game.traits }),
@@ -565,18 +573,27 @@ export function bringArrivals(c, log) {
   c.arrivals = c.arrivals.filter((arrival) => {
     if (arrival.round > next) return true;
     const side = arrival.side === "enemy" ? c.enemies : c.allies;
-    // The player takes up a place on their side. Someone with no room stays out of it.
-    if (side.length + (arrival.side === "enemy" ? 0 : 1) >= MAX_PER_SIDE) return false;
+    // The player takes up a place on their side. Someone with no room stays out of it, except in a battle.
+    if (!c.battle && side.length + (arrival.side === "enemy" ? 0 : 1) >= MAX_PER_SIDE) return false;
     const fighter = newFighter(c, arrival.side, arrival);
+    // Whoever set the fight up can say more about someone who comes later: who they are in the room, and where from.
+    if (arrival.extra) Object.assign(fighter, arrival.extra);
     side.push(fighter);
-    const text = arrival.side === "enemy" ? fill(enemyLines(fighter, "joins"), { enemy: fighter }) : fill(COMBAT_TEXT.ally.joins, { ally: fighter });
-    log.push({ joined: arrival.side, fighter: fighterView(fighter), on: fighter.key, text, tone: arrival.side === "enemy" ? "bad" : "good" });
+    // In a battle a whole group comes at once, and the battle's own line for them says so, once (src/live-fight.js).
+    const text = c.battle ? null : arrival.side === "enemy" ? fill(enemyLines(fighter, "joins"), { enemy: fighter }) : fill(COMBAT_TEXT.ally.joins, { ally: fighter });
+    log.push({ joined: arrival.side, fighter: fighterView(fighter), on: fighter.key, ...(text ? { text } : {}), tone: arrival.side === "enemy" ? "bad" : "good" });
     return false;
   });
 }
 
+const BATTLE_NO_RUNNING = "There's nowhere to run to. This is your ship.";
+const BATTLE_NO_GIVING_UP = "Not while your people are fighting for the ship.";
+
 // Refuses what can't be done before anything changes, so it costs nothing.
 export function checkAllowed(game, c, action, target) {
+  // A battle for the ship isn't one to run from or give up in: the others fight on whatever the captain does.
+  if (c.battle && action.type === "flee") throw new Error(BATTLE_NO_RUNNING);
+  if (c.battle && action.type === "surrender") throw new Error(BATTLE_NO_GIVING_UP);
   if (action.type === "flee" && alive(c.enemies).some((enemy) => enemy.boss)) throw new Error(pickFrom(COMBAT_TEXT.player.fleeBoss));
   const leg = action.type === "flee" ? legWound(woundsNow(game, YOU)) : null;
   if (leg) throw new Error(`You can't run with ${leg.words}.`);
@@ -708,7 +725,8 @@ export function endCombat(game, ended, log) {
     return fillWith(APPROACHES[id].done, { prose: listOf(these.map((enemy) => enemy.prose)), paid: these.reduce((sum, enemy) => sum + (enemy.paid ?? 0), 0) });
   }).join(" ");
   // Followers take their share of the credit. Someone who was paid to go is only worth half.
-  const earned = () => Math.round(c.enemies.reduce((total, enemy) => total + enemy.xp * (wentAway.includes(enemy) ? APPROACHES[enemy.out].xp ?? 1 : 1), 0) / (1 + c.allies.length * 0.5));
+  // Someone who gave up in a battle (src/live-fight.js) counts in full, the same as someone talked out of it.
+  const earned = () => Math.round(c.enemies.reduce((total, enemy) => total + enemy.xp * (wentAway.includes(enemy) ? APPROACHES[enemy.out]?.xp ?? 1 : 1), 0) / (1 + c.allies.length * 0.5));
   let summary;
   let math = null;
   let tone;
@@ -819,7 +837,8 @@ export function fighterView(fighter) {
     art: artFor(fighter),
     fallen: COMBAT_ART[fighter.machine ? "wreck" : "fallen"],
     stunned: fighter.stunned,
-    out: fighter.out ? APPROACHES[fighter.out]?.out ?? "Gone" : null,
+    // How someone left the fight: talked out of it, or, in a battle, in their own way (they gave up).
+    out: fighter.out ? fighter.outAs ?? APPROACHES[fighter.out]?.out ?? "Gone" : null,
   };
 }
 
@@ -892,6 +911,8 @@ export function combatActions(game) {
       ? { group: "other", action: { type: "draw" }, label: `Back to your ${back?.name ?? "bare hands"}`, detail: back?.damage ? `${back.damage[0]} to ${back.damage[1]} damage. It takes your turn.` : "It takes your turn." }
       : { group: "other", action: { type: "draw" }, label: `Draw your ${sidearm.name}`, detail: `${sidearm.damage[0]} to ${sidearm.damage[1]} damage. It takes your turn.` });
   }
+  // In a battle there's no giving up and no running: the two orders aren't offered at all.
+  if (c.battle) return actions;
   actions.push(someoneTakesPrisoners(c)
     ? { group: "other", action: { type: "surrender" }, label: "Give up", detail: "the story decides what they do with you" }
     : { group: "other", action: { type: "surrender" }, label: "Give up", disabled: true, why: "there's nobody here to give up to" });
@@ -913,6 +934,8 @@ export function combatView(game) {
     round: c.round,
     training: Boolean(c.training),
     opening: c.leadIn ?? c.intro ?? null,
+    // A battle says what it's called, and how it stands, in place of "Fight".
+    battle: c.battle ? { title: c.battle.title ?? "Battle" } : null,
     you: {
       key: YOU,
       name: game.name,

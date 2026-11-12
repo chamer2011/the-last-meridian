@@ -1,0 +1,46 @@
+# Mutineer
+threat: 1
+hp: 12
+attack: 1
+defense: 10
+damage: 2 to 5
+weapon: Concord Sidearm
+xp: 25
+credits: 0 to 10
+art: soldier
+tags: 
+motive: cause
+loot: ration_pack 20, medkit 10
+
+In a line:
+One of the Meridian's own crew, with a strip of red cloth tied round one arm and a sidearm from the armory.
+
+When the fight starts:
+- Someone you've passed in the corridor a hundred times comes up the stair with a sidearm raised, and a strip of red cloth round one arm.
+
+When they hit:
+- The shot finds you, and the one who fired it looks as surprised as you are.
+- They've drilled with that sidearm on this deck, and it shows.
+
+When they miss:
+- The shot goes wide and sparks off the bulkhead behind you.
+- Their hands are shaking, and the round goes into the deckhead.
+
+When they hit hard:
+- They fire from closer than you'd have thought anyone would dare, and it knocks the breath out of you.
+
+When they're beaten:
+- The mutineer slides down the bulkhead, and the red cloth comes loose from their arm.
+- They go down, and their sidearm skids away across the deck plates.
+
+When they join the fight:
+- {Enemy} comes up the stair behind the others, with red cloth round one arm.
+
+When they're stunned:
+- {Enemy} hesitates with the sidearm half raised.
+
+When persuading works:
+- You tell them nobody else has to get hurt today. They look at the red cloth on their arm, and they put the sidearm down on the deck.
+
+When persuading fails:
+- You tell them it doesn't have to go like this. They tell you it already has.

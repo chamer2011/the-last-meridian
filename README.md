@@ -34,7 +34,7 @@ If the browser doesn't open, go to http://localhost:3210.
 
 Both ways use the same saves. Only one copy of the game can run at a time, so they can't overwrite each other: whichever you open second joins the one that's already running.
 
-Everything can be done by clicking. A new game begins on the Meridian's bridge, with one line saying that no story is written for now. In the views where the story is written out, the prompt under it also takes a choice typed in, part of one, or its number. Over the isometric room there's no typing at all.
+Everything can be done by clicking. A new game begins on the Meridian's bridge, where a mutiny is about to break out (see [The opening battle](#the-opening-battle)). In the views where the story is written out, the prompt under it also takes a choice typed in, part of one, or its number. Over the isometric room there's no typing at all.
 
 The story is written in advance, in files you can read and change: see [The story](#the-story).
 
@@ -173,6 +173,23 @@ Everyone in the fight stands somewhere in the room: you where you were, someone 
 - When it's over, a line says how it went, with **Continue the story** and **Look around first**. You stay where you were standing at the end.
 
 If you open a fight in the room from another view, the fight window says so and has a **Show the room** button.
+
+### Battles
+
+A battle is a fight in the room that's fought by everyone on a deck at once: the same rules, the same orders, the same dice and numbers as any fight in the room, with as many on each side as the battle brings. The mutiny that opens the game is one (see [The opening battle](#the-opening-battle)).
+
+- **The whole deck.** It isn't held to one room: people fight up the corridors and through the doors, wherever they meet. Those against you make for one room, and whoever's with you and already in it holds it. Anyone with nobody near goes looking: the other side for that room, your side for the nearest of them.
+- **No limit of four.** Any other fight has at most four on a side, counting you; a battle has as many as it brings, at the owner's word of 12 November 2026. Every other fight keeps the limit.
+- **People come up the stairs as it goes.** A battle says who comes later, and when: more of them, or help from below. A line says so when they come.
+- **Nobody shoots across the whole deck.** In a battle nobody can shoot or be shot from further than 16 tiles. If you go for someone out of reach, you walk to where you can reach them.
+- **There's no running and no giving up.** **Run for it** and **Give up** aren't among the orders.
+- **When two in three of them are out of it,** down or talked out of it, the rest give up.
+- **If you go down,** it's fought out without you, there and then, and you come to in the medbay: whoever's still against you when it's done gives up to the rest of the crew.
+- **What you see:** the battle's name on the banner over the notes, and in the notes only what concerns you: what you do and what's done to you, who goes down, and the battle's own lines. Everything else can still be seen happening across the deck. The room's panel lists everyone with you and the six nearest against you, and how many more there are, down or out of it.
+- **When it's over,** the line says how many of them went down or gave up, and who on your side went down. Whoever's beaten on your side lies where they fell, and the medics come for them as after any fight; whoever's still standing goes back to their day from where the battle left them.
+- **How fast it works:** a whole battle takes the computer about a fifth of a second to work out.
+
+Battles are plain text files in `world/battles/`, one for each. `_how-to-write-a-battle.txt` in that folder explains every line: the place and deck, the room they make for, when they give up, who the crew fight as, where the rest take cover, who's against you and where they come in, and who comes later. A written scene starts one with a `BATTLE` line (see `world/scenes/_how-to-write-a-scene.txt`). `npm run check-story` checks them.
 
 ### The fight window
 
@@ -610,6 +627,7 @@ The world is kept in files you can open with any text editor. Be warned that mos
 - `world/enemies/` has one plain-text file for each type of enemy, with its numbers, why it usually fights (`motive`), who for (`faction`), and what it says in a fight. `_how-to-write-an-enemy.txt` there explains every line. Against you, threat levels 2 and up fight harder than their files say, by the amounts in `FIGHT_DIFFICULTIES` in `src/combat.js`, depending on the difficulty you've chosen.
 - `world/places/` has one plain-text file for each place: what it's like, its districts, who's there, what could happen and what people say. `_how-to-write-a-place.txt` there explains every line.
 - `world/species/` has one plain-text file for each kind of people a character can be, with what the character creator gives them, and their **Body** part. `_how-to-write-a-species.txt` there explains every line.
+- `world/battles/` has the battles: who fights each one, where they come in and when, one plain text file each. `_how-to-write-a-battle.txt` explains every line. See [Battles](#battles).
 - `world/health/` has the bodies: `wounds.txt` has every kind of wound and old mark, and a file for a place (`meridian.txt`) has who starts the game hurt there. `_how-to-write-health.txt` explains every line. See [Bodies](#bodies).
 - `world/stories/` has one plain-text file for each story that can come up: its lead, what's really going on, how it might go, its endings by name, the facts it leaves, what on the record changes it, and what happens if nobody steps in. *For anyone who isn't the captain* is how it reaches someone who isn't the captain, and a story without one stays the captain's own. `_how-to-write-a-story.txt` in that folder explains every line, and the **Story board** in the game shows and changes the same files as boxes and arrows.
 - `world/arc.json` has the acts and clues of the main story that was taken out on 12 November 2026. Nothing you see reads it now: it's kept for the acts' names and for the clues a written scene can note.
@@ -687,13 +705,24 @@ Saved games from before this system still load. They get a basic character profi
 
 A story is written in advance, in plain text files in `world/scenes/`, and the game plays it by itself. The choices are the ones on offer: click one, press its number, or type part of it. What the story can't answer, it says so, and nothing changes.
 
-**For now there's no written story.** On 12 November 2026 the main story was taken out of the game, at the owner's word: The Beacon and Fuel for the Ship, the three written openings, the arrival at Haven, the first act (The Warm Room, Two Weeks of Fuel, Visiting Hours and the council meeting), The Downstairs Crew, and Tharel's conversation. What that leaves:
+**For now the only written story is how the game opens.** On 12 November 2026 the main story was taken out of the game, at the owner's word: The Beacon and Fuel for the Ship, the three written openings, the arrival at Haven, the first act (The Warm Room, Two Weeks of Fuel, Visiting Hours and the council meeting), The Downstairs Crew, and Tharel's conversation. In its place, a new game opens with a mutiny. What that leaves:
 
-- **A new game** begins on the bridge with one line, **No story is written for now**, and no quest. What there is to do comes from the ship and her people: what they ask of you (see [Requests](#requests)), the chain of command, her stores and systems, and everything under [Doing things yourself](#doing-things-yourself).
+- **A new game** opens with the mutiny on deck 1 (below), and no quest. After it, what there is to do comes from the ship and her people: what they ask of you (see [Requests](#requests)), the chain of command, her stores and systems, and everything under [Doing things yourself](#doing-things-yourself). Another life, in a game saved from when it was offered, begins with one line, **No story is written for now**.
 - **The other stories,** 108 of them, are still in `world/stories/` as notes. Each shows in the **Leads** menu as **Not written yet**, and moves on by itself, by its clock. Two that could only begin after the main story are set aside with the fleet's.
 - **A game saved in the middle of the old story** opens with that story's quests closed and one line saying so. What people have asked of you, the journal, the people you know, the record and everything about the ship are as they were.
 - **The engine that plays a written story is all still there.** Put a scene file in `world/scenes/` and it plays as before: `opening_captain.txt` opens a new game, `arrive_<place>.txt` plays on arriving somewhere, and `thread_<story>.txt` makes a story playable from the Leads menu, which lists written ones first. The game's tests play small scenes of their own this way (`test/fixtures`).
 - **Nothing is lost for good:** the files that were taken out are in the project's history.
+
+### The opening battle
+
+A new game starts at eight in the morning on the bridge. The lights go to red, and Ensign Vey, Lieutenant Sorel and Commander Voss tell you why: armed crew are coming up both stairs, with sidearms from the armory and red cloth round their arms, and they want the bridge. You can hold the bridge, or get on the speakers first and tell them to stand down, which they answer with a shot. Then it's a battle across the whole of deck 1 (see [Battles](#battles)), which starts stopped:
+
+- **With you:** everyone on the deck who can fight: Commander Voss, Ensign Pell, Lieutenant Sorel and Ensign Vey, who hold the bridge, and Father Roe and Deckhand Kofi in the Names Bulkhead. The spare hands there take cover in the Quiet Room.
+- **Against you:** twelve mutineers: six up the forward stair at once, six more up the aft stair twelve seconds in.
+- **Help from below**, thirty seconds in: Lieutenant Tarrow up the aft stair, and the three ensigns up the forward stair from the mess. The guards would come too, but nobody's doing that job on the watch bill.
+- **How it ends:** won, when the last of them are down or have given up, and then the story says the deck's yours again; or you go down, it's fought out without you, and you come to in the medbay, where the story picks up. Either way the mutiny is put down. Whoever went down on your side lies where they fell, and the medics come for them.
+
+In about fifty simulated battles, staying on the bridge and shooting the nearest of them won nearly every time, doing nothing at all won two in three, and charging them alone lost every time. The mutineers and the crew who fight without a file of their own are new enemies in `world/enemies` (`mutineer_crew.txt`, `ship_hand.txt`), the opening's words are in `world/scenes/opening_captain.txt`, and the battle is `world/battles/mutiny.txt`, all drafts for the owner to change. What happens to the ship and her people after it is to come.
 
 Walking, people's lives, the wider world, fights, skill checks, the ship and the menus all work as usual.
 

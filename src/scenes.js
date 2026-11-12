@@ -32,6 +32,7 @@ import { commandFacts, commandProblems, commandSceneDue, commandSceneStarted, mu
 import { storyHitsShip } from "./ship.js";
 import { requestFacts, requestProblems } from "./requests.js";
 import { checkExtras } from "./room-hooks.js";
+import { allBattleProblems, battleProblem } from "./battles.js";
 import { FACT_LINES, MAP_FILE_PROBLEMS, SET_ASIDE, STORIES_DIR, STORY_CLOCK, STORY_FILE_PROBLEMS, WORLD_COMMAND, WORLD_COMPUTERS, WORLD_FILE_PROBLEMS, WORLD_MAPS, WORLD_THREADS, endingsOf } from "./world.js";
 
 // Something the player did that the written story has no answer to. The turn changes nothing, and they read this.
@@ -202,7 +203,7 @@ function speakersOf(part) {
 // someone else, or nobody. A check or a fight the story calls for plays wherever the player is, and so does a part
 // whose last speaker has no file in the world, since there'd be nobody to go and find.
 export function partNeed(game, part) {
-  if (!part || part.check || part.fight || part.with === "nobody") return null;
+  if (!part || part.check || part.fight || part.battle || part.with === "nobody") return null;
   const name = part.with ?? speakersOf(part).at(-1) ?? null;
   const person = name ? findCharacter(game.campaign, name) : null;
   return person ? { person: person.id, name: fullName(person) } : null;
@@ -446,6 +447,13 @@ function enterPart(game, scene, id, { emit, turn }, hops = 0) {
     if (outcome.narration) emit({ type: "text", text: outcome.narration, ...tag });
     if (outcome.notice) emit({ type: "notice", text: outcome.notice });
     game.scene.pending = { kind: "fight", won: part.won, lost: part.lost, fled: part.fled, gaveUp: part.gaveUp, talked: part.talked };
+  } else if (part.battle) {
+    // A battle is a fight too, as far as the story's concerned: it waits for how it ended (src/battles.js).
+    const outcome = runTool(game, "start_battle", part.battle, turn);
+    if (outcome.isError) throw new Error(`In the scene ${game.scene.id}, part ${id}, the battle failed to start: ${outcome.result}`);
+    if (outcome.narration) emit({ type: "text", text: outcome.narration, ...tag });
+    if (outcome.notice) emit({ type: "notice", text: outcome.notice });
+    game.scene.pending = { kind: "fight", won: part.won, lost: part.lost, talked: part.talked };
   } else if (part.end) {
     game.scene = null;
   }
@@ -750,8 +758,13 @@ export function sceneProblems(scene, id = "the scene", { talk = false } = {}) {
     }
     const always = (part.when ?? []).some((rule) => !rule.if);
     // A fight brings its own lead-in, and a check its own window, so those parts can stand without text.
-    if (!text.length && !part.note && !always && !part.check && !part.fight) problems.push(`${where} has no text`);
-    if (talk && (part.check || part.fight)) problems.push(`${where} has a ${part.check ? "check" : "fight"}, and a conversation can't open one: put it in a scene instead`);
+    if (!text.length && !part.note && !always && !part.check && !part.fight && !part.battle) problems.push(`${where} has no text`);
+    if (talk && (part.check || part.fight || part.battle)) problems.push(`${where} has a ${part.check ? "check" : part.fight ? "fight" : "battle"}, and a conversation can't open one: put it in a scene instead`);
+    if (part.battle && !talk) {
+      const problem = toolProblem("start_battle", part.battle) ?? battleProblem(part.battle.battle);
+      if (problem) problems.push(`${where}: the battle ${problem}`);
+      if (!part.won || !part.lost) problems.push(`${where} has a battle, so it needs won and lost`);
+    }
     if (part.check && !talk) {
       const problem = checkProblem(part.check);
       if (problem) problems.push(`${where} has ${problem}`);
@@ -762,7 +775,7 @@ export function sceneProblems(scene, id = "the scene", { talk = false } = {}) {
       if (problem) problems.push(`${where}: the fight ${problem}`);
       if (!part.won || !part.lost) problems.push(`${where} has a fight, so it needs won and lost`);
     }
-    if (!talk && !part.check && !part.fight && !part.end && !always && !(part.choices ?? []).length) problems.push(`${where} has no choices and doesn't end the scene`);
+    if (!talk && !part.check && !part.fight && !part.battle && !part.end && !always && !(part.choices ?? []).length) problems.push(`${where} has no choices and doesn't end the scene`);
     for (const [i, step] of (part.do ?? []).entries()) {
       const { tool, set, clear, ending, failed: _failed, text: _text, line: _line, ...input } = step;
       if (ending) {
@@ -839,9 +852,9 @@ export function allStoryProblems(dir = SCENES_DIR) {
       for (const text of conditions) for (const flag of flagsIn(text)) if (!known.has(flag)) problems.push(`${id}, part ${name}: nothing leaves the fact ${flag}. Set it with * flag in a scene, or name it in a story's facts in world/stories`);
     }
   }
-  problems.push(...STORY_FILE_PROBLEMS, ...WORLD_FILE_PROBLEMS, ...MAP_FILE_PROBLEMS, ...notesProblems(known), ...clockProblems(known), ...computerProblems(), ...systemsProblems(), ...logisticsProblems(), ...commandProblems(), ...healthProblems(), ...medbayProblems(), ...deathProblems(), ...checkExtras());
+  problems.push(...STORY_FILE_PROBLEMS, ...WORLD_FILE_PROBLEMS, ...MAP_FILE_PROBLEMS, ...notesProblems(known), ...clockProblems(known), ...computerProblems(), ...systemsProblems(), ...logisticsProblems(), ...commandProblems(), ...healthProblems(), ...medbayProblems(), ...deathProblems(), ...allBattleProblems().problems, ...checkExtras());
   const drawn = Object.values(WORLD_MAPS).flatMap((map) => Object.values(map.levels ?? {})).filter((level) => level.drawn).length;
-  return { count, requests, stories: Object.keys(WORLD_THREADS).length, computers: Object.keys(WORLD_COMPUTERS).length, systems: placesWithSystems(), logistics: placesWithLogistics(), command: Object.keys(WORLD_COMMAND).length, health: healthFiles(), drawn, problems, fleet: fleetLeftovers(dir) };
+  return { count, requests, stories: Object.keys(WORLD_THREADS).length, computers: Object.keys(WORLD_COMPUTERS).length, systems: placesWithSystems(), logistics: placesWithLogistics(), command: Object.keys(WORLD_COMMAND).length, health: healthFiles(), battles: allBattleProblems().count, drawn, problems, fleet: fleetLeftovers(dir) };
 }
 
 // The fleet is a thing of the past, and the world's words are the owner's to rework in their own time. This is

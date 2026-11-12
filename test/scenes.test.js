@@ -282,16 +282,15 @@ test("the check-story command says what's wrong, with the line, and exits with 1
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test("the game has no written opening, and says so in a line; a written one is found by the life's name, then the shared one", () => {
-  // The game's own scenes: nothing opens a new game, for any life, and starting the story says so and leaves no scene.
+test("only the captain has a written opening, the mutiny; any other life gets a line; a written one is found by the life's name, then the shared one", () => {
+  // The game's own scenes: the captain's game opens with the mutiny, and any other life's says nothing is written.
   const own = loadScenes(testWorld.gameScenes);
-  for (const id of Object.keys(START_LIST)) assert.equal(openingSceneId(newGame(id), own.scenes), null, id);
-  const fresh = newGame();
+  for (const id of Object.keys(START_LIST)) assert.equal(openingSceneId(newGame(id), own.scenes), id === "captain" ? "opening_captain" : null, id);
+  const fresh = newGame("miner", 5);
   const said = [];
   writtenTurn({ game: fresh, event: "start", emit: (e) => said.push(e), log: () => {}, scenes: own.scenes, broken: own.broken });
   assert.deepEqual(said.filter((e) => e.type !== "state"), [{ type: "notice", text: NO_OPENING }]);
   assert.equal(fresh.scene, null);
-  assert.deepEqual(fresh.quests, [], "and a new game has no quest");
   assert.equal(publicState(fresh).storyWaiting, false, "so there's nothing to continue");
   // With the test scenes: the captain's own opening, and the shared one for every other life.
   assert.ok(WORLD_SCENES.opening_captain);
@@ -526,7 +525,7 @@ function pastTheOpening(game) {
 
 test("the game itself offers no written story: every lead aboard says it's not written yet", () => {
   const own = loadScenes(testWorld.gameScenes).scenes;
-  assert.deepEqual(Object.keys(own).filter((id) => id.startsWith("thread_") || id.startsWith("opening") || id.startsWith("arrive_")), [], "no story, opening or arrival is written");
+  assert.deepEqual(Object.keys(own).filter((id) => id.startsWith("thread_") || id.startsWith("arrive_")), [], "no story or arrival is written");
   const game = pastTheOpening(newGame());
   const leads = publicState(game).story.here;
   assert.ok(leads.length > 1, "the stories that aren't written are still listed");

@@ -1,0 +1,38 @@
+# Ship's Hand
+threat: 1
+hp: 14
+attack: 2
+defense: 11
+damage: 2 to 5
+weapon: Deck Wrench
+xp: 15
+credits: 0 to 10
+art: brawler
+tags: 
+motive: orders
+
+In a line:
+One of the Meridian's crew, with whatever came to hand: a wrench, a pry bar, a fire axe off the bulkhead.
+
+When the fight starts:
+- One of the crew squares up to you with a deck wrench, and doesn't look happy about it.
+
+When they hit:
+- The wrench catches you on the shoulder, hard.
+- They swing low, and the wrench finds your knee.
+
+When they miss:
+- The wrench clangs off the bulkhead beside your head.
+- They overreach, and the swing goes wide.
+
+When they hit hard:
+- They put their whole weight behind the wrench, and it lands.
+
+When they're beaten:
+- They go down, and the wrench rolls away across the deck plates.
+
+When they join the fight:
+- {Enemy} comes running with a wrench in one hand.
+
+When they're stunned:
+- {Enemy} stops short, the wrench hanging at their side.

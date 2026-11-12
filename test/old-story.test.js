@@ -31,7 +31,7 @@ function play(game, args) {
   return said;
 }
 
-test("what's left in the game's folders: no main story, no written story, opening or arrival, and no clock by act", () => {
+test("what's left in the game's folders: no main story, no written story or arrival, no clock by act, and the mutiny as the only opening", () => {
   const stories = Object.keys(WORLD_THREADS);
   assert.equal(stories.length, 108);
   assert.deepEqual(stories.filter((id) => id.startsWith("main_")), []);
@@ -40,7 +40,10 @@ test("what's left in the game's folders: no main story, no written story, openin
   assert.ok(SET_ASIDE.has("deep_past_the_lamp") && SET_ASIDE.has("out_ghostlight_court_martial"), "the two that followed the main story are set aside");
   assert.equal(writtenThreadIds().size, 0, "no story has a written scene");
   const scenes = [...sceneFileIds()];
-  assert.deepEqual(scenes.filter((id) => /^(opening|arrive_|thread_)/.test(id)), []);
+  assert.deepEqual(scenes.filter((id) => /^(arrive_|thread_)/.test(id)), []);
+  // Since 2026-11-12 the captain's game opens with a mutiny on deck 1 (src/battles.js), and no other life has an opening.
+  assert.deepEqual(scenes.filter((id) => id.startsWith("opening")), ["opening_captain"]);
+  assert.equal(loadScenes().scenes.opening_captain.title, "The Red Cloth");
   assert.ok(!scenes.includes("talk_tharel"));
   assert.ok(scenes.filter((id) => id.startsWith("request_")).length >= 19, "what people ask is all still there");
   assert.ok(scenes.filter((id) => id.startsWith("talk_")).length >= 13, "and so are the crew's written talks");
@@ -50,25 +53,33 @@ test("what's left in the game's folders: no main story, no written story, openin
   assert.deepEqual(allStoryProblems().problems, [], "and the checker is content with what's left");
 });
 
-test("a new game is the captain's, with no quest, and it begins with one line and nothing to continue", () => {
+test("a new game is the captain's, with no quest, and it opens with the mutiny's alarm on the bridge", () => {
   assert.deepEqual(Object.keys(creatorSetup().starts), ["captain"]);
   const game = newGame();
   assert.equal(game.version, 24);
   assert.deepEqual(game.quests, []);
   assert.equal(questsView(game).following, null);
   const said = play(game, { event: "start" });
-  assert.deepEqual(said, [{ type: "notice", text: NO_OPENING }]);
-  assert.equal(game.scene, null);
+  assert.match(said[0].text, /every speaker on the deck gives the same flat chime/);
+  assert.equal(game.scene.id, "opening_captain");
+  assert.equal(game.scene.part, "alarm");
+  assert.deepEqual(game.quests, [], "the opening gives no quest");
   const shown = publicState(game);
   assert.equal(shown.storyWaiting, false);
   assert.equal(shown.walk.here.name, "The Bridge");
-  assert.deepEqual(latestOptions(shown.transcript), [], "no choices are offered");
+  assert.equal(latestOptions(shown.transcript).length, 2, "hold the bridge, or get on the speakers first");
+  // Another life, in a game saved from when it was offered, has no opening, and says so.
+  const draft = randomDraft({ seed: 8, archetype: "officer" });
+  draft.start = "engine_hand";
+  const hand = createGameFromDraft(draft);
+  assert.deepEqual(play(hand, { event: "start" }), [{ type: "notice", text: NO_OPENING }]);
+  assert.equal(hand.scene, null);
   // The leads are still listed, as notes of stories nobody has written out, and taking one says so.
   const leads = leadsHere(game);
   assert.ok(leads.length >= 1);
   assert.ok(leads.every((lead) => !lead.written));
   assert.throws(() => play(game, { playerText: "I look into this", threadId: leads[0].id }), (err) => err instanceof StoryError && /hasn't been written out yet/.test(err.message));
-  // Typing at the story gets a plain answer, and changes nothing.
+  // Typing what isn't one of the choices gets a plain answer, and changes nothing.
   const before = JSON.stringify(game);
   assert.throws(() => play(game, { playerText: "look around" }), (err) => err instanceof StoryError);
   assert.equal(JSON.stringify(game), before);
@@ -100,7 +111,7 @@ test("a game saved in the middle of the old story opens with that story closed, 
   const saved = savedInTheOldStory();
   const game = migrateGame(structuredClone(saved));
   assert.equal(game.version, 24);
-  assert.equal(game.scene, null, "the opening it was in is gone");
+  assert.equal(game.scene, null, "the opening it was in is gone, though there's a new opening by that name: the mutiny's");
   assert.deepEqual(Object.keys(game.parked), ["command_delegation"], "a scene whose file is still there keeps its place");
   const quest = (id) => game.quests.find((one) => one.id === id);
   for (const id of ["the_beacon", "fuel_for_the_fleet", "crew_naomi_under_crew"]) {

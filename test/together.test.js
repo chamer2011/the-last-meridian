@@ -152,29 +152,61 @@ async function workTheRoom(where) {
   }
 }
 
-test("a new game opens on the bridge with no story and says so, and the bridge's things, parts, pockets and a fight all work together", async () => {
+// The nearest of the other side the player can hit from where they stand, from what the fight sends the page.
+function nearestSeen(combat) {
+  const live = combat?.live;
+  if (!live || combat.you.hp <= 0) return null;
+  let best = null;
+  for (const enemy of combat.enemies) {
+    const spot = live.fighters[enemy.key];
+    if (enemy.hp <= 0 || enemy.out || !spot || !live.sight[enemy.key]?.ok) continue;
+    const far = Math.hypot((spot.x - live.you.x) * 0.5, spot.y - live.you.y);
+    if (!best || far < best.far) best = { key: enemy.key, far };
+  }
+  return best?.key ?? null;
+}
+
+test("a new game opens with the mutiny: the alarm, a choice, the battle fought out across the deck, the story going on from how it ended, and then the room's things, parts, pockets and a fight", async () => {
   await call("/api/new", { draft: randomDraft({ seed: 7, archetype: "officer" }) });
   const opening = await call("/api/chat", { event: "start" });
   assert.equal(opening.error, null);
-  // Nothing is written to open the game since 2026-11-12: one line says so, no scene is under way, there's no quest,
-  // and nothing waits on Continue the story.
-  const begun = await state();
-  assert.deepEqual(begun.transcript.map((one) => one.role), ["notice"]);
-  assert.match(begun.transcript[0].text, /^\[STORY\] No story is written for now/);
-  assert.equal(begun.scene, null);
-  assert.equal(begun.storyWaiting, false);
-  assert.deepEqual(begun.questLog.quests, []);
-  assert.equal(begun.walk.here.name, "The Bridge");
-  // Should a written opening come back, its first choices are played, as they were.
-  for (let i = 0; i < 4; i += 1) {
-    const g = await state();
-    const options = (g.transcript.filter((one) => one.role === "narrator").at(-1)?.text ?? "").split("\n").filter((line) => line.trim().startsWith(">"));
-    if (!options.length) break;
-    await call("/api/chat", { text: options[0].replace(/^>\s*\d*\.?\s*/, "").replace(/\s*\[[^\]]*\]\s*$/, "").trim() });
-    await finishCheck();
-    await holds("after a written choice");
+  let g = await holds("the alarm");
+  assert.equal(g.scene.id, "opening_captain");
+  assert.equal(g.walk.here.name, "The Bridge");
+  assert.deepEqual(g.questLog.quests, []);
+  const chose = await call("/api/chat", { text: "Hold the bridge" });
+  assert.equal(chose.error, null);
+  g = await holds("the battle begins");
+  assert.ok(g.combat?.live, "the battle is fought in the room");
+  assert.equal(g.combat.battle.title, "The Red Cloth");
+  assert.ok(g.combat.allies.length >= 5, `${g.combat.allies.length} on the player's side`);
+  assert.equal(g.combat.enemies.length, 6, "the first of them, with more to come");
+  assert.ok(!g.combat.actions.some((one) => ["flee", "surrender"].includes(one.action.type)), "no running from it, and no giving up in it");
+  assert.equal((await call("/api/chat", { text: "Hold the bridge" })).status, 400, "the story waits for the battle");
+  // Fought the way the page does it: time going by half a second at a time, and the player going for the nearest of them.
+  let combat = g.combat;
+  let over = null;
+  for (let i = 0; i < 1200 && !over; i += 1) {
+    const target = nearestSeen(combat);
+    if (target && target !== combat.live.you.target) await call("/api/combat", { type: "attack", target });
+    const reply = await call("/api/combat", { action: "tick", ms: 500 });
+    if (reply.status !== 200) problem("the battle", reply.error);
+    if (reply.outcome?.over) over = reply.outcome;
+    else combat = reply.combat;
+    if (i % 20 === 0) await holds(`the battle, ${i / 2} seconds in`);
   }
-  await workTheRoom("the bridge");
+  assert.ok(over, "the battle ended");
+  assert.match(over.summary, /The Red Cloth/);
+  g = await holds("after the battle");
+  assert.equal(g.combat, null);
+  assert.equal(g.storyWaiting, true, "the story goes on from how it ended");
+  const carried = await call("/api/chat", { event: "continue" });
+  assert.equal(carried.error, null);
+  g = await holds("after the opening");
+  assert.equal(g.scene, null, "the opening is over");
+  assert.ok(g.transcript.some((one) => one.role === "combat" && /The Red Cloth/.test(one.text)), "the story keeps how it went");
+  // Wherever the opening left the player, on the bridge or come to in the medbay, the room works.
+  await workTheRoom(over.result === "defeat" ? "the medbay" : "the bridge");
   assert.ok(done.used > 0 && done.worked > 0, JSON.stringify(done));
   assert.deepEqual(problems, []);
 });

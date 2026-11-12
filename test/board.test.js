@@ -156,7 +156,7 @@ test("the board lists the people, places and species, and shows each with what i
   const needing = Object.entries(perk.lists.perks).length && boardWorldList("perk").find((one) => boardWorldItem("perk", one.id).links.needs);
   assert.ok(needing, "some perk needs another first");
   assert.ok(boardWorldItem("perk", boardWorldItem("perk", needing.id).links.needs.id).links.neededBy.some((one) => one.id === needing.id), "and that one knows it leads there");
-  assert.equal(boardWorldList("enemy").length, 34);
+  assert.equal(boardWorldList("enemy").length, 36, "the 34 there were, and the mutineers and ship's hands of the opening battle");
   assert.ok(boardWorldList("enemy").some((one) => one.id === "dock_thug" && one.kind === "paid"));
   assert.deepEqual(boardWorldList("item").slice(0, 2).map((one) => one.id), ["sidearm", "focus_blade"]);
   assert.ok(boardWorldList("item").some((one) => one.id === "service_rifle" && one.kind === "weapon"));

@@ -16,6 +16,7 @@ import {
   removeCondition, removeItem, shiftIdeology, startCombat, travel,
 } from "./rules.js";
 import { setScene } from "./walk.js";
+import { startBattle } from "./battles.js";
 import { tellContactDied } from "./death.js";
 import { PARLEY, ROOM_KINDS, WORLD_THREADS } from "./world.js";
 
@@ -65,6 +66,14 @@ export const TOOL_DEFS = [
       reason: str("Optional. One short sentence the player reads in the fight window, saying why they're fighting: 'You owe the Syndicate, and they've come to collect.'"),
       faction: oneOf(Object.keys(FACTIONS), "Optional. The faction they're fighting for, if it isn't the one in their file. How that faction feels about the player changes the odds of talking to them."),
     }, ["enemy", "lead_in"]),
+  },
+  {
+    name: "start_battle",
+    description: "Starts a battle from world/battles: a fight fought by everyone on a deck at once, in the room, with no limit of four on a side. The battle's own file says who fights it, where they come in and when.",
+    input_schema: obj({
+      battle: str("The battle's id: the name of its file in world/battles, without .txt."),
+      lead_in: str("Optional. One to three sentences of story leading up to it, in the same format as narration."),
+    }, ["battle"]),
   },
   {
     name: "update_story",
@@ -283,6 +292,15 @@ const handlers = {
       narration: input.lead_in,
       result: `The fight against ${foes} began.`,
       notice: withNotes(`[COMBAT] The fight begins: ${foes}${friends ? `, with ${friends} at your side` : ""}`, notes),
+    };
+  },
+  start_battle(game, input) {
+    if (game.check) throw new Error("A check is already running, so this battle can't start yet. Start it after you've seen the result.");
+    const { notes, title, against, with: deck, coming } = startBattle(game, input.battle, { leadIn: input.lead_in ?? null });
+    return {
+      narration: input.lead_in,
+      result: `The battle ${title} began.`,
+      notice: withNotes(`[COMBAT] ${title}: ${against} against you, ${deck} with you on the deck${coming ? `, and ${coming} on the way up` : ""}`, notes),
     };
   },
   update_story(game, input) {

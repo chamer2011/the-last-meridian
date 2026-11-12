@@ -729,6 +729,12 @@ export function parseSceneText(text, name = "the scene") {
       if (fields.scene) part.scene = fields.scene;
       for (const key of ["pass", "fail"]) if (outcomes[key]) part[key] = outcomes[key];
       for (const key of Object.keys(outcomes)) if (!["pass", "fail"].includes(key)) problem(line, `a CHECK only has pass and fail, not ${key}`);
+    } else if (kind === "BATTLE") {
+      // A battle (world/battles) says in its own file who fights it; the line only names it, with what's read first.
+      part.battle = { battle: fields.battle, ...(fields.lead_in ? { lead_in: fields.lead_in } : {}) };
+      for (const key of Object.keys(fields)) if (!["battle", "lead_in"].includes(key)) problem(line, `a BATTLE has nothing but its endings under it: who fights it is in its file in world/battles, not ${key}`);
+      for (const key of ["won", "lost", "talked"]) if (outcomes[key]) part[key] = outcomes[key];
+      for (const key of Object.keys(outcomes)) if (!["won", "lost", "talked"].includes(key)) problem(line, `a BATTLE ends won, lost or talked, not ${key}`);
     } else {
       const fight = {};
       for (const [key, value] of Object.entries(fields)) {
@@ -756,7 +762,7 @@ export function parseSceneText(text, name = "the scene") {
     const trimmed = raw.trim();
     if (trimmed.startsWith("//")) return;
 
-    // Inside a CHECK or FIGHT block, indented lines belong to it, until a blank line or something else.
+    // Inside a CHECK, FIGHT or BATTLE block, indented lines belong to it, until a blank line or something else.
     if (block) {
       if (/^\s+\S/.test(raw) && trimmed) {
         const outcome = trimmed.match(/^([A-Za-z]+)\s*->\s*(\S+)$/);
@@ -846,7 +852,7 @@ export function parseSceneText(text, name = "the scene") {
       part.end = true;
       return;
     }
-    const opening = trimmed.match(/^(CHECK|FIGHT)\b\s*(.*)$/i);
+    const opening = trimmed.match(/^(CHECK|FIGHT|BATTLE)\b\s*(.*)$/i);
     if (opening) {
       flush();
       const kind = opening[1].toUpperCase();
@@ -854,6 +860,11 @@ export function parseSceneText(text, name = "the scene") {
       if (kind === "CHECK") {
         if (!opening[2]) problem(line, "CHECK needs the skill and difficulty after it, like CHECK persuasion:moderate:voss");
         block.fields.check = opening[2].trim();
+      } else if (kind === "BATTLE") {
+        const [battle, ...leadIn] = opening[2].split(":");
+        if (!battle.trim()) problem(line, "BATTLE needs the battle's id after it, the name of its file in world/battles, like BATTLE mutiny");
+        block.fields.battle = battle.trim();
+        if (leadIn.length) block.fields.lead_in = leadIn.join(":").trim();
       } else {
         const [enemy, ...leadIn] = opening[2].split(":");
         if (!enemy.trim()) problem(line, "FIGHT needs the enemy after it, like FIGHT dock_thug");

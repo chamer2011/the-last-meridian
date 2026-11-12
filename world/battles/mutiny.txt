@@ -1,0 +1,21 @@
+# The Red Cloth
+// The mutiny that opens the game: a fight across the whole of deck 1, fought by everyone on it at once, in the room.
+// Claude's draft, not yet edited by the owner. How to write a battle: _how-to-write-a-battle.txt in this folder.
+draft: Claude's, not yet edited by the owner
+place: meridian
+deck: deck1
+they make for: The Bridge
+they give up: when 2 in 3 of them are out of it
+crew fight as: ship_hand
+the rest take cover in: The Quiet Room
+when they give up: The rest of them throw their sidearms down on the deck plates and put their hands on their heads.
+
+Against you:
+- 6 mutineer_crew, up The Upper Forward Stair
+- 6 mutineer_crew, up The Upper Aft Stair, 12 seconds in: More of them come up the aft stair, with red cloth round their arms.
+
+With you:
+- everyone on the deck who can fight
+- tarrow, up The Upper Aft Stair, 30 seconds in: Lieutenant Tarrow comes up the aft stair from below, with her carbine already raised.
+- the guards, up The Upper Aft Stair, 30 seconds in: The guards come up behind her.
+- the ensigns, up The Upper Forward Stair, 30 seconds in: The ensigns come up the forward stair from the mess, with whatever they could grab on the way.

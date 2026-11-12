@@ -79,7 +79,7 @@ export function bringIntoRoom() {
 function keepUp() {
   const c = combat();
   if (!c?.live || c.id === lf.id) return;
-  Object.assign(lf, { id: c.id, paused: true, heldFor: "start", picking: null, notes: [], fx: [], ending: null, message: null, you: null, drawn: { layer: "", roster: "" } });
+  Object.assign(lf, { id: c.id, paused: true, heldFor: "start", picking: null, notes: [], fx: [], ending: null, message: null, you: null, battle: c.battle?.title ?? null, drawn: { layer: "", roster: "" } });
   lf.shown.clear();
   if (c.opening) note(c.opening, "bad");
 }
@@ -165,12 +165,16 @@ function note(text, tone = "") {
 
 const rangedKey = (key) => (key === "you" ? combat()?.live?.you.reach : combat()?.live?.fighters[key]?.reach) !== "melee";
 
+// In a battle, with twenty people fighting across a deck, the notes keep to what concerns the player: what they do and
+// what's done to them, who goes down, and the battle's own lines. The rest is still seen over the room.
+const worthNoting = (event) => !combat()?.battle || event.by === "you" || event.on === "you" || event.down || event.battle || Boolean(event.note);
+
 // Each thing that happened goes in the notes, and what can be seen of it over the room: a shot, a swing, a number.
 function played(events) {
   for (const event of events) {
     // A hit says where it landed, and someone down how they are: out cold, or unable to stand.
     const text = event.where ? `${event.text} (${event.where})` : event.down && event.math ? `${event.text} (${event.math})` : event.text;
-    if (event.text) note(text, event.tone === "good" ? "good" : event.tone === "bad" ? "bad" : event.tone === "dim" ? "dim" : event.tone === "info" ? "info" : "");
+    if (event.text && worthNoting(event)) note(text, event.tone === "good" ? "good" : event.tone === "bad" ? "bad" : event.tone === "dim" ? "dim" : event.tone === "info" ? "info" : "");
     else if (event.note) note(event.note, "dim");
     if (event.by && event.on && event.by !== event.on && (event.damage || event.missed)) {
       lf.fx.push(rangedKey(event.by) ? { kind: "shot", from: event.by, to: event.on, hit: !event.missed, t: 0, life: 0.26 } : { kind: "swing", from: event.by, to: event.on, t: 0, life: 0.3 });
@@ -366,7 +370,9 @@ export function liveOverlay({ ctx, at, unit, chip, hover }) {
     const wanted = !mark.ally && !mark.down && !mark.out && (lf.picking || hover === `fighter:${mark.key}`) ? oddsOn(mark.key, action ?? attack) : null;
     const tall = (mark.name ? 17 : 0) + (mark.down || mark.out ? 0 : 11) + (wanted ? 17 : 0);
     let top = y - unit * (mark.down ? 0.3 : 0.96);
-    const half = 26;
+    // As wide as the name on it, measured the way the room draws it, so names side by side step out of each other's way.
+    ctx.font = `700 11px "Cascadia Mono", Consolas, monospace`;
+    const half = mark.name ? Math.max(26, ctx.measureText(mark.down ? `${mark.name}: down` : mark.name).width / 2 + 7) : 26;
     for (let i = 0; i < 30 && placed.some((box) => box.x0 < x + half && box.x1 > x - half && box.y0 < top && box.y1 > top - tall); i += 1) top -= 4;
     placed.push({ x0: x - half, x1: x + half, y0: top - tall, y1: top });
     ctx.globalAlpha = mark.fade ?? 1;
@@ -443,6 +449,7 @@ export function liveClick(hit) {
 
 const RESULT_TITLES = { victory: "Victory", defeat: "Defeat", fled: "You got away", talked: "It's over", surrendered: "You gave up" };
 const RESULT_TONES = { victory: "good", defeat: "bad", fled: "info", talked: "good", surrendered: "warn" };
+const BATTLE_TITLES = { victory: "The battle's won", talked: "The battle's won", defeat: "You went down" };
 
 function chosen(action) {
   const c = combat();
@@ -513,6 +520,8 @@ function endingWindow() {
     lf.ending = null;
     app.render();
   };
+  // A battle's ending says what it cost in its summary, so it doesn't list everyone who was in it.
+  const battle = Boolean(result.battle);
   const choices = app.ui.game?.storyWaiting
     ? [["Continue the story", () => {
       lf.ending = null;
@@ -520,9 +529,9 @@ function endingWindow() {
     }, "the story picks it up from here"], ["Look around first", back]]
     : [["Back to the room", back]];
   return el("section", { class: "check-window live-orders live-ending", "data-theme": RESULT_TONES[result.result] === "bad" ? "red" : "green", "aria-label": "How the fight ended" },
-    el("header", { class: "check-title" }, el("span", { class: "check-name" }, RESULT_TITLES[result.result] ?? "It's over")),
+    el("header", { class: "check-title" }, el("span", { class: "check-name" }, battle ? BATTLE_TITLES[result.result] ?? "It's over" : RESULT_TITLES[result.result] ?? "It's over")),
     el("div", { class: "live-summary" }, result.summary, result.math && el("span", { class: "log-math" }, ` (${result.math})`)),
-    (result.followers ?? []).map((one) => el("div", { class: "live-summary small" }, `${one.name}: ${one.down ? "knocked out" : `${one.hp}/${one.maxHp} health`}`)),
+    battle ? null : (result.followers ?? []).map((one) => el("div", { class: "live-summary small" }, `${one.name}: ${one.down ? "knocked out" : `${one.hp}/${one.maxHp} health`}`)),
     el("div", { class: "options live-options" }, choices.map(([label, run, detail], i) => el("button", {
       "data-choice": String(i + 1),
       onclick: (event) => {
@@ -533,8 +542,10 @@ function endingWindow() {
 }
 
 function notesNode() {
+  // A battle goes by its own name.
+  const name = combat()?.battle?.title ?? lf.battle ?? "Fight";
   return el("div", { class: "live-notes", "aria-live": "polite" },
-    el("div", { class: "live-banner" }, lf.ending ? "The fight's over" : lf.paused ? "Fight · stopped" : "Fight · running"),
+    el("div", { class: "live-banner" }, lf.ending ? `${lf.battle ? "The battle" : "The fight"}'s over` : lf.paused ? `${name} · stopped` : `${name} · running`),
     lf.notes.map((one, i) => el("div", { class: `live-note ${one.tone}${i < lf.notes.length - 1 ? " old" : ""}` }, one.text)));
 }
 
@@ -568,13 +579,25 @@ export function liveRosterNode() {
       onclick: () => liveClick({ kind: "fighter", fighter: one.key }),
     }, parts);
   };
+  // In a battle there are too many of them to list: the nearest still fighting, and how the rest stand.
+  const standing = c.enemies.filter((one) => one.hp > 0 && !one.out && live.fighters[one.key]);
+  const far = (one) => Math.hypot((live.fighters[one.key].x - live.you.x) * WIDTH, live.fighters[one.key].y - live.you.y);
+  const shownFoes = c.battle ? [...standing].sort((a, b) => far(a) - far(b)).slice(0, BATTLE_ROWS) : c.enemies;
+  const rest = c.battle ? [
+    standing.length > BATTLE_ROWS ? `${standing.length - BATTLE_ROWS} more further off` : null,
+    c.enemies.filter((one) => one.hp <= 0).length ? `${c.enemies.filter((one) => one.hp <= 0).length} down` : null,
+    c.enemies.filter((one) => one.hp > 0 && one.out).length ? `${c.enemies.filter((one) => one.hp > 0 && one.out).length} out of it` : null,
+  ].filter(Boolean).join(" · ") : "";
   return el("div", { class: "live-roster", id: "live-roster" },
     el("div", { class: "walk-here-head" }, el("span", {}, "With you"), el("span", {}, String(1 + c.allies.filter((one) => one.hp > 0).length))),
     row({ key: "you", name: c.you.name, hp: c.you.hp, maxHp: c.you.maxHp, color: "#b4f0be", wounds: c.you.wounds }, "you"),
     c.allies.map((one) => row(one, "ally")),
-    el("div", { class: "walk-here-head" }, el("span", {}, "Against you"), el("span", {}, String(c.enemies.filter((one) => one.hp > 0 && !one.out).length))),
-    c.enemies.map((one) => row(one, "enemy")));
+    el("div", { class: "walk-here-head" }, el("span", {}, "Against you"), el("span", {}, String(standing.length))),
+    shownFoes.map((one) => row(one, "enemy")),
+    rest && el("div", { class: "live-rest" }, rest));
 }
+// How many of the other side a battle's list shows by name: the nearest.
+const BATTLE_ROWS = 6;
 
 // The camera keeps the player above the bar of orders.
 export function liveSettled() {
