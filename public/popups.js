@@ -14,6 +14,8 @@ import { WRITING_SPEEDS, holdBack, newPen } from "./writer.js";
 
 // How long a note about what's happening stays up.
 const NOTE_TIME = 12000;
+// How long the line stays up that a saved game is opened with when its story has changed hands. A click dismisses it.
+const NEWS_TIME = 60000;
 const MOST_NOTES = 4;
 
 // How long the last of what happens stays over the room once it's been read, when nothing else is to come.
@@ -76,7 +78,11 @@ function pickUpFrom(start) {
   readScene();
   pop.at = Math.max(0, pop.beats.length - 1);
   pop.seen = pop.at;
-  pop.posted = pop.notes.length;
+  // Everything here has been read before, except a line the game added when this saved game was opened, saying the
+  // story has changed hands, with nothing after it yet: that one is news, and it stays up a good while.
+  const news = Boolean(app.ui.game.transcript.at(-1)?.turnover);
+  pop.posted = news ? Math.max(0, pop.notes.length - 1) : pop.notes.length;
+  pop.newsFrom = news ? pop.posted : null;
   pop.open = pop.beats.length > 0;
   pen.start(true);
 }
@@ -130,9 +136,9 @@ function dropNote(note) {
   drawNotes();
 }
 
-function addNote(text) {
-  const note = { text, until: Date.now() + NOTE_TIME };
-  note.timer = setTimeout(() => dropNote(note), NOTE_TIME);
+function addNote(text, time = NOTE_TIME) {
+  const note = { text, until: Date.now() + time };
+  note.timer = setTimeout(() => dropNote(note), time);
   pop.shownNotes.push(note);
   while (pop.shownNotes.length > MOST_NOTES) dropNote(pop.shownNotes[0]);
 }
@@ -141,11 +147,15 @@ function addNote(text) {
 function postNotes() {
   let posted = false;
   while (pop.posted < pop.notes.length && (pop.notes[pop.posted].at <= pop.at || !pop.open)) {
-    addNote(pop.notes[pop.posted].text);
+    // The line a saved game was opened with, saying the story has changed hands, stays up much longer than the rest.
+    const news = pop.newsFrom !== null && pop.newsFrom !== undefined && pop.posted >= pop.newsFrom;
+    addNote(pop.notes[pop.posted].text, news ? NEWS_TIME : NOTE_TIME);
     pop.posted += 1;
     posted = true;
   }
-  if (posted) drawNotes();
+  if (!posted) return;
+  pop.newsFrom = null;
+  drawNotes();
 }
 
 // ---- Going through a scene -----------------------------------------------

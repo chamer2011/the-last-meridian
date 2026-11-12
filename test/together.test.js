@@ -13,13 +13,15 @@ import path from "node:path";
 import { after, before, test } from "node:test";
 
 process.env.GAME_DATA_DIR ??= fs.mkdtempSync(path.join(os.tmpdir(), "meridian-together-"));
-const { randomDraft } = await import("../src/creator.js");
+const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const { projectDir } = await import("../src/paths.js");
 
 let server;
 let address;
+// The server's own data folder, where a test can leave a saved game for it to open.
+let data;
 before(async () => {
-  const data = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-together-server-"));
+  data = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-together-server-"));
   fs.mkdirSync(path.join(data, "saves"), { recursive: true });
   const port = await new Promise((resolve) => {
     const probe = http.createServer();
@@ -150,10 +152,20 @@ async function workTheRoom(where) {
   }
 }
 
-test("the captain's written opening plays, and the bridge's things, parts, pockets and a fight all work together", async () => {
+test("a new game opens on the bridge with no story and says so, and the bridge's things, parts, pockets and a fight all work together", async () => {
   await call("/api/new", { draft: randomDraft({ seed: 7, archetype: "officer" }) });
   const opening = await call("/api/chat", { event: "start" });
   assert.equal(opening.error, null);
+  // Nothing is written to open the game since 2026-11-12: one line says so, no scene is under way, there's no quest,
+  // and nothing waits on Continue the story.
+  const begun = await state();
+  assert.deepEqual(begun.transcript.map((one) => one.role), ["notice"]);
+  assert.match(begun.transcript[0].text, /^\[STORY\] No story is written for now/);
+  assert.equal(begun.scene, null);
+  assert.equal(begun.storyWaiting, false);
+  assert.deepEqual(begun.questLog.quests, []);
+  assert.equal(begun.walk.here.name, "The Bridge");
+  // Should a written opening come back, its first choices are played, as they were.
   for (let i = 0; i < 4; i += 1) {
     const g = await state();
     const options = (g.transcript.filter((one) => one.role === "narrator").at(-1)?.text ?? "").split("\n").filter((line) => line.trim().startsWith(">"));
@@ -211,7 +223,13 @@ test("the Meridian jumps to Haven, and its rooms work the same", async () => {
 test("someone who isn't the captain starts, works a shift, sleeps, and can't run the Meridian's systems", async () => {
   const draft = randomDraft({ seed: 11, archetype: "officer" });
   draft.start = "engine_hand";
-  await call("/api/new", { draft });
+  // Every life but the captain's is switched off for new games since 2026-11-12, and a game saved with one still
+  // opens: this one is left in the server's saves, as if it had been made before.
+  const notOffered = await call("/api/new", { draft });
+  assert.equal(notOffered.status, 400);
+  fs.writeFileSync(path.join(data, "saves", "slot1.json"), JSON.stringify(createGameFromDraft(draft)));
+  const loaded = await call("/api/load", { slot: "slot1" });
+  assert.equal(loaded.status, 200, JSON.stringify(loaded).slice(0, 200));
   lastHours = -Infinity;
   const opening = await call("/api/chat", { event: "start" });
   assert.equal(opening.error, null);

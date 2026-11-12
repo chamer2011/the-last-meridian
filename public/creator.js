@@ -222,7 +222,9 @@ function singleChoice(list, field, { locked = false } = {}) {
 function startStep() {
   const { archetypes } = state.setup;
   return [
-    ...heading("Open a new dossier", "Build someone one decision at a time, or start from a ready-made captain and change whatever you like. You don't have to be the captain: that's your choice under Your place."),
+    ...heading("Open a new dossier", Object.keys(state.setup.starts).length > 1
+      ? "Build someone one decision at a time, or start from a ready-made captain and change whatever you like. You don't have to be the captain: that's your choice under Your place."
+      : "Build someone one decision at a time, or start from a ready-made captain and change whatever you like. For now every new game is the captain's."),
     choiceCard({
       action: true,
       title: "Build from scratch",
@@ -232,7 +234,9 @@ function startStep() {
     choiceCard({
       action: true,
       title: "Surprise me",
-      desc: "Generate a whole person at random, with their life and their place in the world. It might be the captain, and it might be someone with a mop.",
+      desc: Object.keys(state.setup.starts).length > 1
+        ? "Generate a whole person at random, with their life and their place in the world. It might be the captain, and it might be someone with a mop."
+        : "Generate a whole person at random, with the life they've had before the chair.",
       onclick: askRandom,
     }),
     el("h3", { class: "group" }, "Ready-made captains"),
@@ -289,8 +293,13 @@ function identityStep() {
 
 function roleStep() {
   const { starts, startGroups } = state.setup;
+  // With one life on offer there's nothing to choose between, and the words say so. The rest are switched off in
+  // world/starts.json, and come back here by themselves when one is switched on again.
+  const one = Object.keys(starts).length < 2;
   return [
-    ...heading("Your place", "Where you are when the story starts, and what you do there. Being captain is one way to play. Choose anything else, and someone else has the fleet, the world goes on over your head, and what you do about it is up to you."),
+    ...heading("Your place", one
+      ? "Where you are when the game starts, and what you do there. For now there's one place to start from: the captain's chair."
+      : "Where you are when the story starts, and what you do there. Being captain is one way to play. Choose anything else, and someone else has the fleet, the world goes on over your head, and what you do about it is up to you."),
     Object.entries(startGroups).map(([group, label]) => [
       el("h3", { class: "group" }, label),
       Object.values(starts).filter((start) => start.group === group).map((start) => choiceCard({

@@ -19,7 +19,7 @@ if (!problems.length) {
 // Not problems: the fleet is a thing of the past, and these are the files that still speak of it, to rework in time.
 const list = (ids) => (ids.length ? ids.join(", ") : "none");
 console.log(`\nThe fleet, which the game no longer has:
-- Set aside, in world\\stories\\_set-aside.txt, because they stand on a ship that's gone (${fleet.setAside.length}): ${list(fleet.setAside)}
+- Set aside, in world\\stories\\_set-aside.txt, because they stand on a ship that's gone or on the main story that was taken out (${fleet.setAside.length}): ${list(fleet.setAside)}
 - Stories whose clock still changes other ships or the Choir's pursuit, which the game lets go (${fleet.otherShips.length}): ${list(fleet.otherShips)}
 - Stories whose words still speak of the fleet (${fleet.stories.length}): ${list(fleet.stories)}
 - Scenes (${fleet.scenes.length}): ${list(fleet.scenes)}

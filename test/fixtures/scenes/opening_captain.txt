@@ -1,0 +1,113 @@
+# A Drill on the Bridge
+// A test scene, and none of it is the game's story: the game has no written opening since 2026-11-12. The tests play
+// this one as the captain's opening, to try what a scene can do: speech, tags on choices, a check with someone
+// watching, a rule, a flag, the journal, a quest, experience, and an end.
+start: bridge
+
+== bridge
+The bridge is running a drill, because the tests need something to play. A lamp on the comms board blinks, six seconds on and six off.
+
+@Lieutenant Iven Sorel: "Drill signal's up, Captain. Every band, six seconds at a time. It isn't real, and I still don't like it."
+
+@Commander Ilya Voss: "Captain." She says it the way she'd read a gauge. "It's a drill, and it still wants an answer from the chair. Your orders."
+
+* new quest first_orders: First Orders | The bridge is running a drill, and it wants an answer from the chair. | Give the bridge your orders.
+
+> [+Voss] Ask her what she'd do, if the chair were hers -> voss_answer
+> [persuasion:moderate:voss] Ask what she isn't telling you -> voss_pressed_pass | voss_pressed_fail
+> [reason] Tell the crew the truth: it's only a drill -> truth
+> Say nothing, and listen to it -> listen
+
+== voss_answer
+She doesn't look at the chair. She looks at the lamp.
+
+@Commander Ilya Voss: "Answer it as if it were real, and tell them afterwards that it wasn't. That's what a drill is for." A pause. "You asked. Most wouldn't have."
+
+=> Voss will remember that you asked her first.
+
+* contact Ilya Voss friendly: You asked for her judgment before you gave your first order.
+* journal: Voss's advice in the drill: answer it as if it were real, and tell them afterwards that it wasn't.
+
+> Go on -> orders
+
+== voss_pressed_pass
+Something in her jaw moves, where the scar is.
+
+@Commander Ilya Voss: "Fine. I wrote the drill. I wanted to see what you'd do with it before anything real came along." She meets your eye. "Now you know that about me."
+
+=> Voss told you the drill was hers.
+
+* journal: Commander Voss wrote the drill herself, to see what you'd do with it.
+* xp 10: You got the truth out of Voss
+* flag knows_whose_drill
+
+> Go on -> orders
+
+== voss_pressed_fail
+@Commander Ilya Voss: "Captain. If I had something to tell you, you'd have it." The scar along her jaw doesn't move at all. "Orders."
+
+Behind her, Sorel finds something very interesting in his headset.
+
+> Go on -> orders
+
+== truth
+@Lieutenant Iven Sorel: "Ship-wide, Captain. Say again when you're ready."
+
+You tell the whole ship that it's a drill, and that you'd want it answered the same way if it weren't. The channel stays open a second too long afterwards.
+
+@Commander Ilya Voss: "Well." It's almost approval. "Now they know."
+
+=> The whole crew heard you say it was only a drill.
+
+* belief reason 1: You told the crew the truth instead of letting them wonder
+* journal: Your first words to the crew were that the signal was a drill, and that you'd want it answered the same way if it weren't.
+* flag told_the_crew
+
+> Go on -> orders
+
+== listen
+Sorel puts it on the bridge speakers without being asked. Six seconds of tone, then six of nothing, then the tone again.
+
+@Ensign Lira Vey: "Confirming: the same six seconds, forty times since the watch began. It is a drill. I checked twice."
+
+@Ensign Pell Asante: "It's, it's sort of restful, is the thing. Captain." She catches herself a beat late.
+
+* journal: The drill signal: six seconds of tone, six of nothing, over and over.
+
+> Go on -> orders
+
+== orders
+Voss waits. The lamp doesn't.
+
+@Commander Ilya Voss: "The drill ends when a course is plotted, or when you say it does. I can have Pell plot one while you decide."
+
+> Ask her what she'd do, if the chair were hers -> voss_answer ? not seen voss_answer
+> Have Pell plot the course -> plot
+> Go and see the ship first -> walk
+
+== plot
+// If the crew heard the captain say it was a drill, the helm has heard about it too.
+? flag told_the_crew -> plot_after_truth
+
+@Ensign Pell Asante: "Plotted, sir. Captain. It's a course to nowhere, for the drill, but it's a tidy one."
+
+=> The drill is answered.
+
+* quest first_orders: The course is plotted, and the drill is answered. The ship is yours to walk.
+* xp 10: Your first order as captain
+END
+
+== plot_after_truth
+@Ensign Pell Asante: "Plotted, sir. Captain. It's a course to nowhere, for the drill." A breath. "The lower decks are asking if you meant it. About answering it the same either way. I said you did."
+
+=> The drill is answered.
+
+* quest first_orders: The course is plotted, and the drill is answered. The ship is yours to walk.
+* xp 10: Your first order as captain
+END
+
+== walk
+You leave the chair empty a while longer. Nobody says anything about it, and Voss ends the drill herself.
+
+* quest first_orders: The drill ended without you. The ship is yours to walk.
+END

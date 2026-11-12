@@ -54,7 +54,8 @@ function until(game, reached, limit = 400) {
 
 test("every story says what happens if nobody steps in, or why it has to wait", () => {
   const ids = Object.keys(WORLD_THREADS);
-  assert.equal(ids.length, 128);
+  assert.equal(ids.length, 108, "the 128 there were, less the twenty of the main story that went on 2026-11-12");
+  assert.ok(!ids.some((id) => id.startsWith("main_")), "none of the main story is left");
   for (const id of ids) {
     const entry = STORY_CLOCK.threads[id];
     assert.ok(entry, `${id} has nothing written for it`);
@@ -62,7 +63,7 @@ test("every story says what happens if nobody steps in, or why it has to wait", 
   }
   for (const id of Object.keys(STORY_CLOCK.threads)) assert.ok(WORLD_THREADS[id], `${id} isn't a story`);
   const waiting = ids.filter((id) => STORY_CLOCK.threads[id].waits).sort();
-  assert.deepEqual(waiting, ["deep_past_the_lamp", "main_safe_harbor", "main_the_last_watch"], "only the ones that need the Meridian at the Harbor");
+  assert.deepEqual(waiting, ["deep_past_the_lamp"], "only the one that needed the Meridian at the Harbor, which is set aside now");
 });
 
 test("every stage is well formed, and only touches things that exist", () => {
@@ -96,7 +97,7 @@ test("every stage is well formed, and only touches things that exist", () => {
     }
   }
   assert.ok(stages > 150, `only ${stages} stages`);
-  assert.equal(STORY_CLOCK.acts.length, 4, "the last act needs someone to take the Meridian there");
+  assert.equal(STORY_CLOCK.acts.length, 0, "the clock by act is empty since the written main story went");
   STORY_CLOCK.acts.forEach((act, index) => {
     let last = 0;
     for (const event of act.events) {
@@ -191,18 +192,18 @@ test("once someone has taken a story up, it's in their hands and its clock stops
 
 test("a story that's moved on can still be taken up, and then it stops where it was", () => {
   const game = newGame();
-  until(game, () => hasMovedOn(game, "main_two_weeks_of_fuel"));
-  const stage = STORY_CLOCK.threads.main_two_weeks_of_fuel.stages[0];
-  assert.equal(leadNow(game, "main_two_weeks_of_fuel"), stage.lead ?? stage.news);
+  until(game, () => hasMovedOn(game, "out_cinder_strike"));
+  const stage = STORY_CLOCK.threads.out_cinder_strike.stages[0];
+  assert.equal(leadNow(game, "out_cinder_strike"), stage.lead ?? stage.news);
   // Look into this, from the Leads menu.
-  noteThreadStarted(game, "main_two_weeks_of_fuel");
-  assert.equal(game.story.threads.main_two_weeks_of_fuel, "active");
-  const reached = game.story.clock.threads.main_two_weeks_of_fuel.stage;
+  noteThreadStarted(game, "out_cinder_strike");
+  assert.equal(game.story.threads.out_cinder_strike, "active");
+  const reached = game.story.clock.threads.out_cinder_strike.stage;
   for (let day = 0; day < 100; day += 1) {
     comfortable(game);
     days(game, 1);
   }
-  assert.equal(game.story.clock.threads.main_two_weeks_of_fuel.stage, reached, "and it stops where it was");
+  assert.equal(game.story.clock.threads.out_cinder_strike.stage, reached, "and it stops where it was");
 });
 
 test("a story that hasn't moved on still reads as it began", () => {
@@ -240,26 +241,44 @@ test("a story waits for the world to reach it", () => {
   for (const [id] of lateOnes) assert.equal(game.story.clock.threads[id], undefined, `${id} started too soon`);
 });
 
-// ---- The main story -----------------------------------------------------------------
+// ---- A story's clock by act ------------------------------------------------------------
 
-test("the main story's pressure builds, and it moves on if nobody moves it, as far as the last act and no further", () => {
-  const game = newGame();
-  const act = STORY_CLOCK.acts[0];
-  const heard = new Set();
-  until(game, () => {
-    for (const entry of clockOf(game).moved) heard.add(entry.text);
-    return game.story.act === 2;
-  });
-  for (const event of act.events) assert.ok(heard.has(event.news), event.news);
-  assert.ok(game.story.clock.moved.some((entry) => entry.text === act.moves_on.news));
-  assert.equal(game.story.clock.act.act, 2);
-  assert.ok(game.story.clock.moved.some((entry) => entry.title === WORLD_ARC.acts[0].name), "the news says what's happened in the act");
-  until(game, () => game.story.act === 4, 500);
-  for (let day = 0; day < 200; day += 1) {
-    comfortable(game);
-    days(game, 1);
+test("with no acts written, nothing happens by act; with acts, their pressure builds and they move on by themselves, as far as the last and no further", () => {
+  // The game's own clock by act is empty since the written main story went, so the story stays in act 1.
+  assert.deepEqual(STORY_CLOCK.acts, []);
+  const still = newGame(23);
+  for (let day = 0; day < 60; day += 1) {
+    comfortable(still);
+    days(still, 1);
   }
-  assert.equal(game.story.act, 4, "the Meridian has to be taken to the last one");
+  assert.equal(still.story.act, 1);
+  assert.ok(still.story.clock.moved.every((entry) => entry.id), "everything that's moved on is some story's own");
+  // Acts written for the test, the way world/story-clock.json takes them: the clock reads the same list.
+  const acts = [1, 2, 3, 4].map((n) => ({
+    events: [{ after: 3, news: `Test news for act ${n}: something has been heard on the mess decks.`, fleet: { morale: -1 } }],
+    ...(n < 4 ? { moves_on: { after: 8, news: `Test news: act ${n} has ended by itself, with nobody moving it.` } } : {}),
+  }));
+  STORY_CLOCK.acts.push(...acts);
+  try {
+    const game = newGame();
+    const heard = new Set();
+    until(game, () => {
+      for (const entry of clockOf(game).moved) heard.add(entry.text);
+      return game.story.act === 2;
+    });
+    for (const event of acts[0].events) assert.ok(heard.has(event.news), event.news);
+    assert.ok(game.story.clock.moved.some((entry) => entry.text === acts[0].moves_on.news));
+    assert.equal(game.story.clock.act.act, 2);
+    assert.ok(game.story.clock.moved.some((entry) => entry.id === null && entry.title), "the news says which act it happened in");
+    until(game, () => game.story.act === 4, 500);
+    for (let day = 0; day < 60; day += 1) {
+      comfortable(game);
+      days(game, 1);
+    }
+    assert.equal(game.story.act, 4, "the last act never ends by itself");
+  } finally {
+    STORY_CLOCK.acts.length = 0;
+  }
 });
 
 test("when the written story moves the act on, the act's clock starts again from there", () => {
@@ -358,7 +377,7 @@ test("an old save picks it all up from today, with nothing happening at once", (
   old.ship.day = 300;
   old.world.day = 300;
   const game = migrateGame(JSON.parse(JSON.stringify(old)));
-  assert.equal(game.version, 23);
+  assert.equal(game.version, 24);
   assert.equal(game.story.clock.start, 300);
   assert.equal(game.story.clock.day, 300);
   comfortable(game);
@@ -366,7 +385,7 @@ test("an old save picks it all up from today, with nothing happening at once", (
   assert.deepEqual(game.story.clock.moved, []);
   assert.deepEqual(shipView(game).council, { off: false, recent: [] });
   until(game, () => clockOf(game).moved.length > 0);
-  assert.equal(game.version, 23);
+  assert.equal(game.version, 24);
   assert.equal(JSON.parse(JSON.stringify(game)).story.clock.start, 300);
 });
 

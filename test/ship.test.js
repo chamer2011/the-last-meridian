@@ -86,7 +86,7 @@ test("the ship's file: nine hundred aboard, four supplies, four ration levels, a
 test("a new game's ship carries her stores, with the day's clock set and nobody else in the chair", () => {
   const game = newGame();
   const s = game.ship;
-  assert.equal(game.version, 23);
+  assert.equal(game.version, 24);
   assert.equal(s.aboard, 900);
   assert.equal(s.food, SHIP_DATA.start.food);
   assert.equal(s.medicine, SHIP_DATA.start.medicine);
@@ -414,7 +414,7 @@ test("a jump needs all its fuel, says so on the map, and costs fuel in the game"
   assert.equal(jumpCost(game, "vantor").jump, false, "you can't jump to where you already are");
 });
 
-test("Set course runs here, and the story hears about it when the player carries on", () => {
+test("Set course runs here, and with no arrival written for Haven there's nothing for the story to carry on with", () => {
   const game = newGame();
   const { message, notes, moved } = shipCommand(game, { action: "course", id: "haven" });
   assert.equal(moved, true);
@@ -422,7 +422,7 @@ test("Set course runs here, and the story hears about it when the player carries
   assert.match(message, /Jumped to Haven Station/);
   assert.match(notes[0], /^\[NAV\]/);
   assert.equal(game.arrived, "haven");
-  assert.equal(publicState(game).storyWaiting, true, "Haven has a written arrival, which plays when the player carries on");
+  assert.equal(publicState(game).storyWaiting, false, "no place has a written arrival since the written main story went, so nothing waits");
   // From Haven, the Meridian and the dock are a short hop apart.
   shipCommand(game, { action: "course", id: SHIP_ID });
   assert.equal(game.ship.at, "haven");
@@ -473,7 +473,7 @@ test("the codex has no ships of the fleet, and the chart has no fleet", () => {
 test("stories set aside stay in their files, out of the Leads menu, and still on the clock's shelf", () => {
   assert.ok(SET_ASIDE.size >= 10, `${SET_ASIDE.size} set aside`);
   for (const id of SET_ASIDE) assert.ok(WORLD_THREADS[id], `${id} is set aside, so it has to exist`);
-  assert.ok(SET_ASIDE.has("fleet_frost_line") && SET_ASIDE.has("main_the_ship_that_sat_down"));
+  assert.ok(SET_ASIDE.has("fleet_frost_line") && SET_ASIDE.has("deep_past_the_lamp"), "the fleet's, and the two that followed the main story");
   const game = newGame();
   game.level = 10;
   const seen = new Set();
@@ -521,7 +521,7 @@ test("a save from before the ship kept her own stores loads, with nothing charge
   save.ship = { name: "CFS Meridian", hull: 40, maxHull: 100, fuel: 3, maxFuel: 12, morale: 31 };
   save.transcript = [{ role: "narrator", text: "The story so far.\n\n> Do something" }];
   const game = migrateGame(save);
-  assert.equal(game.version, 23);
+  assert.equal(game.version, 24);
   assert.equal(game.ship.day, 9);
   assert.equal(game.ship.at, "kessara");
   assert.equal(stock(game, "food"), 56, "her stores are full, from the logistics file");
@@ -547,7 +547,7 @@ test("a save with the fleet in it loses the fleet, and keeps what was the ship's
   };
   save.transcript = [{ role: "narrator", text: "The story so far." }];
   const game = migrateGame(save);
-  assert.equal(game.version, 23);
+  assert.equal(game.version, 24);
   assert.equal(game.fleet, undefined);
   assert.equal(game.ship.day, 12);
   assert.equal(game.ship.at, "cinder");
@@ -579,7 +579,7 @@ test("a captain's save aboard the Sundial docks the Meridian there, and one from
   const ancient = { ...oldSave(), version: 3, bestiary: undefined };
   delete ancient.campaign;
   const game = migrateGame(ancient);
-  assert.equal(game.version, 23);
+  assert.equal(game.version, 24);
   assert.ok(game.ship.day !== undefined);
   assert.doesNotThrow(() => publicState(game));
 });

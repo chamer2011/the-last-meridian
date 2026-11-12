@@ -4,7 +4,7 @@ On 2026-11-12, the day all seven hands-on features were finished, the owner wrot
 
 > I would like for you to get rid of the story quest you made last week. Not the organic quest system, just the railread story. Disable the other start execpt the captain one. The start of the story should happenend when a group of unamed mutineer try to get control of the ship. This creates battle everywhere along the bridge level. The officers and all of the crew on the level should fight this mutiny, the captain too. The aftermath of the fight leaves the ship in bad condition and force the player to act on the defferent system present in the game. Show me a plan of the request
 
-They asked for a plan, so **nothing has been built**. The plan is a page for them to read and answer: https://claude.ai/artifact/TY8dxcTRqyd5YV83WLMjoo. Build nothing until they say so, and then only the step they name.
+They asked for a plan, so the plan came first, as a page for them to read and answer: https://claude.ai/artifact/TY8dxcTRqyd5YV83WLMjoo. Asked "Shall I start step 1 of the plan with my picks?", they answered **"Yes, your picks"** the same day. That took all seven picks below (A1, B1, C1, D1, E1, F1, G1), and it covers the one rule the plan asked to bend: the four-a-side limit lifted for the opening battle only. **Step 1 is built and they haven't tried it; build step 2 only when they say so.**
 
 This replaces what they said on 2026-11-04 (that they'd write the stories themselves and the stories weren't to be changed meanwhile) as far as the main story goes: they now want it out. They still write their own universe; the few lines the opening needs would be drafts marked for them to rewrite.
 
@@ -50,9 +50,36 @@ This replaces what they said on 2026-11-04 (that they'd write the stories themse
 
 How the fight plays with twenty people at once (it was built for eight); whether a fire, a dozen wounded and a dark galley is too much for a first hour; that the words would be my drafts; and that about 130 tests would be rewritten against small test scenes.
 
+## Step 1, as built (2026-11-12): the old story out, one life in
+
+**What the owner sees.** The title screen says "Nine hundred survivors. One battered ship. The chair is yours." and warns about two weeks of fuel instead of a signal. **New game** offers only **Captain of the Meridian** under Your place, and **Surprise me** makes a captain. A new game opens on the bridge with one line over the room, **No story is written for now. The Meridian is yours: walk her, talk to her people, and see to what needs seeing to.**, no quest and no tracker box. **J** opens the quest log, which says there are no quests yet and that one begins when someone aboard has something to ask (an amber `!` over them). The **Leads** menu lists the stories that are left, each **Not written yet**. A game saved in the middle of the old story opens with one line under the tracker (it stays a minute, and a click dismisses it): **The written main story has been taken out of the game, and its quests are closed. Everything else goes on as it was: the ship, her people, and what they ask of you.** Its old quests are under **Finished** in the log, each "Closed: the written story this belonged to has been taken out of the game.", and what people had asked is still asked.
+
+**What went, from the game's folders (all of it is in git history before the step's commit):**
+
+- Scenes: `opening.txt`, `opening_captain.txt`, `opening_engine_hand.txt`, `opening_docker.txt`, `arrive_haven.txt`, `thread_main_the_old_scholar.txt`, `thread_main_two_weeks_of_fuel.txt`, `thread_main_visiting_hours.txt`, `thread_main_the_council.txt`, `thread_crew_naomi_under_crew.txt` and `talk_tharel.txt`. 35 scenes are left: 19 requests, 3 of the chain of command, 13 talks.
+- Stories: the 20 `main_*.txt` files. 108 are left. `deep_past_the_lamp` and `out_ghostlight_court_martial` could only begin after a main story, so they joined `_set-aside.txt` (12 set aside now); their files weren't touched. The Downstairs Crew's notes (`crew_naomi_under_crew.txt`) stay as a background story with no scene.
+- `STARTING_QUESTS` in `src/data.js` is empty, and `world/story-clock.json`'s `acts` is an empty list, with instructions for filling it. `actDay` in `src/story-clock.js` is unchanged and does nothing without acts.
+- Seven talks lost the branches that opened on facts only the old scenes left (126 lines out, 2 changed): Aduro, Halm, Marrow, Naomi, Brandt (`talk_odessa`), Tarrow and Voss.
+
+**What changed in the code.**
+
+- `src/scenes.js`: a game whose life has no opening and no shared `opening.txt` begins with the notice `NO_OPENING` instead of an error; a shared opening that can't be read is still an error. `src/scene-files.js`: `sceneFileIds()`, and both it and `writtenThreadIds()` read the folder `GAME_SCENES_DIR` names when it's set.
+- Save version 24 (`fromVersion23` in `src/migrate.js`): a scene under way or waiting whose file is gone is dropped (one whose file is still there, such as the delegation, keeps its place); every quest still going that isn't a request is closed with the line above; the tracker lets go of a quest that's over; an open talk is closed, since its lines may have changed; and `OLD_STORY_NOTICE` is added once, with `turnover: true`, when anything changed and the story had begun.
+- One life: `"off": true` on the 21 other lives in `world/starts.json` (take the line out and the life is offered again at the next start); `startIsOff` and `OFFERED_STARTS` in `src/role.js`; `creatorSetup` and Surprise me in `src/creator.js` use the lives on offer; `/api/new` refuses a life that's off. `createGameFromDraft` and `normalizeDraft` still take any life, for games saved with one and for the tests.
+- The page: the title's two lines and the creator's words for one life (`public/app.js`, `public/creator.js`); the quest log with no quests (`public/quests.js`, which showed the word "null" on its right side); and a saved game opened with a `turnover` line shows that line as a note for a minute and not the old scene's last words (`latestSceneStart` in `public/scene.js`, `pickUpFrom` and `NEWS_TIME` in `public/popups.js`). That last one also holds for a game the AI was running, which got the same kind of line on 2026-11-10.
+- `src/check-scenes.js` says the set-aside stories stand on a ship that's gone or on the main story that was taken out.
+
+**The tests.** The written story's engine was tested by playing the old story, so those tests now play small scenes and stories of their own in `test/fixtures` (`test-world.mjs` copies the game's scenes and stories into a temporary folder, adds the test ones, and points `GAME_SCENES_DIR` and `GAME_STORIES_DIR` at the copies before the game is read): a drill on the bridge for the captain's opening, a shared opening, an arrival at Haven, "The Test Leak" (a story with four endings, facts, a clock, three consequences and a written scene with a check, a fight, a room of its own and a side for someone who isn't the captain) and "The Test Inquiry" (which comes after it and reacts to how it ended, in its notes and in a fork on its clock). None of it is read by the game. `test/act1.test.js` keeps only its engine test; the tests that played the Warm Room, the fuel, Visiting Hours, the council, the Downstairs Crew and the two other openings went with them. `test/old-story.test.js` is new: what's left in the folders, how a new game begins, and a save from the middle of the old story. One dice-luck test of another feature (`test/deep-dive.test.js`, losing a fight aboard) was made certain on the way.
+
+**Checked on screen** on a test copy on port 3294, at 1400 and 810 wide: the title, the creator's first page and Your place, a new game on the bridge, the quest log with no quests, the Leads menu, and a save from the middle of the old story (the line under the tracker, and the closed quests in the log). Nothing overlapped, and the browser's console had no errors.
+
+**Not done, and left for the owner:** four crew talks still speak of the signal (Halm, Sorel, Vey, Voss), and 31 stories, 13 places and 13 people still mention the Beacon in their words; `world/arc.json` (the old main story's acts and clues) is still there, read by nothing the player sees; the heading over the one life still says "On the ships"; and the owner's own introduction at the top of `README.md` wasn't touched. A new game has nothing written to do until step 2: only what the ship and her people give.
+
 ## Status
 
 | What | State |
 |------|-------|
-| The plan page | shown on 2026-11-12, waiting for their answer |
-| Any of the six steps | not started |
+| The plan page | shown on 2026-11-12; answered "Yes, your picks" the same day |
+| 1. The old story out, one life in | built 2026-11-12, untried by them |
+| 2. The battle | not started: waits for their word |
+| 3 to 6 | not started |

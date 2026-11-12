@@ -1,0 +1,14 @@
+# A Drill, Heard from Below
+// A test scene, and none of it is the game's story. The tests play it as the opening for any life that has none of
+// its own, which is how a shared opening.txt works when the game has one.
+
+== morning
+A lamp is blinking somewhere above you this morning, six seconds on and six off, and nobody who outranks you has said why. Where you stand, the work doesn't care.
+
+NOTE: [STORY] This life's own opening hasn't been written yet. You can walk around, work, talk to people about what they've heard, and watch the world go on.
+
+> Get on with the day -> day
+
+== day
+You get on with it. The lamp keeps blinking, under everything else.
+END

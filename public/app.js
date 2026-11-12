@@ -185,9 +185,9 @@ function titleScreen() {
   const saves = ui.saves.filter((s) => !s.empty);
   return el("div", { class: "screen stack" },
     el("div", {},
-      el("div", { class: "boot" }, "MERIDIAN-OS 4.1 // CFS MERIDIAN\n[ OK ] Reactor: unstable but online\n[ OK ] Ship's systems: 900 souls aboard\n[WARN] Unknown signal on all channels"),
+      el("div", { class: "boot" }, "MERIDIAN-OS 4.1 // CFS MERIDIAN\n[ OK ] Reactor: unstable but online\n[ OK ] Ship's systems: 900 souls aboard\n[WARN] Fuel: two weeks at this rate"),
       el("h1", { class: "title" }, "Almagest Explorer's"),
-      el("p", { class: "subtitle" }, "Nine hundred survivors. One battered ship. One signal from beyond the edge of the map. Where are you in all this?"),
+      el("p", { class: "subtitle" }, "Nine hundred survivors. One battered ship. The chair is yours."),
     ),
     el("div", { class: "row" },
       el("button", { class: "primary", onclick: runAction(async () => { ui.screen = "create"; await openCreator(ui.setup); }) }, "New game"),

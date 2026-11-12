@@ -118,9 +118,24 @@ function listNode(viewing) {
 // What happened in a quest: what its scenes said and what the player did in them, the latest first.
 function storyNode(quest) {
   const g = app.ui.game;
-  if (!quest) return null;
-  const entries = g.transcript.filter((entry) => entry.quest === quest.id && (entry.role === "narrator" || entry.role === "player")).slice(-40).reverse();
   const record = g.story?.record ?? { endings: [], facts: [] };
+  // The journal and the record are the game's own, so they're here with no quest to look at too.
+  const kept = [
+    el("details", { class: "qt-fold" },
+      el("summary", {}, `Journal (${g.journal.length})`),
+      g.journal.length ? [...g.journal].reverse().map((entry) => el("div", { class: "qt-entry" }, entry.entry)) : el("p", { class: "qt-none" }, "Important events will be recorded here.")),
+    el("details", { class: "qt-fold" },
+      el("summary", {}, `Facts on record (${record.facts.length})`),
+      record.facts.length ? [...record.facts].reverse().map((fact) => el("div", { class: "qt-entry" }, fact.text)) : el("p", { class: "qt-none" }, "What the stories leave behind is kept here.")),
+  ];
+  // A game begins with no quest since the written main story went: they come from what people ask.
+  if (!quest) {
+    return el("div", { class: "qt-story" },
+      el("div", { class: "qt-group" }, "What happened"),
+      el("p", { class: "qt-none" }, "Nothing to follow yet. A quest begins when someone aboard has something to ask of you: they'll have an amber ! over them."),
+      kept);
+  }
+  const entries = g.transcript.filter((entry) => entry.quest === quest.id && (entry.role === "narrator" || entry.role === "player")).slice(-40).reverse();
   const ending = record.endings.find((one) => one.id === quest.id);
   return el("div", { class: "qt-story" },
     el("div", { class: "qt-group" }, "What happened"),
@@ -130,12 +145,7 @@ function storyNode(quest) {
         ? el("div", { class: "qt-said" }, `> ${entry.text}`)
         : el("div", { class: "qt-passage" }, storyEntryNode({ role: "narrator", text: withoutChoices(entry.text) }))))
       : el("p", { class: "qt-none" }, quest.status === "active" ? "Nothing yet. It's in the journal below as it happens." : "This one was settled away from the written story."),
-    el("details", { class: "qt-fold" },
-      el("summary", {}, `Journal (${g.journal.length})`),
-      g.journal.length ? [...g.journal].reverse().map((entry) => el("div", { class: "qt-entry" }, entry.entry)) : el("p", { class: "qt-none" }, "Important events will be recorded here.")),
-    el("details", { class: "qt-fold" },
-      el("summary", {}, `Facts on record (${record.facts.length})`),
-      record.facts.length ? [...record.facts].reverse().map((fact) => el("div", { class: "qt-entry" }, fact.text)) : el("p", { class: "qt-none" }, "What the stories leave behind is kept here.")));
+    kept);
 }
 
 const withoutChoices = (text) => String(text ?? "").split("\n").filter((line) => !line.trim().startsWith(">")).join("\n").trim();

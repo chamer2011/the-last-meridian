@@ -7,8 +7,12 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
+import { INQUIRY, LEAK, useTestWorld } from "./fixtures/test-world.mjs";
+
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-record-"));
 process.env.GAME_DATA_DIR = dataDir;
+// The stories these tests end are the tests' own (test/fixtures), in a copy of the world that has them.
+useTestWorld();
 
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const { clearFact, endingOf, recordEnding, recordFact, recordOf, recordView } = await import("../src/record.js");
@@ -17,7 +21,7 @@ const { parseEffect, parseSceneText } = await import("../src/scene-text.js");
 const { sceneProblems, writtenTurn } = await import("../src/scenes.js");
 const { newTurnLimits, runTool } = await import("../src/tools.js");
 
-const FUEL = "main_two_weeks_of_fuel";
+const FUEL = LEAK;
 const newGame = (seed = 21) => {
   const draft = randomDraft({ seed, archetype: "officer" });
   draft.start = "captain";
@@ -27,7 +31,7 @@ const tool = (game, name, input, turn = newTurnLimits()) => runTool(game, name, 
 
 test("a fact has a short name and a line, sets its flag, and keeps its first words", () => {
   const game = newGame();
-  const { entry, known } = recordFact(game, { id: "kessara_closed", text: "Kessara Drift is closed to the fleet.", from: "thread_main_two_weeks_of_fuel" });
+  const { entry, known } = recordFact(game, { id: "kessara_closed", text: "Kessara Drift is closed to the fleet.", from: `thread_${LEAK}` });
   assert.equal(known, false);
   assert.equal(game.flags.kessara_closed, true);
   assert.equal(entry.day, 1);
@@ -50,31 +54,31 @@ test("a story's ending goes on the record by its name, and the page reads it", (
   const game = newGame();
   assert.throws(() => recordEnding(game, { id: "no_such_story", summary: "x" }), /no story/);
   assert.throws(() => recordEnding(game, { id: FUEL, ending: "no_such_ending", summary: "x" }), /no ending called no_such_ending/);
-  const ending = recordEnding(game, { id: FUEL, ending: "sign_with_quill", summary: "Signed with Mother Quill: forty-one markers, to be named later." });
+  const ending = recordEnding(game, { id: FUEL, ending: "patch_it", summary: "Patched by hand, with Naomi Cass holding the light." });
   assert.equal(ending.day, 1);
-  assert.equal(endingOf(game, FUEL).ending, "sign_with_quill");
-  recordEnding(game, { id: FUEL, ending: "raid_depot", summary: "Another." });
-  assert.equal(endingOf(game, FUEL).ending, "sign_with_quill", "the first ending is the one that's kept");
-  recordFact(game, { id: "signed_with_quill", text: "The fleet signed Mother Quill's page.", from: "thread_main_two_weeks_of_fuel" });
+  assert.equal(endingOf(game, FUEL).ending, "patch_it");
+  recordEnding(game, { id: FUEL, ending: "seal_the_hold", summary: "Another." });
+  assert.equal(endingOf(game, FUEL).ending, "patch_it", "the first ending is the one that's kept");
+  recordFact(game, { id: "line_patched", text: "The line was patched by hand.", from: `thread_${LEAK}` });
   const shown = publicState(game).story.record;
-  assert.equal(shown.endings[0].title, "Two Weeks of Fuel");
-  assert.equal(shown.endings[0].ending, "sign_with_quill");
+  assert.equal(shown.endings[0].title, "The Test Leak");
+  assert.equal(shown.endings[0].ending, "patch_it");
   assert.equal(shown.endings[0].failed, false);
-  assert.equal(shown.endings[0].summary, "Signed with Mother Quill: forty-one markers, to be named later.");
-  assert.deepEqual(shown.facts[0], { id: "signed_with_quill", text: "The fleet signed Mother Quill's page.", from: "Two Weeks of Fuel", day: 1 });
+  assert.equal(shown.endings[0].summary, "Patched by hand, with Naomi Cass holding the light.");
+  assert.deepEqual(shown.facts[0], { id: "line_patched", text: "The line was patched by hand.", from: "The Test Leak", day: 1 });
 });
 
 test("a story's quest settled the old way still records its ending", () => {
   const game = newGame();
-  tool(game, "add_quest", { id: FUEL, title: "Two Weeks of Fuel", description: "Fuel.", objective: "Find fuel." });
-  tool(game, "update_quest", { id: FUEL, status: "completed", objective: "Signed with Mother Quill." });
-  assert.equal(endingOf(game, FUEL).summary, "Signed with Mother Quill.");
+  tool(game, "add_quest", { id: FUEL, title: "The Test Leak", description: "A leak.", objective: "Find the leak." });
+  tool(game, "update_quest", { id: FUEL, status: "completed", objective: "Mended, one way or another." });
+  assert.equal(endingOf(game, FUEL).summary, "Mended, one way or another.");
   assert.equal(endingOf(game, FUEL).ending, null);
-  tool(game, "add_quest", { id: "main_visiting_hours", title: "Visiting Hours", description: "x", objective: "y" });
-  tool(game, "update_quest", { id: "main_visiting_hours", status: "failed", objective: "Lost." });
-  assert.equal(endingOf(game, "main_visiting_hours").failed, true);
-  tool(game, "add_quest", { id: "the_beacon_two", title: "Not a story", description: "x", objective: "y" });
-  tool(game, "update_quest", { id: "the_beacon_two", status: "failed", objective: "Over." });
+  tool(game, "add_quest", { id: INQUIRY, title: "The Test Inquiry", description: "x", objective: "y" });
+  tool(game, "update_quest", { id: INQUIRY, status: "failed", objective: "Lost." });
+  assert.equal(endingOf(game, INQUIRY).failed, true);
+  tool(game, "add_quest", { id: "not_a_story", title: "Not a story", description: "x", objective: "y" });
+  tool(game, "update_quest", { id: "not_a_story", status: "failed", objective: "Over." });
   assert.equal(Object.keys(recordOf(game).endings).length, 2, "a quest that isn't a story isn't an ending");
 });
 

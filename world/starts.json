@@ -4,7 +4,8 @@
     "group is where it's listed: fleet (the Meridian, and the two ships that aren't hers, the Sundial and Anselm's Mercy) or world. name and desc are what the player reads when they choose. short is what they're called in the status line. place and room say where they start: room is a level of that place's map.",
     "job is the work they can do at that place for money: name is what the button says, pay is the credits for an eight-hour shift, skill is the skill it practices and adds to the pay, and done is what's said when it's over.",
     "people are who they already know there, by id. factions changes how those factions regard them from the start. quest is what's on their mind when the story opens.",
-    "gm and opening are for the game master: who this person is, and how the story opens. Keep them to what's plain to see, and let the story do the rest."
+    "gm and opening are for the game master: who this person is, and how the story opens. Keep them to what's plain to see, and let the story do the rest.",
+    "off: true switches a life off: it isn't offered when a new game is made, and a game saved with it still opens. Since 2026-11-12 every life but the captain's is off. Take the line out, and that life is offered again the next time the game starts."
   ],
 
   "groups": { "fleet": "On the ships", "world": "Out in the world" },
@@ -16,11 +17,11 @@
       "name": "Captain of the Meridian",
       "short": "captain",
       "desc": "Everyone above you is dead, so the Meridian and the nine hundred people aboard her are yours to feed, move and answer for. You give the orders, and you carry what comes of them.",
-      "gm": "The captain of the CFS Meridian, because everyone above them is dead. Everything the notes say about the captain means them.",
-      "opening": "The Meridian has just picked up the mysterious Beacon signal, and the player has just been made captain. Introduce Commander Voss."
+      "gm": "The captain of the CFS Meridian, because everyone above them is dead. Everything the notes say about the captain means them."
     },
 
     "engine_hand": {
+      "off": true,
       "group": "fleet",
       "name": "Engine-room hand on the Meridian",
       "short": "engine hand",
@@ -36,6 +37,7 @@
     },
 
     "orderly": {
+      "off": true,
       "group": "fleet",
       "name": "Medbay orderly on the Meridian",
       "short": "orderly",
@@ -51,6 +53,7 @@
     },
 
     "marine": {
+      "off": true,
       "group": "fleet",
       "name": "Marine under Lieutenant Tarrow",
       "short": "marine",
@@ -66,6 +69,7 @@
     },
 
     "field_hand": {
+      "off": true,
       "group": "fleet",
       "name": "Field hand on the Sundial",
       "short": "field hand",
@@ -81,6 +85,7 @@
     },
 
     "porter": {
+      "off": true,
       "group": "fleet",
       "name": "Porter on Anselm's Mercy",
       "short": "porter",
@@ -96,6 +101,7 @@
     },
 
     "docker": {
+      "off": true,
       "group": "world",
       "name": "Dock hand at Haven Station",
       "short": "dock hand",
@@ -111,6 +117,7 @@
     },
 
     "runner": {
+      "off": true,
       "group": "world",
       "name": "Runner in the Warrens of Kessara Drift",
       "short": "runner",
@@ -126,6 +133,7 @@
     },
 
     "diver": {
+      "off": true,
       "group": "world",
       "name": "Salvage diver at the Graveyard",
       "short": "diver",
@@ -141,6 +149,7 @@
     },
 
     "miner": {
+      "off": true,
       "group": "world",
       "name": "Miner on Shift Row, Cinder Reach",
       "short": "miner",
@@ -156,6 +165,7 @@
     },
 
     "on_the_line": {
+      "off": true,
       "group": "world",
       "name": "Refugee on the Line at Bastion Nine",
       "short": "refugee",
@@ -171,6 +181,7 @@
     },
 
     "farmer": {
+      "off": true,
       "group": "world",
       "name": "Farm hand on Tessen",
       "short": "farm hand",
@@ -186,6 +197,7 @@
     },
 
     "smelter": {
+      "off": true,
       "group": "world",
       "name": "Smelter at Korrath Forge",
       "short": "smelter",
@@ -201,6 +213,7 @@
     },
 
     "rigger": {
+      "off": true,
       "group": "world",
       "name": "Rigger at the Deepyards",
       "short": "rigger",
@@ -216,6 +229,7 @@
     },
 
     "aide": {
+      "off": true,
       "group": "world",
       "name": "Healer's aide at Lumen Sanctuary",
       "short": "aide",
@@ -231,6 +245,7 @@
     },
 
     "kelper": {
+      "off": true,
       "group": "world",
       "name": "Kelp farmer at Maris Deep",
       "short": "kelper",
@@ -246,6 +261,7 @@
     },
 
     "dealer": {
+      "off": true,
       "group": "world",
       "name": "Card dealer on the Gilded Wheel",
       "short": "dealer",
@@ -261,6 +277,7 @@
     },
 
     "sailor": {
+      "off": true,
       "group": "world",
       "name": "Sailor with the Remnant in the Ghostlight",
       "short": "sailor",
@@ -276,6 +293,7 @@
     },
 
     "clerk": {
+      "off": true,
       "group": "world",
       "name": "Ministry clerk at Vantor Prime",
       "short": "clerk",
@@ -291,6 +309,7 @@
     },
 
     "keeper": {
+      "off": true,
       "group": "world",
       "name": "Junior Keeper at the Archive of Sarn",
       "short": "junior keeper",
@@ -306,6 +325,7 @@
     },
 
     "novice": {
+      "off": true,
       "group": "world",
       "name": "Novice of the Order of Ilun",
       "short": "novice",
@@ -321,6 +341,7 @@
     },
 
     "scavenger": {
+      "off": true,
       "group": "world",
       "name": "Scavenger at Rimcamp, the Pale Gate",
       "short": "scavenger",

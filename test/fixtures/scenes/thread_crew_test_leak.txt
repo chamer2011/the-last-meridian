@@ -1,0 +1,190 @@
+# The Test Leak
+// A test scene, and none of it is the game's story. The tests play it from the Leads menu to each of its endings:
+// someone who comes over, a part that waits for someone else, a check with someone watching, a fight, a room of the
+// story's own, endings by name, and a smaller side for someone who isn't the captain.
+start: doorway
+
+== doorway
+? not captain -> heard
+Naomi Cass is in your doorway, with one sleeve wet to the elbow.
+
+@Naomi Cass: "There's a line weeping in the Aft Holds. I'm telling you first, because you're who it's for."
+
+* new quest crew_test_leak: The Test Leak | Naomi Cass says a coolant line is weeping in the Aft Holds. | Find out how bad the leak is.
+
+> Ask her how bad the leak is -> asked
+> Tell her the line can wait -> waits
+
+== asked
+She holds up the sleeve, as evidence.
+
+@Naomi Cass: "It beads along one joint, and it drips when the pumps run. I put a rag under it. The rag is not a repair."
+
+* journal: Naomi Cass says a coolant line is weeping at one joint in the Aft Holds, and drips when the pumps run.
+
+> Ask Chief Marrow about the line first -> marrow_first
+> Go down with her now -> below
+
+== marrow_first
+He doesn't look up from the board until you've finished.
+
+@Chief Engineer Dunn Marrow: "The Aft Holds? That joint's older than I am. It'll take a clamp, an hour, and somebody who isn't me, unless you ask nicely."
+
+* flag marrow_asked
+
+> [persuasion:moderate:marrow] Ask him to mend it himself -> marrow_yes | marrow_no
+> Go down to the line -> below
+
+== marrow_yes
+@Chief Engineer Dunn Marrow: "Fine. An hour, and you owe me one. I'll write it down, so you don't have to remember."
+
+=> Chief Marrow mended the line himself.
+
+* ending marrow_mends_it: Chief Marrow mended the weeping line himself, and you owe him one.
+* flag marrow_owed
+* contact Chief Engineer Dunn Marrow friendly: You asked him to mend the line, and he did.
+* xp 15: The line holds
+END
+
+== marrow_no
+@Chief Engineer Dunn Marrow: "No. I've a board full of things that are worse. Take a clamp from the rack."
+
+> Go down to the line -> below
+
+== below
+* raw set_scene {"area": "Under the Aft Holds", "kind": "ducts", "people": ["Naomi Cass"], "things": [{"name": "The weeping line", "look": "A coolant line, beaded along one joint, dripping onto a rag somebody put there."}]}
+The crawlway under the Aft Holds is cold, and it smells of coolant. The line is where she said it was.
+
+@Naomi Cass: "There. And don't put your hand under it. Something lives under it."
+
+> [engineering:moderate] Patch the line yourself -> patched | patch_failed
+> Look under the line -> rats ? not seen rats
+> Seal the hold, and leave the line for later -> sealed
+
+== rats
+FIGHT scrap_rat: Something the size of a boot looks at yours.
+  enemy_followers: scrap_rat
+  why: guarding
+  won -> rats_won
+  lost -> rats_lost
+  fled -> rats_fled
+
+== rats_won
+WITH: nobody
+Whatever lived under the line doesn't any more.
+
+* flag rats_cleared
+
+> Back to the line -> below
+
+== rats_lost
+WITH: nobody
+You come round with Naomi Cass holding the rag to your head, which is what the rag is for now.
+
+* flag rats_cleared
+* stress 3: Carried out from under a coolant line
+
+> Back to the line -> below
+
+== rats_fled
+WITH: nobody
+You back out the way you came, quickly.
+
+* flag ran_from_rats
+
+> Back to the line -> below
+
+== patched
+The clamp bites, the bead stops, and the rag stays dry for a whole minute.
+
+@Naomi Cass: "It's holding." She sounds as if she'd expected to say something else.
+
+* ending patch_it: You patched the weeping line in the Aft Holds with your own hands.
+* flag line_patched
+* contact Naomi Cass friendly: You went down and patched the line yourself.
+* xp 20: The line holds
+* journal: You patched the line under the Aft Holds yourself, with Naomi Cass holding the light.
+
+> Climb back up -> back_up
+
+== back_up
+* raw set_scene {"area": "The Aft Holds", "people": []}
+WITH: nobody
+You come up through the hatch into the Aft Holds, with coolant on both sleeves.
+END
+
+== patch_failed
+The clamp slips, and the bead becomes a thread.
+
+@Naomi Cass: "That's worse. It was better before you helped."
+
+* health -3: A faceful of coolant
+
+> Seal the hold, and leave the line for later -> sealed
+> Send for Chief Marrow -> marrow_comes
+
+== marrow_comes
+WITH: nobody
+Chief Marrow comes down with a clamp and an opinion, and uses both.
+
+* ending marrow_mends_it: Chief Marrow came down and mended the line, after you'd made it worse.
+* flag marrow_owed
+* xp 10: The line holds, with help
+END
+
+== sealed
+WITH: nobody
+You have the hold sealed, and the line goes on weeping behind a shut door.
+
+* ending seal_the_hold: You sealed the Aft Holds and left the line for later.
+* flag aft_hold_sealed
+* xp 5: It's somebody's problem later
+END
+
+== waits
+@Naomi Cass: "It can wait," she says, as if writing it down. "I'll tell the rag."
+
+* ending let_it_run failed: You let the line run, and it failed in the night.
+* contact Naomi Cass wary: You told her the leak could wait.
+END
+
+== heard
+You're not the captain, and the leak isn't yours. Naomi Cass has told you about it anyway, on her way to tell someone else.
+
+@Naomi Cass: "There's a line weeping in the Aft Holds. Nobody upstairs is listening. You'll do."
+
+* new quest crew_test_leak: The Test Leak | Naomi Cass says a coolant line is weeping in the Aft Holds, and that nobody's listening. | Decide whether it's yours to do anything about.
+
+> [stealth:moderate] Follow her down, without being seen going -> followed | lost_her
+> Leave it to the officers -> left
+
+== followed
+* raw set_scene {"area": "Under the Aft Holds", "kind": "ducts", "people": ["Naomi Cass"]}
+The crawlway under the Aft Holds is cold, and the line is where she said it was.
+
+@Naomi Cass: "Hold that. No, the rag. I'm going for the chief."
+
+> Hold the rag until Chief Marrow comes -> helped
+
+== helped
+WITH: nobody
+You hold the rag for most of an hour. Chief Marrow mends the line without asking who you are.
+
+* ending marrow_mends_it: Chief Marrow mended the line, and you held the rag until he came.
+* flag leak_helper
+* journal: You held a rag under a weeping line until Chief Marrow came to mend it.
+* xp 10: The line holds
+END
+
+== lost_her
+WITH: nobody
+She's through a hatch you didn't know was there before you've decided which way she went.
+
+> Leave it to the officers -> left
+
+== left
+WITH: nobody
+You leave it to the officers. The line goes on weeping.
+
+* ending let_it_run failed: You left the leak to the officers, and nobody mended it.
+END

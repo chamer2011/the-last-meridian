@@ -43,6 +43,8 @@ const { parseStoryText } = await import("../public/story-text.js");
 const threads = Object.fromEntries(fs.readdirSync(path.join(world, "stories"))
   .filter((name) => name.endsWith(".txt") && !name.startsWith("_"))
   .map((name) => [name.slice(0, -".txt".length), parseStoryText(fs.readFileSync(path.join(world, "stories", name), "utf8"), name.slice(0, -".txt".length)).story]));
+// The stories kept in their files and out of the game: one id a line in _set-aside.txt, anything after a # a comment.
+const setAside = new Set(fs.readFileSync(path.join(world, "stories", "_set-aside.txt"), "utf8").split(/\r?\n/).map((line) => line.split("#")[0].trim()).filter(Boolean));
 const items = textFolder("items", ITEM);
 const { PERK } = await import("../public/world-text.js");
 const { ABILITIES } = await import("../src/data.js");
@@ -163,7 +165,8 @@ test("story threads are complete, and everything they mention exists", () => {
     if (!KINDS.includes(thread.kind)) report(where, `unknown kind ${thread.kind}`);
     if (!Array.isArray(thread.places) || !thread.places.length) report(where, "needs places");
     for (const place of thread.places ?? []) if (place !== "any" && place !== "fleet" && !placeIds.has(place)) report(where, `unknown place ${place}`);
-    if (thread.after && !threads[thread.after]) report(where, `comes after unknown thread ${thread.after}`);
+    // A story set aside may come after one that's gone from the game: that's why it's set aside.
+    if (thread.after && !threads[thread.after] && !setAside.has(id)) report(where, `comes after unknown thread ${thread.after}`);
     for (const person of thread.people ?? []) if (!characters[person]) report(where, `unknown person ${person}`);
     for (const faction of thread.factions ?? []) if (!factionIds.has(faction)) report(where, `unknown faction ${faction}`);
     if ((thread.people ?? []).length === 0) report(where, "needs at least one person");

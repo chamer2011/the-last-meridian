@@ -153,11 +153,11 @@ function actDay(game, clock, day, notes, told) {
   if (event && day - clock.act.from >= Math.round(event.after * scale)) {
     clock.act.next += 1;
     happen(game, { ...event, big: event.big ?? true }, "meridian", notes, told);
-    logMoved(clock, { day, id: null, title: WORLD_ARC.acts?.[story.act - 1]?.name ?? "The Beacon", text: event.news, place: event.place ?? "meridian" });
+    logMoved(clock, { day, id: null, title: WORLD_ARC.acts?.[story.act - 1]?.name ?? "The story", text: event.news, place: event.place ?? "meridian" });
   }
   if (!file.moves_on || story.act >= LAST_ACT_BY_ITSELF || day - clock.act.from < Math.round(file.moves_on.after * scale)) return;
   happen(game, { ...file.moves_on, big: true }, "meridian", notes, told);
-  logMoved(clock, { day, id: null, title: WORLD_ARC.acts?.[story.act - 1]?.name ?? "The Beacon", text: file.moves_on.news, place: "meridian" });
+  logMoved(clock, { day, id: null, title: WORLD_ARC.acts?.[story.act - 1]?.name ?? "The story", text: file.moves_on.news, place: "meridian" });
   story.act += 1;
   clock.act = { act: story.act, from: day, next: 0 };
 }

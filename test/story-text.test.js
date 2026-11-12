@@ -8,6 +8,8 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { LEAK, addTestWorld } from "./fixtures/test-world.mjs";
+
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-story-text-"));
 process.env.GAME_DATA_DIR = dataDir;
 // One test writes a story, so these work on a copy of the stories.
@@ -16,6 +18,9 @@ fs.mkdirSync(copy);
 const realStories = fileURLToPath(new URL("../world/stories/", import.meta.url));
 for (const name of fs.readdirSync(realStories)) fs.copyFileSync(path.join(realStories, name), path.join(copy, name));
 process.env.GAME_STORIES_DIR = copy;
+// And the tests' own two stories beside the game's (test/fixtures), so there's one with every kind of line to read
+// back, now that the written main story has gone from the game.
+addTestWorld({ stories: copy });
 
 const { parseStoryText, writeStoryText } = await import("../public/story-text.js");
 const { STORIES_DIR, STORY_CLOCK, STORY_FILE_PROBLEMS, WORLD_THREADS, reloadStories } = await import("../src/world.js");
@@ -129,10 +134,10 @@ test("a story file reads into the shape the game uses, every line of it", () => 
 test("every story in the game reads without a problem and writes back the same, and the game holds them all", () => {
   assert.deepEqual(STORY_FILE_PROBLEMS, []);
   const files = fs.readdirSync(STORIES_DIR).filter((name) => name.endsWith(".txt") && !name.startsWith("_"));
-  assert.equal(files.length, 128);
-  assert.equal(Object.keys(WORLD_THREADS).length, 128);
-  assert.equal(Object.keys(STORY_CLOCK.threads).length, 128);
-  assert.ok(Array.isArray(STORY_CLOCK.acts) && STORY_CLOCK.acts.length === 4, "the acts stay in story-clock.json");
+  assert.equal(files.length, 110, "the game's 108 and the tests' two");
+  assert.equal(Object.keys(WORLD_THREADS).length, 110);
+  assert.equal(Object.keys(STORY_CLOCK.threads).length, 110);
+  assert.ok(Array.isArray(STORY_CLOCK.acts) && STORY_CLOCK.acts.length === 0, "the acts stay in story-clock.json, and there are none since the main story went");
   for (const name of files) {
     const id = name.slice(0, -4);
     const text = fs.readFileSync(path.join(STORIES_DIR, name), "utf8");
@@ -141,9 +146,9 @@ test("every story in the game reads without a problem and writes back the same, 
     assert.equal(writeStoryText(first.story, first.clock), text, `${name} is written the way the game writes it`);
     assert.equal(canon(WORLD_THREADS[id]), canon(first.story));
   }
-  assert.equal(WORLD_THREADS.main_two_weeks_of_fuel.title, "Two Weeks of Fuel");
-  assert.equal(STORY_CLOCK.threads.main_two_weeks_of_fuel.consequences.length, 3);
-  assert.equal(STORY_CLOCK.threads.main_safe_harbor.waits.slice(0, 5), "Needs");
+  assert.equal(WORLD_THREADS[LEAK].title, "The Test Leak");
+  assert.equal(STORY_CLOCK.threads[LEAK].consequences.length, 3);
+  assert.equal(STORY_CLOCK.threads.deep_past_the_lamp.waits.slice(0, 5), "Needs");
 });
 
 test("a story file's problems are named with their line, and the file is still read as far as it goes", () => {
@@ -205,16 +210,16 @@ Consequences:
 
 test("the stories can be read again while the game runs, into the same objects", () => {
   const before = WORLD_THREADS;
-  const file = path.join(STORIES_DIR, "main_two_weeks_of_fuel.txt");
+  const file = path.join(STORIES_DIR, `${LEAK}.txt`);
   const text = fs.readFileSync(file, "utf8");
   try {
-    fs.writeFileSync(file, text.replace("# Two Weeks of Fuel", "# Two Weeks of Fuel, Again"));
+    fs.writeFileSync(file, text.replace("# The Test Leak", "# The Test Leak, Again"));
     reloadStories();
     assert.equal(WORLD_THREADS, before, "the same object, so everything that imported it sees the change");
-    assert.equal(WORLD_THREADS.main_two_weeks_of_fuel.title, "Two Weeks of Fuel, Again");
+    assert.equal(WORLD_THREADS[LEAK].title, "The Test Leak, Again");
   } finally {
     fs.writeFileSync(file, text);
     reloadStories();
   }
-  assert.equal(WORLD_THREADS.main_two_weeks_of_fuel.title, "Two Weeks of Fuel");
+  assert.equal(WORLD_THREADS[LEAK].title, "The Test Leak");
 });

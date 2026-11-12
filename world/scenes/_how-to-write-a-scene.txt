@@ -1,7 +1,7 @@
 HOW TO WRITE A SCENE
 ====================
 
-A scene is a plain text file in this folder, like opening_captain.txt. Open it in Notepad, change
+A scene is a plain text file in this folder, like request_pantry.txt. Open it in Notepad, change
 it, save it, and the game uses the new version the next time the story reaches it. There's no need
 to restart. To find mistakes, run this in the game's folder:
 
@@ -19,8 +19,10 @@ WHAT THE FILE'S NAME MEANS
 opening_captain.txt    How the story opens for the captain. For another life, use its id from
                        starts.json: opening_engine_hand.txt, opening_docker.txt, and so on.
 opening.txt            The opening for any life that has none of its own.
+                       None of these is written at the moment: with no opening, a game simply
+                       begins in the room.
 thread_<story>.txt     Plays when a story from the Leads menu is taken up, for example
-                       thread_crew_naomi_under_crew.txt. The ids are the file names in world/threads.
+                       thread_crew_naomi_under_crew.txt. The ids are the file names in world/stories.
 arrive_<place>.txt     Plays when the player arrives at that place, by jump, passage or shuttle, when
                        they press Continue the story. The ids are the file names in world/places.
 talk_<person>.txt      What that person says in a talk. See CONVERSATIONS below.
@@ -124,8 +126,8 @@ Lines starting with * happen when the part begins, and the player sees each as a
     * credits -20: The reason               (a minus sign charges the player)
     * item +medkit                          (gives an item from world/items.json or src/data.js)
     * item -data_chip                       (takes one away)
-    * quest the_beacon: The new objective   (changes a quest the player already has)
-    * quest the_beacon done: How it ended   (or failed)
+    * quest find_the_scholar: The new objective   (changes a quest the player already has)
+    * quest find_the_scholar done: How it ended   (or failed)
     * new quest find_the_scholar: The Title | What it's about | What to do first
     * contact Ilya Voss friendly: What happened between you     (hostile, wary, neutral, friendly or ally)
     * belief reason 1: The reason           (1 for a telling choice, 2 for a major one, 3 for a defining moment)
@@ -194,10 +196,10 @@ and join several with "and":
     skill persuasion >= 3            A skill's rank. Also stat presence >= 4, faction fleet >= 5,
                                      and belief reason >= 2.
     flag told_the_fleet              A flag set with * flag.
-    ended main_two_weeks_of_fuel     That story is over, any way it went.
-    ended main_two_weeks_of_fuel raid_depot    It ended that way. The names are in its file, world/stories.
+    ended crew_naomi_under_crew      That story is over, any way it went.
+    ended crew_naomi_under_crew treaty_cadets    It ended that way. The names are in its file, world/stories.
     seen voss_answer                 The player has been through that part in this scene.
-    quest the_beacon active          Also done, failed, or none if they haven't got it.
+    quest find_the_scholar active    Also done, failed, or none if they haven't got it.
     met Voss                         They're in the player's contacts.
     likes Voss                       Friendly or better. dislikes Voss is wary or worse.
     captain                          The player is the captain.

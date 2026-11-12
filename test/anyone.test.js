@@ -20,7 +20,7 @@ const { chairOf, changeCommand, shipCommand, shipView } = await import("../src/s
 const { peopleAboard } = await import("../src/life.js");
 const { migrateGame } = await import("../src/migrate.js");
 const { projectDir } = await import("../src/paths.js");
-const { START_LIST, aboardShip, isCaptain, jobHere, startOf } = await import("../src/role.js");
+const { OFFERED_STARTS, START_LIST, aboardShip, isCaptain, jobHere, startIsOff, startOf } = await import("../src/role.js");
 const { passTime, publicState, rest, restCost, travel, workShift } = await import("../src/rules.js");
 const { countAboard, logisticsOf, takeAboard } = await import("../src/logistics.js");
 
@@ -95,7 +95,7 @@ test("every start is somewhere real, with real people, a real job and something 
 test("nearly every story can reach someone who isn't the captain, in words written for them", () => {
   const ids = Object.keys(WORLD_THREADS);
   const open = ids.filter((id) => WORLD_THREADS[id].anyone);
-  assert.ok(open.length >= 110, `only ${open.length} stories`);
+  assert.ok(open.length >= 100, `only ${open.length} stories`);
   for (const id of open) {
     const text = WORLD_THREADS[id].anyone;
     assert.ok(text.length > 40, id);
@@ -123,7 +123,7 @@ test("three people could have the chair, each with a file, a post, a day, and th
 
 test("a captain's game hasn't changed: it starts where it always did, with the people it always had", () => {
   const game = createGameFromDraft(randomDraft({ seed: 21, archetype: "officer" }));
-  assert.equal(game.version, 23);
+  assert.equal(game.version, 24);
   assert.deepEqual(game.role, { id: "captain", captain: true });
   assert.equal(isCaptain(game), true);
   assert.equal(game.location, "meridian");
@@ -177,15 +177,18 @@ test("how someone got through the Fall depends on where they ended up", () => {
   }
 });
 
-test("the creator offers every start, keeps the choice, and won't take a start that doesn't exist", () => {
+test("the creator offers only the lives that aren't switched off, which is the captain's; the others are kept, and can still be made", () => {
   const setup = creatorSetup();
-  assert.equal(Object.keys(setup.starts).length, Object.keys(START_LIST).length);
+  assert.deepEqual(Object.keys(setup.starts), ["captain"], "every other life has off: true in world/starts.json");
+  assert.deepEqual(Object.keys(OFFERED_STARTS), ["captain"]);
+  assert.equal(Object.keys(START_LIST).length, 22, "and all the lives are still in the file");
+  assert.ok(startIsOff("docker") && !startIsOff("captain") && !startIsOff("emperor"));
   assert.ok(setup.steps.some((step) => step.id === "role"));
-  assert.ok(setup.startGroups.fleet && setup.startGroups.world);
-  assert.equal(setup.starts.docker.pay, START_LIST.docker.job.pay);
-  assert.equal(setup.starts.docker.place, LOCATIONS.haven.name);
+  assert.deepEqual(Object.keys(setup.startGroups), ["fleet"], "only the group that has a life on offer");
+  assert.equal(setup.starts.captain.name, START_LIST.captain.name);
+  assert.ok(START_LIST.docker.job.pay > 0, "a life that's off keeps everything it had");
   assert.equal(normalizeDraft({}).start, "captain");
-  assert.equal(normalizeDraft({ start: "docker" }).start, "docker");
+  assert.equal(normalizeDraft({ start: "docker" }).start, "docker", "a life that's off is still one the game knows, for a game saved with it");
   assert.equal(normalizeDraft({ start: "emperor" }).start, "captain");
   assert.equal(normalizeDraft({ start: "constructor" }).start, "captain");
   const captain = randomDraft({ seed: 9, archetype: "officer" });
@@ -197,7 +200,7 @@ test("the creator offers every start, keeps the choice, and won't take a start t
   assert.equal(miner.errors.role.length, 0);
   const seen = new Set();
   for (let seed = 0; seed < 60; seed += 1) seen.add(randomDraft({ seed, anyone: true }).start);
-  assert.ok(seen.size > 8, "Surprise me really can be anyone");
+  assert.deepEqual([...seen], ["captain"], "Surprise me only picks a life that's on offer");
 });
 
 // ---- What they can and can't do -----------------------------------------------------------
@@ -575,11 +578,12 @@ test("a story that's moved on reads as what's got around", () => {
 
 test("the captain's stories go on over their head", () => {
   const game = newGame("docker");
-  assert.ok(!WORLD_THREADS.main_chain_of_command.anyone);
-  for (let day = 0; day < 200 && !hasMovedOn(game, "main_chain_of_command"); day += 1) days(game, 1);
-  assert.ok(hasMovedOn(game, "main_chain_of_command"), "it moved on all the same");
-  assert.equal(game.story.threads.main_chain_of_command, undefined, "nobody took it up");
-  assert.ok(leadNow(game, "main_chain_of_command"));
+  const OWN = "out_cinder_three_prices";
+  assert.ok(!WORLD_THREADS[OWN].anyone);
+  for (let day = 0; day < 200 && !hasMovedOn(game, OWN); day += 1) days(game, 1);
+  assert.ok(hasMovedOn(game, OWN), "it moved on all the same");
+  assert.equal(game.story.threads[OWN], undefined, "nobody took it up");
+  assert.ok(leadNow(game, OWN));
 });
 
 test("the Meridian's chair and the people aboard treat someone else as someone else", () => {
@@ -608,7 +612,7 @@ test("a save from before all this is a captain's, and stays one", () => {
   old.clock.hours = 300;
   old.location = "meridian";
   const game = migrateGame(JSON.parse(JSON.stringify(old)));
-  assert.equal(game.version, 23);
+  assert.equal(game.version, 24);
   assert.deepEqual(game.role, { id: "captain", captain: true });
   assert.equal(isCaptain(game), true);
   assert.equal(chairOf(game), null);
@@ -674,10 +678,15 @@ after(() => {
   }
 });
 
-test("over the real server: starting as a dock hand, working, booking passage, and being refused the ship's orders", async () => {
+test("over the real server: a life that's switched off can't begin a new game, and a game saved with it still opens: a dock hand works, books passage, and is refused the ship's orders", async () => {
   const draft = randomDraft({ seed: 42, archetype: "officer" });
   draft.start = "docker";
-  const made = await post("/api/new", { draft });
+  const notOffered = await post("/api/new", { draft });
+  assert.equal(notOffered.status, 400);
+  assert.match(notOffered.error, /switched off for now/);
+  // A game saved as a dock hand, from when that life was offered, opens as it was.
+  fs.writeFileSync(path.join(serverData, "saves", "slot1.json"), JSON.stringify(createGameFromDraft(draft)));
+  const made = await post("/api/load", { slot: "slot1" });
   assert.equal(made.status, 200, JSON.stringify(made));
   assert.equal(made.game.role.captain, false);
   assert.equal(made.game.location.id, "haven");
@@ -687,7 +696,7 @@ test("over the real server: starting as a dock hand, working, booking passage, a
 
   const started = await post("/api/chat", { event: "start" });
   assert.equal(started.status, 200);
-  assert.match(started.text, /Berth eleven has a crate in it/, "the dock hand's own written opening plays, where they are");
+  assert.match(started.text, /No story is written for now/, "nothing's written to open the game, and it says so");
   assert.ok(!started.text.includes("made captain"));
 
   const credits = made.game.credits;

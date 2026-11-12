@@ -1,0 +1,52 @@
+# The Test Inquiry
+kind: crew
+places: meridian
+people: tarrow, marrow
+factions: fleet
+after: crew_test_leak
+
+The lead:
+Lieutenant Tarrow wants to know how a line in the Aft Holds came to leak, and who knew. This story is only here for the tests.
+
+What's really going on:
+A test story, and none of it is the game's own. It comes after the test leak, and it reacts to how that one ended, in its notes and on its clock, so the tests can read reactions and a fork.
+
+How it might go:
+- Lieutenant Tarrow with a slate, at the door of the Aft Holds.
+- Chief Marrow, asked the same question three ways.
+
+Ways through:
+- Talker: answer her questions, or have someone else answer them (persuasion).
+- Plain: say nothing, and let her write that down.
+
+Checks that fit:
+- persuasion:moderate to have the inquiry closed with nobody blamed
+
+Where it can end up:
+nobody_blamed: If the inquiry blames nobody, it closes its book and the hold is forgotten.
+captain_blamed: If the inquiry blames the captain, it says so in writing, and the crew reads it.
+marrow_blamed: If the inquiry blames Chief Marrow, engineering takes it badly.
+
+Facts it can leave:
+inquiry_closed: The inquiry into the leak is closed.
+said_nothing: The captain said nothing to the inquiry.
+
+What on the record changes it:
+? not ended crew_test_leak -> The leak isn't settled yet, so the inquiry has nothing to ask about.
+? ended crew_test_leak seal_the_hold -> The hold is sealed, so the inquiry begins at a shut door.
+? ended crew_test_leak patch_it -> The line was patched by hand, so the inquiry asks whose hands.
+? flag marrow_owed -> Chief Marrow is owed a favour, so he answers for the captain as well as himself.
+
+If nobody steps in:
+after 3 days: Lieutenant Tarrow has opened an inquiry into the leak in the Aft Holds, and has started with the people nearest the door.
+  lead: The inquiry into the leak has begun without you. Lieutenant Tarrow is asking her questions in order, and yours are on the list.
+after 8 days: The inquiry into the leak found nobody to blame, and closed its book.
+  lead: The inquiry closed its book with nobody blamed, and without hearing from you. Lieutenant Tarrow has kept the page.
+  if: not ended crew_test_leak seal_the_hold
+  fact inquiry_closed: The inquiry into the leak is closed.
+after 8 days: The inquiry into the leak wants the Aft Holds opened again, and says so in writing.
+  lead: The inquiry wants the Aft Holds opened, and it's said so in writing, without you. Lieutenant Tarrow would like to hear why they were shut.
+  if: ended crew_test_leak seal_the_hold
+
+Rewards:
+The page Lieutenant Tarrow wrote, and what it says about whoever it names.

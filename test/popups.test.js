@@ -28,6 +28,14 @@ test("a scene is the latest thing the player did, or the story picking up after 
   assert.equal(latestSceneStart(transcript), 1);
   assert.equal(latestSceneStart([...transcript, { role: "combat" }, { role: "combat" }, { role: "narrator" }]), 6);
   assert.equal(latestSceneStart([...transcript, { role: "player" }]), 4);
+  // A line the game added when a saved game was opened, saying the story has changed hands, starts one too: the old
+  // scene's last words aren't shown as if nothing had happened, and the line is the scene, with no pieces to read.
+  const opened = [...transcript, { role: "notice", text: "[STORY] The written main story has been taken out of the game.", turnover: true }];
+  assert.equal(latestSceneStart(opened), 4);
+  const scene = sceneOf(opened.slice(4), { blocksOf: () => [] });
+  assert.deepEqual(scene.beats, []);
+  assert.deepEqual(scene.notes.map((note) => note.text), ["[STORY] The written main story has been taken out of the game."]);
+  assert.equal(latestSceneStart([...opened, { role: "notice" }, { role: "player" }]), 6, "and what the player does next starts another");
 });
 
 test("a scene comes in pieces, in order, and choices aren't one of them", () => {

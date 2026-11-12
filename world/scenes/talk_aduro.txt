@@ -1,21 +1,12 @@
 # Talking with Dr. Aduro
 
 == start
-? flag aduro_knows -> start_list
 
 @Dr. Sen Aduro: "Sit down a moment. No, really." They don't look up from the patient's chart, and the patterns on their skin are slow and dim. "When did you last sleep? Don't answer. I can see it."
 
 > How are the medical stores, honestly? -> stores ? not seen stores
 > How are you holding up? -> holding ? not seen holding
 > Is there anything I should know? -> know ? not seen know
-> Say you'll sleep when they do -> done
-
-== start_list
-@Dr. Sen Aduro: "Thirty-one names, and I've seen twenty-six of them, and the other five are hiding from me, which I take as a sign of health." They do look up, this time. "Sit down a moment. Pim's teaching me things. I'm not sure I like it."
-
-> How are the medical stores, honestly? -> stores ? not seen stores
-> How are the children? -> children ? not seen children
-> How are you holding up? -> holding ? not seen holding
 > Say you'll sleep when they do -> done
 
 == stores
@@ -43,13 +34,6 @@
 
 == know
 @Dr. Sen Aduro: "Someone's using the full-body scanner at three in the morning, every night, and it isn't logged. Marrow thinks it's a fault." They look at you steadily. "I don't think it's a fault. I think it's someone frightened, and I'd like them to come and talk to me instead."
-
-> How are the medical stores, honestly? -> stores ? not seen stores
-> How are you holding up? -> holding ? not seen holding
-> Say you'll sleep when they do -> done
-
-== children
-@Dr. Sen Aduro: "Underfed and furious about being examined, which is what healthy children are. Teo's fever's gone. Pim watched me do it and told me where I'd been slow." Their skin brightens, briefly. "I've asked for her as an orderly. She's asked for me as an apprentice. We're negotiating."
 
 > How are the medical stores, honestly? -> stores ? not seen stores
 > How are you holding up? -> holding ? not seen holding

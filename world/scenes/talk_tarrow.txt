@@ -1,29 +1,12 @@
 # Talking with Lieutenant Tarrow
 
 == start
-? flag downstairs_crew -> start_cadets
-? flag downstairs_enemies -> start_sweep
 
 @Lieutenant Kara Tarrow: "Captain." Her hand is near her sidearm, the way it always is. It isn't about you. "Security is quiet. I'd like it to stay that way, and I'd like your help with that."
 
 > Ask what help she wants -> help ? not seen help
 > Ask about the synthetics aboard -> synthetics ? not seen synthetics
 > Ask how she's doing -> doing ? not seen doing
-> Thank her, and go -> done
-
-== start_cadets
-@Lieutenant Kara Tarrow: "Captain. Thirty-one children with a treaty and the run of the ducts. I've read the treaty. Clause four is now correct." Perfectly polite. "I've assigned them a drill. They beat my marines by eleven seconds. I'd like it noted that my marines were carrying kit."
-
-> Ask what help she wants -> help ? not seen help
-> Ask about the synthetics aboard -> synthetics ? not seen synthetics
-> Ask how she's doing -> doing ? not seen doing
-> Thank her, and go -> done
-
-== start_sweep
-@Lieutenant Kara Tarrow: "Captain. The children haven't been found. They won't be, not by us. I'd like it on record that I said so at the time." She waits exactly one second. "What can I do for you."
-
-> Ask what help she wants -> help ? not seen help
-> Ask about the synthetics aboard -> synthetics ? not seen synthetics
 > Thank her, and go -> done
 
 == help

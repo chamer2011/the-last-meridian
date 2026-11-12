@@ -12,7 +12,7 @@ import { CAREERS, FALL_CHOICES, GENERAL_EVENTS, GENERAL_MISHAPS } from "./life-d
 import { CORE_FACTIONS, FACTIONS, ITEMS, LOCATIONS, PERKS, STARTING_FACTIONS, STATS, STAT_INFO } from "./data.js";
 import { LORE } from "./lore.js";
 import { hackingClasses } from "./checks.js";
-import { START_GROUPS, START_LIST } from "./role.js";
+import { OFFERED_STARTS, START_GROUPS, START_LIST } from "./role.js";
 import {
   DIFFICULTY, activeConvictions, assembleGame, beliefAffinity, checkParts, clamp, crewContacts, defense,
   describeFx, ideologyTitle, maxEnergy, maxHp, oddsFor,
@@ -769,7 +769,8 @@ export function randomDraft({ seed = newSeed(), archetype = null, keep = {}, any
   draft.pronouns = known(keep.pronouns, PRONOUNS) ?? pick(rng, ["they", "she", "he"]);
   draft.customPronouns = cleanText(keep.customPronouns, 30);
   draft.appearance = cleanText(keep.appearance, 300);
-  draft.start = anyone ? pick(rng, Object.keys(START_LIST)) : known(keep.start, START_LIST) ?? "captain";
+  // Anyone, of the lives on offer: one switched off in world/starts.json isn't picked.
+  draft.start = anyone ? pick(rng, Object.keys(OFFERED_STARTS)) : known(keep.start, START_LIST) ?? "captain";
   draft.species = plan.species ?? pick(rng, Object.keys(SPECIES));
   draft.homeworld = plan.homeworld ?? pick(rng, Object.keys(HOMEWORLDS));
   draft.upbringing = plan.upbringing ?? pick(rng, Object.keys(UPBRINGINGS));
@@ -826,8 +827,9 @@ function originEffects(entry) {
 
 export function creatorSetup() {
   return {
-    starts: Object.fromEntries(Object.entries(START_LIST).map(([id, start]) => [id, { id, group: start.group, name: start.name, desc: start.desc, pay: start.job?.pay ?? null, place: LOCATIONS[start.place]?.name ?? null }])),
-    startGroups: START_GROUPS,
+    // Only the lives on offer, and only the groups that have one.
+    starts: Object.fromEntries(Object.entries(OFFERED_STARTS).map(([id, start]) => [id, { id, group: start.group, name: start.name, desc: start.desc, pay: start.job?.pay ?? null, place: LOCATIONS[start.place]?.name ?? null }])),
+    startGroups: Object.fromEntries(Object.entries(START_GROUPS).filter(([group]) => Object.values(OFFERED_STARTS).some((start) => start.group === group))),
     steps: STEPS,
     pronouns: PRONOUNS,
     stats: STATS,

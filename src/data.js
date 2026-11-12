@@ -81,21 +81,7 @@ export function refreshFactions() {
 }
 refreshFactions();
 
-export const STARTING_QUESTS = [
-  {
-    id: "the_beacon",
-    title: "The Beacon",
-    main: true,
-    status: "active",
-    desc: "The Meridian received a signal from beyond known space, promising a safe harbor from the Choir. Find where it comes from.",
-    objective: "Find someone who can decode the signal. Haven Station is the obvious place to start.",
-  },
-  {
-    id: "fuel_for_the_fleet",
-    title: "Fuel for the Ship",
-    main: false,
-    status: "active",
-    desc: "The Meridian has about two weeks of fuel left. Someone at Haven or Kessara must be selling.",
-    objective: "Secure a fuel supplier for the ship.",
-  },
-];
+// The quests a captain's game begins with. There are none since 2026-11-12, when the written main story (The Beacon,
+// and Fuel for the Ship beside it) was taken out of the game: what there is to do comes from the ship and from what
+// people ask (src/requests.js). A game saved before then has those two closed when it's opened (src/migrate.js).
+export const STARTING_QUESTS = [];

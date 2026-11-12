@@ -6,6 +6,7 @@ import http from "node:http";
 import path from "node:path";
 import { boardScene, boardStories, boardStory, boardWorldItem, boardWorldList, checkBoardScene, saveBoardScene, saveBoardStory, saveBoardWorldItem, saveLayout } from "./src/board.js";
 import { isOrder } from "./src/room-hooks.js";
+import { startIsOff } from "./src/role.js";
 import { ensureContactFiles, newCampaignId, saveCaptainSheet } from "./src/campaign.js";
 import { SKILLS } from "./src/character-data.js";
 import { checkCommand, startCheck, startChoiceCheck } from "./src/checks.js";
@@ -301,6 +302,8 @@ async function handleApi(req, res, route) {
   if (busy) return json(res, 409, { error: "The story is still being told. Wait a moment." });
 
   if (route === "/api/new") {
+    // A life that's switched off in world/starts.json isn't offered, so it can't be asked for either.
+    if (startIsOff(body.draft?.start)) throw new Error("That life is switched off for now. A new game starts in the captain's chair.");
     const created = createGameFromDraft(body.draft);
     created.campaign = newCampaignId(created.name);
     // People from the captain's past get their files now.

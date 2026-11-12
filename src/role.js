@@ -6,6 +6,10 @@ import { STARTS } from "./world.js";
 
 export const START_LIST = STARTS.starts ?? {};
 export const START_GROUPS = STARTS.groups ?? {};
+// The lives a new game can be made with: a life with off: true in the file is kept, and a game saved with it still
+// opens, but it isn't offered. Since 2026-11-12 that's every life but the captain's.
+export const startIsOff = (id) => Boolean(START_LIST[id]?.off);
+export const OFFERED_STARTS = Object.fromEntries(Object.entries(START_LIST).filter(([, start]) => !start.off));
 
 // A save from before there was any choice about it belongs to a captain.
 export const isCaptain = (game) => game.role?.captain !== false;

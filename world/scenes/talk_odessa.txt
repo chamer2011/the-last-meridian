@@ -1,17 +1,8 @@
 # Talking with Quartermaster Brandt
 
 == start
-? flag brandt_knows -> start_crates
 
 @Quartermaster Odessa Brandt: "Eleven hundred filters." She doesn't look up. "On paper." Then she does. "Which count would you like, Captain?"
-
-> Ask how long the food really lasts -> food ? not seen food
-> Ask what "on paper" means -> paper ? not seen paper
-> Ask about Chief Hask -> hask ? not seen hask
-> Say you'll ask in writing -> done
-
-== start_crates
-@Quartermaster Odessa Brandt: "Thirty-one crates. Not drawn this week." She licks her pencil. "On paper, or otherwise. Which count would you like?"
 
 > Ask how long the food really lasts -> food ? not seen food
 > Ask what "on paper" means -> paper ? not seen paper

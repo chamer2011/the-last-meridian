@@ -4,12 +4,13 @@
 // ---- Where a scene starts ------------------------------------------------
 
 // The same thing the story panel calls the latest section: each thing the player does starts a new
-// one, and so does the story picking up after a fight.
+// one, and so does the story picking up after a fight. So does a line the game added when a saved game was opened
+// to say the story has changed hands (turnover): what was told before it is over, and isn't shown as if it weren't.
 export function latestSceneStart(transcript) {
   let start = 0;
   let previous = null;
   transcript.forEach((entry, i) => {
-    if (entry.role === "player" || (entry.role === "narrator" && previous === "combat")) start = i;
+    if (entry.role === "player" || entry.turnover || (entry.role === "narrator" && previous === "combat")) start = i;
     previous = entry.role;
   });
   return start;

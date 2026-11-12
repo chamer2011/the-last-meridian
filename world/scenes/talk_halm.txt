@@ -1,17 +1,8 @@
 # Talking with Speaker Halm
 
 == start
-? flag downstairs_crew -> start_cadets
 
 @Speaker Teodor Halm: "Captain. We were just saying how glad we are you've found a moment." Nobody else is at the table. "We've all got so much to carry, haven't we. Sit, sit."
-
-> Ask what the council wants -> council ? not seen council
-> Ask what he thinks the signal is -> signal ? not seen signal
-> Ask him a straight question: does he trust you? -> trust ? not seen trust
-> Say you've got a fleet to run -> done
-
-== start_cadets
-@Speaker Teodor Halm: "Captain. We were just saying what a remarkable thing it is, thirty-one children in uniform. Remarkable." The word does a lot of work. "The Wintermere has teachers, of course. We only mention it. Sit, sit."
 
 > Ask what the council wants -> council ? not seen council
 > Ask what he thinks the signal is -> signal ? not seen signal

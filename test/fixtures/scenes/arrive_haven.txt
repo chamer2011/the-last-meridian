@@ -1,0 +1,30 @@
+# Haven Station, for the tests
+// A test scene, and none of it is the game's story. A file called arrive_<place>.txt plays when the ship, or the
+// player alone, arrives at that place: the first time at length, and after that in a line.
+
+== start
+? flag arrived_haven -> again
+? not captain -> alone
+
+The jump ends the way jumps do, with the stars going still. Then Haven Station comes up on the viewport, with a fee schedule painted on the first wall you can read.
+
+@Ensign Pell Asante: "Berth's assigned, Captain. Dockmaster says the hour's eighteen credits. Then he said it was twenty-two."
+
+* flag arrived_haven
+* journal: The Meridian reached Haven Station, and the dockmaster changed the fee while she was docking.
+
+NOTE: [STORY] Haven's stories are in the Leads menu.
+END
+
+== alone
+Haven Station, on your own, with the noise of the docks coming up through the shuttle's deck plates before the hatch is open.
+
+* flag arrived_haven
+* journal: You reached Haven Station alone.
+
+NOTE: [STORY] Haven's stories are in the Leads menu.
+END
+
+== again
+Haven again. The fee is still whatever the dockmaster says it is.
+END

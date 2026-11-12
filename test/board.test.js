@@ -8,6 +8,8 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { INQUIRY, LEAK, addTestWorld } from "./fixtures/test-world.mjs";
+
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-board-"));
 process.env.GAME_DATA_DIR = dataDir;
 // The board writes files, so these tests work on copies of the stories and the scenes.
@@ -18,6 +20,9 @@ for (const [folder, env] of [["stories", "GAME_STORIES_DIR"], ["scenes", "GAME_S
   for (const name of fs.readdirSync(path.join(worldDir, folder))) fs.copyFileSync(path.join(worldDir, folder, name), path.join(copy, name));
   process.env[env] = copy;
 }
+// The game has no written story since 2026-11-12, so the story these tests open on the board is the tests' own
+// (test/fixtures): a leak, with its scene, and the inquiry that reacts to it.
+addTestWorld({ scenes: path.join(dataDir, "scenes"), stories: path.join(dataDir, "stories") });
 
 const { boardScene, boardStories, boardStory, boardWorldItem, boardWorldList, checkBoardScene, readLayout, saveBoardScene, saveBoardStory, saveBoardWorldItem, saveLayout, sceneBoardView } = await import("../src/board.js");
 const { LOCATIONS } = await import("../src/data.js");
@@ -26,28 +31,30 @@ const { COMPUTERS_DIR, PLACES_DIR, STORIES_DIR, STORY_CLOCK, WORLD_CHARACTERS, W
 const { parseStoryText, writeStoryText } = await import("../public/story-text.js");
 const { PLACE, parseComputerText, parseWorldText, writeComputerText, writeWorldText } = await import("../public/world-text.js");
 
-const FUEL = "main_two_weeks_of_fuel";
+const FUEL = LEAK;
+const UNWRITTEN = "crew_marrow_aft_hold";
 
 test("the board lists every story, and knows which have a written scene", () => {
   const stories = boardStories();
-  assert.equal(stories.length, 128);
+  assert.equal(stories.length, 110, "the game's 108 and the tests' two");
   const fuel = stories.find((one) => one.id === FUEL);
-  assert.deepEqual(fuel, { id: FUEL, title: "Two Weeks of Fuel", kind: "main", written: true });
-  assert.equal(stories.find((one) => one.id === "main_who_paid").written, false);
+  assert.deepEqual(fuel, { id: FUEL, title: "The Test Leak", kind: "crew", written: true });
+  assert.equal(stories.find((one) => one.id === UNWRITTEN).written, false);
+  assert.deepEqual(stories.filter((one) => one.written).map((one) => one.id), [FUEL], "none of the game's own stories has a written scene");
   assert.ok(stories.every((one, i) => !i || stories[i - 1].title.localeCompare(one.title) <= 0), "in order of their titles");
 });
 
 test("a story comes with its file, what the game read, who reacts to it, and what there is to pick from", () => {
   const view = boardStory(FUEL);
   assert.equal(view.text, fs.readFileSync(path.join(STORIES_DIR, `${FUEL}.txt`), "utf8"));
-  assert.equal(view.story.title, "Two Weeks of Fuel");
+  assert.equal(view.story.title, "The Test Leak");
   assert.equal(view.clock.consequences.length, 3);
-  assert.ok(view.next.some((one) => one.story === "main_the_council" && one.where.startsWith("its clock") && /take_corvanes_fuel/.test(one.to)));
-  assert.ok(view.next.some((one) => one.story === "main_chain_of_command" && one.where === "its notes"));
-  assert.ok(view.places.some((one) => one.id === "kessara" && one.name));
-  assert.ok(view.facts.includes("kessara_closed") && view.facts.includes("told_the_fleet"));
-  assert.equal(view.stories.length, 128);
-  assert.deepEqual(view.stories.find((one) => one.id === FUEL).endings, ["sign_with_quill", "raid_depot", "take_corvanes_fuel", "settle_cinder_reach"]);
+  assert.ok(view.next.some((one) => one.story === INQUIRY && one.where.startsWith("its clock") && /seal_the_hold/.test(one.to)));
+  assert.ok(view.next.some((one) => one.story === INQUIRY && one.where === "its notes"));
+  assert.ok(view.places.some((one) => one.id === "meridian" && one.name));
+  assert.ok(view.facts.includes("aft_hold_sealed") && view.facts.includes("told_the_crew"));
+  assert.equal(view.stories.length, 110);
+  assert.deepEqual(view.stories.find((one) => one.id === FUEL).endings, ["patch_it", "marrow_mends_it", "seal_the_hold", "let_it_run"]);
   assert.deepEqual(view.problems, []);
   assert.equal(view.written, true);
   assert.throws(() => boardStory("No Such"), /lowercase letters/);
@@ -69,7 +76,7 @@ test("saving a story writes its file and the game plays the new one, and a file 
     assert.equal(WORLD_THREADS[FUEL].gm.facts.tested_by_the_board, "The board was tested.");
     assert.equal(STORY_CLOCK.threads[FUEL].consequences.length, 3);
 
-    const refused = saveBoardStory(FUEL, "Two Weeks of Fuel\nkind: main\n\nThe Twist:\nno");
+    const refused = saveBoardStory(FUEL, "The Test Leak\nkind: crew\n\nThe Twist:\nno");
     assert.equal(refused.saved, false);
     assert.ok(refused.problems.some((one) => /line 1: the first line is the story's title/.test(one)), refused.problems.join("\n"));
     assert.ok(fs.readFileSync(file, "utf8").includes("four times now"), "the broken text wasn't written");
@@ -83,7 +90,7 @@ test("saving a story writes its file and the game plays the new one, and a file 
     fs.writeFileSync(file, original);
     saveBoardStory(FUEL, original);
   }
-  assert.equal(WORLD_THREADS[FUEL].lead.slice(0, 40), "Chief Marrow has done the sums three tim");
+  assert.equal(WORLD_THREADS[FUEL].lead, parseStoryText(original, FUEL).story.lead, "and the story is as it was again");
   assert.equal(WORLD_THREADS[FUEL].gm.facts.tested_by_the_board, undefined);
 });
 
@@ -91,39 +98,39 @@ test("a written scene comes as its parts and choices, and put back together it's
   const view = boardScene(FUEL);
   const file = fs.readFileSync(path.join(SCENES_DIR, `thread_${FUEL}.txt`), "utf8");
   assert.equal(view.text, file);
-  assert.ok(view.parts.length > 50);
-  const start = view.parts.find((one) => one.name === "start");
-  assert.ok(start.text.startsWith("Two weeks."));
-  assert.equal(start.line, 8);
-  const marrow = start.choices.find((one) => one.check === "engineering:moderate");
-  assert.deepEqual([marrow.pass, marrow.fail, marrow.to], ["cold_pass", "cold_fail", null]);
-  assert.ok(start.choices.some((one) => one.to === "to_kessara"));
-  assert.ok(start.when.some((one) => one.if === "life engine_hand" && one.to === "hand_start"));
+  assert.equal(view.parts.length, 21);
+  const start = view.parts.find((one) => one.name === "doorway");
+  assert.ok(start.text.startsWith("Naomi Cass is in your doorway"));
+  assert.equal(start.line, 7);
+  const patch = view.parts.find((one) => one.name === "below").choices.find((one) => one.check === "engineering:moderate");
+  assert.deepEqual([patch.pass, patch.fail, patch.to], ["patched", "patch_failed", null]);
+  assert.ok(start.choices.some((one) => one.to === "asked"));
+  assert.ok(start.when.some((one) => one.if === "not captain" && one.to === "heard"));
   assert.ok(view.parts.some((one) => one.fight && one.won && one.lost));
   assert.ok(view.parts.some((one) => one.end));
   assert.deepEqual(view.problems, []);
   const together = [view.header, ...view.parts.map((one) => `== ${one.name}\n${one.raw}`)].join("\n");
   assert.equal(together, file.replace(/\r\n?/g, "\n"), "line for line");
-  assert.throws(() => boardScene("main_who_paid"), /no written scene yet/);
+  assert.throws(() => boardScene(UNWRITTEN), /no written scene yet/);
 });
 
 test("a changed scene is checked without saving, and saving writes it only when it can be read", () => {
   const file = path.join(SCENES_DIR, `thread_${FUEL}.txt`);
   const original = fs.readFileSync(file, "utf8");
-  const broken = original.replace("== start", "== start\n> A choice that goes nowhere -> no_such_part");
+  const broken = original.replace("== doorway", "== doorway\n> A choice that goes nowhere -> no_such_part");
   const checked = checkBoardScene(FUEL, broken);
-  assert.ok(checked.parts.some((one) => one.name === "start" && one.choices.some((choice) => choice.to === "no_such_part")));
+  assert.ok(checked.parts.some((one) => one.name === "doorway" && one.choices.some((choice) => choice.to === "no_such_part")));
   assert.ok(checked.problems.some((one) => /no_such_part/.test(one)), checked.problems.join("\n"));
   assert.equal(fs.readFileSync(file, "utf8"), original, "checking saves nothing");
   try {
-    const saved = saveBoardScene(FUEL, original.replace("Two weeks. Chief Marrow", "Two weeks, near enough. Chief Marrow"));
+    const saved = saveBoardScene(FUEL, original.replace("one sleeve wet to the elbow", "one sleeve wet past the elbow"));
     assert.equal(saved.saved, true);
     assert.deepEqual(saved.problems, []);
-    assert.ok(fs.readFileSync(file, "utf8").includes("Two weeks, near enough."));
+    assert.ok(fs.readFileSync(file, "utf8").includes("wet past the elbow"));
     const unreadable = saveBoardScene(FUEL, "== start\nText.\nCHECK\n");
     assert.equal(unreadable.saved, false);
     assert.ok(unreadable.problems.length > 0);
-    assert.ok(fs.readFileSync(file, "utf8").includes("Two weeks, near enough."), "the unreadable text wasn't written");
+    assert.ok(fs.readFileSync(file, "utf8").includes("wet past the elbow"), "the unreadable text wasn't written");
   } finally {
     fs.writeFileSync(file, original);
   }
@@ -168,7 +175,7 @@ test("the board lists the people, places and species, and shows each with what i
   assert.equal(haven.value.name, "Haven Station");
   assert.equal(haven.text, fs.readFileSync(path.join(PLACES_DIR, "haven.txt"), "utf8"));
   assert.ok(haven.links.people.some((one) => one.id === "sable"));
-  assert.ok(haven.links.stories.some((one) => one.id === "main_the_old_scholar"));
+  assert.ok(haven.links.stories.some((one) => one.id === "out_haven_arbiter"));
   assert.ok(haven.lists.attributes.includes("might") && haven.lists.skills.includes("medicine") && haven.lists.axes.includes("loyalty"));
   assert.deepEqual(haven.problems, []);
 

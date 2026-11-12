@@ -625,6 +625,10 @@ export function storyWaits(game, scenes = loadScenes().scenes) {
 
 tellStoryWaits(storyWaits);
 
+// What a game says when it begins and no opening is written for the player's life (opening_<life>.txt, or opening.txt
+// for everyone): there's no written story since 2026-11-12, and what there is to do comes from the ship.
+export const NO_OPENING = "[STORY] No story is written for now. The Meridian is yours: walk her, talk to her people, and see to what needs seeing to.";
+
 // What's wrong with the scene file the player needs, if it can't be read at all.
 function brokenMessage(id, broken) {
   return broken[id] ? `The scene ${id} can't be read: ${broken[id]}. Fix the file in world\\scenes, or run npm run check-story to see every problem.` : null;
@@ -640,7 +644,15 @@ export function writtenTurn({ game, playerText, event, threadId, person = null, 
     const own = brokenMessage(`opening_${game.role?.id ?? "captain"}`, loaded.broken);
     if (own) throw new StoryError(own);
     const id = openingSceneId(game, loaded.scenes);
-    if (!id) throw new StoryError(brokenMessage("opening", loaded.broken) ?? "There's no written opening yet: world\\scenes needs opening.txt, or one for this life.");
+    if (!id) {
+      // An opening for everyone that can't be read is a mistake to fix. No opening at all is not: the game simply
+      // begins, in the room, with whatever the ship and the people in it give the player to do.
+      const shared = brokenMessage("opening", loaded.broken);
+      if (shared) throw new StoryError(shared);
+      emit({ type: "notice", text: NO_OPENING });
+      emit({ type: "state" });
+      return undefined;
+    }
     return startScene(game, id, loaded.scenes, context);
   }
   if (event === "continue") return carryOn(game, loaded.scenes, context);

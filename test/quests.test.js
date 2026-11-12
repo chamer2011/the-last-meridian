@@ -1,7 +1,8 @@
 // The story goes on with the people it needs: a part waits until the player is in the same room as whoever speaks last
 // in it, and goes on only when they talk to them; walking away in the middle puts it on hold; someone it needs who has
 // died fails the quest; one story waits its turn while another is played; and the tracker says which, for the quest the
-// player follows. None of this calls an AI.
+// player follows. The game has no written story since 2026-11-12, so these play the tests' own: a drill on the bridge
+// for an opening, and a story about a leak (test/fixtures).
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -9,7 +10,11 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
+import { LEAK, useTestWorld } from "./fixtures/test-world.mjs";
+
 process.env.GAME_DATA_DIR ??= fs.mkdtempSync(path.join(os.tmpdir(), "meridian-quests-"));
+// Before anything of the game is read: its scenes and stories, and the tests' own, in a temporary folder.
+useTestWorld();
 
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const { publicState } = await import("../src/rules.js");
@@ -20,7 +25,7 @@ const { newTurnLimits, runTool } = await import("../src/tools.js");
 const { personWhere, walkCommand, walkView } = await import("../src/walk.js");
 const { advanceLife } = await import("../src/life.js");
 
-const CREW = "crew_naomi_under_crew";
+const CREW = LEAK;
 
 const newGame = () => {
   const game = createGameFromDraft(randomDraft({ seed: 21, archetype: "officer" }));
@@ -77,22 +82,22 @@ test("a part waits until the player is with whoever it needs, and the tracker sa
   const game = newGame();
   play(game, { playerText: "I look into this", threadId: CREW });
   assert.equal(personWhere(game, "naomi").here, true, "the story begins with Naomi, so she's come over");
-  play(game, { playerText: "Ask her what's in Section Fourteen" });
+  play(game, { playerText: "Ask her how bad the leak is" });
   assert.equal(game.scene.part, "asked", "she's here, so her answer plays at once");
-  play(game, { playerText: "Ask Chief Marrow about the hull work first" });
+  play(game, { playerText: "Ask Chief Marrow about the line first" });
   assert.equal(game.scene.told, false, "Marrow's part waits for Marrow");
   assert.equal(game.scene.with, "marrow");
   let step = stepOf(game, CREW);
   assert.equal(step.state, "go");
   assert.equal(step.text, "Talk to Chief Engineer Dunn Marrow");
   assert.equal(step.where, "He's at Engineering.");
-  assert.throws(() => play(game, { playerText: "Go down through the Cold Elbow" }), (err) => err instanceof StoryError && /talk to Chief Engineer Dunn Marrow, at Engineering/.test(err.message));
+  assert.throws(() => play(game, { playerText: "Go down to the line" }), (err) => err instanceof StoryError && /talk to Chief Engineer Dunn Marrow, at Engineering/.test(err.message));
   assert.throws(() => play(game, { event: "meet", person: "marrow" }), /at Engineering/, "he isn't here to talk to");
   goTo(game, "engineering");
   step = stepOf(game, CREW);
   assert.equal(step.state, "here");
   const met = play(game, { event: "meet", person: "marrow" });
-  assert.match(met, /@Chief Engineer Dunn Marrow: "Fourteen\?/);
+  assert.match(met, /@Chief Engineer Dunn Marrow: "The Aft Holds\?/);
   assert.equal(game.scene.part, "marrow_first");
   assert.equal(game.transcript.filter((entry) => entry.role === "player").at(-1).text, "Talk to Chief Engineer Dunn Marrow");
   assert.ok(game.transcript.filter((entry) => entry.scene === `thread_${CREW}`).every((entry) => entry.quest === CREW), "what the story says is marked with its quest");
@@ -102,10 +107,10 @@ test("walking away in the middle puts a quest on hold, and going back to them pi
   const game = newGame();
   play(game, { event: "start" });
   assert.equal(game.scene.with, "voss");
-  assert.equal(stepOf(game, "the_beacon").state, "here");
+  assert.equal(stepOf(game, "first_orders").state, "here");
   goTo(game, "names");
   assert.ok(heldUp(game));
-  const step = stepOf(game, "the_beacon");
+  const step = stepOf(game, "first_orders");
   assert.equal(step.state, "hold");
   assert.equal(step.where, "You walked away. She's at the Bridge.");
   assert.throws(() => play(game, { playerText: "Say nothing, and listen to it" }), /on hold until you're back with Commander Ilya Voss, at the Bridge/);
@@ -120,12 +125,12 @@ test("walking away in the middle puts a quest on hold, and going back to them pi
 test("someone a quest is waiting on dies, and the quest fails and can't go on", () => {
   const game = newGame();
   play(game, { playerText: "I look into this", threadId: CREW });
-  play(game, { playerText: "Ask her what's in Section Fourteen" });
+  play(game, { playerText: "Ask her how bad the leak is" });
   goTo(game, "engineering");
   assert.equal(game.scene.with, "naomi", "her answer waits for her, now the player's walked off");
   assert.equal(stepOf(game, CREW).state, "hold");
   const outcome = runTool(game, "note_contact", { name: "Naomi Cass", attitude: "neutral", note: "Lost in a hull breach.", status: "dead" }, newTurnLimits());
-  assert.match(outcome.notice, /\[QUEST\] failed: The Downstairs Crew/);
+  assert.match(outcome.notice, /\[QUEST\] failed: The Test Leak/);
   const quest = game.quests.find((one) => one.id === CREW);
   assert.equal(quest.status, "failed");
   assert.equal(quest.objective, "Naomi Cass is dead, so this can't go on.");
@@ -140,25 +145,30 @@ test("a story waits its turn while another is played, and talking to its person 
   play(game, { playerText: "I look into this", threadId: CREW });
   assert.equal(game.scene.id, `thread_${CREW}`);
   assert.equal(game.parked.opening_captain.with, "voss", "the opening waits on Voss");
-  assert.equal(stepOf(game, "the_beacon").state, "here", "Voss is right here");
+  assert.equal(stepOf(game, "first_orders").state, "here", "Voss is right here");
   const back = play(game, { event: "meet", person: "voss" });
   assert.match(back, /Your orders\./);
   assert.equal(game.scene.id, "opening_captain");
-  assert.equal(game.parked[`thread_${CREW}`].with, "naomi", "and now the Downstairs Crew waits on Naomi");
-  play(game, { playerText: "Tell the fleet the truth: you don't know what the signal is yet" });
+  assert.equal(game.parked[`thread_${CREW}`].with, "naomi", "and now the leak waits on Naomi");
+  play(game, { playerText: "Tell the crew the truth: it's only a drill" });
   assert.equal(game.scene.part, "truth");
 });
 
-test("the tracker follows the main quest until the player picks another, and never one that's over", () => {
+test("a new game has no quest to follow; then the tracker follows the first one going until the player picks another, and never one that's over", () => {
   const game = newGame();
-  assert.equal(questsView(game).following, "the_beacon");
-  followQuest(game, "fuel_for_the_fleet");
-  assert.equal(questsView(game).following, "fuel_for_the_fleet");
-  assert.equal(stepOf(game, "fuel_for_the_fleet").text, "Secure a fuel supplier for the ship.");
-  runTool(game, "update_quest", { id: "fuel_for_the_fleet", status: "completed", objective: "Quill sold the ship her fuel." }, newTurnLimits());
-  assert.equal(questsView(game).following, "the_beacon", "a quest that's over isn't followed");
-  assert.deepEqual(game.quests.find((one) => one.id === "fuel_for_the_fleet").done, ["Secure a fuel supplier for the ship."], "what it asked before is a step done");
-  assert.throws(() => followQuest(game, "fuel_for_the_fleet"), /over/);
+  assert.deepEqual(game.quests, [], "the game starts with no quest since the written main story went");
+  assert.equal(questsView(game).following, null);
+  assert.deepEqual(publicState(game).questLog.quests, []);
+  runTool(game, "add_quest", { id: "mend_the_pump", title: "The Pump", description: "A pump wants mending.", objective: "Find the pump." }, newTurnLimits());
+  runTool(game, "add_quest", { id: "count_the_crates", title: "The Crates", description: "The crates want counting.", objective: "Count the crates in the hold." }, newTurnLimits());
+  assert.equal(questsView(game).following, "mend_the_pump", "the first one still going");
+  followQuest(game, "count_the_crates");
+  assert.equal(questsView(game).following, "count_the_crates");
+  assert.equal(stepOf(game, "count_the_crates").text, "Count the crates in the hold.");
+  runTool(game, "update_quest", { id: "count_the_crates", status: "completed", objective: "Forty, and one empty." }, newTurnLimits());
+  assert.equal(questsView(game).following, "mend_the_pump", "a quest that's over isn't followed");
+  assert.deepEqual(game.quests.find((one) => one.id === "count_the_crates").done, ["Count the crates in the hold."], "what it asked before is a step done");
+  assert.throws(() => followQuest(game, "count_the_crates"), /over/);
   assert.throws(() => followQuest(game, "no_such_quest"), /no quest/);
 });
 
@@ -169,7 +179,7 @@ test("whoever a scene is waiting on stays with the player, however long they tak
   game.clock.hours += 3;
   advanceLife(game);
   assert.ok(walkView(game).people.some((one) => one.key === "naomi"), "she's still here three hours on");
-  play(game, { playerText: "Ask her what's in Section Fourteen" });
+  play(game, { playerText: "Ask her how bad the leak is" });
   assert.equal(game.scene.part, "asked");
 });
 
@@ -181,5 +191,5 @@ test("showing the game, with stories waiting and one on hold, changes nothing in
   const before = structuredClone(game);
   const shown = publicState(game);
   assert.deepEqual(game, before);
-  assert.ok(shown.questLog.quests.length >= 3);
+  assert.equal(shown.questLog.quests.length, 2, "the drill's quest and the leak's");
 });

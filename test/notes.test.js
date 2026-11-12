@@ -7,8 +7,13 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
+import { INQUIRY, LEAK, useTestWorld } from "./fixtures/test-world.mjs";
+
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-notes-"));
 process.env.GAME_DATA_DIR = dataDir;
+// The stories these tests read are the tests' own (test/fixtures): a leak, and the inquiry that follows it and
+// reacts to how it ended. They're in a copy of the world, beside the game's stories.
+useTestWorld();
 
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const { endStory, endedWith, endingOf, recordFact, recordView } = await import("../src/record.js");
@@ -18,7 +23,7 @@ const { notesProblems } = await import("../src/story-library.js");
 const { TOOL_DEFS, newTurnLimits, runTool } = await import("../src/tools.js");
 const { FACT_LINES, WORLD_THREADS, endingsOf } = await import("../src/world.js");
 
-const FUEL = "main_two_weeks_of_fuel";
+const FUEL = LEAK;
 const newGame = (seed = 23) => {
   const draft = randomDraft({ seed, archetype: "officer" });
   draft.start = "captain";
@@ -34,14 +39,14 @@ test("every story's endings have names, and the notes of all the stories pass th
     assert.equal(new Set(names).size, names.length, `${id} has two endings with one name`);
     for (const name of names) assert.match(name, /^[a-z][a-z0-9_]{1,39}$/, `${id}: ${name}`);
   }
-  assert.deepEqual(endingsOf(WORLD_THREADS[FUEL]).map((one) => one.id), ["sign_with_quill", "raid_depot", "take_corvanes_fuel", "settle_cinder_reach"]);
+  assert.deepEqual(endingsOf(WORLD_THREADS[FUEL]).map((one) => one.id), ["patch_it", "marrow_mends_it", "seal_the_hold", "let_it_run"]);
   assert.deepEqual(endingsOf({ gm: { outcomes: ["Plain words"] } }), [{ id: "ending_1", text: "Plain words" }], "an outcome without a name gets its number");
   assert.deepEqual(notesProblems(), []);
   const { count, stories, problems } = allStoryProblems();
   assert.deepEqual(problems, []);
   assert.equal(stories, Object.keys(WORLD_THREADS).length);
   assert.ok(count >= 24);
-  assert.equal(FACT_LINES.kessara_closed, "Kessara Drift is closed to the fleet since the depot.");
+  assert.equal(FACT_LINES.aft_hold_sealed, "The Aft Holds are sealed since the leak.");
 });
 
 test("the checker names what's wrong in a story's notes, in plain words", () => {
@@ -50,7 +55,7 @@ test("the checker names what's wrong in a story's notes, in plain words", () => 
     gm: {
       outcomes: ["No name", { id: "Bad Name", text: "x" }, { id: "fine", text: "" }, { id: "twice", text: "a" }, { id: "twice", text: "b" }],
       facts: { "Bad": "line", fine_name: "" },
-      reacts: [{ to: "flag nothing_leaves_this", then: "x" }, { to: "ended no_such_story", then: "x" }, { to: "ended main_two_weeks_of_fuel no_such_ending", then: "x" }, { to: "chance 50", then: "x" }, { to: "seen start", then: "y" }, { then: "no condition" }, { to: "flag kessara_closed and ended main_two_weeks_of_fuel raid_depot", then: "fine" }],
+      reacts: [{ to: "flag nothing_leaves_this", then: "x" }, { to: "ended no_such_story", then: "x" }, { to: `ended ${FUEL} no_such_ending`, then: "x" }, { to: "chance 50", then: "x" }, { to: "seen start", then: "y" }, { then: "no condition" }, { to: `flag aft_hold_sealed and ended ${FUEL} seal_the_hold`, then: "fine" }],
     },
   };
   try {
@@ -65,7 +70,7 @@ test("the checker names what's wrong in a story's notes, in plain words", () => 
     expect(/test_bad, facts: fine_name needs a line/);
     expect(/test_bad, reacts 1: nothing leaves the fact nothing_leaves_this/);
     expect(/test_bad, reacts 2: there's no story called no_such_story/);
-    expect(/test_bad, reacts 3: main_two_weeks_of_fuel has no ending called no_such_ending\. Its endings are sign_with_quill/);
+    expect(/test_bad, reacts 3: crew_test_leak has no ending called no_such_ending\. Its endings are patch_it/);
     expect(/test_bad, reacts 4: a story can't react to "chance"/);
     expect(/test_bad, reacts 5: a story can't react to "seen"/);
     expect(/test_bad, reacts 6 is written/);
@@ -78,81 +83,82 @@ test("the checker names what's wrong in a story's notes, in plain words", () => 
 
 test("a scene can ask how a story ended, by name or any way, and the game answers from the record", () => {
   assert.ok(parseCondition("ended no_such_story").problems.some((one) => /no story called no_such_story/.test(one)));
-  assert.ok(parseCondition("ended main_two_weeks_of_fuel no_such_ending").problems.some((one) => /no ending called no_such_ending/.test(one)));
-  assert.ok(parseCondition("ended main_two_weeks_of_fuel raid_depot extra").problems.some((one) => /takes a story's id/.test(one)));
-  assert.deepEqual(parseCondition("ended main_two_weeks_of_fuel raid_depot").problems, []);
-  assert.deepEqual(parseCondition("not ended main_two_weeks_of_fuel and flag kessara_closed").problems, []);
+  assert.ok(parseCondition("ended crew_test_leak no_such_ending").problems.some((one) => /no ending called no_such_ending/.test(one)));
+  assert.ok(parseCondition("ended crew_test_leak seal_the_hold extra").problems.some((one) => /takes a story's id/.test(one)));
+  assert.deepEqual(parseCondition("ended crew_test_leak seal_the_hold").problems, []);
+  assert.deepEqual(parseCondition("not ended crew_test_leak and flag aft_hold_sealed").problems, []);
   const game = newGame();
-  assert.equal(conditionHolds(game, "ended main_two_weeks_of_fuel"), false);
-  assert.equal(conditionHolds(game, "not ended main_two_weeks_of_fuel"), true);
-  endStory(game, { id: FUEL, ending: "raid_depot", summary: "The depot, taken clean." });
-  assert.equal(conditionHolds(game, "ended main_two_weeks_of_fuel"), true);
-  assert.equal(conditionHolds(game, "ended main_two_weeks_of_fuel raid_depot"), true);
-  assert.equal(conditionHolds(game, "ended main_two_weeks_of_fuel sign_with_quill"), false);
-  assert.equal(conditionHolds(game, "not ended main_two_weeks_of_fuel sign_with_quill"), true);
-  assert.equal(endedWith(game, "main_visiting_hours"), false);
-  game.story.threads.main_visiting_hours = "done";
-  assert.equal(endedWith(game, "main_visiting_hours"), true, "a story the clock ran out on is over, any way");
-  assert.equal(endedWith(game, "main_visiting_hours", "wens_transfers_come_out"), false);
+  assert.equal(conditionHolds(game, "ended crew_test_leak"), false);
+  assert.equal(conditionHolds(game, "not ended crew_test_leak"), true);
+  endStory(game, { id: FUEL, ending: "seal_the_hold", summary: "The hold, shut." });
+  assert.equal(conditionHolds(game, "ended crew_test_leak"), true);
+  assert.equal(conditionHolds(game, "ended crew_test_leak seal_the_hold"), true);
+  assert.equal(conditionHolds(game, "ended crew_test_leak patch_it"), false);
+  assert.equal(conditionHolds(game, "not ended crew_test_leak patch_it"), true);
+  assert.equal(endedWith(game, INQUIRY), false);
+  game.story.threads[INQUIRY] = "done";
+  assert.equal(endedWith(game, INQUIRY), true, "a story the clock ran out on is over, any way");
+  assert.equal(endedWith(game, INQUIRY, "captain_blamed"), false);
 });
 
 test("the written story ends its story by name: the record, the quest and the Leads menu agree, and the checker knows the names", () => {
-  assert.deepEqual(parseEffect("ending sign_with_quill: Signed with Mother Quill.").do, { ending: "sign_with_quill", text: "Signed with Mother Quill." });
+  assert.deepEqual(parseEffect("ending patch_it: Patched by hand.").do, { ending: "patch_it", text: "Patched by hand." });
   assert.deepEqual(parseEffect("ending ignored failed: You let it run.").do, { ending: "ignored", failed: true, text: "You let it run." });
   assert.ok(parseEffect("ending: no name").problem);
-  assert.ok(parseEffect("ending sign_with_quill").problem);
-  assert.ok(parseEffect("ending sign_with_quill badly: words").problem);
-  const { scene, problems } = parseSceneText("== start\nThe page.\n* ending sign_with_quill: Signed with Mother Quill.\nEND");
+  assert.ok(parseEffect("ending patch_it").problem);
+  assert.ok(parseEffect("ending patch_it badly: words").problem);
+  const { scene, problems } = parseSceneText("== start\nThe clamp.\n* ending patch_it: Patched by hand.\nEND");
   assert.deepEqual(problems, []);
   assert.deepEqual(sceneProblems(scene, `thread_${FUEL}`), []);
-  assert.ok(sceneProblems(scene, "thread_main_visiting_hours").some((one) => /main_visiting_hours has no ending called sign_with_quill/.test(one)));
+  assert.ok(sceneProblems(scene, `thread_${INQUIRY}`).some((one) => /crew_test_inquiry has no ending called patch_it/.test(one)));
   assert.ok(sceneProblems(scene, "opening_captain").some((one) => /story's own scene/.test(one)));
   assert.ok(sceneProblems(scene, "talk_marrow", { talk: true }).some((one) => /story's own scene/.test(one)));
 
   const game = newGame();
-  runTool(game, "add_quest", { id: FUEL, title: "Two Weeks of Fuel", description: "Fuel.", objective: "Find fuel." }, newTurnLimits());
+  runTool(game, "add_quest", { id: FUEL, title: "The Test Leak", description: "A leak.", objective: "Find the leak." }, newTurnLimits());
   const notices = [];
   writtenTurn({ game, playerText: "I look into this", threadId: FUEL, emit: (line) => { if (line.type === "notice") notices.push(line.text); }, log: quiet(game).log, scenes: { [`thread_${FUEL}`]: scene } });
-  assert.equal(endingOf(game, FUEL).ending, "sign_with_quill");
-  assert.equal(endingOf(game, FUEL).summary, "Signed with Mother Quill.");
+  assert.equal(endingOf(game, FUEL).ending, "patch_it");
+  assert.equal(endingOf(game, FUEL).summary, "Patched by hand.");
   const quest = game.quests.find((one) => one.id === FUEL);
   assert.equal(quest.status, "completed");
-  assert.equal(quest.objective, "Signed with Mother Quill.");
+  assert.equal(quest.objective, "Patched by hand.");
   assert.equal(game.story.threads[FUEL], "done");
-  assert.ok(notices.includes("[STORY] Two Weeks of Fuel has ended: Signed with Mother Quill."), notices.join("\n"));
-  assert.equal(recordView(game).endings[0].ending, "sign_with_quill");
+  assert.ok(notices.includes("[STORY] The Test Leak has ended: Patched by hand."), notices.join("\n"));
+  assert.equal(recordView(game).endings[0].ending, "patch_it");
 
-  const lost = parseSceneText("== start\nThe vent.\n* ending ignored failed: You let it run.\nEND").scene;
+  const lost = parseSceneText("== start\nThe line.\n* ending let_it_run failed: You let it run.\nEND").scene;
   const other = newGame();
-  runTool(other, "add_quest", { id: "crew_naomi_under_crew", title: "The Downstairs Crew", description: "x", objective: "y" }, newTurnLimits());
-  writtenTurn({ other, game: other, playerText: "I look into this", threadId: "crew_naomi_under_crew", ...quiet(other), scenes: { thread_crew_naomi_under_crew: lost } });
-  assert.equal(other.quests.find((one) => one.id === "crew_naomi_under_crew").status, "failed");
-  assert.equal(endingOf(other, "crew_naomi_under_crew").failed, true);
-  assert.equal(publicStateEnding(other), "ignored");
+  runTool(other, "add_quest", { id: FUEL, title: "The Test Leak", description: "x", objective: "y" }, newTurnLimits());
+  writtenTurn({ other, game: other, playerText: "I look into this", threadId: FUEL, ...quiet(other), scenes: { [`thread_${FUEL}`]: lost } });
+  assert.equal(other.quests.find((one) => one.id === FUEL).status, "failed");
+  assert.equal(endingOf(other, FUEL).failed, true);
+  assert.equal(publicStateEnding(other), "let_it_run");
 });
 
 const publicStateEnding = (game) => recordView(game).endings[0].ending;
 
 test("a story's notes name its endings and facts, and its reactions are read against the record", () => {
-  const thread = WORLD_THREADS.main_chain_of_command;
-  assert.ok(endingsOf(thread).some((one) => one.id === "voss_arrested" && /^If Voss is arrested/.test(one.text)));
-  assert.equal(thread.gm.facts.tarrow_resigned, "Lieutenant Tarrow resigned over Commander Voss.");
+  const thread = WORLD_THREADS[INQUIRY];
+  assert.ok(endingsOf(thread).some((one) => one.id === "captain_blamed" && /^If the inquiry blames the captain/.test(one.text)));
+  assert.equal(thread.gm.facts.inquiry_closed, "The inquiry into the leak is closed.");
+  assert.equal(thread.gm.reacts.length, 4);
   const game = newGame();
   const holding = (id, on = game) => (WORLD_THREADS[id].gm.reacts ?? []).filter((one) => conditionHolds(on, one.to)).map((one) => one.then);
-  assert.equal(holding("main_chain_of_command").length, 0, "nothing on the record yet");
-  endStory(game, { id: FUEL, ending: "take_corvanes_fuel", summary: "Corvane's fuel." });
-  assert.ok(holding("main_chain_of_command").some((line) => /^The fleet runs on Corvane's fuel/.test(line)));
-  assert.ok(!holding("main_chain_of_command").some((line) => /at war with the Syndicate/.test(line)), "only the reactions that hold");
-  recordFact(game, { id: "said_dont_know", from: "thread_main_the_council" });
-  assert.ok(holding("main_chain_of_command").some((line) => /^The captain told the council they don't know/.test(line)));
-  assert.ok(holding("main_the_council", newGame()).some((line) => /The tanks aren't filled yet/.test(line)), "a reaction to a story not ended yet");
-  assert.ok(!holding("main_the_council").some((line) => /The tanks aren't filled yet/.test(line)));
+  assert.equal(holding(FUEL).length, 0, "nothing on the record yet");
+  assert.deepEqual(holding(INQUIRY), ["The leak isn't settled yet, so the inquiry has nothing to ask about."], "a reaction to a story not ended yet");
+  endStory(game, { id: FUEL, ending: "seal_the_hold", summary: "The hold, shut." });
+  assert.deepEqual(holding(INQUIRY), ["The hold is sealed, so the inquiry begins at a shut door."], "only the reactions that hold");
+  recordFact(game, { id: "marrow_owed", from: `thread_${FUEL}` });
+  assert.ok(holding(INQUIRY).some((line) => /^Chief Marrow is owed a favour/.test(line)), "and a reaction to a fact");
+  recordFact(game, { id: "inquiry_closed", from: `thread_${INQUIRY}` });
+  assert.deepEqual(holding(FUEL), ["The inquiry is already closed, so nobody asks afterwards who mended what."]);
 });
 
 test("a fact a scene leaves without words shows the line the story's notes give it", () => {
   const game = newGame();
-  recordFact(game, { id: "kessara_closed", from: `thread_${FUEL}` });
-  assert.equal(recordView(game).facts.find((fact) => fact.id === "kessara_closed").text, FACT_LINES.kessara_closed);
-  recordFact(game, { id: "tannis_owes", text: "The scene's own words win.", from: `thread_${FUEL}` });
-  assert.equal(recordView(game).facts.find((fact) => fact.id === "tannis_owes").text, "The scene's own words win.");
+  recordFact(game, { id: "aft_hold_sealed", from: `thread_${FUEL}` });
+  assert.equal(recordView(game).facts.find((fact) => fact.id === "aft_hold_sealed").text, FACT_LINES.aft_hold_sealed);
+  recordFact(game, { id: "marrow_owed", text: "The scene's own words win.", from: `thread_${FUEL}` });
+  assert.equal(recordView(game).facts.find((fact) => fact.id === "marrow_owed").text, "The scene's own words win.");
 });

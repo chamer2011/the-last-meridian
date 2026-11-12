@@ -88,6 +88,8 @@ test("losing a fight aboard: the player wakes in the medbay with whole numbers, 
   startCombat(game, "dock_thug");
   game.hp = 1;
   game.combat.enemies[0].attack = 60;
+  // Too tough to be put down by a lucky first blow, so the fight can only go one way.
+  game.combat.enemies[0].hp = 999;
   let outcome;
   for (let i = 0; i < 40 && game.combat; i += 1) outcome = combatAction(game, { type: "attack" });
   assert.equal(outcome.result, "defeat");

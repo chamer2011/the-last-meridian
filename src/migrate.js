@@ -9,6 +9,7 @@ import { newBodySeed } from "./body.js";
 import { newCommandState } from "./command.js";
 import { startHealth } from "./medbay.js";
 import { startRegister } from "./register.js";
+import { sceneFileIds } from "./scene-files.js";
 import { noteLoreSeen, startingLoreIds } from "./lore.js";
 import { crewContacts, maxEnergy, maxHp } from "./rules.js";
 import { emptyStory } from "./story-library.js";
@@ -283,6 +284,38 @@ function fromVersion22(save) {
   return game;
 }
 
+// Version 24 is the game without its written main story: on 2026-11-12 the scenes of The Beacon, the main stories and
+// their clock were taken out. A game from before keeps playing. The quests that only a written story moved on can't go
+// anywhere now, so they're closed (what people ask, the requests, are left alone); a scene of the old story that was
+// under way or waiting is dropped; a talk that was open closes, since its lines may have gone; and the story says so
+// once, which also stops the old scene's last choices being offered.
+export const OLD_STORY_NOTICE = "[STORY] The written main story has been taken out of the game, and its quests are closed. Everything else goes on as it was: the ship, her people, and what they ask of you.";
+const CLOSED_WITH_THE_STORY = "Closed: the written story this belonged to has been taken out of the game.";
+function fromVersion23(save) {
+  const game = { ...save, version: 24 };
+  const there = sceneFileIds();
+  const gone = (scene) => Boolean(scene?.id) && !there.has(scene.id);
+  let told = false;
+  if (gone(game.scene)) {
+    game.scene = null;
+    told = true;
+  }
+  if (game.parked) {
+    const kept = Object.entries(game.parked).filter(([, scene]) => !gone(scene));
+    if (kept.length !== Object.keys(game.parked).length) told = true;
+    game.parked = Object.fromEntries(kept);
+  }
+  game.quests = (game.quests ?? []).map((quest) => {
+    if (quest.status !== "active" || quest.request) return quest;
+    told = true;
+    return { ...quest, status: "completed", objective: CLOSED_WITH_THE_STORY };
+  });
+  if (game.following && !game.quests.some((quest) => quest.id === game.following && quest.status === "active")) game.following = null;
+  if (game.talk) game.talk = null;
+  if (told && game.transcript?.length) game.transcript = [...game.transcript, { role: "notice", text: OLD_STORY_NOTICE, turnover: true }];
+  return game;
+}
+
 export function migrateGame(save) {
   if (!save) return save;
   let game = save;
@@ -308,6 +341,7 @@ export function migrateGame(save) {
   if (game.version < 21) game = fromVersion20(game);
   if (game.version < 22) game = fromVersion21(game);
   if (game.version < 23) game = fromVersion22(game);
+  if (game.version < 24) game = fromVersion23(game);
   // A place that's gone from the world's files can't hold anyone, and factions added since this save was made need a standing.
   if (!LOCATIONS[game.location]) game.location = "meridian";
   game.factions ??= {};

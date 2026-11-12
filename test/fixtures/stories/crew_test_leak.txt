@@ -1,0 +1,65 @@
+# The Test Leak
+kind: crew
+places: meridian
+people: naomi, marrow
+factions: fleet
+
+The lead:
+A coolant line in the Aft Holds is weeping, and Naomi Cass has come to say so before anyone else does. This story is only here for the tests.
+
+For anyone who isn't the captain:
+There's a line weeping in the Aft Holds, and Naomi Cass has told everyone who'll listen. This story is only here for the tests.
+
+What's really going on:
+A test story, and none of it is the game's own. A coolant line leaks in the Aft Holds. Naomi Cass found it, Chief Marrow can mend it, and whoever takes it up decides who does, and when. It has every kind of line a story's file can have, so the tests can read it, end it each way, and watch its clock.
+
+How it might go:
+- Naomi Cass in the doorway, with one sleeve wet to the elbow.
+- Chief Marrow at his board, saying what the line will take.
+- The crawlway under the Aft Holds, a rag, and something that lives under the line.
+
+Ways through:
+- Fixer: patch the line by hand (engineering).
+- Talker: have Chief Marrow see to it himself (persuasion).
+- Plain: seal the hold and leave the line for later.
+
+Checks that fit:
+- engineering:moderate to patch the line by hand
+- persuasion:moderate to have Chief Marrow mend it himself
+
+If it comes to a fight:
+- scrap_rat if whatever lives under the line is disturbed
+
+Where it can end up:
+patch_it: If the line is patched by hand, the leak is mended and Naomi Cass has seen who did it.
+marrow_mends_it: If Chief Marrow mends it, the line holds and he's owed a favour.
+seal_the_hold: If the hold is sealed, the leak stops mattering and the Aft Holds are shut.
+let_it_run: If nobody does anything, the line fails in the night.
+
+Facts it can leave:
+aft_hold_sealed, after seal_the_hold: The Aft Holds are sealed since the leak.
+marrow_owed, after marrow_mends_it: Chief Marrow is owed a favour for the line.
+line_patched, after patch_it: The line in the Aft Holds was patched by hand.
+marrow_asked: Chief Marrow was asked about the line before anyone went down.
+
+What on the record changes it:
+? flag inquiry_closed -> The inquiry is already closed, so nobody asks afterwards who mended what.
+
+If nobody steps in:
+after 18 days: The weeping line in the Aft Holds has started to drip, and somebody has put a bucket under it.
+  lead: The line in the Aft Holds drips now, into a bucket somebody empties twice a watch. Naomi Cass has stopped saying she told you so, which is worse.
+after 40 days: The line in the Aft Holds let go in the night, and the hold was ankle deep by the morning watch.
+  lead: The line in the Aft Holds has failed, and the hold's been pumped out. It's still there to be mended, by whoever gets to it.
+  fleet: morale -1
+  fact line_failed: The line in the Aft Holds failed with nobody mending it.
+
+Consequences:
+? ended crew_test_leak seal_the_hold, after 7 days: The Aft Holds are still shut a week on, and the stores behind the door have started to spoil.
+  fact aft_hold_sealed: The Aft Holds are sealed since the leak.
+? ended crew_test_leak marrow_mends_it, after 30 days: Chief Marrow has called in the favour he was owed for the line.
+  fact marrow_called_it_in: Chief Marrow called in his favour for the line.
+? ended crew_test_leak patch_it, after 21 days: The patch on the line in the Aft Holds has been found by the watch, and it's holding.
+  fact patch_found: The patch on the line was found, and it held.
+
+Rewards:
+A dry hold, and whatever Naomi Cass thinks of how it got that way.

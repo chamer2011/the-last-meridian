@@ -1,14 +1,15 @@
 HOW TO WRITE A STORY
 ====================
 
-Every story the game can offer is one file in this folder, named by the story's id: two_weeks_of_fuel.txt is the
-story main_two_weeks_of_fuel. These are the story's notes, not the words the player reads: the written scene in
+Every story the game can offer is one file in this folder, named by the story's id: crew_naomi_under_crew.txt is
+the story crew_naomi_under_crew. These are the story's notes, not the words the player reads: the written scene in
 world/scenes, if there is one, plays it out, and until then the story only moves on by itself, by its clock. The Story board in the game
 (The story, then Story board) shows and changes these same files as boxes and arrows, and npm run check-story reads
 them all and says what's wrong, with the file and the line.
 
 A file starts with the title, then a few lines about the story, then its parts, each under a heading that ends with
-a colon. Here is a short one, with every kind of line:
+a colon. Here is a short one, with every kind of line. It's only an example: this story, and the main story it was
+part of, were taken out of the game on 2026-11-12.
 
     # Two Weeks of Fuel
     kind: main                          (main, crew, dilemma, mystery, exploration, survival, politics, job, faction)
