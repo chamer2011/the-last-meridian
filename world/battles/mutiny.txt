@@ -21,3 +21,13 @@ With you:
 - tarrow, up The Upper Aft Stair, 30 seconds in: Lieutenant Tarrow comes up the aft stair from below, with her carbine already raised.
 - the guards, up The Upper Aft Stair, 30 seconds in: The guards come up behind her.
 - the ensigns, up The Upper Forward Stair, 30 seconds in: The ensigns come up the forward stair from the mess, with whatever they could grab on the way.
+
+After it:
+- a fire where the fighting was thickest
+- a breach in The Boat Bay
+- the junction box in The Names Bulkhead broken
+- the junction box in The Bridge broken, if you went down
+- the nav core in The Bridge broken
+- the relay in The Bridge broken, if anyone went down there
+- a speaker or a camera broken in every room where anyone went down
+- a speaker or a camera broken in every room where anyone went down, if you went down

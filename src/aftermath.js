@@ -6,11 +6,17 @@
 // (src/command.js). What the battle costs aboard, morale and the council's confidence, is in the battle's file, and
 // everyone who fought beside the player remembers it. What happens to the ship itself is for later.
 
+import { roomOnDeck } from "./battles.js";
 import { addWounds, beatenFor, downState, keyAt } from "./body.js";
 import { commandOf, prisonersAt, prisonersState, rememberRequest, shakeConfidence } from "./command.js";
+import { startBreach, startFire } from "./emergencies.js";
 import { fallDown, hasADayAt } from "./medbay.js";
 import { tellBattleEnding } from "./live-fight.js";
 import { addClockWork, addRoomNote } from "./room-hooks.js";
+import { airFlows, damagePart, systemsOf } from "./systems.js";
+import { mapFor } from "./walk.js";
+
+const nowHours = (game) => game.clock?.hours ?? 0;
 
 // What everyone who fought beside the player remembers, and how much it counts for them.
 const FOUGHT_BESIDE = { words: "fought beside you on deck 1 when the mutineers came", w: 8 };
@@ -67,6 +73,8 @@ export function battleEnds(game, c, ground, ended) {
     prisoners.held += taken;
     notes.push(`[COMMAND] ${taken === 1 ? "The one who gave up is" : `The ${counted(taken)} who gave up are`} taken to the brig.`);
   }
+  // Then the ship: what the battle leaves behind, as its file says.
+  notes.push(...shipAfter(game, c, ground, ended));
   // What it costs aboard, as the battle's file says: more for each on the player's side who went down, and more again
   // if the player did.
   const youDown = ended === "defeat";
@@ -92,6 +100,87 @@ export function battleEnds(game, c, ground, ended) {
   return notes;
 }
 tellBattleEnding(battleEnds);
+
+// ---- The ship -----------------------------------------------------------------------------------------------------
+
+// A number from 0 to n - 1 that's the same for the same game, battle, room and line, and different in the next game:
+// which part in a room takes the shot.
+function pickFor(game, key, n) {
+  let hash = 2166136261;
+  for (const char of `${game.bodySeed ?? 1}|${key}`) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  return (hash >>> 0) % n;
+}
+
+// What the battle leaves behind on the ship, as the After it: lines in its file say (public/battle-text.js): a fire
+// where the fighting was thickest (where the most fell, on either side) or in a room, a breach, a part in a room broken,
+// or one part of the kinds named broken in every room where anyone went down. A line can be only if the player went
+// down, or only if anyone went down in the room it names. Everything broken this way is "broken", which the engineers
+// mend with a parts crate, as they do anything broken. Returns lines for the story.
+function shipAfter(game, c, ground, ended) {
+  const lines = c.battle.after ?? [];
+  const place = game.location;
+  const map = mapFor(place);
+  const model = systemsOf(place);
+  if (!lines.length || !map) return [];
+  const deck = ground.level.id;
+  const fell = new Map();
+  for (const one of [...c.allies, ...c.enemies]) {
+    if (one.hp > 0 || one.machine || !one.live) continue;
+    const room = ground.level.roomAt?.(Math.round(one.live.x), Math.round(one.live.y));
+    if (room && room !== deck) fell.set(room, (fell.get(room) ?? 0) + 1);
+  }
+  const rooms = [...fell.keys()].sort((a, b) => fell.get(b) - fell.get(a) || a.localeCompare(b));
+  const thickest = rooms[0] ?? roomOnDeck(map, deck, c.battle.target)?.id ?? null;
+  const youDown = ended === "defeat";
+  const said = [];
+  const broken = [];
+  const works = (part) => !game.systems?.[place]?.parts?.[part.id]?.damage;
+  const breakPart = (part) => {
+    said.push(...damagePart(game, place, part.id, "broken", { by: "battle" }));
+    broken.push(part);
+  };
+  const parts = Object.values(model?.parts ?? {});
+  const roomOf = (line) => (line.thickest ? thickest : line.room ? roomOnDeck(map, deck, line.room)?.id ?? null : null);
+  const holds = (line, room) => !(line.if === "you" && !youDown) && !(line.if === "there" && !(room && fell.has(room)));
+  // What's broken first, in the order the lines are written.
+  lines.forEach((line, index) => {
+    if (line.what !== "broken") return;
+    const room = roomOf(line);
+    if (!holds(line, room)) return;
+    if (line.every) {
+      for (const at of rooms) {
+        const choices = parts.filter((part) => part.room === at && line.kinds.includes(part.kind) && works(part));
+        if (choices.length) breakPart(choices[pickFor(game, `${c.battle.id}|${at}|${index}`, choices.length)]);
+      }
+    } else if (room) {
+      const part = parts.find((one) => one.room === room && one.kind === line.part && works(one));
+      if (part) breakPart(part);
+    }
+  });
+  // The engineers work through what the battle broke one thing at a time, in that order, rather than all at once: the
+  // first is mended as soon as anything broken would be, and each after it a repair's time later.
+  const now = nowHours(game);
+  broken.forEach((part, k) => {
+    const s = game.systems?.[place]?.parts?.[part.id];
+    if (s?.fixAt !== undefined) s.fixAt = now + (s.fixAt - now) * (k + 1);
+  });
+  // Then the fires and breaches. A fire where the fighting was thickest is where the most fell, of the rooms that still
+  // have air for it to burn: a room whose vent has lost its power starves a fire at once.
+  lines.forEach((line) => {
+    if (line.what === "broken") return;
+    const room = line.thickest ? rooms.find((at) => airFlows(game, place, at)) ?? thickest : roomOf(line);
+    if (!room || !holds(line, room)) return;
+    if (line.what === "fire") said.push(...startFire(game, place, room));
+    else if (line.what === "breach") said.push(...startBreach(game, place, room));
+  });
+  if (!broken.length) return said;
+  // One line for what's broken, room by room, before what follows from it.
+  const byRoom = new Map();
+  for (const part of broken) byRoom.set(part.room, [...(byRoom.get(part.room) ?? []), `the ${part.name}`]);
+  const words = [...byRoom].map(([room, names]) => `${listed(names)} in ${map.rooms?.[room]?.name ?? room}`);
+  return [`[SYSTEMS] Broken in the fighting: ${words.join("; ")}.`, ...said];
+}
+const listed = (words) => (words.length < 2 ? words.join("") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`);
 
 // As time goes by, the beaten of the other side who are on their feet again are walked to the brig, and whoever died is
 // counted, and goes up on the names as an unnamed mutineer. Returns lines for the story, for the place the player's at.

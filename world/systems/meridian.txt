@@ -9,8 +9,9 @@ a part wears out every: 10
 
 Power:
 - junction box in Engineering for Engineering, The Aft Holds, The Crawlways: The main bus, a cabinet of breakers older than anyone aboard, with Marrow's handwriting on half the labels.
-- junction box in The Names Bulkhead for The Names Bulkhead, The Long Mess, The Galley, The Garden, The Hot Bunks, Medbay: The civilian deck's breakers, behind a panel someone has chalked a name on.
+- junction box in The Names Bulkhead for The Names Bulkhead, The Long Mess, The Galley, The Garden, The Hot Bunks: The civilian deck's breakers, behind a panel someone has chalked a name on.
 - junction box in The Bridge for The Bridge: The bridge's own feed, on a breaker with a red tag that says DO NOT.
+- junction box in Medbay for Medbay: The medbay's own breakers, put in after a power cut once left the doctor stitching by torchlight.
 
 Air:
 - air plant in Engineering: The air plant, breathing for nine hundred people on a ship built for three hundred, at a hundred and forty percent of what it was built for.

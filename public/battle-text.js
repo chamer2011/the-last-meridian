@@ -22,6 +22,13 @@
 //     - everyone on the deck who can fight
 //     - tarrow, up The Upper Aft Stair, 60 seconds in: Lieutenant Tarrow comes up from below.
 //     - the ensigns, up The Upper Forward Stair, 60 seconds in
+//
+//     After it:
+//     - a fire where the fighting was thickest
+//     - a breach in The Boat Bay
+//     - the junction box in The Names Bulkhead broken
+//     - the relay in The Bridge broken, if anyone went down there
+//     - a speaker or a camera broken in every room where anyone went down, if you went down
 
 // The lines at the top, by the words they start with, and what each is called in the battle.
 export const BATTLE_HEADER = {
@@ -38,8 +45,9 @@ export const BATTLE_HEADER = {
 };
 const HEADER_ORDER = ["draft", "place", "deck", "target", "giveUp", "crewAs", "cover", "gaveUpLine", "morale", "confidence"];
 const WORDS_FOR = Object.fromEntries(Object.entries(BATTLE_HEADER).map(([words, key]) => [key, words]));
-// The two lists, by their headings.
-export const BATTLE_SIDES = { "against you": "against", "with you": "with" };
+// The lists, by their headings: the two sides, and what the battle leaves behind on the ship (src/aftermath.js).
+export const BATTLE_SIDES = { "against you": "against", "with you": "with", "after it": "after" };
+const HEADINGS = { against: "Against you", with: "With you", after: "After it" };
 // The line in With you that means everyone already on the deck who can fight.
 export const EVERYONE = "everyone on the deck who can fight";
 
@@ -51,10 +59,46 @@ const CONFIDENCE = /^(\d+)(?:,\s*and\s+(\d+)\s+more\s+if\s+you\s+went\s+down)?$/
 // A group's line: how many and who, or who; where they come in; when, if not at the start; and what's said as they come.
 const AGAINST = /^(\d+)\s+([a-z][a-z0-9_]*)\s*,\s*(up|in)\s+([^,:]+?)\s*(?:,\s*(\d+)\s+seconds?\s+in)?\s*(?::\s*(.+))?$/i;
 const WITH = /^(.+?)\s*,\s*(up|in)\s+([^,:]+?)\s*(?:,\s*(\d+)\s+seconds?\s+in)?\s*(?::\s*(.+))?$/i;
+// What the battle leaves behind, one thing a line, each perhaps only if the player went down or if anyone went down in
+// the room it names: a fire where most fell or in a room, a breach in a room, a part in a room broken, or one part of
+// the kinds named broken in every room where anyone went down.
+const AFTER_IF = /,\s*if\s+(anyone\s+went\s+down\s+there|you\s+went\s+down)$/i;
+const FIRE_THICKEST = /^a\s+fire\s+where\s+the\s+fighting\s+was\s+thickest$/i;
+const FIRE_IN = /^a\s+fire\s+in\s+(.+)$/i;
+const BREACH_IN = /^a\s+breach\s+in\s+(.+)$/i;
+const PART_IN = /^the\s+(.+?)\s+in\s+(.+?)\s+broken$/i;
+const EVERY_ROOM = /^(an?\s+.+?)\s+broken\s+in\s+every\s+room\s+where\s+anyone\s+went\s+down$/i;
+const AFTER_HELP = 'a line under After it: is one of "a fire where the fighting was thickest", "a fire in The Galley", "a breach in The Boat Bay", "the nav core in The Bridge broken" or "a speaker or a camera broken in every room where anyone went down", each with ", if you went down" or ", if anyone went down there" after it if you like';
+
+// One line under After it:, or null when it can't be read.
+function readAfterLine(body) {
+  const cut = body.match(AFTER_IF);
+  const rest = cut ? body.slice(0, cut.index).trim() : body;
+  const when = cut ? (/^you/i.test(cut[1]) ? "you" : "there") : null;
+  const only = when ? { if: when } : {};
+  if (FIRE_THICKEST.test(rest)) return { what: "fire", thickest: true, ...only };
+  let found = rest.match(EVERY_ROOM);
+  if (found) return { what: "broken", every: true, kinds: found[1].split(/\s+or\s+/i).map((one) => one.replace(/^an?\s+/i, "").trim().toLowerCase()), ...only };
+  found = rest.match(PART_IN);
+  if (found) return { what: "broken", part: found[1].trim().toLowerCase(), room: found[2].trim(), ...only };
+  found = rest.match(FIRE_IN);
+  if (found) return { what: "fire", room: found[1].trim(), ...only };
+  found = rest.match(BREACH_IN);
+  if (found) return { what: "breach", room: found[1].trim(), ...only };
+  return null;
+}
+// A line under After it:, the way the file has it.
+function afterWords(one) {
+  const what = one.what === "fire" ? (one.thickest ? "a fire where the fighting was thickest" : `a fire in ${one.room}`)
+    : one.what === "breach" ? `a breach in ${one.room}`
+      : one.every ? `${one.kinds.map((kind) => `${/^[aeiou]/i.test(kind) ? "an" : "a"} ${kind}`).join(" or ")} broken in every room where anyone went down`
+        : `the ${one.part} in ${one.room} broken`;
+  return `${what}${one.if === "you" ? ", if you went down" : one.if === "there" ? ", if anyone went down there" : ""}`;
+}
 
 // Reads a battle's file. Each problem names its line, and the battle is read as far as it can be.
 export function parseBattleText(text, id = "battle") {
-  const battle = { id, title: null, notes: [], against: [], with: [] };
+  const battle = { id, title: null, notes: [], against: [], with: [], after: [] };
   const problems = [];
   const problem = (line, message) => problems.push({ line, message });
   let side = null;
@@ -119,10 +163,16 @@ export function parseBattleText(text, id = "battle") {
       return;
     }
     if (!trimmed.startsWith("-")) {
-      problem(line, `under ${side === "against" ? "Against you" : "With you"}:, each line starts with - and a space`);
+      problem(line, `under ${HEADINGS[side]}:, each line starts with - and a space`);
       return;
     }
     const body = trimmed.replace(/^-\s*/, "");
+    if (side === "after") {
+      const one = readAfterLine(body);
+      if (!one) problem(line, AFTER_HELP);
+      else battle.after.push({ line, ...one });
+      return;
+    }
     if (side === "against") {
       const found = body.match(AGAINST);
       if (!found) {
@@ -182,5 +232,9 @@ export function writeBattleText(battle) {
   for (const one of battle.against ?? []) lines.push(`- ${one.count} ${one.enemy}, ${placeWords(one)}${said(one)}`);
   lines.push("", "With you:");
   for (const one of battle.with ?? []) lines.push(one.everyone ? `- ${EVERYONE}` : `- ${one.who}, ${placeWords(one)}${said(one)}`);
+  if (battle.after?.length) {
+    lines.push("", "After it:");
+    for (const one of battle.after) lines.push(`- ${afterWords(one)}`);
+  }
   return `${lines.join("\n")}\n`;
 }

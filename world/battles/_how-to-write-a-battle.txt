@@ -35,13 +35,23 @@ Here is mutiny.txt, the battle that opens the game:
     - the guards, up The Upper Aft Stair, 60 seconds in
     - the ensigns, up The Upper Forward Stair, 60 seconds in
 
+    After it:
+    - a fire where the fighting was thickest
+    - a breach in The Boat Bay
+    - the junction box in The Names Bulkhead broken
+    - the junction box in The Bridge broken, if you went down
+    - the nav core in The Bridge broken
+    - the relay in The Bridge broken, if anyone went down there
+    - a speaker or a camera broken in every room where anyone went down
+    - a speaker or a camera broken in every room where anyone went down, if you went down
+
 The lines at the top
 --------------------
 
 place, deck and they make for are needed. The others can be left out: without they give up, they fight until the
 last of them is down; without crew fight as, a crew member with no fight of their own stays out of it and takes
 cover; without the rest take cover in, whoever doesn't fight stays where they are; without morale falls by or the
-council's confidence falls by, the battle costs nothing aboard. A line that starts with // is a note for whoever
+council's confidence falls by, the battle costs nothing aboard; without After it:, it leaves nothing broken. A line that starts with // is a note for whoever
 writes, and draft: says who wrote it.
 
 Against you
@@ -83,3 +93,29 @@ anyone, when their name goes up as an unnamed mutineer. Once they're on their fe
 who gave up, or were talked out of it, go straight there. The brig keeps them as a number, without names: the room
 says how many, and so does the Command menu. Morale and the council's confidence fall as the file says, and everyone
 who fought beside you remembers it.
+
+After it
+--------
+
+What the battle leaves behind on the ship, one thing a line. A battle with no After it: leaves nothing broken. Each
+line is one of these:
+
+    a fire where the fighting was thickest       (in the room where the most went down, on either side, of the rooms
+                                                  that still have air to burn: a room whose vent has lost its power
+                                                  starves a fire at once; with nobody down, the room they make for)
+    a fire in The Galley                         (in that room)
+    a breach in The Boat Bay                     (a plate gone in that room, and the air going out of it)
+    the nav core in The Bridge broken            (that part, by its kind in world/systems, in that room)
+    a speaker or a camera broken in every room where anyone went down
+                                                 (one part of those kinds in each such room, a different one each
+                                                  game, picked from those still working)
+
+Any line can end with , if you went down (only when you went down in the battle) or , if anyone went down there (only
+when anyone, on either side, went down in the room the line names). Rooms are on the battle's deck, by name.
+
+A fire and a breach go as any fire and breach do (world/emergencies.txt): the engineers come to a fire after a while
+and patch a breach with a parts crate, and you can fight one or patch the other yourself. A part broken in a battle
+is broken: looked at, it was shot up in the fighting, and it does nothing until it's mended. The engineers mend what
+a battle broke one thing at a time, in the order the lines are written, the first as soon as anything broken would
+be and each after it a repair's time later, so put first what matters most. Each repair takes a parts crate
+(world/logistics), and waits when there's none. You can mend any of it yourself, sooner.

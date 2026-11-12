@@ -1149,11 +1149,14 @@ export function partActions(game, place, part) {
 // An alarm's part that works says it's ringing while the alarm rings, instead of saying it's quiet.
 const ringingNow = (game, place, part) => part.system === "alarm" && Boolean(alarmRinging(game, place));
 
+// What any part looks like when it was shot up in a battle (src/aftermath.js), rather than tampered with.
+const SHOT_UP = "It was shot up in the fighting, and it's dead.";
+
 export function lookAt(game, place, part) {
   const spec = kindSpec(part.kind);
   const s = partState(game, place, part.id);
   const works = partWorks(game, place, part);
-  const state = s.damage ? (s.by === "wear" && spec.worn) || spec.damaged || "It's broken." : s.on === false ? spec.off ?? "It's off." : !works ? deadWords(game, place, part) : ringingNow(game, place, part) ? "It's ringing." : spec.on ?? "It's working.";
+  const state = s.damage ? (s.by === "wear" && spec.worn) || (s.by === "battle" && SHOT_UP) || spec.damaged || "It's broken." : s.on === false ? spec.off ?? "It's off." : !works ? deadWords(game, place, part) : ringingNow(game, place, part) ? "It's ringing." : spec.on ?? "It's working.";
   return `${part.look ?? spec.look ?? `The ${part.name}.`} ${state}${s.damage ? repairWords(game, place, s) : ""}`;
 }
 

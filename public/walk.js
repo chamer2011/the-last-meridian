@@ -1369,7 +1369,8 @@ function placeThingPane() {
   if (pane) pane.style.maxHeight = "";
   const panel = node.querySelector(".walk-thing-choices");
   if (panel) panel.style.maxHeight = "";
-  const width = layer.clientWidth;
+  // It keeps out from under the room's panel on the right, as the story's panes do.
+  const width = layer.clientWidth - hereCoverOf(layer, z);
   const frame = document.getElementById("walk-frame")?.getBoundingClientRect();
   const row = document.getElementById("pop-row")?.getBoundingClientRect();
   const floor = Math.min(frame ? (frame.bottom - base.top) / z : layer.clientHeight, row?.height ? (row.top - base.top) / z : Infinity) - 8;
@@ -1426,6 +1427,13 @@ function placeThingPane() {
       notes.dataset.thing = "1";
     } else uncoverNotes();
   }
+}
+
+// How much of a layer over the room the room's panel covers on the right, while it floats open over the room.
+function hereCoverOf(layer, z) {
+  const here = document.getElementById("walk-here");
+  if (!here || here.classList.contains("folded") || getComputedStyle(here).position !== "absolute") return 0;
+  return Math.max(0, (layer.getBoundingClientRect().right - here.getBoundingClientRect().left) / z + 6);
 }
 
 function uncoverNotes() {

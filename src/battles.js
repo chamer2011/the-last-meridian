@@ -14,8 +14,10 @@ import { ENEMIES, LOCATIONS } from "./data.js";
 import { lifeOf } from "./life.js";
 import { ROUND_SECONDS, goBattle } from "./live-fight.js";
 import { worldDir } from "./paths.js";
+import { emergenciesModel } from "./emergencies.js";
+import { systemsOf } from "./systems.js";
 import { canStand, fightGround, mapFor, roomsOn, startInRoom, walkOf } from "./walk.js";
-// What happens to the people afterwards: the fallen, the prisoners, what it costs aboard.
+// What happens afterwards: the fallen, the prisoners, the damage, what it costs aboard.
 import "./aftermath.js";
 
 export const BATTLES_DIR = process.env.GAME_BATTLES_DIR ?? path.join(worldDir, "battles");
@@ -84,6 +86,21 @@ export function battleProblems(battle) {
     const who = battle.place ? whoWords(battle.place, one.who) : null;
     if (!who) problems.push(`${where(one.line)}: ${one.who} isn't someone with a file in world/characters, or a job on ${battle.place}'s watch bill`);
     else if (who.job && !battle.crewAs) problems.push(`${where(one.line)}: ${one.who} are crew, so the battle needs crew fight as: to say who they fight as`);
+  }
+  // What it leaves behind: rooms on the deck, the place's own parts, and the emergencies' rules for fires and breaches.
+  const parts = battle.place && LOCATIONS[battle.place] ? Object.values(systemsOf(battle.place)?.parts ?? {}) : [];
+  const rules = emergenciesModel();
+  for (const one of battle.after ?? []) {
+    const at = one.room && level ? roomOnDeck(map, battle.deck, one.room) : null;
+    if (one.room) room(one.room, one.what === "fire" ? `a fire in ${one.room}` : one.what === "breach" ? `a breach in ${one.room}` : `the ${one.part} in ${one.room}`, one.line);
+    if (one.what === "fire" && !rules?.fire) problems.push(`${where(one.line)}: there's no fire in world/emergencies.txt for a fire to follow`);
+    if (one.what === "breach" && !rules?.breach) problems.push(`${where(one.line)}: there's no breach in world/emergencies.txt for a breach to follow`);
+    if (one.what === "broken" && at && !parts.some((part) => part.room === at.id && part.kind === one.part)) {
+      const here = [...new Set(parts.filter((part) => part.room === at.id).map((part) => part.kind))];
+      problems.push(`${where(one.line)}: ${at.name} has no ${one.part} in ${battle.place}'s systems${here.length ? `. What's there: ${here.join(", ")}` : ""}`);
+    }
+    if (one.every) for (const kind of one.kinds) if (!parts.some((part) => part.kind === kind)) problems.push(`${where(one.line)}: there's no ${kind} anywhere in ${battle.place}'s systems`);
+    if (one.if === "there" && !one.room && !one.thickest) problems.push(`${where(one.line)}: "if anyone went down there" needs a line that names a room`);
   }
   return problems;
 }
@@ -245,6 +262,7 @@ export function startBattle(game, id, { leadIn = null } = {}) {
       ...(battle.gaveUpLine ? { gaveUpLine: battle.gaveUpLine } : {}),
       ...(battle.morale ? { morale: battle.morale } : {}),
       ...(battle.confidence ? { confidence: battle.confidence } : {}),
+      ...(battle.after?.length ? { after: battle.after.map(({ line, ...one }) => one) } : {}),
       waves,
     },
   });

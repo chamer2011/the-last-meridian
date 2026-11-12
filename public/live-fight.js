@@ -125,8 +125,8 @@ async function send(body) {
   const { outcome } = reply;
   if (outcome.over) {
     app.ui.game = reply.game;
-    played(outcome.events ?? []);
     lf.ending = outcome;
+    played(outcome.events ?? []);
     lf.paused = true;
     lf.picking = null;
     app.render();
@@ -158,9 +158,12 @@ function order(body) {
 
 // ---- What happened -------------------------------------------------------------------------------------------------
 
+// While it's fought, the four newest. Once it's over, enough for everything its end has to say: after a battle, who's
+// taken to the brig, what's broken, a fire, a breach and what it cost (src/aftermath.js).
 function note(text, tone = "") {
   lf.notes.push({ text, tone });
-  if (lf.notes.length > 4) lf.notes.shift();
+  const most = lf.ending ? 10 : 4;
+  while (lf.notes.length > most) lf.notes.shift();
 }
 
 const rangedKey = (key) => (key === "you" ? combat()?.live?.you.reach : combat()?.live?.fighters[key]?.reach) !== "melee";
