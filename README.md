@@ -677,6 +677,7 @@ Your life history is on your registry printout (press **C**). Your traits and be
 - **Injuries:** these have real penalties, and heal with time or treatment.
 - **Beliefs:** your choices move your beliefs. Acting against a strong belief causes stress, and sharing a belief with someone helps your social checks with them.
 - **The ship:** a day's numbers are all worked out in one place, and the Ship menu shows them, so what you read is what happens.
+- **Long waits:** a jump, or anything else that takes more than a day, passes a day at a time, so three days at once come out exactly like three single days: each day the medbay treats people and lets them go, the doctor makes the rounds and the stores are counted, however long you're away.
 
 Saved games from before this system still load. They get a basic character profile, and you need to start a new game to use the creator. When you start a new game, your last one is kept as **Previous game** on the title screen.
 

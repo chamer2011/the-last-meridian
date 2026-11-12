@@ -266,7 +266,27 @@ export function clockLabel(game) {
 }
 
 // Moves the clock forward by whatever the story says, and everyone's day moves on with it.
+//
+// A long wait passes a day at a time, so that it comes out the same however it's cut up: three days at once are three
+// single days, one after the other. The medbay, the wounds and the doctor's rounds each look once, at the end of the
+// time they're given, so seventy days in one go used to treat, release and dose people at other moments than seventy
+// single days, and now and then whoever had the chair bought medicine differently and the ship ended up somewhere
+// else. (The Ship menu's waits were already a day at a time; jumps and the story's own long waits weren't.)
+const LONGEST_PIECE = 24;
 export function passTime(game, hours, activity = "active") {
+  if (!(hours > LONGEST_PIECE)) return passPiece(game, hours, activity);
+  const notes = [];
+  // One count of the story's lines for the whole wait, so that a long one still doesn't flood the screen: what isn't
+  // told is in the news all the same.
+  const told = { today: 0, all: 0 };
+  let left = hours;
+  for (; left > LONGEST_PIECE + 1e-9; left -= LONGEST_PIECE) notes.push(...passPiece(game, LONGEST_PIECE, activity, told));
+  if (left > 1e-9) notes.push(...passPiece(game, left, activity, told));
+  return notes;
+}
+
+// One piece of time, a day at most: the clock moves, and everything aboard and in the world catches up with it.
+function passPiece(game, hours, activity, told = { today: 0, all: 0 }) {
   lifeOf(game);
   game.clock.hours += hours;
   // Whoever the story has put beside the captain is still there once the time has passed.
@@ -279,7 +299,7 @@ export function passTime(game, hours, activity = "active") {
   const command = advanceCommand(game);
   const medbay = advanceMedbay(game);
   advanceLife(game);
-  const notes = hoursPass(game, hours, activity);
+  const notes = hoursPass(game, hours, activity, told);
   // Last, anyone with something to ask the player, and anything they've asked that's done, put right or overdue.
   return [...systems, ...command, ...medbay, ...notes, ...advanceLogistics(game), ...clockExtras(game), ...requestsMove(game)];
 }
@@ -306,7 +326,7 @@ export function clockRuns(game, minutes) {
 
 // What time does to the captain. Conditions fade, fatigue builds, and rest heals. Each day that goes
 // by also runs a day aboard the Meridian. A "routine" day has a night's sleep in it, so it doesn't tire you.
-function hoursPass(game, hours, activity) {
+function hoursPass(game, hours, activity, told = { today: 0, all: 0 }) {
   const notes = [];
   if (activity === "rest") {
     addFatigue(game, -9 * hours);
@@ -345,7 +365,6 @@ function hoursPass(game, hours, activity) {
   if (pain) notes.push(...changeStress(game, (pain * hours) / 24));
   // The ship, the world and the stories go through each day together, so it makes no difference how a long wait is cut up.
   const today = Math.floor(game.clock.hours / 24);
-  const told = { today: 0, all: 0 };
   for (let day = Math.min(shipOf(game).day, worldOf(game).day, clockOf(game).day) + 1; day <= today; day += 1) {
     // The ship's machines and sittings run up to this midnight first, so that the day's hunger is counted before her day.
     // Each post's duty for the day is settled once the ship's own day has had it, and on a review day the officers

@@ -57,16 +57,33 @@ Second round:
   away, a wound seen to in the medbay before a test counted it, in two tests, and a mess hand made up, in two tests,
   with something already wrong under their new artificial limb). They can't any more.
 
+## Found, left at first, and fixed on 2026-11-12 at the owner's "Yes, fix it"
+
+- **A long wait was one piece.** `advanceMedbay` looks once, at the time a wait ends, and so do the wounds and the
+  doctor's rounds. Seventy days in one go and seventy single days didn't treat, release and dose people at the same
+  moments, and now and then the medicine used differed enough that whoever had the chair bought differently and the
+  ship ended up somewhere else. `test/anyone.test.js`'s "a year of it... comes out the same however it's cut up"
+  failed about one run in ten because of it: 3 of 11 runs of the whole suite with this work in, none of 3 without it,
+  1 of 22 on its own; and when only its last part was repeated, the two ships parted 3 or 4 times in 40 on copies
+  from before this work and after alike, so what it caught was older than this work. A body seed that showed it by
+  day 4: 3271021635, with the docker's game and seed 21 (Vik and Hana still on their cots after four days in one
+  go, let go after four single days).
+- **The fix is in `passTime`** (`src/rules.js`), not in the medbay: the wounds, the rounds and the deaths look once
+  at the end of their time too, and they'd all have had to be stepped together. Any wait over a day is now handed to
+  `passPiece` a day at a time, so a long wait is literally its single days, one after the other. A year costs about
+  a second either way. Afterwards 0 of 120 repeats of the test's comparison parted, and `test/deep-dive.test.js`
+  holds the seed above to it.
+- **What had to follow.** One call used to count the story lines it told, four at most however long the wait; the
+  pieces of a long wait now share that count (`told`, handed from `passTime` down to `hoursPass`), or seventy days
+  told twenty-two. And since each day of a long wait now sees who was hurt the day before, two new games only end a
+  year with everyone in the same places if they share a body seed, which `test/life.test.js`'s year now does. (Before,
+  a year in one go placed everyone before anyone had been hurt.)
+- **What it changes in play:** only jumps, the story's own long waits (`* time`, capped at 72 hours) and tests ever
+  passed more than a day at once; the Ship menu's waits were already a day at a time. Waits that aren't cut at the
+  same moments can still differ within a day (a day and a half against three half days), as they always could.
+
 ## Found and left
 
-- **The medbay handles a long wait in one piece.** `advanceMedbay` looks once at the time the wait ends, so seventy
-  days in one go and seventy single days don't treat and release people at the same moments, and now and then the
-  medicine used differs enough that whoever has the chair buys differently. `test/anyone.test.js`'s "a year of it...
-  comes out the same however it's cut up" fails about one run in ten because of it: 3 of 11 runs of the whole suite with
-  this work in, none of 3 without it, 1 of 22 on its own; and when only its last part is repeated, the two ships part 3
-  or 4 times in 40 on copies from before this work and after alike, so what it catches is older than this work. A body seed that shows it by day 4: 3271021635, with
-  the docker's game and seed 21. It's the health system's to settle: step the medbay through a long wait the way the
-  logistics are stepped, or keep the test to waits cut the same way.
 - On a ship left starving, the deck chief is relieved once over "errands left waiting", because the tech sent for
   parts stands at empty shuttle stores; then the first officer decides it isn't the post's doing. That's the rule
   working as written, but it reads as blame for something nobody could carry.

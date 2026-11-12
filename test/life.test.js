@@ -286,6 +286,9 @@ test("nobody's ever left standing in a wall, and nobody stands in a doorway once
 test("a long gap puts everyone where they should be, the same every time, and a year costs nothing", () => {
   const one = newGame();
   const two = newGame();
+  // The same game: a long wait passes a day at a time, so who's hurt, laid up or dead along the way tells on where
+  // everyone is at the end of it, and bodies are made up from the game's own seed.
+  two.bodySeed = one.bodySeed;
   // The work this takes, not the time on the wall: the tests all run at once, so a busy computer isn't a slow game.
   const started = process.cpuUsage();
   passTime(one, 24 * 365);

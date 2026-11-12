@@ -331,3 +331,40 @@ test("a scene's choices come up as soon as its last words are written, without w
   const talk = fs.readFileSync(new URL("../public/talk.js", import.meta.url), "utf8");
   assert.match(talk, /if \(!pen\.busy && !talk\.sending\) written\(\);/);
 });
+
+test("a long wait passes a day at a time, so it comes out the same however it's cut up", () => {
+  // The medbay, the wounds and the doctor's rounds each look once, at the end of the time they're given. Four days in
+  // one go used to leave Vik and Hana on their cots, treated on the first morning and never looked at again, while four
+  // single days let them go; and over seventy days the medicine used differed enough, about one game in ten, that
+  // whoever had the chair bought differently and the ship ended up somewhere else.
+  const docker = (bodySeed) => {
+    const game = newGame("docker");
+    game.bodySeed = bodySeed;
+    return game;
+  };
+  // Whatever two new games don't share to begin with (when they were made, say) isn't what's being compared.
+  const fresh = [docker(1), docker(1)];
+  const compared = Object.keys(fresh[0]).filter((key) => JSON.stringify(fresh[0][key]) === JSON.stringify(fresh[1][key]));
+  assert.ok(["ship", "down", "medbay", "bodies", "logistics", "world", "command"].every((key) => compared.includes(key) || !(key in fresh[0])), compared.join(", "));
+  const differing = (a, b) => compared.filter((key) => JSON.stringify(a[key]) !== JSON.stringify(b[key]));
+  // 3271021635 is a seed that parted on the fourth day.
+  for (const bodySeed of [3271021635, 7, 12345]) {
+    const atOnce = docker(bodySeed);
+    passTime(atOnce, 24 * 6, "routine");
+    const byDay = docker(bodySeed);
+    for (let day = 0; day < 6; day += 1) passTime(byDay, 24, "routine");
+    assert.deepEqual(differing(atOnce, byDay), [], `six days, seed ${bodySeed}`);
+  }
+  // A wait that isn't a whole number of days is its whole days and then what's left.
+  const atOnce = docker(7);
+  passTime(atOnce, 60, "routine");
+  const pieces = docker(7);
+  for (const hours of [24, 24, 12]) passTime(pieces, hours, "routine");
+  assert.deepEqual(differing(atOnce, pieces), []);
+  assert.equal(atOnce.clock.hours, pieces.clock.hours);
+  // And a day or less is one piece, as it always was.
+  const short = docker(7);
+  const before = short.clock.hours;
+  passTime(short, 24, "routine");
+  assert.equal(short.clock.hours, before + 24);
+});

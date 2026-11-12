@@ -421,9 +421,14 @@ test("running away takes the followers along", () => {
   startCombat(game, "dock_thug", { allies: ["voss"] });
   // Otherwise a follower might win the fight before the player gets away.
   game.combat.enemies[0].hp = 100000;
-  // And nothing the thug lands breaks a leg, which would stop the running.
-  game.combat.enemies[0].damage = [0, 0];
-  const outcome = playOut(game, { type: "flee" });
+  // A lucky blow can break a leg, which stops the running: whatever the thug lands is mended before the next try.
+  let outcome;
+  for (let tries = 0; tries < 2000 && !outcome?.over; tries += 1) {
+    game.hp = 1000;
+    game.wounds = [];
+    outcome = combatAction(game, { type: "flee" });
+  }
+  assert.ok(outcome.over);
   assert.equal(outcome.result, "fled");
   assert.match(outcome.summary, /^You got away/);
   assert.equal(outcome.followers.length, 1, "Voss got out with them");
