@@ -1051,6 +1051,9 @@ export function walkCommand(game, body) {
       const shown = personView(game, entry);
       const who = { key, id: entry.id ?? null, name: shown.name, short: shown.short, asleep: Boolean(entry.asleep), doing: entry.doing ?? null };
       const where = { place: game.location, room: walk.room ? null : level.roomAt(spot.x, spot.y) };
+      // Nobody lying down is fought or robbed: the page doesn't offer it, and neither do the rules.
+      const lying = downRecord(game, game.location, key);
+      if (lying && !lying.going) throw new Error(lying.dead ? "They're dead." : body.action === "attack" ? "They're down already." : "Not while they're lying there, with everyone looking.");
       return body.action === "pickpocket" ? pickPocket(game, who, where) : attackPerson(game, who, where);
     }
     default:

@@ -561,6 +561,9 @@ const server = http.createServer(async (req, res) => {
     else serveFile(res, route);
   } catch (err) {
     if (res.headersSent) return res.end();
+    // A mistake in the game's own code, not something the player did wrong: where it happened goes in this window, so
+    // it can be found. The player still gets its words, as for anything refused.
+    if (err instanceof TypeError || err instanceof ReferenceError || err instanceof RangeError) console.error(`${route}: ${err.stack}`);
     json(res, 400, { error: err.message });
   }
 });

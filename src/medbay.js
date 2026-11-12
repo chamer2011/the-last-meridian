@@ -792,7 +792,13 @@ export function wakeInMedbay(game) {
   if (!by) return null;
   const knock = woundsNow(game, YOU).find((wound) => wound.kind === "knock");
   const hours = Math.max(knock ? knock.until - nowOf(game) : 0, beatenFor());
-  walkCommand(game, { action: "room", to: medbay.room });
+  // Carried there, whatever doors are between: but if the map won't have it, they come round where they fell instead,
+  // because this is the end of a fight and nothing here may stop it ending.
+  try {
+    walkCommand(game, { action: "room", to: medbay.room });
+  } catch {
+    return null;
+  }
   const cot = freeCot(game, place);
   const spot = cot ? WORLD_LIFE[place].spots[cot] : null;
   const level = mapFor(place)?.levels[game.walk.level];

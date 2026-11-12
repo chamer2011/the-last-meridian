@@ -986,6 +986,11 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
     // What the posts' duty counts is added up through each day here, and handed over when the day turns or this ends.
     let counted = { day: Math.floor(t / 1440), powerShort: 0, errandsWaiting: 0 };
     const handOver = () => tallyDuty(game, place, counted.day, { powerShort: counted.powerShort, errandsWaiting: counted.errandsWaiting });
+    // An errand standing at an empty store counts against whoever's duty the errands are, unless that store is one a
+    // machine aboard fills by itself, like the garden's bins: a cook waiting for the garden to grow hasn't been left
+    // waiting by anyone. (Without this the deck chief was warned and relieved in the second week of every game.)
+    const grown = new Set(model.machines.map((m) => m.into).filter(Boolean));
+    const countedErrands = model.errands.filter((e) => !grown.has(e.from));
     while (t + CHUNK <= until) {
       for (const m of model.machines) {
         if (m.generator) runGenerator(game, model, m, state, CHUNK);
@@ -1002,7 +1007,7 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
         supplyWas = supply;
         balanceAt = t;
       }
-      const waiting = Object.values(state.errands ?? {}).filter((one) => one.phase === "waiting").length;
+      const waiting = countedErrands.filter((e) => state.errands?.[e.id]?.phase === "waiting").length;
       if (Math.floor(t / 1440) !== counted.day) {
         handOver();
         counted = { day: Math.floor(t / 1440), powerShort: 0, errandsWaiting: 0 };

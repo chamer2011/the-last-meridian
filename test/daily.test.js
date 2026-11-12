@@ -125,10 +125,13 @@ test("a new game has a world, and an older save gets one that starts from now", 
 
 test("a year goes by quickly, everything stays in bounds, and the world does change", () => {
   const game = newGame();
-  const started = Date.now();
+  // The work this takes, not the time on the wall: the tests all run at once, so a busy computer isn't a slow game.
+  const started = process.cpuUsage();
   days(game, 365);
-  const took = Date.now() - started;
-  assert.ok(took < 3000, `a year took ${took} ms`);
+  const used = process.cpuUsage(started);
+  const took = Math.round((used.user + used.system) / 1000);
+  // About 1.4 s by itself; three times that when every test runs at once on a busy computer.
+  assert.ok(took < 8000, `a year took ${took} ms of work`);
   const { world } = game;
   assert.equal(world.day, 365);
   let moved = 0;

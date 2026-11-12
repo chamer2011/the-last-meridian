@@ -6,7 +6,7 @@
 import { storyRequest } from "./request-hook.js";
 import { findCharacter } from "./campaign.js";
 import { clearFact, recordFact } from "./record.js";
-import { toOutsider } from "./role.js";
+import { isCaptain, toOutsider } from "./role.js";
 import { HELPERS, StoryError, choiceLine, loadScenes, matchChoice, openChoices, partText, ruleThatHolds, withStandIns } from "./scenes.js";
 import { newTurnLimits, runTool } from "./tools.js";
 import { seedFrom, talkHeard, walkView } from "./walk.js";
@@ -21,6 +21,8 @@ const helpersFor = (talk) => ({ ...HELPERS, seen: talk.written?.seen ?? [] });
 const pick = (list, seed) => (Array.isArray(list) && list.length ? list[seed % list.length] : null);
 const lowerFirst = (text) => (text ? text[0].toLowerCase() + text.slice(1) : text);
 const fill = (text, values) => String(text).replace(/\{(\w+)\}/g, (_, key) => values[key] ?? "");
+// What someone says starts with a capital, even when it starts with what they're doing: "Clearing tables, if you must know."
+const upperFirst = (text) => (text ? text[0].toUpperCase() + text.slice(1) : text);
 
 // ---- Stock lines, for anyone without a conversation of their own ---------------
 
@@ -35,14 +37,17 @@ export function stockTalk(game, talk) {
   const values = { name: talk.short, role: role ? lowerFirst(role) : "", doing: talk.doing ? lowerFirst(talk.doing) : "", desc: walkView(game)?.here?.desc ?? "" };
   const asks = stock.asks ?? {};
   const answers = [];
-  if (role && asks.work && stock.work) answers.push(["work", asks.work, `@${talk.name}: "${fill(pick(stock.work, seed), values)}"`]);
-  if (talk.doing && asks.doing && stock.doing) answers.push(["doing", asks.doing, `@${talk.name}: "${fill(pick(stock.doing, seed + 1), values)}"`]);
+  if (role && asks.work && stock.work) answers.push(["work", asks.work, `@${talk.name}: "${upperFirst(fill(pick(stock.work, seed), values))}"`]);
+  // Nobody asleep is asked what they're up to: "Asleep in a bunk. It doesn't do itself" isn't an answer.
+  if (talk.doing && !talk.asleep && asks.doing && stock.doing) answers.push(["doing", asks.doing, `@${talk.name}: "${upperFirst(fill(pick(stock.doing, seed + 1), values))}"`]);
   if (values.desc && asks.place && stock.place) answers.push(["place", asks.place, fill(pick(stock.place, seed + 2), values)]);
   // When the alarm's ringing or the lights are out, that's what everyone wants to talk about.
   const news = systemsTalk(game);
   if (news) answers.push(["systems", asks.systems ?? "What's going on?", `@${talk.name}: "${news}"`]);
   const choices = answers.map(([id, say]) => ({ say, to: id, if: `not seen ${id}` }));
-  const greet = fill(pick(stock.greet?.[feeling] ?? stock.greet?.neutral ?? ['"Yes?"'], seed + 3), values);
+  // Nobody calls someone who isn't the captain "Captain": those greetings are only for the one who is.
+  const greetings = (stock.greet?.[feeling] ?? stock.greet?.neutral ?? ['"Yes?"']).filter((line) => isCaptain(game) || !/\bcaptain\b/i.test(line));
+  const greet = fill(pick(greetings.length ? greetings : ['"Yes?"'], seed + 3), values);
   const parts = { start: { text: [`@${talk.name}: ${greet}`], choices } };
   for (const [id, , text] of answers) parts[id] = { text: [text], choices };
   return { title: `Talking with ${talk.name}`, start: "start", parts };

@@ -422,7 +422,10 @@ function closeTo(map, entry, spot, taken) {
 function spotFor(file, map, entry, plan, taken) {
   if (plan.spot) return plan.exact ? plan.spot : closeTo(map, entry, plan.spot, taken);
   if (plan.where === "post") return postOf(map, entry.home ?? entry.id);
-  // A room that isn't on the map leaves them where they are, so a typing mistake in the file can't stop the game.
+  // A step of a day that names nowhere to go leaves them where they are, and so does a room that isn't on the map,
+  // so a typing mistake in the file can't stop the game. (A day with such a step, the guards' made-up one, used to
+  // stop the clock every evening for anyone the captain put on that job.)
+  if (!plan.where) return null;
   if (/^[@>]/.test(plan.where) && !roomOf(map, plan.where.slice(1))) return null;
   if (plan.where.startsWith("@")) return somewhereOn(map, entry, plan, plan.where.slice(1), taken);
   if (plan.where.startsWith(">")) return byTheDoor(map, entry, plan.where.slice(1));

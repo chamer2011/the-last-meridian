@@ -333,7 +333,7 @@ const plainDay = (job) => [
   { at: "12:30", doing: "eating", go: "benches" },
   { at: "13:10", doing: `on duty in ${lowerFirst(job.roomName)}`, go: `@${job.room}` },
   { at: "18:30", doing: "eating", go: "benches" },
-  { at: "19:10", doing: "off duty" },
+  { at: "19:10", doing: "off duty", go: "benches" },
   { at: "22:00", doing: "asleep", go: "racks", asleep: true },
 ];
 

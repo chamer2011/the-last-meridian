@@ -269,7 +269,8 @@ test("morale and health settle where the rations put them", () => {
   for (let day = 0; day < 40; day += 1) { stocked(); days(game, 1); }
   assert.ok(near(game.ship.morale, SHIP_DATA.rations.standard.morale), `morale ${game.ship.morale}`);
   // Health settles where the rations put it, less a point for each in a hundred sick and three for the seriously sick.
-  assert.equal(game.ship.health, SHIP_DATA.rations.standard.health - illnessPenalty(game));
+  // The ship's day comes before the day's illness, so it can be a point behind whoever fell sick or mended last night.
+  assert.ok(Math.abs(game.ship.health - (SHIP_DATA.rations.standard.health - illnessPenalty(game))) <= 1, `health ${game.ship.health}, with ${illnessPenalty(game)} off for illness`);
   shipCommand(game, { action: "rations", id: "generous" });
   for (let day = 0; day < 40; day += 1) { stocked(); days(game, 1); }
   // Generous rations are a quarter more to serve, and the galley's kettle can't quite keep up through the sittings, so

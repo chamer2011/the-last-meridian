@@ -620,8 +620,10 @@ function starved(game, place, system) {
 }
 
 export function roomPowered(game, place, room) {
-  const balance = powerBalance(game, place);
-  if (balance && balance.supply <= 0) return false;
+  // Only whether the generator gives anything matters here, so the whole balance isn't worked out: the ship's machines
+  // ask this for every piece of the clock, and a year of it was a quarter of a long wait.
+  const supply = systemsOf(place) ? powerSupply(game, place) : null;
+  if (supply !== null && supply <= 0) return false;
   const box = systemsOf(place)?.circuits[room];
   if (!box) return true;
   const s = partState(game, place, box);

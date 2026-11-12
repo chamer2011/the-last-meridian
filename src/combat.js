@@ -742,7 +742,10 @@ export function endCombat(game, ended, log) {
     const woke = wakeAfterDefeat(game);
     if (woke) {
       log.push({ text: pickFrom(COMBAT_TEXT.player.defeat), tone: "bad" });
-      for (const line of woke) log.push({ text: line, tone: "info" });
+      // How they came to is told here. What the hours on the cot brought (the ship's news, someone with something to
+      // ask, a wound dressed) is kept in the story too, like anything else the clock brings.
+      for (const line of woke.filter((one) => !/^\[[A-Z]+\]/.test(one))) log.push({ text: line, tone: "info" });
+      addNotes(c, log, woke.filter((one) => /^\[[A-Z]+\]/.test(one)));
       summary = `You lost the fight against ${prose}, and came to ${game.location === "meridian" ? "in the medbay" : "on a cot"}.`;
     } else {
       const lost = Math.floor(game.credits * 0.25);

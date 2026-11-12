@@ -62,9 +62,12 @@ export const allEnemies = (campaign) => ({ ...ENEMIES, ...campaignEnemies(campai
 export function findCharacter(campaign, text) {
   const key = String(text ?? "").trim().toLowerCase();
   if (!key) return null;
+  // Most of the time this is someone's id, and it gets asked for many times a second, so it's looked up where it is
+  // instead of putting everyone into one list first. Someone the campaign has its own file for comes first, as below.
+  const own = campaignCharacters(campaign);
+  if (Object.hasOwn(own, key)) return { id: key, ...own[key] };
+  if (Object.hasOwn(NOTABLES, key)) return { id: key, ...NOTABLES[key] };
   const everyone = allCharacters(campaign);
-  // Most of the time this is someone's id, and it gets asked for several times a second.
-  if (Object.hasOwn(everyone, key)) return { id: key, ...everyone[key] };
   for (const [id, person] of Object.entries(everyone)) {
     const names = [id, person.name, fullName(person), ...(person.aliases ?? [])];
     if (names.some((name) => name.toLowerCase() === key)) return { id, ...person };

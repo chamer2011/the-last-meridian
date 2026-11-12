@@ -263,7 +263,10 @@ function statusNode() {
     meter("HP", g.hp, g.maxHp), meter("EN", g.energy, g.maxEnergy),
     el("span", { class: g.needs.stress >= 50 ? "meter low" : "" }, `STRESS ${g.needs.stress}`),
     el("span", { class: g.needs.fatigue >= 60 ? "meter low" : "" }, `FATIGUE ${g.needs.fatigue}`),
-    g.conditions.length > 0 && el("span", { class: "meter low" }, `HURT ${g.conditions.length}`),
+    // Everything wrong with them, wounds from fights included, and their blood while a wound's still open: the registry
+    // printout says what and where, and a medkit or the medbay stops the bleeding.
+    (g.hurt ?? g.conditions.length) > 0 && el("span", { class: "meter low", title: "What's wrong with you is on your registry printout (C), under CONDITION and BODY" }, `HURT ${g.hurt ?? g.conditions.length}`),
+    g.bleeding && el("span", { class: "meter low", title: `You're losing ${g.bleeding.rate} blood an hour. Dress the wound with a medkit, or get to a medbay.` }, `BLEEDING ${g.bleeding.blood}`),
     el("span", {}, `CR ${g.credits}`),
     !g.role.captain && el("span", {}, g.role.short.toUpperCase()),
     g.role.captain && el("span", { class: g.ship.fuel < 2 ? "meter low" : "" }, `FUEL ${g.ship.fuel}`),

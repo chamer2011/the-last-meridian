@@ -79,13 +79,28 @@ let starts = null;
 const made = new Map();
 const MOST_MADE = 4000;
 
+// Whether a job's words name rough work, remembered by those words: it's asked for everyone aboard every day.
+const roughJobs = new Map();
+function roughWork(work) {
+  if (!work) return false;
+  let rough = roughJobs.get(work);
+  if (rough === undefined) {
+    rough = kindsNow().rough.some((word) => new RegExp(`\\b${escaped(word)}`).test(work));
+    if (roughJobs.size >= 2000) roughJobs.clear();
+    roughJobs.set(work, rough);
+  }
+  return rough;
+}
+
 // Read again after a file changes.
 export function clearBodies() {
+  roughJobs.clear();
   kinds = null;
   starts = null;
   hits = null;
   care = null;
   made.clear();
+  playerPast.clear();
 }
 
 // The kinds of wound and old mark, from world/health/wounds.txt.
@@ -620,6 +635,8 @@ export function passWounds(game, hours, { speed = 1 } = {}) {
     }
     const quiet = left.some(bleedingNow) ? 0 : Math.max(0, to - stopped);
     if (!died) blood = Math.min(100, blood + rules["blood comes back"].perHour * quiet);
+    // The player is told once when they've lost enough blood for it to tell, since nothing else says so but their record.
+    if (key === "you" && (held.blood ?? 100) >= rules["low on blood"].under && blood < rules["low on blood"].under && left.some(bleedingNow)) told.low = true;
     return { wounds: died ? all : left, blood: Math.round(blood * 10) / 10, ...(died ? { died } : {}) };
   };
   const mine = live("you", { wounds: game.wounds ?? [], blood: game.blood ?? 100 });
@@ -748,7 +765,7 @@ export function accidentsDay(game, day) {
       const roll = seeded(`${game.bodySeed ?? 1}|accident|${day}|${place}|${who}`);
       const work = lower(job);
       const inWork = (word) => Boolean(work) && new RegExp(`\\b${escaped(word)}`).test(work);
-      if (roll() >= (rough.some(inWork) ? rates.rough : rates.anyone)) continue;
+      if (roll() >= (roughWork(work) ? rates.rough : rates.anyone)) continue;
       const key = keyAt(place, who);
       if (deathOf(game, key) || game.bodies?.[key]?.died) continue;
       const species = speciesOfKey(game, key);
@@ -937,12 +954,34 @@ export function pastLines(character, traits = []) {
   return lines;
 }
 
-function playerBody(game) {
+// The marks of the player's life never change in a game, and every number the player has asks after their body (an
+// artificial arm takes a point off their attack, through src/rules.js's fxSources), so that part is made up once and
+// remembered by everything it comes from. Without this a fight's every blow, and every screen, made the whole body
+// over again dozens of times: a year of the clock took twice as long, and the fight tests minutes.
+const playerPast = new Map();
+function playerPastBody(game) {
   const seed = game.bodySeed ?? 1;
   const character = game.character ?? {};
   const species = character.species ?? "human";
+  const age = character.age ?? 30;
   const job = [...(character.careers ?? []).map((one) => one.name), character.background].filter(Boolean).join(" ");
-  const body = makeBody(seed, "you", { species, age: character.age ?? 30, job }, pastLines(character, game.traits ?? []));
+  const traits = game.traits ?? [];
+  const sign = [seed, species, age, job, traits.join(","), (character.biography ?? []).join("\n")].join("|");
+  let body = playerPast.get(sign);
+  if (!body) {
+    body = makeBody(seed, "you", { species, age, job }, pastLines(character, traits));
+    if (playerPast.size >= 60) playerPast.clear();
+    playerPast.set(sign, body);
+  }
+  return body;
+}
+
+function playerBody(game) {
+  const seed = game.bodySeed ?? 1;
+  const species = game.character?.species ?? "human";
+  // A copy, because what's wrong with them now is added to it below.
+  const past = playerPastBody(game);
+  const body = { ...past, marks: [...past.marks] };
   const sizes = speciesBody(species).hits;
   for (const condition of game.conditions ?? []) {
     const text = CONDITION_WOUNDS[condition.id];

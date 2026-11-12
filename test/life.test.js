@@ -286,9 +286,14 @@ test("nobody's ever left standing in a wall, and nobody stands in a doorway once
 test("a long gap puts everyone where they should be, the same every time, and a year costs nothing", () => {
   const one = newGame();
   const two = newGame();
-  const started = Date.now();
+  // The work this takes, not the time on the wall: the tests all run at once, so a busy computer isn't a slow game.
+  const started = process.cpuUsage();
   passTime(one, 24 * 365);
-  assert.ok(Date.now() - started < 1500, `a year took ${Date.now() - started} ms`);
+  const used = process.cpuUsage(started);
+  const took = Math.round((used.user + used.system) / 1000);
+  // About 0.8 s by itself; three times that when every test runs at once on a busy computer. This is here to catch a year
+  // that takes ten times too long, as one did before the ship's days were made quick.
+  assert.ok(took < 6000, `a year took ${took} ms of work`);
   passTime(two, 24 * 365);
   assert.deepEqual(one.life, two.life);
   for (const person of everyone(one)) assert.ok(!person.walking, `${person.key} shouldn't still be on the way after a year`);

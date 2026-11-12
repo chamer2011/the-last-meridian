@@ -242,3 +242,22 @@ test("the Command menu's watch bill reads without changing anything", () => {
   assert.deepEqual(view.log, ["Day 1: You put Cook Imre on as a gardener."]);
   assert.equal(JSON.stringify(game), before);
 });
+
+test("someone put on a job nobody starts in lives its made-up day round the clock, and the clock never stops for it", () => {
+  // The guards start with nobody on them, so their day is made up (on duty, two meals, off duty, a bunk). Its off-duty
+  // evening once named nowhere to go, and every tick of the clock from 19:10 to 22:00 failed for the whole ship.
+  const game = newGame();
+  const guards = cmd.commandOf("meridian").jobs.find((one) => one.id === "guard");
+  assert.ok(guards.day.every((step) => step.go || step.rounds || step.pick), "every step of the day has somewhere to go");
+  cmd.assignJob(game, "meridian", "Yusuf", "guard");
+  const day = Math.floor(game.clock.hours / 24);
+  // Two days by the running clock, ten minutes at a time, through both evenings.
+  for (let i = 0; i < 2 * 144; i += 1) assert.doesNotThrow(() => clockRuns(game, 10), `at ${game.clock.hours % 24} o'clock`);
+  assert.equal(Math.floor(game.clock.hours / 24), day + 2);
+  // And over a rest, a wait and a jump's worth of time in one go.
+  assert.doesNotThrow(() => passTime(game, 8, "rest"));
+  assert.doesNotThrow(() => passTime(game, 36));
+  // A step that names nowhere (a typing mistake in a life file) leaves them where they are instead of stopping the game.
+  const yusuf = life.rosterOf("meridian").find((one) => one.key === "Yusuf");
+  assert.ok(yusuf, "Yusuf is on the roster");
+});

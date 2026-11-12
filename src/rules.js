@@ -4,7 +4,7 @@
 import { advanceMedbay, startHealth } from "./medbay.js";
 import { settleDeaths } from "./death.js";
 import { registerDay, startRegister } from "./register.js";
-import { accidentsDay, bodyOf, bodyView, dressWounds, handsFree, newBodySeed, painADay, passWounds, woundEffects } from "./body.js";
+import { accidentsDay, bleedingOf, bodyOf, bodyView, dressWounds, handsFree, newBodySeed, painADay, passWounds, woundEffects, woundsNow } from "./body.js";
 import { allCharacters, allEnemies, campaignCharacters, campaignEnemies, campaignFolderName, findCharacter, findEnemy, fullName } from "./campaign.js";
 import {
   ABILITIES, CORE_FACTIONS, FACTIONS, ITEMS, LOCATIONS, PERKS, STARTING_QUESTS, STATS, STAT_INFO,
@@ -308,8 +308,9 @@ function hoursPass(game, hours, activity) {
   if (activity === "rest") {
     addFatigue(game, -9 * hours);
     notes.push(...changeStress(game, -1.5 * hours));
-    game.hp = Math.min(maxHp(game), game.hp + hours * (1 + Math.floor(attr(game, "endurance") / 4)));
-    game.energy = Math.min(maxEnergy(game), game.energy + hours);
+    // Whole numbers, however long the rest: someone carried to the medbay is out for an hour and a bit, not eight.
+    game.hp = Math.min(maxHp(game), Math.round(game.hp + hours * (1 + Math.floor(attr(game, "endurance") / 4))));
+    game.energy = Math.min(maxEnergy(game), Math.round(game.energy + hours));
   } else if (activity === "routine") {
     game.energy = Math.min(maxEnergy(game), game.energy + Math.floor(hours / 2));
   } else {
@@ -337,6 +338,7 @@ function hoursPass(game, hours, activity) {
   // Whoever's bled out or died of a wound gone bad, where help could have come, dies of it now (src/death.js).
   notes.push(...settleDeaths(game));
   const pain = painADay(game);
+  if (lived.low) notes.push("[HEALTH] You've lost a lot of blood, and everything's harder for it. You're still bleeding: dress the wound with a medkit, or get to a medbay.");
   if (pain) notes.push(...changeStress(game, (pain * hours) / 24));
   // The ship, the world and the stories go through each day together, so it makes no difference how a long wait is cut up.
   const today = Math.floor(game.clock.hours / 24);
@@ -1062,6 +1064,10 @@ export function publicState(game) {
     maxHp: maxHp(game),
     energy: game.energy,
     maxEnergy: maxEnergy(game),
+    // What the top bar says of it: how many things are wrong with them, conditions and wounds together, and how fast
+    // they're losing blood while a wound is still open.
+    hurt: game.conditions.length + woundsNow(game, "you").length,
+    bleeding: bleedingOf(game, "you"),
     defense: defense(game),
     credits: game.credits,
     ship: shipView(game),

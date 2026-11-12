@@ -532,7 +532,9 @@ function extrasFor(game, open) {
 export function requestFor(game, key) {
   if (!key) return null;
   const now = nowOf(game);
-  const open = Object.values(game.requests?.open ?? {}).find((one) => one.state === "offered" && one.asker === key && !(one.later > now));
+  // Nobody asks lying where they fell: someone knocked down since they first had something to ask keeps it to themselves
+  // until they're up, or awake on a cot. (Someone in the brig still asks: to be let out.)
+  const open = Object.values(game.requests?.open ?? {}).find((one) => one.state === "offered" && one.asker === key && !(one.later > now) && !["dead", "down"].includes(lostReason(game, one.place ?? SHIP, key)));
   return open ?? null;
 }
 export const asksNow = (game, key) => Boolean(requestFor(game, key));
@@ -968,7 +970,9 @@ const inTheMiddle = (game) => Boolean(game.combat || game.check || game.computer
 function askedAt(game, model) {
   if (model.asker.place) return model.asker.place;
   if (model.asker.boss) return startOf(game)?.place ?? null;
-  if (model.asker.here) return game.location;
+  // Someone here who wants something of the player's boss asks where that boss is: nobody aboard the Meridian asks a
+  // visiting porter to get them a word with a doctor on another ship.
+  if (model.asker.here) return model.need?.to?.boss ? startOf(game)?.place ?? null : game.location;
   return SHIP;
 }
 // Whether the player is where a kind can be asked: aboard (or, for the captain, anywhere: they're told when they're
