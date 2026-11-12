@@ -33,6 +33,7 @@ import "./hands.js";
 import "./uses.js";
 import { mapExtras } from "./room-hooks.js";
 import "./asks.js";
+import "./emergencies.js";
 
 const STEPS = [[0, -1], [-1, 0], [1, 0], [0, 1]];
 const DOOR = "+";

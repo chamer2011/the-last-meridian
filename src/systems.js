@@ -24,6 +24,7 @@ import { changeStanding, changeStress, hoursNow } from "./rules.js";
 import { holderOf } from "./daily.js";
 import { atPost, mapFor, roomOf, roomsOf, roomsOn, thingsIn } from "./walk.js";
 import { notePut } from "./puts.js";
+import { airSpoiled } from "./room-hooks.js";
 import { SYSTEMS_DEFAULTS, SYSTEMS_FILE_PROBLEMS, WORLD_CHARACTERS, WORLD_COMPUTERS, WORLD_LIFE, WORLD_SYSTEMS } from "./world.js";
 import { KNOWN_SYSTEMS, SYSTEM_TITLES, readComputerLine, readDoorLine, readLocksLine, readPartLine, slugOf } from "../public/systems-text.js";
 
@@ -340,6 +341,12 @@ export function clearSystems() {
 }
 // Whether a place's systems are being made right now, so its map isn't whole yet (src/room-hooks.js waits for it).
 export const systemsPending = (place) => compiling.has(place);
+// A room's air made no better than this, for a fire or a hole in the hull (src/emergencies.js). The place's state is
+// made if it isn't there yet, so that the air goes on moving from there.
+export function foulAir(game, place, room, most) {
+  const state = stateOf(game, place, true);
+  state.air[room] = Math.min(state.air[room] ?? 100, most);
+}
 
 export function systemsOf(place) {
   if (!place) return null;
@@ -978,7 +985,8 @@ function driftAir(game, model, state, minutes, here) {
   const limits = airLimits();
   for (const level of roomsOf(mapFor(place))) {
     const q = state.air[level.id] ?? 100;
-    const flowing = airFlows(game, place, level.id);
+    // A fire or a hole in the hull spoils a room's air whatever its vents are doing (src/room-hooks.js).
+    const flowing = airFlows(game, place, level.id) && !airSpoiled(game, place, level.id);
     const next = flowing ? Math.min(100, q + (100 / model.numbers.airBack) * minutes) : Math.max(0, q - (100 / model.numbers.air) * minutes);
     if (next >= 100) delete state.air[level.id];
     else state.air[level.id] = Math.round(next * 10) / 10;

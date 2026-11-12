@@ -1,0 +1,41 @@
+# Emergencies in the rooms
+draft: the AI's, not yet edited by the owner
+
+# Three things that go wrong in a room by themselves, and can be put right by hand. Each has the rooms it can happen
+# in (the place's id, a comma, the room's name; several with semicolons between) and its numbers. Every number here
+# is a first guess.
+#
+# A fire grows by one every so often, up to its most. From a size, each time it grows it breaks something in the room;
+# at a size it spreads once through a door that isn't locked. It spoils the room's air, so people leave. It shrinks
+# while the room's air is shut off (the vent sealed, or the air plant stopped), while the engineers are at it (they
+# come by themselves after a while), and each time you fight it by hand, which practises a skill and can burn you.
+#
+# A breach lets a room's air out until it's patched: by you, with an emergency hull patch or a parts crate, or by the
+# engineers after a while, with a parts crate out of the ship's stores.
+#
+# A brawl is two people coming to blows at a sitting, on short rations with morale low. Step between them (a skill
+# against a number) and it's over; leave it, and after a while they've both been hurt.
+#
+# After changing this file, run "npm run check-story", and close and reopen the game.
+
+Fire:
+- rooms: meridian, The Galley; meridian, Engineering
+- starts: 1 in 40 days a room, 1 in 10 with something broken in it
+- grows: every 15 minutes, to 5 at most
+- burns: 1 in 3
+- breaks parts: from 3
+- spreads: at 5
+- by hand: 10 minutes, engineering
+- engineers: after 45 minutes
+
+Breach:
+- rooms: meridian, The Port Airlock; meridian, The Starboard Lock; meridian, The Boat Bay; meridian, The Lighter Bay
+- starts: 1 in 80 days a room, 1 in 20 with the hull under 40
+- by hand: 20 minutes
+- engineers: after 2 hours
+
+Brawl:
+- rooms: meridian, The Long Mess
+- starts: 1 in 3 sittings, with morale under 40
+- lasts: 20 minutes
+- stepping in: persuasion against 6
