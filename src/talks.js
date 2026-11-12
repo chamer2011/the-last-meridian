@@ -15,6 +15,7 @@ import { systemsTalk } from "./systems.js";
 import { grudgeLine, storyCommand } from "./command.js";
 import { ANSWERS, answerRequest, requestFor, requestScene, requestSceneOf } from "./requests.js";
 import { notePut } from "./puts.js";
+import { stockExtras } from "./room-hooks.js";
 
 const helpersFor = (talk) => ({ ...HELPERS, seen: talk.written?.seen ?? [] });
 
@@ -44,12 +45,17 @@ export function stockTalk(game, talk) {
   // When the alarm's ringing or the lights are out, that's what everyone wants to talk about.
   const news = systemsTalk(game);
   if (news) answers.push(["systems", asks.systems ?? "What's going on?", `@${talk.name}: "${news}"`]);
-  const choices = answers.map(([id, say]) => ({ say, to: id, if: `not seen ${id}` }));
+  // And what the parts of the game that add to a room have them answer (src/room-hooks.js): a question, the answer,
+  // and for one that leads on, choices and parts of its own.
+  const more = stockExtras(game, talk);
+  for (const one of more) answers.push([one.id, one.say, one.text, one]);
+  const choices = answers.map(([id, say, , extra]) => ({ say, to: id, ...(extra?.again ? {} : { if: `not seen ${id}` }) }));
   // Nobody calls someone who isn't the captain "Captain": those greetings are only for the one who is.
   const greetings = (stock.greet?.[feeling] ?? stock.greet?.neutral ?? ['"Yes?"']).filter((line) => isCaptain(game) || !/\bcaptain\b/i.test(line));
   const greet = fill(pick(greetings.length ? greetings : ['"Yes?"'], seed + 3), values);
   const parts = { start: { text: [`@${talk.name}: ${greet}`], choices } };
-  for (const [id, , text] of answers) parts[id] = { text: [text], choices };
+  for (const [id, , text, extra] of answers) parts[id] = { text: [text], choices: extra?.choices ?? choices };
+  for (const one of more) for (const [id, part] of Object.entries(one.parts ?? {})) parts[id] = { text: part.text, choices: part.choices ?? choices };
   return { title: `Talking with ${talk.name}`, start: "start", parts };
 }
 

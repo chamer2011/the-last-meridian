@@ -39,6 +39,8 @@ const acts = (game) => walkView(game).acts ?? [];
 const toHour = (game, hour) => passTime(game, (((hour - (game.clock.hours % 24)) % 24) + 24) % 24 || 24, "rest");
 const noKits = (game) => { while (game.inventory.medkit) removeItem(game, "medkit"); };
 const person = (game, key) => walkView(game).people.find((one) => one.key === key);
+// What can be done to treat someone, among everything that can be asked of them (src/asks.js adds its own).
+const treats = (game, key) => (person(game, key)?.acts ?? []).filter((one) => one.id.startsWith("treat-"));
 
 test("the galley offers its work, and cooking a pot by hand turns what's in the pantry into sittings", () => {
   const game = newGame();
@@ -108,9 +110,9 @@ test("someone hurt can be treated with a medkit, which is used up, and they reme
     return false;
   };
   assert.ok(find(), "Bao is somewhere on deck 2");
-  assert.equal(person(game, "Mess Hand Bao").acts, undefined, "nothing to treat them with yet");
+  assert.deepEqual(treats(game, "Mess Hand Bao"), [], "nothing to treat them with yet");
   addItem(game, "medkit");
-  const offered = person(game, "Mess Hand Bao").acts;
+  const offered = treats(game, "Mess Hand Bao");
   assert.deepEqual(offered.map((one) => [one.id, one.label]), [["treat-kit", "Treat with your medkit"]]);
   assert.match(offered[0].detail, /a deep cut in the left arm, 20 minutes/);
   const hours = game.clock.hours;
@@ -123,7 +125,7 @@ test("someone hurt can be treated with a medkit, which is used up, and they reme
   assert.ok(kept.some((one) => one.kind === "story" && /had a wound seen to by you/.test(one.words)), JSON.stringify(kept));
   // Nothing more to do: the offer's gone.
   addItem(game, "medkit");
-  assert.equal(person(game, "Mess Hand Bao")?.acts, undefined);
+  assert.deepEqual(treats(game, "Mess Hand Bao"), []);
 });
 
 test("in the medbay, a patient who's waiting can be treated by the player, with the cabinet's doses", () => {

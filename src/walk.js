@@ -32,6 +32,7 @@ import { orderFor, personExtras, roomExtras, thingExtras } from "./room-hooks.js
 import "./hands.js";
 import "./uses.js";
 import { mapExtras } from "./room-hooks.js";
+import "./asks.js";
 
 const STEPS = [[0, -1], [-1, 0], [1, 0], [0, 1]];
 const DOOR = "+";

@@ -11,6 +11,7 @@ import { fallDown, hasADayAt, wakeAfterDefeat } from "./medbay.js";
 import { personHere } from "./walk.js";
 import { ATTITUDE_VALUES, FACTION_BELIEFS, NOTABLES, SKILLS } from "./character-data.js";
 import { ABILITIES, ENEMIES, ITEMS, STATS } from "./data.js";
+import { fightExtras } from "./room-hooks.js";
 import { THREAT_LABELS } from "./npc.js";
 import {
   addFatigue, attrMod, beliefAffinity, changeStanding, changeStress, checkParts, clamp, defense, fxSum, grantXp, maxEnergy, maxHp, oddsFor, practice, roll, skillRank,
@@ -151,6 +152,12 @@ function newFighter(c, side, { source, called, asName = false, body = null }) {
 // asName says the main enemy's "as" is a person's own name, like "dock_thug as Docker Pav", not a kind of enemy.
 export function startCombat(game, enemyId, { training = false, called = null, followers = [], allies = [], arrivals = [], leadIn = null, why = null, reason = null, faction = null, asName = false } = {}) {
   if (game.combat) throw new Error("A fight is already underway.");
+  // Whoever's walking with the player and can fight stands with them (src/room-hooks.js), unless they're in it already.
+  if (!training) {
+    const named = [enemyId, ...followers, ...allies, ...arrivals.map((one) => one.who)].map((one) => String(one).toLowerCase());
+    // Only as many as there's room for: what the story asked for is checked as it always was.
+    allies = [...allies, ...fightExtras(game).filter((who) => !named.includes(String(who).toLowerCase())).slice(0, Math.max(0, MAX_PER_SIDE - 1 - allies.length))];
+  }
   // Everyone comes with their body: someone with a file their own, anyone else one for the fight.
   const withBody = (found) => ({ ...found, body: fighterBody(game, { id: found.source.named ? found.source.id : null, machine: found.source.machine }) });
   const main = withBody(findFighter(game, enemyId));

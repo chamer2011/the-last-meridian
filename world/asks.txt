@@ -1,0 +1,79 @@
+# What anyone will answer, and what they'll do when asked
+draft: the AI's, not yet edited by the owner
+
+# Someone with no conversation of their own (no talk_<id>.txt in world/scenes) answers a few standard questions from
+# what the game knows right now. The questions are under Questions, and what they say is under Answers: several lines
+# with the same name are picked between, so nobody sounds like the next person. The words in {braces} are filled in
+# by the game; a line can leave them out, but can't use one its name doesn't have.
+#
+#   job          {job} {a job} {room} {keeper}     someone on the ship's watch bill ("job spare": a spare hand)
+#   going ...    {n} {sittings} {keeper}           how their own work stands, by job: short (people missing), cook,
+#                                                  cook empty, tech, tech broken, tech waiting, nurse, nurse waiting,
+#                                                  guard, guard alarm, and plain "going" for everyone else
+#   where        {who} {where}                     where one of the officers is, or whoever a quest of yours waits on
+#   where gone   {who}                             when they can't say ("where who" is what they ask back first)
+#   news ...     {what} {who} {n} {illness}        the talk: mutiny, hungry, short (of a supply), dead, sick, low
+#                                                  (morale), trouble (at a port), and plain "news" on a quiet day
+#   self ...     {wounds} {illness}                how they are: hurt, ill, hungry, and plain "self"
+#
+# Under Come with me are the things said when you ask someone to walk with you, or to go to the medbay: yes, done
+# (when you say that's all, or the two hours are up), and the reasons for no. {name} is their name.
+#
+# After changing this file, run "npm run check-story", and close and reopen the game.
+
+Questions:
+- job: What do you do aboard?
+- going: How's the work going?
+- where: Where can I find someone?
+- news: What's the talk?
+- self: How are you holding up?
+- never mind: Never mind.
+
+Answers:
+- job: I'm {a job}. {room}, mostly.
+- job: {job}. You'll find me in {room}, when I'm not asleep.
+- job spare: Spare hand. I go where {keeper} sends me, and it's never the same place twice.
+- going short: We're {n} short on the watch bill, and it shows. Ask {keeper} where the others went.
+- going cook empty: The kettle's empty. I can't cook what isn't in the pantry.
+- going cook: About {sittings} sittings in the kettle. It'll do, if nobody comes back for seconds.
+- going tech waiting: {n} waiting on parts we haven't got. I can't mend it with good intentions.
+- going tech broken: {n} on the repair list. We'll get to them.
+- going tech: Nothing broken that I know of. I don't trust it.
+- going nurse waiting: {n} waiting to be seen. They'll be seen.
+- going nurse: Quiet, for once. Don't say it out loud.
+- going guard alarm: The alarm's going. Ask me again when it isn't.
+- going guard: A quiet watch. The best kind.
+- going: Keeping up. Just.
+- going: It gets done. Don't ask me how.
+- where who: Who are you after?
+- where: {who}? {where}, last I saw.
+- where: {who}. {where}. That's where I'd look.
+- where gone: {who}? Couldn't tell you. Not anywhere I've been.
+- news mutiny: People are saying it's time someone else had the chair. I'm only telling you what's said.
+- news hungry: Half a bowl at the last sitting, if that. That's the talk. That's all the talk.
+- news short: We're out of {what}. Everyone knows, and everyone's pretending not to count the days.
+- news dead: {who} died. People stop at the names more than they did.
+- news sick: There's {illness} going round. {n} down with it, that I've heard of.
+- news low: Nobody's saying much. That's worse than talk.
+- news trouble: There's trouble here, and nobody wants strangers in the middle of it.
+- news: Nothing that's worth your time. A quiet day's a good day.
+- news: The usual. Who's sleeping where, and who's eating whose share.
+- self hurt: {wounds}. I've had better weeks.
+- self ill: I've got {illness}. Don't stand so close.
+- self hungry: Hungry. Like everyone.
+- self: Still here. That's the whole of it.
+- self: Tired. Not more than yesterday.
+
+Come with me:
+- yes: "All right. Lead on."
+- yes: "If you like. I could use the walk."
+- yes captain: "Captain." {name} falls in beside you.
+- done: "Right. I'll get back to it, then."
+- no asleep: {name} doesn't stir.
+- no busy: "Not now. I've got my hands full."
+- no hurt: "I'm not walking anywhere like this."
+- no post: "I've a post to keep. Send for me if it matters."
+- no loyalty: "With respect, Captain, I've work of my own." It isn't said with much respect.
+- no stranger: "I don't know you. No."
+- medbay yes: "You're right. I'll go now."
+- medbay no: "It can wait till the morning. Everything does."

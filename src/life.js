@@ -11,6 +11,7 @@ import { LOCATIONS } from "./data.js";
 import { errandDetour, logisticsOf, mealWords } from "./logistics.js";
 import { atPost, canStand, findPath, mapFor, roomOf, seedFrom } from "./walk.js";
 import { detourFor, doorLocked, partSquares } from "./systems.js";
+import { detourExtras } from "./room-hooks.js";
 import { WORLD_LIFE } from "./world.js";
 import { jobsOf, movedDays } from "./command.js";
 import { bodyOf, hurtAt, keyAt, mendedByTechs, paceOf, queueOf } from "./body.js";
@@ -186,8 +187,11 @@ function detoursFor(game, place) {
   // Whoever's mending or building in the workshop (src/workshop.js).
   const workshop = workshopDetour(game, place);
   const queue = queueDetour(game, place);
-  if (!down && !systems && !errands && !workshop && !queue) return null;
-  return (key, room, asleep) => down?.(key, room, asleep) ?? systems?.(key, room, asleep) ?? errands?.(key, room, asleep) ?? workshop?.(key, room, asleep) ?? queue?.(key, room, asleep) ?? null;
+  // And wherever the parts of the game that add to a room send someone (src/room-hooks.js): after someone down and
+  // the place's systems, before the errands.
+  const extras = detourExtras(game, place);
+  if (!down && !systems && !extras && !errands && !workshop && !queue) return null;
+  return (key, room, asleep) => down?.(key, room, asleep) ?? systems?.(key, room, asleep) ?? extras?.(key, room, asleep) ?? errands?.(key, room, asleep) ?? workshop?.(key, room, asleep) ?? queue?.(key, room, asleep) ?? null;
 }
 
 // In the morning, whoever's hurt and on their feet goes and waits at the medbay, as the place's health file says

@@ -417,10 +417,14 @@ function queueAt(game, place, medbay, hours) {
   if (minute < queue.from || minute >= queue.to) return [];
   return [...hurtAt(game, place)].filter((who) => isAbout(game, place, who, hours) && arrived(who)).map((who) => keyAt(place, who)).filter((key) => key && !game.down?.[key] && !mendedByTechs(game, key));
 }
+// Whoever the player has told to go to the medbay now (src/asks.js): seen like the queue, at any hour, from a walk's
+// worth of time after they were told, unless its door is locked.
+const sentAt = (game, place, medbay, hours) => (doorLocked(game, place, medbay.room) ? [] : Object.entries(game.sent ?? {}).filter(([key, one]) => one.place === place && hours >= one.at + WALK_HOURS && hours < one.until && !game.down?.[key]).map(([key]) => key));
 // Who's on the medbay's cots and floor at a place, by body key, then whoever's in the morning queue, and the player
 // while they're standing in the medbay.
 function patientsAt(game, place, medbay, hours = nowOf(game)) {
   const keys = [...downAt(game, place).filter(([, d]) => d.bed && !d.going && !d.dead && (!d.bed.startsWith("@") || d.bed === `@${medbay.room}`)).map(([key]) => key), ...queueAt(game, place, medbay, hours)];
+  for (const key of sentAt(game, place, medbay, hours)) if (!keys.includes(key)) keys.push(key);
   return playerIn(game, place, medbay) ? [...keys, YOU] : keys;
 }
 // The medics at work in the medbay at a moment: whoever holds a treating post or does a treating job, there by their

@@ -15,6 +15,9 @@ const clocks = [];
 const days = [];
 const maps = [];
 const checkers = [];
+const stocks = [];
+const detours = [];
+const fighters = [];
 
 // (game, entry, key) => the acts for someone, or nothing. entry is the room's own entry for them, key their key there.
 export const addPersonActs = (fn) => { people.push(fn); };
@@ -45,6 +48,25 @@ export function mapExtras(place, map) {
   for (const fn of maps) if (!done.has(fn) && fn(place, map) !== false) done.add(fn);
 }
 export const checkExtras = () => checkers.flatMap((fn) => fn() ?? []);
+
+// (game, talk) => what someone with no conversation of their own can be asked besides, each
+// { id, say, text, again, choices, parts }: the question, their answer, whether it can be asked again, and for one
+// that leads on, the choices under the answer and the parts those go to ({ id: { text: [lines], choices } }; a part
+// without choices of its own goes back to the usual questions).
+export const addStockAnswers = (fn) => { stocks.push(fn); };
+export const stockExtras = (game, talk) => (stocks.length ? gathered(stocks, game, talk) : []);
+
+// (game, place) => (key, room, asleep) => somewhere to send someone off their usual day, or nothing; or null when it
+// sends nobody. As for the place's systems and errands (src/life.js): { where, doing, spot, exact }.
+export const addDetour = (fn) => { detours.push(fn); };
+export function detourExtras(game, place) {
+  const live = detours.map((fn) => fn(game, place)).filter(Boolean);
+  return live.length ? (key, room, asleep) => { for (const fn of live) { const turn = fn(key, room, asleep); if (turn) return turn; } return null; } : null;
+}
+
+// (game) => whoever stands with the player when a fight starts, as the fight knows them (a person's id).
+export const addFightAllies = (fn) => { fighters.push(fn); };
+export const fightExtras = (game) => (fighters.length ? gathered(fighters, game) : []);
 
 export const orderFor = (id) => orders.get(String(id ?? "")) ?? null;
 export const isOrder = (id) => orders.has(String(id ?? ""));
