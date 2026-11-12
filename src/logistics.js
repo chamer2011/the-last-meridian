@@ -19,6 +19,7 @@ import { LOGISTICS_FILE_PROBLEMS, WORLD_LOGISTICS } from "./world.js";
 import { everyWords, readErrandLine, readLoadsLine, readMachineLine, readRefillLine, readStoreLine, slugOf } from "../public/logistics-text.js";
 import { KNOWN_SYSTEMS, SYSTEM_TITLES } from "../public/systems-text.js";
 import { SHIP_DATA } from "./world.js";
+import { refillsHeld } from "./room-hooks.js";
 
 const plain = (words) => String(words ?? "").toLowerCase().replace(/['’]/g, "").replace(/^the\s+/, "").replace(/\s+/g, " ").trim();
 const upperFirst = (text) => (text ? text[0].toUpperCase() + text.slice(1) : "");
@@ -579,7 +580,7 @@ function sittingsAUnit(model) {
 // can give its whole capacity each time. Zero where nothing refills them.
 export function refilledADay(game, place, items) {
   const model = logisticsOf(place);
-  if (!model) return 0;
+  if (!model || refillsHeld(game, place)) return 0;
   const wanted = Array.isArray(items) ? items : [items];
   let aDay = 0;
   for (const r of model.refills) {
@@ -827,7 +828,8 @@ function serveMeals(game, place, model, state, t, minutes, notes) {
 // and the manifest says what came aboard.
 const clockWordsAt = (t) => `Day ${Math.floor(t / 1440) + 1}, ${clockWords(t % 1440)}`;
 function runRefills(game, place, model, state, t) {
-  if (!model.refills.length) return;
+  // Nothing comes from nothing while something else supplies the place: the dock, paid for (src/room-hooks.js).
+  if (!model.refills.length || refillsHeld(game, place)) return;
   state.refills ??= { log: [] };
   for (const r of model.refills) {
     // The hour's mark that falls in this piece of the clock, if one does. In play the clock runs by the second, so

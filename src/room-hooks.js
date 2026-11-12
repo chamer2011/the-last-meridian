@@ -19,6 +19,7 @@ const stocks = [];
 const detours = [];
 const fighters = [];
 const spoilers = [];
+const holds = [];
 
 // (game, entry, key) => the acts for someone, or nothing. entry is the room's own entry for them, key their key there.
 export const addPersonActs = (fn) => { people.push(fn); };
@@ -68,6 +69,10 @@ export function detourExtras(game, place) {
 // (game, place, room) => true while something spoils a room's air whatever its vents are doing: a fire, a hole.
 export const addAirSpoiler = (fn) => { spoilers.push(fn); };
 export const airSpoiled = (game, place, room) => spoilers.some((fn) => fn(game, place, room));
+
+// (game, place) => true while a place's stores aren't to be refilled from nothing: something else supplies them.
+export const addRefillHold = (fn) => { holds.push(fn); };
+export const refillsHeld = (game, place) => holds.some((fn) => fn(game, place));
 
 // (game) => whoever stands with the player when a fight starts, as the fight knows them (a person's id).
 export const addFightAllies = (fn) => { fighters.push(fn); };

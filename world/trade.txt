@@ -1,0 +1,26 @@
+# Real trade
+draft: the AI's, not yet edited by the owner
+
+# What the Meridian's captain can do with a dock, beside buying by the lot from the Ship menu. Every number here is a
+# first guess.
+#
+# The purse is the ship's own money, apart from yours. It begins the first time you use any of this, and a levy comes
+# in every day after that while you're the captain.
+#
+# Restocking is a switch you throw in the Lighter Bay (under You can). While it's on, nothing comes into the shuttle
+# stores from nowhere any more: at a dock, every so many hours, the missing ration crates and fuel cells are bought
+# from the port out of the purse, at the port's own price that day, and the port has that much less. In open space,
+# or at a port that doesn't sell it, or with an empty purse, nothing comes. While it's off, the stores fill as before.
+#
+# Cargo and passengers are offered at a port while the ship is docked there and you're ashore: a few crates, or a few
+# people, for another port on your chart. The fee goes into the purse when the ship gets there; cargo delivered late
+# pays half. Passengers eat at the sittings on the way.
+#
+# After changing this file, run "npm run check-story", and close and reopen the game.
+
+the purse: 600 to begin with, 60 a day
+restocking: every 6 hours at a dock
+a ration crate: 2 times the port's food price
+a fuel cell: 0.5 times the port's fuel price
+cargo: 2 offers a port, 4 to 10 crates, 15 credits a crate, 10 days to deliver, 20 crates in the hold
+passengers: 4 to 10 people, 10 credits each
