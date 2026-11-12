@@ -1,0 +1,28 @@
+# Whose things are whose, aboard the Meridian
+draft: the AI's, not yet edited by the owner
+
+# Under Stores, each of the ship's stores (as world/logistics/meridian.txt names them), and who
+# may take from it: posts and jobs from world/command/meridian.txt, with commas between. The captain may always, and
+# so may anyone for "everyone". A store that isn't here is anyone's.
+#
+# Under Rooms, the rooms that are closed to all but the posts and jobs named.
+#
+# None of it matters unless it's seen: by someone awake in the same room, or by a camera that works, with the room's
+# lights on. Whoever's walking with you looks the other way. The two lines at the end say what being seen costs.
+#
+# After changing this file, run "npm run check-story", and close and reopen the game.
+
+Stores:
+- the pantry: the quartermaster, the cooks
+- the garden bins: the cooks, the gardeners
+- the medicine cabinet: the chief medical officer, the nurses
+- the parts lockers: the chief engineer, the techs
+- the fuel rack: the chief engineer, the techs
+- the shuttle stores: the quartermaster, the deckhands
+
+Rooms:
+- The Armory: the chief of security, the guards
+- The Brig: the chief of security, the guards
+
+seen taking: it goes back; 10 credits docked a second time within 7 days
+seen in a closed room: walked out after 10 minutes
