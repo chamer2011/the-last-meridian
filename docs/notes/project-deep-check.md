@@ -53,9 +53,9 @@ Second round:
 - When the chair changes hands or someone's arrested, the line saying so now comes before the line about who got
   their old post.
 - A player who lost a fight before ever walking a step wasn't carried to the medbay (`wakeInMedbay`).
-- Five older tests failed by luck now and then (a follower knocked down, a leg broken while running
-  away, a wound seen to in the medbay before a test counted it, in two tests, and a mess hand made up with an old limp
-  under their new artificial leg). They can't any more.
+- Six older tests failed by luck now and then (a follower knocked down, a leg broken while running
+  away, a wound seen to in the medbay before a test counted it, in two tests, and a mess hand made up, in two tests,
+  with something already wrong under their new artificial limb). They can't any more.
 
 ## Found and left
 
