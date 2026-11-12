@@ -77,6 +77,8 @@ export function questsView(game) {
       objective: quest.objective ?? "",
       done: quest.done ?? [],
       step: stepOf(game, quest, byQuest[quest.id]),
+      // A battle's list afterwards (src/aftermath.js): every box, ticked or not, with where to go for an open one.
+      ...(quest.list && game.aftermath?.quest === quest.id ? { checklist: game.aftermath.items.map((item) => ({ id: item.id, text: item.goal, where: item.done == null ? item.where : null, done: item.done != null })) } : {}),
     })),
   };
 }

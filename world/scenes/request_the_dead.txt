@@ -1,0 +1,36 @@
+# Their names
+// Draft by the AI (Claude), 2026-11-12, not yet edited by the owner. After a battle in which people died aboard, the
+// speaker for the council asks the captain to say the names of the dead at the Names Bulkhead, where the crew chalk
+// them, for the ship to hear. A yes says them there and then: a little morale, and it's on the record. Asked once.
+for: the captain
+when: aftermath dead listed and not flag the_names_said
+asks: the speaker
+needs: your word
+by: 1 day
+
+== ask
+@{asker}: "Captain. The crew are chalking the names on the bulkhead, the way they always have. They'd like to hear them said, by you, so the ship knows who it lost. Will you?"
+> Say their names at the bulkhead -> yes
+> Let the chalk speak for them -> no
+> Not now -> later
+
+== yes
+@{asker}: "Thank you. Half the ship came. Nobody said much after, but they stood there a long time."
+* flag the_names_said: The captain said the names of the dead at the Names Bulkhead
+* morale 3: The names said at the bulkhead
+
+== no
+@{asker}: "As you like. They'll stand there and read them for themselves."
+
+== later
+@{asker}: "Soon, Captain. Before the chalk smudges."
+
+== done
+@{asker}: "It mattered to them, Captain. More than you'd think."
+* xp 10: Their names
+
+== failed
+@{asker}: "The names went up without you."
+
+== gone
+@{asker}: "Never mind. Someone else said them."

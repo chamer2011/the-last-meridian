@@ -8,15 +8,18 @@
 
 import { roomOnDeck } from "./battles.js";
 import { addWounds, beatenFor, downState, keyAt } from "./body.js";
-import { commandOf, prisonersAt, prisonersState, rememberRequest, shakeConfidence } from "./command.js";
+import { commandOf, emptyPosts, prisonersAt, prisonersState, putPrisonersAshore, rememberRequest, shakeConfidence } from "./command.js";
+import { LOCATIONS } from "./data.js";
 import { startBreach, startFire } from "./emergencies.js";
 import { fallDown, hasADayAt } from "./medbay.js";
 import { tellBattleEnding } from "./live-fight.js";
 import { addClockWork, addRoomNote } from "./room-hooks.js";
-import { airFlows, damagePart, systemsOf } from "./systems.js";
+import { airFlows, damagePart, navigationDown, roomPowered, systemsOf } from "./systems.js";
 import { mapFor } from "./walk.js";
 
 const nowHours = (game) => game.clock?.hours ?? 0;
+// The ship whose brig keeps the prisoners.
+const SHIP_PLACE = "meridian";
 
 // What everyone who fought beside the player remembers, and how much it counts for them.
 const FOUGHT_BESIDE = { words: "fought beside you on deck 1 when the mutineers came", w: 8 };
@@ -97,6 +100,8 @@ export function battleEnds(game, c, ground, ended) {
     const key = one.body?.who ?? null;
     if (key) rememberRequest(game, key, "story", FOUGHT_BESIDE);
   }
+  // And the list of what it left behind, in the corner, when its file has one.
+  if (c.battle.list) notes.push(...startList(game, c, place));
   return notes;
 }
 tellBattleEnding(battleEnds);
@@ -181,6 +186,107 @@ function shipAfter(game, c, ground, ended) {
   return [`[SYSTEMS] Broken in the fighting: ${words.join("; ")}.`, ...said];
 }
 const listed = (words) => (words.length < 2 ? words.join("") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`);
+
+// ---- The list afterwards ------------------------------------------------------------------------------------------
+
+// What a battle leaves behind, as a list in the corner (the quest tracker) that ticks itself off from how the ship
+// stands, in any order, and goes away once it's all ticked. Only what the battle left is on it: a fire, the fallen, a
+// breach, the galley's power, the nav core, the prisoners, the posts whose holders are laid up, and the dead, who go on
+// it when the first of them dies. Once something's ticked it stays ticked. It's a quest, so the log keeps it, under
+// Finished at the end. game.aftermath = { quest, battle, title, place, since, items: [{ id, goal, where, done }], done }.
+const GOALS = {
+  fire: "Fire out",
+  fallen: "Nobody left where they fell",
+  breach: "The breach patched",
+  galley: "Power back in the Galley",
+  nav: "The nav core mended",
+  dead: "The dead named",
+  prisoners: "The prisoners settled",
+  posts: "The posts filled",
+};
+const ORDER = Object.keys(GOALS);
+
+// Whether something on the list is seen to, as the ship stands now.
+function seenTo(game, place, id) {
+  switch (id) {
+    case "fire": return !Object.values(game.emergencies?.fires ?? {}).some((one) => one.place === place);
+    case "breach": return !Object.values(game.emergencies?.breaches ?? {}).some((one) => one.place === place);
+    case "galley": return roomPowered(game, place, "galley");
+    case "nav": return !navigationDown(game);
+    case "fallen": return !Object.values(game.down ?? {}).some((d) => d.place === place && !d.bed && !d.carriedBy && !d.going && !d.dead);
+    // Named: carried to where the dead are laid out, and their names on the bulkhead.
+    case "dead": return !Object.values(game.down ?? {}).some((d) => d.place === place && d.dead);
+    case "prisoners": {
+      const held = prisonersAt(game, place);
+      return !held || Boolean(held.fate) || (!held.held && !held.coming?.length);
+    }
+    case "posts": return !emptyPosts(game, place).length;
+    default: return true;
+  }
+}
+// Where to go for something on the list, while it's open: the room that's burning or breached.
+function whereFor(game, place, id) {
+  const map = mapFor(place);
+  const room = id === "fire" ? Object.values(game.emergencies?.fires ?? {}).find((one) => one.place === place)?.room
+    : id === "breach" ? Object.values(game.emergencies?.breaches ?? {}).find((one) => one.place === place)?.room : null;
+  return room ? map?.rooms?.[room]?.name ?? room : null;
+}
+const itemFor = (game, place, id) => ({ id, goal: GOALS[id], where: whereFor(game, place, id), done: null });
+
+function startList(game, c, place) {
+  const quest = `after_${c.battle.id}`;
+  if (game.aftermath?.quest === quest) return [];
+  const items = ORDER.filter((id) => id !== "dead" && !seenTo(game, place, id)).map((id) => itemFor(game, place, id));
+  if (!items.length) return [];
+  game.aftermath = { quest, battle: c.battle.id, title: c.battle.list, place, since: nowHours(game), items };
+  game.quests ??= [];
+  game.quests.push({ id: quest, title: c.battle.list, main: true, status: "active", desc: `What ${c.battle.title} left behind. Each is ticked off as it's put right, in any order.`, objective: "See to what the battle left behind", done: [], list: true });
+  game.following = quest;
+  return [`[STORY] ${c.battle.list}: what the battle left behind is listed in the corner, and ticks itself off as it's put right.`];
+}
+
+// As time goes by: the dead go on the list when the first of them dies, and whatever's seen to is ticked off, with a line
+// for each. Once it's all ticked, the quest is finished and the list goes from the corner.
+export function tickList(game) {
+  const list = game.aftermath;
+  if (!list || list.done) return [];
+  const now = nowHours(game);
+  const notes = [];
+  if (!list.items.some((one) => one.id === "dead") && Object.values(game.dead ?? {}).some((one) => one.place === list.place && one.at >= list.since)) {
+    const at = list.items.findIndex((one) => ORDER.indexOf(one.id) > ORDER.indexOf("dead"));
+    list.items.splice(at < 0 ? list.items.length : at, 0, itemFor(game, list.place, "dead"));
+  }
+  const quest = (game.quests ?? []).find((one) => one.id === list.quest);
+  for (const item of list.items) {
+    if (item.done != null) continue;
+    if (!seenTo(game, list.place, item.id)) {
+      item.where = whereFor(game, list.place, item.id) ?? item.where;
+      continue;
+    }
+    item.done = now;
+    item.where = null;
+    if (quest) quest.done = [...(quest.done ?? []), item.goal];
+    const ticked = list.items.filter((one) => one.done != null).length;
+    notes.push(`[STORY] ${list.title}: ${item.goal.charAt(0).toLowerCase()}${item.goal.slice(1)} (${ticked} of ${list.items.length}).`);
+  }
+  if (list.items.every((one) => one.done != null)) {
+    list.done = now;
+    if (quest) {
+      quest.status = "completed";
+      quest.objective = "All of it seen to";
+    }
+    notes.push(`[STORY] ${list.title}: every last thing on the list is seen to. What comes next comes from the ship, and from what people ask.`);
+  }
+  return notes;
+}
+addClockWork(tickList);
+
+// Prisoners the captain said were to be put ashore go ashore when the Meridian docks at a port with people to take
+// them: somewhere with a market.
+addClockWork((game) => {
+  const at = game.ship?.at;
+  return at && LOCATIONS[at]?.market?.length ? putPrisonersAshore(game, SHIP_PLACE, at) : [];
+});
 
 // As time goes by, the beaten of the other side who are on their feet again are walked to the brig, and whoever died is
 // counted, and goes up on the names as an unnamed mutineer. Returns lines for the story, for the place the player's at.

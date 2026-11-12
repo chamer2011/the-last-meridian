@@ -1,0 +1,44 @@
+# The damage report
+// Draft by the AI (Claude), 2026-11-12, not yet edited by the owner. After a battle, the chief engineer brings the
+// captain what it broke that's still to mend, in the order the engineers are going, and asks whether it should go some
+// other way. Each answer puts something first; the engineers keep their pace, so only the order changes. {damage} is
+// what's still to mend, room by room. (The plan had the first officer give it; the chief engineer isn't in the fight,
+// so they're on their feet to ask.)
+for: the captain
+when: aftermath repairs
+asks: the chief engineer
+needs: your word
+by: 1 day
+gone when: aftermath repairs done
+
+== ask
+@{asker}: "Damage report, Captain. Still to mend, in the order we're going: {damage}. One crate a job, one job at a time. Do you want it some other way?"
+> Power first, as it is -> yes_power
+> The bridge first: navigation and comms -> yes_bridge
+> The alarms and the cameras first -> yes_alarms
+> Not now -> later
+
+== yes_power
+@{asker}: "Power first, then. Lights and kettles before anything else."
+* mend first power: The captain had the engineers keep power first
+
+== yes_bridge
+@{asker}: "The bridge first. The galley can sit in the dark a while longer."
+* mend first navigation and comms: The captain had the engineers mend the bridge first
+
+== yes_alarms
+@{asker}: "Alarms and cameras. If there are more of them out there, we'll hear about it."
+* mend first alarm and cameras: The captain had the engineers mend the alarms and cameras first
+
+== later
+@{asker}: "We'll carry on as we are, then."
+
+== done
+@{asker}: "We'll get it done."
+* xp 5: The damage report
+
+== failed
+@{asker}: "We carried on as we were."
+
+== gone
+@{asker}: "It's all mended now, Captain. You can stop worrying about the list."

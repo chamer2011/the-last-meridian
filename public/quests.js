@@ -48,8 +48,18 @@ const questOf = (id) => log().quests.find((quest) => quest.id === id) ?? null;
 const STEP_MARK = { here: "[>]", go: "[>]", hold: "[!]", failed: "[X]", done: "[x]" };
 const toneOf = (quest) => (!quest ? "" : quest.status === "failed" || quest.step?.state === "failed" ? "failed" : quest.step?.state === "hold" ? "hold" : quest.status === "completed" ? "done" : "");
 
+// A battle's list afterwards: every box, ticked or not, in the tracker and in the log alike, and where to go for an
+// open one (src/aftermath.js ticks them as the ship is put right).
+function checklistNode(quest) {
+  return el("ul", { class: "qt-steps qt-checklist" }, quest.checklist.map((item) => el("li", { class: item.done ? "done" : "go" },
+    el("span", { class: "qt-box" }, item.done ? "[x]" : "[ ]"),
+    el("span", { class: "qt-what" }, item.text),
+    item.where && el("span", { class: "qt-where" }, item.where))));
+}
+
 // The quest's steps: what's been done, all of them in the log and the last one in the tracker, and what it needs now.
 function stepsNode(quest, { full }) {
+  if (quest.checklist) return checklistNode(quest);
   const done = full ? quest.done : quest.done.slice(-1);
   const step = quest.step ?? { state: "go", text: quest.objective };
   const over = quest.status !== "active";

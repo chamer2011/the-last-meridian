@@ -24,6 +24,8 @@ Here is mutiny.txt, the battle that opens the game:
     the council's confidence falls by: 10, and 5 more if you went down
                                                  (what the battle costs aboard, when it's over: the
                                                   ship's morale and the council's confidence in you)
+    the list afterwards: After the mutiny        (a list in the corner of what it left behind, by that
+                                                  name: see After it, below)
 
     Against you:
     - 6 mutineer_crew, up The Upper Forward Stair
@@ -51,7 +53,8 @@ The lines at the top
 place, deck and they make for are needed. The others can be left out: without they give up, they fight until the
 last of them is down; without crew fight as, a crew member with no fight of their own stays out of it and takes
 cover; without the rest take cover in, whoever doesn't fight stays where they are; without morale falls by or the
-council's confidence falls by, the battle costs nothing aboard; without After it:, it leaves nothing broken. A line that starts with // is a note for whoever
+council's confidence falls by, the battle costs nothing aboard; without After it:, it leaves nothing broken; without
+the list afterwards, there's no list. A line that starts with // is a note for whoever
 writes, and draft: says who wrote it.
 
 Against you
@@ -119,3 +122,21 @@ is broken: looked at, it was shot up in the fighting, and it does nothing until 
 a battle broke one thing at a time, in the order the lines are written, the first as soon as anything broken would
 be and each after it a repair's time later, so put first what matters most. Each repair takes a parts crate
 (world/logistics), and waits when there's none. You can mend any of it yourself, sooner.
+
+With the list afterwards: line, the quest tracker in the corner shows a list by that name when the battle's over,
+and the game ticks it off by itself as the ship is put right, in any order. Only what the battle left is on it:
+
+    Fire out                       no fire burning at the place
+    Nobody left where they fell    everyone who went down is on a cot, on the medbay's floor, being carried or up
+    The breach patched             no breach at the place
+    Power back in the Galley       the Galley has power
+    The nav core mended            the Meridian's navigation works
+    The dead named                 (only once someone dies) the dead carried to where they're laid out, and their
+                                   names on the bulkhead
+    The prisoners settled          the captain has said what's to be done with them (the chief of security asks)
+    The posts filled               no post's holder lying where they fell, laid up or being patched up
+
+Something ticked stays ticked. Once it's all ticked, the list's quest is finished and the list leaves the corner.
+The quest log keeps it, under Finished. A scene can ask about it with ? aftermath (see the scene how-to's
+conditions), and the asks that go with the mutiny are request_prisoners, request_damage_report, request_empty_post
+and request_the_dead in world/scenes.

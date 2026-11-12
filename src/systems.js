@@ -736,6 +736,49 @@ export function damagePart(game, place, id, damage = "broken", { by = "player" }
   return settleChange(game, place);
 }
 
+// The engineers mend what a battle broke in an order (src/aftermath.js): this puts first the parts a story's words name,
+// keeping the times the engineers will be done at, so that only the order changes. The words name systems (power,
+// navigation, comms, alarm, cameras), kinds of part (nav core, relay) or rooms, joined with "and" or commas. Returns lines
+// for the story.
+export function mendFirst(game, place, words) {
+  const model = systemsOf(place);
+  const parts = game.systems?.[place]?.parts ?? {};
+  const waiting = Object.entries(parts).filter(([id, s]) => s.damage && s.by === "battle" && s.fixAt !== undefined && model?.parts[id]).sort((a, b) => a[1].fixAt - b[1].fixAt);
+  if (!waiting.length) return [];
+  const map = mapFor(place);
+  const plainWords = (one) => String(one ?? "").toLowerCase().replace(/^the\s+/, "").trim();
+  const wants = String(words ?? "").split(/\s*,\s*|\s+and\s+/i).map(plainWords).filter(Boolean);
+  const named = (id) => {
+    const part = model.parts[id];
+    const names = [part.system, part.kind, part.room, plainWords(map ? roomOf(map, part.room)?.name : null)];
+    return wants.some((want) => names.includes(want) || names.includes(want.replace(/s$/, "")));
+  };
+  const first = waiting.filter(([id]) => named(id));
+  if (!first.length) return [`[SYSTEMS] Nothing of that is waiting to be mended. The engineers carry on as they were.`];
+  const slots = waiting.map(([, s]) => s.fixAt);
+  [...first, ...waiting.filter(([id]) => !named(id))].forEach(([, s], k) => {
+    s.fixAt = slots[k];
+  });
+  const names = first.map(([id]) => `the ${model.parts[id].name}`);
+  return [`[SYSTEMS] The engineers will mend ${names.length < 2 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`} first.`];
+}
+
+// What a battle broke that's still waiting to be mended, room by room, in the order the engineers will get to it:
+// "the junction box in The Names Bulkhead; the nav core and the relay in The Bridge". When it's all mended, says so.
+export function battleDamageWords(game, place) {
+  const model = systemsOf(place);
+  const map = mapFor(place);
+  const byRoom = new Map();
+  for (const [id, s] of Object.entries(game.systems?.[place]?.parts ?? {}).sort((a, b) => (a[1].fixAt ?? 0) - (b[1].fixAt ?? 0))) {
+    const part = model?.parts[id];
+    if (!part || !s.damage || s.by !== "battle") continue;
+    byRoom.set(part.room, [...(byRoom.get(part.room) ?? []), `the ${part.name}`]);
+  }
+  if (!byRoom.size) return "nothing left to mend";
+  const listed = (names) => (names.length < 2 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
+  return [...byRoom].map(([room, names]) => `${listed(names)} in ${(map ? roomOf(map, room)?.name : null) ?? room}`).join("; ");
+}
+
 export function repairPart(game, place, id) {
   const s = game.systems?.[place]?.parts?.[id];
   if (s) {

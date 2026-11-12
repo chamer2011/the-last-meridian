@@ -13,7 +13,7 @@ import { seedFrom, talkHeard, walkView } from "./walk.js";
 import { ROOM_TALK } from "./world.js";
 import { systemsTalk } from "./systems.js";
 import { grudgeLine, storyCommand } from "./command.js";
-import { ANSWERS, answerRequest, requestFor, requestScene, requestSceneOf } from "./requests.js";
+import { answerOf, answerRequest, requestFor, requestScene, requestSceneOf } from "./requests.js";
 import { notePut } from "./puts.js";
 import { stockExtras } from "./room-hooks.js";
 
@@ -140,7 +140,7 @@ function enterTalkPart(game, talk, scene, id, emit, hops = 0) {
     if (outcome.notice) emit({ type: "notice", text: outcome.notice });
   }
   // The player's answer to a request: yes takes it on, not now puts it off a day, no turns it down (src/requests.js).
-  if (talk.written.request && ANSWERS.includes(id)) for (const notice of answerRequest(game, talk.written.request, id)) emit({ type: "notice", text: notice });
+  if (talk.written.request && answerOf(id)) for (const notice of answerRequest(game, talk.written.request, answerOf(id))) emit({ type: "notice", text: notice });
   if (talk.written.request) speak();
   if (handBack) talk.written = { id: talk.written.usual.id, part: handBack.id, seen: [handBack.id], stock: talk.written.usual.stock };
   emit({ type: "state" });

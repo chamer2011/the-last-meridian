@@ -36,7 +36,7 @@ import { SKILLS } from "./character-data.js";
 import { findCharacter, fullName } from "./campaign.js";
 import { FACTIONS, ITEMS, LOCATIONS } from "./data.js";
 import { itemFactor } from "./daily.js";
-import { TROUBLES, YOU, calledBy, commandOf, deposedStart, holderKey, jobByWords, jobOf, lostReason, onJob, personByWords, postById, postByWords, postOf, rememberRequest, stillAlive, storyCommand, tallyDuty, troublesOf } from "./command.js";
+import { TROUBLES, YOU, calledBy, commandOf, deposedStart, deputyFor, holderKey, jobByWords, jobOf, lostReason, onJob, personByWords, postById, postByWords, postOf, rememberRequest, stillAlive, storyCommand, tallyDuty, troublesOf } from "./command.js";
 import { FACT_ID, clearFact, recordFact } from "./record.js";
 import { dueWords, heldUp } from "./quests.js";
 import { START_LIST, aboardShip, isCaptain, startOf } from "./role.js";
@@ -45,7 +45,7 @@ import { loadScenes, scenesUnderWay, withStandIns } from "./scenes.js";
 import { itemByWords, logisticsOf, storeByWords, storeNames } from "./logistics.js";
 import { notePut, putsOf } from "./puts.js";
 import { removeItem, tellRequests } from "./rules.js";
-import { partBroken, partByWords, partWords, partsWaitingIds } from "./systems.js";
+import { battleDamageWords, partBroken, partByWords, partWords, partsWaitingIds } from "./systems.js";
 import { newTurnLimits, runTool } from "./tools.js";
 import { tellStoryRequests } from "./request-hook.js";
 import { mapFor, personWhere, roomOf, roomsOf } from "./walk.js";
@@ -71,6 +71,9 @@ const HANDED_DUTY = { done: 5, failed: -15 };
 // The answers a request's parts stand for: yes takes it on; given takes it on and gives what's wanted there and then;
 // handed leaves it to whoever's post it is; later puts it off a day; no turns it down.
 export const ANSWERS = ["yes", "given", "handed", "later", "no"];
+// A part's answer: its own name, or yes for a yes of its own (yes_locked, yes_work), when the player's answer decides
+// what's done there and then, each with its own * lines.
+export const answerOf = (id) => (ANSWERS.includes(id) ? id : /^yes_[a-z0-9_]+$/i.test(String(id ?? "")) ? "yes" : null);
 export const ENDINGS = ["done", "failed", "gone"];
 
 const nowOf = (game) => game.clock?.hours ?? 0;
@@ -387,9 +390,10 @@ export function compileRequest(kind, scene) {
   if (model.need?.kind === "carry" && model.about !== DOWN) problems.push(`carry {about} to the medbay needs about: ${DOWN}`);
   if (!model.about && JSON.stringify(scene?.parts ?? {}).includes("{about}")) problems.push("{about} is only filled in for a request with an about: line");
   for (const part of ["ask", ...ENDINGS]) if (!parts[part]) problems.push(`it needs a part called ${part}`);
-  if (!parts.yes && !parts.given) problems.push("it needs a part called yes, for what they say when the player takes it on");
+  const yesParts = Object.keys(parts).filter((id) => answerOf(id) === "yes");
+  if (!yesParts.length && !parts.given) problems.push("it needs a part called yes (or yes_ and a word, one for each answer that settles it), for what they say when the player takes it on");
   if (scene?.start && scene.start !== "ask" && parts.ask) problems.push("it starts at its ask, so leave out the start: line");
-  if (parts.ask && !(parts.ask.choices ?? []).some((choice) => choice.to === "yes" || choice.to === "given")) problems.push("its ask needs a choice that goes to yes");
+  if (parts.ask && !(parts.ask.choices ?? []).some((choice) => answerOf(choice.to) === "yes" || choice.to === "given")) problems.push("its ask needs a choice that goes to yes");
   if (parts.handed && !top.handed) problems.push("it has a handed part, so it needs a handed to: line saying which post it goes to");
   if (top.handed && !parts.handed) problems.push("it has a handed to: line, so it needs a handed part for what they say when it's left to them");
   if (top.handed && !top.gone && model.need && model.need.kind !== "fix") problems.push("handed to: needs a gone when: line, which is how the game knows they got it done");
@@ -519,7 +523,12 @@ function extrasFor(game, open) {
   if (post) {
     const holder = holderKey(game, SHIP, post.id);
     Object.assign(extra, { post: { id: post.id, name: post.title }, holder: holder && holder !== YOU ? askerStandIn(game, holder) : { id: "you", name: "you" } });
+    // Who the captain would give it to while its holder can't do it (a post left empty).
+    const deputy = deputyFor(game, SHIP, post.id);
+    if (deputy) extra.deputy = askerStandIn(game, deputy);
   }
+  // What a battle broke that's still waiting to be mended, in words (src/aftermath.js).
+  extra.damage = { id: "damage", name: battleDamageWords(game, SHIP) };
   // Where someone's lying, for a request to fetch them.
   const d = open.about ? downOf(game, open.about) : null;
   const map = d ? mapFor(SHIP) : null;
@@ -870,8 +879,10 @@ function settleOffered(game, found, one) {
   const { model } = found;
   // Nobody's waiting to be asked about something that's been put right, or by someone who can't ask any more.
   const asker = askerNow(game, model, one);
-  // One the written story started is asked whatever its when: line says, as long as there's someone to ask it.
-  const stale = !asker || Boolean(game.requests.off?.[one.kind]) || (!one.story && !whenHolds(game, model, one)) || (model.need.kind === "fix" && !partBroken(game, SHIP, one.part)) || Boolean(model.about && !troubleStands(game, model, one));
+  // One the written story started is asked whatever its when: line says, as long as there's someone to ask it, and
+  // until what it's about is put right without the player (its gone when: line), if it wasn't already when asked.
+  const stale = !asker || Boolean(game.requests.off?.[one.kind]) || (!one.story && !whenHolds(game, model, one)) || (model.need.kind === "fix" && !partBroken(game, SHIP, one.part)) || Boolean(model.about && !troubleStands(game, model, one))
+    || Boolean(model.gone && !one.goneAtFirst && conditionHolds(game, placed(model.gone, one.place ?? SHIP)));
   if (stale) {
     delete game.requests.open[one.kind];
     game.requests.rest[one.kind] = nowOf(game) + REST.dropped;
@@ -1100,7 +1111,9 @@ function storyRequestStep(game, step) {
   if (!asker || busy(asker) || (model.about && !trouble) || (model.need.kind === "fix" && !part)) return [`[REQUEST] Nobody can ask about ${title.toLowerCase()} just now.`];
   if (state.off) delete state.off[model.kind];
   const now = nowOf(game);
-  state.open[model.kind] = { kind: model.kind, asker, at: now, place: askedAt(game, model), state: "offered", story: true, ...(part ? { part } : {}), ...(trouble ? { about: trouble.about, post: trouble.post ?? null } : {}) };
+  // Whether what it's about was already put right when the story asked it: then that doesn't end it.
+  const already = Boolean(model.gone && conditionHolds(game, placed(model.gone, askedAt(game, model))));
+  state.open[model.kind] = { kind: model.kind, asker, at: now, place: askedAt(game, model), state: "offered", story: true, ...(already ? { goneAtFirst: true } : {}), ...(part ? { part } : {}), ...(trouble ? { about: trouble.about, post: trouble.post ?? null } : {}) };
   state.asked[model.kind] = now;
   state.last = model.kind;
   const room = roomWords(game, model, asker);

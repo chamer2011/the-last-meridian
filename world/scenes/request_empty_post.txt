@@ -1,0 +1,36 @@
+# A post with nobody at it
+// Draft by the AI (Claude), 2026-11-12, not yet edited by the owner. While an officer is down or laid up, the first
+// officer asks the captain whether to give their post to whoever's best fit for it. It's given for good: once they're
+// on their feet again, {holder} can ask for it back (The post they lost). A no leaves it to wait for them. {post} is the
+// post, {holder} whoever holds it, {deputy} the one the captain would give it to.
+for: the captain
+about: a post left empty
+asks: the first officer
+needs: your word
+by: 1 day
+
+== ask
+@{asker}: "{holder}'s laid up, Captain, and nobody's doing the work of the {post}. {deputy} could take it on. Shall I give it to them?"
+> Give it to {deputy} -> yes
+> Leave it until {holder}'s back -> no
+> Let me think about it -> later
+
+== yes
+@{asker}: "I'll tell {deputy}. {holder} won't like it, when they're up."
+* appoint {post} {deputy}: The captain gave the post of {post} to {deputy} while {holder} was laid up
+
+== no
+@{asker}: "Then it waits for them."
+
+== later
+@{asker}: "Don't leave it too long. The work doesn't wait."
+
+== done
+@{asker}: "It's covered."
+* xp 5: A post with nobody at it
+
+== failed
+@{asker}: "Nobody's doing it, Captain."
+
+== gone
+@{asker}: "Never mind. {holder}'s back on their feet."

@@ -143,6 +143,15 @@ Lines starting with * happen when the part begins, and the player sees each as a
                                             world/stories: the quest is done with that line, and the ending's on
                                             the record. Put failed before the colon if the player lost it)
     * fuel 6: The reason                    (the Meridian's fuel, which jumps use; a minus sign burns it)
+    * morale 3: The reason                  (the ship's morale; a minus sign lowers it)
+    * prisoners work: The reason            (what's done with the prisoners a battle left in the brig: locked,
+                                            kept locked up; work, put to work under guard by day, a little morale
+                                            and the council's confidence at once; ashore, put off the ship at the
+                                            next port with a market she docks at, fewer aboard and a little morale)
+    * mend first navigation and comms: The reason
+                                            (the engineers mend what a battle broke one thing at a time: this puts
+                                            first the systems, kinds of part or rooms named, with "and" or commas,
+                                            keeping their pace, so only the order changes)
     * act 2                                 (the main story moves on to that act)
     * door sublevels                        (opens the door to that room, by the room's id in the map file,
                                             in the place the player is at)
@@ -213,6 +222,13 @@ and join several with "and":
     fuel < 3                         The Meridian's jump fuel, with the same comparisons.
     repairs waiting                  Something aboard the Meridian is broken, and the engineers can't mend
                                      it for want of a parts crate.
+    aftermath                        A battle's list of what it left behind is in the corner (see
+                                     world/battles/_how-to-write-a-battle.txt). With one of fire, fallen,
+                                     breach, galley, nav, dead, prisoners or posts after it, that thing on the
+                                     list is still open; add done for ticked (or never on it), or listed for on
+                                     it at all, ticked or not: aftermath prisoners, aftermath dead listed. And
+                                     aftermath repairs: something a battle broke is still to mend (done: all
+                                     of it mended).
     stock medicine_crate < 2         How many of an item the Meridian's stores hold, all of them together,
                                      by the item's id. Add in and a store for one of them: stock
                                      ration_crate < 1 in the pantry. The stores are in world/logistics.
@@ -490,12 +506,16 @@ handed to:  a post the captain can leave it to instead, like the chief engineer.
             and five goes on that post's duty for the day; if not, it's failed, and fifteen comes off.
 
 Then the parts, in the talk window's way (see CONVERSATIONS), with {asker} for whoever's asking,
-in a request to fix something, {part} for what's broken and {room} for the room it's in, in a
+in a request to fix something, {part} for what's broken and {room} for the room it's in, {damage} for what a
+battle broke that's still to mend (room by room, in the order the engineers will get to it), in a
 request about someone, {about}, {post} and {holder} (below), for a life that has one, {boss}, and in
 any request {place}, the place it was asked at, and {port}, whoever holds it (see AT THE PORTS):
 
     == ask          what they ask. One of its choices goes to yes (or given).
     == yes          what they say to a yes. The player takes it on.
+    == yes_locked   a yes of its own: yes_ and a word. A request whose answer decides what's done there and
+                    then, with needs: your word, can have one for each answer, each with its own * lines,
+                    as the prisoners' does (yes_locked, yes_work, yes_ashore).
     == given        what they say when the player gives what's wanted there and then: for a give
                     request, the player takes it on and hands over what they have of it at once.
                     Put ? has medkit on the choice so it's only offered when they've got one.
@@ -543,6 +563,12 @@ hasn't done it yet) once the trouble isn't there any more.
     the least loyal officer         the officer least loyal to the captain. {about} is them, {post}
                                     their post. Nobody asks for themselves, so asks: names someone,
                                     like the first officer.
+    a post left empty               a post whose holder is lying where they fell, laid up in the
+                                    medbay or being patched up, with someone fit to take it. {about}
+                                    and {holder} are the holder, {post} the post, and {deputy} the one
+                                    the captain would give it to (the best fit, in the captain's eyes).
+                                    Nobody asks for themselves, so asks: names someone, like the first
+                                    officer. It's gone once they're back on their feet.
     someone down with nobody coming someone lying where they fell for a quarter of an hour, with no
                                     nurse or spare hand on the way. {about} is them and {room} where
                                     they lie. It's gone when someone else picks them up, done when

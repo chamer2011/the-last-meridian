@@ -15,7 +15,7 @@ import { aboardShip, isCaptain, startOf } from "./role.js";
 import { beliefAffinity } from "./rules.js";
 import { handChair, raiseRations } from "./ship.js";
 import { recordFact } from "./record.js";
-import { waitingForParts } from "./systems.js";
+import { mendFirst, waitingForParts } from "./systems.js";
 import { atPost, mapFor, roomsOf, seedFrom, walkCommand } from "./walk.js";
 import { COMMAND_FILE_PROBLEMS, ROOM_TALK, WORLD_CHARACTERS, WORLD_COMMAND, WORLD_LIFE } from "./world.js";
 import { BODIES, SPARE, THE_CHAIR, readHolderLine, readJobLine, readPostLine, readWorkersLine, slugOf } from "../public/command-text.js";
@@ -885,6 +885,21 @@ export function scoreFor(game, place, post, key, chooser) {
 const ranked = (game, place, post, chooser) => candidatesFor(game, place, post.id)
   .map((key) => ({ key, score: scoreFor(game, place, post, key, chooser) }))
   .sort((a, b) => b.score - a.score || String(a.key).localeCompare(String(b.key)));
+// The posts with nobody fit at them, by id: their holder lying where they fell, laid up or being patched up (the chair
+// aside, which the chain of command fills in its own way).
+export function emptyPosts(game, place = SHIP_PLACE) {
+  const model = commandOf(place);
+  if (!model) return [];
+  return model.posts.filter((post) => {
+    const holder = holderKey(game, place, post.id);
+    return post.id !== model.chairPost && holder && holder !== YOU && LAID_UP.has(lostReason(game, place, holder));
+  }).map((post) => post.id);
+}
+// Who the captain would give a post to, if its holder can't do it: the best of its pool in the captain's eyes.
+export function deputyFor(game, place, postId) {
+  const post = postById(place, postId);
+  return post ? ranked(game, place, post, YOU)[0]?.key ?? null : null;
+}
 
 // What a bad stretch has been about, by the measure that's been worst: "a week of empty kettles".
 const WHY = {
@@ -1350,8 +1365,10 @@ const factName = (key) => (WORLD_CHARACTERS[key] ? key : slugOf(key)).slice(0, 2
 // Every fact the chain of command can leave, for the checker: a post changing hands, someone relieved or put in the
 // brig, and how a mutiny went.
 export const MUTINY_FACTS = ["ship_taken_by_mutiny", "captain_overthrown", "chair_given_back", "officers_given_ground", "mutiny_talked_down", "mutiny_put_down", "captain_stepped_down", "player_joined_mutiny", "player_warned_captain"];
+// What's done with the prisoners from a battle, on the record (settlePrisoners, putPrisonersAshore).
+const PRISONER_FACTS = ["prisoners_kept_locked_up", "prisoners_put_to_work", "prisoners_to_go_ashore", "mutineers_put_ashore"];
 export function commandFacts() {
-  const names = new Set(MUTINY_FACTS);
+  const names = new Set([...MUTINY_FACTS, ...PRISONER_FACTS]);
   for (const place of Object.keys(WORLD_COMMAND)) {
     for (const post of commandOf(place)?.posts ?? []) names.add(`${post.id}_changed_hands`);
     for (const one of peopleOf(place)) {
@@ -1421,6 +1438,13 @@ export function storyCommand(game, step, place = SHIP_PLACE) {
   const chooserOf = (one) => (one.chooser.post ? holderKey(game, place, one.chooser.post) : null);
   const named = (key) => upperFirst(calledBy(game, place, key));
   switch (step.command) {
+    // What's done with the prisoners in the brig, and the order the engineers mend what a battle broke (src/aftermath.js).
+    case "prisoners":
+      notes.push(...settlePrisoners(game, place, step.fate));
+      break;
+    case "mend":
+      notes.push(...mendFirst(game, place, step.first));
+      break;
     case "appoint": {
       if (!post || post.id === model.chairPost || !who || who === YOU || who === "nobody") throw new Error(`the chain of command can't appoint ${step.who} as ${step.post}`);
       if (holderKey(game, place, post.id) !== who) changeHands(game, place, post.id, who, { by: chooserOf(post), day: today, notes });
@@ -1496,7 +1520,9 @@ const RELIEVED_ASKS = 14;
 //   someone in the brig      whoever's in the brig
 //   the least loyal officer  the officer least loyal to the captain, least first
 // Reading this changes nothing.
-export const TROUBLES = ["a rival", "someone relieved", "someone in the brig", "the least loyal officer"];
+export const TROUBLES = ["a rival", "someone relieved", "someone in the brig", "the least loyal officer", "a post left empty"];
+// What leaves a post empty: its holder lying where they fell, laid up in the medbay, or being patched up.
+const LAID_UP = new Set(["down", "laid up in the medbay", "being patched up"]);
 export function troublesOf(game, kind, place = SHIP_PLACE) {
   const model = commandOf(place);
   const state = stateOf(game, place);
@@ -1516,6 +1542,9 @@ export function troublesOf(game, kind, place = SHIP_PLACE) {
       return Object.keys(state?.brig ?? {}).filter((key) => key !== YOU && stillAlive(game, key)).map((key) => ({ asker: key, about: key, post: null }));
     case "the least loyal officer":
       return officersOf(game, place).sort((a, b) => loyaltyOf(game, place, a) - loyaltyOf(game, place, b)).map((key) => ({ asker: null, about: key, post: postOf(game, place, key) }));
+    // A post whose holder is down or laid up, with someone fit to take it: {about} is the holder, {post} the post.
+    case "a post left empty":
+      return emptyPosts(game, place).filter((post) => deputyFor(game, place, post)).map((post) => ({ asker: null, about: holderKey(game, place, post), post }));
     default:
       return [];
   }
@@ -2360,10 +2389,51 @@ export function prisonersState(game, place) {
 export const prisonersAt = (game, place) => stateOf(game, place)?.prisoners ?? null;
 // What the Command menu says about them, beside whoever's in the brig by name.
 function prisonerWords(held) {
-  if (!held || (!held.held && !held.coming?.length)) return [];
+  if (!held || (!held.held && !held.coming?.length && !held.ashore)) return [];
   const count = (n) => `${n} mutineer${n === 1 ? "" : "s"}`;
   const coming = held.coming?.length ? `${held.held ? ", and " : ""}${count(held.coming.length)} still down or in the medbay, to follow` : "";
-  return [`${held.held ? `${count(held.held)}, without names, since day ${held.since}` : ""}${coming}`];
+  const fate = held.fate ? `: ${FATE_WORDS[held.fate]}` : "";
+  const ashore = held.ashore ? `${held.held || held.coming?.length ? "; " : ""}${count(held.ashore)} put ashore` : "";
+  return [`${held.held ? `${count(held.held)}, without names, since day ${held.since}` : ""}${coming}${held.held || held.coming?.length ? fate : ""}${ashore}`];
+}
+
+// ---- What's done with them -------------------------------------------------------------------------------------
+
+// The captain decides what's done with the prisoners (src/aftermath.js has the chief of security ask): kept locked up,
+// put to work under guard, or put ashore at the next port the Meridian docks at. Being put to work earns a little
+// morale and the council's confidence at once; being put ashore happens when she docks.
+export const FATES = ["locked", "work", "ashore"];
+const FATE_WORDS = { locked: "kept locked up", work: "put to work under guard by day", ashore: "to be put ashore at the next port" };
+export function settlePrisoners(game, place, fate) {
+  if (!FATES.includes(fate)) throw new Error(`the prisoners can be locked, work or ashore, not ${fate}`);
+  const held = prisonersState(game, place);
+  const notes = [];
+  held.fate = fate;
+  held.fateDay = dayNow(game);
+  if (fate === "work" && game.ship) {
+    game.ship.morale = Math.min(100, (game.ship.morale ?? 50) + 2);
+    shakeConfidence(game, place, 3);
+    notes.push("[SHIP] Morale +2: the mutineers earning their keep, under guard.");
+  }
+  onRecord(game, `prisoners_${fate === "locked" ? "kept_locked_up" : fate === "work" ? "put_to_work" : "to_go_ashore"}`, `On day ${held.fateDay}, the captain had the mutineers in the brig ${FATE_WORDS[fate]}.`);
+  tell(game, place, notes, `The mutineers in the brig are ${FATE_WORDS[fate]}.`, held.fateDay);
+  return notes;
+}
+// Put ashore: those held go off the ship at a port, and the brig is empty of them. Returns lines for the story.
+export function putPrisonersAshore(game, place, port) {
+  const held = prisonersAt(game, place);
+  if (held?.fate !== "ashore" || !held.held) return [];
+  const n = held.held;
+  held.ashore = (held.ashore ?? 0) + n;
+  held.held = 0;
+  const notes = [];
+  if (game.ship) {
+    game.ship.aboard = Math.max(0, (game.ship.aboard ?? 0) - n);
+    game.ship.morale = Math.min(100, (game.ship.morale ?? 50) + 2);
+  }
+  onRecord(game, "mutineers_put_ashore", `On day ${dayNow(game)}, the mutineers were put ashore at ${LOCATIONS[port]?.name ?? port}.`);
+  tell(game, place, notes, `At ${LOCATIONS[port]?.name ?? port}, ${n === 1 ? "the mutineer from the brig is" : `the ${n} mutineers from the brig are`} put ashore under guard. Morale +2.`, dayNow(game));
+  return notes;
 }
 
 // The council's confidence in the captain, moved by something that happened: a battle aboard (src/aftermath.js).

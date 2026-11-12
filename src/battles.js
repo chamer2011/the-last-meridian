@@ -263,6 +263,7 @@ export function startBattle(game, id, { leadIn = null } = {}) {
       ...(battle.morale ? { morale: battle.morale } : {}),
       ...(battle.confidence ? { confidence: battle.confidence } : {}),
       ...(battle.after?.length ? { after: battle.after.map(({ line, ...one }) => one) } : {}),
+      ...(battle.list ? { list: battle.list } : {}),
       waves,
     },
   });

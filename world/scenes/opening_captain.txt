@@ -38,6 +38,8 @@ The last sidearm clatters onto the deck plates, and then it's quiet enough to he
 The bridge is still yours. Now the rest of the ship is too, whatever's left of her after this.
 
 NOTE: [STORY] The mutiny is put down. Whoever went down lies where they fell, and the medbay has been called.
+* request prisoners: The chief of security has the prisoners to see about
+* request damage_report: The chief engineer has the damage to report
 END
 
 == woke
@@ -47,4 +49,6 @@ You come back slowly, to the smell of antiseptic and the hum of the medbay's lig
 Whoever's on duty tells you it's over: the mutiny was put down without you, by the people you left standing on the deck and the ones who came up from below. The bridge is still the ship's. Nobody will say yet what it cost.
 
 NOTE: [STORY] The mutiny was put down while you were down. You've come to in the medbay.
+* request prisoners: The chief of security has the prisoners to see about
+* request damage_report: The chief engineer has the damage to report
 END

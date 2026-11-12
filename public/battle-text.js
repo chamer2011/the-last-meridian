@@ -13,6 +13,7 @@
 //     when they give up: The rest of them throw their sidearms down.
 //     morale falls by: 5, and 2 for each of yours who went down, and 5 more if you went down
 //     the council's confidence falls by: 10, and 5 more if you went down
+//     the list afterwards: After the mutiny
 //
 //     Against you:
 //     - 6 mutineer_crew, up The Upper Forward Stair
@@ -42,8 +43,9 @@ export const BATTLE_HEADER = {
   "when they give up": "gaveUpLine",
   "morale falls by": "morale",
   "the council's confidence falls by": "confidence",
+  "the list afterwards": "list",
 };
-const HEADER_ORDER = ["draft", "place", "deck", "target", "giveUp", "crewAs", "cover", "gaveUpLine", "morale", "confidence"];
+const HEADER_ORDER = ["draft", "place", "deck", "target", "giveUp", "crewAs", "cover", "gaveUpLine", "morale", "confidence", "list"];
 const WORDS_FOR = Object.fromEntries(Object.entries(BATTLE_HEADER).map(([words, key]) => [key, words]));
 // The lists, by their headings: the two sides, and what the battle leaves behind on the ship (src/aftermath.js).
 export const BATTLE_SIDES = { "against you": "against", "with you": "with", "after it": "after" };

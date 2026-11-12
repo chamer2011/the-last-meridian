@@ -1,0 +1,43 @@
+# The prisoners
+// Draft by the AI (Claude), 2026-11-12, not yet edited by the owner. After a battle aboard, the chief of security asks
+// the captain what's to be done with the prisoners in the brig, a number without names. Each answer settles it its own
+// way: kept locked up; put to work under guard by day (a little morale and the council's confidence at once); or put
+// ashore at the next port with a market the Meridian docks at, when they go off the ship and the brig is empty of them.
+for: the captain
+when: aftermath prisoners
+asks: the chief of security
+needs: your word
+by: 2 days
+gone when: aftermath prisoners done
+
+== ask
+@{asker}: "Captain. The brig's full of them, and the medbay sends me more as they're fit to stand. Two cells and a chair weren't built for this. What do you want done with them?"
+> Keep them locked up -> yes_locked
+> Put them to work under guard -> yes_work
+> Put them ashore at the next port -> yes_ashore
+> Let me think about it -> later
+
+== yes_locked
+@{asker}: "Locked up it is. They'll eat and they'll sit, and my people will stand over them."
+* prisoners locked: The captain had the mutineers kept locked up
+
+== yes_work
+@{asker}: "Under guard, and the first one who tries anything goes back in a cell and stays there."
+* prisoners work: The captain had the mutineers put to work under guard
+
+== yes_ashore
+@{asker}: "The next port with a market, then. They'll be somebody else's trouble."
+* prisoners ashore: The captain had the mutineers put ashore at the next port
+
+== later
+@{asker}: "They're not going anywhere. Neither are my guards, while they're in there."
+
+== done
+@{asker}: "That's settled, then."
+* xp 10: The prisoners
+
+== failed
+@{asker}: "I asked you what to do with them, Captain. They're still sitting in my brig."
+
+== gone
+@{asker}: "The prisoners are settled. Thank you, Captain."

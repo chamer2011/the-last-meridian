@@ -13,9 +13,11 @@ import { stockOf, storeByWords, storeNames } from "./logistics.js";
 
 // The ship whose stores "stock" counts. Spelt here rather than taken from src/ship.js, which reads scenes itself.
 const SHIP_ID = "meridian";
+// What a battle's list afterwards can have on it (src/aftermath.js), and repairs, for whether what it broke is mended.
+export const AFTERMATH_ITEMS = ["fire", "fallen", "breach", "galley", "nav", "dead", "prisoners", "posts", "repairs"];
 // What a port's supplies are, in world/daily.json.
 const SUPPLIES = ["food", "fuel", "medicine", "parts"];
-import { MUTINY_CONDITIONS, MUTINY_OUTCOMES, brigHolds, commandWords, knownPerson, loyaltyFor, mutinyHolds, rivalHolds, shortHolds, storyHolds } from "./command.js";
+import { FATES, MUTINY_CONDITIONS, MUTINY_OUTCOMES, brigHolds, commandWords, knownPerson, loyaltyFor, mutinyHolds, rivalHolds, shortHolds, storyHolds } from "./command.js";
 
 // Two people written one after the other, as in "* remember marrow tarrow -10": the first split where both are someone.
 function splitPeople(words) {
@@ -289,6 +291,16 @@ export function parseCondition(text) {
         // Something aboard the Meridian is broken and the engineers can't mend it for want of a parts crate.
         if (rest.join(" ").toLowerCase() !== "waiting") problems.push(`"repairs" is followed by waiting: "${raw.trim()}"`);
         break;
+      case "aftermath": {
+        // The list after a battle (src/aftermath.js): showing at all, or one thing on it still open or done.
+        const [item, how] = rest.map((one) => one.toLowerCase());
+        if (item && !AFTERMATH_ITEMS.includes(item)) problems.push(`"aftermath" is followed by nothing, or one of ${AFTERMATH_ITEMS.join(", ")} and then open or done: "${raw.trim()}"`);
+        if (how && !["open", "done", "listed"].includes(how)) problems.push(`"aftermath ${item}" is followed by open, done or listed: "${raw.trim()}"`);
+        if (rest.length > 2) problems.push(`"${raw.trim()}" has words the game doesn't follow: ${rest.slice(2).join(" ")}`);
+        term.id = item ?? null;
+        term.state = how ?? "open";
+        break;
+      }
       case "mutiny": {
         // The ship's chain of command: how far a mutiny's got, whether security would arrest its ringleader, and
         // whether the officers would have the player back in the chair.
@@ -363,6 +375,17 @@ function termHolds(game, term, helpers) {
     }
     case "mutiny": result = mutinyHolds(game, term.id); break;
     case "repairs": result = partsWaitingIds(game, SHIP_ID).length > 0; break;
+    case "aftermath": {
+      const list = game.aftermath;
+      if (!term.id) result = Boolean(list && !list.done);
+      else {
+        const open = term.id === "repairs"
+          ? Object.values(game.systems?.[SHIP_ID]?.parts ?? {}).some((part) => part.damage && part.by === "battle")
+          : Boolean(list?.items?.some((one) => one.id === term.id && one.done == null));
+        result = term.state === "listed" ? Boolean(list?.items?.some((one) => one.id === term.id)) : term.state === "done" ? !open : open;
+      }
+      break;
+    }
     case "rival": result = rivalHolds(game, term.id); break;
     case "supply": {
       const level = game.world?.places?.[term.place ?? game.location]?.goods?.[term.id];
@@ -511,6 +534,23 @@ export function parseEffect(text) {
     case "fuel": {
       const amount = signed(words[1] ?? "");
       return amount !== null && amount !== 0 && after ? { do: { tool: "change_ship", hull: 0, fuel: amount, morale: 0, reason: after } } : { problem: "fuel needs a number, with - to burn it, then a colon and the reason: * fuel 6: Mother Quill's depot" };
+    }
+    case "morale": {
+      // The ship's morale: * morale 3: The names said at the bulkhead.
+      const amount = signed(words[1] ?? "");
+      return amount !== null && amount !== 0 && after ? { do: { tool: "change_ship", hull: 0, fuel: 0, morale: amount, reason: after } } : { problem: "morale needs a number, with - to lower it, then a colon and the reason: * morale 3: The names said at the bulkhead" };
+    }
+    case "prisoners": {
+      // What's done with the prisoners from a battle: * prisoners work: The reason.
+      const fate = words[1]?.toLowerCase();
+      if (!FATES.includes(fate) || words.length > 2) return { problem: `prisoners is written * prisoners and one of ${FATES.slice(0, -1).join(", ")} or ${FATES.at(-1)}, then a colon and the reason: * prisoners work: The captain put them to work` };
+      return after ? { do: { command: "prisoners", fate, reason: after } } : { problem: "prisoners needs a colon and the reason after it" };
+    }
+    case "mend": {
+      // The order the engineers mend what a battle broke: * mend first navigation and comms: The reason.
+      const first = words.slice(2).join(" ");
+      if (words[1]?.toLowerCase() !== "first" || !first) return { problem: "mend is written * mend first, then the systems, kinds of part or rooms to mend first, then a colon and the reason: * mend first navigation and comms: The bridge first" };
+      return after ? { do: { command: "mend", first, reason: after } } : { problem: "mend first needs a colon and the reason after it" };
     }
     case "appoint": {
       // Someone given a post: * appoint quartermaster tobin: reason. Whoever chooses for it appoints them.
