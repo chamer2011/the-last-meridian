@@ -74,6 +74,10 @@ test("a hard hit on a limb that's already broken takes it now and then, and neve
 
 test("a lost arm: the stump dressed in the medbay, an arm built in the Repair Bay from parts crates, and fitted", () => {
   const game = newGame();
+  // A game whose seed made Bao up with nothing that already tells on how they fight: an old artificial arm of their
+  // own, say, would make it two off the attack and not one.
+  game.bodySeed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].find((seed) => body.fightAttackOf(body.fighterBody({ ...game, bodySeed: seed }, { name: "Mess Hand Bao", place: "meridian" }).wounds) === 0);
+  assert.ok(game.bodySeed, "one of a dozen seeds leaves Bao with nothing wrong with their arms");
   game.walk = null;
   walkCommand(game, { action: "room", to: "medbay" });
   const crates = countAboard(game, "meridian", ["parts_crate"]).n;
