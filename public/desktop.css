@@ -168,3 +168,69 @@
 /* The rig's heat in the desktop's tray. */
 .os .tray .rig-heat.warm { color: var(--warnc); }
 .os .tray .rig-heat.hot { color: var(--badc); font-weight: 700; }
+
+/* Step 6: computers that aren't desks, each with a face of its own: a door's panel (a keypad and a two-line screen),
+   a junction box's service menu and a camera's feed on the rig's little amber screen, with the buttons under it. */
+.check-float > .desk.device { width: min(100%, 720px); }
+.desk.device .device-frame { flex: 1 1 380px; position: relative; }
+.desk.device .device-frame .desk-note { position: static; }
+.desk.device .desk-advisor { align-self: flex-start; }
+.desk .device-frame { flex: 1 1 auto; min-width: 0; display: grid; gap: 8px; padding: 10px 12px 12px; background: linear-gradient(#2b2f2c, #1c1f1d); border-radius: 12px; box-shadow: inset 0 2px 0 #3d423e, inset 0 -3px 0 #121412, 0 12px 34px #000a; cursor: grab; color: #d6dcd7; }
+.desk .device-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; font: 12px/1.3 var(--mono); }
+.desk .device-head strong { color: #f0f4f1; font-weight: 600; }
+.desk .device-tray { display: flex; gap: 10px; flex-wrap: wrap; color: #9aa39c; }
+.desk .device-watch.noticed { color: #f2c14e; }
+.desk .device-watch.tracing { color: #ff7b6b; animation: desk-blink .8s steps(2) infinite; }
+.desk .device-note { font: 12px/1.4 var(--mono); color: #9aa39c; }
+.desk .device-note.warn { color: #f2c14e; }
+.desk .device-acts { display: grid; gap: 4px; }
+.desk .device-acts button { text-align: left; justify-content: flex-start; }
+.desk .device-acts small { color: #9aa39c; }
+.desk .device-log { max-height: 7.5em; overflow: hidden; font: 12px/1.35 var(--mono); border-top: 1px solid #3a3f3b; padding-top: 6px; }
+.desk .device-foot { display: flex; justify-content: flex-end; }
+/* The door's panel */
+.desk .door-plate { width: 200px; justify-self: center; padding: 12px; background: linear-gradient(#5b625d, #3f4541); border: 1px solid #222; border-radius: 6px; box-shadow: inset 0 1px 0 #7b837d, 0 6px 14px #0008; display: grid; gap: 9px; cursor: default; }
+.desk .door-plate .lcd { background: #26331f; color: #b8f08a; font: 18px/1.15 var(--mono); padding: 6px 10px; display: grid; border: 2px solid #1b1f1b; text-shadow: 0 0 4px #b8f08a88; letter-spacing: .06em; min-height: 2.5em; }
+.desk .door-plate .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.desk .door-plate .keys i { font-style: normal; text-align: center; padding: 5px 0; background: linear-gradient(#cfd3cf, #9aa09b); color: #222; border-radius: 3px; font: 600 12px/1 var(--mono); box-shadow: 0 2px 0 #333; }
+.desk .door-plate .slot { display: flex; gap: 8px; align-items: center; justify-content: center; font: 11px var(--mono); color: #ccc; background: #222; padding: 4px; border-radius: 3px; }
+.desk .door-plate .led { width: 9px; height: 9px; border-radius: 50%; background: #ff5a4a; box-shadow: 0 0 6px #ff5a4a; animation: none; }
+.desk .door-plate .led.on { background: #5aff7a; box-shadow: 0 0 6px #5aff7a; }
+/* The service menu, on the rig's own little amber screen */
+.desk .svc { background: #120a02; color: #ffb347; font: 14px/1.4 var(--mono); padding: 10px 12px; border: 6px solid #2a2622; border-radius: 10px; box-shadow: inset 0 0 30px #000, 0 0 0 1px #000; text-shadow: 0 0 4px #ffb34766; white-space: pre-wrap; cursor: default; overflow-x: auto; }
+.desk .svc button.svc-line { display: block; width: 100%; font: inherit; color: inherit; border: 0; padding: 0 4px; background: none; text-align: left; white-space: pre-wrap; min-height: 0; box-shadow: none; }
+.desk .svc button.svc-line::before, .desk .svc button.svc-line::after { content: none; }
+.desk .svc button.svc-line:hover:not(:disabled), .desk .svc button.svc-line:focus-visible { background: #ffb347; color: #120a02; outline: 0; }
+.desk .svc button.svc-line:disabled { opacity: .55; }
+/* The camera's feed */
+.desk .cam { position: relative; aspect-ratio: 16 / 9; background: #0b0d0c; overflow: hidden; border: 4px solid #1c1f1d; filter: grayscale(.7) contrast(1.1); cursor: default; }
+.desk .cam-scene { position: absolute; inset: 0; background: linear-gradient(#2c332e 0 45%, #1d221f 45% 100%); }
+.desk .cam-scene::before { content: ""; position: absolute; left: 10%; right: 10%; top: 45%; height: 2px; background: #4a524c; }
+.desk .cam-door { position: absolute; left: 76%; top: 18%; width: 12%; height: 40%; background: #3c4540; border: 2px solid #59625c; }
+.desk .cam .fig { position: absolute; bottom: 20%; width: 5%; height: 34%; background: #c9cfca; border-radius: 40% 40% 10% 10%; }
+.desk .cam .fig.you { background: #e8ffe8; box-shadow: 0 0 0 1px #000; }
+.desk .cam-osd { position: absolute; inset: 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 6px 8px; font: 12px/1 var(--mono); color: #e8ffe8; text-shadow: 0 0 2px #000; }
+.desk .cam.loop .cam-osd span:last-child { color: #ffd166; }
+.desk .cam.blind .cam-scene { background: repeating-linear-gradient(0deg, #888 0 1px, #222 1px 2px, #555 2px 3px); }
+@media (prefers-reduced-motion: no-preference) {
+  .desk .cam.blind .cam-scene { animation: desk-snow .2s steps(3) infinite; }
+}
+@keyframes desk-snow { 50% { background-position: 0 2px; } }
+.desk .cam::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(#0000 0 2px, #0004 2px 3px); pointer-events: none; }
+
+/* NAVCOM 7, the Navy's own desktop, for the ship's main system: the same windows in the Navy's colours, with its
+   restricted bar along the top and SENTRY's meter in it. */
+.os.navcom { --desk: #0e1726; --face: #1b2b44; --hi: #3c5a85; --lo: #0d1828; --dark: #04080f; --t1: #7a1d1d; --t2: #a83232; --tt: #ffe7c2; --tx: #c8d6e8; --sel: #3c5a85; --selt: #fff; --field: #0b1422; --dim: #7d8fa8; --warnc: #f2c14e; --badc: #ff7b6b; --goodc: #8fd18f; text-shadow: none; }
+.os.navcom button.icon { color: #c8d6e8; }
+.os.navcom .icons { top: 22px; gap: 2px; }
+.os.navcom button.icon { gap: 1px; }
+.os.navcom .icon svg { width: 24px; height: 24px; }
+.os .navcom-top { position: absolute; left: 0; right: 0; top: 0; height: 18px; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 0 8px; background: #7a1d1d; color: #ffe7c2; font-weight: 700; letter-spacing: .06em; font-size: 10px; z-index: 1; }
+.os .navcom-sentry { display: flex; gap: 2px; align-items: center; }
+.os .navcom-sentry i { width: 6px; height: 8px; border: 1px solid #ffe7c2; }
+.os .navcom-sentry i.on { background: #ffe7c2; }
+.os .navcom-sentry.noticed i.on { background: #f2c14e; }
+.os .navcom-sentry.tracing i.on { background: #ff7b6b; }
+.os .row-item.navcom-line { display: flex; justify-content: space-between; gap: 6px; align-items: flex-start; }
+.os .row-item.navcom-line small { color: var(--dim); }
+.os .row-item.navcom-head { color: var(--tt); background: var(--t1); font-weight: 700; }

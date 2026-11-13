@@ -18,11 +18,12 @@ import { manifestLines } from "./logistics.js";
 import { untagged } from "../public/story.js";
 import { copyProgram, rigNow, runRigProgram, wearHottest } from "./rig.js";
 import { HEAT, rigMinutes, rigNoise, sessionHeat } from "./rig-parts.js";
-import { MAX_LOG, MINUTES_PER_ACTION, contentOf, knowsPassword, levelNamed, line, memoryOf, openLogon, openSession, peopleAt, programOffered, readNoise, sameName, settleHack, slug, watchFor, watchStage, writtenContent } from "./computers.js";
+import { MAX_LOG, MINUTES_PER_ACTION, contentOf, knowsPassword, levelNamed, line, memoryOf, openLogon, openSession, peopleAt, programOffered, readNoise, sameName, settleHack, slug, watcherOf, watchStage, writtenContent } from "./computers.js";
+import { deviceCommand } from "./devices.js";
 
 // Found by the trace, or cut off: out at once. On a ship's main system or worse that leaves a mark on the record.
 function thrownOut(game, session, why = "traced") {
-  const watch = watchFor(game, session.classKey);
+  const watch = watcherOf(game, session);
   const words = why === "cut" ? `${watch.name} cuts the session off and locks ${session.name}.` : `The trace finds the terminal you're on, ${session.name}.`;
   settleHack(game, session, false, why);
   if (session.practice) return finish(game, session, [`[PRACTICE] ${words} In practice, that's all it costs.`]);
@@ -56,7 +57,7 @@ function act(game, session, { noise = 0, minutes = MINUTES_PER_ACTION } = {}) {
   const spent = rig ? rigMinutes(rig, base, heatBefore >= HEAT.overheating) : base;
   session.minutes = (session.minutes ?? 0) + spent;
   if (session.yours) return null;
-  const watch = watchFor(game, session.classKey);
+  const watch = watcherOf(game, session);
   let heard = Math.max(0, Number(noise) || 0);
   if (heard > 0 && session.free > 0) {
     session.free -= 1;
@@ -471,6 +472,8 @@ export function computerCommand(game, body) {
     case "system": return runSystem(game, session, content, body);
     case "rig": return runRigProgram(game, session, content, String(body.id ?? ""), { act, readEverything });
     case "copy": return copyProgram(game, session, content, String(body.id ?? ""), { act });
+    // A door panel's, a junction box's, a camera's or NAVCOM 7's own buttons (src/devices.js).
+    case "device": return deviceCommand(game, session, content, String(body.id ?? ""), { act, finish });
     default: throw new Error("Unknown order.");
   }
 }

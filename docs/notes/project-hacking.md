@@ -1,4 +1,4 @@
-# The hacking rework (2026-11-13): designed on example pages, planned, steps 1 to 5 built
+# The hacking rework (2026-11-13): designed on example pages, planned, steps 1 to 6 built
 
 ## What was asked
 
@@ -351,3 +351,62 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
 - Not done: the links' reach and the computers that need them (step 6), the story asking about parts or giving them
   (step 7), the Story board for wrecks and dealers, the Harrow on air bottles, and a wreck to walk through. The owner
   hasn't tried it.
+
+## Step 6, more computers (built 2026-11-13, at "Yes, step 6")
+
+- From the design page's More computers tab (eleven kinds of computer, four playable: the Brig's door panel, junction
+  box JB-3's service menu, passage camera D2-04, NAVCOM 7 on the bridge) and the plan's pick "NAVCOM 7 for the ship's
+  main system and the Navy's computers; Keelworks for the rest". `src/devices.js` (new) has the looks, what reaches
+  them, and the four's rules; a session keeps its `look` (`lookOf`: a file's `look` line, a door line, else keelworks).
+- **Reach:** `LOOKS` gives each look a link (keelworks cable, door optic, service clip, camera radio, navcom navy), and
+  a computer file's `reached by` line can say otherwise (`reachOf`; both lines are new in `COMPUTER` in
+  public/world-text.js, after flavor, and the how-to). `rigLinks` reads the fitted links that work; `reachWhy` says
+  why not. `cantRun` refuses every rig program without reach ("your rig can't reach it: it takes an optical reader,
+  and your rig has a cable jack"), `copyProgram` refuses copying, and the copies list says why. Using a computer by
+  right or with a password needs no rig; a junction box and a camera can only be opened through it. Haven's market now
+  sells an optical reader, so a new captain can reach a door's panel without Engineering 3 (my call).
+- **The watcher by look** (`watcherOf` in src/computers.js, used by act, thrownOut and the rig's lines): DoorCtl, The
+  fault board, The security desk, SENTRY; AuditGuard on Keelworks. Same marks and mechanics by class. A look's own
+  greeting lines (`LOOKS[look].how`) and its leaving button (Unclip, Exit, Switch off the radio, Log off).
+- **A door's panel** (look door; generic door panels and written computers with a door line): an LCD of two lines (the
+  room, and LOCKED, ENTER CODE, OPEN, NEW CODE, or DOORCTL 2.1 / ADMIN LOCK once SCOPE has read it), a decorative
+  keypad and card slot whose light is green when the door's open; the logon's ways under it. Inside, for a door the
+  place's systems run: Open/Lock the door, and **Give the door a new code** (`setDoor(..., { recode: true })`: locked,
+  `recoded`, no `backAt`, so nobody of the place switches it back; `game.passwords[content.id]` so the player gets
+  straight back in; unlocking clears `recoded`). The design's "read the panel with your reader" is SCOPE's line; the
+  design's morning log read and its consequences are the shared watcher.
+- **A junction box's service menu** (look service, content `serviceContent`, class easy, "Junction box JB-n"): opened
+  from the box's window/menu (**Open its service menu**, `addPartActs`) with a service clip. MENU, STATUS, BREAKERS,
+  LOG, CLEAR LOG, EXIT on an amber screen; BREAKERS toggles one room's feed (`cutFeed` in src/systems.js: `state.cut`,
+  honoured by `roomPowered`, put back by the place's people at `backAt` like any switch at a place that isn't yours,
+  kept by `tidy`); each toggle is 2 noise on the fault board (my number: three of them notices at a door panel's
+  marks, the design's "a tech comes at 3 faults" is the trace). CLEAR LOG needs CLEANER loaded or the password, and
+  takes 2 noise off.
+- **A camera's feed** (look camera, `cameraContent`, "Camera Dn-NN"): **Tap its feed** on the camera, or **Tap the
+  camera in ... by radio** under You can for a camera in a room through a door of this one (a short radio's reach). The
+  picture: the room, the time, figures and names for whoever is in it (`peopleInRoom` from `peopleAboard`, and
+  "you" when the player is there). **Loop the last minute** (`loopCamera`: `loopUntil` and `frozen` on the part's
+  state for 10 minutes; `watched()` ignores a looped camera, so the law, tampering and taking the ship apart don't
+  count it; 3 noise if anyone was in the picture), **Blind it** (switched off, 3 noise), **Back to live**. The design's
+  pan between views wasn't built: each camera sees one room.
+- **NAVCOM 7** (look navcom): the plot table's file is `class: hard` (a ship's main system), `look: navcom`, `reached
+  by: navy`. The Keelworks desktop in the Navy's colours (`.os.navcom`), a red RESTRICTED · CFS MERIDIAN · NAVCOM 7 bar
+  with SENTRY's meter when it listens, NAVCOM's menu name, smaller icons, and two folders: **Ship's log** (the last 12
+  lines of `game.ship.log`, each with Strike: `nav-strike:<i>` removes it, `game.rig.struck` counts, 2 noise, and on
+  the captain's own system the first officer remembers -2, "saw a line struck from the ship's log under your name")
+  and **Crew** (the first officer's assessments: each officer's loyalty from `loyaltyOf` and a few words). The design's
+  Accounts (moving 100 credits) and Navigation (plotting a jump) apps weren't built; Voss's code from the medbay and
+  SKELETON on the maintenance account are the general logon. Copying GHOST and WORM off the plot table now needs the
+  Navy coupler (the Pale Wren's bridge, Engineering 4): a call to mention.
+- Screens drawn by `deviceWindow` in public/computer.js (doorPlate, serviceScreen, cameraPicture, waysNode, actsNode;
+  styles at the end of public/desktop.css); a device's message and the advisor sit with it.
+- Tests: `test/devices.test.js` (7). `test/logon.test.js`, `test/rig.test.js` and `test/systems.test.js` fit the link
+  their computer now takes (an optical reader for door panels, a Navy coupler for the plot table).
+- Screens on a test copy: at 1400, the service menu on its breakers (switching the Aft Holds back on by clicking), the
+  camera's picture and the loop (the room's "A camera's watching" line went), the Hook door panel's logon and inside,
+  NAVCOM 7 with its icons and the crew assessments; at 810, the Hook panel inside with a new code given, the Keel
+  Passage's two radio taps, and the Engineering camera by radio with the player out of its picture.
+- Not done: the eleven computers' other seven (the deck 2 security terminal, the quartermaster's ledger, Kessara's
+  ledger, Haven's registry, a Navy relay, the Pale Wren's dead bridge computer: "later" on the plan), a camera in the
+  Main Passage (the plan's try-it: for the captain the Armory is theirs anyway), pan, Accounts and Navigation, and the
+  story knowing (step 7). The owner hasn't tried it.

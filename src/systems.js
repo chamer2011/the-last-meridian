@@ -546,12 +546,20 @@ const alarmState = (game, place) => game.systems?.[place]?.alarm ?? NORMAL;
 function tidy(game, place) {
   const state = game.systems?.[place];
   if (!state) return;
-  for (const [id, s] of Object.entries(state.parts)) if (s.on !== false && !s.damage) delete state.parts[id];
+  const now = hoursNow(game);
+  for (const [id, s] of Object.entries(state.parts)) {
+    if (s.loopUntil !== undefined && !(s.loopUntil > now)) {
+      delete s.loopUntil;
+      delete s.frozen;
+    }
+    if (s.on !== false && !s.damage && s.loopUntil === undefined) delete state.parts[id];
+  }
   for (const [room, s] of Object.entries(state.doors)) if (!s.locked && !s.forced) delete state.doors[room];
+  if (state.cut && !Object.keys(state.cut).length) delete state.cut;
   for (const [room, q] of Object.entries(state.air)) if (q >= 100) delete state.air[room];
   if (!state.alarm.ringing && !state.alarm.disarmed) state.alarm = {};
   for (const key of Object.keys(state.noted)) if (state.air[key.split(":")[1]] === undefined) delete state.noted[key];
-  const empty = !Object.keys(state.parts).length && !Object.keys(state.doors).length && !Object.keys(state.air).length && !state.alarm.ringing && !state.alarm.disarmed;
+  const empty = !Object.keys(state.parts).length && !Object.keys(state.doors).length && !Object.keys(state.air).length && !state.alarm.ringing && !state.alarm.disarmed && !state.cut;
   if (empty) delete game.systems[place];
   if (game.systems && !Object.keys(game.systems).length) delete game.systems;
 }
@@ -646,6 +654,7 @@ export function roomPowered(game, place, room) {
   if (supply !== null && supply <= 0) return false;
   const box = systemsOf(place)?.circuits[room];
   if (!box) return true;
+  if (game.systems?.[place]?.cut?.[room]) return false;
   const s = partState(game, place, box);
   return s.on !== false && !s.damage;
 }
@@ -676,7 +685,41 @@ export function airFlows(game, place, room) {
 }
 export const airIn = (game, place, room) => game.systems?.[place]?.air?.[room] ?? 100;
 
-export const watched = (game, place, room) => partsOf(systemsOf(place), "cameras", room).some((part) => partWorks(game, place, part));
+export const watched = (game, place, room) => partsOf(systemsOf(place), "cameras", room).some((part) => partWorks(game, place, part) && !cameraLooped(game, place, part.id));
+
+// ---- A junction box's feeds, a camera's loop (step 6 of the hacking rework) ------------------------------------
+
+// The rooms a junction box feeds, by their ids.
+export const feedsOf = (place, id) => Object.entries(systemsOf(place)?.circuits ?? {}).filter(([, box]) => box === id).map(([room]) => room);
+export const feedCut = (game, place, room) => Boolean(game.systems?.[place]?.cut?.[room]);
+// One room's feed cut, or put back, at its junction box's breakers: the room's dark, and its machines stop. At a place
+// that isn't the player's, its people put it back after a while, as with anything else switched by hand.
+export function cutFeed(game, place, room, cut, { by = "player" } = {}) {
+  const model = systemsOf(place);
+  if (!model?.circuits[room]) throw new Error("No junction box feeds that room.");
+  const state = stateOf(game, place, true);
+  state.cut ??= {};
+  if (cut) {
+    state.cut[room] = { by, since: hoursNow(game) };
+    const back = backAfter(game, place, model, by);
+    if (back) state.cut[room].backAt = back;
+  } else delete state.cut[room];
+  return settleChange(game, place);
+}
+export const cameraLooped = (game, place, id) => (game.systems?.[place]?.parts?.[id]?.loopUntil ?? 0) > hoursNow(game);
+// What a looped camera shows: who was in its picture when the loop began.
+export const cameraFrozen = (game, place, id) => game.systems?.[place]?.parts?.[id]?.frozen ?? [];
+export function loopCamera(game, place, id, minutes, frozen) {
+  const s = (stateOf(game, place, true).parts[id] ??= {});
+  Object.assign(s, { loopUntil: hoursNow(game) + minutes / 60, frozen });
+}
+export function endLoop(game, place, id) {
+  const s = game.systems?.[place]?.parts?.[id];
+  if (!s) return;
+  delete s.loopUntil;
+  delete s.frozen;
+  tidy(game, place);
+}
 
 export function alarmCanRing(game, place) {
   const model = systemsOf(place);
@@ -801,7 +844,7 @@ export function repairPart(game, place, id) {
 }
 
 // Locking needs the door's panel to have power, unless it's the story doing it. A forced door won't lock at all.
-export function setDoor(game, place, room, how, { by = "player" } = {}) {
+export function setDoor(game, place, room, how, { by = "player", recode = false } = {}) {
   const model = systemsOf(place);
   const door = model?.doors[room];
   if (!door) throw new Error("That door isn't one the place's systems run.");
@@ -813,13 +856,16 @@ export function setDoor(game, place, room, how, { by = "player" } = {}) {
     if (s.forced) lines.push(`[DOOR] The door to ${name} has been forced, and won't lock.`);
     else {
       Object.assign(s, { locked: true, by, since: hoursNow(game) });
-      const back = backAfter(game, place, model, by);
+      const back = recode ? null : backAfter(game, place, model, by);
       if (back) s.backAt = back;
-      lines.push(`[DOOR] The door to ${name} is locked.`);
+      else delete s.backAt;
+      if (recode) s.recoded = true;
+      lines.push(recode ? `[DOOR] The door to ${name} is locked, with a new code nobody else has.` : `[DOOR] The door to ${name} is locked.`);
     }
   } else if (how === "unlocked") {
     delete s.locked;
     delete s.backAt;
+    delete s.recoded;
     lines.push(`[DOOR] The door to ${name} is unlocked.`);
   } else if (how === "forced") {
     Object.assign(s, { forced: true, by, since: hoursNow(game) });
@@ -996,6 +1042,12 @@ export function advanceSystems(game) {
         delete s.on;
         delete s.backAt;
         say(`[SYSTEMS] Someone at ${model.name} has put the ${part.name} in ${where} back on.`);
+      }
+    }
+    for (const [room, cut] of Object.entries(state.cut ?? {})) {
+      if (cut.backAt && cut.backAt <= t) {
+        delete state.cut[room];
+        say(`[SYSTEMS] Someone at ${model.name} has put the power back on in ${roomNameOf(place, room)}.`);
       }
     }
     for (const [room, s] of Object.entries(state.doors)) {

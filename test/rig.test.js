@@ -29,6 +29,13 @@ const newGame = () => {
 const CONSOLE = { id: "test_console", name: "The test console", classKey: "easy", user: "tech", place: "meridian", desc: "A console for the tests.", files: [{ id: "a", name: "a.txt", text: "Alpha." }, { id: "b", name: "b.txt", text: "Beta." }], mail: [{ id: "m", from: "Oona", to: "Brandt", text: "Gamma." }], logs: [], programs: [], network: [], controls: [{ systems: ["doors", "cameras"], rooms: null }] };
 const sitAt = (game, { hacked = true, noise = 0, content = CONSOLE } = {}) => enterComputer(game, { generic: content, hacked, noise, how: "hacked" });
 const run = (game, id) => computerCommand(game, { action: "rig", id });
+// A link in the rig's link socket (step 6: each kind of computer takes one kind of link).
+function fitLink(game, id) {
+  game.rig.nextUid += 1;
+  const uid = `p${game.rig.nextUid}`;
+  game.rig.parts.push({ uid, id, cond: "new", tune: null, from: "" });
+  game.rig.build.fit.link1 = uid;
+}
 const doorRows = (game) => controlsView(game, "meridian", CONSOLE.controls).find((s) => s.id === "doors")?.rows ?? [];
 
 test("the program files read with nothing wrong, and a bad one says what's wrong", () => {
@@ -160,6 +167,8 @@ test("breakers say you're already in once you're past the logon, and a program t
 
 test("a computer that holds a program can have it copied; the desktop shows it, and what's loaded", () => {
   const game = newGame();
+  // The plot table is the ship's main system: copying off it goes through a Navy coupler.
+  fitLink(game, "navy_coupler");
   enterComputer(game, { id: "meridian_plot_table" });
   const view = publicState(game).computer.rig;
   assert.ok(view.copies.some((p) => p.id === "ghost"));

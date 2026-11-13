@@ -4,7 +4,9 @@
 // Logs, Programs, Network) that open in a window; what's opened shows in a second window; a third keeps the session's
 // log; the taskbar has the menu, the windows, the watcher's eye on a hacked computer, and the clock. Windows are dragged
 // by their title bars; the monitor's frame pulls the whole thing aside. The advisor's hints sit beside the monitor.
-// Skin and the old screen's strength are Settings choices (desktop.css). Nothing here needs typing.
+// Skin and the old screen's strength are Settings choices (desktop.css). Nothing here needs typing. Since step 6 a
+// computer can look like something else: a door's panel with its keypad, a junction box's service menu and a camera's
+// feed on the rig's little screen, and NAVCOM 7, the Navy's desktop, for the ship's main system.
 
 import { api, el } from "./dom.js";
 import { leaderNode, pullable } from "./float.js";
@@ -131,9 +133,15 @@ const FOLDERS = [
   ["network", "Network", "network", "connect"],
   ["rig", "Rig (D:)", "rig", "rig"],
 ];
-// What a folder holds: the computer's own lists, the programs it has to copy, and the rig's loaded programs.
-const folderItems = (view, id) => (id === "rig" ? view.rig?.loaded ?? [] : id === "programs" ? [...view.programs, ...(view.rig?.copies ?? []).map((one) => ({ ...one, copy: true }))] : view[id] ?? []);
-const foldersHere = (view) => FOLDERS.filter(([id]) => folderItems(view, id).length > 0);
+const NAVCOM_FOLDERS = [
+  ["shiplog", "Ship's log", "log", null],
+  ["crew", "Crew", "txt", null],
+];
+// What a folder holds: the computer's own lists, the programs it has to copy, the rig's loaded programs, and on NAVCOM 7
+// the ship's log and the crew assessments.
+const folderItems = (view, id) => (id === "rig" ? view.rig?.loaded ?? [] : id === "programs" ? [...view.programs, ...(view.rig?.copies ?? []).map((one) => ({ ...one, copy: true }))] : id === "shiplog" ? view.device?.shipLog ?? [] : id === "crew" ? view.device?.crew?.list ?? [] : view[id] ?? []);
+const allFolders = (view) => (view.look === "navcom" ? [...FOLDERS, ...NAVCOM_FOLDERS] : FOLDERS);
+const foldersHere = (view) => allFolders(view).filter(([id]) => folderItems(view, id).length > 0);
 
 const lineNode = (entry, isNew = false) => {
   if (entry.you !== undefined) return el("div", { class: `check-line you${isNew ? " new" : ""}` }, el("span", { class: "tone-dim" }, `${comp.view?.prompt ?? ">"} `), el("span", { class: "tone-bright" }, entry.you));
@@ -274,10 +282,22 @@ function openFolder(id) {
 }
 
 function folderRows(view) {
-  const folder = FOLDERS.find(([id]) => id === comp.folder);
+  const folder = allFolders(view).find(([id]) => id === comp.folder);
   if (!folder) return [];
   const [id, , , kind] = folder;
   const { screen } = view;
+  if (id === "shiplog") {
+    return view.device.shipLog.map((entry) => el("div", { class: "row-item navcom-line" },
+      el("span", {}, el("small", {}, entry.day), " ", entry.text),
+      el("button", { disabled: comp.sending, title: "Strike this line from the ship's log", onclick: (event) => { event.stopPropagation(); send({ action: "device", id: `nav-strike:${entry.i}` }); } }, "Strike")));
+  }
+  if (id === "crew") {
+    const crew = view.device.crew;
+    return [
+      el("div", { class: "row-item navcom-head" }, el("span", {}, `CREW ASSESSMENTS · ${String(crew.by ?? "the first officer").toUpperCase()} · RESTRICTED`)),
+      ...crew.list.map((one) => el("div", { class: "row-item" }, el("span", {}, one.name, el("small", {}, ` ${one.words}`)), el("small", {}, String(one.loyalty)))),
+    ];
+  }
   if (id === "systems") {
     return view.systems.map((system) => {
       const down = system.rows.filter((row) => !row.works).length;
@@ -289,8 +309,8 @@ function folderRows(view) {
     return view.rig.loaded.map((item) => el("button", { class: `row-item${item.why ? " done" : ""}`, title: item.why ? `It won't run here: ${item.why}` : item.about, disabled: comp.sending, onclick: (event) => { event.stopPropagation(); send({ action: "rig", id: item.id }); } },
       picture("exe"), el("span", {}, item.name), el("small", {}, item.why ? "won't run here" : "run")));
   }
-  return folderItems(view, id).map((item) => item.copy ? el("button", { class: "row-item", title: item.about, disabled: comp.sending, onclick: (event) => { event.stopPropagation(); send({ action: "copy", id: item.id }); } },
-    picture("rig"), el("span", {}, `Copy ${item.name} to your rig`), el("small", {}, "copy")) : el("button", {
+  return folderItems(view, id).map((item) => item.copy ? el("button", { class: `row-item${item.why ? " done" : ""}`, title: item.why ? `Can't copy it: ${item.why}` : item.about, disabled: comp.sending || Boolean(item.why), onclick: (event) => { event.stopPropagation(); send({ action: "copy", id: item.id }); } },
+    picture("rig"), el("span", {}, `Copy ${item.name} to your rig`), el("small", {}, item.why ? "can't reach" : "copy")) : el("button", {
     class: `row-item${item.read || item.ran ? " done" : ""}${screen.kind === kind && screen.id === item.id ? " open" : ""}`,
     title: item.about ?? (item.ran ? "Already run" : item.read ? "Read" : item.name),
     disabled: comp.sending,
@@ -320,6 +340,7 @@ function clockText() {
 }
 
 function osNode(view, watch) {
+  const navcom = view.look === "navcom";
   const here = view.locked ? [] : foldersHere(view);
   const icons = el("div", { class: "icons" }, here.map(([id, name, pic]) => el("button", {
     class: `icon${comp.sel === id ? " sel" : ""}`,
@@ -334,13 +355,13 @@ function osNode(view, watch) {
     },
     ondblclick: (event) => { event.stopPropagation(); openFolder(id); },
   }, picture(pic), el("span", {}, `${name} (${folderItems(view, id).length})`))));
-  const folder = FOLDERS.find(([id]) => id === comp.folder);
-  const list = !view.locked && folder && winNode("list", `${folder[1]} - ${view.name}`, folder[2], el("div", { class: "pane-in sunk" }, el("div", { class: "rows" }, folderRows(view))), [folder[0] === "rig" ? `${view.rig.used} of ${view.rig.memory} blocks used` : `${folderItems(view, folder[0]).length} ${folder[0] === "mail" ? "letters" : "objects"}`, comp.sending ? "Working..." : folder[0] === "rig" ? "Click one to run it" : "Click one to open it"]);
+  const folder = allFolders(view).find(([id]) => id === comp.folder);
+  const list = !view.locked && folder && winNode("list", `${folder[1]} - ${view.name}`, folder[2], el("div", { class: "pane-in sunk" }, el("div", { class: "rows" }, folderRows(view))), [folder[0] === "rig" ? `${view.rig.used} of ${view.rig.memory} blocks used` : `${folderItems(view, folder[0]).length} ${folder[0] === "mail" ? "letters" : "objects"}`, comp.sending ? "Working..." : folder[0] === "rig" ? "Click one to run it" : folder[0] === "shiplog" ? "Strike a line to take it out" : folder[0] === "crew" ? "Restricted: the first officer's" : "Click one to open it"]);
   const viewer = !view.locked && winNode("view", view.screen.kind === "home" ? `Welcome - ${view.name}` : view.screen.title ?? view.name, "txt", el("div", { class: "pane-in sunk viewer-in", id: "computer-screen" }, screenNode(view)), [view.hacked ? "Hacked" : view.yours ? "Yours" : "Logged in", view.className]);
   const log = winNode("log", "Session log", "log", el("div", { class: "pane-in sunk", id: "computer-console", role: "log" }, view.log.map((entry, i) => lineNode(entry, i >= comp.seen))), [`${view.actions} ${view.actions === 1 ? "action" : "actions"}`, view.prompt ?? ""]);
   const named = { list: list ? `${folder[1]}` : null, view: viewer ? "Viewer" : null, log: "Session log" };
   const tasks = el("div", { class: "tasks" }, Object.entries(comp.wins).filter(([id, w]) => w.open && named[id]).map(([id]) => el("button", { class: comp.top === id ? "on" : "", onclick: (event) => { event.stopPropagation(); raise(id); draw(); } }, named[id])));
-  const menu = comp.menu && el("div", { class: "menu bev" }, el("div", { class: "side" }, "KEELWORKS 4.1"), el("div", { class: "items" },
+  const menu = comp.menu && el("div", { class: "menu bev" }, el("div", { class: "side" }, navcom ? "NAVCOM 7" : "KEELWORKS 4.1"), el("div", { class: "items" },
     here.map(([id, name, pic]) => el("button", { onclick: (event) => { event.stopPropagation(); comp.menu = false; openFolder(id); } }, picture(pic), name)),
     el("hr"),
     el("button", { onclick: (event) => { event.stopPropagation(); comp.menu = false; comp.wins.log.open = true; raise("log"); draw(); } }, picture("log"), "Session log"),
@@ -350,14 +371,17 @@ function osNode(view, watch) {
   const stage = watch?.stage ?? "calm";
   const balloon = stage !== "calm" && comp.hushed !== stage && el("div", { class: "balloon", onclick: (event) => { event.stopPropagation(); comp.hushed = stage; draw(); } }, el("b", {}, picture("eye"), watch.name), stage === "tracing" ? `This session is being traced. It finds you in ${watch.traceLeft} min.` : "Unusual activity in this session. It is being logged.");
   const taskbar = el("div", { class: "taskbar bev" },
-    el("button", { class: "keel", "aria-expanded": String(comp.menu), onclick: (event) => { event.stopPropagation(); comp.menu = !comp.menu; draw(); } }, picture("keel"), "Keel"),
+    el("button", { class: "keel", "aria-expanded": String(comp.menu), onclick: (event) => { event.stopPropagation(); comp.menu = !comp.menu; draw(); } }, picture("keel"), navcom ? "NAVCOM" : "Keel"),
     tasks,
     el("div", { class: "tray sunk" },
       watch && el("span", { class: `watch ${watch.stage}`, title: `${watch.name}: ${watchWords(watch).toLowerCase()}` }, picture("eye")),
       watch && el("span", {}, watchWords(watch)),
-      view.rigHeat && el("span", { class: `rig-heat${view.rigHeat.overheating ? " hot" : view.rigHeat.fan ? " warm" : ""}`, title: `Your rig: ${view.rigHeat.dead ? `it won't start, ${view.rigHeat.dead}` : view.rigHeat.words}` }, view.rigHeat.dead ? "Rig off" : `Rig ${view.rigHeat.words.split(":")[0]}`),
+      rigHeatNode(view),
       el("span", { title: "The ship's time" }, clockText())));
-  const os = el("div", { class: "os", onclick: () => { if (comp.menu) { comp.menu = false; draw(); } } }, icons, list, viewer, view.locked && logonNode(view), log, balloon, taskbar, menu);
+  // NAVCOM 7's bar along the top, with SENTRY's meter when it's listening.
+  const bar = navcom && el("div", { class: "navcom-top" }, el("span", {}, "RESTRICTED · CFS MERIDIAN · NAVCOM 7"),
+    watch && el("span", { class: `navcom-sentry ${watch.stage}`, title: `${watch.name}: ${watchWords(watch).toLowerCase()}` }, watch.name, Array.from({ length: watch.cuts }, (_, i) => el("i", { class: i < watch.noise ? "on" : "" }))));
+  const os = el("div", { class: `os${navcom ? " navcom" : ""}`, onclick: () => { if (comp.menu) { comp.menu = false; draw(); } } }, bar, icons, list, viewer, view.locked && logonNode(view), log, balloon, taskbar, menu);
   os.addEventListener("pointerdown", dragWindow);
   return os;
 }
@@ -410,8 +434,88 @@ function advisorNode(view) {
     el("div", { class: "lines", id: "computer-hints" }, view.hints.map((text) => el("div", {}, text))));
 }
 
+// How hot the rig is, in the tray: nothing's plugged into the player's own computers.
+const rigHeatNode = (view) => view.rigHeat && el("span", { class: `rig-heat${view.rigHeat.overheating ? " hot" : view.rigHeat.fan ? " warm" : ""}`, title: `Your rig: ${view.rigHeat.dead ? `it won't start, ${view.rigHeat.dead}` : view.rigHeat.words}` }, view.rigHeat.dead ? "Rig off" : `Rig ${view.rigHeat.words.split(":")[0]}`);
+
+// ---- A door's panel, a junction box's service menu, a camera's feed ---------------------
+
+const sendDevice = (id) => (event) => {
+  event?.stopPropagation();
+  send({ action: "device", id });
+};
+const shortName = (name) => String(name ?? "").replace(/^The /, "").toUpperCase();
+
+// The ways in off the rig at a logon, as buttons, each saying why it won't work if it won't.
+function waysNode(view) {
+  const ways = view.logon?.ways ?? [];
+  if (!ways.length) return el("div", { class: "device-note" }, "Nothing loaded on your rig gets past this logon. Load a breaker on the Rig page first.");
+  return el("div", { class: "device-acts" }, ways.map((one) => el("button", {
+    disabled: comp.sending || Boolean(one.why),
+    title: one.why ? `Won't: ${one.why}.` : one.about,
+    onclick: (event) => {
+      event.stopPropagation();
+      send({ action: "rig", id: one.id });
+    },
+  }, `${one.kind === "in" ? "Run" : "Read it with"} ${one.name}`, one.why && el("small", {}, ` · ${one.why}`))));
+}
+function actsNode(actions) {
+  if (!actions?.length) return null;
+  return el("div", { class: "device-acts" }, actions.map((one) => el("button", { disabled: comp.sending || Boolean(one.why), title: one.why ?? one.about ?? "", onclick: sendDevice(one.id) }, one.label, one.why && el("small", {}, ` · ${one.why}`))));
+}
+
+function doorPlate(view) {
+  const d = view.device;
+  return el("div", { class: "door-plate" },
+    el("div", { class: "lcd" }, el("span", {}, d.lcd[0]), el("span", {}, d.lcd[1])),
+    el("div", { class: "keys", "aria-hidden": "true" }, "123456789*0#".split("").map((key) => el("i", {}, key))),
+    el("div", { class: "slot" }, el("i", { class: `led${d.open ? " on" : ""}` }), "card"));
+}
+
+function serviceScreen(view) {
+  const d = view.device;
+  const item = (n, label, id, off = false) => el("button", { class: "svc-line", disabled: comp.sending || off, onclick: sendDevice(id) }, `${n}  ${label}`);
+  let body;
+  if (view.locked) body = [el("div", {}, "PASSWORD: ________")];
+  else if (d.screen === "status") body = [el("div", {}, `FEEDS: ${d.feeds.map((feed) => `${shortName(feed.name)} ${feed.on ? "OK" : "OFF"}`).join("  ")}`), el("div", {}, `FAULTS REPORTED TO ENG BOARD: ${d.faults}`), item(9, "BACK", "svc-menu")];
+  else if (d.screen === "breakers") body = [...d.feeds.map((feed, i) => item(i + 1, `${shortName(feed.name).padEnd(14, " ")}[${feed.on ? " ON" : "OFF"}]`, `svc-toggle:${feed.room}`)), item(9, "BACK", "svc-menu")];
+  else if (d.screen === "log") body = [...(d.lines.length ? d.lines : ["(EMPTY)"]).map((text) => el("div", {}, text)), item(9, "BACK", "svc-menu")];
+  else body = [item(1, "STATUS", "svc-status"), item(2, "BREAKERS", "svc-breakers"), item(3, "LOG", "svc-log"), item(4, `CLEAR LOG${d.cleared ? "  (DONE)" : d.canClear ? "" : "  (NEEDS SERVICE PASSWORD)"}`, "svc-clear", !d.canClear || d.cleared), item(0, "EXIT", "svc-exit")];
+  return el("div", { class: "svc", role: "group", "aria-label": `${view.name}: service menu` }, el("div", {}, `HALDEN YARDS  ${d.code} SERVICE  v1.4`), el("div", {}, "================================"), body);
+}
+
+function cameraPicture(view) {
+  const d = view.device;
+  const figures = d.mode === "blind" ? [] : (d.people ?? []).slice(0, 6).map((who, i) => el("i", { class: `fig${who === "you" ? " you" : ""}`, style: `left:${14 + i * 13}%`, title: who }));
+  return el("div", { class: `cam ${d.mode}`, role: "img", "aria-label": `${d.code}, ${d.room}` },
+    el("div", { class: "cam-scene" }, el("i", { class: "cam-door" }), figures),
+    el("div", { class: "cam-osd" }, el("span", {}, `${d.code} · ${shortName(d.room)}`), el("span", {}, `${d.time} ${d.mode === "loop" ? "LOOP" : d.mode === "blind" ? "NO SIGNAL" : "REC"}`)));
+}
+
+function deviceWindow(view) {
+  const watch = view.watch ?? null;
+  const d = view.device ?? {};
+  const look = view.look;
+  const face = look === "door" ? doorPlate(view) : look === "service" ? serviceScreen(view) : cameraPicture(view);
+  const seen = look === "camera" && el("div", { class: "device-note" }, d.mode === "blind" ? "In the picture: snow." : `In the picture: ${d.people?.length ? d.people.join(", ") : "nobody"}.${d.mode === "loop" ? ` The loop runs ${d.loopLeft} more ${d.loopLeft === 1 ? "minute" : "minutes"}.` : ""}`);
+  const reach = view.reach && !view.reach.ok && el("div", { class: "device-note warn" }, `Your rig can't reach it: it takes ${view.reach.words}.`);
+  const head = el("div", { class: "device-head" }, el("strong", {}, view.name), el("span", { class: "device-tray" },
+    watch && el("span", { class: `device-watch ${watch.stage}`, title: `${watch.name}: ${watchWords(watch).toLowerCase()}` }, `${watch.name}: ${watchWords(watch)}`),
+    rigHeatNode(view),
+    el("span", { title: "The ship's time" }, clockText())));
+  const log = view.log.slice(-4);
+  const frame = el("div", { class: `device-frame device-${look}`, title: "Pull the frame to move it aside" },
+    comp.message && el("div", { class: "desk-note" }, comp.message),
+    head, face, seen, reach,
+    view.locked ? waysNode(view) : look === "service" ? null : actsNode(d.actions),
+    el("div", { class: "device-log", id: "computer-console", role: "log" }, log.map((entry, i) => lineNode(entry, view.log.length - log.length + i >= comp.seen))),
+    el("div", { class: "device-foot" }, el("button", { disabled: comp.sending, onclick: (event) => { event.stopPropagation(); logOff(); } }, d.leave ?? "Log off")));
+  return el("div", { class: "desk device", id: "computer-window", role: "dialog", "aria-label": view.name, tabindex: "-1" }, frame, advisorNode(view));
+}
+
 function windowNode() {
   const view = comp.view;
+  // A door's panel, a junction box and a camera have no desktop: their own face, and the buttons under it.
+  if (["door", "service", "camera"].includes(view.look)) return deviceWindow(view);
   // Nobody watches the player's own computers; any other has AuditGuard listening, from the logon on.
   const watch = view.watch ?? null;
   const glass = el("div", { class: "glass" }, el("div", { class: "desk-screen" }, osNode(view, watch)), el("div", { class: "fx scan" }), el("div", { class: "fx vig" }), el("div", { class: "fx glare" }), el("div", { class: "fx band" }));

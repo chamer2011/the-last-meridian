@@ -11,3 +11,4 @@ memory_4: 2
 standard_cell: 2
 shielded_case: 1
 short_radio: 1
+optical_reader: 1

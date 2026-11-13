@@ -73,6 +73,15 @@ The first line is the name, written # The Name. Then, before the first part, one
     password    A password the story can hand out. * password <this computer's id> <the word> in a
                 scene makes the player know it, and then they get in without the logon.
     flavor      Which set of lines from _flavor.json it uses: default, or yours.
+    look        What it looks like on screen: keelworks (the shipyard desktop, the usual), door (a door
+                panel's keypad and little screen), or navcom (NAVCOM 7, the Navy's own desktop, for a
+                ship's main system or a Navy computer). A computer with a door line looks like a door
+                panel unless this says otherwise.
+    reached by  What a rig's link has to be to reach it at all: cable, clip (a service clip), optic (an
+                optical reader), radio (a short radio) or navy (a Navy coupler). Left out, it goes by
+                the look: a cable for keelworks, an optical reader for a door, a Navy coupler for navcom.
+                The rig is needed for the rig's own programs and for copying; using it by right or with
+                a password isn't.
 
 Every one of them can be left out.
 

@@ -18,8 +18,9 @@ import { addClockWork } from "./room-hooks.js";
 import { PROGRAM_KINDS, programById, programsNow } from "./programs.js";
 import { BENCH_RULES, CONDITIONS, HEAT, PART_KINDS, REACHES, benchToolById, benchToolsNow, heatWords, partNumbers, rigPartById, rigPartsNow, rigStats, sessionHeat } from "./rig-parts.js";
 import { dealCommand, dealerName, dealerView } from "./dealers.js";
+import { reachWhy } from "./devices.js";
 import { ITEMS } from "./data.js";
-import { classKeys, gotIn, line, watchFor } from "./computers.js";
+import { classKeys, gotIn, line, watchFor, watcherOf } from "./computers.js";
 import { controlSystem, controlsView, damagePart, systemsOf } from "./systems.js";
 import { countAboard, takeAboard } from "./logistics.js";
 import { addItem, passTime, removeItem, skillRank } from "./rules.js";
@@ -421,6 +422,9 @@ function cantRun(game, session, content, p) {
   // A rig without a working core, cell or link runs nothing at all.
   const stats = rigNow(game);
   if (stats.dead) return `your rig won't start: ${stats.dead}`;
+  // Its link has to reach this kind of computer at all (step 6).
+  const reach = reachWhy(game, content);
+  if (reach) return `your rig can't reach it: ${reach}`;
   if (p.once && session.rigUsed?.includes(p.id)) return "it's already run this session";
   // At the logon only the breakers and Scope run; inside, there's nothing left to break.
   if (session.locked) {
@@ -449,7 +453,7 @@ export function rigInComputer(game, session, content) {
   if (!game.rig) return null;
   const mine = programsNow().list.filter((p) => p.builtIn || game.rig.loaded.includes(p.id));
   const loaded = mine.map((p) => ({ id: p.id, name: p.name, about: p.what, why: cantRun(game, session, content, p), noise: p.noise ?? 0, minutes: p.minutes ?? 1 }));
-  const copies = programsNow().list.filter((p) => (p.foundOn ?? []).includes(session.id) && !game.rig.programs.includes(p.id)).map((p) => ({ id: p.id, name: p.name, about: p.what }));
+  const copies = programsNow().list.filter((p) => (p.foundOn ?? []).includes(session.id) && !game.rig.programs.includes(p.id)).map((p) => ({ id: p.id, name: p.name, about: p.what, why: reachWhy(game, content) ? `your rig can't reach it: ${reachWhy(game, content)}` : null }));
   const ways = session.locked ? mine.filter((p) => p.kind === "in" || p.id === "scope").map((p) => ({ id: p.id, name: p.name, about: p.what, kind: p.kind, power: p.power ?? null, noise: p.noise ?? 0, minutes: p.minutes ?? 1, why: cantRun(game, session, content, p) })) : [];
   return { loaded, copies, ways, memory: memoryOf(game), used: usedMemory(game.rig) };
 }
@@ -485,7 +489,8 @@ export function runRigProgram(game, session, content, id, helpers) {
     session.log.push(line(`> ${p.name}`, "bright"));
     if (p.id === "scope") {
       session.scanned = true;
-      const lines = [line(`Scope reads the logon: Keelworks Logon 3.2 on a ${String(session.className).toLowerCase()}, with ${watchFor(game, session.classKey).name} watching. Its version has a known flaw.`, "info")];
+      const logon = { door: "the panel: DoorCtl 2.1, an admin lock", service: "the box's service logon", camera: "the feed's logon", navcom: "the logon: NAVCOM 7" }[session.look] ?? "the logon: Keelworks Logon 3.2";
+      const lines = [line(`Scope reads ${logon} on a ${String(session.className).toLowerCase()}, with ${watcherOf(game, session).name} watching. Its version has a known flaw.`, "info")];
       session.log.push(...lines);
       show([line(p.what, "dim"), ...lines]);
       return helpers.act(game, session, cost) ?? { over: false };
@@ -528,7 +533,7 @@ export function runRigProgram(game, session, content, id, helpers) {
     case "cleaner": case "forger": case "decoy": {
       // An echo buffer in the rig makes CLEANER take more off.
       const off = { cleaner: 3 + rigNow(game).echo, forger: 1, decoy: 2 }[p.id];
-      const watch = watchFor(game, session.classKey);
+      const watch = watcherOf(game, session);
       const before = session.noise ?? 0;
       session.noise = Math.max(0, before - off);
       say(`${{ cleaner: "Your lines are wiped from the log", forger: "Your lines now carry someone else's name", decoy: "Another terminal makes a racket" }[p.id]}: ${before - session.noise} noise off.`);
@@ -546,7 +551,7 @@ export function runRigProgram(game, session, content, id, helpers) {
       break;
     case "blindfold":
       session.blindLeft = 5;
-      say(`${watchFor(game, session.classKey).name} sees nothing for five minutes. When it sees again, it'll notice the gap.`);
+      say(`${watcherOf(game, session).name} sees nothing for five minutes. When it sees again, it'll notice the gap.`);
       break;
     case "cutout":
       session.cutout = true;
@@ -606,6 +611,9 @@ export function copyProgram(game, session, content, id, helpers) {
   const p = programById(id);
   if (!p || !(p.foundOn ?? []).includes(session.id)) return { over: false, said: "There's no such program here to copy." };
   if (game.rig.programs.includes(p.id)) return { over: false, said: `Your rig already has ${p.name}.` };
+  // Copying goes through the rig's link, which has to reach this computer.
+  const reach = reachWhy(game, content);
+  if (reach) return { over: false, said: `Your rig can't reach it to copy anything: ${reach}.` };
   game.rig.programs.push(p.id);
   const fits = usedMemory(game.rig) + p.size <= memoryOf(game);
   if (fits) game.rig.loaded.push(p.id);

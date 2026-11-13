@@ -34,6 +34,13 @@ const newGame = (hacking = 0) => {
 const TERMINAL = { id: "test_terminal", name: "The test terminal", classKey: "moderate", user: "oona", place: "haven", desc: "A terminal for the tests.", files: [{ id: "a", name: "a.txt", text: "Alpha." }], mail: [], logs: [], programs: [], network: [], controls: [] };
 const logonAt = (game, classKey = "moderate") => enterComputer(game, { generic: { ...TERMINAL, classKey }, locked: true });
 const run = (game, id) => computerCommand(game, { action: "rig", id });
+// A link in the rig's link socket (step 6: each kind of computer takes one kind of link).
+function fitLink(game, id) {
+  game.rig.nextUid += 1;
+  const uid = `p${game.rig.nextUid}`;
+  game.rig.parts.push({ uid, id, cond: "new", tune: null, from: "" });
+  game.rig.build.fit.link1 = uid;
+}
 const why = (game, id) => computerView(game).logon.ways.find((way) => way.id === id)?.why ?? null;
 const lines = (game) => game.computer.log.map((one) => one.text ?? "").join(" ");
 
@@ -177,6 +184,8 @@ test("a door's panel opens at its logon, and a map file's door opens once the pl
   assert.ok(!(game.opened?.foundry ?? []).includes("sublevels"));
   game.rig.programs.push("skeleton");
   game.rig.loaded = ["skeleton"];
+  // A door's panel takes an optical reader.
+  fitLink(game, "optical_reader");
   openDoorPanel(game, "foundry", "sublevels", { classKey: "hard", doorRule: rule });
   run(game, "scope");
   run(game, "skeleton");

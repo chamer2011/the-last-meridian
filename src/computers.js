@@ -20,6 +20,7 @@ import { fill } from "./check-games/kit.js";
 import { CHECK_TEXT, COMPUTER_FLAVOR, WORLD_COMPUTERS, WORLD_MAPS } from "./world.js";
 import { controlsFor, controlsView, partWorks, roomPowered, runsSystems } from "./systems.js";
 import { rigHeat, rigInComputer } from "./rig.js";
+import { LINK_WORDS, LOOKS, deviceView, lookOf, reachOf, rigReaches } from "./devices.js";
 
 
 export const slug = (words) => String(words).toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40);
@@ -44,6 +45,13 @@ export function watchFor(game, classKey) {
   const c = classOf(text, classKey);
   const room = roomFor(text, tierFor(game, "hacking"));
   return { notices: c.notices + room, traces: c.traces + room, finds: c.finds, cuts: c.cuts + room, mark: Boolean(c.mark), name: "AuditGuard" };
+}
+// The watcher, by the name it goes by on this kind of computer: AuditGuard, a door's own log, a junction box's fault
+// board, a camera's security desk, SENTRY.
+export function watcherOf(game, session) {
+  const watch = watchFor(game, session.classKey);
+  const name = LOOKS[session.look]?.watcher;
+  return name ? { ...watch, name } : watch;
 }
 // Where the watcher stands: calm, noticed (everything one louder), or tracing.
 export const watchStage = (session) => (session.traceLeft !== null && session.traceLeft !== undefined ? "tracing" : session.noticed ? "noticed" : "calm");
@@ -115,6 +123,8 @@ export function writtenContent(id) {
     network: (c.network ?? []).map((entry) => ({ id: String(entry.name).trim(), desc: String(entry.desc ?? "").trim() })),
     roomId: c.place && c.room ? roomIdNamed(c.place, c.room) : null,
     controls: c.place ? controlsFor(c.place, { written: id }) : [],
+    look: c.look ? String(c.look).trim().toLowerCase() : null,
+    reach: c.reach ? String(c.reach).trim().toLowerCase() : null,
   };
 }
 
@@ -271,7 +281,9 @@ export function openSession(game, content, { hacked = false, locked = false, noi
     id: content.id,
     name: content.name,
     classKey: content.classKey,
-    className: classNameOf(content.classKey),
+    className: content.className ?? classNameOf(content.classKey),
+    // What it looks like (src/devices.js): Keelworks, a door's panel, a junction box's menu, a camera's feed, NAVCOM 7.
+    look: lookOf(content),
     user: content.user,
     place: content.place,
     yours,
@@ -299,14 +311,14 @@ export function openSession(game, content, { hacked = false, locked = false, noi
   if (!yours) session.noticed = session.noise >= watchFor(game, session.classKey).notices;
   const flavor = COMPUTER_FLAVOR?.motd?.[content.flavor] ?? COMPUTER_FLAVOR?.motd?.default ?? [];
   if (session.locked) {
-    session.log.push(line(`Keelworks 4.1. ${content.name} wants a user name and a password.`, "info"));
-    session.log.push(line("Run something from your rig to get past the logon, or log off. The watcher hears everything from here on.", "dim"));
+    session.log.push(line(`${LOOKS[session.look].name}. ${content.name} wants ${session.look === "keelworks" || session.look === "navcom" ? "a user name and a password" : session.look === "door" ? "its code" : "a password"}.`, "info"));
+    session.log.push(line(`Run something from your rig to get past the logon, or ${(LOOKS[session.look].leave ?? "log off").toLowerCase()}. ${watcherOf(game, session).name === "AuditGuard" ? "The watcher" : watcherOf(game, session).name} hears everything from here on.`, "dim"));
     return session;
   }
   const greeting = hacked && !yours ? "ACCESS GRANTED." : yours ? "Logged in." : "Logged in with the password.";
   session.log.push(line(`${content.name}: ${greeting} Welcome, ${content.user}.`, "good"));
   if (flavor.length) session.log.push(line(flavor[Math.floor(seeded(content.id)() * flavor.length)], "dim"));
-  session.log.push(line("Open a folder on the desktop to read or run what's in it. Log off from the Keel menu, or with Esc.", "dim"));
+  session.log.push(line(LOOKS[session.look].how, "dim"));
   // A password, or the player's own computer, gets them straight in: whatever asked for the hack has its answer now.
   if (story || doorRule) settleHack(game, session, true);
   return session;
@@ -326,7 +338,7 @@ export function gotIn(game, session, { user = null, via = null } = {}) {
   if (user) session.user = user;
   session.via = via;
   session.log.push(line(`ACCESS GRANTED. Welcome, ${session.user}.`, "good"));
-  session.log.push(line("Open a folder on the desktop to read or run what's in it. Log off from the Keel menu, or with Esc.", "dim"));
+  session.log.push(line(LOOKS[session.look ?? "keelworks"]?.how ?? LOOKS.keelworks.how, "dim"));
   settleHack(game, session, true);
 }
 
@@ -494,7 +506,7 @@ export function computerView(game) {
   const memory = memoryOf(game, session);
   // Nothing on a computer reaches the page before the player is past its logon.
   const inside = !session.locked;
-  const watch = session.yours ? null : watchFor(game, session.classKey);
+  const watch = session.yours ? null : watcherOf(game, session);
   const rig = rigInComputer(game, session, content);
   const view = {
     id: session.id,
@@ -531,6 +543,10 @@ export function computerView(game) {
     rigHeat: session.yours ? null : rigHeat(game, session),
     // At the logon: the ways in off the rig, each with why it won't work, if it won't.
     logon: session.locked ? { ways: rig?.ways ?? [], keycard: Boolean(game.inventory?.keycard) } : null,
+    // Its look, what reaches it and whether the rig does, and what the look shows and offers (src/devices.js).
+    look: session.look ?? lookOf(content),
+    reach: { link: reachOf(content), words: LINK_WORDS[reachOf(content)], ok: rigReaches(game, content) },
+    device: deviceView(game, session, content),
   };
   view.hints = hintsFor(game, session, content, view);
   return view;
@@ -543,6 +559,8 @@ export function computerProblems() {
   for (const [id, c] of Object.entries(WORLD_COMPUTERS)) {
     const at = (message) => problems.push(`computers/${id}.txt: ${message}`);
     if (c.class && !classKeys().includes(String(c.class).trim().toLowerCase().replace(/\s+/g, "_"))) at(`the class "${c.class}" isn't one of ${classKeys().join(", ")}`);
+    if (c.look && !LOOKS[String(c.look).trim().toLowerCase()]) at(`the look "${c.look}" isn't one of ${Object.keys(LOOKS).join(", ")}`);
+    if (c.reach && !LINK_WORDS[String(c.reach).trim().toLowerCase()]) at(`"reached by" is one of ${Object.keys(LINK_WORDS).join(", ")}, not "${c.reach}"`);
     if (c.place && !LOCATIONS[c.place] && !WORLD_MAPS[c.place]) at(`there's no place with the id ${c.place}`);
     const levels = c.place ? roomsOfPlace(c.place) : [];
     const level = c.room ? levels.find((one) => sameName(one.name, c.room)) : null;

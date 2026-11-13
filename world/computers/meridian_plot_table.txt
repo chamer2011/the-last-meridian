@@ -1,5 +1,5 @@
 # The plot table
-class: moderate
+class: hard
 owner: fleet
 yours: yes
 place: meridian
@@ -7,6 +7,8 @@ room: The Bridge
 thing: The plot table
 login: captain
 flavor: yours
+look: navcom
+reached by: navy
 
 What the player sees:
 Forty-one green dots on a scratched glass table, and the course Pell keeps for you drawn through them in chalk, because the table's own line stopped working years ago.

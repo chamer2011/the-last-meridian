@@ -327,8 +327,12 @@ test("a locked door stops the walk both ways, can be forced, and stays forced un
   assert.equal(sys.doorLocked(game, "haven", "hook"), false, "a forced door won't lock");
   const notes = passTime(game, 3.2);
   assert.ok(notes.some((note) => /fixed the door to The Hook/.test(note)), notes.join(" | "));
-  // Hacking the panel opens it at its logon, and once past it, it's a computer that runs that door.
+  // Hacking the panel opens it at its logon, and once past it, it's a computer that runs that door. A door's panel
+  // takes an optical reader in the rig (step 6).
   sys.setDoor(game, "haven", "hook", "locked", { by: "story" });
+  game.rig.nextUid += 1;
+  game.rig.parts.push({ uid: `p${game.rig.nextUid}`, id: "optical_reader", cond: "new", tune: null, from: "" });
+  game.rig.build.fit.link1 = `p${game.rig.nextUid}`;
   const worked = walkCommand(game, { action: "work", key: toHook.key, how: "hack" });
   assert.equal(worked.computer, true);
   assert.equal(game.check, null, "no check window for a hack");
