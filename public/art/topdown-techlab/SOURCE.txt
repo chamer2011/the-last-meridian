@@ -1,0 +1,7 @@
+Warped Top-Down Tech Lab, by Luis Zuno (ansimuz), 2022
+From OpenGameArt.org: https://opengameart.org/content/warped-top-down-tech-lab
+Licence: CC0 (public domain), and the pack's own public-license.txt beside this file: use in personal or commercial
+projects, change it, and share it; credit not required but appreciated.
+
+Only tileset.png, preview.png and the licence were kept from top_down_lab_files.zip.
+Used by the game's top-down test view (public/tiles.js). Downloaded on 2026-11-13, at the owner's word.

@@ -871,6 +871,18 @@ body:has(#bag) .pop-notes { visibility: hidden; }
 .walk-mark:disabled { opacity: 1; }
 .walk-captain { position: absolute; z-index: 2; width: 1ch; line-height: var(--walk-row); text-align: center; pointer-events: none; font-weight: 700; background: var(--bright); color: var(--bg); }
 .walk-cursor { position: absolute; z-index: 1; width: 1ch; height: var(--walk-row); outline: 1px solid var(--text); pointer-events: none; }
+/* The top-down view (public/tiles.js): the plan drawn in a tileset's pictures, big enough to see them, a square row so
+   that a tile two squares across is square, with more of the window for the room than the walk-around view gives it.
+   The console art's layers stay underneath, hidden, painted words too, which would cover the room at this size; the
+   room's darkness is drawn into the picture room by room, so the plan isn't dimmed as a whole as well. */
+.walk-plan.tiles, .walk-plan.deck.tiles { --walk-row: 2ch; font-size: 26px; }
+.walk-tiles { position: absolute; left: 0; top: 0; pointer-events: none; image-rendering: pixelated; }
+.walk-view.top { grid-template-rows: minmax(0, 3fr) minmax(100px, 1fr); }
+.walk-plan.tiles .walk-layer { visibility: hidden; }
+.walk-plan.tiles .walk-label { transform: scale(.55); transform-origin: 0 50%; background: rgba(0, 0, 0, .55); }
+.walk-plan.tiles.dark, .walk-plan.tiles.thin { filter: none; }
+.walk-plan.tiles .walk-thing { text-shadow: 0 0 3px #000, 0 0 2px #000; }
+.walk-plan.tiles .walk-person.crowd { text-shadow: 0 0 3px #000, 0 0 2px #000; }
 /* What's here floats over the right side of the room, in a pane like the ones by people's heads: four corners, and a
    tag with the room's name that folds it down to one line. It lists the room's people, its systems and the ways out;
    the things in the room aren't listed, since they're the ? marks in it. public/walk.js (placeHere) puts it under the

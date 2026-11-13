@@ -260,9 +260,12 @@ function settingsMenu() {
       el("div", { class: "row small" }, "Story view:",
         el("button", { class: reading.view === "iso" ? "primary" : "", "aria-pressed": String(reading.view === "iso"), onclick: () => changeReading({ view: "iso" }) }, "Isometric"),
         el("button", { class: reading.view === "walk" ? "primary" : "", "aria-pressed": String(reading.view === "walk"), onclick: () => changeReading({ view: "walk" }) }, "Walk-around"),
+        el("button", { class: reading.view === "top" ? "primary" : "", "aria-pressed": String(reading.view === "top"), title: "A test: the room seen from above, in pictures from a free tileset", onclick: () => changeReading({ view: "top" }) }, "Top-down"),
         el("button", { class: reading.view === "classic" ? "primary" : "", "aria-pressed": String(reading.view === "classic"), onclick: () => changeReading({ view: "classic" }) }, "Classic")),
+      reading.view === "top" && pickRow("Top-down art:", "tiles", [["techlab", "Tech Lab"], ["interior", "Sci-fi Interior"]]),
       folded("settings-views", "What the story views mean",
         muted("Isometric shows the room you're in, seen from an angle, wherever you are, and you can walk around and click on people and things. The story comes up over the room a piece at a time: click anywhere to go on. Walking is free. The clock runs while you explore, because everyone lives their own day, and the buttons at the top of the room pause it or speed it up. The clock stops while you talk to someone."),
+        muted("Top-down is a test of how the game would look seen from above in ready-made pictures: the walk-around view with its plan drawn in a free tileset, Tech Lab or Sci-fi Interior. The furniture is drawn in simple shapes, since the free packs have none, and fights open in their own window."),
         muted("Walk-around is the same thing, drawn in console art, with the story under it. Classic gives the story the whole window, and only the story moves the clock. Popup font is for the story over the room, and Story font is for the whole story, Classic and the panel under the room."))),
     folded("settings-display", "Display",
       pickRow("Interface size:", "interface", [

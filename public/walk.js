@@ -5,6 +5,7 @@
 
 import { api, el, zoom } from "./dom.js";
 import { isoCover, isoFrameNode, isoKeepClear, isoMark } from "./iso.js";
+import { tilesLayer } from "./tiles.js";
 import { paneNode, putPane } from "./pane.js";
 import { untagged } from "./story.js";
 import { closePopups, popsNode, popupDrawn, popupNext, popupPressed, popupReading, resetPopups } from "./popups.js";
@@ -65,7 +66,9 @@ export function initWalk(hooks) {
 }
 
 const isoShown = () => app.reading.view === "iso";
-export const walkShown = () => (app.reading.view === "walk" || isoShown()) && Boolean(app.ui.game?.walk);
+// The top-down view is the walk-around view with the plan drawn in a tileset's pictures (public/tiles.js).
+const topShown = () => app.reading.view === "top";
+export const walkShown = () => (app.reading.view === "walk" || topShown() || isoShown()) && Boolean(app.ui.game?.walk);
 // The story goes over the room, unless the player would rather have it under the room.
 export const popupsShown = () => walkShown() && isoShown() && app.reading.story !== "panel" && !walk.fullStory && !liveOn();
 // Whether a fight can be fought in the room: the isometric room is on screen (public/live-fight.js).
@@ -325,12 +328,13 @@ function frameNode() {
   const arriving = walk.shownLevel !== null && walk.shownLevel !== levelIdOf(view);
   walk.shownLevel = levelIdOf(view);
   walk.marks = new Map();
-  // A deck is too big to fit, so it's drawn at a readable size and the frame scrolls to keep the player in view.
-  const deck = Boolean(view.here.deck);
+  // A deck is too big to fit, so it's drawn at a readable size and the frame scrolls to keep the player in view, and
+  // so is anything top-down, whose pictures need room.
+  const deck = Boolean(view.here.deck) || topShown();
   if (deck) requestAnimationFrame(keepCaptainInView);
   return el("div", { class: `walk-frame${deck ? " scrolls" : ""}`, id: "walk-frame" },
     el("div", {
-      class: `walk-plan${deck ? " deck" : ""}${cannotWalk() ? " waiting" : ""}${arriving ? " arriving" : ""}${view.room?.dark ? " dark" : ""}${view.room?.thin ? " thin" : ""}${view.room?.alarm ? " alarm" : ""}`,
+      class: `walk-plan${deck ? " deck" : ""}${topShown() ? " tiles" : ""}${cannotWalk() ? " waiting" : ""}${arriving ? " arriving" : ""}${view.room?.dark ? " dark" : ""}${view.room?.thin ? " thin" : ""}${view.room?.alarm ? " alarm" : ""}`,
       style: `--walk-cols:${view.cols};--walk-lines:${view.lines};${colorsOf(view.colors)}`,
       onclick: (event) => {
         const { x, y, point } = squareAt(event);
@@ -345,6 +349,7 @@ function frameNode() {
       onmousemove: showCursor,
       onmouseleave: hideCursor,
     },
+    topShown() ? tilesLayer(view, app.reading.tiles) : null,
     layersOf(view),
     view.labels.map((label) => el("div", { class: "walk-label", style: spotStyle(label.x, label.y) }, label.text)),
     view.things.map(thingMark),
@@ -518,7 +523,7 @@ export function walkViewNode(logNode) {
   // The classic plan says what its marks are. The isometric room has nothing written over it.
   const legend = isoShown() ? null : el("div", { class: "muted walk-legend" }, `@ you   ${app.ui.game.walk.things.length ? "? something to look at   " : ""}Walk with WASD or a click   Right-click for more   Space pauses`);
   const fighting = liveOn() && isoShown();
-  return el("div", { class: `walk-view${isoShown() ? " iso" : ""}${popped || fighting ? " pops-on" : ""}${fighting ? " fighting" : ""}`, id: "walk-view" },
+  return el("div", { class: `walk-view${isoShown() ? " iso" : ""}${topShown() ? " top" : ""}${popped || fighting ? " pops-on" : ""}${fighting ? " fighting" : ""}`, id: "walk-view" },
     el("div", { class: "walk-map" },
       frameNode(),
       !popped && !fighting && clockBar(),

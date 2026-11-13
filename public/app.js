@@ -50,7 +50,7 @@ const ui = {
 // ---- Reading preferences ------------------------------------------------
 
 const READING_KEY = "meridian-reading";
-const reading = { font: "book", size: 17, view: "iso", chosen: true, story: "popups", popFont: "terminal", writing: "normal", interface: "auto" };
+const reading = { font: "book", size: 17, view: "iso", tiles: "techlab", chosen: true, story: "popups", popFont: "terminal", writing: "normal", interface: "auto" };
 const textSizes = { min: 13, max: 26 };
 
 function applyReading() {
@@ -72,7 +72,8 @@ function loadReading() {
     if (saved?.font === "book" || saved?.font === "terminal") reading.font = saved.font;
     if (Number.isInteger(saved?.size)) reading.size = Math.max(textSizes.min, Math.min(textSizes.max, saved.size));
     // A view picked before the game went isometric doesn't count. One picked since then does.
-    if (saved?.chosen && (saved.view === "classic" || saved.view === "walk" || saved.view === "iso")) reading.view = saved.view;
+    if (saved?.chosen && (saved.view === "classic" || saved.view === "walk" || saved.view === "iso" || saved.view === "top")) reading.view = saved.view;
+    if (saved?.tiles === "techlab" || saved?.tiles === "interior") reading.tiles = saved.tiles;
     if (saved?.story === "popups" || saved?.story === "box" || saved?.story === "panel") reading.story = saved.story;
     if (saved?.popFont === "terminal" || saved?.popFont === "book") reading.popFont = saved.popFont;
     if (saved?.writing in WRITING_SPEEDS) reading.writing = saved.writing;
@@ -92,7 +93,7 @@ function changeReading(change) {
   }
   applyReading();
   // Switching the story view changes the whole screen, not just the menu it's in.
-  if (change.view || change.story) render();
+  if (change.view || change.story || change.tiles) render();
   else renderMenus();
 }
 
