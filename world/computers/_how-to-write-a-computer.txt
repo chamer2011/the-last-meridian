@@ -2,9 +2,11 @@ HOW TO WRITE A COMPUTER
 =======================
 
 A computer is one plain text file in this folder, world/computers/<id>.txt. The player gets into it
-by hacking it (the Intrusion Console), by sitting at it when it's theirs, or with a password the
-story has given them. Once in, they read its files, mail and logs, run its programs, and can reach
-other computers on its network.
+by sitting at it when it's theirs, with a password the story has given them, or at its logon, with
+a breaker off their rig that's strong enough for its class (KNOCK, DICTIONARY, SKELETON, SHADOW, or
+MIMIC with a lifted keycard). The watcher, AuditGuard, hears the noise they make from the first try
+at the logon: it notices them, traces them in minutes, and cuts them off. Once in, they read its
+files, mail and logs, run its programs, and can reach other computers on its network.
 
     npm run check-story
 
@@ -56,19 +58,20 @@ THE FILE
 
 The first line is the name, written # The Name. Then, before the first part, one line each of:
 
-    class       easy, moderate, hard, very_hard or nearly_impossible: how hard it is to hack, and
-                what kind of computer the window says it is (a door panel, a crew terminal, a ship's
-                main system, a Ministry or Navy server, the Beacon or the Choir).
+    class       easy, moderate, hard, very_hard or nearly_impossible: what kind of computer it is
+                (a door panel, a crew terminal, a ship's main system, a Ministry or Navy server, the
+                Beacon or the Choir), which breakers are strong enough for it, and how strict its
+                watcher is. The watcher's numbers for each class are in world/checks.json.
     owner       Who it belongs to: a faction's id or a person's id, or none.
-    yours       yes when it's the player's own, such as aboard the Meridian: no hack, no trace.
+    yours       yes when it's the player's own, such as aboard the Meridian: no logon, no watcher.
     place       The place it's at, by its id (the file name in world/places).
     room        The room it's in, by the room's name.
     thing       The thing in that room it is, by the thing's name. Using the thing opens it.
     door        Instead of a thing, the door it controls: the id of the room the door leads to.
-                Asking at that door and passing its hack opens this computer.
+                Getting into that door's panel opens this computer, at its logon.
     login       The user name on the prompt.
     password    A password the story can hand out. * password <this computer's id> <the word> in a
-                scene makes the player know it, and then they get in without a hack.
+                scene makes the player know it, and then they get in without the logon.
     flavor      Which set of lines from _flavor.json it uses: default, or yours.
 
 Every one of them can be left out.
@@ -95,7 +98,7 @@ The parts, each under its heading with a colon:
                                 * password <id> <word> gives the player another computer's password
                             A program runs once. Write it twice if it should run twice.
     Network                 Each is "another_computer_id: what it's called from here". Connecting
-                            to one is a hack of its own class, unless it's yours or you know its
+                            to one opens it at its own logon, unless it's yours or you know its
                             password.
 
 A computer can also run a place's systems: its power, lights, cameras, doors and the rest. That's
@@ -103,5 +106,6 @@ written in the place's file in world/systems, under Computers, and the computer'
 Systems list with a switch for each part.
 
 What reaches the player: the window never shows a password or a program's effects, only what each
-program says it does. A completed trace inside a ship's main system or worse leaves the same mark
-on the record as a failed hack: traced_on_<class>.
+program says it does, and nothing on a computer at all until they're past its logon. Being found by
+the trace, or cut off, on a ship's main system or worse leaves a mark on the record:
+traced_on_<class>.

@@ -1329,14 +1329,20 @@ export function workOnDoor(game, levelId, exit, how) {
   const action = doorActions(game, spot.place, levelId, exit).find((one) => one.id === how);
   if (!action) throw new Error("That door isn't locked.");
   const [skill, difficulty] = action.check.split(":");
+  // Getting into the door's panel has no check window: the panel opens at its logon, which src/walk.js opens from
+  // what this returns. A camera that sees the player at it raises the alarm all the same.
+  if (skill === "hacking") {
+    const seen = !ownedBy(game, spot.place) && watched(game, spot.place, spot.room) ? caught(game, spot.place, spot.room) : [];
+    if (seen.length) game.transcript?.push({ role: "notice", text: seen.join("\n") });
+    return { panel: { place: spot.place, door: action.room, classKey: difficulty, at: `exit:${exit.key}` }, said: seen.join("\n") || null };
+  }
   startCheck(game, { skill, difficulty, reason: `${action.label}: the door to ${roomNameOf(spot.place, action.room)}`, scene: doorLook(game, spot.place, levelId, exit), source: "part", target: `exit:${exit.key}` });
   game.partAsked = { place: spot.place, door: action.room, how, from: spot.room };
   return { check: true };
 }
 
-// A check on a part or a door is over. Returns the lines it left in the story, or null if it wasn't one. A door's
-// panel that was hacked opens as a computer, through enterPanel, which src/computers.js passes in.
-export function settlePart(game, outcome, enterPanel = null) {
+// A check on a part or a door is over. Returns the lines it left in the story, or null if it wasn't one.
+export function settlePart(game, outcome) {
   const asked = game.partAsked;
   if (!asked) return null;
   game.partAsked = null;
@@ -1350,8 +1356,6 @@ export function settlePart(game, outcome, enterPanel = null) {
     if (asked.how === "force") {
       if (outcome.success) lines.push(`[SYSTEMS] ${doors.force?.done ?? "The door gives."}`, ...setDoor(game, asked.place, asked.door, "forced", { by: "player" }).filter((line) => !/^\[DOOR\] The door to .* is (un)?locked\.$/.test(line)));
       else lines.push(`[SYSTEMS] ${doors.force?.failed ?? "The door doesn't give."}`);
-    } else if (asked.how === "hack" && outcome.success && enterPanel) {
-      enterPanel(asked.place, asked.door, outcome.hack);
     }
     if (seen) lines.push(...caught(game, asked.place, asked.from ?? asked.door));
   } else {

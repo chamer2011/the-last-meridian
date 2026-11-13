@@ -15,6 +15,7 @@ import { crewContacts, maxEnergy, maxHp } from "./rules.js";
 import { emptyStory } from "./story-library.js";
 import { walkFromOnePlan, walkFromStory } from "./walk.js";
 import { newRig } from "./rig.js";
+import { classOf } from "./hack-classes.js";
 
 // What each original background becomes under the deeper character system.
 const LEGACY_BACKGROUNDS = {
@@ -331,6 +332,27 @@ function fromVersion24(save) {
   return game;
 }
 
+// Version 26 (2026-11-13): no free way in, step 3 of the hacking rework. The word puzzle is gone: a computer the player
+// is on keeps going, with its trace turned into the watcher's noise (the same share of the way to the trace's mark), and
+// a hacking window left open in the middle of the puzzle is closed, to be tried again at the computer's logon.
+function fromVersion25(save) {
+  const game = { ...save, version: 26 };
+  const session = game.computer;
+  if (session && session.noise === undefined) {
+    const marks = classOf(null, session.classKey);
+    const share = session.maxTrace ? Math.min(1, (session.trace ?? 0) / session.maxTrace) : 0;
+    const { trace: _trace, maxTrace: _max, blind: _blind, ...rest } = session;
+    game.computer = { ...rest, locked: false, noise: session.yours ? 0 : Math.round(share * (marks.traces - 1)), noticed: false, traceLeft: null, minutes: (session.actions ?? 0) * 2 };
+    game.computer.noticed = !session.yours && game.computer.noise >= marks.notices;
+  }
+  if (game.check?.game === "crack") {
+    game.check = null;
+    game.transcript = [...(game.transcript ?? []), { role: "notice", text: "[HACK] Hacking works differently now: there's no window with a word puzzle. Use the computer again, and it opens at its logon." }];
+  }
+  delete game.computerAsked;
+  return game;
+}
+
 export function migrateGame(save) {
   if (!save) return save;
   let game = save;
@@ -358,6 +380,7 @@ export function migrateGame(save) {
   if (game.version < 23) game = fromVersion22(game);
   if (game.version < 24) game = fromVersion23(game);
   if (game.version < 25) game = fromVersion24(game);
+  if (game.version < 26) game = fromVersion25(game);
   // A place that's gone from the world's files can't hold anyone, and factions added since this save was made need a standing.
   if (!LOCATIONS[game.location]) game.location = "meridian";
   game.factions ??= {};

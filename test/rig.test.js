@@ -11,7 +11,7 @@ import { test } from "node:test";
 process.env.GAME_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-rig-"));
 
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
-const { enterComputer } = await import("../src/computers.js");
+const { enterComputer, watchFor } = await import("../src/computers.js");
 const { computerCommand } = await import("../src/computer-use.js");
 const { controlSystem, controlsView } = await import("../src/systems.js");
 const { passTime, publicState } = await import("../src/rules.js");
@@ -27,7 +27,7 @@ const newGame = () => {
 };
 // A made-up console aboard that runs the doors and the cameras, for the programs that switch things.
 const CONSOLE = { id: "test_console", name: "The test console", classKey: "easy", user: "tech", place: "meridian", desc: "A console for the tests.", files: [{ id: "a", name: "a.txt", text: "Alpha." }, { id: "b", name: "b.txt", text: "Beta." }], mail: [{ id: "m", from: "Oona", to: "Brandt", text: "Gamma." }], logs: [], programs: [], network: [], controls: [{ systems: ["doors", "cameras"], rooms: null }] };
-const sitAt = (game, { hacked = true, maxTrace = 6, content = CONSOLE } = {}) => enterComputer(game, { generic: content, hacked, trace: 0, maxTrace, how: "hacked" });
+const sitAt = (game, { hacked = true, noise = 0, content = CONSOLE } = {}) => enterComputer(game, { generic: content, hacked, noise, how: "hacked" });
 const run = (game, id) => computerCommand(game, { action: "rig", id });
 const doorRows = (game) => controlsView(game, "meridian", CONSOLE.controls).find((s) => s.id === "doors")?.rows ?? [];
 
@@ -42,7 +42,7 @@ test("the program files read with nothing wrong, and a bad one says what's wrong
 
 test("a new game's captain has the plain rig in their pack, with DICTIONARY, DOORKEY and MASK loaded", () => {
   const game = newGame();
-  assert.equal(game.version, 25);
+  assert.equal(game.version, 26);
   assert.equal(game.inventory.rig, 1);
   const rig = publicState(game).rig;
   assert.deepEqual(rig.loaded, ["dictionary", "doorkey", "mask"]);
@@ -86,33 +86,49 @@ test("writing a program needs the Repair Bay's bench and the Hacking, and takes 
   assert.throws(() => rigCommand(game, { action: "write", id: "digger" }), /Hacking 3/);
 });
 
-test("inside a hacked computer: MASK lets three actions by, CLEANER takes the trace down, LULLABY slows it", () => {
+test("inside a hacked computer: MASK makes three actions silent, CLEANER takes noise off and loses a trace, LULLABY slows one", () => {
   const game = newGame();
   game.skills.hacking = 6;
   game.rig.programs.push("cleaner", "lullaby", "blindfold", "cutout", "ghost");
   game.rig.loaded = ["mask", "cleaner", "lullaby"];
-  sitAt(game, { maxTrace: 8 });
+  sitAt(game);
+  const switchDoor = () => computerCommand(game, { action: "system", system: "doors", row: doorRows(game)[0].id, to: doorRows(game)[0].actions[0].to });
   run(game, "mask");
-  for (let i = 0; i < 4; i += 1) computerCommand(game, { action: "system", system: "doors", row: doorRows(game)[0].id, to: doorRows(game)[0].actions[0].to });
-  assert.equal(game.computer.trace, 1, "three switches went by unnoticed; the fourth cost a point");
-  game.computer.trace = 5;
+  for (let i = 0; i < 4; i += 1) switchDoor();
+  assert.equal(game.computer.noise, 1, "three switches went by silent; the fourth made a point of noise");
+  const watch = watchFor(game, "easy");
+  Object.assign(game.computer, { noise: watch.traces - 1, noticed: true });
+  switchDoor();
+  assert.equal(game.computer.traceLeft, watch.finds, "past the trace's mark, a trace");
   run(game, "cleaner");
-  assert.equal(game.computer.trace, 2);
+  assert.equal(game.computer.noise, watch.traces + 1 - 3);
+  assert.equal(game.computer.traceLeft, null, "back under the mark, the trace loses the player");
+  Object.assign(game.computer, { noise: watch.traces + 1, traceLeft: 3 });
   run(game, "lullaby");
-  assert.equal(game.computer.maxTrace, 10);
-  assert.match(run(game, "cleaner").said ?? game.computer.screen.lines.map((l) => l.text).join(" "), /already run/);
+  assert.equal(game.computer.traceLeft, 3 + 4 - 1, "four more minutes, less the minute it took to run");
+  run(game, "cleaner");
+  assert.match(game.computer.screen.lines.map((l) => l.text).join(" "), /already run/);
 });
 
-test("CUTOUT keeps a completed trace off the record; without it a ship's main system marks it", () => {
-  const game = newGame();
-  game.skills.hacking = 6;
-  game.rig.programs.push("cutout");
-  game.rig.loaded = ["cutout", "doorkey"];
-  sitAt(game, { maxTrace: 2, content: { ...CONSOLE, classKey: "hard" } });
-  run(game, "cutout");
-  const out = computerCommand(game, { action: "system", system: "doors", row: doorRows(game)[0].id, to: doorRows(game)[0].actions[0].to });
-  assert.equal(out.over, true);
-  assert.ok(!Object.keys(game.story?.record?.facts ?? {}).some((id) => id.startsWith("traced_on")), "nothing on the record");
+test("CUTOUT keeps being cut off off the record; without it a ship's main system marks it", () => {
+  const cutOff = (withCutout) => {
+    const game = newGame();
+    game.skills.hacking = 6;
+    game.rig.programs.push("cutout");
+    game.rig.loaded = ["cutout", "doorkey"];
+    const watch = watchFor(game, "hard");
+    // Noticed already, so CUTOUT and the switch are each one louder: 2 and 2.
+    sitAt(game, { noise: watch.cuts - 3, content: { ...CONSOLE, classKey: "hard" } });
+    if (withCutout) run(game, "cutout");
+    else game.computer.noise += 1;
+    const out = computerCommand(game, { action: "system", system: "doors", row: doorRows(game)[0].id, to: doorRows(game)[0].actions[0].to });
+    assert.equal(out.over, true);
+    assert.equal(game.computer, null);
+    return game;
+  };
+  const marked = (game) => (game.story?.record?.facts ?? []).some((fact) => String(fact.id ?? fact).startsWith("traced_on"));
+  assert.ok(!marked(cutOff(true)), "nothing on the record");
+  assert.ok(marked(cutOff(false)), "the mark on the record");
 });
 
 test("DOORKEY unlocks the doors a computer runs without the trace noticing; DIGGER reads everything at once", () => {
@@ -123,7 +139,7 @@ test("DOORKEY unlocks the doors a computer runs without the trace noticing; DIGG
   assert.equal(doorRows(game)[0].word, "locked");
   run(game, "doorkey");
   assert.notEqual(doorRows(game)[0].word, "locked");
-  assert.equal(game.computer.trace, 0);
+  assert.equal(game.computer.noise, 0);
   game.skills.hacking = 3;
   game.rig.programs.push("digger");
   game.rig.loaded = ["digger"];
@@ -132,7 +148,7 @@ test("DOORKEY unlocks the doors a computer runs without the trace noticing; DIGG
   assert.ok(game.lore.some((entry) => /Gamma/.test(entry.text)));
 });
 
-test("breakers say there's nothing to break once you're in, and a program too weak for the computer won't run", () => {
+test("breakers say you're already in once you're past the logon, and a program too weak for the computer won't run", () => {
   const game = newGame();
   sitAt(game, { content: { ...CONSOLE, classKey: "hard" } });
   run(game, "dictionary");
@@ -176,7 +192,9 @@ test("every program runs on a computer that has what it needs, and what's left b
   for (const p of everyOne) {
     if (!p.builtIn && !game.rig.programs.includes(p.id)) game.rig.programs.push(p.id);
     game.rig.loaded = p.builtIn ? [] : [p.id];
-    sitAt(game, { content, maxTrace: 20 });
+    sitAt(game, { content });
+    // LULLABY slows a trace that's running.
+    if (p.id === "lullaby") game.computer.traceLeft = 3;
     run(game, p.id);
     const words = game.computer.screen.lines.map((l) => l.text).join(" ");
     assert.doesNotMatch(words, /won't run|isn't in the game/, `${p.name}: ${words}`);
@@ -195,7 +213,7 @@ test("an old save gets the rig", () => {
   delete old.rig;
   delete old.inventory.rig;
   const moved = migrateGame(old);
-  assert.equal(moved.version, 25);
+  assert.equal(moved.version, 26);
   assert.equal(moved.inventory.rig, 1);
   assert.deepEqual(moved.rig.loaded, ["dictionary", "doorkey", "mask"]);
 });

@@ -1,14 +1,14 @@
 // Computers: what the player uses once they're in. A written one from world/computers, a generic one
-// for a console or a door nobody has written, getting in by hack, by right or by password, what's
-// read and run, the trace inside, logging off, and the checker.
+// for a console or a door nobody has written, getting in at the logon, by right or by password, what's
+// read and run, the watcher, logging off, and the checker.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { checkCommand, startCheck } from "../src/checks.js";
-import { computerAtThing, computerForPlace, computerProblems, computerView, enterAfterHack, enterComputer, genericKindOf, programOf, useComputer } from "../src/computers.js";
+import { startCheck } from "../src/checks.js";
+import { computerAtThing, computerForPlace, computerProblems, computerView, enterComputer, genericKindOf, programOf, useComputer, watchFor } from "../src/computers.js";
 import { computerCommand } from "../src/computer-use.js";
 import { createGameFromDraft, randomDraft } from "../src/creator.js";
 import { readRecord } from "../src/record.js";
@@ -23,6 +23,9 @@ const newGame = (seed = 21, archetype = "officer") => {
   game.inventory = {};
   return game;
 };
+
+// The ids of the files on the written computer the player is on.
+const writtenFiles = (game) => (WORLD_COMPUTERS[game.computer.id]?.files ?? []).map((one) => String(one.name).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, ""));
 
 const SAMPLE = `# The test board
 class: moderate
@@ -163,26 +166,29 @@ test("the player's own computers open with no hack, and reading, running and log
   assert.equal(game.computers.meridian_plot_table.visits, 1);
 });
 
-test("a hack that gets in opens the computer it was for, with the trace carried inside", () => {
+test("a scene's hack opens the computer it names at its logon, a breaker gets in, and the story reads it", () => {
   const game = newGame();
   startCheck(game, { skill: "hacking", difficulty: "moderate", reason: "Get in", source: "choice", audience: "haven_berth_board" });
-  assert.equal(game.check.computer, "haven_berth_board");
-  assert.equal(game.check.audience, null);
-  let reply;
-  while (game.check) reply = checkCommand(game, `try ${game.check.state.answer}`);
-  assert.equal(reply.outcome.success, true);
-  assert.equal(reply.outcome.hack.computer, "haven_berth_board");
-  enterAfterHack(game, reply.outcome.hack);
+  assert.equal(game.check, null, "a hack has no window");
   assert.equal(game.computer.id, "haven_berth_board");
+  assert.equal(game.computer.locked, true);
+  const logon = computerView(game);
+  assert.equal(logon.files.length + logon.mail.length + logon.programs.length, 0, "nothing on it shows before the logon");
+  assert.ok(logon.logon.ways.some((way) => way.id === "dictionary" && !way.why));
+  assert.match(computerCommand(game, { action: "file", id: "real_manifest_txt" }).said, /Log on first/);
+  computerCommand(game, { action: "rig", id: "dictionary" });
+  assert.equal(game.computer.locked, false);
   assert.equal(game.computer.hacked, true);
-  assert.equal(game.computer.maxTrace, reply.outcome.hack.maxTrace);
+  assert.equal(game.lastCheck.success, true);
+  assert.equal(game.lastCheck.reason, "Get in");
+  assert.match(game.transcript.at(-1).text, /^\[HACK\] Get in: ACCESS GRANTED/);
   const view = computerView(game);
   assert.equal(view.theme, "cyan");
   assert.ok(view.network.some((one) => one.id === "haven_harbor_office" && !one.known));
-  // A program on a hacked computer costs a point of trace, and its effects land.
-  const traceBefore = game.computer.trace;
+  // A program on a hacked computer makes noise the watcher hears, and its effects land.
+  const noiseBefore = game.computer.noise;
   computerCommand(game, { action: "program", id: "rewrite_a_berth_entry" });
-  assert.equal(game.computer.trace, traceBefore + 1);
+  assert.ok(game.computer.noise > noiseBefore);
   assert.ok(game.flags.berth_rewritten_at_haven);
   assert.ok(readRecord(game).facts.some((fact) => fact.id === "berth_rewritten_at_haven"));
   // A program that's only offered sometimes isn't offered when its condition fails.
@@ -190,19 +196,47 @@ test("a hack that gets in opens the computer it was for, with the trace carried 
   assert.ok(game.flags.sundial_fees_cleared);
   assert.ok(!computerView(game).programs.some((one) => one.id === "clear_the_sundials_fees"));
   computerCommand(game, { action: "logoff" });
-  assert.match(game.transcript.at(-1).text, /Logged off with the trace at \d+%/);
+  assert.match(game.transcript.at(-1).text, /watcher/);
 });
 
-test("the trace completing inside throws the player out, with the mark on an important computer", () => {
+test("being cut off throws the player out, with the mark on an important computer", () => {
   const game = newGame();
-  enterComputer(game, { id: "asterion_ministry_archive", hacked: true, trace: 2, maxTrace: 3 });
+  const watch = watchFor(game, "very_hard");
+  enterComputer(game, { id: "asterion_ministry_archive", hacked: true, noise: watch.cuts - 1 });
   assert.equal(game.computer.hacked, true);
-  // On a Ministry server even reading costs a point.
+  // On a Ministry server even reading something new makes noise.
   const reply = computerCommand(game, { action: "file", id: "fleet_register_txt" });
   assert.equal(reply.over, true);
   assert.equal(game.computer, null);
-  assert.match(game.transcript.at(-1).text, /TRACE COMPLETE/);
+  assert.match(game.transcript.at(-1).text, /cuts the session off/);
   assert.ok(readRecord(game).facts.some((fact) => fact.id === "traced_on_ministry_or_navy_server"));
+});
+
+test("the watcher notices, then traces in the session's minutes, and logging off in time gets the player out clean", () => {
+  const game = newGame();
+  const watch = watchFor(game, "moderate");
+  enterComputer(game, { id: "haven_berth_board", hacked: true, noise: watch.notices - 1 });
+  computerCommand(game, { action: "program", id: "rewrite_a_berth_entry" });
+  assert.equal(game.computer.noticed, true);
+  assert.match(game.computer.log.map((one) => one.text).join(" "), /has noticed you/);
+  game.computer.noise = watch.traces - 1;
+  computerCommand(game, { action: "program", id: "clear_the_sundials_fees" });
+  assert.equal(game.computer.traceLeft, watch.finds, "past the trace's mark a trace starts, the whole of its minutes to run");
+  assert.equal(computerView(game).watch.stage, "tracing");
+  // Reading takes minutes, and makes no noise here: the trace runs down all the same.
+  computerCommand(game, { action: "file", id: game.computer && writtenFiles(game)[0] });
+  assert.equal(game.computer.traceLeft, watch.finds - 2);
+  computerCommand(game, { action: "logoff" });
+  assert.equal(game.computer, null);
+  assert.match(game.transcript.at(-1).text, /A trace was still running/);
+  assert.ok(!readRecord(game).facts.some((fact) => fact.id.startsWith("traced_on")), "a crew terminal leaves no mark");
+  // Let it run out, and the trace finds the terminal.
+  const found = newGame();
+  enterComputer(found, { id: "haven_berth_board", hacked: true, noise: watch.traces });
+  found.computer.traceLeft = 2;
+  const reply = computerCommand(found, { action: "file", id: writtenFiles(found)[0] });
+  assert.equal(reply.over, true);
+  assert.match(found.transcript.at(-1).text, /trace finds the terminal/);
 });
 
 test("a learned password gets in without a hack, and a scene can hand one out", () => {
@@ -211,17 +245,20 @@ test("a learned password gets in without a hack, and a scene can hand one out", 
   const thing = Object.entries(level[1].things).map(([id, one]) => ({ id, ...one })).find((one) => /berth board/i.test(one.name));
   game.location = "haven";
   const first = useComputer(game, { place: "haven", levelId: level[0], thing });
-  assert.equal(first.check, true);
-  assert.equal(game.check.computer, "haven_berth_board");
-  assert.equal(game.check.state.className, "Crew terminal");
-  checkCommand(game, "disconnect");
-  assert.equal(game.check, null);
+  assert.equal(first.computer, true);
+  assert.equal(game.computer.id, "haven_berth_board");
+  assert.equal(game.computer.locked, true);
+  assert.equal(game.computer.className, "Crew terminal");
+  computerCommand(game, { action: "logoff" });
+  assert.equal(game.computer, null);
+  assert.match(game.transcript.at(-1).text, /didn't get in/);
   game.passwords = { haven_berth_board: "ORBIT" };
   const second = useComputer(game, { place: "haven", levelId: level[0], thing });
   assert.equal(second.computer, true);
   assert.equal(game.computer.id, "haven_berth_board");
+  assert.equal(game.computer.locked, false);
   assert.equal(game.computer.hacked, false);
-  assert.equal(game.computer.maxTrace, 0);
+  assert.equal(game.computer.noise, 0);
 });
 
 test("a console nobody has written is a generic computer of its kind, made from the world", () => {
@@ -252,7 +289,7 @@ test("a console nobody has written is a generic computer of its kind, made from 
 
 test("what reaches the browser has the computer, and never its password or a program's effects", () => {
   const game = newGame();
-  enterComputer(game, { id: "haven_berth_board", hacked: true, trace: 1, maxTrace: 6 });
+  enterComputer(game, { id: "haven_berth_board", hacked: true, noise: 1 });
   const shown = JSON.stringify(publicState(game).computer);
   assert.ok(shown.includes('"name":"The berth board"'));
   assert.ok(!shown.includes("\"password\""));
@@ -263,7 +300,7 @@ test("what reaches the browser has the computer, and never its password or a pro
 test("the scene effects open doors, hand out passwords and sit the player down", () => {
   // Through the same effect code a program uses: the door to a room opens, and a password is learned.
   const game = newGame();
-  enterComputer(game, { id: "foundry_sublevel_panel", hacked: true, trace: 0, maxTrace: 5 });
+  enterComputer(game, { id: "foundry_sublevel_panel", hacked: true });
   computerCommand(game, { action: "program", id: "open_the_sublevel_door" });
   assert.ok(game.opened.foundry.includes("sublevels"));
   computerCommand(game, { action: "logoff" });

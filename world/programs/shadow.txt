@@ -10,4 +10,4 @@ once: no
 sold at: kessara
 
 What it does:
-Rides a session someone already has open. Here, Tarrow's: everything is done in the security chief's name, and Tarrow might notice.
+Rides a session someone already has open, in working hours. Everything is done in their name, and everything is one louder, since they might notice.

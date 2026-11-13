@@ -16,7 +16,7 @@ const { clearMaps, mapFor, walkCommand, walkView } = await import("../src/walk.j
 const { checkParts, passTime, publicState, travel } = await import("../src/rules.js");
 const { checkCommand } = await import("../src/checks.js");
 const { computerCommand, screenGoesDark } = await import("../src/computer-use.js");
-const { enterComputer, enterDoorPanel, useComputer } = await import("../src/computers.js");
+const { enterComputer, useComputer } = await import("../src/computers.js");
 const { conditionHolds, parseCondition, parseEffect } = await import("../src/scene-text.js");
 const { peopleAboard } = await import("../src/life.js");
 const { jumpCost } = await import("../src/ship.js");
@@ -327,16 +327,22 @@ test("a locked door stops the walk both ways, can be forced, and stays forced un
   assert.equal(sys.doorLocked(game, "haven", "hook"), false, "a forced door won't lock");
   const notes = passTime(game, 3.2);
   assert.ok(notes.some((note) => /fixed the door to The Hook/.test(note)), notes.join(" | "));
-  // Hacking the panel opens it as a computer that runs that door.
+  // Hacking the panel opens it at its logon, and once past it, it's a computer that runs that door.
   sys.setDoor(game, "haven", "hook", "locked", { by: "story" });
-  enterDoorPanel(game, "haven", "hook", { classKey: "easy", trace: 0, maxTrace: 5 });
+  const worked = walkCommand(game, { action: "work", key: toHook.key, how: "hack" });
+  assert.equal(worked.computer, true);
+  assert.equal(game.check, null, "no check window for a hack");
+  assert.equal(game.computer.locked, true);
+  computerCommand(game, { action: "rig", id: "dictionary" });
+  assert.equal(game.computer.locked, false);
   const panel = publicState(game).computer;
   assert.deepEqual(panel.systems.map((one) => one.id), ["doors"]);
   const row = panel.systems[0].rows[0];
   assert.equal(row.word, "locked");
+  const before = game.computer.noise;
   computerCommand(game, { action: "system", system: "doors", row: row.id, to: "unlocked" });
   assert.equal(sys.doorLocked(game, "haven", "hook"), false);
-  assert.equal(game.computer.trace, 1, "a switch on a hacked computer costs a point of trace");
+  assert.ok(game.computer.noise > before, "the watcher hears a switch on a hacked computer");
   computerCommand(game, { action: "logoff" });
 });
 
@@ -357,7 +363,7 @@ test("a computer runs what the place's file says, and one that cuts its own powe
   view = publicState(game).computer;
   assert.equal(view.screen.kind, "system");
   assert.equal(view.systems.find((one) => one.id === "cameras").rows.find((row) => row.id === camera.id).word, "off");
-  assert.equal(game.computer.trace, 0, "no trace on the captain's own machine");
+  assert.equal(game.computer.noise, 0, "nobody watches the captain's own machine");
   assert.throws(() => computerCommand(game, { action: "system", system: "power", row: "power:junction_box:bridge", to: "off" }), /can't be done from here/);
   computerCommand(game, { action: "logoff" });
   assert.equal(game.systems.meridian.parts[camera.id].backAt, undefined, "the captain's own changes stay");
@@ -386,10 +392,11 @@ test("a computer goes dark when its room's power is cut from the Ship menu, and 
   assert.equal(game.computer, null);
   assert.match(game.transcript.at(-1).text, /The screen goes dark: the power's off in here/);
   sys.controlSystem(game, "meridian", all, power.id, "on", { by: "owner" });
-  // Ten things done take twenty minutes at least. Half an hour on the running clock covers them; five minutes leaves fifteen.
+  // Ten things done take twenty minutes of the session. Half an hour on the running clock covers them; five minutes leaves fifteen.
   for (const [ran, added] of [[0.5, 0], [5 / 60, 15 / 60]]) {
     enterComputer(game, { id: "meridian_reactor_gauges" });
     game.computer.actions = 10;
+    game.computer.minutes = 20;
     game.clock.hours += ran;
     const before = game.clock.hours;
     computerCommand(game, { action: "logoff" });

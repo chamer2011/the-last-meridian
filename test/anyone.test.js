@@ -123,7 +123,7 @@ test("three people could have the chair, each with a file, a post, a day, and th
 
 test("a captain's game hasn't changed: it starts where it always did, with the people it always had", () => {
   const game = createGameFromDraft(randomDraft({ seed: 21, archetype: "officer" }));
-  assert.equal(game.version, 25);
+  assert.equal(game.version, 26);
   assert.deepEqual(game.role, { id: "captain", captain: true });
   assert.equal(isCaptain(game), true);
   assert.equal(game.location, "meridian");
@@ -616,7 +616,7 @@ test("a save from before all this is a captain's, and stays one", () => {
   old.clock.hours = 300;
   old.location = "meridian";
   const game = migrateGame(JSON.parse(JSON.stringify(old)));
-  assert.equal(game.version, 25);
+  assert.equal(game.version, 26);
   assert.deepEqual(game.role, { id: "captain", captain: true });
   assert.equal(isCaptain(game), true);
   assert.equal(chairOf(game), null);
@@ -735,7 +735,6 @@ test("a check window doesn't call someone else the captain", () => {
   };
   assert.equal(open(newGame(), "leadership"), "captain:");
   assert.equal(open(newGame("docker"), "leadership"), "you:");
-  assert.equal(open(newGame(), "hacking"), "root@meridian:~$");
-  assert.equal(open(newGame("docker"), "hacking"), "root@terminal:~$");
-  for (const skill of Object.keys(SKILLS)) assert.ok(!/captain|meridian/i.test(open(newGame("docker"), skill)), skill);
+  // Hacking has no window: it opens a computer at its logon.
+  for (const skill of Object.keys(SKILLS).filter((id) => id !== "hacking")) assert.ok(!/captain|meridian/i.test(open(newGame("docker"), skill)), skill);
 });

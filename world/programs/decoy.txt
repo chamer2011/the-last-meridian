@@ -9,4 +9,4 @@ once: yes
 written in: 2 hours
 
 What it does:
-Makes noise on another terminal: the trace drops by two.
+Makes a racket on another terminal: two noise off yours.

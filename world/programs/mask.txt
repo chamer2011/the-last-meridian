@@ -9,4 +9,4 @@ once: yes
 written in: 2 hours
 
 What it does:
-Your next three actions don't add to the trace.
+Your next three actions make no noise.

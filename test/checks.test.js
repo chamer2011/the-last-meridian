@@ -1,13 +1,13 @@
-// The skill check windows: every skill has one, none of them can get stuck or give the answer
-// away, a player who plays well does better than one who doesn't, and training makes it easier.
+// The skill check windows: every skill but hacking has one (a hack is a computer's logon since step 3 of the hacking
+// rework: test/logon.test.js), none of them can get stuck or give the answer away, a player who plays well does better
+// than one who doesn't, and training makes it easier.
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { SKILLS } from "../src/character-data.js";
-import { CHECK_GAMES, MAX_EDGE, MIN_EDGE, checkCommand, checkView, hackingClasses, startCheck, tierFor } from "../src/checks.js";
+import { CHECK_GAMES, MAX_EDGE, MIN_EDGE, checkCommand, checkView, startCheck, tierFor } from "../src/checks.js";
 import { createGameFromDraft, randomDraft } from "../src/creator.js";
 import { migrateGame } from "../src/migrate.js";
-import { readRecord } from "../src/record.js";
 import { DIFFICULTY, oddsFor, publicState, skillRank } from "../src/rules.js";
 import { CHECK_TEXT } from "../src/world.js";
 
@@ -15,6 +15,8 @@ import { CHECK_TEXT } from "../src/world.js";
 const giveUp = (game) => checkCommand(game, game.check.decided ? "disconnect" : "run");
 
 const newGame = (seed = 21, archetype = "officer") => createGameFromDraft(randomDraft({ seed, archetype }));
+// Every skill with a window of its own: all of them but hacking.
+const WINDOWED = Object.keys(SKILLS).filter((id) => id !== "hacking");
 const DIFFICULTIES = Object.keys(DIFFICULTY);
 
 const open = (game, skill, difficulty = "moderate", extra = {}) => startCheck(game, { skill, difficulty, reason: "A test", source: "practice", ...extra });
@@ -57,7 +59,7 @@ function playRandomly(game) {
 }
 
 test("every skill has its own window, with what its game needs", () => {
-  for (const skill of Object.keys(SKILLS)) {
+  for (const skill of WINDOWED) {
     const text = CHECK_TEXT.skills[skill];
     assert.ok(text, `${skill} has no window`);
     assert.ok(CHECK_GAMES[text.game], `${skill} uses a game that doesn't exist: ${text.game}`);
@@ -65,24 +67,13 @@ test("every skill has its own window, with what its game needs", () => {
     assert.ok(text.results?.success && text.results?.failure, `${skill} needs its result titles`);
     assert.ok(text.consoles?.terminal, `${skill} needs a console`);
   }
-  const titles = Object.values(CHECK_TEXT.skills).map((text) => text.window);
+  const titles = WINDOWED.map((skill) => CHECK_TEXT.skills[skill].window);
+  assert.ok(!CHECK_TEXT.skills.hacking.window && CHECK_TEXT.skills.hacking.classes, "hacking has classes of computer, and no window");
   assert.equal(new Set(titles).size, titles.length, "two skills share a window title");
 });
 
-test("the hacking word lists are the right length, with no repeats", () => {
-  const { words } = CHECK_TEXT.skills.hacking;
-  for (const [length, list] of Object.entries(words)) {
-    assert.ok(list.length >= 20, `only ${list.length} words of length ${length}`);
-    assert.equal(new Set(list).size, list.length, `repeats in length ${length}`);
-    for (const word of list) {
-      assert.equal(word.length, Number(length), word);
-      assert.match(word, /^[A-Z]+$/, word);
-    }
-  }
-});
-
 test("any way of clicking through any window finishes, at any difficulty and any level of training", () => {
-  for (const skill of Object.keys(SKILLS)) {
+  for (const skill of WINDOWED) {
     for (const difficulty of DIFFICULTIES) {
       for (const rank of [0, 2, 5, 10]) {
         const game = trained(skill, rank);
@@ -98,7 +89,7 @@ test("any way of clicking through any window finishes, at any difficulty and any
 });
 
 test("each window's state survives being saved, in the middle of a check", () => {
-  for (const skill of Object.keys(SKILLS)) {
+  for (const skill of WINDOWED) {
     const game = newGame();
     open(game, skill, "hard");
     const options = clickable(checkView(game));
@@ -114,7 +105,7 @@ test("each window's state survives being saved, in the middle of a check", () =>
 });
 
 test("what the player earns stays within bounds, and the odds shown match the final roll", () => {
-  for (const skill of Object.keys(SKILLS)) {
+  for (const skill of WINDOWED) {
     for (let i = 0; i < 12; i += 1) {
       const game = trained(skill, i % 8);
       open(game, skill, DIFFICULTIES[i % DIFFICULTIES.length]);
@@ -132,7 +123,7 @@ test("what the player earns stays within bounds, and the odds shown match the fi
 });
 
 test("what reaches the browser never includes the puzzle's answer", () => {
-  for (const skill of Object.keys(SKILLS)) {
+  for (const skill of WINDOWED) {
     const game = newGame();
     open(game, skill, "hard");
     const shown = JSON.stringify(publicState(game).check);
@@ -146,7 +137,7 @@ test("what reaches the browser never includes the puzzle's answer", () => {
 });
 
 test("typing is forgiving: nonsense does no harm, and help always works", () => {
-  for (const skill of Object.keys(SKILLS)) {
+  for (const skill of WINDOWED) {
     const game = newGame();
     open(game, skill);
     const before = JSON.stringify(game.check.state);
@@ -161,28 +152,11 @@ test("typing is forgiving: nonsense does no harm, and help always works", () => 
   }
 });
 
-test("a hacker can type part of a word, or get it slightly wrong", () => {
-  const game = trained("hacking", 3);
-  open(game, "hacking", "moderate");
-  const word = game.check.state.words.find((entry) => entry !== game.check.state.answer);
-  checkCommand(game, word.slice(0, 5).toLowerCase());
-  assert.ok(game.check.state.tries.some((attempt) => attempt.word === word), "part of a word");
-  const next = game.check.state.words.find((entry) => entry !== game.check.state.answer && entry !== word);
-  checkCommand(game, `try ${next.slice(0, -1)}x`);
-  assert.ok(game.check.state.tries.some((attempt) => attempt.word === next), "a typo");
-});
-
 // ---- Playing well pays off ------------------------------------------------
 
-const likeness = (a, b) => [...a].filter((letter, i) => b[i] === letter).length;
 
 // A careful player of each game, who plays by the information the game shows them.
 const CAREFUL = {
-  crack(game) {
-    const { state } = game.check;
-    const options = state.words.filter((word) => !state.removed.includes(word) && state.tries.every((attempt) => attempt.word !== word && likeness(attempt.word, word) === attempt.score));
-    checkCommand(game, `try ${options[0]}`);
-  },
   codebreak(game) {
     const { state } = game.check;
     const count = state.symbols.length;
@@ -386,7 +360,7 @@ function clickRandomly(game) {
 
 test("in every window, playing carefully earns far more than clicking at random, and enough to matter", () => {
   const report = [];
-  for (const skill of Object.keys(SKILLS)) {
+  for (const skill of WINDOWED) {
     const { game } = CHECK_TEXT.skills[skill];
     if (CHECK_GAMES[game].decided) {
       // A decided game has no roll to improve: careful play has to get in far more often than clicking at random.
@@ -418,10 +392,6 @@ test("training gives a player better tools, whatever the game", () => {
   assert.equal(tierFor(game, "hacking"), 4);
   assert.equal(skillRank(game, "hacking"), 10);
 
-  const untrained = open(trained("hacking", 0), "hacking", "hard");
-  const master = open(trained("hacking", 10), "hacking", "hard");
-  assert.ok(master.state.maxTrace > untrained.state.maxTrace);
-  assert.ok(master.state.freeProbes > untrained.state.freeProbes);
   const slow = open(trained("piloting", 0), "piloting", "hard");
   const ace = open(trained("piloting", 10), "piloting", "hard");
   assert.ok(ace.state.sight > slow.state.sight);
@@ -433,8 +403,6 @@ test("gear and perks can make a specialist", () => {
   game.inventory.lockbreaker = 1;
   // Its +2 counts toward how well-equipped the hacker is.
   assert.equal(tierFor(game, "hacking"), 2);
-  const check = open(game, "hacking", "hard");
-  assert.equal(check.state.spoofs, 1);
 });
 
 test("a raw attribute check has a window too", () => {
@@ -451,7 +419,7 @@ test("practice doesn't count: no skill growth, no story, nothing for the story t
   const game = newGame();
   const before = structuredClone({ skillXp: game.skillXp, transcript: game.transcript, needs: game.needs, lastCheck: game.lastCheck });
   for (let i = 0; i < 40; i += 1) {
-    open(game, "hacking");
+    open(game, "engineering");
     const { outcome } = checkCommand(game, "run");
     assert.equal(outcome.training, true);
   }
@@ -460,9 +428,9 @@ test("practice doesn't count: no skill growth, no story, nothing for the story t
 
 test("a real check grows the skill, adds to the story, and leaves its result for the written story", () => {
   const game = newGame();
-  startCheck(game, { skill: "hacking", difficulty: "hard", reason: "Get in", source: "tool" });
+  startCheck(game, { skill: "engineering", difficulty: "hard", reason: "Get in", source: "tool" });
   const { outcome } = checkCommand(game, "run");
-  assert.ok((game.skillXp.hacking ?? 0) > 0 || (game.skills.hacking ?? 0) > 0);
+  assert.ok((game.skillXp.engineering ?? 0) > 0 || (game.skills.engineering ?? 0) > 0);
   assert.equal(outcome.training, false);
   assert.match(game.transcript.at(-1).text, /^\[ROLL\] Get in:/);
   assert.equal(game.lastCheck.reason, "Get in");
@@ -470,160 +438,13 @@ test("a real check grows the skill, adds to the story, and leaves its result for
   assert.ok(outcome.story, "the window says how it went");
 });
 
-test("work in the window shows up in the roll, where there is one", () => {
-  // A hack that goes straight to the roll, as Settings can ask, still counts the work done in it.
-  const game = trained("hacking", 3);
-  open(game, "hacking", "hard");
-  game.check.state.cracked = true;
-  game.check.state.trace = 0;
-  const { outcome } = checkCommand(game, "run");
-  assert.equal(outcome.decided, false);
-  assert.match(outcome.math, /your work 6/);
-});
-
-test("a cracked session is a success with no roll, and a disconnect a quiet failure", () => {
-  const game = trained("hacking", 3);
-  open(game, "hacking", "hard");
-  let reply;
-  while (game.check) reply = checkCommand(game, `try ${game.check.state.answer}`);
-  assert.equal(reply.over, true);
-  assert.equal(reply.outcome.success, true);
-  assert.equal(reply.outcome.decided, true);
-  assert.equal(reply.outcome.label, "ACCESS GRANTED");
-  assert.equal(reply.outcome.die, null);
-  assert.match(reply.outcome.story, /cracked all 2 passwords/);
-  const again = trained("hacking", 3);
-  startCheck(again, { skill: "hacking", difficulty: "hard", reason: "Get in", source: "tool" });
-  checkCommand(again, "ls");
-  const quit = checkCommand(again, "disconnect");
-  assert.equal(quit.over, true);
-  assert.equal(quit.outcome.success, false);
-  assert.equal(quit.outcome.label, "DISCONNECTED");
-  assert.match(quit.outcome.story, /nobody the wiser/);
-  assert.equal(again.lastCheck.success, false);
-  assert.match(again.transcript.at(-1).text, /^\[HACK\] Get in: DISCONNECTED/);
-  assert.ok(!readRecord(again).facts.some((fact) => fact.id.startsWith("traced_on")), "no mark for backing out");
-});
-
-test("the computer's class sets the break-in: a door panel is small and patient, the Beacon long and layered", () => {
-  const panel = open(trained("hacking", 0), "hacking", "easy").state;
-  const beacon = open(trained("hacking", 0), "hacking", "nearly_impossible").state;
-  assert.equal(panel.className, "Door panel");
-  assert.equal(beacon.className, "The Beacon or the Choir");
-  assert.ok(panel.answer.length < beacon.answer.length);
-  assert.ok(panel.words.length < beacon.words.length);
-  assert.ok(panel.maxTrace > beacon.maxTrace);
-  assert.equal(panel.layers, 1);
-  assert.equal(beacon.layers, 3);
-  for (const state of [panel, beacon]) {
-    assert.ok(state.words.includes(state.answer));
-    assert.ok(state.words.every((word) => word.length === state.answer.length && CHECK_TEXT.skills.hacking.words[String(word.length)].includes(word)));
-    assert.equal(new Set(state.words).size, state.words.length);
-  }
-  const game = trained("hacking", 0);
-  open(game, "hacking", "moderate");
-  const view = checkView(game);
-  assert.equal(view.classLabel, "Crew terminal");
-  assert.equal(view.decided, true);
-  assert.ok(view.commands.some((entry) => entry.command === "disconnect"));
-  assert.equal(hackingClasses().length, 5);
-  assert.equal(hackingClasses()[0].name, "Door panel");
-  assert.equal(hackingClasses().at(-1).difficulty, "nearly_impossible");
-});
-
-test("an important computer has more than one password, and the trace carries over", () => {
-  const game = trained("hacking", 2);
-  open(game, "hacking", "hard");
-  const { state } = game.check;
-  assert.equal(state.layers, 2);
-  const first = state.answer;
-  checkCommand(game, `try ${state.words.find((word) => word !== first)}`);
-  const reply = checkCommand(game, `try ${first}`);
-  assert.equal(reply.over, false);
-  assert.equal(game.check.state.layer, 2);
-  assert.equal(game.check.state.trace, 1);
-  assert.equal(game.check.state.tries.length, 0);
-  assert.ok(checkView(game).meters.some((meter) => meter.label === "LAYER" && meter.text === "2/2"));
-  assert.match(game.check.log.at(-1).text, /wants a password of its own/);
-});
-
-test("the advisor's hints grow with training, and follow the clues", () => {
-  const hintsAt = (rank, difficulty = "moderate") => {
-    const game = trained("hacking", rank);
-    open(game, "hacking", difficulty);
-    return { game, hints: checkView(game).hints };
-  };
-  const untrained = hintsAt(0);
-  assert.equal(untrained.hints.length, 2);
-  assert.match(untrained.hints[0], /letters/);
-  assert.ok(hintsAt(2).hints.some((line) => /of the words still fit/.test(line)));
-  // A trained hacker gets the list while it's short, and a word about the dump when it's long.
-  assert.ok(hintsAt(4, "easy").hints.some((line) => /Still possible:/.test(line)));
-  assert.ok(hintsAt(4).hints.some((line) => /Still possible:|the dump dims/.test(line)));
-  const expert = hintsAt(7);
-  const advice = expert.hints.find((line) => /^Try /.test(line));
-  assert.ok(advice, expert.hints.join(" | "));
-  assert.ok(expert.game.check.state.words.includes(advice.match(/^Try (\S+) next/)[1]));
-  const master = hintsAt(10);
-  assert.ok(master.hints.some((line) => /wrong tries left/.test(line)));
-  assert.ok(master.hints.length > untrained.hints.length);
-  const { game } = master;
-  const before = master.hints.find((line) => /of the words still fit/.test(line));
-  checkCommand(game, `try ${game.check.state.words.find((word) => word !== game.check.state.answer)}`);
-  const after = checkView(game).hints.find((line) => /of the words still fit/.test(line));
-  assert.ok(after && after !== before, `${before} -> ${after}`);
-});
-
-test("typing run in a hack rolls nothing once it's under way, and a plain roll before playing still works", () => {
-  const game = trained("hacking", 3);
-  open(game, "hacking", "moderate");
-  checkCommand(game, "ls");
-  const reply = checkCommand(game, "run");
-  assert.equal(reply.over, false);
-  assert.ok(game.check);
-  assert.match(game.check.log.at(-1).text, /no roll here/);
-  const quick = trained("hacking", 3);
-  open(quick, "hacking", "moderate");
-  const rolled = checkCommand(quick, "roll");
-  assert.equal(rolled.over, true);
-  assert.equal(typeof rolled.outcome.die, "number");
-});
-
 test("a fight and a check can't happen at once, and neither can two checks", () => {
   const game = newGame();
-  open(game, "hacking");
+  open(game, "engineering");
   assert.throws(() => open(game, "stealth"), /Finish the check/);
   checkCommand(game, "run");
   game.combat = { enemies: [] };
   assert.throws(() => open(game, "stealth"), /Finish the fight/);
-});
-
-test("the hack ends by itself when the trace completes, as a failure, with a mark on an important computer", () => {
-  const game = trained("hacking", 0);
-  startCheck(game, { skill: "hacking", difficulty: "hard", reason: "Get in", source: "tool" });
-  const { state } = game.check;
-  let last;
-  for (let i = 0; i < 20 && game.check; i += 1) {
-    const wrong = state.words.find((word) => word !== state.answer && !state.removed.includes(word) && !state.tries.some((attempt) => attempt.word === word));
-    last = checkCommand(game, `try ${wrong}`);
-  }
-  assert.equal(game.check, null);
-  assert.equal(last.over, true);
-  assert.equal(last.outcome.success, false);
-  assert.equal(last.outcome.label, "TRACED");
-  assert.match(last.outcome.story, /trace caught up/);
-  assert.equal(game.lastCheck.success, false);
-  assert.match(game.transcript.at(-1).text, /^\[HACK\] Get in: TRACED, trace 100%/);
-  assert.ok(readRecord(game).facts.some((fact) => fact.id === "traced_on_ships_main_system"), "the mark on the record");
-  // A crew terminal leaves no mark.
-  const small = trained("hacking", 0);
-  startCheck(small, { skill: "hacking", difficulty: "moderate", reason: "Peek", source: "tool" });
-  for (let i = 0; i < 20 && small.check; i += 1) {
-    const wrong = small.check.state.words.find((word) => word !== small.check.state.answer && !small.check.state.tries.some((attempt) => attempt.word === word));
-    checkCommand(small, `try ${wrong}`);
-  }
-  assert.equal(small.check, null);
-  assert.ok(!readRecord(small).facts.some((fact) => fact.id.startsWith("traced_on")));
 });
 
 test("a social check reads what the person really believes", () => {
@@ -642,9 +463,9 @@ test("an older save, even one with no check system, loads and can start one", ()
   delete save.check;
   delete save.story;
   const migrated = migrateGame(save);
-  assert.equal(migrated.version, 25);
+  assert.equal(migrated.version, 26);
   assert.equal(migrated.check, null);
-  open(migrated, "hacking");
+  open(migrated, "engineering");
   assert.ok(publicState(migrated).check);
   checkCommand(migrated, "run");
 });

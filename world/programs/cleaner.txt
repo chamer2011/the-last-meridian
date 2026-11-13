@@ -9,4 +9,4 @@ once: yes
 written in: 2 hours
 
 What it does:
-Wipes your lines from the log: the trace drops by three, once.
+Wipes your lines from the log: three noise off, once. Under the trace's mark again, the trace loses you.

@@ -9,4 +9,4 @@ once: yes
 found on: asterion_ministry_archive
 
 What it does:
-Blinds the trace for five actions. When it sees again it notices the gap: two points.
+Blinds the watcher for five minutes. When it sees again it notices the gap: two noise.

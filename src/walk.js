@@ -12,7 +12,7 @@ import { awakeInMedbay, carry, downForStory, downRecord, putDown, unlistedDown }
 import { namesLook, readNames } from "./death.js";
 import { allCharacters, campaignRooms, findCampaignRoom, findCharacter, fullName, saveCampaignRoom } from "./campaign.js";
 import { startCheck, startChoiceCheck } from "./checks.js";
-import { useComputer } from "./computers.js";
+import { openDoorPanel, useComputer } from "./computers.js";
 import { clearSystems, doorActions, doorLocked, doorLook, exitLocked, forgetSystems, partSquares, partThings, powerView, roomDark, roomPowered, roomView, systemsOf, workOnDoor, workOnPart } from "./systems.js";
 import { clearLogistics, forgetLogistics, growingAt, logisticsOf, storeLook, storeStock } from "./logistics.js";
 import { marksOn, wearOf } from "./wear.js";
@@ -409,6 +409,11 @@ export function askAtDoor(game, key) {
   }
   if (rule.check) {
     const [skill, difficulty, audience] = rule.check.split(":");
+    // A hacking rule opens the door's panel at its logon, and the door opens once the player is past it.
+    if (skill === "hacking") {
+      const session = openDoorPanel(game, game.location, exit.to, { classKey: difficulty, at: `exit:${exit.key}`, doorRule: { place: game.location, to: exit.to, pass: rule.pass ?? "The way is open.", fail: rule.fail ?? "The way stays closed.", flag: rule.flag ?? null } });
+      return { said: session.locked ? "The door's panel wants a logon." : rule.pass ?? "The way is open.", computer: true };
+    }
     startCheck(game, { skill, difficulty, audience: audience ?? null, reason: rule.reason ?? `Get through: ${exit.label}`, scene: exit.closed.look, source: "door", target: `exit:${exit.key}` });
     game.doorAsked = { place: game.location, to: exit.to, pass: rule.pass ?? "The way is open.", fail: rule.fail ?? "The way stays closed.", flag: rule.flag ?? null };
     return { check: true };
@@ -1084,7 +1089,13 @@ export function walkCommand(game, body) {
       if (key.startsWith("part:")) return workOnPart(game, key, String(body.how ?? ""));
       const exit = exitByKey(level, inner, key);
       if (!exit) throw new Error("That isn't here.");
-      return workOnDoor(game, level.id, exit, String(body.how ?? ""));
+      const worked = workOnDoor(game, level.id, exit, String(body.how ?? ""));
+      // Getting into a door's panel: it opens at its logon over the room.
+      if (worked.panel) {
+        const session = openDoorPanel(game, worked.panel.place, worked.panel.door, worked.panel);
+        return { said: [worked.said, session.locked ? "The door's panel wants a logon." : null].filter(Boolean).join("\n"), computer: true };
+      }
+      return worked;
     }
     // The right-click menu's two deeds against someone in the room: a pocket picked, in the check window, or a fight.
     // Picking up someone down, slowly, and putting them down again: on a cot in the medbay (src/medbay.js).

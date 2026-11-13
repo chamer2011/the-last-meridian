@@ -28,7 +28,6 @@ import {
 } from "./src/rules.js";
 import { personSheet } from "./src/person-sheet.js";
 import { closeTalk, placeLevels, talkCommand, talkHeard, talkLineOver, talkSaid, walkCommand, walkTick } from "./src/walk.js";
-import { enterAfterHack, enterDoorPanel } from "./src/computers.js";
 import { airBadHere, controlSystem, settlePart, systemsOf } from "./src/systems.js";
 import { computerCommand, screenGoesDark } from "./src/computer-use.js";
 import { afterDeedFight, settleDeed } from "./src/deeds.js";
@@ -426,20 +425,12 @@ async function handleApi(req, res, route) {
   }
   if (route === "/api/check") {
     const reply = checkCommand(requireGame(), body.command);
-    // Work on a part or a door by hand is settled by the place's systems; a door panel that was hacked opens as a computer.
-    const worked = reply.over ? settlePart(game, reply.outcome, (place, to, hack) => enterDoorPanel(game, place, to, hack, reply.outcome?.target ?? null)) : null;
+    // Work on a part or a door by hand is settled by the place's systems. (A hack has no check: it's a computer's logon.)
+    const worked = reply.over ? settlePart(game, reply.outcome) : null;
     if (worked) reply.outcome.notes.push(...worked);
     // A pocket picked from the right-click menu: credits, or what being caught costs.
     const deed = reply.over ? settleDeed(game, reply.outcome) : null;
     if (deed) reply.outcome.notes.push(...deed);
-    // A hack that got in doesn't end at the result: the screen becomes the computer's own system.
-    if (worked === null && reply.over && reply.outcome?.hack && reply.outcome.success && !reply.outcome.training) {
-      try {
-        enterAfterHack(game, reply.outcome.hack, reply.outcome.target ?? null);
-      } catch (err) {
-        reply.outcome.notes.push(`[COMPUTER] ${err.message}`);
-      }
-    }
     // A check passed, or a part fixed by hand, may be what someone asked for.
     if (reply.over) {
       const asked = advanceRequests(game);

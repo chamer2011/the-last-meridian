@@ -1,0 +1,10 @@
+# Crew keycard
+order: 71
+type: gadget
+price: 15
+size: 1x1
+weight: 0.05
+stack: 5
+
+In a line:
+Somebody's keycard, lifted from their pocket. MIMIC.EXE on your rig can play it back at a computer's logon, as if its owner were logging on.

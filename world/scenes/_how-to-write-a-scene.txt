@@ -95,18 +95,19 @@ Things in square brackets before the words are tags, which the player sees:
                                  second colon when they're the one being persuaded, deceived or led,
                                  and how they feel about the player changes the odds. A choice with
                                  a check leads two ways: the part if it passes | the part if it fails.
-                                 For hacking, the difficulty says what kind of computer it is, and
-                                 the window shows it: easy is a door panel, moderate a crew terminal,
-                                 hard a ship's main system (two passwords), very_hard a Ministry or
-                                 Navy server, nearly_impossible the Beacon or the Choir (three).
-                                 A hack has no roll: getting in is the pass, the trace completing
-                                 or disconnecting is the fail. A completed trace on a ship's main
-                                 system or worse leaves a fact on the record, traced_on_<class>,
-                                 which a condition can ask about: ? flag traced_on_ships_main_system.
-                                 A third word names the computer the hack gets into when it passes,
-                                 by its file in world/computers: [hacking:moderate:haven_berth_board].
-                                 Without one, it lands on this place's computer of that class, or one
-                                 the game makes up. Getting in opens the computer's own system.
+                                 For hacking, the difficulty says what kind of computer it is: easy
+                                 is a door panel, moderate a crew terminal, hard a ship's main system,
+                                 very_hard a Ministry or Navy server, nearly_impossible the Beacon or
+                                 the Choir. A hack has no window and no roll: the computer opens at
+                                 its logon, and the player gets in with a breaker off their rig (or
+                                 straight in, with its password). Getting in is the pass; being found
+                                 by the trace, cut off, or logging off without getting in is the fail.
+                                 Being found or cut off on a ship's main system or worse leaves a
+                                 fact on the record, traced_on_<class>, which a condition can ask
+                                 about: ? flag traced_on_ships_main_system. A third word names the
+                                 computer, by its file in world/computers:
+                                 [hacking:moderate:haven_berth_board]. Without one, it's this place's
+                                 computer of that class, or one the game makes up.
     [+Voss] or [-Tarrow]         Someone who would clearly approve or disapprove.
     [reason]                     The belief the choice expresses: order, freedom, community, self,
                                  mercy, iron, reason, faith, purity or ascension.

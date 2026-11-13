@@ -3,9 +3,9 @@ HOW TO WRITE A PROGRAM
 
 A program is one plain text file in this folder, world/programs/<id>.txt. The player carries programs
 on their rig, the pocket computer in their pack (the Rig page, under Gear). Before sitting down at a
-computer they choose which ones to load into the rig's memory, four blocks of it; once at the
-computer they run what's loaded from the Rig (D:) folder on its desktop, and can't change what's
-loaded until they log off. The game reads these files again a moment after one changes.
+computer they choose which ones to load into the rig's memory, four blocks of it. At a computer's
+logon, the breakers among them get the player in; once inside, they run what's loaded from the
+Rig (D:) folder on its desktop. Nothing loaded can change until they log off. The game reads these files again a moment after one changes.
 
     npm run check-story
 
@@ -41,9 +41,12 @@ The first line is its name as the desktop shows it. The lines under it can come 
     power         The strongest class of computer it works on: 1 a door panel, 2 a crew terminal,
                   3 a ship's main system, 4 a Ministry or Navy server, 5 the Beacon or the Choir.
                   Leave it out and it works on any of them.
-    noise         0 and the trace never notices it. Anything above 0 and running it adds a point
-                  to the trace on a computer you've broken into, as any other action there does.
-    minutes       How long it takes to run. Kept for later: the game doesn't use it yet.
+    noise         How much noise the watcher hears when it runs, on any computer that isn't the
+                  player's: 0 and it never notices it. Noise adds up: the watcher notices the
+                  player, then starts a trace, then cuts them off, at marks set for each class
+                  in world/checks.json.
+    minutes       How long it takes to run, in the session's minutes. A trace that's running
+                  counts them down.
     once          yes and it runs once a session.
     written in    The hours it takes at the Repair Bay's bench, with the clock running. Leave it
                   out and it can't be written: it has to be copied or bought.
@@ -63,26 +66,31 @@ WHAT RUNNING ONE DOES
 
 What a program does when it runs is in the game's code, by its file name:
 
-    knock, dictionary, skeleton,   Get you in, which comes with the next step of the hacking work.
-    shadow, mimic                  Inside a computer they say there's nothing to break.
+    knock, dictionary, skeleton,   Get you past a logon, if they're strong enough for its class.
+    shadow, mimic                  SKELETON needs SCOPE to have read the logon first, SHADOW
+                                   someone's session open (working hours, 07:00 to 21:00, and
+                                   everything one louder), and MIMIC a lifted keycard in your
+                                   pockets. Inside a computer there's nothing left for them.
     doorkey, masterkey             Unlock the doors the computer runs.
     relay                          The cameras it runs go off for ten minutes.
-    mask, ghost                    The next three or six actions go by unnoticed.
-    cleaner, forger, decoy         The trace drops by three, one or two.
-    lullaby                        The trace allows two more actions before it completes.
-    blindfold                      Five actions unseen; when the trace sees again it adds two.
-    cutout                         A trace that completes throws you out with nothing on the record.
+    mask, ghost                    The next three or six actions make no noise.
+    cleaner, forger, decoy         Three, one or two noise off. Back under the trace's mark, the
+                                   trace loses you.
+    lullaby                        A trace that's running takes four more minutes to find you.
+    blindfold                      Five minutes the watcher hears nothing; then it adds two.
+    cutout                         Being found or cut off throws you out with nothing on the record.
     digger                         Every file, letter and log read at once, into What you know.
     mapper                         Lists the computers this one reaches and which are open to you.
-    scope                          Says what the computer is and what it runs.
+    scope                          At a logon, reads its version; inside, says what the computer is
+                                   and what it runs.
     sniffer                        A day later, the passwords of the computers this one reaches.
     sleeper                        Unlocks the doors the computer runs at the next 02:00.
     saboteur                       Breaks one thing the computer runs at the next 03:00.
     worm                           The password of the first computer on this one's network.
     backdoor                       This computer's password, so next time you just log on.
 
-The ones about the trace (mask, ghost, cleaner, forger, decoy, lullaby, blindfold, cutout) only run
-on a computer you've broken into, since there's no trace on one that lets you in. The ones that need
+The ones about the watcher (mask, ghost, cleaner, forger, decoy, lullaby, blindfold, cutout) run
+once you're past a logon, and not on your own computers, where nobody watches. The ones that need
 doors, cameras, systems or a network say so when the computer has none.
 
 A new file with a new name shows on the Rig page and can be written, copied and loaded, but when it

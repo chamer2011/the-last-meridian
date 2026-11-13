@@ -9,4 +9,4 @@ once: no
 built in: yes
 
 What it does:
-Reads what runs on this computer and the systems it controls. Built into every rig, and takes no memory.
+At a logon, reads its version (SKELETON needs that); inside, what runs on this computer and the systems it controls. Built into every rig, and takes no memory.

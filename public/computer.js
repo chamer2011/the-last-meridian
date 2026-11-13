@@ -227,6 +227,38 @@ function screenNode(view) {
   }
 }
 
+// ---- The logon ------------------------------------------------------------------
+
+// A computer the player isn't past yet: Keelworks' logon box, with the ways in off their rig. Each says whether it will
+// work here and, when it won't, why; the advisor beside the monitor says what each costs.
+function logonNode(view) {
+  const ways = view.logon?.ways ?? [];
+  const way = (one) => el("button", {
+    class: `row-item logon-way${one.why ? " done" : ""}`,
+    disabled: comp.sending,
+    title: one.about,
+    onclick: (event) => {
+      event.stopPropagation();
+      send({ action: "rig", id: one.id });
+    },
+  }, picture(one.kind === "in" ? "exe" : "eye"), el("span", {}, one.name, el("small", {}, one.why ? `Won't: ${one.why}.` : one.kind === "in" ? "Run it to get past the logon." : "Run it to read the logon first.")), el("small", {}, one.why ? "" : "run"));
+  return el("div", { class: "logon bev", role: "dialog", "aria-label": `Log on to ${view.name}` },
+    el("div", { class: "banner" }, picture("keel"), el("div", {}, "Keelworks 4.1", el("small", {}, `${String(view.className).toUpperCase()} · ${view.practice ? "PRACTICE" : "LOGON"}`))),
+    el("div", { class: "body" },
+      el("div", { class: "grid2" },
+        el("span", {}, "User name:"), el("span", { class: "field sunk" }),
+        el("span", {}, "Password:"), el("span", { class: "field sunk" }),
+        el("span", {}, "Log on to:"), el("span", { class: "field sunk" }, view.name)),
+      el("div", { class: "logon-label" }, "From your rig:"),
+      ways.length
+        ? el("div", { class: "rows logon-ways sunk" }, ways.map(way))
+        : el("div", { class: "logon-none" }, "Nothing loaded on your rig gets past a logon. Load a breaker on the Rig page before you sit down."),
+      el("div", { class: "logon-buttons" }, el("button", { disabled: comp.sending, onclick: (event) => { event.stopPropagation(); logOff(); } }, "Log off"))));
+}
+
+// The watcher's stage in words, for the tray and its balloon.
+const watchWords = (watch) => (watch.stage === "tracing" ? `Tracing: ${watch.traceLeft} min` : watch.stage === "noticed" ? "Noticed" : "Calm");
+
 // ---- The desktop ------------------------------------------------------------------
 
 function raise(id) {
@@ -287,8 +319,8 @@ function clockText() {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-function osNode(view, watch, pct) {
-  const here = foldersHere(view);
+function osNode(view, watch) {
+  const here = view.locked ? [] : foldersHere(view);
   const icons = el("div", { class: "icons" }, here.map(([id, name, pic]) => el("button", {
     class: `icon${comp.sel === id ? " sel" : ""}`,
     title: `${name}: ${folderItems(view, id).length}`,
@@ -303,10 +335,10 @@ function osNode(view, watch, pct) {
     ondblclick: (event) => { event.stopPropagation(); openFolder(id); },
   }, picture(pic), el("span", {}, `${name} (${folderItems(view, id).length})`))));
   const folder = FOLDERS.find(([id]) => id === comp.folder);
-  const list = folder && winNode("list", `${folder[1]} - ${view.name}`, folder[2], el("div", { class: "pane-in sunk" }, el("div", { class: "rows" }, folderRows(view))), [folder[0] === "rig" ? `${view.rig.used} of ${view.rig.memory} blocks used` : `${folderItems(view, folder[0]).length} ${folder[0] === "mail" ? "letters" : "objects"}`, comp.sending ? "Working..." : folder[0] === "rig" ? "Click one to run it" : "Click one to open it"]);
-  const viewer = winNode("view", view.screen.kind === "home" ? `Welcome - ${view.name}` : view.screen.title ?? view.name, "txt", el("div", { class: "pane-in sunk viewer-in", id: "computer-screen" }, screenNode(view)), [view.hacked ? "Hacked" : view.yours ? "Yours" : "Logged in", view.className]);
+  const list = !view.locked && folder && winNode("list", `${folder[1]} - ${view.name}`, folder[2], el("div", { class: "pane-in sunk" }, el("div", { class: "rows" }, folderRows(view))), [folder[0] === "rig" ? `${view.rig.used} of ${view.rig.memory} blocks used` : `${folderItems(view, folder[0]).length} ${folder[0] === "mail" ? "letters" : "objects"}`, comp.sending ? "Working..." : folder[0] === "rig" ? "Click one to run it" : "Click one to open it"]);
+  const viewer = !view.locked && winNode("view", view.screen.kind === "home" ? `Welcome - ${view.name}` : view.screen.title ?? view.name, "txt", el("div", { class: "pane-in sunk viewer-in", id: "computer-screen" }, screenNode(view)), [view.hacked ? "Hacked" : view.yours ? "Yours" : "Logged in", view.className]);
   const log = winNode("log", "Session log", "log", el("div", { class: "pane-in sunk", id: "computer-console", role: "log" }, view.log.map((entry, i) => lineNode(entry, i >= comp.seen))), [`${view.actions} ${view.actions === 1 ? "action" : "actions"}`, view.prompt ?? ""]);
-  const named = { list: list ? `${folder[1]}` : null, view: "Viewer", log: "Session log" };
+  const named = { list: list ? `${folder[1]}` : null, view: viewer ? "Viewer" : null, log: "Session log" };
   const tasks = el("div", { class: "tasks" }, Object.entries(comp.wins).filter(([id, w]) => w.open && named[id]).map(([id]) => el("button", { class: comp.top === id ? "on" : "", onclick: (event) => { event.stopPropagation(); raise(id); draw(); } }, named[id])));
   const menu = comp.menu && el("div", { class: "menu bev" }, el("div", { class: "side" }, "KEELWORKS 4.1"), el("div", { class: "items" },
     here.map(([id, name, pic]) => el("button", { onclick: (event) => { event.stopPropagation(); comp.menu = false; openFolder(id); } }, picture(pic), name)),
@@ -314,15 +346,17 @@ function osNode(view, watch, pct) {
     el("button", { onclick: (event) => { event.stopPropagation(); comp.menu = false; comp.wins.log.open = true; raise("log"); draw(); } }, picture("log"), "Session log"),
     el("hr"),
     el("button", { onclick: (event) => { event.stopPropagation(); logOff(); } }, picture("keel"), "Log off")));
-  const balloon = watch === "tracing" && comp.hushed !== view.trace && el("div", { class: "balloon", onclick: (event) => { event.stopPropagation(); comp.hushed = view.trace; draw(); } }, el("b", {}, picture("eye"), "AuditGuard"), `This session is being traced: ${pct}%.`);
+  // The watcher speaks up once for each step, noticing and tracing, until it's clicked away.
+  const stage = watch?.stage ?? "calm";
+  const balloon = stage !== "calm" && comp.hushed !== stage && el("div", { class: "balloon", onclick: (event) => { event.stopPropagation(); comp.hushed = stage; draw(); } }, el("b", {}, picture("eye"), watch.name), stage === "tracing" ? `This session is being traced. It finds you in ${watch.traceLeft} min.` : "Unusual activity in this session. It is being logged.");
   const taskbar = el("div", { class: "taskbar bev" },
     el("button", { class: "keel", "aria-expanded": String(comp.menu), onclick: (event) => { event.stopPropagation(); comp.menu = !comp.menu; draw(); } }, picture("keel"), "Keel"),
     tasks,
     el("div", { class: "tray sunk" },
-      watch && el("span", { class: `watch ${watch}`, title: `AuditGuard: the trace is at ${pct}%` }, picture("eye")),
-      watch && el("span", {}, `${pct}%`),
+      watch && el("span", { class: `watch ${watch.stage}`, title: `${watch.name}: ${watchWords(watch).toLowerCase()}` }, picture("eye")),
+      watch && el("span", {}, watchWords(watch)),
       el("span", { title: "The ship's time" }, clockText())));
-  const os = el("div", { class: "os", onclick: () => { if (comp.menu) { comp.menu = false; draw(); } } }, icons, list, viewer, log, balloon, taskbar, menu);
+  const os = el("div", { class: "os", onclick: () => { if (comp.menu) { comp.menu = false; draw(); } } }, icons, list, viewer, view.locked && logonNode(view), log, balloon, taskbar, menu);
   os.addEventListener("pointerdown", dragWindow);
   return os;
 }
@@ -377,14 +411,14 @@ function advisorNode(view) {
 
 function windowNode() {
   const view = comp.view;
-  const pct = view.maxTrace ? Math.round((view.trace / view.maxTrace) * 100) : 0;
-  const watch = !view.hacked ? null : pct >= 75 ? "tracing" : pct >= 50 ? "noticed" : "calm";
-  const glass = el("div", { class: "glass" }, el("div", { class: "desk-screen" }, osNode(view, watch, pct)), el("div", { class: "fx scan" }), el("div", { class: "fx vig" }), el("div", { class: "fx glare" }), el("div", { class: "fx band" }));
+  // Nobody watches the player's own computers; any other has AuditGuard listening, from the logon on.
+  const watch = view.watch ?? null;
+  const glass = el("div", { class: "glass" }, el("div", { class: "desk-screen" }, osNode(view, watch)), el("div", { class: "fx scan" }), el("div", { class: "fx vig" }), el("div", { class: "fx glare" }), el("div", { class: "fx band" }));
   if (fitter) fitter.observe(glass);
   const monitor = el("div", { class: "monitor", title: "Pull the frame to move it aside" },
     comp.message && el("div", { class: "desk-note" }, comp.message),
     glass,
-    el("div", { class: "plate" }, el("span", {}, "VARNE 15SX"), el("span", { class: `led${watch === "tracing" ? " bad" : watch === "noticed" ? " warn" : ""}` })));
+    el("div", { class: "plate" }, el("span", {}, "VARNE 15SX"), el("span", { class: `led${watch?.stage === "tracing" ? " bad" : watch?.stage === "noticed" ? " warn" : ""}` })));
   return el("div", { class: "desk", id: "computer-window", role: "dialog", "aria-label": view.name, tabindex: "-1" }, monitor, advisorNode(view));
 }
 

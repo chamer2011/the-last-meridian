@@ -1,13 +1,14 @@
 // Skill checks that play out in their own window. Each skill has its own little game, which runs
 // entirely on this computer. In most of them, playing well improves the odds of the final roll;
-// in a decided one, like hacking, what happens in the window is the result, with no roll on top.
-// Either way, the written story picks up the result once it's over.
+// in a decided one, what happens in the window is the result, with no roll on top. Either way, the
+// written story picks up the result once it's over. Hacking has no window since step 3 of the
+// hacking rework: a hacking check opens a computer at its logon, through the handler that
+// src/computers.js puts in src/hack-hook.js (this file can't read that one, which reads this).
 
 import { findCharacter } from "./campaign.js";
 import { CONTEXTS, FACTION_BELIEFS, POLES, SKILLS } from "./character-data.js";
 import { STATS } from "./data.js";
 import { CHECK_TEXT } from "./world.js";
-import { recordFact } from "./record.js";
 import { DIFFICULTY, DIFFICULTY_LEARNING, attrMod, audienceBonus, checkParts, clamp, fxOf, oddsFor, practice, skillCheck, skillRank } from "./rules.js";
 import { isCaptain, startOf } from "./role.js";
 import { buildVocab, parseOption } from "../public/story.js";
@@ -16,7 +17,6 @@ import appeal from "./check-games/appeal.js";
 import balance from "./check-games/balance.js";
 import codebreak from "./check-games/codebreak.js";
 import cover from "./check-games/cover.js";
-import crack, { allClasses } from "./check-games/crack.js";
 import duel from "./check-games/duel.js";
 import haggle from "./check-games/haggle.js";
 import plain from "./check-games/plain.js";
@@ -28,9 +28,12 @@ import sneak from "./check-games/sneak.js";
 import switches from "./check-games/switches.js";
 import target from "./check-games/target.js";
 import tune from "./check-games/tune.js";
+import { allClasses } from "./hack-classes.js";
+import { hackHandler } from "./hack-hook.js";
 import { notePut } from "./puts.js";
 
-export const CHECK_GAMES = { appeal, balance, codebreak, cover, crack, duel, haggle, plain, push, route, runner, scan, sneak, switches, target, tune };
+export const CHECK_GAMES = { appeal, balance, codebreak, cover, duel, haggle, plain, push, route, runner, scan, sneak, switches, target, tune };
+
 
 const LEVELS = { easy: 0, moderate: 1, hard: 2, very_hard: 3, nearly_impossible: 4 };
 // How much the player's work in the window can move the final roll. Each point is worth 5%.
@@ -98,6 +101,8 @@ export function startCheck(game, { skill = null, attribute = null, difficulty, c
     audience = null;
   }
   if (!(difficulty in DIFFICULTY)) throw new Error(`Unknown difficulty: ${difficulty}`);
+  // There's no window for a hack: the computer opens at its logon, and the story reads how that went.
+  if (skill === "hacking" && hackHandler()) return hackHandler()(game, { difficulty, reason, scene, choice, source, computer, target });
   if (skill && !SKILLS[skill]) throw new Error(`Unknown skill: ${skill}`);
   if (!skill && !STATS[attribute]) throw new Error("A check needs a skill or an attribute.");
   const text = textFor(skill, attribute);
@@ -159,19 +164,16 @@ const breakdown = (parts) => parts.map((p) => `${p.value < 0 ? "-" : "+"} ${p.la
 
 const resultLabel = (r) => (r.success ? (r.die === 20 ? "CRITICAL SUCCESS" : "SUCCESS") : r.die === 1 ? "CRITICAL FAILURE" : "FAILURE");
 
-// A short name for a fact on the record, from a class of computer: "Ship's main system" becomes ships_main_system.
-const slug = (words) => String(words).toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 30);
-
-// The result of a decided game, read from how it ended: no die, and the skill still learns from it.
+// The result of a decided game, read from how it ended (its state's won, or quit): no die, and the skill still learns
+// from it. No game is decided since hacking left the check windows, but one can be again.
 function decidedResult(game, check, practiceOnly) {
   const { state } = check;
-  const success = Boolean(state.cracked);
+  const success = Boolean(state.won);
   const { parts, total: bonus } = checkParts(game, { skill: check.skill, attribute: check.attribute, context: check.context, audience: check.audience });
   const notes = [];
   if (!practiceOnly && check.skill) notes.push(...practice(game, check.skill, (success ? 3 : 2) * DIFFICULTY_LEARNING[check.difficulty]));
-  const pct = Math.round((state.trace / Math.max(1, state.maxTrace)) * 100);
-  const label = success ? "ACCESS GRANTED" : state.quit ? "DISCONNECTED" : "TRACED";
-  return { die: null, parts, bonus, total: null, dc: DIFFICULTY[check.difficulty], success, margin: 0, critical: false, notes, label, math: `trace ${pct}%` };
+  const label = success ? "SUCCESS" : state.quit ? "GAVE UP" : "FAILURE";
+  return { die: null, parts, bonus, total: null, dc: DIFFICULTY[check.difficulty], success, margin: 0, critical: false, notes, label, math: "" };
 }
 
 // Closes the window's game and records what happened: a decided game by how it ended, any other by
@@ -189,16 +191,6 @@ function finishCheck(game) {
   const math = decided ? r.math : `${r.die} ${breakdown(r.parts)} = ${r.total} vs ${r.dc}`;
   const story = gameFor(check).story(check.state, ctx);
   const titles = ctx.text.results ?? {};
-  // A completed trace on an important computer leaves a mark that the stories can read.
-  if (decided && !r.success && !check.state.quit && check.state.mark && !practiceOnly) {
-    const id = `traced_on_${slug(check.state.className)}`;
-    try {
-      recordFact(game, { id, text: `The trace on a ${String(check.state.className).toLowerCase()} has your name on it.`, from: "hacking" });
-      r.notes.push(`[RECORD] The trace has your name: ${id.replaceAll("_", " ")}.`);
-    } catch {
-      // A full record keeps its facts; the check still ended the same way.
-    }
-  }
   const outcome = {
     id: check.id,
     success: r.success,
@@ -223,8 +215,6 @@ function finishCheck(game) {
     window: ctx.text.window,
     notes: r.notes,
     target: check.target ?? null,
-    // A hack that got in opens the computer: which one, and how much of the trace is left for inside.
-    hack: decided && check.skill === "hacking" ? { computer: check.computer ?? null, source: check.source, classKey: check.difficulty, trace: check.state.trace, maxTrace: check.state.maxTrace } : null,
   };
   game.check = null;
   if (practiceOnly) return { over: true, outcome };

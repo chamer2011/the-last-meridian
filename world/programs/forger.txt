@@ -9,4 +9,4 @@ once: yes
 written in: 4 hours
 
 What it does:
-Rewrites your lines in someone else's name: the trace drops by one.
+Rewrites your lines in someone else's name: one noise off.

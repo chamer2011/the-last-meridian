@@ -9,4 +9,4 @@ once: yes
 written in: 3 hours
 
 What it does:
-Slows a trace: the computer allows two more actions before it completes.
+Slows a trace that's running: it takes four more minutes to find you.

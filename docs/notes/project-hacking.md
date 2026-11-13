@@ -1,4 +1,4 @@
-# The hacking rework (2026-11-13): designed on example pages, planned, steps 1 and 2 built
+# The hacking rework (2026-11-13): designed on example pages, planned, steps 1 to 3 built
 
 ## What was asked
 
@@ -153,3 +153,79 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
   DOORKEY and SLEEPER; the Rig page at a computer with its note and greyed buttons; no overflow among the 24 cards at 810.
 - Not done: getting in with the programs (step 3), the rig's parts (step 4), selling programs (step 5), programs on the
   Story board (step 7), and `minutes`. The owner hasn't tried it.
+
+## Step 3, no free way in (built 2026-11-13, at "Yes, step 3")
+
+- The word puzzle is gone: `src/check-games/crack.js` is deleted, the hacking part of `world/checks.json` keeps only the
+  classes (name, mark, and the watcher's `notices`, `traces`, `finds`, `cuts`) and `training.room` (what training adds
+  to notices, traces and cuts: 0, 1, 1, 2, 3 by tier), and `src/hack-classes.js` holds the defaults and `classOf`,
+  `allClasses`, `roomFor`, read by the checks, the computers and the migration. A hacking check never opens a window:
+  `startCheck` hands it to the handler `src/computers.js` puts in `src/hack-hook.js` (`setHackHandler`; a file of its own
+  because the check engine and the computer code read each other and one registering at load hit the other half-loaded).
+  `hackFromCheck` opens the computer the tag names, or this place's of the class, or for practice a made-up one of the
+  class that's never the player's and runs nothing (`practiceContent`).
+- Every way in goes through `openLogon` (straight in when it's the player's or the password's known, else
+  `openSession(..., { locked: true })`): Use on a console or a computer thing (`useComputer`, `useConsolePart`), a door's
+  Hack the door panel (`workOnDoor` returns `{ panel }` for hacking, with the tampering alarm when a camera sees it, and
+  `src/walk.js` opens `openDoorPanel`), a map file's door with a hacking rule (`askAtDoor`: the panel's logon with a
+  `doorRule`, so the door opens and says its pass line once the player is in, or its fail line if they log off or are
+  thrown out at the logon; the Foundry's sublevel door is the one), reaching over the network (`connectTo`), a scene's
+  `[hacking:...]` choice or check, and practice. `enterAfterHack` and `enterDoorPanel` are gone, and the check route no
+  longer opens computers.
+- A locked session shows the page nothing of the computer (empty lists, no user) and refuses everything but the rig and
+  logging off ("Log on first"). `computerView` sends `locked`, `practice`, `logon.ways` (the loaded breakers and SCOPE,
+  each with its noise, minutes, power and why it won't work) and `watch` (`name`, `stage` calm/noticed/tracing, `noise`,
+  the marks, `traceLeft`), and `trace`/`maxTrace` are gone.
+- The breakers in `src/rig.js` (`cantRun`, `breakIn`): at a logon only kind `in` and SCOPE run; power against the class;
+  SKELETON needs `session.scanned` (SCOPE at the logon); MIMIC needs a `keycard` item (new, `world/items/keycard.txt`, 66
+  items; a clean pocket lift has a `keycard` chance in `world/deeds.json`, 0.25); SHADOW needs working hours (07:00 to
+  21:00) and sets `session.shadow` (every noisy action one louder). A breaker's noise is spent first; if that cuts the
+  player off they're out, else `gotIn` (user: service for KNOCK and SKELETON, keycard for MIMIC, the computer's own for
+  DICTIONARY and SHADOW). Inside, kind `in` says "you're already in".
+- The watcher, `act(game, session, { noise, minutes })` in `src/computer-use.js`: every action adds its minutes to
+  `session.minutes` (2 by default, a rig program its `minutes` line); on any computer that isn't the player's (a
+  password's included) its noise is heard: silent under MASK/GHOST (`free`) or BLINDFOLD (`blindLeft` minutes, then +2),
+  +1 shadowing, +1 once noticed. At `notices` it notices (`noticed`), at `traces` a trace starts (`traceLeft = finds`),
+  counted down by the action minutes, and at `cuts`, or when the trace is up, `thrownOut` (CUTOUT: elsewhere, no mark;
+  else the record's `traced_on_<class>` on marked classes). Noise per action: a first read `readNoise` (1 on very_hard
+  and worse, else 0), a computer's own program, a switch and a copy 1, a rig program its `noise`. CLEANER, FORGER and
+  DECOY take noise off, lose a trace once under its mark, and settle the watcher under the notice mark; LULLABY adds 4
+  minutes to a running trace; the session's minutes are only what's done, so reading and thinking never run a trace.
+- `settleHack` (once a session): learning (3× or 2× the class's `DIFFICULTY_LEARNING`, not in practice or by right),
+  `notePut` for requests on a pass, and for a story's hack `game.lastCheck` with a `[HACK] reason: ACCESS GRANTED`,
+  `TRACED`, `CUT OFF` or `NOT IN` line; only the story's own hacks (`choice`, `tool`) set `lastCheck`, so a console the
+  player hacks on their own can't answer a scene waiting on a different check. Logging off at the logon settles a
+  failure. `finish`: a practice session leaves no line and passes no time; otherwise the line says what the watcher
+  made of the player ("never noticed you", "had noticed you", "A trace was still running"), and the minutes owed are
+  `session.minutes` less the clock's running time.
+- The advisor (`hintsFor`): at a logon, `logonHints` per tier: untrained, whether each way gets in and if it's loud or
+  quiet; novice, its noise and minutes; trained, the watcher's marks; expert, what each would do to the watcher; master,
+  the quietest way in; with nothing that works, novice and up are told which breaker suits which class. Inside, the
+  `_flavor.json` hints by tier with `{read}`, `{noise}`, `{notices}`, `{traces}`, `{cuts}`, `{finds}`, `{left}`, `{next}`,
+  and lines about the watcher hidden on the player's own computers.
+- The page (`public/computer.js`, `public/desktop.css`): a locked session draws `logonNode` (Keelworks' box at the top of
+  the desktop, the class and LOGON or PRACTICE, the three fields, From your rig with each way's reason under it, and Log
+  off) in place of the folders and windows; the Keel menu has only the session log and Log off. The tray shows the
+  eye and Calm, Noticed or "Tracing: N min"; the frame's light amber when noticed and red when tracing; the balloon once
+  per stage, noticed ("Unusual activity...") and tracing ("...finds you in N min"), until clicked.
+- Practice from the SKILLS page's hacking buttons opens a practice computer at its logon over the room: nothing runs
+  anything or reaches anywhere, `leave` programs refuse ("in practice nothing's left behind"), no time, no line, no
+  learning.
+- Save version 26 (`fromVersion25`): a computer the player is on keeps going, its trace turned into noise (the same share
+  of the way to the trace's mark, less one), `minutes` from its actions, unlocked; a hacking window open mid-puzzle is
+  closed with a `[HACK]` line saying to use the computer again; `computerAsked` goes.
+- The programs' words changed with it (MASK, GHOST, CLEANER, FORGER, DECOY, LULLABY, BLINDFOLD, CUTOUT, SHADOW, SCOPE),
+  and so did the scenes', computers' and programs' how-tos and the README (Skill checks, Computers with a new Getting in,
+  Your rig).
+- Tests: `test/logon.test.js` (10) for the logon, the breakers' conditions, the marks by class and training, being cut
+  off at the logon, logging off at it, practice, the Foundry door, the advisor by tier, the keycard and the old save;
+  `test/checks.test.js` lost the puzzle's tests and skips hacking where it went through every window; the computers,
+  rig, systems, anyone and deeds tests moved from the trace to noise and the logon; versions to 26 and 66 items.
+- Screens, on a test copy (port 3297, saves made with the game's own code), at 1400 and 810 wide: the berth board's logon
+  (DICTIONARY and SCOPE, the advisor untrained, Calm), DICTIONARY getting in as dockmaster and the desktop opening, a
+  ship's main system's logon with DICTIONARY greyed as too weak, a session with a trace running (balloon, "Tracing: 4
+  min", red light) and one noticed (amber, its balloon); at 810 the logon fits above the session log with the advisor
+  under the monitor, nothing overlapping.
+- Not done: the rig's own power from parts (step 4: the yard build adds nothing, so a Ministry or Navy server or worse
+  needs a password for now), noise from a rig's heat or a radio (step 4), the NAVCOM look and SENTRY (step 6), the
+  Story board for programs (step 7). The owner hasn't tried it.

@@ -136,3 +136,18 @@
 .rig-memory i { width: 18px; height: 10px; border: 1px solid var(--line); }
 .rig-memory i.on { background: var(--text); border-color: var(--text); }
 .rig-card.rig-loaded { border-color: var(--text); }
+
+/* A computer's logon, while the player isn't past it (step 3 of the hacking rework): Keelworks' box at the top of the
+   desktop, clear of the session log, with the ways in off the rig. */
+.os .logon { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); width: 392px; display: flex; flex-direction: column; padding: 2px; z-index: 20; }
+.os .logon .banner { height: 46px; flex: none; background: linear-gradient(90deg, var(--t1), var(--t2)); color: var(--tt); display: flex; align-items: center; gap: 10px; padding: 0 12px; font: 700 17px/1 var(--font); letter-spacing: .04em; }
+.os .logon .banner svg { width: 28px; height: 28px; flex: none; }
+.os .logon .banner small { display: block; margin-top: 3px; font-size: 10px; font-weight: 400; letter-spacing: .1em; opacity: .85; }
+.os .logon .grid2 { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 4px 8px; align-items: center; }
+.os .logon .field { padding: 1px 4px; min-height: 17px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.os .logon-ways { max-height: 118px; overflow: auto; padding: 2px; scrollbar-width: thin; }
+.os button.row-item.logon-way { align-items: start; }
+.os button.row-item.logon-way > span { display: flex; flex-direction: column; min-width: 0; }
+.os button.row-item.logon-way > span small { font-size: 10px; white-space: normal; }
+.os .logon-none { color: var(--dim); }
+.os .logon-buttons { display: flex; justify-content: flex-end; }

@@ -2,73 +2,17 @@
   "tierNames": ["untrained", "novice", "trained", "expert", "master"],
   "skills": {
     "hacking": {
-      "game": "crack",
-      "theme": "cyan",
-      "window": "Intrusion Console",
-      "runLabel": "Execute",
-      "prompt": "root@meridian:~$",
-      "promptOther": "root@terminal:~$",
-      "help": "Find the password in the memory dump. Click a word to try it, or type it. Typing part of a word is fine. Disconnect gives up before the trace completes.",
-      "_classes": "What each class of computer is like. The keys are the difficulty words a scene or the game master uses: length is the password's, words the size of the dump, tries how many wrong tries the trace allows before training adds its own, decoys how many words look nearly right, layers how many passwords stand between you and the inside, and mark whether a completed trace leaves a fact on the record.",
+      "_about": "Hacking has no check window. A computer that isn't yours, and whose password you don't know, opens at its logon: you get in with a breaker program off your rig that's strong enough for the computer's class (KNOCK, DICTIONARY, SKELETON, SHADOW, or MIMIC with a lifted keycard). The watcher counts the noise you make from the first try at the logon. A scene's [hacking:moderate] check, a door's hacking rule and the practice buttons all open a computer's logon the same way.",
+      "_classes": "What each class of computer is like. The keys are the difficulty words a scene uses. name is what it's called; mark is whether a trace that finds you, or being cut off, leaves a fact on the record (traced_on_<class>); notices is the noise at which the watcher notices you (from then on everything is one louder); traces the noise at which it starts a trace, which finds you finds minutes of the session later unless you log off; cuts the noise at which it cuts you off at once.",
       "classes": {
-        "easy": { "name": "Door panel", "length": 5, "words": 8, "tries": 4, "decoys": 0, "layers": 1, "mark": false },
-        "moderate": { "name": "Crew terminal", "length": 6, "words": 12, "tries": 4, "decoys": 2, "layers": 1, "mark": false },
-        "hard": { "name": "Ship's main system", "length": 7, "words": 14, "tries": 3, "decoys": 3, "layers": 2, "mark": true },
-        "very_hard": { "name": "Ministry or Navy server", "length": 8, "words": 16, "tries": 3, "decoys": 4, "layers": 2, "mark": true },
-        "nearly_impossible": { "name": "The Beacon or the Choir", "length": 9, "words": 16, "tries": 3, "decoys": 5, "layers": 3, "mark": true }
+        "easy": {"name": "Door panel", "mark": false, "notices": 5, "traces": 9, "finds": 8, "cuts": 13},
+        "moderate": {"name": "Crew terminal", "mark": false, "notices": 4, "traces": 8, "finds": 6, "cuts": 12},
+        "hard": {"name": "Ship's main system", "mark": true, "notices": 3, "traces": 6, "finds": 5, "cuts": 9},
+        "very_hard": {"name": "Ministry or Navy server", "mark": true, "notices": 3, "traces": 5, "finds": 4, "cuts": 8},
+        "nearly_impossible": {"name": "The Beacon or the Choir", "mark": true, "notices": 2, "traces": 4, "finds": 3, "cuts": 6}
       },
-      "_training": "What training adds, from untrained to master: wrong tries the trace allows on top of the class's, free probes, and how many wrong words a probe clears.",
-      "training": { "extraTries": [0, 1, 2, 3, 3], "freeProbes": [0, 0, 1, 1, 2], "probeClears": [1, 1, 2, 2, 3] },
-      "layerNames": ["the account", "root", "the vault"],
-      "_hints": "What the advisor says, by training level. Each level's lines come after the ones below it. Blanks: {count} words still possible, {possible} a line listing them, {best} the word to try next, {left} wrong tries left, {trace} the trace in percent, {probes} free probes, {clears} words a probe clears, {layer}, {layers}, {layerName}, {className}.",
-      "hints": {
-        "0": ["The server says how many letters of your word are right, and in the right place. Start with a word that shares letters with many others.", "Reading a file can cost a try: the useful ones are watched."],
-        "1": ["{count} of the words still fit everything the server has said."],
-        "2": ["{possible}", "notes.txt and passwd.bak are safe for you to open: one gives the first letter, the other retires two wrong words."],
-        "3": ["Try {best} next. Whatever the answer is, its likeness rules out the most.", "A probe clears {clears} wrong words, and you have {probes} free."],
-        "4": ["{left} wrong tries left before the trace completes.", "Layer {layer} of {layers}: {layerName}."]
-      },
-      "consoles": { "terminal": "Programming Console", "dump": "Coding Console", "decode": "Decoding Console" },
-      "results": {
-        "success": "ACCESS GRANTED",
-        "failure": "ACCESS DENIED",
-        "successLine": "The exploit runs clean. The system's yours, for now.",
-        "failureLine": "The exploit bounces. Somewhere, a log entry has your name on it."
-      },
-      "users": ["nightking", "sysop_4", "dockmaster", "root_ops", "auditor", "hegemon9", "custodian", "ghostnet", "vantor_ops", "quartermaster", "admin", "maintenance"],
-      "noteLines": [
-        "\"Reminder to self: the new password starts with {letter}. Change it before the audit.\"",
-        "\"Told the night shift it begins with {letter}. Do NOT write it down.\" Someone wrote that down.",
-        "\"Password hint, as if I'd forget: first letter {letter}.\""
-      ],
-      "motd": [
-        "Welcome. All sessions are monitored. Have a safe and productive shift.",
-        "NOTICE: the coffee machine on deck 4 is not a network device. Stop trying to log in to it.",
-        "Reminder: refugee manifests are confidential. Sharing them is a Ministry offense.",
-        "This node hasn't been patched since the Fall. Nobody's left who knows how.",
-        "Scheduled maintenance has been cancelled due to the end of civilization."
-      ],
-      "code": [
-        "import hashlib",
-        "import sqlite3",
-        "100 FOR K = 1 TO 4096",
-        "110 IF HASH(K) = TARGET THEN GOTO 140",
-        "120 NEXT K",
-        "140 PRINT FOURDIGITPASSWORD",
-        "def __init__(self, server_address):",
-        "    self.username = nightking",
-        "    return decrypted_code",
-        "len = decode(encrypted_code)",
-        "for character in input_string:",
-        "    charcode = Asc(Mid(input, i))"
-      ],
-      "words": {
-        "5": ["ORBIT", "PROBE", "RELAY", "PULSE", "DRIFT", "FLARE", "CARGO", "VAULT", "NEXUS", "SOLAR", "LASER", "PHASE", "TRACE", "STACK", "SHELL", "PROXY", "ROUTE", "PATCH", "TOKEN", "CRYPT", "ALLOY", "ARRAY", "BYTES", "CACHE", "CHAIN", "CLOCK", "CORES", "DEBUG", "DEPOT", "EPOCH", "FORGE", "GHOST", "GLYPH", "GUARD", "HATCH", "INDEX", "LOGIN", "NODES", "PIXEL", "QUEUE", "RADAR", "ROBOT", "SCRIP", "SHARD", "SIGIL", "SPIKE", "SWARM", "TITAN", "TORCH", "VIRUS"],
-        "6": ["ACCESS", "BEACON", "BINARY", "BRIDGE", "BUFFER", "CIPHER", "COBALT", "CODECS", "DAEMON", "DECODE", "DOCKET", "ENGINE", "FILTER", "FLEETS", "HANGAR", "HARBOR", "KERNEL", "LEDGER", "MODULE", "MIRROR", "NEURON", "ORACLE", "PACKET", "PLASMA", "PORTAL", "PRISMS", "QUANTA", "ROUTER", "SCRIPT", "SECTOR", "SENSOR", "SERVER", "SIGNAL", "SOCKET", "STATIC", "SYSTEM", "TARGET", "THREAD", "TUNNEL", "VECTOR", "VESSEL", "WARDEN"],
-        "7": ["AIRLOCK", "ARCHIVE", "BALLAST", "BASTION", "CAPTAIN", "CIRCUIT", "COMMAND", "CONSOLE", "CONTACT", "COUNCIL", "CRUISER", "CRYSTAL", "CUSTOMS", "DISPLAY", "ECLIPSE", "EXPLOIT", "FREIGHT", "GATEWAY", "HARVEST", "HEGEMON", "MONITOR", "NETWORK", "NUCLEUS", "PAYLOAD", "PHANTOM", "QUARTER", "REACTOR", "REFUGEE", "REPLICA", "RUNTIME", "SCANNER", "SHUTTLE", "STATION", "TRACKER", "TRANSIT", "UPLINKS", "VOLTAGE", "WARSHIP"],
-        "8": ["BACKDOOR", "BULKHEAD", "CHECKSUM", "COMPILER", "DATABASE", "DERELICT", "DOWNLINK", "FIREWALL", "FLAGSHIP", "HOLOGRAM", "KEYSTONE", "LOCKDOWN", "MAINLINE", "MANIFEST", "NAVIGATE", "OVERRIDE", "PASSCODE", "PIPELINE", "PROTOCOL", "QUANTIZE", "RECEIVER", "REGISTER", "RESONANT", "SALVAGED", "SCRAMBLE", "SENTINEL", "SEQUENCE", "SOFTWARE", "SPECTRUM", "STARSHIP", "STOWAWAY", "SUBLEVEL", "TERMINAL", "THRUSTER", "TRANSMIT", "UNLOCKED", "VIGILANT", "WATCHDOG", "WAYPOINT"],
-        "9": ["ALGORITHM", "AUTOPILOT", "BLACKOUTS", "BLOCKADES", "CALIBRATE", "CONTAINER", "CORRIDORS", "DEADLOCKS", "DECOMPILE", "DECRYPTED", "DIAGNOSIS", "ENCRYPTED", "EXECUTIVE", "FREIGHTER", "GENERATOR", "INTERCEPT", "INTERFACE", "INTERLOCK", "INTRUSION", "MAINFRAME", "NAVIGATOR", "OVERWATCH", "PARAMETER", "PASSWORDS", "RESONANCE", "SHIPYARDS", "SIMULATOR", "SMUGGLERS", "SUBSYSTEM", "TELEMETRY", "TRANSPORT", "WAVEFORMS"]
-      }
+      "_training": "What training adds to notices, traces and cuts, from untrained to master: someone who knows what they're doing moves more quietly.",
+      "training": {"room": [0, 1, 1, 2, 3]}
     },
     "engineering": {
       "game": "switches",

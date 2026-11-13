@@ -9,10 +9,10 @@ import { findCharacter, findEnemy } from "./campaign.js";
 import { SKILLS } from "./character-data.js";
 import { startCheck } from "./checks.js";
 import { startCombat } from "./combat.js";
-import { LOCATIONS } from "./data.js";
+import { ITEMS, LOCATIONS } from "./data.js";
 import { holderOf } from "./daily.js";
 import { recordFact } from "./record.js";
-import { changeStanding, findContact, hoursNow } from "./rules.js";
+import { addItem, changeStanding, findContact, hoursNow } from "./rules.js";
 import { ownedBy, soundAlarm, watched } from "./systems.js";
 import { countForDuty } from "./command.js";
 import { DEEDS } from "./world.js";
@@ -85,7 +85,10 @@ export function settleDeed(game, outcome) {
     game.credits += got;
     // A pocket picked aboard is one more theft on the chief of security's watch.
     countForDuty(game, asked.place, "thefts");
-    lines.push(`[STEALTH] You lift ${got} credits from ${asked.short}, and they don't notice a thing.`);
+    // Now and then there's a keycard in it, which MIMIC.EXE can play back at a computer's logon.
+    const card = ITEMS.keycard && Math.random() < (rules.keycard ?? 0);
+    if (card) addItem(game, "keycard");
+    lines.push(`[STEALTH] You lift ${got} credits${card ? " and a keycard" : ""} from ${asked.short}, and they don't notice a thing.`);
   } else {
     lines.push(`[STEALTH] ${asked.short} catches your hand in their pocket.`);
     lines.push(...costs(game, asked.place, rules.caught ?? {}, `You were caught picking ${asked.short}'s pocket.`));

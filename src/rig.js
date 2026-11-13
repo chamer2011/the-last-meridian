@@ -1,14 +1,15 @@
 // The player's rig: the pocket computer in their pack that carries programs onto computers (step 2 of the hacking
 // rework). For now every rig is the plain yard build, four blocks of memory. The programs are world files
-// (src/programs.js); what each one does when it runs is here, against the computer engine as it is: a hacked computer's
-// trace counts actions, and what this computer runs (doors, cameras, power) is switched through the systems. Writing a
-// program takes hours at the Repair Bay's bench, and Hacking decides which ones the player can write; one they have,
-// however they came by it, runs whatever their skill. Some can be copied off the computers that hold them.
+// (src/programs.js); what each one does when it runs is here. At a computer's logon the breakers get the player in, if
+// they're strong enough for its class (step 3); inside, the watcher hears each program's noise, and what the computer
+// runs (doors, cameras, power) is switched through the systems. Writing a program takes hours at the Repair Bay's
+// bench, and Hacking decides which ones the player can write; one they have, however they came by it, runs whatever
+// their skill. Some can be copied off the computers that hold them.
 //
 // game.rig: { programs: [ids the rig has], loaded: [ids in its memory], timers: [what's been left behind, and when] }.
 import { addClockWork } from "./room-hooks.js";
 import { PROGRAM_KINDS, programById, programsNow } from "./programs.js";
-import { classKeys, line } from "./computers.js";
+import { classKeys, gotIn, line, watchFor } from "./computers.js";
 import { controlSystem, controlsView, damagePart, systemsOf } from "./systems.js";
 import { passTime, skillRank } from "./rules.js";
 import { roomHere } from "./walk.js";
@@ -116,31 +117,63 @@ const nextAt = (game, hour) => {
   return at;
 };
 
+// Someone's at work with a session open in the ship's working hours, for SHADOW.EXE to ride.
+const onShift = (game) => {
+  const hour = (((game.clock?.hours ?? 0) % 24) + 24) % 24;
+  return hour >= 7 && hour < 21;
+};
+const TRACE_PROGRAMS = ["mask", "ghost", "cleaner", "forger", "decoy", "lullaby", "blindfold", "cutout"];
+
 // Why this program can't run here, or null.
 function cantRun(game, session, content, p) {
   if (!p) return "there's no such program";
   if (!p.builtIn && !game.rig.loaded.includes(p.id)) return "it isn't loaded";
   if (p.once && session.rigUsed?.includes(p.id)) return "it's already run this session";
-  if (p.kind === "in") return "nothing to break: you're already in";
+  // At the logon only the breakers and Scope run; inside, there's nothing left to break.
+  if (session.locked) {
+    if (p.id === "scope") return session.scanned ? "it's read the logon already" : null;
+    if (p.kind !== "in") return "log on first";
+  } else if (p.kind === "in") return "you're already in";
   if (p.power && p.power < classNumber(session.classKey)) return `it's too weak for a ${String(session.className).toLowerCase()}`;
+  if (p.id === "mimic" && !game.inventory?.keycard) return "it needs a lifted keycard in your pockets";
+  if (p.id === "skeleton" && !session.scanned) return "Scope has to read the logon first";
+  if (p.id === "shadow" && !onShift(game)) return "nobody has a session open at this hour";
+  if (session.practice && p.kind === "leave") return "in practice nothing's left behind";
   const needsDoors = ["doorkey", "masterkey", "sleeper"].includes(p.id);
   if (needsDoors && !doorRows(game, session, content).length) return "this computer runs no doors";
   if (p.id === "relay" && !cameraRows(game, session, content).some((row) => row.actions.some((a) => a.to === "off"))) return "this computer runs no cameras that are on";
   if (p.id === "saboteur" && !partToBreak(game, session, content)) return "this computer runs nothing to break";
   if (["sniffer", "worm", "mapper"].includes(p.id) && !(content.network ?? []).some((n) => WORLD_COMPUTERS[n.id])) return "this computer reaches nothing";
-  if (["mask", "ghost", "cleaner", "forger", "decoy", "lullaby", "blindfold", "cutout"].includes(p.id) && !session.hacked) return "there's no trace on a computer that lets you in";
+  if (TRACE_PROGRAMS.includes(p.id) && session.yours) return "nobody watches your own computers";
+  if (p.id === "lullaby" && (session.traceLeft === null || session.traceLeft === undefined)) return "nothing's tracing you";
   return null;
 }
 
-// What the computer's desktop shows of the rig: the programs loaded on it, and any this computer has to copy.
+// What the computer's desktop shows of the rig: the programs loaded on it, any this computer has to copy, and, at a
+// logon, the ways in: the breakers loaded and Scope, each with what it costs and why it won't work, if it won't.
 export function rigInComputer(game, session, content) {
   if (!game.rig) return null;
-  const loaded = programsNow().list.filter((p) => p.builtIn || game.rig.loaded.includes(p.id)).map((p) => ({ id: p.id, name: p.name, about: p.what, why: cantRun(game, session, content, p) }));
+  const mine = programsNow().list.filter((p) => p.builtIn || game.rig.loaded.includes(p.id));
+  const loaded = mine.map((p) => ({ id: p.id, name: p.name, about: p.what, why: cantRun(game, session, content, p), noise: p.noise ?? 0, minutes: p.minutes ?? 1 }));
   const copies = programsNow().list.filter((p) => (p.foundOn ?? []).includes(session.id) && !game.rig.programs.includes(p.id)).map((p) => ({ id: p.id, name: p.name, about: p.what }));
-  return { loaded, copies, memory: RIG_MEMORY, used: usedMemory(game.rig) };
+  const ways = session.locked ? mine.filter((p) => p.kind === "in" || p.id === "scope").map((p) => ({ id: p.id, name: p.name, about: p.what, kind: p.kind, power: p.power ?? null, noise: p.noise ?? 0, minutes: p.minutes ?? 1, why: cantRun(game, session, content, p) })) : [];
+  return { loaded, copies, ways, memory: RIG_MEMORY, used: usedMemory(game.rig) };
 }
 
-// Running one of the rig's programs. helpers: { act(game, session, cost), readEverything(game, session, content) }.
+// Who a breaker gets the player in as, and what it says.
+function breakIn(p, session) {
+  const user = { knock: "service", skeleton: "service", mimic: "keycard" }[p.id] ?? session.user;
+  const said = {
+    knock: "Nobody ever changed the service account's password. You're in as service.",
+    dictionary: `The word list finds ${session.user}'s password. People choose the same words.`,
+    skeleton: "The logon's old flaw opens the service account without a password.",
+    shadow: `You're riding ${session.user}'s session. Everything you do is in their name, and they might notice.`,
+    mimic: "The lifted keycard plays back, and the logon takes it for its owner.",
+  }[p.id] ?? `${p.name} gets you past the logon.`;
+  return { user, said };
+}
+
+// Running one of the rig's programs. helpers: { act(game, session, { noise, minutes }), readEverything(game, session, content) }.
 export function runRigProgram(game, session, content, id, helpers) {
   const p = programById(id);
   const why = cantRun(game, session, content, p);
@@ -152,6 +185,27 @@ export function runRigProgram(game, session, content, id, helpers) {
     return { over: false };
   }
   session.rigUsed = [...(session.rigUsed ?? []), p.id];
+  const cost = { noise: p.noise ?? 0, minutes: p.minutes ?? 1 };
+  // At the logon: a breaker's noise comes first, and the player is in only if the watcher hasn't cut them off for it.
+  if (session.locked) {
+    session.log.push(line(`> ${p.name}`, "bright"));
+    if (p.id === "scope") {
+      session.scanned = true;
+      const lines = [line(`Scope reads the logon: Keelworks Logon 3.2 on a ${String(session.className).toLowerCase()}, with ${watchFor(game, session.classKey).name} watching. Its version has a known flaw.`, "info")];
+      session.log.push(...lines);
+      show([line(p.what, "dim"), ...lines]);
+      return helpers.act(game, session, cost) ?? { over: false };
+    }
+    const out = helpers.act(game, session, cost);
+    if (out) return out;
+    const { user, said } = breakIn(p, session);
+    if (p.id === "shadow") session.shadow = true;
+    session.log.push(line(said, "good"));
+    if (!session.ran.includes(p.name)) session.ran.push(p.name);
+    gotIn(game, session, { user, via: p.id });
+    session.screen = { kind: "home" };
+    return { over: false };
+  }
   if (!session.ran.includes(p.name)) session.ran.push(p.name);
   const said = [];
   const say = (text, tone = "good") => said.push(line(text, tone));
@@ -175,26 +229,33 @@ export function runRigProgram(game, session, content, id, helpers) {
     }
     case "mask": case "ghost":
       session.free = (session.free ?? 0) + (p.id === "mask" ? 3 : 6);
-      say(`${p.name} is running: the trace won't see the next ${p.id === "mask" ? "three" : "six"} things you do here.`);
+      say(`${p.name} is running: the next ${p.id === "mask" ? "three" : "six"} things you do here make no noise.`);
       break;
     case "cleaner": case "forger": case "decoy": {
       const off = { cleaner: 3, forger: 1, decoy: 2 }[p.id];
-      const before = session.trace;
-      session.trace = Math.max(0, session.trace - off);
-      say(`${{ cleaner: "Your lines are wiped from the log", forger: "Your lines now carry someone else's name", decoy: "Another terminal makes a racket" }[p.id]}: the trace drops by ${before - session.trace}.`);
+      const watch = watchFor(game, session.classKey);
+      const before = session.noise ?? 0;
+      session.noise = Math.max(0, before - off);
+      say(`${{ cleaner: "Your lines are wiped from the log", forger: "Your lines now carry someone else's name", decoy: "Another terminal makes a racket" }[p.id]}: ${before - session.noise} noise off.`);
+      // Under the trace's mark again, the trace loses the player; under the notice mark, the watcher settles.
+      if (session.traceLeft !== null && session.traceLeft !== undefined && session.noise < watch.traces) {
+        session.traceLeft = null;
+        say("The trace loses you.");
+      }
+      if (session.traceLeft === null && session.noise < watch.notices) session.noticed = false;
       break;
     }
     case "lullaby":
-      session.maxTrace += 2;
-      say("The trace slows: the computer allows two more actions before it completes.");
+      session.traceLeft += 4;
+      say(`The trace slows: it takes four more minutes to find you, ${session.traceLeft} in all.`);
       break;
     case "blindfold":
-      session.blind = 5;
-      say("The trace is blind for five actions.");
+      session.blindLeft = 5;
+      say(`${watchFor(game, session.classKey).name} sees nothing for five minutes. When it sees again, it'll notice the gap.`);
       break;
     case "cutout":
       session.cutout = true;
-      say("If the trace completes now, it ends at another terminal.");
+      say("If the watcher finds you or cuts you off now, it ends at another terminal.");
       break;
     case "digger": {
       const count = helpers.readEverything(game, session, content);
@@ -241,8 +302,8 @@ export function runRigProgram(game, session, content, id, helpers) {
   }
   show([line(p.what, "dim"), ...said]);
   session.log.push(line(`> ${p.name}`, "bright"), ...said);
-  // A program the trace notices (any noise above 0) costs a point of it, as any other action does.
-  return helpers.act(game, session, p.noise > 0 ? 1 : 0) ?? { over: false };
+  // The watcher hears the program's own noise, and it takes its minutes.
+  return helpers.act(game, session, cost) ?? { over: false };
 }
 
 // Copying a program off the computer that holds it onto the rig, and into its memory if there's room. The trace notices.
@@ -257,7 +318,7 @@ export function copyProgram(game, session, content, id, helpers) {
   session.screen = { kind: "program", id: `copy:${id}`, title: p.name, lines: [line(p.what, "dim"), said] };
   session.log.push(line(`> copy ${p.name}`, "bright"), said);
   if (!session.ran.includes(`copied ${p.name}`)) session.ran.push(`copied ${p.name}`);
-  return helpers.act(game, session, 1) ?? { over: false };
+  return helpers.act(game, session, { noise: 1 }) ?? { over: false };
 }
 
 // ---- What's been left behind, on the clock --------------------------------------------------------

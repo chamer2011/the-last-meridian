@@ -1,6 +1,7 @@
 // Using a computer the player is on: reading its files, mail and logs, running its programs with the
 // effects a scene could cause, reaching another computer over its network, and logging off, or being
-// thrown out when the trace completes. Programs run through the game's actions, as the scenes' effects do,
+// thrown out when the watcher finds or cuts off the player (step 3 of the hacking rework: every action has its
+// noise and its minutes, and on a computer that isn't theirs AuditGuard hears the noise). Programs run through the game's actions, as the scenes' effects do,
 // which is why this sits apart from src/computers.js: that file is read by the rules and the walk,
 // and the tools read those.
 
@@ -10,22 +11,24 @@ import { placeNow, worldOf } from "./daily.js";
 import { clearFact, recordFact } from "./record.js";
 import { passTime } from "./rules.js";
 import { newTurnLimits, runTool } from "./tools.js";
-import { startCheck } from "./checks.js";
 import { closest } from "./check-games/kit.js";
 import { WORLD_COMPUTERS } from "./world.js";
 import { applySystemsEffect, controlSystem, controlsView, powerNote, roomPowered } from "./systems.js";
 import { manifestLines } from "./logistics.js";
 import { untagged } from "../public/story.js";
 import { copyProgram, runRigProgram } from "./rig.js";
-import { MAX_LOG, MINUTES_PER_ACTION, classKeys, contentOf, knowsPassword, levelNamed, line, memoryOf, openSession, peopleAt, programOffered, sameName, slug, writtenContent } from "./computers.js";
+import { MAX_LOG, MINUTES_PER_ACTION, contentOf, knowsPassword, levelNamed, line, memoryOf, openLogon, openSession, peopleAt, programOffered, readNoise, sameName, settleHack, slug, watchFor, watchStage, writtenContent } from "./computers.js";
 
-// What a completed trace inside leaves on the record, the same mark a failed hack leaves.
-function thrownOut(game, session) {
-  // CUTOUT.EXE sends the trace to another terminal: out, but nothing on the record.
-  if (session.cutout) return finish(game, session, [`[COMPUTER] TRACE COMPLETE on ${session.name}, at another terminal: your cutout took it. You're out, and nothing has your name.`]);
-  const marked = classKeys().indexOf(session.classKey) >= classKeys().indexOf("hard");
-  const notes = [`[COMPUTER] TRACE COMPLETE on ${session.name}. The connection drops, and you're out, with the trace at 100%.`];
-  if (marked) {
+// Found by the trace, or cut off: out at once. On a ship's main system or worse that leaves a mark on the record.
+function thrownOut(game, session, why = "traced") {
+  const watch = watchFor(game, session.classKey);
+  const words = why === "cut" ? `${watch.name} cuts the session off and locks ${session.name}.` : `The trace finds the terminal you're on, ${session.name}.`;
+  settleHack(game, session, false, why);
+  if (session.practice) return finish(game, session, [`[PRACTICE] ${words} In practice, that's all it costs.`]);
+  // CUTOUT.EXE sends it to another terminal: out, but nothing on the record.
+  if (session.cutout) return finish(game, session, [`[COMPUTER] ${words} It ends at another terminal: your cutout took it. You're out, and nothing has your name.`]);
+  const notes = [`[COMPUTER] ${words} You're out.`];
+  if (watch.mark) {
     const id = `traced_on_${slug(session.className)}`;
     try {
       recordFact(game, { id, text: `The trace on a ${String(session.className).toLowerCase()} has your name on it.`, from: "hacking" });
@@ -37,28 +40,50 @@ function thrownOut(game, session) {
   return finish(game, session, notes);
 }
 
-// Each action takes a little time, and on a hacked computer the trace notices some of them.
-// MASK.EXE and GHOST.EXE let some actions go unnoticed; BLINDFOLD.EXE blinds the trace for a while, and it notices the
-// gap when it sees again.
-function act(game, session, cost) {
+// Each action takes its minutes, and on a computer that isn't the player's the watcher hears its noise. MASK.EXE and
+// GHOST.EXE make some actions silent; BLINDFOLD.EXE blinds the watcher for some minutes, and it notices the gap when it
+// sees again; riding someone's session (SHADOW.EXE) makes everything one louder, since they might notice. Once the
+// watcher has noticed the player, everything is one louder; past its trace mark a trace runs down the session's
+// minutes and finds them when they're up; at its cut-off they're out at once.
+function act(game, session, { noise = 0, minutes = MINUTES_PER_ACTION } = {}) {
   session.actions += 1;
-  if (!session.hacked || !cost) return null;
-  if (session.free > 0) {
+  const spent = Math.max(0, Number(minutes) || 0);
+  session.minutes = (session.minutes ?? 0) + spent;
+  if (session.yours) return null;
+  const watch = watchFor(game, session.classKey);
+  let heard = Math.max(0, Number(noise) || 0);
+  if (heard > 0 && session.free > 0) {
     session.free -= 1;
-    return null;
+    heard = 0;
   }
-  if (session.blind > 0) {
-    session.blind -= 1;
-    if (session.blind > 0) return null;
-    cost = 2;
-    session.log.push(line("The trace sees again, and notices the gap.", "warn"));
+  if (heard > 0 && session.blindLeft > 0) heard = 0;
+  if (heard > 0 && session.shadow) heard += 1;
+  if (heard > 0 && session.noticed) heard += 1;
+  session.noise = (session.noise ?? 0) + heard;
+  const last = session.log.at(-1);
+  if (heard > 0 && last?.text) last.text = `${last.text} (+${heard} noise)`;
+  if (session.blindLeft > 0) {
+    session.blindLeft = Math.max(0, session.blindLeft - spent);
+    if (!session.blindLeft) {
+      session.noise += 2;
+      session.log.push(line(`${watch.name} sees again, and notices the gap in its log (+2 noise).`, "warn"));
+    }
   }
-  session.trace += cost;
-  if (session.trace >= session.maxTrace) return thrownOut(game, session);
-  if (session.trace === session.maxTrace - 1) session.log.push(line("WARNING: trace nearly complete.", "warn"));
+  if (session.noise >= watch.cuts) return thrownOut(game, session, "cut");
+  if (session.traceLeft !== null && session.traceLeft !== undefined) {
+    session.traceLeft -= spent;
+    if (session.traceLeft <= 0) return thrownOut(game, session, "traced");
+    if (spent) session.log.push(line(`The trace finds you in ${session.traceLeft} ${session.traceLeft === 1 ? "minute" : "minutes"}.`, "bad"));
+  } else if (session.noise >= watch.traces) {
+    session.traceLeft = watch.finds;
+    session.noticed = true;
+    session.log.push(line(`${watch.name} is tracing where you are. It finds you in ${watch.finds} minutes, unless you log off first.`, "bad"));
+  } else if (session.noise >= watch.notices && !session.noticed) {
+    session.noticed = true;
+    session.log.push(line(`${watch.name} has noticed you. Everything you do from now on is one louder.`, "warn"));
+  }
   return null;
 }
-const readCost = (session) => (classKeys().indexOf(session.classKey) >= classKeys().indexOf("very_hard") ? 1 : 0);
 
 // What the player has read goes into What you know, once.
 function learn(game, session, name, text) {
@@ -83,7 +108,7 @@ function openFile(game, session, content, id) {
   if (!session.read.includes(file.name)) session.read.push(file.name);
   learn(game, session, file.name, file.text);
   showScreen(session, { kind: "file", id, title: file.name, lines: [line(file.text, "bright")] });
-  const out = act(game, session, first ? readCost(session) : 0);
+  const out = act(game, session, { noise: first ? readNoise(session) : 0 });
   return out ?? { over: false };
 }
 
@@ -119,7 +144,7 @@ function openMail(game, session, content, id) {
   if (!session.read.includes(title)) session.read.push(title);
   learn(game, session, title, entry.text);
   showScreen(session, { kind: "mail", id, title, lines: [line(entry.to ? `From: ${entry.from}\nTo: ${entry.to}` : `Subject: ${entry.subject}`, "dim"), line(entry.text, "bright")] });
-  const out = act(game, session, first ? readCost(session) : 0);
+  const out = act(game, session, { noise: first ? readNoise(session) : 0 });
   return out ?? { over: false };
 }
 
@@ -177,10 +202,10 @@ function openLog(game, session, content, id) {
   // The register is a table, made afresh each time it's shown (src/register.js).
   if (log.kind === "register") {
     showScreen(session, { kind: "register", id, title: log.name });
-    return act(game, session, 0) ?? { over: false };
+    return act(game, session) ?? { over: false };
   }
   showScreen(session, { kind: "log", id, title: log.name, lines: logLines(game, session, content, log) });
-  const out = act(game, session, 0);
+  const out = act(game, session);
   return out ?? { over: false };
 }
 
@@ -249,35 +274,47 @@ function runProgram(game, session, content, id) {
   session.ran.push(program.name);
   if (notes.length) game.transcript?.push({ role: "notice", text: notes.join("\n") });
   showScreen(session, { kind: "program", id, title: program.name, lines: [line(program.text || "Done.", "bright"), ...notes.map((note) => line(note, "good"))] });
-  const out = act(game, session, 1);
+  const out = act(game, session, { noise: 1 });
   return out ?? { over: false };
 }
 
 // Reaching another computer over the network: the player's own, or one whose password they know, straight
-// away; any other is a hack of its own class, after this session is logged off.
+// away; any other opens at its own logon, after this session is logged off.
 function connectTo(game, session, content, id) {
   const entry = content.network.find((one) => one.id === id);
   const target = entry ? WORLD_COMPUTERS[id] : null;
   if (!entry || !target) return { over: false, said: "No such node on the network." };
   const next = writtenContent(id);
   const summary = finish(game, session, [`[COMPUTER] From ${session.name} you reached for ${next.name}.`]);
-  if (next.yours || knowsPassword(game, id)) {
-    openSession(game, next, { how: "connected", at: session.at ?? null });
-    return { over: true, summary, computer: true };
-  }
-  startCheck(game, { skill: "hacking", difficulty: next.classKey, reason: `Reach ${next.name} from ${session.name}`, scene: entry.desc || null, source: "computer", computer: id, target: session.at ?? null });
-  return { over: true, summary, check: true };
+  if (next.yours || knowsPassword(game, id)) openSession(game, next, { how: "connected", at: session.at ?? null });
+  else openLogon(game, next, { at: session.at ?? null });
+  return { over: true, summary, computer: true };
 }
 
-// Logging off, or being thrown out: one line in the story, and the clock moves on.
+// What the watcher made of a session the player logs off from.
+const watcherWords = (session) => ({
+  calm: "The watcher never noticed you.",
+  noticed: "The watcher had noticed you: what you did is in its log.",
+  tracing: "A trace was still running when you logged off: it knows it came from here, if not who.",
+})[watchStage(session)];
+
+// Logging off, or being thrown out: one line in the story, and the clock moves on. A logon the player walks away from
+// tells whatever asked for the hack that it didn't happen. Practice leaves nothing: no line, and no time gone by.
 function finish(game, session, notes = []) {
+  if (session.locked) settleHack(game, session, false, "left");
+  if (session.practice) {
+    game.computer = null;
+    return { over: true, summary: notes[0] ?? "[PRACTICE] You log off. Nothing that happened there counts." };
+  }
   const read = session.read.length;
   const ran = session.ran;
-  const pct = session.maxTrace ? Math.round((session.trace / session.maxTrace) * 100) : null;
-  const summary = `[COMPUTER] On ${session.name}: ${read ? `read ${read} ${read === 1 ? "thing" : "things"}` : "read nothing"}${ran.length ? `, ran ${ran.join(", ")}` : ""}.${session.hacked && pct !== null && !notes.some((note) => /TRACE COMPLETE/.test(note)) ? ` Logged off with the trace at ${pct}%.` : ""}`;
+  const thrown = notes.some((note) => /cuts the session off|trace finds the terminal/.test(note));
+  const summary = session.locked
+    ? `[COMPUTER] At ${session.name}'s logon: you didn't get in.${thrown ? "" : ` ${watcherWords(session)}`}`
+    : `[COMPUTER] On ${session.name}: ${read ? `read ${read} ${read === 1 ? "thing" : "things"}` : "read nothing"}${ran.length ? `, ran ${ran.join(", ")}` : ""}.${!session.yours && !thrown ? ` ${watcherWords(session)}` : ""}`;
   game.transcript?.push({ role: "notice", text: [summary, ...notes].join("\n") });
-  // Each thing done takes a couple of minutes at least. Where the clock has been running meanwhile, that's already gone by.
-  const owed = (session.actions * MINUTES_PER_ACTION) / 60 - Math.max(0, (game.clock?.hours ?? 0) - (session.startedAt ?? game.clock?.hours ?? 0));
+  // Each thing done took its minutes. Where the clock has been running meanwhile, that's already gone by.
+  const owed = (session.minutes ?? session.actions * MINUTES_PER_ACTION) / 60 - Math.max(0, (game.clock?.hours ?? 0) - (session.startedAt ?? game.clock?.hours ?? 0));
   if (owed > 0) passTime(game, owed);
   game.computer = null;
   return { over: true, summary };
@@ -369,7 +406,7 @@ function runSystem(game, session, content, body) {
   const done = notes[0] ? untagged(notes[0]).replace(/\.$/, "") : "a system";
   if (!session.ran.includes(done)) session.ran.push(done);
   if (notes.length) game.transcript?.push({ role: "notice", text: notes.join("\n") });
-  const out = act(game, session, session.hacked ? 1 : 0);
+  const out = act(game, session, { noise: 1 });
   if (out) return out;
   return screenGoesDark(game, "you've cut its own power") ?? { over: false };
 }
@@ -389,6 +426,11 @@ export function computerCommand(game, body) {
   if (!content) {
     game.computer = null;
     throw new Error("That computer's file has gone.");
+  }
+  // At the logon there's nothing to open yet: only the rig's programs, and logging off.
+  if (session.locked && !["rig", "logoff", "home"].includes(body.action)) {
+    if (body.action === "type" && /^(logoff|logout|exit|quit|bye)$/i.test(String(body.text ?? "").trim())) return finish(game, session);
+    return { over: false, said: "Log on first: run something from your rig to get past the logon." };
   }
   switch (body.action) {
     case "home": session.screen = { kind: "home" }; return { over: false };

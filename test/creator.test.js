@@ -508,7 +508,7 @@ const oldSave = (background) => ({
 test("old saves still load, keep their progress and work with the new rules", () => {
   for (const background of ["officer", "smuggler", "adept", "engineer", "envoy", "something_unknown"]) {
     const game = migrateGame(oldSave(background));
-    assert.equal(game.version, 25);
+    assert.equal(game.version, 26);
     assert.deepEqual(game.lore, []);
     assert.ok(game.seenLore.length > 0);
     assert.equal(game.name, "Old Hand");

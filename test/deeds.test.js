@@ -51,7 +51,9 @@ test("a pocket is a Stealth check as hard as the person's Awareness, and a clean
   const lines = settleDeed(game, { success: true, reason: "Pick Voss's pocket", training: false });
   const got = game.credits - credits;
   assert.ok(got >= DEEDS.pickpocket.credits.named[0] && got <= DEEDS.pickpocket.credits.named[1], `${got} credits`);
-  assert.match(lines[0], new RegExp(`^\\[STEALTH\\] You lift ${got} credits from .*Voss, and they don't notice a thing\\.$`));
+  // Now and then a keycard comes with the credits (test/logon.test.js).
+  assert.match(lines[0], new RegExp(`^\\[STEALTH\\] You lift ${got} credits( and a keycard)? from .*Voss, and they don't notice a thing\\.$`));
+  if (/keycard/.test(lines[0])) assert.equal(game.inventory.keycard, 1);
   assert.equal(game.personAsked, null);
   assert.ok(isWary(game, "meridian", voss.key));
   assert.equal(personNamed(game, /Voss/).wary, true);

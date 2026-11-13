@@ -1,20 +1,24 @@
 // Computers: what they are and how the player gets in. A computer is a plain-text file in
 // world/computers, read by public/world-text.js, or a generic one the game makes for a console,
 // server, panel or power board in a room, or a door with a hack on it, that nobody has written.
-// The player gets in by right (the Meridian's own), with a password they've learned, or by a hack
-// of the computer's class, and what they can do once in is src/computer-use.js. This file is read by
-// the rules and the walk, so it reads nothing that reads the tools.
+// The player gets in by right (the Meridian's own), with a password they've learned, or at the computer's logon,
+// with a breaker off their rig that's strong enough for its class (step 3 of the hacking rework: no check window, and
+// the watcher counting noise from the first try). What they can do once in is src/computer-use.js. This file is read
+// by the rules and the walk, so it reads nothing that reads the tools.
 
 import { registerTable } from "./register.js";
 import { LOCATIONS } from "./data.js";
 import { placeNow, worldOf } from "./daily.js";
-import { DIFFICULTY } from "./rules.js";
+import { DIFFICULTY, DIFFICULTY_LEARNING, practice } from "./rules.js";
 import { conditionHolds, parseCondition, parseEffect } from "./scene-text.js";
-import { startCheck, tierFor } from "./checks.js";
-import { classOf } from "./check-games/crack.js";
+import { tierFor } from "./checks.js";
+import { setHackHandler } from "./hack-hook.js";
+import { classOf, roomFor } from "./hack-classes.js";
+import { recordFact } from "./record.js";
+import { notePut } from "./puts.js";
 import { fill } from "./check-games/kit.js";
 import { CHECK_TEXT, COMPUTER_FLAVOR, WORLD_COMPUTERS, WORLD_MAPS } from "./world.js";
-import { controlsFor, controlsView, partWorks, roomPowered, runsSystems, systemsOf } from "./systems.js";
+import { controlsFor, controlsView, partWorks, roomPowered, runsSystems } from "./systems.js";
 import { rigInComputer } from "./rig.js";
 
 
@@ -31,6 +35,18 @@ export const classKeyOf = (text) => {
   return classKeys().includes(key) ? key : "moderate";
 };
 export const classNameOf = (classKey) => classOf(CHECK_TEXT.skills?.hacking, classKey).name;
+
+// The watcher's numbers for a class, with what the player's training adds: the noise at which it notices them, starts
+// a trace, and cuts them off, and the minutes a trace takes to find them. mark is whether being found or cut off leaves
+// a fact on the record.
+export function watchFor(game, classKey) {
+  const text = CHECK_TEXT.skills?.hacking;
+  const c = classOf(text, classKey);
+  const room = roomFor(text, tierFor(game, "hacking"));
+  return { notices: c.notices + room, traces: c.traces + room, finds: c.finds, cuts: c.cuts + room, mark: Boolean(c.mark), name: "AuditGuard" };
+}
+// Where the watcher stands: calm, noticed (everything one louder), or tracing.
+export const watchStage = (session) => (session.traceLeft !== null && session.traceLeft !== undefined ? "tracing" : session.noticed ? "noticed" : "calm");
 
 // ---- Reading a computer's file --------------------------------------------------------------
 
@@ -211,24 +227,20 @@ export function consoleContent(game, place, part) {
   return genericContent(game, { key: `${place}:part:${part.id}`, name, kind: "console", place, room: roomOf(place, part.room), roomId: part.room, classKey: classKeyOf(part.classKey ?? "moderate"), ref: { console: part.id } });
 }
 
-// Using one of those consoles: straight in when it's the player's own, else a hack of its class. No power, no screen.
+// Using one of those consoles: straight in when it's the player's own, else its logon. No power, no screen.
 export function useConsolePart(game, place, part) {
   if (!partWorks(game, place, part)) return { said: "Its screen is dark. There's no power to it." };
   const content = consoleContent(game, place, part);
-  if (content.yours) {
-    openSession(game, content, { how: "sat down", at: `thing:part:${part.id}` });
-    return { said: `You sit down at ${content.name}.`, computer: true };
-  }
-  startCheck(game, { skill: "hacking", difficulty: content.classKey, reason: `Get into ${content.name}`, scene: null, source: "thing", target: `thing:part:${part.id}` });
-  game.computerAsked = { place, console: part.id };
-  return { check: true };
+  const session = openLogon(game, content, { at: `thing:part:${part.id}` });
+  return { said: session.locked ? `${content.name} wants a logon.` : `You sit down at ${content.name}.`, computer: true };
 }
 
-// A door's panel that was hacked from the door itself: it opens as a computer that runs that door.
-export function enterDoorPanel(game, place, to, hack, at = null) {
-  const target = computerAtDoor(game, place, to, hack?.classKey ?? "easy");
+// A locked door's panel, worked from the door itself: it opens at its logon (or straight in, when it's the player's),
+// and from inside it runs that door. doorRule is a map file's door that opens once the player gets in.
+export function openDoorPanel(game, place, to, { classKey = "easy", at = null, doorRule = null } = {}) {
+  const target = computerAtDoor(game, place, to, classKey);
   const content = target.id ? writtenContent(target.id) : target.generic;
-  return openSession(game, content, { hacked: true, trace: hack?.trace ?? 0, maxTrace: hack?.maxTrace ?? 0, how: "hacked", at });
+  return openLogon(game, content, { at, doorRule });
 }
 
 // The computer a hack at this place lands on when nothing says which: a written one of that class here,
@@ -245,8 +257,10 @@ export function computerForPlace(game, classKey) {
 
 export const knowsPassword = (game, id) => Boolean(id && game.passwords?.[id]);
 
-// at is what the player sat down at, as the room's marks name it, for the window's line to point at.
-export function openSession(game, content, { hacked = false, trace = 0, maxTrace = 0, how = "sat down", at = null }) {
+// at is what the player sat down at, as the room's marks name it, for the window's line to point at. locked is a
+// session still at the computer's logon; practice is one that counts for nothing; story is the scene's check it's for
+// ({ id, reason, source, difficulty }); doorRule is a map file's door that opens when the player gets in.
+export function openSession(game, content, { hacked = false, locked = false, noise = 0, how = "sat down", at = null, practice: practising = false, story = null, doorRule = null }) {
   if (game.combat) throw new Error("Finish the fight first.");
   if (game.computer) throw new Error("Log off the computer you're on first.");
   game.computers ??= {};
@@ -261,9 +275,15 @@ export function openSession(game, content, { hacked = false, trace = 0, maxTrace
     user: content.user,
     place: content.place,
     yours,
-    hacked: Boolean(hacked) && !yours,
-    trace: yours ? 0 : trace,
-    maxTrace: yours ? 0 : maxTrace,
+    hacked: Boolean(hacked) && !yours && !locked,
+    locked: Boolean(locked) && !yours,
+    noise: yours ? 0 : Math.max(0, Number(noise) || 0),
+    noticed: false,
+    traceLeft: null,
+    minutes: 0,
+    practice: Boolean(practising),
+    story,
+    doorRule,
     how,
     generic: WORLD_COMPUTERS[content.id] ? null : content,
     screen: { kind: "home" },
@@ -276,53 +296,108 @@ export function openSession(game, content, { hacked = false, trace = 0, maxTrace
     at,
   };
   const session = game.computer;
+  if (!yours) session.noticed = session.noise >= watchFor(game, session.classKey).notices;
   const flavor = COMPUTER_FLAVOR?.motd?.[content.flavor] ?? COMPUTER_FLAVOR?.motd?.default ?? [];
+  if (session.locked) {
+    session.log.push(line(`Keelworks 4.1. ${content.name} wants a user name and a password.`, "info"));
+    session.log.push(line("Run something from your rig to get past the logon, or log off. The watcher hears everything from here on.", "dim"));
+    return session;
+  }
   const greeting = hacked && !yours ? "ACCESS GRANTED." : yours ? "Logged in." : "Logged in with the password.";
   session.log.push(line(`${content.name}: ${greeting} Welcome, ${content.user}.`, "good"));
   if (flavor.length) session.log.push(line(flavor[Math.floor(seeded(content.id)() * flavor.length)], "dim"));
   session.log.push(line("Open a folder on the desktop to read or run what's in it. Log off from the Keel menu, or with Esc.", "dim"));
+  // A password, or the player's own computer, gets them straight in: whatever asked for the hack has its answer now.
+  if (story || doorRule) settleHack(game, session, true);
   return session;
 }
 
-// The player sits down at a computer by its id: theirs, or one they know the password to, or any, when a scene says so.
-export function enterComputer(game, { id = null, generic = null, hacked = false, trace = 0, maxTrace = 0, how = "sat down" } = {}) {
-  const content = id ? writtenContent(id) : generic;
-  if (!content) throw new Error(`There's no computer called ${id}.`);
-  return openSession(game, content, { hacked, trace, maxTrace, how });
+// Opening a computer the player wants to get into: straight in when it's theirs or they know its password, else at
+// its logon. A computer to practise on is never theirs.
+export function openLogon(game, content, { at = null, practice: practising = false, story = null, doorRule = null } = {}) {
+  if (!practising && (content.yours || knowsPassword(game, content.id))) return openSession(game, content, { how: content.yours ? "sat down" : "the password", at, story, doorRule });
+  return openSession(game, practising ? { ...content, yours: false } : content, { locked: true, how: "logon", at, practice: practising, story, doorRule });
 }
 
-// Using a thing that's a computer: straight in when it's theirs or the password's known, else a hack of its class.
-export function useComputer(game, { place, levelId, thing, look = null, generic = true }) {
+// The player is past the logon: as whom, and how. What asked for the hack hears that it worked.
+export function gotIn(game, session, { user = null, via = null } = {}) {
+  session.locked = false;
+  session.hacked = !session.yours;
+  if (user) session.user = user;
+  session.via = via;
+  session.log.push(line(`ACCESS GRANTED. Welcome, ${session.user}.`, "good"));
+  session.log.push(line("Open a folder on the desktop to read or run what's in it. Log off from the Keel menu, or with Esc.", "dim"));
+  settleHack(game, session, true);
+}
+
+// How a hack went, once: the skill learns from a hack that was tried (not in practice), a pass counts for anything
+// someone's asked the player to pass, a scene that asked for it reads the result, and a map file's door opens or stays
+// shut. how says why it failed: traced, cut (off), or left.
+export function settleHack(game, session, success, how = "left") {
+  if (session.settled) return;
+  session.settled = true;
+  if (session.practice) return;
+  const notes = [];
+  if (!session.yours && (session.via || !success)) notes.push(...practice(game, "hacking", (success ? 3 : 2) * (DIFFICULTY_LEARNING[session.classKey] ?? 1)));
+  if (success) {
+    notePut(game, "check:hacking", "any", 1);
+    if (session.at) notePut(game, "check:hacking", `at:${session.at}`, 1);
+  }
+  const label = success ? "ACCESS GRANTED" : { traced: "TRACED", cut: "CUT OFF" }[how] ?? "NOT IN";
+  if (session.story) {
+    const asked = session.story;
+    game.lastCheck = { id: asked.id, skill: "hacking", difficulty: asked.difficulty ?? session.classKey, success, reason: asked.reason, source: asked.source, used: false };
+    game.transcript?.push({ role: "notice", text: [`[HACK] ${asked.reason}: ${label}`, ...notes].join("\n") });
+  } else if (notes.length) game.transcript?.push({ role: "notice", text: notes.join("\n") });
+  const rule = session.doorRule;
+  if (rule) {
+    if (success) {
+      game.opened ??= {};
+      game.opened[rule.place] ??= [];
+      if (!game.opened[rule.place].includes(rule.to)) game.opened[rule.place].push(rule.to);
+      if (rule.flag) recordFact(game, { id: rule.flag });
+    }
+    game.transcript?.push({ role: "notice", text: `[DOOR] ${success ? rule.pass : rule.fail}` });
+  }
+}
+
+// The player sits down at a computer by its id: theirs, or one they know the password to, or any, when a scene says so.
+export function enterComputer(game, { id = null, generic = null, hacked = false, locked = false, noise = 0, how = "sat down" } = {}) {
+  const content = id ? writtenContent(id) : generic;
+  if (!content) throw new Error(`There's no computer called ${id}.`);
+  return openSession(game, content, { hacked, locked, noise, how });
+}
+
+// Using a thing that's a computer: straight in when it's theirs or the password's known, else its logon.
+export function useComputer(game, { place, levelId, thing, generic = true }) {
   const target = computerAtThing(game, place, levelId, thing, { generic });
   if (!target) return null;
   const content = target.id ? writtenContent(target.id) : target.generic;
   if (!roomPowered(game, place, levelId)) return { said: "The screen's dead. There's no power in here." };
-  if (content.yours || knowsPassword(game, target.id)) {
-    openSession(game, content, { how: content.yours ? "sat down" : "the password", at: `thing:${thing.id}` });
-    return { said: `You sit down at ${content.name}.`, computer: true };
-  }
-  startCheck(game, { skill: "hacking", difficulty: content.classKey, reason: `Get into ${content.name}`, scene: look, source: "thing", computer: target.id ?? null, target: `thing:${thing.id}` });
-  game.computerAsked = { place, levelId, thing: thing.id, name: thing.name };
-  return { check: true };
+  const session = openLogon(game, content, { at: `thing:${thing.id}` });
+  return { said: session.locked ? `${content.name} wants a logon.` : `You sit down at ${content.name}.`, computer: true };
 }
 
-// After a hack that got in: the computer the check was for, the door's, the thing's, or this place's.
-export function enterAfterHack(game, hack, at = null) {
-  const asked = game.computerAsked ?? null;
-  game.computerAsked = null;
-  let target = null;
-  if (hack.computer && WORLD_COMPUTERS[hack.computer]) target = { id: hack.computer };
-  else if (hack.source === "door" && game.doorAsked) target = computerAtDoor(game, game.doorAsked.place, game.doorAsked.to, hack.classKey);
-  else if (asked?.console && systemsOf(asked.place)?.parts[asked.console]) target = { generic: consoleContent(game, asked.place, systemsOf(asked.place).parts[asked.console]) };
-  else if (asked) {
-    const level = levelNamed(asked.place, asked.levelId);
-    const thing = level ? Object.entries(level.things ?? {}).map(([id, one]) => ({ id, ...one })).find((one) => one.id === asked.thing || `${asked.levelId}:${one.id}` === asked.thing || sameName(one.name, asked.name)) : null;
-    target = computerAtThing(game, asked.place, asked.levelId, thing) ?? computerForPlace(game, hack.classKey);
-  } else target = computerForPlace(game, hack.classKey);
-  if (!target) return null;
-  const content = target.id ? writtenContent(target.id) : target.generic;
-  return openSession(game, content, { hacked: true, trace: hack.trace ?? 0, maxTrace: hack.maxTrace ?? 0, how: "hacked", at });
+// A computer to practise on: a made-up one of that class here, with nothing on it that runs anything or reaches
+// anywhere, so nothing done on it reaches the game.
+function practiceContent(game, classKey) {
+  const kind = classKey === "easy" ? "panel" : classKey === "moderate" ? "console" : "server";
+  const content = genericContent(game, { key: `practice:${classKey}`, name: `A ${classNameOf(classKey).toLowerCase()} to practise on`, kind, place: game.location, room: roomOf(game.location, game.walk?.level), classKey });
+  const users = COMPUTER_FLAVOR?.users?.length ? COMPUTER_FLAVOR.users : ["admin"];
+  return { ...content, yours: false, user: users[classKeys().indexOf(classKey) % users.length], controls: [], network: [] };
 }
+
+// A check that asks for hacking (a scene's, a practice button's) opens a computer's logon instead of a window: the
+// computer it names, or this place's of that class, or one to practise on. Returns the session.
+function hackFromCheck(game, { difficulty, reason, source, computer = null, target = null }) {
+  const classKey = classKeyOf(difficulty);
+  if (source === "practice") return openLogon(game, practiceContent(game, classKey), { practice: true });
+  const found = computer && WORLD_COMPUTERS[computer] ? { id: computer } : computerForPlace(game, classKey);
+  const content = found.id ? writtenContent(found.id) : found.generic;
+  const story = source === "choice" || source === "tool" ? { id: Date.now(), reason: reason || `Get into ${content.name}`, source, difficulty: classKey } : null;
+  return openLogon(game, content, { at: target, story });
+}
+setHackHandler(hackFromCheck);
 
 // ---- What a session is looking at --------------------------------------------------------------
 
@@ -338,23 +413,73 @@ export const programOffered = (game, program) => !program.condition || condition
 
 // ---- What the browser sees ---------------------------------------------------------------------
 
+// What reading something for the first time costs: nothing, except on a Ministry or Navy server or worse.
+export const readNoise = (session) => (classKeys().indexOf(session.classKey) >= classKeys().indexOf("very_hard") ? 1 : 0);
+
+// The noise left before the watcher's next step, and what that step is.
+function nextStep(session, watch) {
+  if (session.noise < watch.notices && !session.noticed) return { left: watch.notices - session.noise, next: "notices you" };
+  if (session.traceLeft === null && session.noise < watch.traces) return { left: watch.traces - session.noise, next: "starts a trace" };
+  return { left: Math.max(0, watch.cuts - session.noise), next: "cuts you off" };
+}
+
+// What a way in would do to the watcher: the noise after it, and the step that brings.
+function afterWay(session, watch, noise) {
+  const heard = noise > 0 && session.noticed ? noise + 1 : noise;
+  const after = session.noise + heard;
+  const words = after >= watch.cuts ? "it cuts you off" : after >= watch.traces ? "it starts a trace" : after >= watch.notices && !session.noticed ? "it notices you" : session.noticed ? "it's watching already" : "it stays calm";
+  return { after, words };
+}
+
+// The advisor at a logon: each way in off the rig and what it costs, saying more the more training the player has.
+function logonHints(game, session, ways, watch) {
+  const tier = tierFor(game, "hacking");
+  const lines = [];
+  const working = ways.filter((way) => !way.why && way.kind === "in");
+  if (!working.length) lines.push(`Nothing on your rig gets into a ${String(session.className).toLowerCase()} as things stand.`);
+  for (const way of ways) {
+    if (way.why) {
+      lines.push(`${way.name} won't: ${way.why}.`);
+      continue;
+    }
+    const cost = tier >= 1 ? `, ${way.noise} noise and ${way.minutes} ${way.minutes === 1 ? "minute" : "minutes"}` : way.noise >= 3 ? ", and it's loud" : way.noise ? "" : ", and it's quiet";
+    const then = tier >= 3 ? `: after it ${afterWay(session, watch, way.noise).words}` : "";
+    lines.push(`${way.name} ${way.kind === "in" ? "gets you in" : "runs here"}${cost}${then}.`);
+  }
+  lines.push("The watcher hears everything from the first try. A found password gets you straight in, with nothing to hear.");
+  if (tier >= 2) lines.push(`${watch.name} notices you at ${watch.notices} noise, starts a trace at ${watch.traces} that finds you in ${watch.finds} minutes, and cuts you off at ${watch.cuts}. You're at ${session.noise}.`);
+  if (tier >= 4 && working.length) lines.push(`The quietest way in you have is ${[...working].sort((a, b) => a.noise - b.noise || a.minutes - b.minutes)[0].name}.`);
+  if (!working.length && tier >= 1) lines.push("KNOCK gets into door panels; DICTIONARY into anything up to a crew terminal; SKELETON into a ship's main system, once Scope has read the logon; MIMIC with a lifted keycard in your pockets.");
+  return lines;
+}
+
 function hintsFor(game, session, content, view) {
+  if (session.locked) return logonHints(game, session, view.logon?.ways ?? [], view.watch);
   const texts = COMPUTER_FLAVOR?.hints ?? {};
   const tier = tierFor(game, "hacking");
   const unread = view.files.filter((one) => !one.read).length;
   const unreadMail = view.mail.filter((one) => !one.read).length;
+  const watch = view.watch;
+  const step = watch ? nextStep(session, watch) : { left: 0, next: "" };
   const values = {
     unread,
     unreadMail,
     programs: view.programs.length ? view.programs.map((one) => `${one.name}${one.ran ? " (done)" : ""}`).join(", ") : "none",
-    trace: session.maxTrace ? Math.round((session.trace / session.maxTrace) * 100) : 0,
-    left: session.maxTrace ? Math.max(0, session.maxTrace - session.trace) : "any number of",
+    read: readNoise(session),
+    noise: session.noise ?? 0,
+    notices: watch?.notices ?? 0,
+    traces: watch?.traces ?? 0,
+    cuts: watch?.cuts ?? 0,
+    finds: watch?.finds ?? 0,
+    left: step.left,
+    next: step.next,
     network: view.network.length ? view.network.map((one) => `${one.name} (${one.className.toLowerCase()})`).join(", ") : "nothing reachable from here",
   };
   const lines = [];
   for (let level = 0; level <= tier; level += 1) {
     for (const text of texts[level] ?? texts[String(level)] ?? []) {
-      if (!session.hacked && /trace/i.test(text)) continue;
+      // Nobody watches the player's own computers.
+      if (!watch && /noise|watcher|AuditGuard|trace/i.test(text)) continue;
       lines.push(fill(text, values));
     }
   }
@@ -367,34 +492,43 @@ export function computerView(game) {
   const content = contentOf(game, session);
   if (!content) return null;
   const memory = memoryOf(game, session);
+  // Nothing on a computer reaches the page before the player is past its logon.
+  const inside = !session.locked;
+  const watch = session.yours ? null : watchFor(game, session.classKey);
+  const rig = rigInComputer(game, session, content);
   const view = {
     id: session.id,
     name: session.name,
     className: session.className,
     classKey: session.classKey,
-    user: session.user,
-    prompt: `${session.user}@${slug(session.name) || "node"}:~$`,
+    user: session.locked ? null : session.user,
+    prompt: session.locked ? "logon:" : `${session.user}@${slug(session.name) || "node"}:~$`,
     yours: session.yours,
     hacked: session.hacked,
-    trace: session.trace,
-    maxTrace: session.maxTrace,
+    locked: Boolean(session.locked),
+    practice: Boolean(session.practice),
+    // The watcher, AuditGuard: how much noise the player has made, its numbers for this computer, and where it stands.
+    watch: watch ? { name: watch.name, stage: watchStage(session), noise: session.noise ?? 0, notices: watch.notices, traces: watch.traces, cuts: watch.cuts, finds: watch.finds, traceLeft: session.traceLeft ?? null } : null,
     theme: session.yours ? "green" : session.hacked ? "cyan" : "teal",
     at: session.at ?? null,
     desc: content.desc,
-    files: content.files.map((one) => ({ id: one.id, name: one.name, read: memory.read.includes(`file:${one.id}`) })),
-    mail: content.mail.map((one) => ({ id: one.id, name: one.to ? `From ${one.from} to ${one.to}` : one.subject ?? one.from, read: memory.read.includes(`mail:${one.id}`) })),
-    logs: content.logs.map((one) => ({ id: one.id, name: one.name })),
-    programs: content.programs.filter((one) => programOffered(game, one)).map((one) => ({ id: one.id, name: one.name, about: one.text, ran: memory.ran.includes(one.id) })),
-    network: content.network.filter((one) => WORLD_COMPUTERS[one.id]).map((one) => ({ id: one.id, name: WORLD_COMPUTERS[one.id].name, about: one.desc, className: classNameOf(classKeyOf(WORLD_COMPUTERS[one.id].class)), known: Boolean(WORLD_COMPUTERS[one.id].yours) || knowsPassword(game, one.id) })),
+    files: inside ? content.files.map((one) => ({ id: one.id, name: one.name, read: memory.read.includes(`file:${one.id}`) })) : [],
+    mail: inside ? content.mail.map((one) => ({ id: one.id, name: one.to ? `From ${one.from} to ${one.to}` : one.subject ?? one.from, read: memory.read.includes(`mail:${one.id}`) })) : [],
+    logs: inside ? content.logs.map((one) => ({ id: one.id, name: one.name })) : [],
+    programs: inside ? content.programs.filter((one) => programOffered(game, one)).map((one) => ({ id: one.id, name: one.name, about: one.text, ran: memory.ran.includes(one.id) })) : [],
+    network: inside ? content.network.filter((one) => WORLD_COMPUTERS[one.id]).map((one) => ({ id: one.id, name: WORLD_COMPUTERS[one.id].name, about: one.desc, className: classNameOf(classKeyOf(WORLD_COMPUTERS[one.id].class)), known: Boolean(WORLD_COMPUTERS[one.id].yours) || knowsPassword(game, one.id) })) : [],
     screen: session.screen?.kind === "register" ? { ...session.screen, table: registerTable(game) } : session.screen,
     log: session.log,
     actions: session.actions,
+    minutes: session.minutes ?? 0,
     tier: tierFor(game, "hacking"),
     tierName: (CHECK_TEXT.tierNames ?? ["untrained", "novice", "trained", "expert", "master"])[tierFor(game, "hacking")],
     // The place's systems this computer runs, each with what can be done about it from here.
-    systems: controlsView(game, session.place, content.controls ?? [], { room: session.roomId }),
+    systems: inside ? controlsView(game, session.place, content.controls ?? [], { room: session.roomId }) : [],
     // The player's rig: what's loaded on it to run here, and what this computer has to copy onto it.
-    rig: rigInComputer(game, session, content),
+    rig: inside ? rig : rig && { ...rig, copies: [] },
+    // At the logon: the ways in off the rig, each with why it won't work, if it won't.
+    logon: session.locked ? { ways: rig?.ways ?? [], keycard: Boolean(game.inventory?.keycard) } : null,
   };
   view.hints = hintsFor(game, session, content, view);
   return view;

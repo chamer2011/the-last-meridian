@@ -9,4 +9,4 @@ once: yes
 sold at: kessara
 
 What it does:
-If the trace completes while you're on, it ends at another terminal: you're thrown out, but nothing goes on the record.
+If the watcher finds you or cuts you off while you're on, it ends at another terminal: you're thrown out, but nothing goes on the record.
