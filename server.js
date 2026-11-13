@@ -27,7 +27,7 @@ import {
   buy, buyPerk, captainSheet, clockFor, combatAction, equip, notePeopleSeen, publicState, raiseSkill, raiseStat, rest, sell, setDifficulty, startCombat, useItem, workShift,
 } from "./src/rules.js";
 import { personSheet } from "./src/person-sheet.js";
-import { closeTalk, talkCommand, talkHeard, talkLineOver, talkSaid, walkCommand, walkTick } from "./src/walk.js";
+import { closeTalk, placeLevels, talkCommand, talkHeard, talkLineOver, talkSaid, walkCommand, walkTick } from "./src/walk.js";
 import { enterAfterHack, enterDoorPanel } from "./src/computers.js";
 import { airBadHere, controlSystem, settlePart, systemsOf } from "./src/systems.js";
 import { computerCommand, screenGoesDark } from "./src/computer-use.js";
@@ -303,6 +303,9 @@ async function handleApi(req, res, route) {
       setup: creatorSetup(),
     });
   }
+  // Every level of the place the player's at, for the page to draw the whole place at once behind its loading screen
+  // (public/iso.js). It only reads.
+  if (req.method === "GET" && route === "/api/levels") return json(res, 200, placeLevels(requireGame()) ?? { levels: {} });
 
   if (req.method !== "POST") return json(res, 404, { error: "Not found." });
   const body = await readBody(req);

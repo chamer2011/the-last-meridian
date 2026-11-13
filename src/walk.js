@@ -13,12 +13,12 @@ import { namesLook, readNames } from "./death.js";
 import { allCharacters, campaignRooms, findCampaignRoom, findCharacter, fullName, saveCampaignRoom } from "./campaign.js";
 import { startCheck, startChoiceCheck } from "./checks.js";
 import { useComputer } from "./computers.js";
-import { clearSystems, doorActions, doorLocked, doorLook, exitLocked, partSquares, partThings, powerView, roomDark, roomPowered, roomView, systemsOf, workOnDoor, workOnPart } from "./systems.js";
-import { clearLogistics, growingAt, logisticsOf, storeLook, storeStock } from "./logistics.js";
+import { clearSystems, doorActions, doorLocked, doorLook, exitLocked, forgetSystems, partSquares, partThings, powerView, roomDark, roomPowered, roomView, systemsOf, workOnDoor, workOnPart } from "./systems.js";
+import { clearLogistics, forgetLogistics, growingAt, logisticsOf, storeLook, storeStock } from "./logistics.js";
 import { marksOn, wearOf } from "./wear.js";
 import { chatterSlot, withChatter } from "./chatter.js";
 import { ITEMS, LOCATIONS } from "./data.js";
-import { clearLife, hasADay, livesHere, peopleAboard } from "./life.js";
+import { clearLife, forgetLife, hasADay, livesHere, peopleAboard } from "./life.js";
 import { isCaptain, toOutsider } from "./role.js";
 import { addItem, audienceBonus, clockRuns, removeItem } from "./rules.js";
 import { conditionHolds } from "./scene-text.js";
@@ -351,6 +351,26 @@ export function clearMaps() {
   maps.clear();
   clearLogistics();
 }
+
+// Only one place is kept built at a time: the one the player's at. The ship stays built too, wherever they are, since her
+// own rules go on while they're away (her kettle, her medbay, her errands). Any other place is let go of once the player
+// has left it, with what was made from its map (its systems' parts, its stores, its people's days), and is built again,
+// exactly the same, if anything needs it: a place takes a few milliseconds to build.
+const SHIP = "meridian";
+let placeInPlay = null;
+export function keepOnly(place) {
+  if (placeInPlay === place) return;
+  placeInPlay = place;
+  for (const one of [...maps.keys()]) {
+    if (one === place || one === SHIP) continue;
+    maps.delete(one);
+    forgetSystems(one);
+    forgetLogistics(one);
+    forgetLife(one);
+  }
+}
+// The places that are built now, for the tests.
+export const placesBuilt = () => [...maps.keys()].filter((place) => maps.get(place));
 
 export const canStand = (level, x, y) => Boolean(level.open[y]?.[x]) && !level.solid.has(spotKey(x, y));
 
@@ -1504,52 +1524,37 @@ function waysFrom(map, level, roomId) {
   return area.doors.filter((door) => !seen.has(door.to) && seen.add(door.to)).map((door) => ({ to: door.to, name: roomOf(map, door.to)?.name ?? door.to, x: door.x, y: door.y }));
 }
 
-export function walkView(game) {
-  const walk = walkAt(game);
-  if (!walk) return null;
-  const map = mapFor(game.location);
-  const level = levelOf(game, walk, map);
-  const spot = walk.room ?? walk;
-  const inner = walk.room ? [] : lockedDoorExits(game, map, level);
-  const locked = new Map(inner.map((exit) => [spotKey(exit.x, exit.y), exit.to]));
-  // On a deck, here is the room drawn around the player, and the deck is named beside it.
-  const roomNow = walk.room ? walk.room.name : level.roomAt(spot.x, spot.y);
-  const room = walk.room ? null : roomOf(map, roomNow);
-  const onDeck = !walk.room && level.areas.length > 0;
+// What a level looks like, for its picture (public/iso.js): what it's made of and how it's lit, what stands in it, its
+// ways out, the rooms drawn on a deck and how each of them is now, and what the ship's state shows of it. The level the
+// player is on is described from the room they're in (roomNow); every other level of the place the same way, from a
+// room of its own (placeLevels), so that the page can draw the whole place at once and keep it while they're there.
+function levelLook(game, map, level, { roomNow, offPlan = false, inner = [], piles = level.id }) {
+  const room = offPlan ? null : roomOf(map, roomNow);
+  const onDeck = !offPlan && level.areas.length > 0;
   return {
-    offPlan: Boolean(walk.room),
     cols: level.width,
     lines: level.height,
     layers: level.layers,
     labels: level.labels,
     colors: level.colors,
     look: lookOf(game.location, level.name),
-    captain: { x: spot.x, y: spot.y },
-    // Where the player can walk, a row of the room to a line: "." for floor, a space for anything else. Ways out are
-    // under exits, and people under people, since they move. A door the systems have locked isn't floor.
-    floor: floorOf(level, locked),
     // A room's description, with what the parts of the game that add to a room have to say about it now: who's held in
     // the brig (src/room-hooks.js).
     here: { id: roomNow, name: room?.name ?? level.name, desc: [room?.desc ?? level.desc, ...roomNotes(game, game.location, roomNow)].filter(Boolean).join(" "), ...(level.drawn ? { drawn: level.drawn } : {}), ...(onDeck ? { deck: { id: level.id, name: level.name } } : {}) },
-    // Whoever's near the player has a line or two they might say over their head (src/chatter.js).
-    people: withChatter(game, game.location, peopleOnLevel(game, walk, level).map((entry) => personView(game, entry, level)), spot),
-    things: [...level.things.map((thing) => thingView(game, thing, level)), ...(walk.room ? [] : roomsOn(map, level.id).flatMap((one) => partThings(game, game.location, one.id).map((thing) => (onDeck ? { ...thing, room: one.id } : thing)))), ...pilesIn(game, game.location, roomId(walk, level)).map((pile) => ({ ...pile, store: pile.id }))],
+    things: [...level.things.map((thing) => thingView(game, thing, level)), ...(offPlan ? [] : roomsOn(map, level.id).flatMap((one) => partThings(game, game.location, one.id).map((thing) => (onDeck ? { ...thing, room: one.id } : thing)))), ...pilesIn(game, game.location, piles).map((pile) => ({ ...pile, store: pile.id }))],
     // The furniture drawn on the level (public/furniture.js), for the picture of the room.
     furniture: level.furniture ?? [],
     // On a deck, each way out says which room it's in, a shut door between rooms counting as in the player's room.
     exits: [...level.exits, ...inner].map((exit) => ({ ...exitView(game, exit, level.id), ...(onDeck ? { room: exit.inner && level.doorAreas.get(spotKey(exit.x, exit.y))?.has(roomNow) ? roomNow : level.roomAt(exit.x, exit.y) } : {}) })),
-    ...(walk.room ? {} : { room: roomView(game, game.location, roomNow) }),
+    ...(offPlan ? {} : { room: roomView(game, game.location, roomNow) }),
     // The rooms drawn on the deck, with which are dark, so the picture can darken each by itself, which have no power
-    // (their screens go dark too), what else it shows of them (a fire, a hole in the hull: src/room-hooks.js), and the
-    // doors out of this one to the rooms beside it, shut or not.
+    // (their screens go dark too), and what else it shows of them (a fire, a hole in the hull: src/room-hooks.js).
     ...(onDeck ? {
       areas: level.areas.map((area) => ({ id: area.id, name: area.name, x: area.x, y: area.y, w: area.w, h: area.h, dark: roomDark(game, game.location, area.id), ...(systemsOf(game.location) && !roomPowered(game, game.location, area.id) ? { power: false } : {}), look: lookOf(game.location, area.name, { only: true }), ...areaExtras(game, game.location, area.id) })),
-      ways: waysFrom(map, level, roomNow).map((way) => ({ ...way, ...(locked.has(spotKey(way.x, way.y)) ? { locked: true } : {}) })),
     } : {}),
-    overview: overviewView(game, walk, map),
     // How the place's power stands, when there's none or not enough, so the picture can flicker its screens; and what
     // grows on this level and how much it's grown, for its beds (src/logistics.js).
-    ...(walk.room ? {} : (() => {
+    ...(offPlan ? {} : (() => {
       const power = powerView(game, game.location);
       const growing = growingAt(game, game.location).filter((one) => roomOf(map, one.room)?.level === level);
       // How worn and cluttered the ship looks, by her hull and her morale, and the marks left on this level: a stain
@@ -1558,6 +1563,38 @@ export function walkView(game) {
       const marks = marksOn(game, game.location, level.id);
       return { ...(power ? { power } : {}), ...(growing.length ? { growing } : {}), ...(wear ? { wear } : {}), ...(marks.length ? { marks } : {}) };
     })()),
+  };
+}
+
+// Which place the player's at, and how many times its rooms have been read from their files (a deck saved in the map
+// editor or in Tiled reads them again): the page loads a place once, and again only when either changes.
+const placeOf = (game, map) => ({ id: game.location, name: LOCATIONS[game.location]?.name ?? map.name, drawn: Math.max(0, ...Object.values(map.levels).map((level) => level.drawn ?? 0)) });
+
+export function walkView(game) {
+  const walk = walkAt(game);
+  if (!walk) return null;
+  keepOnly(game.location);
+  const map = mapFor(game.location);
+  const level = levelOf(game, walk, map);
+  const spot = walk.room ?? walk;
+  const inner = walk.room ? [] : lockedDoorExits(game, map, level);
+  const locked = new Map(inner.map((exit) => [spotKey(exit.x, exit.y), exit.to]));
+  // On a deck, here is the room drawn around the player, and the deck is named beside it.
+  const roomNow = walk.room ? walk.room.name : level.roomAt(spot.x, spot.y);
+  const onDeck = !walk.room && level.areas.length > 0;
+  return {
+    offPlan: Boolean(walk.room),
+    place: placeOf(game, map),
+    ...levelLook(game, map, level, { roomNow, offPlan: Boolean(walk.room), inner, piles: roomId(walk, level) }),
+    captain: { x: spot.x, y: spot.y },
+    // Where the player can walk, a row of the room to a line: "." for floor, a space for anything else. Ways out are
+    // under exits, and people under people, since they move. A door the systems have locked isn't floor.
+    floor: floorOf(level, locked),
+    // Whoever's near the player has a line or two they might say over their head (src/chatter.js).
+    people: withChatter(game, game.location, peopleOnLevel(game, walk, level).map((entry) => personView(game, entry, level)), spot),
+    // On a deck, the doors out of the room the player's in to the rooms beside it, shut or not.
+    ...(onDeck ? { ways: waysFrom(map, level, roomNow).map((way) => ({ ...way, ...(locked.has(spotKey(way.x, way.y)) ? { locked: true } : {}) })) } : {}),
+    overview: overviewView(game, walk, map),
     ...(livesHere(walk.place) ? { life: true } : {}),
     // How fast the player walks, as a share of the usual: slower with a limp, slower still on a leg they can't stand on.
     pace: paceOf(bodyOf(game, "you")) * (game.carrying ? 0.5 : 1),
@@ -1566,6 +1603,26 @@ export function walkView(game) {
     // What can be done in this room, from the parts of the game that add to one (src/room-hooks.js).
     ...roomExtras(game, { place: game.location, room: roomNow, level }),
   };
+}
+
+// Every level of the place the player's at, as its picture needs it (levelLook), for the page to draw the whole place
+// at once behind its loading screen and keep it while the player's there (public/iso.js): the ship's three decks, a
+// port's rooms. The player's own level is described from the room they're in, as walkView has it; any other from the
+// room at its start.
+export function placeLevels(game) {
+  const walk = walkAt(game);
+  if (!walk) return null;
+  keepOnly(game.location);
+  const map = mapFor(game.location);
+  if (!map) return null;
+  const mine = walk.room ? null : levelOf(game, walk, map);
+  const levels = {};
+  for (const level of Object.values(map.levels)) {
+    const roomNow = level === mine ? level.roomAt(walk.x, walk.y) : level.roomAt(level.start.x, level.start.y);
+    levels[level.id] = levelLook(game, map, level, { roomNow, inner: lockedDoorExits(game, map, level) });
+  }
+  const place = placeOf(game, map);
+  return { place, name: place.name, levels };
 }
 
 // Just who's in the room with the captain and where they've got to, because this is twice a second. What people near

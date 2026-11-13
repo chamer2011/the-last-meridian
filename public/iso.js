@@ -6,6 +6,7 @@
 
 import { el } from "./dom.js";
 import { FURNITURE_BY_ID, footprintOf } from "./furniture.js";
+import { hideLoading, showLoading } from "./loading.js";
 
 // A console square is about twice as tall as it's wide, so two columns make one tile.
 export const CELL_WIDTH = 0.5;
@@ -1979,9 +1980,9 @@ const FAR_TILE = 128;
 const TILE_TIME = { walking: 8, still: 24 };
 
 // A picture of the level at a size: where it sits, in the canvas's own measure, and the tiles of it drawn so far.
-// Nothing is drawn here; the tiles are, as they're needed.
-function newPicture(view, unit, ratio, tile, key, { lit = true } = {}) {
-  const { scene } = iso;
+// Nothing is drawn here; the tiles are, as they're needed. It's of the scene on screen, or of another level of the place
+// with a scene of its own, drawn ahead so that it's there when the player walks into it.
+function newPicture(view, unit, ratio, tile, key, { lit = true, scene = iso.scene, sceneId = iso.sceneId } = {}) {
   const { bounds } = scene;
   const pad = unit;
   const width = (bounds.maxU - bounds.minU) * unit + pad * 2;
@@ -1989,14 +1990,15 @@ function newPicture(view, unit, ratio, tile, key, { lit = true } = {}) {
   const left = bounds.minU * unit - pad;
   const top = bounds.minV * unit - pad;
   // The materials are the same at every size, so they're made once for the scene.
-  if (iso.materialsFor?.scene !== iso.sceneId) iso.materialsFor = { scene: iso.sceneId, materials: materialsFor(scene) };
-  const { materials } = iso.materialsFor;
+  scene.materials ??= materialsFor(scene);
+  const { materials } = scene;
   const cols = Math.ceil((width * ratio) / tile);
   const rows = Math.ceil((height * ratio) / tile);
   return {
     key,
-    scene: iso.sceneId,
-    level: view.here.deck?.id ?? view.here.id,
+    scene: sceneId,
+    sceneOf: scene,
+    level: levelKeyOf(view),
     ratio,
     unit,
     left,
@@ -2017,24 +2019,44 @@ function newPicture(view, unit, ratio, tile, key, { lit = true } = {}) {
 
 // The size the whole level is drawn at: the size it's shown at with the wheel at rest, or a little less on a sharp
 // screen, so that the picture stays within what every computer can hold.
-function wholeUnitFor(scene, ratio) {
+function wholeUnitFor(scene, ratio, rest = iso.restUnit) {
   const { bounds } = scene;
   const spanU = bounds.maxU - bounds.minU;
   const spanV = bounds.maxV - bounds.minV;
   const most = Math.floor(Math.sqrt(MOST_PICTURE / Math.max(1, (spanU + 2) * (spanV + 2))) / ratio);
-  return Math.max(Math.round(SIZES.smallest / 2), Math.min(iso.restUnit || SIZES.smallest, most));
+  return Math.max(Math.round(SIZES.smallest / 2), Math.min(rest || SIZES.smallest, most));
 }
 
-// The whole level's picture for the scene, at its own size. The picture before it stays while this one has gaps, to
-// show under them, and goes once this one is whole.
+// The size a level is shown at with the wheel at rest: as big as it fits the view, between the smallest and the largest
+// the room is drawn at. A deck never fits, so it's the smallest.
+function restUnitFor(scene, width, height) {
+  const { bounds } = scene;
+  const fit = Math.min(width / (bounds.maxU - bounds.minU + 1), height / (bounds.maxV - bounds.minV + 1));
+  return Math.round(Math.min(SIZES.largest, Math.max(SIZES.smallest, fit)));
+}
+
+// A level's pictures: the newest, and while it still has gaps the whole one before it, to show under them. Once it's
+// whole it's kept alone.
+function keptPictures(pictures, newest) {
+  if (newest.tiles.size >= newest.total) return [newest];
+  const others = pictures.filter((one) => one !== newest);
+  const before = others.filter((one) => one.tiles.size >= one.total).at(-1) ?? others.at(-1);
+  return before ? [before, newest] : [newest];
+}
+
+// The whole level's picture for the scene, at its own size. A level of the place loaded with it has its picture drawn
+// already; otherwise the picture before it stays while this one has gaps, to show under them, and goes once it's whole.
 function stillPicture(view, ratio) {
   const unit = wholeUnitFor(iso.scene, ratio);
   const key = `${iso.sceneId}|${unit}|${ratio}`;
   if (iso.room?.key === key) return iso.room;
-  const kept = iso.rooms.find((one) => one.key === key);
-  const room = kept ?? newPicture(view, unit, ratio, TILE, key);
-  if (!kept) iso.rooms.push(room);
-  iso.rooms = iso.rooms.filter((one) => one === room || (one.level === room.level && one.ratio === ratio && room.tiles.size < room.total)).slice(-2);
+  const entry = levelEntry(levelKeyOf(view));
+  let room = entry.pictures.find((one) => one.key === key);
+  if (!room) {
+    room = newPicture(view, unit, ratio, TILE, key);
+    entry.pictures.push(room);
+  }
+  entry.pictures = keptPictures(entry.pictures, room);
   iso.room = room;
   iso.lightmap = room.lightmap;
   iso.materials = room.materials;
@@ -2358,7 +2380,15 @@ function tileOf(room, tx, ty) {
   const key = `${tx},${ty}`;
   let tile = room.tiles.get(key);
   if (tile) return tile;
-  tile = drawTile(room, tx, ty);
+  // A level drawn ahead of the player is drawn with its own scene: whatever reads the scene while the tile's being drawn
+  // reads that one.
+  const shown = iso.scene;
+  iso.scene = room.sceneOf ?? shown;
+  try {
+    tile = drawTile(room, tx, ty);
+  } finally {
+    iso.scene = shown;
+  }
   tile.getContext("2d").getImageData(0, 0, 1, 1);
   room.tiles.set(key, tile);
   return tile;
@@ -2428,8 +2458,8 @@ function drawStill(ctx, room, far, ox, oy, ratio, canvasWidth, canvasHeight, now
   };
   // Under whatever isn't drawn yet: the small picture, and the picture before over it.
   if (anyMissing(room, scale)) {
-    if (far.tiles.size) paint(far, unit / far.unit, never);
-    const before = iso.rooms.find((one) => one !== room && one.level === room.level && one.ratio === room.ratio);
+    if (far?.tiles.size) paint(far, unit / far.unit, never);
+    const before = levelEntry(room.level).pictures.find((one) => one !== room && one.ratio === room.ratio);
     if (before) paint(before, unit / before.unit, never);
   }
   const deadline = now + (iso.youMoving ? TILE_TIME.walking : TILE_TIME.still);
@@ -2442,8 +2472,14 @@ function drawStill(ctx, room, far, ox, oy, ratio, canvasWidth, canvasHeight, now
     iso.redraw = true;
     return;
   }
+  // Once the level's own picture is whole, the small one isn't wanted, and the picture before it goes.
+  if (room.tiles.size >= room.total) {
+    const entry = levelEntry(room.level);
+    if (entry.pictures.length > 1) entry.pictures = [room];
+    return;
+  }
   // The small picture, then the rest of the level, nearest the view first.
-  for (const one of [far, room]) {
+  for (const one of [far, room].filter(Boolean)) {
     const { middleX, middleY } = place(one, unit / one.unit);
     let next = nearestMissing(one, middleX, middleY);
     if (!next) continue;
@@ -2694,15 +2730,23 @@ const iso = {
   drawnNudge: { x: 0, y: 0 },
   // The size the level is shown at with the wheel at rest, which is the size its whole picture is drawn at.
   restUnit: 0,
-  // The whole level's picture for the scene, and the one before it while this one still has gaps.
-  rooms: [],
+  // The place whose map is loaded, the only one at a time: its key, each of its levels with its scene and its pictures,
+  // and while it's loading, how far that's got (see "One place at a time" below).
+  place: null,
+  // The level the scene on screen is of.
+  sceneLevel: null,
   // The whole level small, under whatever hasn't been drawn yet at the size wanted.
   far: null,
   // The dark round the edges of the view, made once for its size.
   vignette: null,
 };
 
-function useScene(view) {
+// The level a view is of: on the ship, the deck, whichever of its rooms the player's in.
+const levelKeyOf = (view) => view.here.deck?.id ?? view.here.id;
+
+// What the still picture of a level is drawn from, as one string: when it changes, the picture is drawn again. A deck's
+// rooms are dark or lit each by itself, so the darkness of the room the player's in only counts off a deck.
+function sceneIdOf(view) {
   const parts = (view.things ?? []).filter((thing) => thing.part).map((thing) => `${thing.id}=${thing.part.word}`).join(",");
   const darkRooms = (view.areas ?? []).filter((area) => area.dark).map((area) => area.id).join(",");
   // What changes the still picture of the level: rooms without power, rooms on fire or holed, the garden's stage.
@@ -2714,22 +2758,150 @@ function useScene(view) {
     (view.areas ?? []).filter((area) => area.scorched).map((area) => `${area.id}:${area.scorched.size}:${area.scorched.left}`).join(","),
     (view.marks ?? []).map((mark) => `${mark.kind[0]}${mark.x},${mark.y}:${mark.left}`).join(","),
   ].join("/");
-  const id = `${view.here.deck?.id ?? view.here.id}|${view.here.drawn ?? 0}|${view.cols}x${view.lines}|${closedKey(view)}|${view.room?.dark ? "dark" : "lit"}|${darkRooms}|${parts}|${state}`;
+  const dark = view.areas?.length ? "deck" : view.room?.dark ? "dark" : "lit";
+  return `${levelKeyOf(view)}|${view.here.drawn ?? 0}|${view.cols}x${view.lines}|${closedKey(view)}|${dark}|${darkRooms}|${parts}|${state}`;
+}
+
+function useScene(view) {
+  const id = sceneIdOf(view);
   if (iso.sceneId === id) return;
   // The same level: on the ship, the same deck, whichever of its rooms the player's in.
-  const sameRoom = iso.sceneId?.split("|")[0] === (view.here.deck?.id ?? view.here.id);
-  iso.scene = buildScene(view);
+  const level = levelKeyOf(view);
+  const sameLevel = iso.sceneLevel === level;
+  const entry = levelEntry(level);
+  // A level loaded with the place is drawn already for the scene it had then: if it's the same now, that's used as it is.
+  iso.scene = entry.sceneId === id ? entry.scene : buildScene(view);
   iso.sceneId = id;
+  iso.sceneLevel = level;
   iso.room = null;
-  // On the same level, the picture there is stays to show under the new one's gaps; another level starts afresh.
-  if (sameRoom) return;
-  iso.rooms = [];
+  Object.assign(entry, { view, scene: iso.scene, sceneId: id });
+  // On the same level, the picture there is stays to show under the new one's gaps; another level starts afresh, with
+  // its own picture from before, if it has one, under the gaps.
+  if (sameLevel) return;
   iso.far = null;
   iso.camera = null;
   iso.you = null;
   iso.shown = new Map();
   iso.doors = new Map();
   iso.fadeFrom = performance.now();
+}
+
+// ---- One place at a time -------------------------------------------------------------------------------------------
+// Only one place's map is loaded at a time. When the player arrives somewhere (a game opened or begun, the shuttle
+// across to a dock), every level of it is drawn whole behind the loading screen (public/loading.js) before anything is
+// shown: the ship's three decks, a port's rooms. They're kept while the player's there, so a deck or a room walked into
+// is there at once, and leaving the place lets them all go before the next one loads.
+
+// The place a view is of: which one, and how many times its rooms have been read from their files (a deck saved in the
+// map editor is loaded again).
+const placeKeyOf = (view) => `${view.place?.id ?? ""}|${view.place?.drawn ?? 0}`;
+// How long a frame may spend drawing while the loading screen's up, and, with nothing going on in the room, how long
+// it may spend on the place's other levels, kept whole at the size they'd be shown at.
+const LOAD_TIME = 40;
+const SPARE_TIME = 6;
+
+// A level of the place: its view, scene and pictures, once there are any.
+function levelEntry(level) {
+  iso.place ??= { key: null, levels: new Map(), loading: null };
+  if (!iso.place.levels.has(level)) iso.place.levels.set(level, { view: null, scene: null, sceneId: null, pictures: [] });
+  return iso.place.levels.get(level);
+}
+
+// A level as the server describes it (src/walk.js, levelLook), with its scene made for drawing it.
+function addLevel(view) {
+  const entry = levelEntry(levelKeyOf(view));
+  if (entry.sceneId === sceneIdOf(view)) return;
+  Object.assign(entry, { view, scene: buildScene(view), sceneId: sceneIdOf(view), pictures: [] });
+}
+
+// A level's picture as it should be now: at the size it's shown at with the wheel at rest in a view of this size.
+function wantedPicture(entry, { width, height, ratio }) {
+  const unit = wholeUnitFor(entry.scene, ratio, restUnitFor(entry.scene, width, height));
+  const key = `${entry.sceneId}|${unit}|${ratio}`;
+  let picture = entry.pictures.find((one) => one.key === key);
+  if (!picture) {
+    picture = newPicture(entry.view, unit, ratio, TILE, key, { scene: entry.scene, sceneId: entry.sceneId });
+    entry.pictures.push(picture);
+    entry.pictures = keptPictures(entry.pictures, picture);
+  }
+  return picture;
+}
+
+// Draws the place's levels' missing tiles, the one on screen first, until a moment. Whether they're all whole, and how
+// many tiles there are and are drawn.
+function drawLevels(until, size, first) {
+  const entries = [...iso.place.levels.entries()].filter(([, entry]) => entry.scene).sort(([a], [b]) => (a === first ? -1 : b === first ? 1 : 0));
+  const pictures = entries.map(([, entry]) => [entry, wantedPicture(entry, size)]);
+  let whole = true;
+  for (const [entry, picture] of pictures) {
+    for (let ty = 0; ty < picture.rows && performance.now() < until; ty += 1) {
+      for (let tx = 0; tx < picture.cols && performance.now() < until; tx += 1) tileOf(picture, tx, ty);
+    }
+    if (picture.tiles.size < picture.total) whole = false;
+    else if (entry.pictures.length > 1) entry.pictures = [picture];
+  }
+  return { whole, total: pictures.reduce((sum, [, one]) => sum + one.total, 0), drawn: pictures.reduce((sum, [, one]) => sum + one.tiles.size, 0) };
+}
+
+// A place arrives: whatever was loaded of the one before goes, all of it, and this one is loaded, the level the
+// player's on from the room view itself, the rest as the server has them (iso.hooks.levels).
+function beginPlace(view, key) {
+  hideLoading();
+  iso.place = { key, levels: new Map(), loading: { ready: false, name: view.place?.name ?? "", levels: 0, what: view.here.deck ? "decks" : "rooms" } };
+  Object.assign(iso, { scene: null, sceneId: null, sceneLevel: null, room: null, far: null, lightmap: null, materials: null, camera: null, you: null, shown: new Map(), doors: new Map(), hits: [] });
+  addLevel(view);
+  const place = iso.place;
+  const asked = iso.hooks.levels ? Promise.resolve().then(() => iso.hooks.levels()) : Promise.resolve(null);
+  asked.then((data) => {
+    if (iso.place !== place) return;
+    for (const one of Object.values(data?.levels ?? {})) if (!place.levels.get(levelKeyOf(one))?.scene) addLevel(one);
+    Object.assign(place.loading, { ready: true, name: data?.name ?? place.loading.name, levels: place.levels.size });
+  }).catch(() => {
+    // Without the others, the level the player's on is loaded by itself, and the others are drawn as they're walked into.
+    if (iso.place === place) Object.assign(place.loading, { ready: true, levels: place.levels.size });
+  });
+}
+
+// The loading screen while the place is drawn, under the Story board and the map editor, which have the screen while
+// they're open. True while it isn't loaded yet, and nothing of it is to be drawn.
+function loadingPlace(view) {
+  if (iso.place?.key !== placeKeyOf(view)) beginPlace(view, placeKeyOf(view));
+  const { loading } = iso.place;
+  if (!loading) return false;
+  const size = sizeCanvas();
+  const covered = Boolean(document.getElementById("board") || document.getElementById("mapedit"));
+  if (!loading.ready || !size.width || !size.height) {
+    if (!covered) showLoading(loading);
+    return true;
+  }
+  const { whole, total, drawn } = drawLevels(performance.now() + LOAD_TIME, size, levelKeyOf(view));
+  if (!whole) {
+    if (covered) hideLoading();
+    else showLoading({ ...loading, share: total ? drawn / total : 0 });
+    return true;
+  }
+  iso.place.loading = null;
+  hideLoading();
+  iso.fadeFrom = performance.now();
+  iso.redraw = true;
+  iso.hooks.loaded?.();
+  return false;
+}
+
+// Whether a place's map is being loaded now, behind the loading screen, or is about to be, the room on screen being of a
+// place that isn't loaded yet: the clock waits, nobody walks, and a story that hasn't begun waits to begin.
+export function isoLoading() {
+  if (!iso.canvas?.isConnected) return false;
+  const view = iso.hooks?.view?.();
+  if (!view) return false;
+  return !iso.place || iso.place.key !== placeKeyOf(view) || Boolean(iso.place.loading);
+}
+
+// A game loaded or begun: whatever was loaded of the place before goes, and the place is loaded again for this game,
+// even if it's the same place.
+export function resetIso() {
+  hideLoading();
+  Object.assign(iso, { place: null, scene: null, sceneId: null, sceneLevel: null, room: null, far: null, lightmap: null, materials: null, hits: [] });
 }
 
 // People glide from square to square, and the player a good deal more quickly.
@@ -2812,9 +2984,8 @@ function aim(width, height, dt) {
   const across = width - Math.min(iso.coverRight, width * 0.5);
   const spanU = bounds.maxU - bounds.minU;
   const spanV = bounds.maxV - bounds.minV;
-  const fit = Math.min(width / (spanU + 1), height / (spanV + 1));
   // The size with the wheel at rest, which the whole level's picture is drawn at, and the size the wheel has it at.
-  const rest = Math.round(Math.min(SIZES.largest, Math.max(SIZES.smallest, fit)));
+  const rest = restUnitFor(iso.scene, width, height);
   iso.restUnit = rest;
   const unit = Math.round(rest * iso.zoom);
   iso.unit = unit;
@@ -3043,7 +3214,8 @@ function draw(now, dt) {
   const { ox, oy } = aim(width, height, dt);
   const { unit } = iso;
   const room = stillPicture(view, ratio);
-  const far = farPicture(view, ratio);
+  // The level small is only wanted under a picture with gaps: one loaded with the place is whole.
+  const far = room.tiles.size >= room.total ? null : farPicture(view, ratio);
   // The whole level's picture, scaled to the size the view is at.
   const scale = unit / room.unit;
   const painter = painterFor(ctx, ratio, unit, ox, oy);
@@ -3363,12 +3535,16 @@ function loop(now) {
   if (!iso.canvas?.isConnected) {
     cancelAnimationFrame(iso.frame);
     iso.frame = 0;
+    // A place still loading goes on loading when the room's back on screen, and its loading screen with it.
+    hideLoading();
     return;
   }
   const dt = Math.min(100, now - (iso.lastFrame || now));
   iso.lastFrame = now;
   const view = iso.hooks.view();
   if (!view) return;
+  // A place that isn't loaded yet is loaded first, behind the loading screen, and nothing of it is drawn until it is.
+  if (loadingPlace(view)) return;
   iso.calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   useScene(view);
   const moving = moveEveryone(view, dt);
@@ -3383,12 +3559,15 @@ function loop(now) {
   iso.redraw = false;
   draw(now, Math.min(100, since));
   lookUnderPointer();
+  // With nothing going on, the place's other levels are kept whole at the size they'd be shown at: after the window
+  // changes size, say, so that walking into one never shows it being drawn.
+  if (!iso.youMoving && !moving && !cameraMoving && iso.room?.tiles.size >= iso.room?.total) drawLevels(performance.now() + SPARE_TIME, sizeCanvas(), iso.sceneLevel);
 }
 
 // ---- Pointing and clicking ----------------------------------------------
 
 function underPointer() {
-  if (!iso.pointer) return null;
+  if (!iso.pointer || !iso.scene) return null;
   const box = iso.canvas.getBoundingClientRect();
   const scale = scaleOfCanvas();
   const px = (iso.pointer.x - box.left) / scale;

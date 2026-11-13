@@ -339,6 +339,8 @@ const compiling = new Set();
 export function clearSystems() {
   models.clear();
 }
+// One place's, once the player has left it and its map is let go of (keepOnly in src/walk.js): made again with the map.
+export const forgetSystems = (place) => models.delete(place);
 // Whether a place's systems are being made right now, so its map isn't whole yet (src/room-hooks.js waits for it).
 export const systemsPending = (place) => compiling.has(place);
 // A room's air made no better than this, for a fire or a hole in the hull (src/emergencies.js). The place's state is

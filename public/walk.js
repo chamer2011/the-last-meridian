@@ -4,7 +4,7 @@
 // everyone has got to.
 
 import { api, el, zoom } from "./dom.js";
-import { isoCover, isoFrameNode, isoKeepClear, isoMark } from "./iso.js";
+import { isoCover, isoFrameNode, isoKeepClear, isoLoading, isoMark, resetIso } from "./iso.js";
 import { tilesLayer } from "./tiles.js";
 import { paneNode, putPane } from "./pane.js";
 import { untagged } from "./story.js";
@@ -73,9 +73,13 @@ export const walkShown = () => (app.reading.view === "walk" || topShown() || iso
 export const popupsShown = () => walkShown() && isoShown() && app.reading.story !== "panel" && !walk.fullStory && !liveOn();
 // Whether a fight can be fought in the room: the isometric room is on screen (public/live-fight.js).
 export const roomShownForFight = () => walkShown() && isoShown() && !walk.fullStory;
+// Whether the place's map is being loaded, behind the loading screen (public/iso.js): the clock waits, nobody walks, and
+// a story that hasn't begun waits to begin.
+export const mapLoading = () => walkShown() && isoShown() && isoLoading();
 
 export function resetWalk() {
   resetMoving();
+  resetIso();
   Object.assign(walk, { sending: false, message: null, thing: null, looked: false, plan: false, fullStory: false, shownLevel: null, stopped: null, behindMenu: false });
   resetPopups();
 }
@@ -85,10 +89,10 @@ const anotherWindow = () => {
   return Boolean(g.combat || g.check || g.talk || g.computer || walk.plan || app.bagOpen?.() || app.questsOpen?.());
 };
 
-// While the story is being told or another window is up, the captain stays where they are.
+// While the story is being told, another window is up or the place is loading, the captain stays where they are.
 function cannotWalk() {
   const { ui } = app;
-  return ui.streaming || ui.waiting || anotherWindow();
+  return ui.streaming || ui.waiting || anotherWindow() || mapLoading();
 }
 
 // Where the player is now: walking, between squares, or where the fight in the room has them.
@@ -318,6 +322,8 @@ function frameNode() {
     walk.shownLevel = levelIdOf(view);
     walk.marks = new Map();
     return el("div", { class: "walk-frame", id: "walk-frame" }, isoFrameNode({ view: () => app.ui.game?.walk ?? null, spot: shownSpot, blocked: cannotWalk, go, menu: (key, point) => (liveOn() ? null : openMenu(key, point)),
+      // Every level of the place, for loading the whole of it at once, and what follows once it's loaded.
+      levels: () => api("/api/levels"), loaded: () => app.mapLoaded?.(),
       fighters: liveFighters, fightOverlay: liveOverlay, fightClick: liveClick, fighting: liveOn, fightHidden: liveHidden, pressed: () => menuJustShut() || (popupsShown() && !anotherWindow() && popupPressed()), reading: () => popupsShown() && !anotherWindow() && popupReading(), drawn: () => {
       popupDrawn();
       placeThingPane();
@@ -601,6 +607,7 @@ function clockHeld() {
   if (ui.draft.trim()) return "Stopped while you're typing";
   if (document.querySelector(".ship-log")) return "Stopped while the log is open";
   if (document.getElementById("mapedit")) return "Stopped while the map editor is open";
+  if (mapLoading()) return "Stopped while the map loads";
   return null;
 }
 
@@ -610,7 +617,7 @@ function clockHeld() {
 function clockWaits() {
   const { ui } = app;
   const g = ui.game;
-  return ui.streaming || ui.waiting || Boolean(g.combat || g.talk) || Boolean(document.getElementById("board")) || Boolean(document.querySelector(".ship-log"));
+  return ui.streaming || ui.waiting || Boolean(g.combat || g.talk) || Boolean(document.getElementById("board")) || Boolean(document.querySelector(".ship-log")) || mapLoading();
 }
 
 // Time stands still for anything that stops the clock, and while the game's window is put away.

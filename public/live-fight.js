@@ -98,7 +98,8 @@ export const togglePause = () => setPaused(!lf.paused);
 function pump() {
   const c = combat();
   const now = performance.now();
-  if (!c?.live || lf.paused || lf.ending || document.visibilityState !== "visible" || app.ui.sideOpen) {
+  // Nothing moves while the window's put away, the side menu's open, or the place's map is loading (public/iso.js).
+  if (!c?.live || lf.paused || lf.ending || document.visibilityState !== "visible" || app.ui.sideOpen || app.mapLoading?.()) {
     lf.lastTick = now;
     return;
   }

@@ -18,7 +18,7 @@ import { initSheet, openPersonSheet, openSheetAt, resetSheet, sheetNode, toggleS
 import { drawQuests, initQuests, questTrackerNode, questsOpen, resetQuests } from "./quests.js";
 import { beginScene, initPopups, openPopups, popupDrawn, popupNext, popupsAttached, updatePopups } from "./popups.js";
 import { INTERFACE_SIZES, interfaceZoom } from "./scene.js";
-import { focusThing, initWalk, keepClear, markPoint, newsBehindMenu, placeHere, popupsShown, putAwayRoomWindows, renderWalk, resetWalk, roomShownForFight, showWholeStory, thingNode, thingOpen, toggleClock, walkShown, walkViewNode } from "./walk.js";
+import { focusThing, initWalk, keepClear, mapLoading, markPoint, newsBehindMenu, placeHere, popupsShown, putAwayRoomWindows, renderWalk, resetWalk, roomShownForFight, showWholeStory, thingNode, thingOpen, toggleClock, walkShown, walkViewNode } from "./walk.js";
 import { bringIntoRoom, fightInRoom, initLive, liveElsewhereNode, liveOn, liveSettled, resetLive } from "./live-fight.js";
 import { aimWith } from "./float.js";
 import { WRITING_SPEEDS } from "./writer.js";
@@ -227,8 +227,9 @@ async function loadGame(slot) {
 }
 
 // A game whose story hasn't begun begins it by itself: there's no button for it, and nothing at the bottom of the room.
+// While the place's map is loading it waits, and begins once the map's loaded (mapLoaded, below).
 function startIfUntold() {
-  if (ui.screen === "game" && ui.game && !ui.game.transcript.length && !ui.streaming && !ui.waiting && !ui.error) sendChat({ event: "start" });
+  if (ui.screen === "game" && ui.game && !ui.game.transcript.length && !ui.streaming && !ui.waiting && !ui.error && !mapLoading()) sendChat({ event: "start" });
 }
 
 async function startNewGame(draft) {
@@ -251,7 +252,8 @@ async function startNewGame(draft) {
   ui.consoleLines = [];
   resetCreator();
   render();
-  sendChat({ event: "start" });
+  // The story begins once the ship's map is loaded, behind the loading screen.
+  startIfUntold();
 }
 
 // ---- Main game screen ---------------------------------------------------
@@ -750,7 +752,7 @@ initMenus({
 });
 
 initFight({ ui, render, sendChat, openMenu, closeMenu, inRoom: fightInRoom });
-initLive({ ui, render, renderStatus, sendChat, roomShown: roomShownForFight, showRoom: () => changeReading({ view: "iso", chosen: true }) });
+initLive({ ui, render, renderStatus, sendChat, roomShown: roomShownForFight, showRoom: () => changeReading({ view: "iso", chosen: true }), mapLoading });
 initCheck({ ui, render, sendChat, openMenu, closeMenu });
 initMap({ ui, render, runAction, renderMenus, openMenu, closeMenu });
 initShip({ ui, render, runAction, renderMenus, openMenu, closeMenu });
@@ -770,6 +772,8 @@ initWalk({
   sheet: () => sheetNode({ inMap: true }),
   openPersonSheet,
   questsOpen,
+  // The place's map has loaded (public/iso.js): a story that hasn't begun begins.
+  mapLoaded: startIfUntold,
   // A number key picks one of the story's choices, when there's nothing to type it into.
   pickOption: (n) => {
     const option = currentOptions()[n - 1];

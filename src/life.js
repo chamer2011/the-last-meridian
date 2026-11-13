@@ -89,6 +89,12 @@ export function clearLife() {
   settledAt.clear();
   usual.clear();
 }
+// One place's, once the player has left it and its map is let go of (keepOnly in src/walk.js): read again with the map.
+export function forgetLife(place) {
+  lifeFiles.delete(place);
+  for (const key of [...settledAt.keys()]) if (key.startsWith(`${place}@`)) settledAt.delete(key);
+  for (const key of [...usual.keys()]) if (key.startsWith(`${place}/`)) usual.delete(key);
+}
 
 export const livesHere = (place) => Boolean(lifeFileFor(place) && mapFor(place));
 
@@ -116,8 +122,11 @@ function rosterFor(game, place) {
   return roster;
 }
 
-// Life goes on in these places wherever the captain is.
-const livingPlaces = () => Object.keys(WORLD_LIFE).filter(livesHere);
+// The places someone could be at: the one the player's at, then any whose days file names them, by id or by name in a
+// crowd. Only those are looked at, so asking where someone is builds no place's map but those (src/walk.js keeps only
+// the place the player's at built, and the ship).
+const namedIn = (file, id) => Boolean(file?.people?.[id]) || (file?.crowd ?? []).some((group) => (group.names ?? []).some(([name]) => name === id));
+const placesFor = (game, id) => [...new Set([game.location, ...Object.keys(WORLD_LIFE).filter((place) => namedIn(WORLD_LIFE[place], id))])];
 
 // Someone with no day in the place's file just stays at their post.
 export const hasADay = (place, id) => Boolean(lifeFileFor(place)?.roster.some((entry) => entry.id === id));
@@ -677,7 +686,7 @@ export function peopleAboard(game, place, levelId) {
 export function whereNow(game, id) {
   if ([...(game.walk?.with ?? []), ...(game.walk?.room?.people ?? [])].some((entry) => entry.id === id)) return "with the captain";
   // Someone who's in two places' files is wherever the captain is, if that's one of them.
-  for (const place of [game.location, ...livingPlaces()]) {
+  for (const place of placesFor(game, id)) {
     if (!livesHere(place)) continue;
     const entry = rosterFor(game, place).find((one) => one.id === id || (!one.id && one.key === id));
     const state = entry && peopleOf(game, place)[entry.key];

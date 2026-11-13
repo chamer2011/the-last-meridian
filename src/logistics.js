@@ -66,6 +66,8 @@ const compiling = new Set();
 export function clearLogistics() {
   models.clear();
 }
+// One place's, once the player has left it and its map is let go of (keepOnly in src/walk.js): made again with the map.
+export const forgetLogistics = (place) => models.delete(place);
 // Whether a place's stores are being stood in its map right now (src/room-hooks.js waits for them).
 export const logisticsPending = (place) => compiling.has(place);
 
