@@ -93,4 +93,44 @@ with stars, screens on the walls), and two pictures went to them. Then they said
   repair bay, life support, lighter bay and engineering) looked at on a test copy at 1400 wide.
 - **Not done:** nobody sits or lies in the furniture yet (step 3); people lie on a bed's square drawn at floor height.
 
-Build step 3 only when they say so.
+## Step 3, built on 2026-11-12, at their "Yes, step 3", untried by them
+
+- **Seats and beds** are marked in `public/furniture.js` (`seat` on the chair, the bench and the command chair; `bed` on
+  the bunk and the cot). `compileLevel` keeps their squares as `level.seats`.
+- **Drawn** in `public/iso.js`: in `draw()`, someone standing still on a seat (`restingOn`, the scene's seat or bed under
+  a point) is moved to where `sittingIn` says (a chair's middle; their own place along a bench; on a bed's edge, the
+  long side the camera sees, facing out) and drawn with `drawPerson`'s `seated` pose (thighs along the seat, shins down,
+  hands forward, the body lowered; `raise` for a seat higher than a chair's, lower for a bunk's mattress), turned by the
+  seat's facing (`FACING_POSE`). They're ordered just after the seat, which isn't drawn again over them; a chair facing
+  n or w has its back drawn again in front of them (`drawPiece`'s `only: "back"`, its back parts tagged), and someone
+  sitting on a lower bunk has the upper bed and the front posts over them (`only: "over"`). Someone asleep or down on a
+  bunk or a cot, not walking or carried, is drawn by the bed itself (`drawPiece`'s `sleepers`): head on the pillow,
+  shoulders in their coat, the blanket raised over the rest, two to a bunk (lower, then upper, by key; a third goes on
+  the floor as before), with the red cross over someone down where they fell and the hover ring round the head; the
+  bed's hit box is where the head was drawn. A bunk's parts now go on in a fixed order by `rank` (posts behind, the
+  lower bed and whoever's in it, the upper and whoever's in it, posts in front), which also stops a lower blanket being
+  drawn over the upper bed's frame. The player sits too.
+- **One square for a seat or a bed** in the life engine: `squaresOf` in `src/life.js` gives someone stopping on one only
+  that square, instead of the squares their name would take along the floor (from the text views), which had pushed
+  the officers at the mess tables off their chairs.
+- **The decks and the life file lined up** (scratch scripts `align.mjs` and `racks.mjs`, through the map editor's own
+  save for the decks and spots): Pell's post onto the helm's middle chair (24,8), Sorel's onto a comms chair (33,12),
+  the night helm and comms spots onto chairs, the ready room spot onto its desk chair (Voss's paperwork), the six
+  cabin spots onto their bunks, the six officers' mess seats that weren't at a table moved to the nearest free place at
+  one, 13 chairs added in the Long Mess under the seats and the benches squares beside a table (not those along the
+  wall, where people still stand), the curtained cot turned to face e like the rest (so patient-2 is in it), and the
+  four Hot Bunks sleeping places beside the bunks moved into them. Lira's post in the sensor pit, the plot table's,
+  Voss's by the plot table and the chair captains' stay standing, and so do the mess spots along the wall.
+- **Tests:** `test/seats.test.js` (5): the flags and `level.seats`; every post and spot that's for sitting or sleeping
+  on a seat or bed; at lunch Voss, Tarrow and Halm on their own chairs and at night the officers, the Hot Bunks and the
+  night watch in theirs; `sittingIn` for each kind and facing; in the picture, Pell in her chair and the laid up in the
+  medbay's cots. Screens on a test copy on port 3297 at 1400 wide (the helm, the mess at lunch, the Hot Bunks and the
+  cabins at night, the medbay with Vik and Hana, the player on a cot's edge) and the mess at 810.
+- **Not done:** people don't walk to a seat's front before sitting (they glide onto it and sit when they stop); nobody
+  eats or works with anything in their hands; "lying awake" is drawn sitting up on the bed's edge; the mess's standing
+  places along the wall and the queue's squares stay as they were. In the classic plan view, where names are written on
+  the floor, names at a crowded table or along a row of bunks can now run into each other; `test/life.test.js`'s two
+  name tests count a seat or a bed as one square for that reason. The cabin spots are on the bunks' back row, because
+  the cabins' names are painted on the deck under the front row and nobody stops on a painted name.
+
+Build step 4 only when they say so.

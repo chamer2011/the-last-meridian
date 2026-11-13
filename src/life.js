@@ -330,6 +330,9 @@ function postOf(map, id) {
 // them. Someone leaving by a door is on their way out of sight, so they don't take up anything.
 function squaresOf(map, entry, spot) {
   if (spot.out) return [];
+  // Someone in a seat or a bed takes only that square: at a table or in a row of bunks, their name goes over their
+  // head, not along the floor beside them.
+  if (map.levels[spot.level]?.seats?.has(`${spot.x},${spot.y}`)) return [seatKey(spot)];
   const label = entry.id ? homeOf(map, entry.id)?.label : null;
   return Array.from({ length: label ? label.length + 2 : 1 }, (_, i) => seatKey({ level: spot.level, y: spot.y, x: spot.side === "left" ? spot.x - i : spot.x + i }));
 }

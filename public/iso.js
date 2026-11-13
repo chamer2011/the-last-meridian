@@ -2287,6 +2287,8 @@ function drawPerson(ctx, x, y, unit, person) {
     ctx.ellipse(0, 0, unit * 0.22, unit * 0.11, 0, 0, Math.PI * 2);
     ctx.stroke();
   }
+  // A seat higher than a chair's lifts whoever's in it.
+  if (person.raise) ctx.translate(0, (-person.raise * unit) / 2);
   ctx.scale(person.flip ? -scale : scale, scale);
   ctx.lineCap = "round";
   const { look } = person;
@@ -2316,26 +2318,42 @@ function drawPerson(ctx, x, y, unit, person) {
     ctx.restore();
     return;
   }
-  const swing = person.walking && !iso.calm ? Math.sin(person.step) * 3.2 : 0;
-  const lift = person.walking && !iso.calm ? Math.abs(Math.sin(person.step)) * 0.6 : 0;
+  // Someone sitting has their legs out in front along the seat and down to the floor, and the rest of them lower.
+  const sitting = Boolean(person.seated);
+  if (sitting) {
+    limb(ctx, -1.2, -8.2, 3.2, -7.6, 2.6, scaled(look.trousers, 0.8));
+    limb(ctx, 3.2, -7.6, 3.3, -0.6, 2.3, scaled(look.trousers, 0.8));
+    limb(ctx, 3.3, -0.6, 4.6, 0, 2.3, "#141310");
+    limb(ctx, 1.6, -8.2, 5.8, -7.8, 2.6, look.trousers);
+    limb(ctx, 5.8, -7.8, 5.9, -0.6, 2.3, look.trousers);
+    limb(ctx, 5.9, -0.6, 7.2, 0, 2.3, "#1c1a16");
+    ctx.translate(0, 6);
+  }
+  const swing = person.walking && !iso.calm && !sitting ? Math.sin(person.step) * 3.2 : 0;
+  const lift = person.walking && !iso.calm && !sitting ? Math.abs(Math.sin(person.step)) * 0.6 : 0;
   ctx.translate(0, -lift);
-  // The far leg and arm first.
-  limb(ctx, -1.5, -14, -1.8 - swing, -1, 2.6, scaled(look.trousers, 0.8));
-  limb(ctx, -1.8 - swing, -1, -1.2 - swing, 0, 2.6, "#141310");
-  limb(ctx, -4.3, -23, -5 + swing * 0.7, -14, 2, look.coatDark);
+  // The far leg and arm first; sitting, the arms reach forward, to a console or a table.
+  if (!sitting) {
+    limb(ctx, -1.5, -14, -1.8 - swing, -1, 2.6, scaled(look.trousers, 0.8));
+    limb(ctx, -1.8 - swing, -1, -1.2 - swing, 0, 2.6, "#141310");
+  }
+  const farHand = sitting ? [3.6, -17] : [-5 + swing * 0.7, -14];
+  limb(ctx, -4.3, -23, farHand[0], farHand[1], 2, look.coatDark);
   ctx.fillStyle = look.skin;
   ctx.beginPath();
-  ctx.arc(-5 + swing * 0.7, -13.2, 1, 0, Math.PI * 2);
+  ctx.arc(farHand[0], farHand[1] + 0.8, 1, 0, Math.PI * 2);
   ctx.fill();
-  limb(ctx, 1.5, -14, 1.8 + swing, -1, 2.6, look.trousers);
-  limb(ctx, 1.8 + swing, -1, 2.4 + swing, 0, 2.6, "#1c1a16");
+  if (!sitting) {
+    limb(ctx, 1.5, -14, 1.8 + swing, -1, 2.6, look.trousers);
+    limb(ctx, 1.8 + swing, -1, 2.4 + swing, 0, 2.6, "#1c1a16");
+  }
   // A pack on their back goes behind them if they're facing the camera, and in front of the coat if not.
   if (look.pack && !person.back) {
     ctx.fillStyle = "#2c2a20";
     ctx.fillRect(-3.5, -24, 7, 8);
   }
   // The body, with its light side and its dark side.
-  const bottom = look.long ? -8 : -13.5;
+  const bottom = look.long && !sitting ? -8 : -13.5;
   ctx.fillStyle = look.coat;
   ctx.beginPath();
   ctx.moveTo(-4.4, -24);
@@ -2371,10 +2389,11 @@ function drawPerson(ctx, x, y, unit, person) {
   ctx.fillStyle = "rgba(10,10,8,.6)";
   ctx.fillRect(-3.2, -15, 6.4, 0.9);
   // The near arm.
-  limb(ctx, 4.3, -23, 5 - swing * 0.7, -14, 2.1, look.coat);
+  const nearHand = sitting ? [8, -17] : [5 - swing * 0.7, -14];
+  limb(ctx, 4.3, -23, nearHand[0], nearHand[1], 2.1, look.coat);
   ctx.fillStyle = look.skin;
   ctx.beginPath();
-  ctx.arc(5 - swing * 0.7, -13.2, 1, 0, Math.PI * 2);
+  ctx.arc(nearHand[0], nearHand[1] + 0.8, 1, 0, Math.PI * 2);
   ctx.fill();
   // The head.
   ctx.fillStyle = scaled(look.skin, 0.8);
@@ -2801,39 +2820,74 @@ function draw(now, dt) {
 
   // Everyone, from the back of the room to the front, with whatever's in front of each of them put back over them.
   const figures = [];
+  const extras = [];
+  // Someone standing still on a seat sits in it, the way it faces; someone asleep or laid up on a bed lies in it.
+  const sitIn = (figure, walking) => {
+    const seat = walking ? null : restingOn(scene, figure.wx, figure.wy);
+    const sitting = seat && sittingIn(seat, figure.wx, figure.wy);
+    if (!sitting) return figure;
+    Object.assign(figure, { wx: sitting.wx, wy: sitting.wy, seat, pose: sitting.pose });
+    // In a chair they're drawn just after it; on a bed's edge, by where they sit, in front of it.
+    figure.depth = FURNITURE_BY_ID[seat.kind].bed ? sitting.wx + sitting.wy : seat.depth + 0.01;
+    if (sitting.over) extras.push({ type: "seatback", block: seat, tag: sitting.over, depth: figure.depth + 0.01 });
+    return figure;
+  };
   const youAt = cellCentre(iso.you.x, iso.you.y);
-  figures.push({ type: "you", wx: youAt.wx, wy: youAt.wy, depth: youAt.wx + youAt.wy });
+  figures.push(sitIn({ type: "you", wx: youAt.wx, wy: youAt.wy, depth: youAt.wx + youAt.wy }, iso.you.walking));
   // In a fight in the room, whoever's in it is drawn as a fighter (public/live-fight.js), and only once.
   const fighting = iso.hooks.fightHidden?.() ?? null;
+  const beds = new Map();
   for (const person of view.people) {
     const shown = iso.shown.get(person.key);
     if (!shown || fighting?.has(person.key)) continue;
     const { wx, wy } = cellCentre(shown.x, shown.y);
-    figures.push({ type: "person", person, shown, wx, wy, depth: wx + wy });
+    const lying = person.asleep || person.down;
+    if (lying && !person.carried && !shown.walking) {
+      const bed = restingOn(scene, wx, wy);
+      const room = !FURNITURE_BY_ID[bed?.kind]?.bed ? 0 : bed.kind === "bunk" ? 2 : 1;
+      if (room && (beds.get(bed)?.length ?? 0) < room) {
+        if (!beds.has(bed)) beds.set(bed, []);
+        beds.get(bed).push({ person, look: shown.look, mark: person.down && !person.onCot && !person.carried && !person.dead });
+        continue;
+      }
+    }
+    figures.push(lying ? { type: "person", person, shown, wx, wy, depth: wx + wy } : sitIn({ type: "person", person, shown, wx, wy, depth: wx + wy }, shown.walking));
   }
+  for (const [bed, sleepers] of beds) extras.push({ type: "bed", block: bed, sleepers: sleepers.sort((a, b) => (a.person.key < b.person.key ? -1 : 1)), depth: bed.depth });
   for (const one of iso.hooks.fighters?.(dt / 1000) ?? []) {
     const { wx, wy } = cellCentre(one.x, one.y);
     figures.push({ type: "fighter", one, wx, wy, depth: wx + wy });
   }
   const covering = new Set();
-  for (const figure of figures) {
-    const { u, v } = project(figure.wx, figure.wy);
-    const minU = u - 0.25;
-    const maxU = u + 0.25;
-    const minV = v - 0.95;
-    const maxV = v + 0.05;
+  const cover = (depth, minU, maxU, minV, maxV, own) => {
     for (const block of scene.blocks) {
-      if (block.depth <= figure.depth || block.style === "plants") continue;
+      if (block.depth <= depth || block.style === "plants" || block === own) continue;
       const { span } = block;
       if (span.maxU > minU && span.minU < maxU && span.maxV > minV && span.minV < maxV) covering.add(block);
     }
+  };
+  for (const figure of figures) {
+    const { u, v } = project(figure.wx, figure.wy);
+    cover(figure.depth, u - 0.25, u + 0.25, v - 0.95, v + 0.05, figure.seat);
   }
-  const order = [...figures, ...covering].sort((a, b) => a.depth - b.depth);
+  for (const extra of extras) if (extra.type === "bed") cover(extra.depth, extra.block.span.minU, extra.block.span.maxU, extra.block.span.minV, extra.block.span.maxV, extra.block);
+  // A bed with someone in it is drawn with them, never again without them.
+  for (const extra of extras) if (extra.type === "bed") covering.delete(extra.block);
+  const order = [...figures, ...covering, ...extras].sort((a, b) => a.depth - b.depth);
   const hits = [];
   const hoverKey = iso.hover?.key;
   for (const item of order) {
     if (item.type === "block") drawBlock(painter, item, iso.materials);
-    else if (item.type === "fighter") {
+    else if (item.type === "seatback") drawPiece(painter, item.block, { only: item.tag ?? "back", sleepers: beds.get(item.block) ?? null });
+    else if (item.type === "bed") {
+      for (const one of item.sleepers) one.ring = hoverKey === `person:${one.person.key}` ? "rgba(255,250,220,.9)" : null;
+      drawPiece(painter, item.block, { sleepers: item.sleepers });
+      for (const one of item.sleepers) {
+        if (!one.at) continue;
+        const [x, y] = one.at;
+        hits.push({ kind: "person", key: `person:${one.person.key}`, person: one.person, x: x - unit * 0.3, y: y - unit * 0.3, w: unit * 0.6, h: unit * 0.5, floorX: x, floorY: y + unit * 0.1 });
+      }
+    } else if (item.type === "fighter") {
       const { one, wx, wy } = item;
       const [x, y] = at(wx, wy);
       const look = (one.person && iso.shown.get(one.person)?.look) ?? fighterLook(one);
@@ -2846,12 +2900,12 @@ function draw(now, dt) {
       const { person, shown, wx, wy } = item;
       const [x, y] = at(wx, wy);
       const hovered = hoverKey === `person:${person.key}`;
-      drawPerson(ctx, x, y, unit, { look: shown.look, flip: shown.flip, back: shown.back, walking: shown.walking, step: shown.step, asleep: person.asleep || person.down, mark: person.down && !person.onCot && !person.carried && !person.dead, ring: hovered ? "rgba(255,250,220,.9)" : null });
+      drawPerson(ctx, x, y, unit, { look: shown.look, flip: shown.flip, back: shown.back, walking: shown.walking, step: shown.step, asleep: person.asleep || person.down, mark: person.down && !person.onCot && !person.carried && !person.dead, ring: hovered ? "rgba(255,250,220,.9)" : null, ...item.pose });
       hits.push({ kind: "person", key: `person:${person.key}`, person, x: x - unit * 0.22, y: y - unit * 0.92, w: unit * 0.44, h: unit * 1, floorX: x, floorY: y });
     } else {
       const [x, y] = at(item.wx, item.wy);
       hits.push({ kind: "you", key: "person:you", x: x - unit * 0.22, y: y - unit * 0.92, w: unit * 0.44, h: unit, floorX: x, floorY: y });
-      drawPerson(ctx, x, y, unit, { look: YOU_LOOK, flip: iso.you.flip, back: iso.you.back, walking: iso.you.walking, step: iso.you.step, ring: "rgba(180,240,190,.8)" });
+      drawPerson(ctx, x, y, unit, { look: YOU_LOOK, flip: iso.you.flip, back: iso.you.back, walking: iso.you.walking, step: iso.you.step, ring: "rgba(180,240,190,.8)", ...item.pose });
     }
   }
 
@@ -3150,6 +3204,40 @@ const KIT = {
 // deep, from its middle, before it's turned).
 const PIECE_TOP = { chair: 0.95, bench: 0.5, "command-chair": 1.35, table: 0.76, "long-table": 0.76, desk: 1.1, bunk: 1.5, cot: 0.62, locker: 1.5, shelf: 1.6, "plot-table": 1.5, screen: 1.2, kettle: 1.06, barrel: 0.8, plant: 0.9, basin: 0.86 };
 const PIECE_SHADOW = { chair: [0.17, 0.17], bench: [0.92, 0.17], "command-chair": [0.4, 0.4], table: [0.45, 0.45], "long-table": [0.95, 0.43], desk: [0.46, 0.25], bunk: [0.45, 0.95], cot: [0.4, 0.9], locker: [0.2, 0.2], shelf: [0.46, 0.21], "plot-table": [0.46, 0.46], screen: [0.12, 0.08], kettle: [0.42, 0.42], barrel: [0.17, 0.17], plant: [0.14, 0.14], basin: [0.2, 0.16] };
+// How much higher than a chair's a seat is, and which way someone sitting in a seat facing each way is drawn.
+const SEAT_RAISE = { "command-chair": 0.07 };
+const FACING_POSE = { n: { back: true, flip: false }, s: { back: false, flip: true }, e: { back: false, flip: false }, w: { back: true, flip: true } };
+
+// The seat or bed in a scene under a point of the floor, if any.
+export function restingOn(scene, wx, wy) {
+  scene.seatsAndBeds ??= scene.blocks.filter((block) => block.style === "piece" && (FURNITURE_BY_ID[block.kind]?.seat || FURNITURE_BY_ID[block.kind]?.bed));
+  return scene.seatsAndBeds.find((block) => wx > block.x0 && wx < block.x1 && wy > block.y0 && wy < block.y1) ?? null;
+}
+
+// How someone who's stopped awake on a seat or a bed is drawn there: where (a chair's middle; their own place along a
+// bench; the edge of a bed, on the long side the camera sees), sitting which way, and which of the piece's parts are
+// drawn again over them ("back": a chair's back between them and the camera; "over": a bunk's upper bed and its front
+// posts, when they sit on the lower). Null for any other piece.
+export function sittingIn(seat, wx, wy) {
+  const kind = FURNITURE_BY_ID[seat?.kind];
+  if (!kind?.seat && !kind?.bed) return null;
+  if (kind.bed) {
+    const face = seat.facing === "e" || seat.facing === "w" ? "s" : "e";
+    return {
+      wx: face === "e" ? seat.x1 - 0.14 : wx,
+      wy: face === "s" ? seat.y1 - 0.2 : wy,
+      pose: { seated: true, raise: (seat.kind === "cot" ? 0.52 : 0.39) - 0.49, ...FACING_POSE[face] },
+      over: seat.kind === "bunk" ? "over" : null,
+    };
+  }
+  const along = seat.kind === "bench" ? (seat.facing === "e" || seat.facing === "w" ? "y" : "x") : null;
+  return {
+    wx: along === "x" ? wx : (seat.x0 + seat.x1) / 2,
+    wy: along === "y" ? wy : (seat.y0 + seat.y1) / 2,
+    pose: { seated: true, raise: SEAT_RAISE[seat.kind] ?? 0, ...FACING_POSE[seat.facing ?? "s"] },
+    over: seat.facing === "n" || seat.facing === "w" ? "back" : null,
+  };
+}
 const BLANKETS = ["#4a5a44", "#3e4f66", "#6a4a3a", "#5a4f63", "#4d5a5e"];
 const SHELF_GOODS = ["#7a6a4e", "#5d6e7a", "#8a5a3a", "#6e7a5a", "#b0a890"];
 
@@ -3277,17 +3365,21 @@ function wallFace(painter, piece, inset) {
   return { corners: (za, zb) => [at(xa, y, zb), at(xb, y, zb), at(xb, y, za), at(xa, y, za)], along: (t, z) => [xa + (xb - xa) * t, y, z] };
 }
 
-function drawPiece(painter, piece) {
+// only: draw just the parts with that tag (a chair's back, drawn again in front of whoever's sitting in it).
+// sleepers: who's lying in a bed, lowest first, each { look, ring, mark }; where their head was drawn is left on them.
+function drawPiece(painter, piece, { only = null, sleepers = null } = {}) {
   const { ctx, at, unit } = painter;
   const part = (a0, a1, b0, b1) => partRect(piece, a0, a1, b0, b1);
   const random = randomFrom(`piece${piece.x0},${piece.y0}`);
-  // A piece's parts go on from the back of the room to the front, so whichever way it's turned the near ones cover.
+  // A piece's parts go on from the back of the room to the front, so whichever way it's turned the near ones cover;
+  // a part with a higher rank goes on after all those with a lower one (a bunk's upper bed after the lower).
   const parts = [];
-  const put = (rect, z0, z1, colors, then = null) => parts.push({ rect, z0, z1, colors, then, depth: (rect[0] + rect[2]) / 2 + (rect[1] + rect[3]) / 2 });
+  const put = (rect, z0, z1, colors, then = null, { rank = 0, tag = null } = {}) => parts.push({ rect, z0, z1, colors, then, rank, tag, depth: (rect[0] + rect[2]) / 2 + (rect[1] + rect[3]) / 2 });
   const lay = () => {
-    parts.sort((a, b) => a.depth - b.depth);
+    parts.sort((a, b) => a.rank - b.rank || a.depth - b.depth);
     for (const one of parts) {
-      box(painter, one.rect, one.z0, one.z1, ...one.colors);
+      if (only && one.tag !== only) continue;
+      if (one.colors) box(painter, one.rect, one.z0, one.z1, ...one.colors);
       one.then?.();
     }
   };
@@ -3329,7 +3421,7 @@ function drawPiece(painter, piece) {
       put(part(-0.12, 0.12, -0.12, 0.12), 0, 0.035, [KIT.frameDark, KIT.frameDeep, KIT.frameDeep]);
       put(part(-0.025, 0.025, -0.025, 0.025), 0.035, 0.38, frameColors);
       put(part(-0.16, 0.16, -0.13, 0.16), 0.38, 0.49, [KIT.seatTop, KIT.seat, KIT.seatDark]);
-      put(part(-0.16, 0.16, -0.18, -0.13), 0.47, 0.95, [KIT.seatTop, KIT.seat, KIT.seatDark]);
+      put(part(-0.16, 0.16, -0.18, -0.13), 0.47, 0.95, [KIT.seatTop, KIT.seat, KIT.seatDark], null, { tag: "back" });
       break;
     case "command-chair":
       put(part(-0.42, 0.42, -0.42, 0.42), 0, 0.07, ["#3b4450", "#2a3139", "#1f252b"], () => stroke(painter, [[piece.x0 + 0.05, piece.y1 - 0.05, 0.07], [piece.x1 - 0.05, piece.y1 - 0.05, 0.07], [piece.x1 - 0.05, piece.y0 + 0.05, 0.07]], "rgba(255,200,110,.35)"));
@@ -3341,9 +3433,9 @@ function drawPiece(painter, piece) {
         ctx.fillRect(px - 1.5, py - 1, 3, 2);
       });
       put(part(-0.24, 0.24, -0.22, 0.2), 0.42, 0.56, shades(KIT.leather));
-      put(part(-0.25, 0.25, -0.31, -0.21), 0.54, 1.25, shades(KIT.leather));
-      put(part(-0.18, 0.12, -0.32, -0.31), 0.86, 0.98, shades(KIT.webbing));
-      put(part(-0.2, 0.2, -0.3, -0.22), 1.25, 1.35, shades(scaled(KIT.leather, 1.2)));
+      put(part(-0.25, 0.25, -0.31, -0.21), 0.54, 1.25, shades(KIT.leather), null, { tag: "back" });
+      put(part(-0.18, 0.12, -0.32, -0.31), 0.86, 0.98, shades(KIT.webbing), null, { tag: "back" });
+      put(part(-0.2, 0.2, -0.3, -0.22), 1.25, 1.35, shades(scaled(KIT.leather, 1.2)), null, { tag: "back" });
       break;
     case "table":
       for (const a of [-0.38, 0.33]) for (const b of [-0.38, 0.33]) put(part(a, a + 0.05, b, b + 0.05), 0, 0.7, steelColors);
@@ -3369,14 +3461,64 @@ function drawPiece(painter, piece) {
     case "bunk":
     case "cot": {
       const cot = piece.kind === "cot";
-      for (const a of [-0.44, 0.4]) for (const b of [-0.94, 0.9]) put(part(a, a + 0.04, b, b + 0.04), 0, cot ? 0.45 : 1.5, frameColors);
-      const bed = (z, colour) => {
-        put(part(-0.42, 0.42, -0.92, 0.92), z, z + 0.1, frameColors);
-        put(part(-0.4, 0.4, -0.9, -0.62), z + 0.1, z + 0.18, shades(KIT.sheet));
-        put(part(-0.41, 0.41, -0.55, 0.9), z + 0.1, z + 0.17, shades(colour));
+      // The posts behind the beds first, then the lower bed and whoever's in it, the upper and whoever's in it, and
+      // the posts in front last.
+      const middle = (piece.x0 + piece.x1) / 2 + (piece.y0 + piece.y1) / 2;
+      for (const a of [-0.44, 0.4]) for (const b of [-0.94, 0.9]) {
+        const rect = part(a, a + 0.04, b, b + 0.04);
+        const front = (rect[0] + rect[2]) / 2 + (rect[1] + rect[3]) / 2 > middle;
+        put(rect, 0, cot ? 0.45 : 1.5, frameColors, null, { rank: front ? 5 : 0, tag: front && !cot ? "over" : null });
+      }
+      // A bunk's upper bed, and its posts in front, are drawn again over anyone sitting on the lower ("over").
+      const bed = (z, colour, rank, one, tag = null) => {
+        put(part(-0.42, 0.42, -0.92, 0.92), z, z + 0.1, frameColors, null, { rank, tag });
+        put(part(-0.4, 0.4, -0.9, -0.62), z + 0.1, z + 0.18, shades(KIT.sheet), null, { rank, tag });
+        put(part(-0.41, 0.41, -0.55, 0.9), z + 0.1, z + 0.17, shades(colour), null, { rank, tag });
+        if (one) lieIn(z + 0.17, colour, rank + 1, one, tag);
       };
-      bed(cot ? 0.35 : 0.22, cot ? "#8fa6b8" : BLANKETS[Math.floor(random() * BLANKETS.length)]);
-      if (!cot) bed(1.02, BLANKETS[Math.floor(random() * BLANKETS.length)]);
+      // Someone lying in a bed: their head on the pillow, their shoulders in their coat, the blanket over the rest.
+      const lieIn = (z, colour, rank, one, tag) => {
+        put(part(-0.1, 0.1, -0.86, -0.66), z, z + 0.02, null, () => {
+          const [hx, hy] = point(0, -0.76, z + 0.13);
+          const r = unit * 0.078;
+          ctx.fillStyle = one.look.skin;
+          ctx.beginPath();
+          ctx.arc(hx, hy, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = one.look.hair ?? "#2a2420";
+          ctx.beginPath();
+          ctx.arc(hx, hy - r * 0.1, r * 1.02, Math.PI * 0.95, Math.PI * 2.05);
+          ctx.closePath();
+          ctx.fill();
+          if (one.ring) {
+            ctx.strokeStyle = one.ring;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(hx, hy, r * 1.8, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          if (one.mark) {
+            // Down where they fell, as on the floor: a red cross over them.
+            const s = unit / 34;
+            ctx.lineCap = "round";
+            for (const [width, colourOf] of [[3.6, "rgba(20,6,4,.85)"], [2, "#ff6b5b"]]) {
+              ctx.lineWidth = width * s;
+              ctx.strokeStyle = colourOf;
+              ctx.beginPath();
+              ctx.moveTo(hx, hy - 16 * s);
+              ctx.lineTo(hx, hy - 8 * s);
+              ctx.moveTo(hx - 4 * s, hy - 12 * s);
+              ctx.lineTo(hx + 4 * s, hy - 12 * s);
+              ctx.stroke();
+            }
+          }
+          one.at = [hx, hy];
+        }, { rank, tag });
+        put(part(-0.3, 0.3, -0.64, -0.42), z, z + 0.15, shades(one.look.coat), null, { rank, tag });
+        put(part(-0.29, 0.29, -0.44, 0.8), z, z + 0.12, shades(scaled(colour, 1.12)), null, { rank, tag });
+      };
+      bed(cot ? 0.35 : 0.22, cot ? "#8fa6b8" : BLANKETS[Math.floor(random() * BLANKETS.length)], 1, sleepers?.[0]);
+      if (!cot) bed(1.02, BLANKETS[Math.floor(random() * BLANKETS.length)], 3, sleepers?.[1], "over");
       break;
     }
     case "locker":

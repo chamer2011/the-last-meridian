@@ -163,7 +163,10 @@ square. In the Properties panel:
 
 A table is two squares across, a long table four, and a bunk or a cot two across and two down, turned to lie the other
 way when they face e or w. A window or a wall-screen goes on a wall square, and shows on whichever side of the wall
-the room is on. Tables, lockers and the like are in the way; chairs, bunks and cots aren't.
+the room is on. Tables, lockers and the like are in the way; chairs, benches, the command chair, bunks and cots
+aren't, because they're somewhere to be: someone who stops on a seat sits in it, the way it faces, and someone asleep
+or laid up on a bunk or a cot lies in it (awake, they sit on its edge). Put someone's post, or a spot of their day, on
+one, and that's where they'll sit or sleep.
 
 A thing can be drawn as a piece of furniture too: give it a looks property (one of the names above that stands on the
 floor, or box for a plain box) and a facing. Without one, a thing is drawn as what its name says, if it says.

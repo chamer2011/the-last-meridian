@@ -12,16 +12,17 @@ export const FACINGS = ["n", "e", "s", "w"];
 export const FACING_WORDS = { n: "the bow end of the deck", e: "the right of the screen", s: "you", w: "the left of the screen" };
 
 // size is [across, down] in tiles when facing n or s, turned when facing e or w. blocks: whether people have to walk
-// round it (a bed or a chair is somewhere to be, so it doesn't). lit: the colour of the light it gives off, if any.
+// round it (a bed or a chair is somewhere to be, so it doesn't). seat: someone stopping on it sits in it; bed: someone
+// asleep or laid up on it lies in it, and someone awake sits on its edge. lit: the colour of the light it gives off.
 export const FURNITURE = [
-  { id: "chair", name: "Chair", about: "A seat at a console or a table", size: [0.5, 0.5], blocks: false },
-  { id: "bench", name: "Bench", about: "A long bench to sit on", size: [2, 0.5], blocks: false },
-  { id: "command-chair", name: "Command chair", about: "A big chair on a step, for whoever has the deck", size: [1, 1], blocks: false },
+  { id: "chair", name: "Chair", about: "A seat at a console or a table", size: [0.5, 0.5], blocks: false, seat: true },
+  { id: "bench", name: "Bench", about: "A long bench to sit on", size: [2, 0.5], blocks: false, seat: true },
+  { id: "command-chair", name: "Command chair", about: "A big chair on a step, for whoever has the deck", size: [1, 1], blocks: false, seat: true },
   { id: "table", name: "Table", about: "A small square table", size: [1, 1], blocks: true },
   { id: "long-table", name: "Long table", about: "A long table for a mess or a wardroom", size: [2, 1], blocks: true },
   { id: "desk", name: "Desk", about: "A desk with a terminal on it", size: [1, 0.5], blocks: true, lit: "#86dcff" },
-  { id: "bunk", name: "Bunk", about: "A bunk, one over the other", size: [1, 2], blocks: false },
-  { id: "cot", name: "Cot", about: "A sickbay cot with white sheets", size: [1, 2], blocks: false },
+  { id: "bunk", name: "Bunk", about: "A bunk, one over the other", size: [1, 2], blocks: false, bed: true },
+  { id: "cot", name: "Cot", about: "A sickbay cot with white sheets", size: [1, 2], blocks: false, bed: true },
   { id: "locker", name: "Locker", about: "A tall locker", size: [0.5, 0.5], blocks: true },
   { id: "shelf", name: "Shelves", about: "Shelves with boxes and tins on them", size: [1, 0.5], blocks: true },
   { id: "plot-table", name: "Plot table", about: "A chart table with a picture glowing over it", size: [1, 1], blocks: true, lit: "#7dffa8" },

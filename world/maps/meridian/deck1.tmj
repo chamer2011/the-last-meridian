@@ -4737,7 +4737,7 @@
      "type": "",
      "gid": 1,
      "x": 784,
-     "y": 736,
+     "y": 544,
      "width": 48,
      "height": 96,
      "rotation": 0,
@@ -4762,6 +4762,35 @@
     },
     {
      "id": 3,
+     "name": "Sorel",
+     "type": "",
+     "gid": 1,
+     "x": 1072,
+     "y": 800,
+     "width": 48,
+     "height": 96,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "person",
+       "type": "string",
+       "value": "iven"
+      },
+      {
+       "name": "asks",
+       "type": "string",
+       "value": "Anything on comms, Lieutenant?\nYou look like you could use a break."
+      },
+      {
+       "name": "mark",
+       "type": "string",
+       "value": "I"
+      }
+     ]
+    },
+    {
+     "id": 4,
      "name": "Data chip in the comms tray",
      "type": "",
      "gid": 2,
@@ -4800,7 +4829,7 @@
      ]
     },
     {
-     "id": 4,
+     "id": 5,
      "name": "Start",
      "type": "",
      "gid": 4,
@@ -4810,35 +4839,6 @@
      "height": 64,
      "rotation": 0,
      "visible": true
-    },
-    {
-     "id": 5,
-     "name": "Sorel",
-     "type": "",
-     "gid": 1,
-     "x": 1200,
-     "y": 992,
-     "width": 48,
-     "height": 96,
-     "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "person",
-       "type": "string",
-       "value": "iven"
-      },
-      {
-       "name": "asks",
-       "type": "string",
-       "value": "Anything on comms, Lieutenant?\nYou look like you could use a break."
-      },
-      {
-       "name": "mark",
-       "type": "string",
-       "value": "I"
-      }
-     ]
     },
     {
      "id": 6,

@@ -110,6 +110,8 @@ export function compileLevel(id, file, districts = []) {
   // Every square furniture stands on, in the way or not, so that what the game stands in a room by itself (a store, a
   // power box, a footlocker) keeps off it.
   const furnished = new Set(furniture.filter((piece) => !FURNITURE_BY_ID[piece.kind].wall).flatMap((piece) => squaresOf(piece).map(([x, y]) => spotKey(x, y))));
+  // The squares of the seats and beds, where someone stopping sits or lies (public/iso.js draws them so).
+  const seats = new Set(furniture.filter((piece) => FURNITURE_BY_ID[piece.kind].seat || FURNITURE_BY_ID[piece.kind].bed).flatMap((piece) => squaresOf(piece).map(([x, y]) => spotKey(x, y))));
   for (const piece of furniture) {
     if (!FURNITURE_BY_ID[piece.kind].blocks) continue;
     for (const [x, y] of squaresOf(piece)) {
@@ -136,6 +138,7 @@ export function compileLevel(id, file, districts = []) {
     solid,
     furniture: furniture.map(({ kind, x, y, facing }) => ({ kind, x, y, facing: facing ?? "s" })),
     furnished,
+    seats,
     start: start ?? { x: 1, y: 1 },
     // The rooms drawn on a deck, and which one each square is in: the deck itself, where no room is drawn.
     areas: areas.list,

@@ -249,7 +249,8 @@ test("no two names ever cover each other, or anything else on the level, over se
       }));
       const people = peopleAboard(game, "meridian", id).filter((one) => !one.walking);
       for (const one of people.filter((person) => !person.crowd)) {
-        const length = one.label.length + 2;
+        // Someone in a seat or a bed has their name over their head, and takes only that square (src/life.js).
+        const length = level.seats?.has(`${one.x},${one.y}`) ? 1 : one.label.length + 2;
         claim(one.label, one.side === "left" ? one.x - length + 1 : one.x, one.y, length);
         assert.ok(one.x + length <= level.width || one.side === "left", `${one.label}'s name runs off ${id}`);
       }
@@ -454,7 +455,7 @@ test("at every place, over a couple of days, names don't cover anything and nobo
         for (const label of level.labels) claim(label.text, label.x, label.y, label.text.length);
         const people = peopleAboard(game, place, level.id);
         for (const one of people.filter((person) => !person.crowd && !person.walking)) {
-          const length = one.label.length + 2;
+          const length = level.seats?.has(`${one.x},${one.y}`) ? 1 : one.label.length + 2;
           const start = one.side === "left" ? one.x - length + 1 : one.x;
           claim(one.label, start, one.y, length);
           assert.ok(start >= 0 && start + length <= level.width, `${place} ${level.id}: ${one.label}'s name runs off the level`);
