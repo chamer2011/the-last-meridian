@@ -61,4 +61,36 @@ with stars, screens on the walls), and two pictures went to them. Then they said
 - **Not done in step 1:** nobody sits or lies down (step 3); the decks have no furniture (step 2); the classic and
   walk-around views don't show furniture; a piece can't be turned in Tiled other than by its facing property.
 
-Build step 2 only when they say so.
+## Step 2, built on 2026-11-12, at their "Go on with step two", untried by them
+
+- **The three decks are furnished**, 358 pieces: 121 on deck 1, 178 on deck 2, 59 on deck 3, made by a scratch script
+  (`furnish.mjs`, not in the repository) through the map editor's own save (`deckForEditing`, `tryDeck` with
+  `keep`), so the files are written and checked exactly as the editor writes them (decks 1 and 3 came back byte for byte
+  on an unchanged save; deck 2 only reorders one object). Backups went to a temporary folder; git has the old files.
+- **What was drawn as consoles is real furniture now:** the medbay's beds (`[=]`) are cots, the Hot Bunks' racks are
+  two-level bunks (where a rack stretch on one row overlaps one on the next; a thing standing in the gap made the rows
+  look different), the Overflow's beds are cots, the Long Mess's and the wardroom's tables are long tables, and the
+  Quiet Room's benches are benches (a new piece, `bench`, two tiles long, not in the way). 330 squares of machine marks
+  became floor. Beds are somewhere to be, so their squares can be walked on now, where the marks couldn't; tables are in
+  the way as the marks were.
+- **Added:** chairs on the floor side of every bank of consoles on the bridge, the chart room, comms, the boat bay's
+  control room and the repair bay's workbenches, one to a tile, facing them; chairs round the wardroom's and the mess's
+  tables and on the mess's `seat-` spots; nine windows in the bridge's forward wall by the viewport; a cot on the
+  `captain-cot` spot and one on `marrow-cot`; a bunk, a locker and a desk chair in each officer's cabin; shelves,
+  lockers, desks, barrels, potted plants and wall screens through the rest (each room's list is in the script, kept in
+  the session's scratch folder). Pieces in the way were kept off posts, spots, doorways and stairs; a piece that didn't
+  fit was skipped (a cot on a thing, three chairs on taken squares).
+- **Two engine changes:** what the game stands in a room by itself (stores, power boxes, footlockers, through
+  `floorSpot` in `src/systems.js`) keeps off any square furniture is on (`level.furnished`); and a window or a wall screen
+  gives way to a part of the ship's systems mounted on the same wall square. **Things' names** are read for what they
+  are of (`headOf` in `public/furniture.js`): "Hot-bunk slate" is a slate, "A row of basins" basins, "Tool roll on the
+  bench" a roll.
+- **Tests:** `test/furnished-decks.test.js` (3) checks the real decks: furniture on every deck, nothing wrong by the
+  editor's checks or the game's, the cots, bunks, tables, benches, windows and chairs in their rooms, beds walkable and
+  tables not, and nothing in the way on a post or before a stair. `test/furniture.test.js` builds its decks without the
+  real furniture now, and its window check allows for a part mounted on the same square. Screens of the furnished decks
+  (the bridge, wardroom and chart room; the medbay, mess, Hot Bunks, Overflow, armory, brig and galley; the stores,
+  repair bay, life support, lighter bay and engineering) looked at on a test copy at 1400 wide.
+- **Not done:** nobody sits or lies in the furniture yet (step 3); people lie on a bed's square drawn at floor height.
+
+Build step 3 only when they say so.

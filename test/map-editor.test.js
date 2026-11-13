@@ -20,12 +20,13 @@ process.env.GAME_LIFE_DIR = path.join(tmp, "life");
 const editor = await import("../src/map-editor.js");
 const { readMapFile, roomFromMap } = await import("../src/tiled.js");
 const { WORLD_LIFE } = await import("../src/world.js");
+const { squaresOf } = await import("../public/furniture.js");
 
 const deckFile = (deck) => path.join(tmp, "maps", "meridian", `${deck}.tmj`);
 const fresh = (deck) => fs.copyFileSync(path.join(stock.maps, "meridian", `${deck}.tmj`), deckFile(deck));
 const open = (deck) => editor.deckForEditing("meridian", deck);
 // What the editor sends back for a deck: the squares, and everything on them.
-const parcel = (doc) => ({ grid: doc.grid, people: doc.people, things: doc.things, exits: doc.exits, start: doc.start, writing: doc.writing, labels: doc.labels, areas: doc.areas, spots: doc.spots });
+const parcel = (doc) => ({ grid: doc.grid, people: doc.people, things: doc.things, exits: doc.exits, start: doc.start, writing: doc.writing, labels: doc.labels, areas: doc.areas, furniture: doc.furniture, spots: doc.spots });
 const painted = (doc, squares) => {
   const rows = doc.grid.map((row) => [...row]);
   for (const [x, y, mark] of squares) rows[y][x] = mark;
@@ -85,8 +86,11 @@ test("a redrawn deck is kept: walls, a door, furniture, a new room, a new thing 
   for (let y = 24; y <= 28; y += 1) for (let x = 58; x <= 64; x += 1) squares.push([x, y, x === 58 || x === 64 || y === 24 || y === 28 ? "#" : floor]);
   squares.push([58, 26, "+"], [52, 25, "="], [53, 25, "="]);
   const voss = doc.people.find((one) => one.name === "Ilya Voss");
+  // Furniture where a wall or a console goes is taken away first, as it would be in the editor.
+  const walled = new Set(squares.filter(([, , mark]) => mark !== floor).map(([x, y]) => `${x},${y}`));
   const changed = {
     ...painted(doc, squares),
+    furniture: doc.furniture.filter((piece) => !squaresOf(piece).some(([x, y]) => walled.has(`${x},${y}`))),
     people: doc.people.map((one) => (one === voss ? { ...one, x: voss.x + 2 } : one)),
     things: [...doc.things, { mark: "z", x: 61, y: 26, name: "Test safe", look: "A squat grey safe, bolted to the deck.", use: "" }],
     areas: [...doc.areas, { name: "The Strongroom", x: 58, y: 24, w: 7, h: 5, desc: "Somewhere to keep what matters." }],

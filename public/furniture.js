@@ -15,6 +15,7 @@ export const FACING_WORDS = { n: "the bow end of the deck", e: "the right of the
 // round it (a bed or a chair is somewhere to be, so it doesn't). lit: the colour of the light it gives off, if any.
 export const FURNITURE = [
   { id: "chair", name: "Chair", about: "A seat at a console or a table", size: [0.5, 0.5], blocks: false },
+  { id: "bench", name: "Bench", about: "A long bench to sit on", size: [2, 0.5], blocks: false },
   { id: "command-chair", name: "Command chair", about: "A big chair on a step, for whoever has the deck", size: [1, 1], blocks: false },
   { id: "table", name: "Table", about: "A small square table", size: [1, 1], blocks: true },
   { id: "long-table", name: "Long table", about: "A long table for a mess or a wardroom", size: [2, 1], blocks: true },
@@ -56,6 +57,7 @@ export function squaresOf(piece) {
 const BY_NAME = [
   [["captain's chair", "command chair"], "command-chair"],
   [["chair", "seat", "stool"], "chair"],
+  [["bench"], "bench"],
   [["plot table", "chart table", "holo"], "plot-table"],
   [["repeater", "monitor", "terminal", "screen"], "screen"],
   [["locker", "cabinet", "wardrobe"], "locker"],
@@ -69,8 +71,19 @@ const BY_NAME = [
   [["basin", "sink"], "basin"],
   [["table"], "table"],
 ];
+// What a name is a name of: the last word before anything that only says where it is or what's with it ("A cot with
+// its curtain drawn" is a cot, "Data chip in the comms tray" a chip, "Hot-bunk slate" a slate), or after "a row of".
+const WHERE = /\s+(?:with|in|on|under|for|facing|from|at|by|behind|beside|against|near|of)\s+/;
+const MANY = ["row", "pair", "set", "stack", "line"];
+function headOf(name) {
+  const parts = name.split(WHERE);
+  let head = parts[0].trim().split(/\s+/).at(-1) ?? "";
+  if (MANY.includes(head) && /\s+of\s+/.test(name)) head = name.split(/\s+of\s+/)[1].split(WHERE)[0].trim().split(/\s+/).at(-1) ?? "";
+  return { head, before: parts[0] };
+}
 export function looksOf(thing) {
   if (thing?.looks) return thing.looks === "box" || !isFurniture(thing.looks) || FURNITURE_BY_ID[thing.looks].wall ? null : thing.looks;
-  const words = String(thing?.name ?? "").toLowerCase();
-  return BY_NAME.find(([keys]) => keys.some((key) => words.includes(key)))?.[1] ?? null;
+  const { head, before } = headOf(String(thing?.name ?? "").toLowerCase());
+  // Names of more than one word ("the captain's chair") are looked for whole; one word only in what the name is of.
+  return BY_NAME.find(([keys]) => keys.some((key) => (key.includes(" ") ? before.includes(key) : head.includes(key))))?.[1] ?? null;
 }

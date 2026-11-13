@@ -11,8 +11,8 @@
  "tileheight": 64,
  "infinite": false,
  "compressionlevel": -1,
- "nextlayerid": 6,
- "nextobjectid": 42,
+ "nextlayerid": 7,
+ "nextobjectid": 101,
  "properties": [
   {
    "name": "name",
@@ -5670,6 +5670,1139 @@
        "name": "district",
        "type": "string",
        "value": "Engineering and the Aft Holds"
+      }
+     ]
+    }
+   ],
+   "x": 0,
+   "y": 0,
+   "opacity": 1,
+   "visible": true
+  },
+  {
+   "id": 6,
+   "name": "Furniture",
+   "type": "objectgroup",
+   "draworder": "topdown",
+   "objects": [
+    {
+     "id": 42,
+     "name": "wall-screen",
+     "type": "Furniture",
+     "x": 2896,
+     "y": 96,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 43,
+     "name": "wall-screen",
+     "type": "Furniture",
+     "x": 3024,
+     "y": 96,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 44,
+     "name": "wall-screen",
+     "type": "Furniture",
+     "x": 3152,
+     "y": 96,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 45,
+     "name": "wall-screen",
+     "type": "Furniture",
+     "x": 4048,
+     "y": 96,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 46,
+     "name": "wall-screen",
+     "type": "Furniture",
+     "x": 4208,
+     "y": 96,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 47,
+     "name": "shelf",
+     "type": "Furniture",
+     "x": 1424,
+     "y": 160,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 48,
+     "name": "shelf",
+     "type": "Furniture",
+     "x": 1520,
+     "y": 160,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 49,
+     "name": "shelf",
+     "type": "Furniture",
+     "x": 1616,
+     "y": 160,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 50,
+     "name": "shelf",
+     "type": "Furniture",
+     "x": 1712,
+     "y": 160,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 51,
+     "name": "shelf",
+     "type": "Furniture",
+     "x": 1808,
+     "y": 160,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 52,
+     "name": "shelf",
+     "type": "Furniture",
+     "x": 2032,
+     "y": 160,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 53,
+     "name": "shelf",
+     "type": "Furniture",
+     "x": 2128,
+     "y": 160,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 54,
+     "name": "shelf",
+     "type": "Furniture",
+     "x": 2224,
+     "y": 160,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 55,
+     "name": "shelf",
+     "type": "Furniture",
+     "x": 2320,
+     "y": 160,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 56,
+     "name": "shelf",
+     "type": "Furniture",
+     "x": 2416,
+     "y": 160,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 57,
+     "name": "locker",
+     "type": "Furniture",
+     "x": 2704,
+     "y": 160,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 58,
+     "name": "shelf",
+     "type": "Furniture",
+     "x": 2832,
+     "y": 160,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 59,
+     "name": "shelf",
+     "type": "Furniture",
+     "x": 4112,
+     "y": 160,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 60,
+     "name": "locker",
+     "type": "Furniture",
+     "x": 2704,
+     "y": 224,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 61,
+     "name": "desk",
+     "type": "Furniture",
+     "x": 3952,
+     "y": 224,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 62,
+     "name": "chair",
+     "type": "Furniture",
+     "x": 3984,
+     "y": 288,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "n"
+      }
+     ]
+    },
+    {
+     "id": 63,
+     "name": "chair",
+     "type": "Furniture",
+     "x": 2096,
+     "y": 544,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "n"
+      }
+     ]
+    },
+    {
+     "id": 64,
+     "name": "chair",
+     "type": "Furniture",
+     "x": 2160,
+     "y": 544,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "n"
+      }
+     ]
+    },
+    {
+     "id": 65,
+     "name": "chair",
+     "type": "Furniture",
+     "x": 2224,
+     "y": 544,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "n"
+      }
+     ]
+    },
+    {
+     "id": 66,
+     "name": "chair",
+     "type": "Furniture",
+     "x": 2288,
+     "y": 544,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "n"
+      }
+     ]
+    },
+    {
+     "id": 67,
+     "name": "chair",
+     "type": "Furniture",
+     "x": 2480,
+     "y": 544,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "n"
+      }
+     ]
+    },
+    {
+     "id": 68,
+     "name": "chair",
+     "type": "Furniture",
+     "x": 2544,
+     "y": 544,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "n"
+      }
+     ]
+    },
+    {
+     "id": 69,
+     "name": "chair",
+     "type": "Furniture",
+     "x": 2608,
+     "y": 544,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "n"
+      }
+     ]
+    },
+    {
+     "id": 70,
+     "name": "barrel",
+     "type": "Furniture",
+     "x": 1904,
+     "y": 736,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 71,
+     "name": "barrel",
+     "type": "Furniture",
+     "x": 1904,
+     "y": 800,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 72,
+     "name": "chair",
+     "type": "Furniture",
+     "x": 2096,
+     "y": 800,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "n"
+      }
+     ]
+    },
+    {
+     "id": 73,
+     "name": "chair",
+     "type": "Furniture",
+     "x": 2256,
+     "y": 800,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "n"
+      }
+     ]
+    },
+    {
+     "id": 74,
+     "name": "chair",
+     "type": "Furniture",
+     "x": 2416,
+     "y": 800,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "n"
+      }
+     ]
+    },
+    {
+     "id": 75,
+     "name": "barrel",
+     "type": "Furniture",
+     "x": 3248,
+     "y": 800,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 76,
+     "name": "barrel",
+     "type": "Furniture",
+     "x": 3280,
+     "y": 800,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 77,
+     "name": "wall-screen",
+     "type": "Furniture",
+     "x": 1616,
+     "y": 864,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 78,
+     "name": "wall-screen",
+     "type": "Furniture",
+     "x": 2064,
+     "y": 864,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 79,
+     "name": "wall-screen",
+     "type": "Furniture",
+     "x": 2640,
+     "y": 864,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 80,
+     "name": "wall-screen",
+     "type": "Furniture",
+     "x": 3152,
+     "y": 864,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 81,
+     "name": "wall-screen",
+     "type": "Furniture",
+     "x": 3664,
+     "y": 864,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 82,
+     "name": "wall-screen",
+     "type": "Furniture",
+     "x": 3472,
+     "y": 1184,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 83,
+     "name": "shelf",
+     "type": "Furniture",
+     "x": 2448,
+     "y": 1248,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 84,
+     "name": "shelf",
+     "type": "Furniture",
+     "x": 2960,
+     "y": 1248,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 85,
+     "name": "barrel",
+     "type": "Furniture",
+     "x": 1424,
+     "y": 1312,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 86,
+     "name": "barrel",
+     "type": "Furniture",
+     "x": 2352,
+     "y": 1312,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 87,
+     "name": "barrel",
+     "type": "Furniture",
+     "x": 2384,
+     "y": 1312,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 88,
+     "name": "barrel",
+     "type": "Furniture",
+     "x": 1424,
+     "y": 1376,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 89,
+     "name": "cot",
+     "type": "Furniture",
+     "x": 3984,
+     "y": 1632,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "n"
+      }
+     ]
+    },
+    {
+     "id": 90,
+     "name": "barrel",
+     "type": "Furniture",
+     "x": 2128,
+     "y": 1824,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 91,
+     "name": "barrel",
+     "type": "Furniture",
+     "x": 2160,
+     "y": 1824,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 92,
+     "name": "barrel",
+     "type": "Furniture",
+     "x": 3248,
+     "y": 1824,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 93,
+     "name": "barrel",
+     "type": "Furniture",
+     "x": 3280,
+     "y": 1824,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 94,
+     "name": "barrel",
+     "type": "Furniture",
+     "x": 3760,
+     "y": 1824,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 95,
+     "name": "barrel",
+     "type": "Furniture",
+     "x": 2128,
+     "y": 1888,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 96,
+     "name": "barrel",
+     "type": "Furniture",
+     "x": 3248,
+     "y": 1888,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 97,
+     "name": "barrel",
+     "type": "Furniture",
+     "x": 3728,
+     "y": 1888,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 98,
+     "name": "barrel",
+     "type": "Furniture",
+     "x": 3760,
+     "y": 1888,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 99,
+     "name": "barrel",
+     "type": "Furniture",
+     "x": 3920,
+     "y": 1888,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 100,
+     "name": "barrel",
+     "type": "Furniture",
+     "x": 3952,
+     "y": 1888,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
       }
      ]
     }

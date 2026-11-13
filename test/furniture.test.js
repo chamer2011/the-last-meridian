@@ -17,12 +17,14 @@ process.env.GAME_DATA_DIR = path.join(tmp, "data");
 process.env.GAME_MAPS_DIR = path.join(tmp, "maps");
 process.env.GAME_LIFE_DIR = path.join(tmp, "life");
 
-// Deck 1's copy gets a table and a chair in the bridge, and a window in its forward wall, before the game reads it.
+// Deck 1's copy gets a table and a chair in the bridge, and a window in its forward wall, before the game reads it, in
+// place of the furniture the deck has, so these tests don't change when the decks are furnished differently.
 const deckFile = (deck) => path.join(tmp, "maps", "meridian", `${deck}.tmj`);
 const square = (x, y) => ({ x: ((x + 0.5) / 2) * 64, y: (y + 0.5) * 64 });
 const piece = (id, kind, x, y, facing) => ({ id, name: kind, type: "Furniture", ...square(x, y), width: 0, height: 0, rotation: 0, point: true, visible: true, properties: facing ? [{ name: "facing", type: "string", value: facing }] : [] });
 const withFurniture = (file, objects, extra = (json) => json) => {
   const json = JSON.parse(fs.readFileSync(file, "utf8"));
+  json.layers = json.layers.filter((layer) => layer.name !== "Furniture");
   json.layers.push({ id: 90, name: "Furniture", type: "objectgroup", visible: true, opacity: 1, x: 0, y: 0, objects });
   return JSON.stringify(extra(json));
 };
@@ -119,8 +121,10 @@ test("the room shows the furniture, and things that look like furniture say so, 
   assert.ok(pieces.some((one) => one.kind === "table" && one.shadow));
   assert.ok(pieces.some((one) => one.kind === "command-chair"));
   assert.ok(pieces.some((one) => one.kind === "plot-table"));
+  // A part of the ship's systems mounted on that wall square has it, and the window gives way; otherwise it's there.
   const window = pieces.find((one) => one.kind === "window");
-  assert.equal(window.face, "s");
+  if (view.things.some((thing) => thing.part?.mount === "wall" && thing.x === 24 && thing.y === 1)) assert.equal(window, undefined);
+  else assert.equal(window.face, "s");
   assert.ok(!scene.fixtures.some((one) => one.x === 24 && one.y === 1));
   assert.ok(scene.lights.some((one) => one.color === "#7dffa8"));
 });

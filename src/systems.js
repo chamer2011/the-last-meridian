@@ -97,7 +97,7 @@ export function wallSpots(level, claimed = new Set(), area = null) {
 // Rooms with no such walls get a standing unit on the floor instead, at the edge, where it can't block the way.
 export function floorSpot(level, taken, index, count, claimed = new Set(), area = null) {
   const inArea = (x, y) => !area || level.areaAt(x, y) === area.id;
-  const walkable = (x, y) => Boolean(level.open[y]?.[x]) && !level.solid.has(`${x},${y}`) && !taken.has(`${x},${y}`) && !claimed.has(`${x},${y}`) && inArea(x, y);
+  const walkable = (x, y) => Boolean(level.open[y]?.[x]) && !level.solid.has(`${x},${y}`) && !level.furnished?.has(`${x},${y}`) && !taken.has(`${x},${y}`) && !claimed.has(`${x},${y}`) && inArea(x, y);
   const homes = new Set(level.homes.map((home) => `${home.x},${home.y}`));
   const nearExit = (x, y) => level.exits.some((exit) => Math.abs(exit.x - x) + Math.abs(exit.y - y) <= 2);
   const candidates = [];

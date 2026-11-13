@@ -3148,8 +3148,8 @@ const KIT = {
 };
 // How high each piece stands, in the game's units, and how much of the floor its shadow covers (half across and half
 // deep, from its middle, before it's turned).
-const PIECE_TOP = { chair: 0.95, "command-chair": 1.35, table: 0.76, "long-table": 0.76, desk: 1.1, bunk: 1.5, cot: 0.62, locker: 1.5, shelf: 1.6, "plot-table": 1.5, screen: 1.2, kettle: 1.06, barrel: 0.8, plant: 0.9, basin: 0.86 };
-const PIECE_SHADOW = { chair: [0.17, 0.17], "command-chair": [0.4, 0.4], table: [0.45, 0.45], "long-table": [0.95, 0.43], desk: [0.46, 0.25], bunk: [0.45, 0.95], cot: [0.4, 0.9], locker: [0.2, 0.2], shelf: [0.46, 0.21], "plot-table": [0.46, 0.46], screen: [0.12, 0.08], kettle: [0.42, 0.42], barrel: [0.17, 0.17], plant: [0.14, 0.14], basin: [0.2, 0.16] };
+const PIECE_TOP = { chair: 0.95, bench: 0.5, "command-chair": 1.35, table: 0.76, "long-table": 0.76, desk: 1.1, bunk: 1.5, cot: 0.62, locker: 1.5, shelf: 1.6, "plot-table": 1.5, screen: 1.2, kettle: 1.06, barrel: 0.8, plant: 0.9, basin: 0.86 };
+const PIECE_SHADOW = { chair: [0.17, 0.17], bench: [0.92, 0.17], "command-chair": [0.4, 0.4], table: [0.45, 0.45], "long-table": [0.95, 0.43], desk: [0.46, 0.25], bunk: [0.45, 0.95], cot: [0.4, 0.9], locker: [0.2, 0.2], shelf: [0.46, 0.21], "plot-table": [0.46, 0.46], screen: [0.12, 0.08], kettle: [0.42, 0.42], barrel: [0.17, 0.17], plant: [0.14, 0.14], basin: [0.2, 0.16] };
 const BLANKETS = ["#4a5a44", "#3e4f66", "#6a4a3a", "#5a4f63", "#4d5a5e"];
 const SHELF_GOODS = ["#7a6a4e", "#5d6e7a", "#8a5a3a", "#6e7a5a", "#b0a890"];
 
@@ -3167,7 +3167,8 @@ function partRect(piece, a0, a1, b0, b1) {
 // The furniture in a scene: what's drawn on the level, and the things that look like a piece of it.
 function furnish(view, { kinds, heights, blocks, painted }) {
   const lights = [];
-  const wallUsed = new Set();
+  // A part of the ship's systems mounted on a wall square has it; a window or a screen there gives way.
+  const wallUsed = new Set((view.things ?? []).filter((thing) => thing.part?.mount === "wall").map((thing) => `${thing.x},${thing.y}`));
   const floorAt = (x, y) => seeThrough(kinds[y]?.[x]);
   const pieces = [...(view.furniture ?? [])];
   for (const thing of view.things ?? []) {
@@ -3320,6 +3321,10 @@ function drawPiece(painter, piece) {
   const steelColors = [KIT.steel, KIT.steelDark, KIT.frameDeep];
   const laminateColors = [KIT.laminate, KIT.laminateEdge, scaled(KIT.laminateEdge, 0.7)];
   switch (piece.kind) {
+    case "bench":
+      for (const a of [-0.8, 0.74]) put(part(a, a + 0.06, -0.12, 0.12), 0, 0.42, steelColors);
+      put(part(-0.92, 0.92, -0.16, 0.16), 0.42, 0.49, laminateColors);
+      break;
     case "chair":
       put(part(-0.12, 0.12, -0.12, 0.12), 0, 0.035, [KIT.frameDark, KIT.frameDeep, KIT.frameDeep]);
       put(part(-0.025, 0.025, -0.025, 0.025), 0.035, 0.38, frameColors);

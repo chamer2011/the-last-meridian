@@ -48,7 +48,8 @@ const enter = (game, id) => walkCommand(game, { action: "room", to: id }).walk;
 
 // The squares a person, a thing, an exit or a label takes up on a level.
 const run = (x, y, length, side = "right") => Array.from({ length }, (_, i) => `${side === "left" ? x - i : x + i},${y}`);
-const paved = (view, x, y) => ["floor", "doors"].some((layer) => view.layers[layer][y]?.[x] && view.layers[layer][y][x] !== " ");
+// Floor or a doorway on the plan, and not under furniture that's in the way, which the room's own floor knows.
+const paved = (view, x, y) => ["floor", "doors"].some((layer) => view.layers[layer][y]?.[x] && view.layers[layer][y][x] !== " ") && view.floor[y]?.[x] === ".";
 const standable = (view) => {
   const cells = [];
   for (let y = 0; y < view.lines; y += 1) {
@@ -128,7 +129,7 @@ test("the decks are different from each other, and the rooms on them are the shi
     return FILE.levels[level.id].plan.slice(area.y, area.y + area.h).map((row) => row.slice(area.x, area.x + area.w)).join("\n");
   };
   assert.match(art("engineering"), /\*\*\*\*\*/, "the reactor");
-  assert.match(art("mess"), /======/, "the long tables");
+  assert.ok(MAP.rooms.mess.level.furniture.filter((piece) => piece.kind === "long-table" && MAP.rooms.mess.level.areaAt(piece.x, piece.y) === "mess").length >= 4, "the long tables");
   const deck1 = FILE.levels.deck1.plan.join("\n");
   assert.ok(deck1.includes("*") && deck1.includes("'"), "stars outside the bridge");
   assert.match(art("aft"), /\[\]\[\]\[\]/, "the crates");
