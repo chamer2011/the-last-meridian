@@ -410,3 +410,27 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
   ledger, Haven's registry, a Navy relay, the Pale Wren's dead bridge computer: "later" on the plan), a camera in the
   Main Passage (the plan's try-it: for the captain the Armory is theirs anyway), pan, Accounts and Navigation, and the
   story knowing (step 7). The owner hasn't tried it.
+
+## The ship's network: decided and planned (2026-11-13, after step 6)
+
+- They asked: "To push this further, all of the systems in the ship should be connected in the network sessions in the
+  computer. The vulnerabilies of different computer lies in other part of the networks and some computer cannot be
+  hacked locally but we must go from another part of the networks", and to be shown examples.
+- Three playable readings on https://claude.ai/artifact/Vf4pZfHUVhXXnaSkwysKf4 (source in my scratchpad only), all on
+  one map of the Meridian's network (three deck bands; terminals, door panels, junction boxes, cameras, the comms
+  relay, NAVCOM 7, the reactor's safety controller; the data network and the maintenance bus): **A**, one map, many
+  routes (open the Armory from the Long Mess: through the security desk is short and caught, through JB-2 on the bus
+  is quiet but you walk there and plug in); **B**, the weak point lives elsewhere (Brandt's open breakfast session
+  into her ledger, the cameras' old cam/cam account into the security desk's mail, the Armory code there); **C**,
+  sealed from the front (NAVCOM 7's crew file opens only from Voss's terminal: the comms relay gets navigation only;
+  the medbay records, which her terminal trusts, then her idle session, then NAVCOM as her). My pick: all three as
+  layers in that order. They said **"All three, layered"**.
+- The hacking plan page (https://claude.ai/artifact/BFxFQGccmF8xjFWQeoY658, version 8) now has ten steps: 7 the ship's
+  network (the Network folder as a map of the place's network, moving along it, joining from any port), 8 weak points
+  elsewhere, 9 sealed systems and trust, and 10 the story knows (moved from 7, now also seeing the network), with
+  seven more choices and my picks: the map in any computer's Network folder; every place with systems, worked out
+  from its systems file, the Meridian's by hand first; the captain passes through the Meridian's own systems freely
+  except sealed ones and private terminals; plugging in at a box or camera can be seen; a hop is two minutes and a
+  point of noise at each end; NAVCOM's crew file sealed to the first officer's terminal (it's open to the captain
+  since step 6); weak points by hand for the Meridian's key systems and from patterns for the rest.
+- Build only the step they name.
