@@ -169,6 +169,26 @@ test("a sleeper left on a computer that runs doors unlocks them at 02:00", () =>
   assert.equal(game.rig.timers.length, 0);
 });
 
+test("every program runs on a computer that has what it needs, and what's left behind comes due without trouble", () => {
+  const game = newGame();
+  const content = { ...CONSOLE, network: [{ id: "meridian_reactor_gauges", desc: "Engineering." }] };
+  const everyOne = programsNow().list.filter((p) => p.kind !== "in");
+  for (const p of everyOne) {
+    if (!p.builtIn && !game.rig.programs.includes(p.id)) game.rig.programs.push(p.id);
+    game.rig.loaded = p.builtIn ? [] : [p.id];
+    sitAt(game, { content, maxTrace: 20 });
+    run(game, p.id);
+    const words = game.computer.screen.lines.map((l) => l.text).join(" ");
+    assert.doesNotMatch(words, /won't run|isn't in the game/, `${p.name}: ${words}`);
+    computerCommand(game, { action: "logoff" });
+  }
+  assert.equal(everyOne.length, 19);
+  assert.ok(game.passwords?.meridian_reactor_gauges && game.passwords?.test_console, "WORM and BACKDOOR left passwords");
+  assert.ok(game.rig.timers.some((t) => t.kind === "saboteur") && game.rig.timers.some((t) => t.kind === "sniffer"));
+  passTime(game, 30);
+  assert.equal(game.rig.timers.length, 0, "the sleeper, the saboteur and the sniffer have all come due");
+});
+
 test("an old save gets the rig", () => {
   const game = newGame();
   const old = JSON.parse(JSON.stringify({ ...game, version: 24 }));

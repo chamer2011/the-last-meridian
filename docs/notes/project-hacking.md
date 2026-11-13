@@ -142,8 +142,10 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
   bought shows no Hacking to write, and says where it comes from once.
 - Found while checking and fixed: every click on the desktop typed the session log's newest lines out again, so the log
   blinked (`comp.seen` now moves on once a drawing has shown them, in `computerNode`); MASK's result repeated its
-  description word for word.
-- Tests: `test/rig.test.js` (12). Older tests moved to version 25 and 65 items, and the two computer tests that keep the
+  description word for word; BACKDOOR was filed under getting in, so it never ran inside a computer, and is under
+  leaving things behind now, where its words put it.
+- Tests: `test/rig.test.js` (13, one of them running every program that works inside a computer and letting what's
+  left behind come due). Older tests moved to version 25 and 65 items, and the two computer tests that keep the
   password from the browser now look for a `"password"` key, since the programs' words say "passwords".
 - Screens, on a test copy (port 3297, its own data folder, three saves made with the game's own code), at 1400 and 810
   wide: the Rig page at the bench, writing CLEANER (two hours on the clock, not loaded for want of room); the plot table's

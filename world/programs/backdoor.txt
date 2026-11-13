@@ -1,6 +1,6 @@
 # BACKDOOR.EXE
 order: 6
-kind: in
+kind: leave
 hacking: 8
 size: 3
 power: 3
