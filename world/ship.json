@@ -58,12 +58,13 @@
   },
 
   "chair": {
-    "_note": "Who captains the Meridian if the player isn't the captain. One of these is chosen for each game, and each has a file in world/characters and a day in world/life/meridian.json. moveAt is how few days of a supply they'll let it come to before leaving to get more, stockTo is how many days of it they buy up to, restDays is the fewest days between jumps, and risk is the most dangerous place they'll take the ship (see world/starmap.json). funds is what they start with to buy supplies, and income is what comes in each day. fuelReserve is the fuel they try to carry, fuelLow is when they go and get more whatever else is happening, and desperate is how few days of anything will make them jump again straight away. ports are the places a ship like this would go.",
+    "_note": "Who captains the Meridian if the player isn't the captain. One of these is chosen for each game, and each has a file in world/characters and a day in world/life/meridian.json. moveAt is how few days of a supply they'll let it come to before leaving to get more, stockTo is how many days of it they buy up to, restDays is the fewest days between jumps, and risk is the most dangerous place they'll take the ship (see world/starmap.json). funds is what they start with to buy supplies, and income is what comes in each day. fuelReserve is the fuel they try to carry, keep is the fewest crates of a supply they'll sail with however long the ship's use says it would last (a sickness or a bad week can take several crates at once), fuelLow is when they go and get more whatever else is happening, and desperate is how few days of anything will make them jump again straight away. ports are the places a ship like this would go.",
     "funds": 600,
     "income": 60,
     "lotsAtOnce": 4,
     "buyEvery": 3,
     "fuelReserve": 6,
+    "keep": { "medicine": 4 },
     "fuelLow": 3,
     "desperate": 3,
     "ports": ["haven", "kessara", "graveyard", "frontier", "cinder", "deepyards", "korrath", "lumen", "maris", "wheel", "ghostlight"],

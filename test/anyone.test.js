@@ -398,11 +398,14 @@ test("the ship goes on by itself: whoever has the chair moves her when she needs
   const funds = game.ship.chair.funds;
   const places = new Set();
   let bought = false;
+  const daysOut = [];
   for (let day = 0; day < 120; day += 1) {
     const before = game.ship.chair.funds;
     days(game, 1);
     if (game.ship.chair.funds < before + CHAIR.income) bought = true;
     if (game.ship.at) places.add(game.ship.at);
+    // The stories' clocks take medicine several crates at a time, so the chair keeps a few however little a day uses.
+    if (game.ship.out?.medicine > 0) daysOut.push(day + 1);
     assert.equal(game.arrived ?? null, null, "nothing's waiting on them");
     assert.equal(game.location, "haven", "and they haven't been taken anywhere");
   }
@@ -411,6 +414,7 @@ test("the ship goes on by itself: whoever has the chair moves her when she needs
   assert.ok(bought, `she never bought anything: ${funds}`);
   for (const place of places) assert.ok(CHAIR.ports.includes(place), place);
   assert.ok(stockOf(game, "food") > 0 && stockOf(game, "medicine") > 0, "and she's kept fed");
+  assert.deepEqual(daysOut, [], `and she's never out of medicine (body seed ${game.bodySeed})`);
 });
 
 test("someone away from the Meridian doesn't go hungry with her, or hear her troubles, or heal slower for them", () => {

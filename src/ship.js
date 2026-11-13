@@ -357,7 +357,11 @@ function shipNeeds(game) {
 function chairBuys(game, chair, notes) {
   const ship = game.ship;
   const prices = mapSpot(ship.at)?.trade;
-  if (!prices || ship.day - ship.chair.lastBuy < CHAIR.buyEvery) return;
+  if (!prices) return;
+  // Nobody shops every day, but nobody waits to buy what's run out altogether, either.
+  const runOut = shipNeeds(game).some((need) => need.days === 0 && prices[need.id]);
+  if (ship.day - ship.chair.lastBuy < CHAIR.buyEvery && !runOut) return;
+  const keep = CHAIR.keep ?? {};
   const bought = [];
   for (const { id } of shipNeeds(game)) {
     if (!prices[id]) continue;
@@ -366,7 +370,9 @@ function chairBuys(game, chair, notes) {
       const days = shipNeeds(game).find((need) => need.id === id).days;
       const price = Math.round(prices[id] * supplyFactor(game, ship.at, id) * SUPPLIES[id].lot);
       // A ship with fuel can go and get anything else, so nobody sails with less than this if they can help it.
-      const wanted = id === "fuel" ? ship.fuel < CHAIR.fuelReserve || days < chair.stockTo : days < chair.stockTo;
+      // A few crates of what goes in lumps are kept whatever the days say: one crate of medicine lasts months of
+      // everyday use, and a fever or a bad week can take three at once.
+      const wanted = id === "fuel" ? ship.fuel < CHAIR.fuelReserve || days < chair.stockTo : days < chair.stockTo || stockOf(game, id) < (keep[id] ?? 0);
       if (!wanted || ship.chair.funds < price || (id === "fuel" && ship.fuel >= ship.maxFuel) || roomFor(game, id) < SUPPLIES[id].lot) break;
       ship.chair.funds -= price;
       if (id === "fuel") ship.fuel = Math.min(ship.maxFuel, ship.fuel + SUPPLIES[id].lot);
