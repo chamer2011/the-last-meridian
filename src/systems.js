@@ -888,6 +888,13 @@ export function setDoor(game, place, room, how, { by = "player", recode = false 
   return lines;
 }
 
+// Seen plugging into the place's own box or camera (src/devices.js): the same as being seen tampering.
+export function seenTampering(game, place, who) {
+  const model = systemsOf(place);
+  if (!model) return [];
+  return [`[SYSTEMS] ${who ? `${who[0].toUpperCase()}${who.slice(1)} saw` : "Someone saw"} you plug into ${model.name}'s systems.`, ...seenCost(game, place, model)];
+}
+
 // Whoever holds the place hears about it, and it goes on the record for the stories.
 function seenCost(game, place, model) {
   const lines = [];

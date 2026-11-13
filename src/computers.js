@@ -21,6 +21,7 @@ import { CHECK_TEXT, COMPUTER_FLAVOR, WORLD_COMPUTERS, WORLD_MAPS } from "./worl
 import { controlsFor, controlsView, partWorks, roomPowered, runsSystems } from "./systems.js";
 import { rigHeat, rigInComputer } from "./rig.js";
 import { LINK_WORDS, LOOKS, deviceView, lookOf, reachOf, rigReaches } from "./devices.js";
+import { networkView } from "./network.js";
 
 
 export const slug = (words) => String(words).toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40);
@@ -270,7 +271,7 @@ export const knowsPassword = (game, id) => Boolean(id && game.passwords?.[id]);
 // at is what the player sat down at, as the room's marks name it, for the window's line to point at. locked is a
 // session still at the computer's logon; practice is one that counts for nothing; story is the scene's check it's for
 // ({ id, reason, source, difficulty }); doorRule is a map file's door that opens when the player gets in.
-export function openSession(game, content, { hacked = false, locked = false, noise = 0, how = "sat down", at = null, practice: practising = false, story = null, doorRule = null }) {
+export function openSession(game, content, { hacked = false, locked = false, noise = 0, how = "sat down", at = null, practice: practising = false, story = null, doorRule = null, remote = false }) {
   if (game.combat) throw new Error("Finish the fight first.");
   if (game.computer) throw new Error("Log off the computer you're on first.");
   game.computers ??= {};
@@ -306,6 +307,8 @@ export function openSession(game, content, { hacked = false, locked = false, noi
     startedAt: game.clock?.hours ?? 0,
     roomId: content.roomId ?? null,
     at,
+    // Reached over the network from another system (src/network.js), not plugged into here.
+    remote: Boolean(remote),
   };
   const session = game.computer;
   if (!yours) session.noticed = session.noise >= watchFor(game, session.classKey).notices;
@@ -326,9 +329,9 @@ export function openSession(game, content, { hacked = false, locked = false, noi
 
 // Opening a computer the player wants to get into: straight in when it's theirs or they know its password, else at
 // its logon. A computer to practise on is never theirs.
-export function openLogon(game, content, { at = null, practice: practising = false, story = null, doorRule = null } = {}) {
-  if (!practising && (content.yours || knowsPassword(game, content.id))) return openSession(game, content, { how: content.yours ? "sat down" : "the password", at, story, doorRule });
-  return openSession(game, practising ? { ...content, yours: false } : content, { locked: true, how: "logon", at, practice: practising, story, doorRule });
+export function openLogon(game, content, { at = null, practice: practising = false, story = null, doorRule = null, remote = false, noise = 0 } = {}) {
+  if (!practising && (content.yours || knowsPassword(game, content.id))) return openSession(game, content, { how: content.yours ? "sat down" : "the password", at, story, doorRule, remote, noise });
+  return openSession(game, practising ? { ...content, yours: false } : content, { locked: true, how: "logon", at, practice: practising, story, doorRule, remote, noise });
 }
 
 // The player is past the logon: as whom, and how. What asked for the hack hears that it worked.
@@ -545,8 +548,10 @@ export function computerView(game) {
     logon: session.locked ? { ways: rig?.ways ?? [], keycard: Boolean(game.inventory?.keycard) } : null,
     // Its look, what reaches it and whether the rig does, and what the look shows and offers (src/devices.js).
     look: session.look ?? lookOf(content),
-    reach: { link: reachOf(content), words: LINK_WORDS[reachOf(content)], ok: rigReaches(game, content) },
+    reach: { link: reachOf(content), words: LINK_WORDS[reachOf(content)], ok: Boolean(session.remote) || rigReaches(game, content), remote: Boolean(session.remote) },
     device: deviceView(game, session, content),
+    // The place's network as a map, once past the logon (src/network.js).
+    netmap: inside ? networkView(game, session) : null,
   };
   view.hints = hintsFor(game, session, content, view);
   return view;

@@ -434,3 +434,58 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
   point of noise at each end; NAVCOM's crew file sealed to the first officer's terminal (it's open to the captain
   since step 6); weak points by hand for the Meridian's key systems and from patterns for the rest.
 - Build only the step they name.
+
+## Step 7, the ship's network (built 2026-11-13, at "Yes, step 7")
+
+- "Yes, step 7" took the seven picks on the plan page. Of them, step 7 uses: the map in any computer's Network folder;
+  every place with systems gets a network worked out from its systems file (the Meridian's with a link by hand); the
+  captain goes through the Meridian's own systems freely; plugging in at a box or a camera can be seen; a hop is two
+  minutes and a point of noise at each end. The crew file sealed to the first officer's terminal and the weak points
+  are steps 9 and 8.
+- **The network** is `src/network.js`. `networkOf(place)` is worked out once per systems model (a WeakMap): nodes are
+  the written computers (`c:<id>`), consoles, junction boxes, cameras and the relay (`part:<id>`), the door panels of
+  the doors a computer runs (`door:<room>`) and things used as terminals (`t:<level:thing>`), each with its room, its
+  deck band and its place fore to aft. Links: the **data network** from each computer to what it runs (its door
+  panels, cameras, the relay, and the junction boxes when it runs power) and between written computers that name each
+  other; the **maintenance bus** along the junction boxes by band and position, and from each box to the door panels
+  and the relay in the rooms it feeds; and a systems file's new **Network** part, "A to B[, bus]" by the map's names or
+  by kind and room (`public/systems-text.js` reads and writes it; `world/systems/meridian.txt` has "the records
+  terminal to the plot table"; the how-to has THE NETWORK). A line naming nothing is a checker problem.
+  `nodeOfSession` says where an open session is on it.
+- **A hop** (`hop`, through `computerCommand`'s `hop`): only to a node linked to where you are; the leaving session
+  takes the action's noise and minutes (`act`, so a watcher can still cut you off there, and then you never arrive);
+  if it holds, it's finished with a note, and the target opens through `openLogon` with `remote: true` and a point of
+  noise. On the player's own systems that's straight in; anywhere else it's the logon with the rig's breakers. Over
+  the network the rig is still plugged in where the player started, so `reachWhy` is skipped for a remote session
+  (`src/rig.js`, the copies too) and the view's `reach.ok` is true.
+- **Plugging in seen:** `openDevice` in `src/devices.js` asks `whoSees` (src/law.js) when the part isn't the player's
+  and is in their room, and `seenTampering` (new in `src/systems.js`) gives the line, the standing and the
+  `seen_tampering_at_<place>` fact.
+- **The map:** `networkView` sends the bands, the nodes with their order in their band (`i`), what's linked to here,
+  what's been visited and the links. `public/net-layout.js` (new, pure, tested) lays it out: a band per deck, the
+  boxes spread across it from half a box in on each side, and a crowded deck staggered over as many rows as keep two
+  boxes on one row apart (100 by 36 at most; names clamp at two lines, the full name in the tooltip). The page
+  (`netMapNode` in `public/computer.js`) draws the bands, the links behind (data solid blue, bus dashed amber, the
+  ones from here bolder) and the boxes: here outlined green, linked ones in dark type with a blue outline and
+  clickable, the rest greyed by the desktop's disabled look with a light fade. The Network folder's window is sized to
+  the map (`netWindow`); a door panel, a junction box or a camera has **The network** under its face. A hop keeps the
+  map open on the next system, desktop or face.
+- **Found and fixed while checking the screens:** boxes overlapped on decks of six (the layout moved to
+  `public/net-layout.js`, with a test that no two touch at the Meridian, at Haven or on a deck of thirty); a redraw
+  made a new monitor glass that stayed unscaled until measured, so a click straight after a redraw could land a row
+  off in the hidden test pane (the last scale is now carried over, `lastScale`); the map toggle stayed on into the
+  next, unrelated session (`showNet` resets); the news lines at the top left ran under the window after a hop (they
+  hide while a computer is open, as they do for the inventory and the log pages, `body:has(#computer) .pop-notes`).
+- Tests: `test/network.test.js` (6): the Meridian's 16 nodes and their links, the Network part round trip, hopping
+  aboard (two minutes, straight in, linked only, on along the bus to a junction box's menu), Haven (a logon, heard on
+  arrival, the rig's link irrelevant, cut off before arriving), the map laid out apart, and plugging in seen at Haven's
+  docks.
+- Screens on a test copy: at 1400, the records terminal's Network folder (the whole map, no scroll bars), a hop to the
+  plot table (NAVCOM, the map kept), on to the comms relay (its face, The network) and JB-3 (the map kept); at 810,
+  JB-3's face with the map, the records terminal's folder, Haven's berth board (one band of eleven in four staggered
+  rows) and the hop to the harbor master's machine, arriving at its logon. Two things about the test pane, not the
+  game: a click by reference scrolls `.game` sideways first (the closed menu drawer makes it scrollable), and a
+  screenshot can show the frame before.
+- Not done: weak points elsewhere (step 8), sealed systems and trust (step 9), the story knowing (step 10); going back
+  along the network from a logon you haven't got past (log off instead); the Story board keeps a Network part as
+  written but doesn't draw it. The owner hasn't tried it.

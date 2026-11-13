@@ -690,6 +690,9 @@ button.watch-person.moving { background: var(--warn); color: var(--bg); }
 .bag-menu { z-index: 6; }
 /* The room's notes of what was just done would be under it, and it says the same in its own bottom line. */
 body:has(#bag) .pop-notes { visibility: hidden; }
+/* So does a computer: what happens at it is in its own session log, and going along the network from one to the next
+   would otherwise leave its lines under the window. */
+body:has(#computer) .pop-notes { visibility: hidden; }
 /* It isn't tall, so even on a short screen it starts below the status line and the room's clock. */
 @media (max-height: 700px) {
   .check-float.bag-float { padding-top: calc(max(10px, 3vh) + 5em); }

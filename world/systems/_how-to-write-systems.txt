@@ -156,6 +156,28 @@ Without a file, every console, panel or terminal at a place runs what's in its o
 server or a big computer runs everything.
 
 
+THE NETWORK
+-----------
+
+Every system the file knows is on the place's network, and a computer's Network folder shows it as a
+map you can move along. Most of it is worked out from the rest of the file:
+
+    - the data network: each computer to what it runs (the door panels of its doors, its cameras, the
+      comms relay, and the junction boxes when it runs the power), and the computers in
+      world/computers whose own Network part names each other;
+    - the maintenance bus: along the junction boxes, deck by deck, and from each box to the door
+      panels and the comms relay in the rooms it feeds.
+
+A Network part adds links of your own, one a line, by the names on the map or by kind and room:
+
+    Network:
+    - the records terminal to the plot table
+    - the junction box in Engineering to the camera in The Aft Holds, bus
+
+", bus" at the end puts the link on the maintenance bus; without it, it's on the data network.
+Going along a link takes two minutes, and the watchers at both ends hear it.
+
+
 IN THE WRITTEN STORY
 --------------------
 

@@ -20,6 +20,7 @@ import { copyProgram, rigNow, runRigProgram, wearHottest } from "./rig.js";
 import { HEAT, rigMinutes, rigNoise, sessionHeat } from "./rig-parts.js";
 import { MAX_LOG, MINUTES_PER_ACTION, contentOf, knowsPassword, levelNamed, line, memoryOf, openLogon, openSession, peopleAt, programOffered, readNoise, sameName, settleHack, slug, watcherOf, watchStage, writtenContent } from "./computers.js";
 import { deviceCommand } from "./devices.js";
+import { hop } from "./network.js";
 
 // Found by the trace, or cut off: out at once. On a ship's main system or worse that leaves a mark on the record.
 function thrownOut(game, session, why = "traced") {
@@ -474,6 +475,8 @@ export function computerCommand(game, body) {
     case "copy": return copyProgram(game, session, content, String(body.id ?? ""), { act });
     // A door panel's, a junction box's, a camera's or NAVCOM 7's own buttons (src/devices.js).
     case "device": return deviceCommand(game, session, content, String(body.id ?? ""), { act, finish });
+    // Going along the network to the next system (src/network.js).
+    case "hop": return hop(game, session, String(body.id ?? ""), { act, finish });
     default: throw new Error("Unknown order.");
   }
 }

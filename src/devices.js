@@ -14,6 +14,8 @@ import { rigPartById, rigStats } from "./rig-parts.js";
 import { MAX_LOG, line, openLogon, knowsPassword } from "./computers.js";
 import { cameraFrozen, cameraLooped, cutFeed, doorLocked, endLoop, feedCut, feedsOf, loopCamera, ownedBy, partWorks, playerSpot, setDoor, switchPart, systemsOf } from "./systems.js";
 import { commandOf, holderKey, loyaltyOf, postAndName, rememberRequest, YOU } from "./command.js";
+import { whoSees } from "./law.js";
+import { seenTampering } from "./systems.js";
 import { peopleAboard } from "./life.js";
 import { mapFor } from "./walk.js";
 
@@ -60,11 +62,12 @@ export const reachWhy = (game, content) => (rigReaches(game, content) ? null : `
 
 // A part's short code, the way its makers stencilled it: JB-2 for the second junction box, CAM D2-01 for the first
 // camera on deck 2.
-function codeOf(place, part) {
+export function codeOf(place, part) {
   const model = systemsOf(place);
   const same = Object.values(model?.parts ?? {}).filter((one) => one.kind === part.kind);
   const n = same.findIndex((one) => one.id === part.id) + 1;
   if (part.kind === "junction box") return `JB-${n}`;
+  if (part.kind === "relay") return `RELAY ${n}`;
   const deck = /(\d+)$/.exec(mapFor(place)?.rooms?.[part.room]?.level?.id ?? "")?.[1];
   return `CAM ${deck ? `D${deck}-` : ""}${String(n).padStart(2, "0")}`;
 }
@@ -75,8 +78,8 @@ function deviceContent(game, place, part, look) {
   const room = plainRoom(place, part.room);
   return {
     id: `${place}:${look}:${part.id}`,
-    name: service ? `Junction box ${code}` : `Camera ${code.replace(/^CAM /, "")}`,
-    className: service ? "Junction box" : "Camera",
+    name: part.kind === "relay" ? "The comms relay" : service ? `Junction box ${code}` : `Camera ${code.replace(/^CAM /, "")}`,
+    className: part.kind === "relay" ? "Comms relay" : service ? "Junction box" : "Camera",
     classKey: "easy",
     yours: ownedBy(game, place),
     owner: null,
@@ -143,10 +146,13 @@ function openDevice(game, body, look) {
   if (!reachable || part.kind !== (look === "service" ? "junction box" : "camera")) throw new Error("That isn't here.");
   const why = deviceWhy(game, place, part, look);
   if (why) throw new Error(`You can't: ${why}.`);
+  // Plugging into someone else's box or camera in front of people is seen, like any tampering (step 7).
+  const seen = !ownedBy(game, place) && part.room === room ? whoSees(game, place, room) : null;
+  const notes = seen ? seenTampering(game, place, seen.camera ? "a camera" : seen.name) : [];
   const content = deviceContent(game, place, part, look);
   const session = openLogon(game, content, { at: part.room === room ? `thing:part:${part.id}` : null });
   const what = look === "service" ? `You clip onto ${content.name}'s service port` : `Your radio finds the feed of ${lowerFirst(content.name)} in ${inSentence(content.room)}`;
-  return { said: `${what}${session.locked ? ": it wants a password." : "."}`, computer: true };
+  return { said: [`${what}${session.locked ? ": it wants a password." : "."}`, ...notes].join("\n"), computer: true };
 }
 addOrder("device-service", (game, body) => openDevice(game, body, "service"));
 addOrder("device-camera", (game, body) => openDevice(game, body, "camera"));

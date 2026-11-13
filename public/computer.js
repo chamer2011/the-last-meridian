@@ -10,6 +10,7 @@
 
 import { api, el } from "./dom.js";
 import { leaderNode, pullable } from "./float.js";
+import { NET_MAP, layOutNetMap } from "./net-layout.js";
 
 const comp = { id: null, view: null, sending: false, message: null, seen: 0, advisor: true };
 
@@ -39,7 +40,7 @@ const startWindows = () => ({
 });
 
 export function resetComputer() {
-  Object.assign(comp, { id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1 });
+  Object.assign(comp, { id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1, showNet: false });
 }
 resetComputer();
 
@@ -52,9 +53,19 @@ function sync() {
     return;
   }
   if (live.id !== comp.id) {
+    // Going along the network to the next system keeps the map open, to go on from there: in the Network folder on a
+    // desktop, and under the face of a door's panel, a junction box or a camera.
+    const onTheMap = (comp.folder === "network" && comp.wins?.list?.open) || comp.showNet;
     resetComputer();
     comp.id = live.id;
     comp.screenKey = screenKey(live.screen);
+    if (onTheMap && live.netmap) {
+      comp.showNet = true;
+      comp.folder = "network";
+      Object.assign(comp.wins.list, netWindow(live.netmap), { open: true });
+      comp.top = "list";
+      comp.z.list = Math.max(...Object.values(comp.z)) + 1;
+    }
   }
   // Something new opened: the viewer comes up in front with it.
   const key = screenKey(live.screen);
@@ -139,7 +150,7 @@ const NAVCOM_FOLDERS = [
 ];
 // What a folder holds: the computer's own lists, the programs it has to copy, the rig's loaded programs, and on NAVCOM 7
 // the ship's log and the crew assessments.
-const folderItems = (view, id) => (id === "rig" ? view.rig?.loaded ?? [] : id === "programs" ? [...view.programs, ...(view.rig?.copies ?? []).map((one) => ({ ...one, copy: true }))] : id === "shiplog" ? view.device?.shipLog ?? [] : id === "crew" ? view.device?.crew?.list ?? [] : view[id] ?? []);
+const folderItems = (view, id) => (id === "rig" ? view.rig?.loaded ?? [] : id === "programs" ? [...view.programs, ...(view.rig?.copies ?? []).map((one) => ({ ...one, copy: true }))] : id === "shiplog" ? view.device?.shipLog ?? [] : id === "crew" ? view.device?.crew?.list ?? [] : id === "network" && view.netmap ? view.netmap.nodes.filter((one) => one.linked) : view[id] ?? []);
 const allFolders = (view) => (view.look === "navcom" ? [...FOLDERS, ...NAVCOM_FOLDERS] : FOLDERS);
 const foldersHere = (view) => allFolders(view).filter(([id]) => folderItems(view, id).length > 0);
 
@@ -274,9 +285,13 @@ function raise(id) {
   comp.z[id] = Math.max(...Object.values(comp.z)) + 1;
 }
 
+// The Network folder's window: wide enough for the map, and tall enough for all of it where the desktop has the room.
+const netWindow = (map) => ({ x: 84, y: 6, w: 486, h: Math.min(420, layOutNetMap(map).height + 74) });
+
 function openFolder(id) {
   comp.folder = id;
   comp.wins.list.open = true;
+  if (id === "network" && comp.view?.netmap) Object.assign(comp.wins.list, netWindow(comp.view.netmap));
   raise("list");
   draw();
 }
@@ -286,6 +301,7 @@ function folderRows(view) {
   if (!folder) return [];
   const [id, , , kind] = folder;
   const { screen } = view;
+  if (id === "network" && view.netmap) return [netMapNode(view.netmap)];
   if (id === "shiplog") {
     return view.device.shipLog.map((entry) => el("div", { class: "row-item navcom-line" },
       el("span", {}, el("small", {}, entry.day), " ", entry.text),
@@ -356,7 +372,7 @@ function osNode(view, watch) {
     ondblclick: (event) => { event.stopPropagation(); openFolder(id); },
   }, picture(pic), el("span", {}, `${name} (${folderItems(view, id).length})`))));
   const folder = allFolders(view).find(([id]) => id === comp.folder);
-  const list = !view.locked && folder && winNode("list", `${folder[1]} - ${view.name}`, folder[2], el("div", { class: "pane-in sunk" }, el("div", { class: "rows" }, folderRows(view))), [folder[0] === "rig" ? `${view.rig.used} of ${view.rig.memory} blocks used` : `${folderItems(view, folder[0]).length} ${folder[0] === "mail" ? "letters" : "objects"}`, comp.sending ? "Working..." : folder[0] === "rig" ? "Click one to run it" : folder[0] === "shiplog" ? "Strike a line to take it out" : folder[0] === "crew" ? "Restricted: the first officer's" : "Click one to open it"]);
+  const list = !view.locked && folder && winNode("list", `${folder[1]} - ${view.name}`, folder[2], el("div", { class: "pane-in sunk" }, el("div", { class: "rows" }, folderRows(view))), [folder[0] === "rig" ? `${view.rig.used} of ${view.rig.memory} blocks used` : `${folderItems(view, folder[0]).length} ${folder[0] === "mail" ? "letters" : "objects"}`, comp.sending ? "Working..." : folder[0] === "rig" ? "Click one to run it" : folder[0] === "shiplog" ? "Strike a line to take it out" : folder[0] === "crew" ? "Restricted: the first officer's" : folder[0] === "network" && view.netmap ? `Each hop: ${view.netmap.hop.minutes} min, heard at both ends` : "Click one to open it"]);
   const viewer = !view.locked && winNode("view", view.screen.kind === "home" ? `Welcome - ${view.name}` : view.screen.title ?? view.name, "txt", el("div", { class: "pane-in sunk viewer-in", id: "computer-screen" }, screenNode(view)), [view.hacked ? "Hacked" : view.yours ? "Yours" : "Logged in", view.className]);
   const log = winNode("log", "Session log", "log", el("div", { class: "pane-in sunk", id: "computer-console", role: "log" }, view.log.map((entry, i) => lineNode(entry, i >= comp.seen))), [`${view.actions} ${view.actions === 1 ? "action" : "actions"}`, view.prompt ?? ""]);
   const named = { list: list ? `${folder[1]}` : null, view: viewer ? "Viewer" : null, log: "Session log" };
@@ -421,9 +437,15 @@ function dragWindow(event) {
   bar.addEventListener("pointercancel", up);
 }
 
-// The desktop is drawn at 640 by 480 and scaled to fit the glass.
+// The desktop is drawn at 640 by 480 and scaled to fit the glass. Every redraw makes a new glass, which starts at the
+// last scale measured, so a click that comes before the new one is measured still lands where the desktop is seen.
+let lastScale = 0;
 const fitter = typeof ResizeObserver === "undefined" ? null : new ResizeObserver((entries) => {
-  for (const entry of entries) entry.target.style.setProperty("--s", String(entry.target.clientWidth / 640));
+  for (const entry of entries) {
+    const scale = entry.target.clientWidth / 640;
+    if (scale > 0) lastScale = scale;
+    entry.target.style.setProperty("--s", String(scale));
+  }
 });
 
 function advisorNode(view) {
@@ -432,6 +454,31 @@ function advisorNode(view) {
   return el("aside", { class: "desk-advisor", id: "computer-advisor", "aria-label": "Hints" },
     el("header", {}, el("span", {}, `ADVISOR: ${view.tierName.toUpperCase()}`), el("button", { title: "Put the hints away", onclick: (event) => { event.stopPropagation(); toggleAdvisor(); } }, "x")),
     el("div", { class: "lines", id: "computer-hints" }, view.hints.map((text) => el("div", {}, text))));
+}
+
+// ---- The place's network, as a map (step 7) ------------------------------------------------------------------
+
+const NET_KIND = { terminal: "TERM", door: "DOOR", junction: "BUS", camera: "CAM", relay: "RELAY" };
+// Each band (a deck, or the whole place) is a strip; each node a button at its place in it (public/net-layout.js); the
+// links are drawn behind. A node linked to the one you're on can be clicked to go there.
+function netMapNode(map, width = NET_MAP.width) {
+  const { bands, at, height } = layOutNetMap(map, width);
+  const lines = map.links.map((one) => `<line x1="${at[one.a].x}" y1="${at[one.a].y}" x2="${at[one.b].x}" y2="${at[one.b].y}" class="net-${one.net}${one.a === map.here || one.b === map.here ? " net-near" : ""}"/>`).join("");
+  const box = document.createElement("template");
+  box.innerHTML = `<svg class="net-lines" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" aria-hidden="true">${lines}</svg>`;
+  return el("div", { class: "netmap", style: `width:${width}px;height:${height}px`, role: "group", "aria-label": "The network" },
+    bands.map((band) => el("div", { class: "net-band", style: `top:${band.y}px;height:${band.height}px` }, el("span", {}, band.name))),
+    box.content.firstChild,
+    map.nodes.map((node) => el("button", {
+      class: `net-node net-${node.kind}${node.here ? " here" : ""}${node.linked ? " near" : ""}${node.visited ? " seen" : ""}`,
+      style: `left:${at[node.id].x}px;top:${at[node.id].y}px;max-width:${NET_MAP.box}px;max-height:${NET_MAP.boxHeight}px`,
+      disabled: comp.sending || !node.linked,
+      title: node.here ? `${node.name}: you're on this one` : node.linked ? `Go to ${node.name}: ${map.hop.minutes} min, heard here and there` : `${node.name}: not linked to where you are`,
+      onclick: (event) => {
+        event.stopPropagation();
+        send({ action: "hop", id: node.id });
+      },
+    }, el("small", {}, NET_KIND[node.kind] ?? ""), el("span", { class: "nm" }, node.name))));
 }
 
 // How hot the rig is, in the tray: nothing's plugged into the player's own computers.
@@ -508,7 +555,10 @@ function deviceWindow(view) {
     head, face, seen, reach,
     view.locked ? waysNode(view) : look === "service" ? null : actsNode(d.actions),
     el("div", { class: "device-log", id: "computer-console", role: "log" }, log.map((entry, i) => lineNode(entry, view.log.length - log.length + i >= comp.seen))),
-    el("div", { class: "device-foot" }, el("button", { disabled: comp.sending, onclick: (event) => { event.stopPropagation(); logOff(); } }, d.leave ?? "Log off")));
+    !view.locked && view.netmap && comp.showNet && el("div", { class: "device-net" }, netMapNode(view.netmap, 420)),
+    el("div", { class: "device-foot" },
+      !view.locked && view.netmap && el("button", { disabled: comp.sending, "aria-pressed": String(Boolean(comp.showNet)), onclick: (event) => { event.stopPropagation(); comp.showNet = !comp.showNet; draw(); } }, comp.showNet ? "Hide the network" : "The network"),
+      el("button", { disabled: comp.sending, onclick: (event) => { event.stopPropagation(); logOff(); } }, d.leave ?? "Log off")));
   return el("div", { class: "desk device", id: "computer-window", role: "dialog", "aria-label": view.name, tabindex: "-1" }, frame, advisorNode(view));
 }
 
@@ -518,7 +568,7 @@ function windowNode() {
   if (["door", "service", "camera"].includes(view.look)) return deviceWindow(view);
   // Nobody watches the player's own computers; any other has AuditGuard listening, from the logon on.
   const watch = view.watch ?? null;
-  const glass = el("div", { class: "glass" }, el("div", { class: "desk-screen" }, osNode(view, watch)), el("div", { class: "fx scan" }), el("div", { class: "fx vig" }), el("div", { class: "fx glare" }), el("div", { class: "fx band" }));
+  const glass = el("div", lastScale ? { class: "glass", style: `--s:${lastScale}` } : { class: "glass" }, el("div", { class: "desk-screen" }, osNode(view, watch)), el("div", { class: "fx scan" }), el("div", { class: "fx vig" }), el("div", { class: "fx glare" }), el("div", { class: "fx band" }));
   if (fitter) fitter.observe(glass);
   const monitor = el("div", { class: "monitor", title: "Pull the frame to move it aside" },
     comp.message && el("div", { class: "desk-note" }, comp.message),

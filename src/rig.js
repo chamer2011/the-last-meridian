@@ -422,8 +422,8 @@ function cantRun(game, session, content, p) {
   // A rig without a working core, cell or link runs nothing at all.
   const stats = rigNow(game);
   if (stats.dead) return `your rig won't start: ${stats.dead}`;
-  // Its link has to reach this kind of computer at all (step 6).
-  const reach = reachWhy(game, content);
+  // Its link has to reach this kind of computer at all (step 6), unless it was reached over the network (step 7).
+  const reach = session.remote ? null : reachWhy(game, content);
   if (reach) return `your rig can't reach it: ${reach}`;
   if (p.once && session.rigUsed?.includes(p.id)) return "it's already run this session";
   // At the logon only the breakers and Scope run; inside, there's nothing left to break.
@@ -453,7 +453,7 @@ export function rigInComputer(game, session, content) {
   if (!game.rig) return null;
   const mine = programsNow().list.filter((p) => p.builtIn || game.rig.loaded.includes(p.id));
   const loaded = mine.map((p) => ({ id: p.id, name: p.name, about: p.what, why: cantRun(game, session, content, p), noise: p.noise ?? 0, minutes: p.minutes ?? 1 }));
-  const copies = programsNow().list.filter((p) => (p.foundOn ?? []).includes(session.id) && !game.rig.programs.includes(p.id)).map((p) => ({ id: p.id, name: p.name, about: p.what, why: reachWhy(game, content) ? `your rig can't reach it: ${reachWhy(game, content)}` : null }));
+  const copies = programsNow().list.filter((p) => (p.foundOn ?? []).includes(session.id) && !game.rig.programs.includes(p.id)).map((p) => ({ id: p.id, name: p.name, about: p.what, why: !session.remote && reachWhy(game, content) ? `your rig can't reach it: ${reachWhy(game, content)}` : null }));
   const ways = session.locked ? mine.filter((p) => p.kind === "in" || p.id === "scope").map((p) => ({ id: p.id, name: p.name, about: p.what, kind: p.kind, power: p.power ?? null, noise: p.noise ?? 0, minutes: p.minutes ?? 1, why: cantRun(game, session, content, p) })) : [];
   return { loaded, copies, ways, memory: memoryOf(game), used: usedMemory(game.rig) };
 }
@@ -611,8 +611,8 @@ export function copyProgram(game, session, content, id, helpers) {
   const p = programById(id);
   if (!p || !(p.foundOn ?? []).includes(session.id)) return { over: false, said: "There's no such program here to copy." };
   if (game.rig.programs.includes(p.id)) return { over: false, said: `Your rig already has ${p.name}.` };
-  // Copying goes through the rig's link, which has to reach this computer.
-  const reach = reachWhy(game, content);
+  // Copying goes through the rig's link, which has to reach this computer, or over the network from where it does.
+  const reach = session.remote ? null : reachWhy(game, content);
   if (reach) return { over: false, said: `Your rig can't reach it to copy anything: ${reach}.` };
   game.rig.programs.push(p.id);
   const fits = usedMemory(game.rig) + p.size <= memoryOf(game);

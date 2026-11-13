@@ -1,7 +1,8 @@
 // A place's systems as plain text: world/systems/<place>.txt. The file names the place, says who guards it and who
 // keeps it running, and has one part for each system (Power, Air, Lights, Doors, Cameras, Alarm, Comms, Engines,
 // Navigation, Docking, or any other name for a system of the place's own), with a line for each of its parts and
-// the room it's in. The Computers part says which computers run which systems. This only reads and writes the
+// the room it's in. The Computers part says which computers run which systems, and the Network part links of the
+// place's network that aren't worked out from the rest (step 7 of the hacking rework). This only reads and writes the
 // words: which rooms and computers they name is worked out by src/systems.js, which knows the maps. It runs in the
 // browser too, for the Story board. world/systems/_how-to-write-systems.txt explains the format.
 
@@ -48,12 +49,13 @@ const listOf = (words) => String(words ?? "").split(/,|\band\b/).map((one) => on
 // ---- Reading a file ---------------------------------------------------------------------------
 
 // The file into { name, draft, guards, engineers, numbers, systems: [{ name, id, lines: [{ text, line }] }],
-// computers: [{ text, line }] }, with every line kept as words for src/systems.js to make sense of.
+// computers: [{ text, line }], network: [{ text, line }] }, with every line kept as words for src/systems.js and
+// src/network.js to make sense of.
 export function parseSystemsText(text, id = "it") {
   const problems = [];
   const problem = (line, message) => problems.push({ line, message });
   // guards and engineers stay unset unless the file names them, so the place's people are found by what they do.
-  const value = { name: id, numbers: {}, systems: [], computers: [] };
+  const value = { name: id, numbers: {}, systems: [], computers: [], network: [] };
   const lines = String(text ?? "").replace(/\r\n?/g, "\n").split("\n");
   const header = new Map(SYSTEMS_HEADER.map((field) => [field.key, field]));
   let titled = false;
@@ -77,6 +79,11 @@ export function parseSystemsText(text, id = "it") {
       if (name.toLowerCase() === "computers") {
         if (section === "computers") problem(n, "\"Computers\" is written twice");
         section = "computers";
+        continue;
+      }
+      if (name.toLowerCase() === "network") {
+        if (section === "network") problem(n, "\"Network\" is written twice");
+        section = "network";
         continue;
       }
       const sid = systemIdOf(name);
@@ -111,6 +118,7 @@ export function parseSystemsText(text, id = "it") {
       continue;
     }
     if (section === "computers") value.computers.push({ text: entry[1].trim(), line: n });
+    else if (section === "network") value.network.push({ text: entry[1].trim(), line: n });
     else section.lines.push({ text: entry[1].trim(), line: n });
   }
   if (!titled) problem(1, "the file is empty: it starts with # The Name");
@@ -193,5 +201,6 @@ export function writeSystemsText(value) {
     out.push("", `${system.name}:`, ...system.lines.map((one) => `- ${typeof one === "string" ? one : one.text}`));
   }
   if (value.computers?.length) out.push("", "Computers:", ...value.computers.map((one) => `- ${typeof one === "string" ? one : one.text}`));
+  if (value.network?.length) out.push("", "Network:", ...value.network.map((one) => `- ${typeof one === "string" ? one : one.text}`));
   return `${out.join("\n")}\n`;
 }

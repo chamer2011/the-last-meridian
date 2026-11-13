@@ -46,3 +46,6 @@ Navigation:
 Computers:
 - meridian_plot_table: navigation, comms, cameras, doors, alarm
 - meridian_reactor_gauges: power, air, lights, engines
+
+Network:
+- the records terminal to the plot table
