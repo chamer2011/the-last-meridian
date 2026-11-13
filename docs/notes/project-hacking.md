@@ -542,3 +542,24 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
   (D: first, DICTIONARY and SCOPE). Not tried: an overheating rig's red light, and a rig that won't start.
 - Not done: the casing's look following the build (a shielded case darker, an open frame showing its board), which the
   examples page said could come later. The owner hasn't tried it.
+
+## The rig at a computer too (example shown 2026-11-13, not built)
+
+- They said: "For it for the computer too, the networks, the programs and the logs are gonna be there. You cannot
+  hack a computer a computer with your rig and you have to connect it before starting to hack. Show me the computer
+  one and integrate the rest that you did before". Read as: the pocket computer comes out at every computer too,
+  with NET, D: and LOG on it; hacking needs the rig connected first; show the computer version, with the panels fitted
+  to the same rule.
+- The example is https://claude.ai/artifact/59oKwP59cJaTkgcyvkrkj1 (source in my scratchpad only): a scaled copy of
+  the game screen at 1400 or 810 wide, starting at Haven's berth board (someone else's, locked), the records terminal,
+  the Bridge door's keypad or JB-3 (all the captain's), with a choice of the link in the rig. The Keelworks desktop
+  keeps Systems, Files, Mail, Logs, Programs and the viewer, and loses its Network folder, Rig (D:) folder and Session
+  log window; the logon loses its "From your rig" list and says whether a rig is on its cable port. The rig starts
+  NOT CONNECTED with CONNECT BY <link> (a minute; at someone else's machine anyone in the room can see), greyed with the
+  reason for a wrong link; once plugged in its lead shows (a grey-sheathed cable for a desk) and D: offers the ways
+  in. A keypad works by hand and connects to be hacked; a junction box or a camera connects as it opens. At 1400 the
+  monitor is 660 wide beside the rig; at 810 the rig folds to a strip down the monitor's side (LINK, HEAT, NET, D:,
+  LOG, PLUG IN) and a page slides out over the monitor.
+- Calls of mine on the page: the strip at narrow screens; "the logs" as the session's log (the computer's own Logs
+  folder stays); NAVCOM 7's map needing the Navy coupler even for the captain; unplugging to swap a link. Build only
+  when they say so.
