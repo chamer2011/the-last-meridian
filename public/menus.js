@@ -325,6 +325,7 @@ export const MENUS = {
   map: { label: "Star map", command: "map", about: "The chart of known space, and setting course", view: mapMenu },
   market: { label: "Market", command: "market", about: "Buying and selling, where there's a market", view: marketMenu },
   bestiary: { label: "Enemies met", command: "bestiary", about: "Enemies you know of, how they fight, and the simulator", view: bestiaryMenu },
+  mapedit: { label: "Map editor", command: "mapedit", about: "Redraw the ship's decks yourself: walls, floors, doors, rooms and what's in them", editor: true, view: () => el("div") },
   settings: { label: "Settings", command: "settings", about: "Reading, display, checks, fights, saved games, and your files", view: settingsMenu },
 };
 
@@ -333,5 +334,5 @@ export const MENU_GROUPS = [
   { title: "The story", ids: ["leads", "board", "people", "codex", "bestiary"] },
   { title: "The ship", ids: ["ship", "command", "map"] },
   { title: "Gear", ids: ["inventory", "market"] },
-  { title: "Game", ids: ["settings"] },
+  { title: "Game", ids: ["mapedit", "settings"] },
 ];

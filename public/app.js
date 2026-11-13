@@ -8,6 +8,7 @@ import { initMap } from "./map.js";
 import { initShip } from "./ship.js";
 import { initCommand } from "./command.js";
 import { openBoard } from "./board.js";
+import { openMapEditor } from "./mapedit.js";
 import { MENUS, MENU_GROUPS, initMenus } from "./menus.js";
 import { choicesFor, dropStaleTooltip, initStory, loreCatalog, optionContent, setStoryContext, storyEntryNode, thinkingNode } from "./story-view.js";
 import { focusTalk, initTalk, resetTalk, startTalk, talkNode, talkOpen } from "./talk.js";
@@ -575,6 +576,12 @@ function openMenu(id, focus = null) {
   if (MENUS[id]?.board) {
     closeMenu();
     openBoard();
+    return;
+  }
+  // So is the map editor. The room behind it may have been redrawn by the time it's closed.
+  if (MENUS[id]?.editor) {
+    closeMenu();
+    openMapEditor({ onClose: () => refreshAll() });
     return;
   }
   // The inventory is a window over the room, not a drawer. (The quest log is the tracker in the corner, grown, and the

@@ -1,0 +1,55 @@
+/* The map editor: a whole screen of its own, like the story board, in the game's own colours. */
+.mapedit { position: fixed; inset: 0; z-index: 45; background: var(--bg); color: var(--text); font: 14px/1.45 var(--mono); display: flex; flex-direction: column; gap: 6px; padding: 10px 14px; }
+.mapedit-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.mapedit-head h2 { margin: 0; font-size: 16px; letter-spacing: .06em; text-transform: uppercase; color: var(--bright); }
+.mapedit-decks, .mapedit-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.mapedit-end { margin-left: auto; }
+.mapedit button { background: var(--panel); border: 1px solid var(--line); color: var(--text); font: inherit; padding: 3px 10px; cursor: pointer; text-align: left; }
+.mapedit button:hover:not(:disabled) { color: var(--bright); border-color: var(--text); background: var(--panel); }
+.mapedit button[aria-pressed="true"] { color: var(--bg); background: var(--text); border-color: var(--text); }
+.mapedit button:disabled { color: var(--muted); cursor: default; opacity: .6; }
+.mapedit button:focus-visible, .mapedit input:focus-visible, .mapedit textarea:focus-visible { outline: 1px solid var(--bright); outline-offset: 1px; }
+.mapedit button.mapedit-save { color: var(--bg); background: var(--text); border-color: var(--text); font-weight: 700; }
+.mapedit button.mapedit-save:hover { background: var(--bright); color: var(--bg); }
+.mapedit button.mapedit-remove { color: var(--bad); border-color: var(--bad); margin-top: 6px; }
+.mapedit-says { min-height: 1.45em; color: var(--muted); }
+.mapedit-says.ok { color: var(--text); }
+.mapedit-says.bad { color: var(--warn); }
+.mapedit-body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 196px minmax(0, 1fr) 270px; gap: 10px; }
+.mapedit-tools, .mapedit-side { overflow-y: auto; scrollbar-width: none; display: flex; flex-direction: column; gap: 4px; min-height: 0; }
+.mapedit-tools::-webkit-scrollbar, .mapedit-side::-webkit-scrollbar { display: none; }
+.mapedit h3 { margin: 8px 0 2px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 400; }
+.mapedit h3:first-child { margin-top: 0; }
+.mapedit-paints { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+.mapedit button.mapedit-paint { display: flex; align-items: center; gap: 6px; padding: 3px 6px; font-size: 13px; }
+.mapedit button.mapedit-paint::before, .mapedit button.mapedit-paint::after { content: none; }
+.mapedit-swatch { display: inline-block; flex: 0 0 auto; width: 10px; height: 14px; border: 1px solid rgba(255, 255, 255, .35); }
+.mapedit-tick { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.mapedit-tick input { accent-color: var(--text); }
+.mapedit-key { margin-top: 6px; color: var(--muted); font-size: 12px; display: flex; flex-direction: column; gap: 2px; }
+.mapedit-key div { display: flex; align-items: center; gap: 6px; }
+.mapedit-view { overflow: auto; border: 1px solid var(--line); background: #020503; min-height: 0; }
+.mapedit-view canvas { display: block; cursor: crosshair; touch-action: none; }
+.mapedit-field { display: flex; flex-direction: column; gap: 2px; }
+.mapedit-field span { color: var(--muted); font-size: 12px; }
+.mapedit-field input, .mapedit-field textarea { background: var(--panel); border: 1px solid var(--line); color: var(--bright); font: inherit; padding: 4px 6px; width: 100%; resize: vertical; }
+.mapedit-hint { margin: 2px 0; color: var(--muted); font-size: 13px; }
+.mapedit-note { margin: 2px 0; color: var(--text); }
+.mapedit-side p { margin: 2px 0; }
+.mapedit-problems { margin: 4px 0 0; padding-left: 18px; color: var(--warn); display: flex; flex-direction: column; gap: 5px; }
+.mapedit-problems li.pointed { cursor: pointer; text-decoration: underline dotted; }
+.mapedit-where { min-height: 1.45em; border-top: 1px solid var(--line); padding-top: 5px; color: var(--muted); }
+.mapedit-where::first-letter { text-transform: uppercase; }
+
+/* With less room, the tools go along the top and what's chosen goes under the deck. */
+@media (max-width: 1000px) {
+  .mapedit { padding: 8px; overflow-y: auto; }
+  .mapedit-body { display: flex; flex-direction: column; flex: 0 0 auto; }
+  .mapedit-tools { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 6px; overflow: visible; }
+  .mapedit h3 { margin: 0 2px 0 6px; }
+  .mapedit h3:first-child { margin-left: 0; }
+  .mapedit-paints { display: flex; flex-wrap: wrap; }
+  .mapedit-key { display: none; }
+  .mapedit-view { max-height: 62vh; }
+  .mapedit-side { overflow: visible; }
+}

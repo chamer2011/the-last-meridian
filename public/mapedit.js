@@ -1,0 +1,693 @@
+// The map editor: a deck of the ship seen from straight above, to redraw by clicking. Floors, walls, doors and
+// furniture are painted on its squares; rooms are rectangles drawn round parts of it, with a name and a few words;
+// things are put down, named and described; people, stairs and the spots people's days send them to are dragged to
+// where they should be. Nothing is typed but names and words.
+//
+// The page only draws and gathers the change. The game does the rest (src/map-editor.js): it tries the deck out
+// against everything else that depends on it before keeping it, keeps the file that was there, and reads the new deck
+// by itself, so the room behind this window is redrawn as soon as it's saved.
+//
+// A square is half as wide as it's deep, as in the game's own plan of a room, so the deck here has the proportions it
+// has in play.
+
+import { el } from "./dom.js";
+
+const state = {
+  maps: [], place: null, level: null, doc: null, cells: [],
+  tool: "select", paint: "wall", shape: "brush",
+  selected: null, hover: null, drag: null,
+  zoom: 7, show: { rooms: true, spots: false },
+  undo: [], redo: [], dirty: false, busy: false,
+  result: null, flash: null, onClose: null,
+};
+const $ = (id) => document.getElementById(id);
+const clamp = (n, low, high) => Math.max(low, Math.min(high, n));
+
+// What each mark is called and drawn as, seen from above.
+const LOOKS = [
+  ["#", "Wall", "#9aa39c"], ["+", "Door", "#f2c14e"], ["=^<>(){}&", "Console", "#3fb7b0"], ["[]", "Crate", "#b58a52"],
+  ["|/\\", "Locker", "#8a6f4e"], ["\"", "Plant bed", "#5fae5a"], ["!", "Lamp", "#ffe08a"], ["%", "Rubble", "#6d6258"],
+];
+const FLOOR_COLORS = ["#17281f", "#12222e", "#241f2c"];
+function lookOf(ch) {
+  const doc = state.doc;
+  if (ch === " ") return { name: "Open space", color: null };
+  const floor = doc.floors.indexOf(ch);
+  if (floor >= 0) return { name: floor === 0 ? "Floor" : ch === "~" ? "Crawlway" : "Floor", color: FLOOR_COLORS[floor % FLOOR_COLORS.length], floor: true };
+  for (const [marks, name, color] of LOOKS) if (marks.includes(ch)) return { name, color };
+  return { name: "Bench", color: "#6f7f77" };
+}
+
+// ---- Talking to the game ---------------------------------------------------------------------------------------
+
+async function call(route, body) {
+  const response = await fetch(route, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {});
+  const data = await response.json();
+  if (!response.ok || data.error) throw new Error(data.error ?? "Something went wrong.");
+  return data;
+}
+
+// ---- Opening, closing, and the deck in hand ---------------------------------------------------------------------
+
+export async function openMapEditor({ onClose = null } = {}) {
+  if ($("mapedit")) return;
+  state.onClose = onClose;
+  document.body.append(frame());
+  document.addEventListener("keydown", onKey);
+  // For the browser checks, which look at the editor's state from outside.
+  window.__mapedit = state;
+  try {
+    state.maps = (await call("/api/map")).maps;
+    const first = state.maps[0];
+    if (!first) throw new Error("There's no deck to change yet.");
+    await load(state.place ?? first.place, state.level ?? first.decks[0].id);
+  } catch (err) {
+    say(err.message, false);
+  }
+}
+
+export function closeMapEditor() {
+  if (state.dirty) {
+    say("There are changes that aren't saved. Save them, or Close again to lose them.", false);
+    state.dirty = false;
+    return;
+  }
+  $("mapedit")?.remove();
+  document.removeEventListener("keydown", onKey);
+  state.doc = null;
+  state.onClose?.();
+}
+
+function onKey(event) {
+  if (event.key === "Escape" && $("mapedit") && !event.target.closest("textarea, input, select")) closeMapEditor();
+}
+
+async function load(place, level) {
+  const doc = await call(`/api/map/${place}/${level}`);
+  Object.assign(state, { place, level, doc, cells: doc.grid.map((row) => [...row]), selected: null, drag: null, undo: [], redo: [], dirty: false, result: null });
+  if (!doc.paints.some((paint) => paint.id === state.paint)) state.paint = "wall";
+  fitZoom();
+  drawAll();
+}
+
+function fitZoom() {
+  const room = $("mapedit-view")?.clientWidth ?? 900;
+  state.zoom = clamp(Math.floor((room - 4) / state.doc.width), 4, 14);
+}
+
+// What's sent to be tried or kept: the squares, and everything on them.
+function parcel() {
+  const { doc } = state;
+  return {
+    grid: state.cells.map((row) => row.join("")),
+    people: doc.people.map(({ mark, x, y }) => ({ mark, x, y })),
+    things: doc.things,
+    exits: doc.exits.map(({ mark, x, y }) => ({ mark, x, y })),
+    start: doc.start,
+    writing: doc.writing,
+    labels: doc.labels,
+    areas: doc.areas,
+    spots: doc.spots.map(({ name, x, y }) => ({ name, x, y })),
+  };
+}
+
+// ---- Undo: the deck as it was before each change -----------------------------------------------------------------
+
+const KEPT = ["people", "things", "exits", "start", "writing", "labels", "areas", "spots"];
+const picture = () => JSON.stringify({ cells: state.cells.map((row) => row.join("")), ...Object.fromEntries(KEPT.map((key) => [key, state.doc[key]])) });
+function restore(text) {
+  const was = JSON.parse(text);
+  state.cells = was.cells.map((row) => [...row]);
+  for (const key of KEPT) state.doc[key] = was[key];
+  state.selected = null;
+}
+// Call before changing anything, so the change can be taken back.
+function remember() {
+  state.undo.push(picture());
+  if (state.undo.length > 150) state.undo.shift();
+  state.redo = [];
+  state.dirty = true;
+  state.result = null;
+}
+function step(from, to) {
+  if (!from.length) return;
+  to.push(picture());
+  restore(from.pop());
+  state.dirty = true;
+  drawAll();
+}
+
+// ---- The squares -------------------------------------------------------------------------------------------------
+
+const inDeck = (x, y) => x >= 0 && y >= 0 && x < state.doc.width && y < state.doc.height;
+const paintNow = () => state.doc.paints.find((paint) => paint.id === state.paint) ?? state.doc.paints[0];
+
+// Paints one square. A crate is two squares wide, and fills the pair the square is half of.
+function setCell(x, y, paint) {
+  if (!inDeck(x, y)) return;
+  if (paint.mark.length === 2) {
+    const left = x - (x % 2);
+    if (inDeck(left + 1, y)) {
+      state.cells[y][left] = paint.mark[0];
+      state.cells[y][left + 1] = paint.mark[1];
+    }
+    return;
+  }
+  // Half a crate left behind would be drawn as a machine: the other half goes back to floor.
+  const was = state.cells[y][x];
+  if (was === "[" && state.cells[y][x + 1] === "]") state.cells[y][x + 1] = state.doc.floor;
+  if (was === "]" && state.cells[y][x - 1] === "[") state.cells[y][x - 1] = state.doc.floor;
+  state.cells[y][x] = paint.mark;
+}
+
+function fillBox(a, b, paint, outline) {
+  const [x0, x1] = [Math.min(a.x, b.x), Math.max(a.x, b.x)];
+  const [y0, y1] = [Math.min(a.y, b.y), Math.max(a.y, b.y)];
+  const wall = state.doc.paints.find((one) => one.id === "wall");
+  const floor = state.doc.paints.find((one) => one.id === "floor");
+  for (let y = y0; y <= y1; y += 1) for (let x = x0; x <= x1; x += 1) {
+    const edge = x === x0 || x === x1 || y === y0 || y === y1;
+    setCell(x, y, outline ? (edge ? wall : floor) : paint);
+  }
+}
+
+// ---- What's on the deck, and what's under the pointer --------------------------------------------------------------
+
+const KIND_WORDS = { person: "Someone's post", thing: "A thing", exit: "Stairs", start: "The start flag", writing: "Words on a wall", label: "A name on the deck", spot: "Where someone stands", area: "A room" };
+function listOf(kind) {
+  const { doc } = state;
+  return { person: doc.people, thing: doc.things, exit: doc.exits, writing: doc.writing, label: doc.labels, spot: doc.spots, area: doc.areas, start: doc.start ? [doc.start] : [] }[kind];
+}
+const lengthOf = (kind, one) => (kind === "writing" || kind === "label" ? Math.max(1, one.text.length) : 1);
+const itemOf = (sel) => (sel ? listOf(sel.kind)[sel.index] ?? null : null);
+
+// The smallest room drawn over a square.
+function areaAt(x, y) {
+  let best = -1;
+  state.doc.areas.forEach((area, index) => {
+    if (x < area.x || y < area.y || x >= area.x + area.w || y >= area.y + area.h) return;
+    if (best < 0 || area.w * area.h < state.doc.areas[best].w * state.doc.areas[best].h) best = index;
+  });
+  return best;
+}
+
+// What a click on a square picks up: whatever stands there first, then a room's name tag, then the room itself.
+function pick(x, y) {
+  const order = ["thing", "person", "exit", "start", "writing", "label", ...(state.show.spots ? ["spot"] : [])];
+  for (const kind of order) {
+    const index = listOf(kind).findIndex((one) => one.y === y && x >= one.x && x < one.x + lengthOf(kind, one));
+    if (index >= 0) return { kind, index };
+  }
+  if (!state.show.rooms) return null;
+  const index = areaAt(x, y);
+  return index >= 0 ? { kind: "area", index } : null;
+}
+
+function describe(x, y) {
+  if (!inDeck(x, y)) return "";
+  const found = pick(x, y);
+  const room = areaAt(x, y);
+  const where = room >= 0 ? state.doc.areas[room].name : "the deck's passages";
+  const on = found && found.kind !== "area" ? `${KIND_WORDS[found.kind]}${nameOf(found) ? `: ${nameOf(found)}` : ""}, on ` : "";
+  return `${on}${lookOf(state.cells[y][x]).name.toLowerCase()} in ${where}`;
+}
+function nameOf(sel) {
+  const one = itemOf(sel);
+  if (!one) return "";
+  if (sel.kind === "person" || sel.kind === "thing" || sel.kind === "area" || sel.kind === "spot") return one.name;
+  if (sel.kind === "exit") return one.label ?? "";
+  if (sel.kind === "writing" || sel.kind === "label") return one.text;
+  return "";
+}
+
+// ---- Drawing the deck --------------------------------------------------------------------------------------------
+
+function drawDeck() {
+  const canvas = $("mapedit-canvas");
+  const { doc } = state;
+  if (!canvas || !doc) return;
+  const cw = state.zoom;
+  const ch = cw * 2;
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width = Math.round(doc.width * cw * ratio);
+  canvas.height = Math.round(doc.height * ch * ratio);
+  canvas.style.width = `${doc.width * cw}px`;
+  canvas.style.height = `${doc.height * ch}px`;
+  const g = canvas.getContext("2d");
+  g.setTransform(ratio, 0, 0, ratio, 0, 0);
+  g.fillStyle = "#020503";
+  g.fillRect(0, 0, doc.width * cw, doc.height * ch);
+  state.cells.forEach((row, y) => row.forEach((mark, x) => {
+    const look = lookOf(mark);
+    if (!look.color) return;
+    g.fillStyle = look.color;
+    g.fillRect(x * cw, y * ch, cw, ch);
+    if (look.floor && cw >= 6) {
+      g.fillStyle = "rgba(255,255,255,0.05)";
+      g.fillRect(x * cw, y * ch, cw, 1);
+      if (x % 2 === 0) g.fillRect(x * cw, y * ch, 1, ch);
+    }
+  }));
+  // Rooms, as outlines with their names.
+  if (state.show.rooms) {
+    g.font = `${clamp(Math.round(ch * 0.62), 9, 13)}px Consolas, monospace`;
+    g.textBaseline = "top";
+    doc.areas.forEach((area, index) => {
+      const chosen = state.selected?.kind === "area" && state.selected.index === index;
+      g.strokeStyle = chosen ? "#ffffff" : "rgba(157,245,180,0.55)";
+      g.lineWidth = chosen ? 2 : 1;
+      g.setLineDash(chosen ? [] : [4, 3]);
+      g.strokeRect(area.x * cw + 0.5, area.y * ch + 0.5, area.w * cw - 1, area.h * ch - 1);
+      g.setLineDash([]);
+      const wide = g.measureText(area.name).width + 8;
+      g.fillStyle = chosen ? "#ffffff" : "rgba(8,17,12,0.88)";
+      g.fillRect(area.x * cw + 1, area.y * ch + 1, wide, clamp(Math.round(ch * 0.62), 9, 13) + 5);
+      g.fillStyle = chosen ? "#050a07" : "#9df5b4";
+      g.fillText(area.name, area.x * cw + 5, area.y * ch + 3);
+      if (chosen) {
+        g.fillStyle = "#ffffff";
+        g.fillRect((area.x + area.w) * cw - 9, (area.y + area.h) * ch - 9, 9, 9);
+      }
+    });
+  }
+  // Words, a letter to a square, the way the game paints them.
+  g.font = `${Math.max(8, Math.round(ch * 0.7))}px Consolas, monospace`;
+  g.textBaseline = "middle";
+  g.textAlign = "center";
+  const letters = (list, color) => list.forEach((one) => {
+    g.fillStyle = color;
+    [...one.text].forEach((letter, i) => g.fillText(letter, (one.x + i + 0.5) * cw, (one.y + 0.5) * ch));
+  });
+  letters(doc.writing, "#ffe0a8");
+  letters(doc.labels, "#8ec5ff");
+  // Whoever and whatever stands on the deck.
+  const mid = (one) => [(one.x + 0.5) * cw, (one.y + 0.5) * ch];
+  const size = Math.max(4, cw * 0.9);
+  for (const thing of doc.things) {
+    const [x, y] = mid(thing);
+    g.fillStyle = "#ffcc4d";
+    g.beginPath();
+    g.moveTo(x, y - size);
+    g.lineTo(x + size * 0.7, y);
+    g.lineTo(x, y + size);
+    g.lineTo(x - size * 0.7, y);
+    g.fill();
+  }
+  for (const exit of doc.exits) {
+    const [x, y] = mid(exit);
+    g.fillStyle = "#4fd0d0";
+    g.beginPath();
+    g.moveTo(x, y - size);
+    g.lineTo(x + size * 0.8, y + size * 0.8);
+    g.lineTo(x - size * 0.8, y + size * 0.8);
+    g.fill();
+  }
+  for (const person of doc.people) {
+    const [x, y] = mid(person);
+    g.fillStyle = "#f4acc7";
+    g.beginPath();
+    g.arc(x, y, size * 0.8, 0, Math.PI * 2);
+    g.fill();
+    if (cw >= 6) {
+      g.fillStyle = "#050a07";
+      g.font = `bold ${Math.max(8, Math.round(size * 1.1))}px Consolas, monospace`;
+      g.fillText((person.name ?? "?")[0], x, y + 0.5);
+    }
+  }
+  if (doc.start) {
+    const [x, y] = mid(doc.start);
+    g.strokeStyle = "#ffffff";
+    g.lineWidth = 2;
+    g.strokeRect(x - size * 0.6, y - size * 0.6, size * 1.2, size * 1.2);
+  }
+  if (state.show.spots) for (const spot of doc.spots) {
+    const [x, y] = mid(spot);
+    g.fillStyle = "#c9a6ff";
+    g.fillRect(x - 2, y - 2, 4, 4);
+  }
+  // What's chosen, what's being dragged out, and what a problem points at.
+  g.lineWidth = 2;
+  const ring = (x, y, w, color) => {
+    g.strokeStyle = color;
+    g.strokeRect(x * cw - 1, y * ch - 1, w * cw + 2, ch + 2);
+  };
+  const sel = itemOf(state.selected);
+  if (sel && state.selected.kind !== "area") ring(sel.x, sel.y, lengthOf(state.selected.kind, sel), "#ffffff");
+  if (state.drag?.box) {
+    const { from, to } = state.drag.box;
+    g.strokeStyle = "#ffffff";
+    g.setLineDash([3, 3]);
+    g.strokeRect(Math.min(from.x, to.x) * cw, Math.min(from.y, to.y) * ch, (Math.abs(to.x - from.x) + 1) * cw, (Math.abs(to.y - from.y) + 1) * ch);
+    g.setLineDash([]);
+  }
+  if (state.flash) ring(state.flash.x, state.flash.y, 1, "#ff7b6b");
+  if (state.hover && !state.drag && inDeck(state.hover.x, state.hover.y)) {
+    g.strokeStyle = "rgba(255,255,255,0.5)";
+    g.lineWidth = 1;
+    g.strokeRect(state.hover.x * cw + 0.5, state.hover.y * ch + 0.5, cw - 1, ch - 1);
+  }
+}
+
+// ---- The pointer on the deck -------------------------------------------------------------------------------------
+
+function squareAt(event) {
+  const box = $("mapedit-canvas").getBoundingClientRect();
+  return { x: Math.floor((event.clientX - box.left) / state.zoom), y: Math.floor((event.clientY - box.top) / (state.zoom * 2)) };
+}
+
+function pressed(event) {
+  if (event.button !== 0 || !state.doc || state.busy) return;
+  const at = squareAt(event);
+  if (!inDeck(at.x, at.y)) return;
+  // So a drag that leaves the deck still ends on it. A pointer that can't be held (some pens) just isn't.
+  try {
+    event.currentTarget.setPointerCapture(event.pointerId);
+  } catch {
+    // Nothing to do.
+  }
+  const { tool } = state;
+  if (tool === "paint") {
+    remember();
+    if (state.shape === "brush") {
+      setCell(at.x, at.y, paintNow());
+      state.drag = { brush: true };
+    } else state.drag = { box: { from: at, to: at } };
+  } else if (tool === "room") state.drag = { box: { from: at, to: at }, room: true };
+  else if (tool === "thing" || tool === "writing" || tool === "label") {
+    addAt(tool, at);
+    return;
+  } else {
+    // Choosing and moving. The white corner of a chosen room pulls its far corner.
+    const chosen = state.selected?.kind === "area" ? itemOf(state.selected) : null;
+    if (chosen && at.x >= chosen.x + chosen.w - 2 && at.x <= chosen.x + chosen.w && at.y === chosen.y + chosen.h - 1) {
+      state.drag = { resize: true, moved: false };
+    } else {
+      state.selected = pick(at.x, at.y);
+      const one = itemOf(state.selected);
+      state.drag = one ? { move: true, dx: at.x - one.x, dy: at.y - one.y, moved: false } : null;
+    }
+    drawSide();
+  }
+  drawDeck();
+}
+
+function movedOver(event) {
+  if (!state.doc) return;
+  const at = squareAt(event);
+  state.hover = at;
+  const drag = state.drag;
+  if (drag?.brush) setCell(at.x, at.y, paintNow());
+  else if (drag?.box) drag.box.to = { x: clamp(at.x, 0, state.doc.width - 1), y: clamp(at.y, 0, state.doc.height - 1) };
+  else if (drag?.move || drag?.resize) {
+    const one = itemOf(state.selected);
+    if (one) {
+      const before = drag.resize ? [one.w, one.h] : [one.x, one.y];
+      if (drag.resize) {
+        const w = clamp(at.x - one.x + 1, 2, state.doc.width - one.x);
+        const h = clamp(at.y - one.y + 1, 1, state.doc.height - one.y);
+        if (w !== one.w || h !== one.h) {
+          if (!drag.moved) remember();
+          drag.moved = true;
+          one.w = w;
+          one.h = h;
+        }
+      } else {
+        const wide = state.selected.kind === "area" ? one.w : lengthOf(state.selected.kind, one);
+        const tall = state.selected.kind === "area" ? one.h : 1;
+        const x = clamp(at.x - drag.dx, 0, state.doc.width - wide);
+        const y = clamp(at.y - drag.dy, 0, state.doc.height - tall);
+        if ((x !== before[0] || y !== before[1]) && free(state.selected, x, y)) {
+          if (!drag.moved) remember();
+          drag.moved = true;
+          one.x = x;
+          one.y = y;
+        }
+      }
+    }
+  }
+  $("mapedit-where").textContent = describe(at.x, at.y);
+  drawDeck();
+}
+
+// Whether something can stand on a square: two of whoever and whatever stands on the deck can't share one.
+function free(sel, x, y) {
+  if (!["person", "thing", "exit", "start"].includes(sel.kind)) return true;
+  return !["person", "thing", "exit", "start"].some((kind) => listOf(kind).some((one, index) => one.x === x && one.y === y && !(kind === sel.kind && index === sel.index)));
+}
+
+function released() {
+  const drag = state.drag;
+  state.drag = null;
+  if (drag?.box) {
+    const { from, to } = drag.box;
+    if (drag.room) {
+      const x = Math.min(from.x, to.x);
+      const y = Math.min(from.y, to.y);
+      const w = Math.abs(to.x - from.x) + 1;
+      const h = Math.abs(to.y - from.y) + 1;
+      if (w >= 2 && h >= 2) {
+        remember();
+        state.doc.areas.push({ name: freshName("New room", state.doc.areas.map((area) => area.name)), x, y, w, h, desc: "" });
+        state.selected = { kind: "area", index: state.doc.areas.length - 1 };
+        setTool("select");
+      }
+    } else fillBox(from, to, paintNow(), state.shape === "walls");
+  }
+  drawAll();
+}
+
+const freshName = (base, taken) => {
+  for (let n = 1; ; n += 1) {
+    const name = n === 1 ? base : `${base} ${n}`;
+    if (!taken.includes(name)) return name;
+  }
+};
+
+function addAt(kind, at) {
+  const { doc } = state;
+  if (kind === "thing") {
+    const used = new Set([...doc.things.map((one) => one.mark), ...state.cells.flat()]);
+    const mark = [..."abcdefghijklmnopqrstuvwxyz"].find((letter) => !used.has(letter));
+    if (!mark) return say("This deck has as many things as it can hold. Take one away first.", false);
+    if (!free({ kind: "thing", index: -1 }, at.x, at.y)) return say("Something's standing there already.", false);
+    remember();
+    doc.things.push({ mark, x: at.x, y: at.y, name: freshName("New thing", doc.things.map((one) => one.name)), look: "", use: "" });
+    state.selected = { kind: "thing", index: doc.things.length - 1 };
+  } else {
+    remember();
+    const list = kind === "writing" ? doc.writing : doc.labels;
+    list.push({ x: at.x, y: at.y, text: kind === "writing" ? "WORDS" : "A NAME" });
+    state.selected = { kind, index: list.length - 1 };
+  }
+  setTool("select");
+  drawAll();
+  $("mapedit-name")?.select();
+}
+
+function removeSelected() {
+  const sel = state.selected;
+  if (!sel || !["thing", "writing", "label", "area"].includes(sel.kind)) return;
+  remember();
+  listOf(sel.kind).splice(sel.index, 1);
+  state.selected = null;
+  drawAll();
+}
+
+// ---- The two sides of the window ---------------------------------------------------------------------------------
+
+function setTool(tool) {
+  state.tool = tool;
+  drawTools();
+}
+
+function button(words, props = {}, on = false) {
+  return el("button", { type: "button", "aria-pressed": on ? "true" : "false", ...props }, words);
+}
+
+function drawTools() {
+  const box = $("mapedit-tools");
+  if (!box || !state.doc) return;
+  const tool = (id, words, title) => button(words, { title, onclick: () => setTool(id) }, state.tool === id);
+  const swatch = (paint) => {
+    const color = lookOf(paint.mark[0]).color ?? "#020503";
+    return el("button", { type: "button", class: "mapedit-paint", title: paint.about, "aria-pressed": state.tool === "paint" && state.paint === paint.id ? "true" : "false", onclick: () => { state.paint = paint.id; setTool("paint"); } },
+      el("span", { class: "mapedit-swatch", style: `background:${color}` }), paint.name);
+  };
+  const shape = (id, words, title) => button(words, { title, onclick: () => { state.shape = id; setTool("paint"); } }, state.tool === "paint" && state.shape === id);
+  box.replaceChildren(
+    el("h3", {}, "Choose"),
+    tool("select", "Choose and move", "Click a room, a thing or a person to choose it, and drag it to move it"),
+    el("h3", {}, "Paint"),
+    el("div", { class: "mapedit-paints" }, state.doc.paints.map(swatch)),
+    el("div", { class: "mapedit-row" },
+      shape("brush", "Brush", "Paint square by square: hold the mouse button down and drag"),
+      shape("box", "Block", "Drag out a block, filled with what you're painting"),
+      shape("walls", "Room", "Drag out a room: walls all round, floor inside. Add a door afterwards")),
+    el("h3", {}, "Add"),
+    tool("room", "A room's outline", "Drag a rectangle round part of the deck, to make it a room with a name"),
+    tool("thing", "A thing", "Click a square to put down something to look at and use"),
+    tool("writing", "Words on a wall", "Click where the words begin"),
+    tool("label", "A name on the deck", "Click where the name begins"),
+    el("h3", {}, "Show"),
+    el("label", { class: "mapedit-tick" }, el("input", { type: "checkbox", checked: state.show.rooms, onchange: (event) => { state.show.rooms = event.target.checked; drawDeck(); } }), "Rooms"),
+    el("label", { class: "mapedit-tick", title: "The spots people's days send them to: where they work, eat and sleep" }, el("input", { type: "checkbox", checked: state.show.spots, onchange: (event) => { state.show.spots = event.target.checked; drawDeck(); } }), "Where people stand"),
+    el("div", { class: "mapedit-key" },
+      [["#ffcc4d", "a thing"], ["#f4acc7", "someone's post"], ["#4fd0d0", "stairs"], ["#ffffff", "where the deck starts"], ["#c9a6ff", "where people stand"]].map(([color, words]) => el("div", {}, el("span", { class: "mapedit-swatch", style: `background:${color}` }), words))),
+  );
+}
+
+// A box of words that changes what's chosen as it's typed in.
+function field(label, value, onInput, { id = null, tall = false } = {}) {
+  const props = { ...(id ? { id } : {}), oninput: (event) => { edit(() => onInput(event.target.value)); drawDeck(); } };
+  const box = tall ? el("textarea", { rows: "3", ...props }, value ?? "") : el("input", { type: "text", value: value ?? "", ...props });
+  return el("label", { class: "mapedit-field" }, el("span", {}, label), box);
+}
+// Typing in a box is one change to take back, however many letters.
+let typing = null;
+function edit(change) {
+  const key = `${state.selected?.kind}:${state.selected?.index}`;
+  if (typing !== key) remember();
+  typing = key;
+  state.dirty = true;
+  change();
+}
+
+function drawSide() {
+  const box = $("mapedit-side");
+  if (!box || !state.doc) return;
+  typing = null;
+  const sel = state.selected;
+  const one = itemOf(sel);
+  const parts = [];
+  if (!one) parts.push(el("p", { class: "mapedit-hint" }, state.tool === "paint" ? "Hold the mouse button down on the deck to paint." : "Click something on the deck to choose it."));
+  else {
+    parts.push(el("h3", {}, KIND_WORDS[sel.kind]));
+    if (sel.kind === "area") {
+      parts.push(field("Name", one.name, (value) => { one.name = value; }, { id: "mapedit-name" }));
+      parts.push(field("What you see there", one.desc, (value) => { one.desc = value; }, { tall: true }));
+      parts.push(el("p", { class: "mapedit-hint" }, "Drag it to move it. Drag its white corner to make it bigger or smaller."));
+    } else if (sel.kind === "thing") {
+      parts.push(field("Name", one.name, (value) => { one.name = value; }, { id: "mapedit-name" }));
+      parts.push(field("What Look says", one.look, (value) => { one.look = value; }, { tall: true }));
+      parts.push(field("What you do with it (\"I ...\")", one.use, (value) => { one.use = value; }, { tall: true }));
+    } else if (sel.kind === "writing" || sel.kind === "label") {
+      parts.push(field("The words", one.text, (value) => { one.text = value.toUpperCase(); }, { id: "mapedit-name" }));
+    } else if (sel.kind === "person") parts.push(el("p", {}, one.name), el("p", { class: "mapedit-hint" }, "This is where they stand at their post. Drag them to move it."));
+    else if (sel.kind === "exit") parts.push(el("p", {}, one.label ?? "Stairs"), el("p", { class: "mapedit-hint" }, "Drag the stairs to move them. Where they lead stays the same."));
+    else if (sel.kind === "start") parts.push(el("p", { class: "mapedit-hint" }, "Where someone arriving on this deck stands. Drag it to move it."));
+    else if (sel.kind === "spot") parts.push(el("p", {}, one.name.replaceAll("-", " ")), el("p", { class: "mapedit-hint" }, "Somewhere a person's day sends them. Drag it to move it."));
+    if (["thing", "writing", "label", "area"].includes(sel.kind)) parts.push(button(sel.kind === "area" ? "Take this room away" : "Take it away", { class: "mapedit-remove", onclick: removeSelected }));
+  }
+  const result = state.result;
+  if (result) {
+    const lines = [...result.problems, ...result.elsewhere.map((words) => ({ words }))];
+    parts.push(el("h3", {}, result.kept ? "Saved" : lines.length ? "Before you save" : "Checked"));
+    for (const note of result.notes) parts.push(el("p", { class: "mapedit-note" }, note));
+    if (!lines.length) parts.push(el("p", { class: "mapedit-note" }, result.kept ? "The game has the new deck." : "Nothing's wrong with it."));
+    else {
+      parts.push(el("p", { class: "mapedit-hint" }, result.kept ? "Kept, with these still to put right:" : "These would go wrong. Click one to see where."));
+      parts.push(el("ul", { class: "mapedit-problems" }, lines.map((line) => el("li", { class: line.x === undefined ? "" : "pointed", onclick: () => pointAt(line) }, line.words))));
+      if (!result.kept && result.asked) parts.push(button("Save it anyway", { class: "mapedit-remove", onclick: () => send(true, true) }));
+    }
+  }
+  box.replaceChildren(...parts);
+}
+
+function pointAt(line) {
+  if (line.x === undefined) return;
+  state.flash = { x: line.x, y: line.y };
+  const view = $("mapedit-view");
+  view.scrollTo({ left: line.x * state.zoom - view.clientWidth / 2, top: line.y * state.zoom * 2 - view.clientHeight / 2, behavior: "smooth" });
+  drawDeck();
+  setTimeout(() => { state.flash = null; drawDeck(); }, 2500);
+}
+
+function drawHead() {
+  const box = $("mapedit-decks");
+  if (!box) return;
+  const decks = state.maps.find((one) => one.place === state.place)?.decks ?? [];
+  box.replaceChildren(...decks.map((deck) => button(deck.name, { onclick: () => changeDeck(deck.id) }, deck.id === state.level)));
+  $("mapedit-undo").disabled = !state.undo.length;
+  $("mapedit-redo").disabled = !state.redo.length;
+  $("mapedit-save").textContent = state.dirty ? "Save *" : "Save";
+}
+
+function drawAll() {
+  drawHead();
+  drawTools();
+  drawSide();
+  drawDeck();
+}
+
+async function changeDeck(level) {
+  if (level === state.level) return;
+  if (state.dirty) {
+    say("This deck has changes that aren't saved. Save them, or choose the other deck again to lose them.", false);
+    state.dirty = false;
+    drawHead();
+    return;
+  }
+  try {
+    await load(state.place, level);
+    say("", true);
+  } catch (err) {
+    say(err.message, false);
+  }
+}
+
+function say(words, ok = true) {
+  const line = $("mapedit-says");
+  if (!line) return;
+  line.textContent = words;
+  line.className = `mapedit-says ${ok ? "ok" : "bad"}`;
+}
+
+// Tries the deck out, and keeps it if it's sound, or if the owner says to keep it anyway.
+async function send(keep, anyway = false) {
+  if (state.busy || !state.doc) return;
+  state.busy = true;
+  say(keep ? "Saving: the game is trying the deck out first..." : "Checking the deck against the rest of the game...");
+  try {
+    const result = await call(`/api/map/${state.place}/${state.level}`, { doc: parcel(), keep, anyway });
+    state.result = { ...result, asked: keep };
+    if (result.kept) {
+      const undo = state.undo;
+      await load(state.place, state.level);
+      state.undo = undo;
+      state.result = { ...result, asked: keep };
+      say("Saved. The room behind this window is the new one.");
+    } else say(result.problems.length + result.elsewhere.length ? (keep ? "Not saved yet: see what would go wrong, in the list beside the deck." : "See what would go wrong, in the list beside the deck.") : "Nothing's wrong with it.", !(result.problems.length + result.elsewhere.length));
+  } catch (err) {
+    say(err.message, false);
+  }
+  state.busy = false;
+  drawAll();
+}
+
+function zoomBy(step) {
+  state.zoom = clamp(state.zoom + step, 4, 16);
+  drawDeck();
+}
+
+function frame() {
+  return el("div", { class: "mapedit", id: "mapedit", role: "dialog", "aria-label": "Map editor" },
+    el("header", { class: "mapedit-head" },
+      el("h2", {}, "Map editor"),
+      el("div", { class: "mapedit-decks", id: "mapedit-decks" }),
+      el("div", { class: "mapedit-row" },
+        button("Undo", { id: "mapedit-undo", title: "Take the last change back", onclick: () => step(state.undo, state.redo) }),
+        button("Redo", { id: "mapedit-redo", title: "Put it back again", onclick: () => step(state.redo, state.undo) }),
+        button("-", { title: "Smaller", onclick: () => zoomBy(-1) }),
+        button("+", { title: "Bigger", onclick: () => zoomBy(1) })),
+      el("div", { class: "mapedit-row mapedit-end" },
+        button("Check", { title: "See whether anything in the game would go wrong, without saving", onclick: () => send(false) }),
+        button("Save", { id: "mapedit-save", class: "mapedit-save", title: "Keep the deck as it is here. The one before is kept in your data folder", onclick: () => send(true) }),
+        button("Close", { onclick: closeMapEditor }))),
+    el("div", { class: "mapedit-says", id: "mapedit-says", role: "status" }),
+    el("div", { class: "mapedit-body" },
+      el("aside", { class: "mapedit-tools", id: "mapedit-tools" }),
+      el("div", { class: "mapedit-view", id: "mapedit-view" },
+        el("canvas", { id: "mapedit-canvas", onpointerdown: pressed, onpointermove: movedOver, onpointerup: released, onpointercancel: released, onpointerleave: () => { state.hover = null; if (!state.drag) drawDeck(); } })),
+      el("aside", { class: "mapedit-side", id: "mapedit-side" })),
+    el("footer", { class: "mapedit-where", id: "mapedit-where" }));
+}

@@ -5,6 +5,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { boardScene, boardStories, boardStory, boardWorldItem, boardWorldList, checkBoardScene, saveBoardScene, saveBoardStory, saveBoardWorldItem, saveLayout } from "./src/board.js";
+import { deckForEditing, editableMaps, tryDeck } from "./src/map-editor.js";
 import { isOrder } from "./src/room-hooks.js";
 import { startIsOff } from "./src/role.js";
 import { ensureContactFiles, newCampaignId, saveCaptainSheet } from "./src/campaign.js";
@@ -271,8 +272,22 @@ async function boardApi(req, res, route) {
   return json(res, 404, { error: "Not found." });
 }
 
+// The map editor: the decks there are to change, one of them taken apart for the editor, and a change tried out or
+// kept (src/map-editor.js).
+async function mapApi(req, res, route) {
+  const [, , , place, level] = route.split("/");
+  if (!place && req.method === "GET") return json(res, 200, { maps: editableMaps() });
+  if (place && level && req.method === "GET") return json(res, 200, deckForEditing(place, level));
+  if (place && level && req.method === "POST") {
+    const body = await readBody(req);
+    return json(res, 200, tryDeck(place, level, body.doc, { keep: Boolean(body.keep), anyway: Boolean(body.anyway) }));
+  }
+  return json(res, 404, { error: "Not found." });
+}
+
 async function handleApi(req, res, route) {
   if (route.startsWith("/api/board/")) return boardApi(req, res, route);
+  if (route === "/api/map" || route.startsWith("/api/map/")) return mapApi(req, res, route);
   if (req.method === "GET" && route === "/api/state") {
     let shown = null;
     try {

@@ -284,7 +284,10 @@ export const endingsOf = (thread) => (thread?.gm?.outcomes ?? []).map((outcome, 
 
 // The plain words a story's notes give a fact, by its name: the record uses them for a fact a scene leaves without words.
 export const FACT_LINES = {};
-export const WORLD_LIFE = readFolder(path.join(worldDir, "life"));
+// Everyone's days and where they stand, a file to a place. Tests, and the map editor trying a change out, point the
+// folder at a copy.
+export const LIFE_DIR = process.env.GAME_LIFE_DIR ?? path.join(worldDir, "life");
+export const WORLD_LIFE = readFolder(LIFE_DIR);
 // The written scenes aren't here: src/scenes.js reads them whenever the story needs them, so a change shows up without a restart.
 
 

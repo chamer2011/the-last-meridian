@@ -12,6 +12,15 @@ The three decks here are a starting point, laid out after the Anvil Carrack's ar
 civilian deck under it, and engineering along the keel. Redraw them as you like.
 
 
+THE GAME HAS A MAP EDITOR OF ITS OWN NOW
+----------------------------------------
+
+Since 2026-11-12 the decks can also be redrawn inside the game, with the mouse, without Tiled: Map editor, under
+Game in the menu. It changes these same files, checks a change against the rest of the game before keeping it, and
+keeps the deck as it was in data/map-backups. The README says how, under "Drawing the ship yourself". Tiled is
+still the way to do what the editor doesn't: another place's rooms, a deck of another size, a new stair.
+
+
 GETTING TILED
 -------------
 
