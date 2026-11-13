@@ -37,11 +37,11 @@ const TERMINAL = { id: "test_terminal", name: "The test terminal", classKey: "ea
 test("the part files read with nothing wrong, and a bad one says what's wrong", () => {
   const { list, problems } = rigPartsNow();
   assert.deepEqual(problems, []);
-  assert.equal(list.length, 21);
+  assert.equal(list.length, 25);
   const yard = list.find((p) => p.id === "yard");
   assert.deepEqual(yard.sockets.map((s) => s.key), ["core1", "sink1", "memory1", "link1", "cell1", "memory2"]);
   assert.equal(list.find((p) => p.id === "navy").sockets.find((s) => s.kind === "extra").gate, 7);
-  assert.deepEqual(list.find((p) => p.id === "open_frame").made, { scrap: 2, engineering: 1, hours: 2 });
+  assert.deepEqual(list.find((p) => p.id === "open_frame").made, { needs: [{ id: "scrap", n: 2 }], engineering: 1, hours: 2, tool: null, scrap: 2 });
   const bad = parseRigPart("bad", "# Bad\nkind: board\nsockets: core at 1 1, cupholder at 2 1\nheat: lots\n");
   for (const words of ["cupholder", "heat should be a number", "needs a cell socket", "What it is"]) assert.ok(bad.problems.join("\n").includes(words), words);
 });
@@ -138,6 +138,9 @@ test("at the bench: overclocking takes Engineering and hours, mending a parts cr
   assert.equal(core.cond, "new");
   assert.equal(countAboard(game, "meridian", "parts_crate").n, crates - 1, "a parts crate from the ship's stores");
   core.cond = "broken";
+  // The lathe is a tool bought for the bench (step 5).
+  assert.throws(() => rigCommand(game, { action: "rebuild", uid: core.uid }), /micro lathe/);
+  game.rig.tools = ["micro_lathe"];
   assert.throws(() => rigCommand(game, { action: "rebuild", uid: core.uid }), /2 scrap/);
   const spare = { uid: "s2", id: "memory_4", cond: "broken", tune: null, from: "" };
   game.rig.parts.push(spare, { uid: "s3", id: "slim", cond: "new", tune: null, from: "" });
@@ -215,7 +218,7 @@ test("an old save's rig gets the yard build, holding what it had loaded", () => 
   const old = JSON.parse(JSON.stringify({ ...game, version: 26 }));
   old.rig = { programs: old.rig.programs, loaded: ["dictionary", "doorkey", "mask"], timers: [] };
   const moved = migrateGame(old);
-  assert.equal(moved.version, 27);
+  assert.equal(moved.version, 28);
   assert.equal(moved.rig.parts.length, 8);
   assert.deepEqual(moved.rig.loaded, ["dictionary", "doorkey", "mask"]);
   assert.equal(rigStats(moved.rig).memory, 4);

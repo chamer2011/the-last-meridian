@@ -51,7 +51,7 @@ test("a whole run: the power, the hatch, the lockers, the engine room and the lo
   const game = atTheGraveyard();
   game.skills.hacking = 3;
   assert.deepEqual(labels(game), ["Take the shuttle out to the hulk of the Harrow"]);
-  assert.match(acts(game)[acts(game).length - 1].detail, /^a salvage run: 90 minutes of air, 20 minutes each way$/);
+  assert.match(acts(game).find((one) => one.id === "salvage-start").detail, /^a salvage run: 90 minutes of air, 20 minutes each way$/);
   const start = game.clock.hours;
   assert.match(walk.walkCommand(game, { action: "salvage-start" }).said, /^\[SALVAGE\] The shuttle puts you across to the hulk of the Harrow/);
   assert.ok(Math.abs(game.clock.hours - start - 20 / 60) < 1e-6);

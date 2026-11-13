@@ -31,6 +31,8 @@ The first line is its name. The lines under it can come in any order, and any nu
     grade         How good it is, 1 and up. Mending it at the bench takes that many hours and that much
                   Engineering, and one of the ship's parts crates.
     weight        In kilograms. The rig weighs its board, casing and every part with it.
+    worth         What it's worth in credits, which the ports' dealers (world/dealers) go by. Left out, it's
+                  35 for each grade.
     heat          How much heat it makes. A session adds a point every ten minutes on top.
     power         Added to a program's power against a computer's class (1 a door panel to 5 the Beacon).
     quiet         Takes noise off what the rig does: 1 takes one off anything making 2 or more, 2 takes one off
@@ -43,7 +45,14 @@ The first line is its name. The lines under it can come in any order, and any nu
     sockets       A board's: each socket's kind and where it is on the grid, column then row, from 1. A socket
                   can open only from a level of Hacking: extra at 5 1 from Hacking 7. A board needs a core, a
                   cell and a link socket.
-    made from     What making it at the bench takes, if it can be made: 2 scrap, Engineering 1, 2 hours.
+    reaches       A link's: what it reaches a computer by, one of cable, clip (a service port), optic (an optical
+                  port), radio or navy (a Navy coupling). Which a computer takes comes with the computers that
+                  need one; until then any link that works starts the rig.
+    made from     What making it at the bench takes, if it can be made: what goes into it first (scrap, anything
+                  in world/items by its name, or a parts crate from the ship's stores, joined by "and"), then
+                  the Engineering, the hours, and a tool for the bench if it needs one, from _tools.txt:
+                      made from: 2 scrap, Engineering 1, 2 hours
+                      made from: a fuel cell and a parts crate, Engineering 4, 3 hours, with the cell press
     where from    Where it comes from, in a few words, for the Rig page.
 
     What it is: a few words for the Rig page.
@@ -56,4 +65,16 @@ The rig won't start without a core, a cell and a link that work. A worn part giv
 broken one gives nothing until it's mended. A session warms the rig a point every ten of its minutes: at 3 its fan
 is heard (anything noisy is one louder), and at 5 it's overheating (everything takes twice as long, and the hottest
 part wears a step when the player logs off). The bench's rules (mending, overclocking and undervolting a core, the
-lathe, taking apart) are in the game's code, src/rig-parts.js, with my first numbers.
+lathe, taking apart) are in the game's code, src/rig-parts.js, with my first numbers. The lathe needs the micro lathe
+on the bench.
+
+
+THE OTHER FILES HERE
+--------------------
+
+    _tools.txt          The tools that can be bought for the bench, at Tessen Colony's workshop.
+    _from-the-ship.txt  The kinds of the ship's own parts the captain can take apart for the rig, and what comes out.
+    _finds.txt          Things that turn up aboard for the rig, and where.
+
+Each explains itself in its own first lines. The wrecks the parts come from are in world/wrecks, and the dealers who
+buy and sell them in world/dealers.

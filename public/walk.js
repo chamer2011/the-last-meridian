@@ -926,7 +926,8 @@ function thingChoices(thing) {
     return [...more, ...usual, ["Close", "", closeWindow]];
   }
   if (thing.holds) return [["Open", "look through it, beside your pack", () => openStore(thing)], ["Close", "", closeWindow]];
-  if (thing.actions || thing.part) return [...(thing.actions ?? []).map((action) => [action.label, action.detail, () => workOn(thing, action.id)]), ["Close", "", closeWindow]];
+  // A part of the place's systems: its own actions, then anything else that can be done to it (taking it apart for a rig).
+  if (thing.actions || thing.part) return [...(thing.actions ?? []).map((action) => [action.label, action.detail, () => workOn(thing, action.id)]), ...more, ["Close", "", closeWindow]];
   return [
     ...(thing.done ? [] : [[thing.door ? "Ask to go through" : "Use", thing.have ? "you're already carrying one" : "", useThing, thing.have]]),
     ["Close", "", closeWindow],
@@ -1179,6 +1180,7 @@ function menuFor(target) {
         items: [
           { label: "Look", run: () => openThing(thing.id) },
           ...(thing.actions ?? []).map((action) => ({ label: action.label, detail: action.detail, run: there(() => workOn(walk.thing, action.id)) })),
+          ...does,
         ],
       };
     }

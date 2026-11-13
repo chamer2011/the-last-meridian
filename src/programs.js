@@ -7,11 +7,11 @@ import { worldDir } from "./paths.js";
 
 export const PROGRAMS_DIR = process.env.GAME_PROGRAMS_DIR ?? path.join(worldDir, "programs");
 export const PROGRAM_KINDS = { in: "Getting in", doors: "Doors and systems", quiet: "Staying quiet", watcher: "The watcher", find: "Finding things", leave: "Leaving things behind" };
-const NUMBERS = ["order", "hacking", "size", "power", "noise", "minutes"];
+const NUMBERS = ["order", "hacking", "size", "power", "noise", "minutes", "price"];
 const YES = ["once", "built in", "on every rig"];
 
 // One file, read into { id, name, kind, hacking, size, power, noise, minutes, once, builtIn, everyRig, hours, foundOn,
-// soldAt, what, problems }. Every problem names its file and line.
+// soldAt, price, what, problems }. Every problem names its file and line. A program sold at a port costs its price there.
 export function parseProgram(id, text) {
   const p = { id, name: id.toUpperCase(), what: "", problems: [] };
   const at = (n, message) => p.problems.push(`programs/${id}.txt line ${n}: ${message}`);

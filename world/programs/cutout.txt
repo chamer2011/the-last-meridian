@@ -7,6 +7,7 @@ noise: 1
 minutes: 1
 once: yes
 sold at: kessara
+price: 100
 
 What it does:
 If the watcher finds you or cuts you off while you're on, it ends at another terminal: you're thrown out, but nothing goes on the record.

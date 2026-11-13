@@ -79,7 +79,7 @@ addChecker(() => (fs.existsSync(TRADE_FILE) ? (tradeRules(), read.problems) : []
 
 export const purseOf = (game) => game.ship?.purse ?? tradeRules()?.["the purse"].start ?? 0;
 // The purse begins the first time it's used, and the levy comes in from then on.
-const openPurse = (game) => { if (game.ship && game.ship.purse === undefined) game.ship.purse = purseOf(game); };
+export const openPurse = (game) => { if (game.ship && game.ship.purse === undefined) game.ship.purse = purseOf(game); };
 const tradeOn = (game) => Boolean(game.ship?.trade) && Boolean(tradeRules());
 
 addDayWork((game) => {
@@ -151,8 +151,8 @@ const portsFrom = (place) => Object.entries(STAR_MAP.places ?? {}).filter(([id, 
 // What a port offers this week: the same all week, and gone once it's taken.
 export function offersAt(game, place) {
   const rules = tradeRules();
-  // Nothing's offered to someone who's out at a wreck (src/salvage.js): they aren't on the dock to hear it.
-  if (!rules || !isCaptain(game) || game.ship?.at !== place || game.location !== place || game.salvage) return { cargo: [], party: null };
+  // Nothing's offered to someone who's out at a wreck (src/salvage.js, src/wrecks.js): they aren't on the dock to hear it.
+  if (!rules || !isCaptain(game) || game.ship?.at !== place || game.location !== place || game.salvage || game.wreckRun) return { cargo: [], party: null };
   const ports = portsFrom(place);
   if (!ports.length) return { cargo: [], party: null };
   const week = Math.floor(dayOf(game) / 7);

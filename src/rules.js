@@ -462,7 +462,7 @@ function equipBest(game) {
 // ---- Market -------------------------------------------------------------
 
 // A good negotiator gets better prices, but buying always costs more than selling pays.
-function priceEdge(game) {
+export function priceEdge(game) {
   const commerce = skillRank(game, "commerce") + fxOf(game, "skills", "commerce");
   return clamp(commerce * 0.02 + Math.max(0, attrMod(game, "presence")) * 0.01 + fxSum(game, "priceBonus"), 0, 0.2);
 }
@@ -490,6 +490,8 @@ export function sell(game, id) {
   const item = ITEMS[id];
   if (!item || !game.inventory[id]) throw new Error("You don't have that item.");
   if (item.type === "story" && item.price === 0) throw new Error("You should hold on to that.");
+  // The rig's worth is its parts, sold one at a time to a port's dealer in them (src/dealers.js).
+  if (id === "rig") throw new Error("A market won't take your rig whole: its parts sell one at a time, to a dealer in rig parts.");
   const price = sellPrice(game, item);
   removeItem(game, id);
   game.credits += price;
@@ -763,7 +765,7 @@ export const tellStoryWaits = (fn) => {
 export function assembleGame(profile) {
   const start = START_LIST[profile.start] ?? START_LIST.captain;
   const game = {
-    version: 27,
+    version: 28,
     campaign: null,
     scene: null,
     flags: {},
@@ -836,6 +838,8 @@ export function assembleGame(profile) {
   // The rig: the pocket computer in the pack that carries programs onto computers.
   game.rig = newRig();
   game.inventory.rig = 1;
+  // Two air bottles, for runs out to the Graveyard's wrecks for the rig's parts (src/wrecks.js).
+  game.inventory.air_bottle = 2;
   return game;
 }
 

@@ -3,8 +3,9 @@ kind: sink
 order: 61
 grade: 3
 weight: 0.4
+worth: 105
 cools: 2
-where from: The galley's chiller, if nobody's looking.
+where from: Kessara's fence; the Saint Ilse's comms deck.
 
 What it is:
 Takes two points of heat off each socket beside it.

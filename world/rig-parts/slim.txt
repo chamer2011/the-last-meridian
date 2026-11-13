@@ -3,9 +3,10 @@ kind: board
 order: 2
 grade: 2
 weight: 0.1
+worth: 90
 quiet: 1
 sockets: core at 1 1, memory at 2 1, link at 1 2, cell at 2 2
-where from: Kessara's fence sells them.
+where from: Kessara's fence.
 
 What it is:
 Thin and quiet. Four sockets, and no room for a sink.

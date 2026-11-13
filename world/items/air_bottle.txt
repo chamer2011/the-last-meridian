@@ -1,0 +1,10 @@
+# Air bottle
+order: 73
+type: gadget
+price: 25
+size: 1x2
+weight: 1
+stack: 1
+
+In a line:
+An hour of air for a suit. A salvage run out to one of the Graveyard's three wrecks takes one; Tessen Colony's workshop sells them.

@@ -53,8 +53,10 @@ The first line is its name as the desktop shows it. The lines under it can come 
     found on      The computers it can be copied off, by their file names in world/computers
                   (meridian_plot_table), with commas between them. Copying is an action, and the
                   trace notices it.
-    sold at       A port that sells it. Nobody sells programs yet, so for now the Rig page only
-                  says so.
+    sold at       The place whose dealer in rig parts sells it (world/dealers), by its id: kessara.
+                  It's in that port's Market menu.
+    price         What it costs there, before the dealer's markup. Leave it out and it's 30 credits
+                  for each point of Hacking it needs.
     on every rig  yes and every rig has it from the start, not loaded.
     built in      yes and it's always there and always loaded, taking no memory.
 

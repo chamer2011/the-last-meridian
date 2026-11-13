@@ -1,4 +1,4 @@
-# The hacking rework (2026-11-13): designed on example pages, planned, steps 1 to 4 built
+# The hacking rework (2026-11-13): designed on example pages, planned, steps 1 to 5 built
 
 ## What was asked
 
@@ -280,3 +280,74 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
   the cable jack back; Every part there is opened, nothing overflowing.
 - Not done: getting the other parts (step 5: wrecks, ports, tools, finds), the other links and the computers that
   need them (step 6), cell charge, and the Story board for programs and parts (step 7). The owner hasn't tried it.
+
+## Step 5, getting parts (built 2026-11-13, at "Yes, step 5")
+
+- From the design page's getting-parts tab (salvage, the bench and the ports as one loop; the ship's own things and
+  finds now and then), fitted to the game:
+- **The wrecks** (`src/wrecks.js`, `world/wrecks/<id>.txt` with a how-to, `GAME_WRECKS_DIR`): the Merrow, the Pale
+  Wren and the Saint Ilse at the Graveyard, as the design had them, played like the Harrow from You can (room acts
+  wreck-start, wreck-job, wreck-back). A run takes an `air_bottle` (a new item, 69 items now) for 60 minutes; a new
+  game has two (`assembleGame`), and save version 28 (`fromVersion27`) gives an old game two. Jobs: minutes,
+  Engineering (parts worn at or above it, broken below; scrap as it is), "behind the hatch", what comes out. Done stays
+  done, taken stays taken (`game.wrecks.done`), a wreck stripped bare can't be run. Out of air, what's carried is left
+  by the airlock (`game.wrecks.left`) and a job picks it up next run: the design lost it, which felt too hard on a
+  finite wreck. The run is `game.wreckRun`; the Harrow (src/salvage.js, unchanged otherwise, still 90 minutes of the
+  suit's own air) and the wrecks hide each other while one is on, and trade.js offers nothing while either is.
+- **The dealers** (`src/dealers.js`, `world/dealers/<place>.txt` with a how-to, `GAME_DEALERS_DIR`): Haven's market
+  (buys what works), Kessara's fence (markup 1.5, buys anything, a broken part 5, friends pay less) and Tessen Colony's
+  workshop (`frontier`: air bottles, scrap by the sack, the bench's tools; buys scrap at 4), with the design's
+  numbers: each bought a fifth dearer until a day's restock (`game.dealers.bought`, an `addDayWork`), a wanted kind
+  a day in turn at half again, selling at half (anything) or two fifths (working), worn half that. The design's
+  Persuasion 2% became the market's own `priceEdge` (Commerce and Presence), now exported from src/rules.js. "Friends"
+  are the player's standing with whoever holds the place (Kessara: the Drift, as Kessara Syndicate), a step a fifth of
+  it, -2 to 3, 5% each; a sale at the fence counts +1 with them once a day. Parts have a `worth` line now (boards and
+  casings the design's values, parts grade x 35). The four programs `sold at: kessara` are sold there, at a new
+  `price` line in their files (SHADOW 120, CUTOUT 100, SNIFFER 110, MASTERKEY 180) times the markup. The bench's tools
+  are paid from the ship's purse when the player is the captain (`openPurse`, exported from src/trade.js), the
+  rest from their credits: my call, from the plan's "draws on the ship's purse". Shown in the **Market** menu beside
+  the market's goods, as cards like the market's (`dealerSections` in `public/rig.js`, from `rigView(game).dealer`;
+  orders deal-buy, deal-program, deal-sell and deal-scrap through `/api/rig`). A market no longer buys the rig whole
+  (it was 66 credits at Kessara, beside the fence's parts).
+- **Tools for the bench** (`world/rig-parts/_tools.txt`, `benchToolsNow` in src/rig-parts.js, `game.rig.tools`): the
+  soldering kit, the cell press and the micro lathe, as the design had them. `made from` reads ingredients now
+  (scrap, any item by name, a parts crate from the ship's stores, joined by "and"), Engineering, hours and "with the
+  <tool>": the fin sink (3 scrap, Engineering 2, 2 hours, soldering kit), the optical reader (a lens unit and 1 scrap,
+  Engineering 3, soldering kit) and the hot cell (a fuel cell and a parts crate, Engineering 4, 3 hours, cell press).
+  The lathe's rebuild (step 4's, built in until now) needs the micro lathe, which the plan's "buy the lathe at Tessen"
+  asked for. The Rig page's build lists the tools on the bench and the ones not yet.
+- **The links** came in now, not in step 6, because the design's sources give them (the Wren, Haven, the Ilse, the
+  mutineers, Oona): the service clip, the optical reader, the short radio and the Navy coupler, with a `reaches` line
+  on every link (the cable jack's too). Nothing reads it yet: step 6's computers will say which they take, and until
+  then any link that works starts the rig. The design's long cell (a battery) wasn't made, as in step 4.
+- **The ship's own things** (`src/ship-parts.js`, `world/rig-parts/_from-the-ship.txt`): by kind of systems part, not
+  the design's four named things, since the game has a junction box, a relay, cameras and a nav core but no spare
+  handset, Brig door panel or galley chiller: junction box (fin sink and 2 scrap; 25 minutes, Engineering 2; the chief
+  engineer), relay (short radio; 15, 1; the comms officer), camera (a `lens_unit`, a new item, for the optical
+  reader; 20, 2; the chief of security) and nav core (overclock board; 30, 3; the helm officer). Only the captain's own
+  (`ownedBy`) and whole parts; the part is damaged `by: "stripped"` ("It's been taken apart for parts, and it's
+  dead.") and the systems do the rest (dark rooms, no comms, a blind camera, jumps by hand) until the engineers mend it
+  with a crate. Seen (`whoSees` from src/law.js), the post's holder gets a story memory, -4. A new hook,
+  `addPartActs`/`partExtras` in src/room-hooks.js, gives a systems part `does` acts, which `public/walk.js` now shows
+  in a part's window and right-click menu.
+- **Finds** (`world/rig-parts/_finds.txt`, room acts find-take, `game.rig.found`): the mutineers' belongings in the
+  Brig once `game.battles.mutiny` exists (a short radio, a scrap memory and a scrap), and Tech Oona's old service clip
+  in the Repair Bay for two of the ship's parts crates. Oona doesn't remember it (she's a crowd name); the line says
+  she takes the crates for her repair list.
+- `npm run check-story` counts the bench's tools, the wrecks and the dealers, and checks every file, the programs
+  sold where there's no dealer, and the kinds and posts in _from-the-ship.txt.
+- Tests: `test/part-sources.test.js` (11): the files, the air bottles and the old save, a whole Merrow run (worn and
+  broken, not enough air, stripped bare, no bottle), the Wren's hatch and running out of air, Kessara (markup, dearer,
+  restock, broken, friends, once a day, programs), Haven and Tessen (working only, wants, scrap, sacks, bottles), the
+  tools from the purse and the lathe, soldering kit and cell press, the lathe needed, the junction box taken apart and
+  remembered, Engineering and the captain only, the finds. `test/rig-build.test.js` and `test/salvage.test.js` were
+  moved on (25 parts, the lathe as a tool, the Harrow's act found by its id). 1,133 tests.
+- Screens, on a test copy (port 3297, its own data folder): at 1400, out at the Merrow mid-run (jobs with their
+  Engineering, one too long for the air left) and back with the parts; the Rig page's spare parts and the bench's
+  tools; Kessara's fence beside the market, selling a broken cable jack (the standing line came up); the bench with the
+  micro lathe rebuilding it. At 810: Tessen's workshop, buying the micro lathe from the purse; Engineering's junction
+  box window with Take it apart, the room going dark; the Brig's find; the Graveyard's You can with the cargo, the
+  passengers, the Harrow and the three wrecks. Nothing overlapped.
+- Not done: the links' reach and the computers that need them (step 6), the story asking about parts or giving them
+  (step 7), the Story board for wrecks and dealers, the Harrow on air bottles, and a wreck to walk through. The owner
+  hasn't tried it.

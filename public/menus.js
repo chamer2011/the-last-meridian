@@ -6,7 +6,7 @@ import { api, columns, el, folded, meter, signed, strainMeter } from "./dom.js";
 import { mapMenu } from "./map.js";
 import { shipMenu } from "./ship.js";
 import { commandMenu } from "./command.js";
-import { rigMenu } from "./rig.js";
+import { dealerSections, rigMenu } from "./rig.js";
 import { oddsFor } from "./story.js";
 
 // What the menus need from the main screen. Set once, when the page loads.
@@ -180,6 +180,9 @@ function marketNote(g) {
 function marketMenu() {
   const { ui, act } = app;
   const g = ui.game;
+  // A dealer in rig parts at this port, with the parts, tools and programs they sell and what they'd pay (public/rig.js).
+  const dealer = dealerSections(g, { market: g.market.length > 0 });
+  if (!g.market.length && dealer.length) return columns(...dealer);
   if (!g.market.length) {
     const elsewhere = g.locations.filter((l) => l.hasMarket).map((l) => l.name);
     return [
@@ -188,7 +191,8 @@ function marketMenu() {
         elsewhere.length > 0 && small(`Known markets: ${elsewhere.join(", ")}.`)),
     ];
   }
-  const sellable = g.inventory.filter((i) => !(i.type === "story" && i.price === 0));
+  // The rig's parts are sold one at a time to a dealer in them, below, not the rig whole.
+  const sellable = g.inventory.filter((i) => !(i.type === "story" && i.price === 0) && i.id !== "rig");
   return columns(
     section(`Market at ${g.location.name}`,
       row("Your credits", g.credits),
@@ -203,6 +207,7 @@ function marketMenu() {
       sellable.length ? sellable.map((i) => el("div", { class: "menu-row small" },
         el("span", {}, `${i.name}${i.count > 1 ? ` x${i.count}` : ""}`, i.equipped && el("span", { class: "tag on" }, " equipped")),
         el("button", { disabled: Boolean(g.combat), onclick: act({ action: "sell", id: i.id }) }, `Sell ${i.sellPrice} cr`))) : muted("Nothing to sell.")),
+    ...dealer,
   );
 }
 

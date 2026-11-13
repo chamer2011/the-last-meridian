@@ -1,0 +1,14 @@
+# The Saint Ilse
+draft: mine, not yet edited by the owner
+at: graveyard
+order: 3
+it was: a passenger liner
+in a line: Comfortable once: quiet parts, good casings, radios.
+the shuttle: 20 minutes each way
+a bottle of air: 60 minutes
+out of air: stress 15
+
+Jobs:
+cabins: Go through the first-class cabins, 20 minutes, Engineering 1: ghost_foil, short_radio
+purser: Open the purser's office, 15 minutes, Engineering 3: whisper_core, echo_buffer
+comms: Take apart the comms deck, 25 minutes, Engineering 2: short_radio, cold_plate

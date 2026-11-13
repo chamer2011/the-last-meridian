@@ -8,6 +8,7 @@ noise: 0
 minutes: 2
 once: no
 sold at: kessara
+price: 180
 
 What it does:
 Unlocks the doors this computer runs, on anything up to a ship's main system, without the trace noticing.

@@ -1,0 +1,20 @@
+# Taking the ship's own things apart, for your rig
+draft: mine, not yet edited by the owner
+#
+# Now and then a part the rig wants is already aboard, in one of the ship's own systems (world/systems). As her captain,
+# it's all yours to take: a part of the kinds below shows "Take it apart for your rig" in its window and its
+# right-click menu. What comes out is worn. The part is broken from then on, by the systems' own rule, until the
+# engineers mend it with a parts crate from the stores: a junction box's rooms go dark, a camera sees nothing, the relay
+# takes the comms down, and the nav core leaves the jumps to be plotted by hand. If someone sees you do it (someone
+# awake in the room, or a camera that works), whoever holds the post it belongs to hears of it, and remembers.
+#
+# A line: a kind of part (as world/systems/_defaults.json names them), what comes out of one (rig parts by their file
+# names, items by theirs, a number in front for more than one), the minutes it takes, the Engineering it needs, and
+# the post it belongs to (as world/command/meridian.txt names it).
+#
+# After changing this file, run "npm run check-story", and close and reopen the game.
+
+junction box: fin_sink, 2 scrap; 25 minutes, Engineering 2; the chief engineer
+relay: short_radio; 15 minutes, Engineering 1; the comms officer
+camera: lens_unit; 20 minutes, Engineering 2; the chief of security
+nav core: overclock_board; 30 minutes, Engineering 3; the helm officer

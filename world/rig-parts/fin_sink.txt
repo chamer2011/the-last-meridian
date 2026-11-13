@@ -3,8 +3,10 @@ kind: sink
 order: 60
 grade: 1
 weight: 0.2
+worth: 35
 cools: 1
-where from: Comes with the rig.
+made from: 3 scrap, Engineering 2, 2 hours, with the soldering kit
+where from: Comes with the rig; the Merrow's drive room, the Pale Wren's lockers, a junction box taken apart; made at the bench with a soldering kit.
 
 What it is:
 Takes a point of heat off each socket beside it.

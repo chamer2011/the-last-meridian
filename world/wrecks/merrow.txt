@@ -1,0 +1,15 @@
+# The Merrow
+draft: mine, not yet edited by the owner
+at: graveyard
+order: 1
+it was: an ore freighter
+in a line: Big and plain: cells, memory and scrap, and easy work.
+the shuttle: 20 minutes each way
+a bottle of air: 60 minutes
+out of air: stress 15
+
+Jobs:
+lockers: Empty the crew lockers, 15 minutes, Engineering 1: standard_cell, memory_2, 2 scrap
+hold: Sweep the ore hold for scrap, 20 minutes, Engineering 0: 5 scrap
+bridge: Pull the bridge terminal, 20 minutes, Engineering 2: memory_4, cable_jack
+engine: Strip the drive room, 30 minutes, Engineering 2: standard_cell, fin_sink, 2 scrap

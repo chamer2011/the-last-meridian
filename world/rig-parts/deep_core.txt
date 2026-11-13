@@ -3,10 +3,11 @@ kind: core
 order: 22
 grade: 3
 weight: 0.2
+worth: 105
 heat: 2
 speed: -0.2
 power: 1
-where from: A crew terminal's insides, if you open one up.
+where from: The Pale Wren's gunnery console.
 
 What it is:
 Slower, but programs hit harder.

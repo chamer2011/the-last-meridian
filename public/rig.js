@@ -99,8 +99,16 @@ function buildSection(rig, busy) {
     b.box.length > 0 && el("div", { class: "stack gap-small" }, el("div", { class: "small" }, "Spare parts"),
       el("div", { class: "row wrap" }, b.box.map((part) => el("button", { class: `card rig-frame${part.uid === picked ? " chosen" : ""}`, title: part.facts, onclick: () => pick(part.uid) }, el("span", { class: "rig-socket-kind" }, part.kindName.toUpperCase()), el("strong", {}, part.name), condNode(part))))),
     el("div", { class: "muted small" }, `Scrap ${b.scrap} · parts crates aboard ${b.crates} · Engineering ${b.engineering}`),
+    b.tools?.length > 0 && el("div", { class: "muted small" }, toolsWords(b.tools)),
     b.makes.length > 0 && el("div", { class: "row wrap" }, b.makes.map((m) => el("button", { disabled: Boolean(m.why), title: m.what, onclick: () => order({ action: "make", id: m.id }) }, `${m.label}${m.why ? ` (${m.why})` : ""}`))),
     folded("rig-every-part", "Every part there is", everyPart(b)));
+}
+
+// The bench's tools: those on it, and those it could have.
+function toolsWords(tools) {
+  const have = tools.filter((t) => t.owned).map((t) => t.name);
+  const not = tools.filter((t) => !t.owned).map((t) => t.name);
+  return `Tools on the bench: ${have.length ? have.join(", ") : "only its own"}${not.length ? ` · not yet: ${not.join(", ")}` : ""}`;
 }
 
 function programCard(p, rig, busy) {
@@ -121,7 +129,7 @@ function programCard(p, rig, busy) {
     el("div", { class: "row" }, el("strong", {}, p.name), el("span", { class: "muted small" }, facts)),
     el("div", { class: "small" }, p.what),
     !p.owned && p.foundOn.length > 0 && el("div", { class: "muted small" }, `Can be copied off ${p.foundOn.map((name) => name.replace(/^The /, "the ")).join(" or ")}.`),
-    !p.owned && p.soldAt && el("div", { class: "muted small" }, "Sold at a port, but nobody sells programs yet."),
+    !p.owned && p.soldAt && el("div", { class: "muted small" }, `Sold at ${p.soldAt.replace(/^The /, "the ")}: under Market, when you're there.`),
     action && el("div", { class: "row" }, action));
 }
 
@@ -149,4 +157,47 @@ export function rigMenu() {
       const list = others.filter((p) => p.kind === kind);
       return list.length ? section(title, list.map(card)) : null;
     }).filter(Boolean)));
+}
+
+// ---- A dealer in parts, in the Market menu --------------------------------------------------------------------------
+
+// One thing for sale, as a card like the market's own: its name and price, a line about it, and a button.
+const saleCard = (name, price, note, why, onclick, label = "Buy") => el("div", { class: "card stack gap-small" },
+  el("div", { class: "spread" }, el("strong", {}, name), price !== null && el("span", {}, `${price} cr`)),
+  note && el("div", { class: "muted small" }, note),
+  el("div", {}, el("button", { disabled: Boolean(why), onclick }, why ? `${label}: ${why}` : label)));
+// One thing to sell, as a row like the market's own.
+const sellRow = (name, price, why, onclick, label = "Sell") => el("div", { class: "menu-row small" },
+  el("span", {}, name),
+  el("button", { disabled: Boolean(why), title: why ?? "", onclick }, why ? why : `${label} ${price} cr`));
+
+// What the port's dealer in rig parts sells, and what they'd give for the spare parts with the rig: two sections.
+// market says whether the market's own column is beside them, with the player's credits.
+export function dealerSections(game, { market = true } = {}) {
+  const d = game.rig?.dealer;
+  if (!d) return [];
+  const friends = d.friends && d.friends.steps !== 0
+    ? `${d.friends.steps > 0 ? "A friend" : "No friend"} of the ${d.friends.faction}: prices ${Math.abs(d.friends.steps) * 5}% ${d.friends.steps > 0 ? "better" : "worse"}.`
+    : d.friends ? `Friends of the ${d.friends.faction} pay less.` : null;
+  const funds = [!market && `Your credits: ${d.credits}`, d.purse !== null && `The ship's purse: ${d.purse}, for the bench's tools`].filter(Boolean).join(" · ");
+  const note = (one) => [one.purse ? "From the ship's purse." : `${one.left} left.`, one.note].join(" ");
+  return [
+    section(d.name,
+      el("div", { class: "small" }, d.line),
+      el("div", { class: "muted small" }, [`Buys ${d.buys}.`, d.wants && d.wants !== "scrap" ? `Wants ${d.wants} today: half again for them.` : null, friends].filter(Boolean).join(" ")),
+      funds && el("div", { class: "small" }, funds),
+      d.sells.map((one) => (one.owned
+        ? el("div", { class: "menu-row small muted" }, one.name, el("span", {}, "on your bench"))
+        : saleCard(one.name, one.price, note(one), one.why, () => order({ action: "deal-buy", id: one.id })))),
+      d.programs.length > 0 && el("h3", {}, "Programs"),
+      d.programs.map((p) => (p.owned
+        ? el("div", { class: "menu-row small muted" }, p.name, el("span", {}, "on your rig"))
+        : saleCard(p.name, p.price, `${blocks(p.size)}. ${p.what}`, p.why, () => order({ action: "deal-program", id: p.id }))))),
+    section(`Sell to ${d.name.replace(/^(Haven|Kessara|Tessen Colony)'s /, "the ")}`,
+      d.scrap && sellRow(`Scrap: ${d.scrap.have} on you, ${d.scrap.price} credits each`, d.scrap.price * d.scrap.n, d.scrap.n ? null : "you've none", () => order({ action: "deal-scrap" }), `Sell ${d.scrap.n}:`),
+      // A dealer who buys only scrap isn't offered the parts.
+      !d.scrap && (d.spare.length
+        ? d.spare.map((p) => sellRow(`${p.name}${p.cond !== "new" ? `, ${p.cond}` : ""}`, p.price, p.why, () => order({ action: "deal-sell", uid: p.uid })))
+        : el("div", { class: "muted small" }, "Nothing spare: every part you have is in the rig."))),
+  ];
 }

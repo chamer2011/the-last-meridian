@@ -463,7 +463,7 @@ test("an older save, even one with no check system, loads and can start one", ()
   delete save.check;
   delete save.story;
   const migrated = migrateGame(save);
-  assert.equal(migrated.version, 27);
+  assert.equal(migrated.version, 28);
   assert.equal(migrated.check, null);
   open(migrated, "engineering");
   assert.ok(publicState(migrated).check);

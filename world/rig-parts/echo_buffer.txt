@@ -3,8 +3,9 @@ kind: extra
 order: 71
 grade: 3
 weight: 0.05
+worth: 105
 echo: 2
-where from: Kessara's fence.
+where from: Kessara's fence; the Saint Ilse's purser's office.
 
 What it is:
 CLEANER takes two more noise off.

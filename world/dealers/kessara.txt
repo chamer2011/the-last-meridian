@@ -1,0 +1,16 @@
+# Kessara's fence
+draft: mine, not yet edited by the owner
+at: kessara
+in a line: The rare things, at a markup and with no questions asked.
+buys: anything
+markup: 1.5
+friends pay less: yes
+wants: cores, boards
+
+Sells:
+racing_core: 1
+slim: 1
+echo_buffer: 1
+cold_plate: 1
+whisper_core: 1
+overclock_board: 1

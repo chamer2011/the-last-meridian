@@ -3,8 +3,9 @@ kind: memory
 order: 30
 grade: 1
 weight: 0.05
+worth: 35
 memory: 2
-where from: Comes with the rig.
+where from: Comes with the rig; Haven's market; the Merrow's lockers and the Pale Wren's gunnery console.
 
 What it is:
 Room for two blocks of programs.

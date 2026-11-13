@@ -3,6 +3,7 @@ kind: casing
 order: 11
 grade: 2
 weight: 0.9
+worth: 70
 cooling: 0
 quiet: 1
 speed: -0.1

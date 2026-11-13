@@ -3,6 +3,7 @@ kind: casing
 order: 13
 grade: 1
 weight: 0.2
+worth: 40
 cooling: 2
 quiet: -1
 speed: 0.2

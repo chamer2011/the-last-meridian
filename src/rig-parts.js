@@ -3,7 +3,7 @@
 // A board's sockets sit on a little grid; a heat sink takes heat off the sockets beside it; a worn part gives half and
 // runs a point warmer, a broken one gives nothing. The rig won't start without a core, a cell and a link that work.
 // Nothing is rolled. This file reads nothing of the game's, so the rig, the computers and the pack can all read it.
-// GAME_RIG_PARTS_DIR points tests at a copy.
+// GAME_RIG_PARTS_DIR points tests at a copy. The bench's tools (step 5) are _tools.txt in the same folder.
 import fs from "node:fs";
 import path from "node:path";
 import { addChecker } from "./room-hooks.js";
@@ -12,7 +12,11 @@ import { worldDir } from "./paths.js";
 export const RIG_PARTS_DIR = process.env.GAME_RIG_PARTS_DIR ?? path.join(worldDir, "rig-parts");
 export const PART_KINDS = { board: "Board", casing: "Casing", core: "Core", memory: "Memory", link: "Link", cell: "Cell", sink: "Heat sink", extra: "Extra" };
 const SOCKET_KINDS = ["core", "memory", "link", "cell", "sink", "extra"];
-const NUMBERS = ["order", "grade", "weight", "heat", "power", "quiet", "speed", "memory", "cools", "cooling", "echo"];
+const NUMBERS = ["order", "grade", "weight", "heat", "power", "quiet", "speed", "memory", "cools", "cooling", "echo", "worth"];
+// What a link can reach: which ones a computer takes is the computers' business (step 6 of the hacking rework).
+export const REACHES = { cable: "by cable", clip: "by its service port", optic: "through its optical port", radio: "by radio", navy: "by a Navy coupling" };
+// What a part is worth in credits, when its file doesn't say: its grade, 35 a step.
+export const WORTH_A_GRADE = 35;
 export const CONDITIONS = ["new", "worn", "broken"];
 
 // The bench's rules, my numbers to tune: mending takes a parts crate from the ship's stores and the part's grade in
@@ -24,7 +28,7 @@ export const BENCH_RULES = {
     under: { name: "undervolted", speed: -0.2, heat: -1, engineering: 1, hours: 1 },
   },
   untune: { hours: 1 },
-  lathe: { scrap: 2, hours: 2 },
+  lathe: { scrap: 2, hours: 2, tool: "micro_lathe" },
   apart: { hours: 1, scrap: { board: 2, casing: 2, part: 1 } },
 };
 // A session warms the rig a point every ten of its minutes. At 3 its fan is heard: anything noisy is one louder. At 5
@@ -50,14 +54,42 @@ function readSockets(value, problem) {
   return out;
 }
 
-// "2 scrap, Engineering 1, 2 hours": what making it at the bench takes.
+// A thing in a recipe, in words, as an id: "a fuel cell" is fuel_cell, "2 parts crates" two of parts_crate.
+export const slugOf = (words) => String(words ?? "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+function readNeed(words) {
+  const m = /^(an?|\d+) (.+)$/i.exec(words.trim());
+  if (!m) return null;
+  const n = /^an?$/i.test(m[1]) ? 1 : Number(m[1]);
+  // Two of something is written in the plural: the last word loses its s.
+  const name = n > 1 ? m[2].trim().replace(/s$/i, "") : m[2].trim();
+  return n > 0 ? { id: slugOf(name), n } : null;
+}
+
+// "3 scrap, Engineering 2, 2 hours, with the soldering kit": what making it at the bench takes. What goes into it comes
+// first (scrap, or anything in world/items, or a parts crate from the ship's stores, joined by "and" or commas), then
+// the Engineering it needs, the hours, and a tool for the bench if it takes one.
 function readRecipe(value, problem) {
-  const m = /^(\d+) scrap, engineering (\d+), (\d+(?:\.\d+)?) hours?$/i.exec(value);
-  if (!m) {
-    problem("made from should say what it takes, like 2 scrap, Engineering 1, 2 hours");
+  const recipe = { needs: [], engineering: null, hours: null, tool: null };
+  for (const piece of value.split(",").map((one) => one.trim()).filter(Boolean)) {
+    let m;
+    if ((m = /^engineering (\d+)$/i.exec(piece))) recipe.engineering = Number(m[1]);
+    else if ((m = /^(\d+(?:\.\d+)?) hours?$/i.exec(piece))) recipe.hours = Number(m[1]);
+    else if ((m = /^with (?:the |an? )?(.+)$/i.exec(piece))) recipe.tool = slugOf(m[1]);
+    else {
+      for (const words of piece.split(/ and /i)) {
+        const need = readNeed(words);
+        if (need) recipe.needs.push(need);
+        else problem(`"${words}" isn't something to make it from: write it like 2 scrap, or a fuel cell`);
+      }
+    }
+  }
+  if (!recipe.needs.length || recipe.engineering === null || recipe.hours === null) {
+    problem("made from should say what it takes, like 2 scrap, Engineering 1, 2 hours, and a tool at the end if it needs one, like with the soldering kit");
     return null;
   }
-  return { scrap: Number(m[1]), engineering: Number(m[2]), hours: Number(m[3]) };
+  // The scrap it takes, which the Rig page and the bench read first.
+  recipe.scrap = recipe.needs.find((need) => need.id === "scrap")?.n ?? 0;
+  return recipe;
 }
 
 // One file, read into { id, name, kind, the numbers, sockets, made, from, what, problems }. Every problem names its file
@@ -94,6 +126,9 @@ export function parseRigPart(id, text) {
     } else if (key === "kind") {
       if (!PART_KINDS[value]) return at(i + 1, `the kind "${value}" isn't one of ${Object.keys(PART_KINDS).join(", ")}`);
       p.kind = value;
+    } else if (key === "reaches") {
+      if (!REACHES[value.toLowerCase()]) return at(i + 1, `a link reaches one of: ${Object.keys(REACHES).join(", ")}`);
+      p.reaches = value.toLowerCase();
     } else if (key === "sockets") p.sockets = readSockets(value, (message) => at(i + 1, message));
     else if (key === "made from") p.made = readRecipe(value, (message) => at(i + 1, message));
     else if (key === "where from") p.from = value;
@@ -106,8 +141,11 @@ export function parseRigPart(id, text) {
     const spots = p.sockets.map((s) => `${s.col} ${s.row}`);
     if (new Set(spots).size !== spots.length) p.problems.push(`rig-parts/${id}.txt: two sockets are in the same place`);
   }
+  if (p.kind === "link" && !p.reaches) p.problems.push(`rig-parts/${id}.txt: a link needs a reaches line, one of ${Object.keys(REACHES).join(", ")}`);
+  if (p.reaches && p.kind !== "link") p.problems.push(`rig-parts/${id}.txt: only a link has a reaches line`);
   for (const key of NUMBERS) p[key] ??= 0;
   p.grade = Math.max(1, p.grade || 1);
+  p.worth = p.worth || p.grade * WORTH_A_GRADE;
   p.order = p.order || 99;
   return p;
 }
@@ -140,7 +178,54 @@ export function rigPartsNow() {
   return cache;
 }
 export const rigPartById = (id) => rigPartsNow().byId[String(id ?? "")] ?? null;
-addChecker(() => rigPartsNow().problems);
+addChecker(() => [...rigPartsNow().problems, ...benchToolsNow().problems, ...recipeToolProblems()]);
+
+// ---- The bench's tools (step 5) -------------------------------------------------------------------------------------
+
+// "soldering_kit: Soldering kit, 60 credits: what it's for": one line a tool, in _tools.txt beside the parts. A tool
+// bought for the bench stays on it (game.rig.tools); a recipe that needs one says "with the soldering kit".
+export function parseBenchTools(text) {
+  const out = { list: [], byId: {}, problems: [] };
+  String(text ?? "").replace(/\r/g, "").split("\n").forEach((raw, i) => {
+    const line = raw.trim();
+    if (!line || line.startsWith("#") || /^draft:/i.test(line)) return;
+    const m = /^([a-z0-9_]+): ([^,]+), (\d+) credits: (.+)$/i.exec(line);
+    if (!m) return out.problems.push(`rig-parts/_tools.txt line ${i + 1}: a tool is written like "micro_lathe: Micro lathe, 150 credits: what it's for"`);
+    const tool = { id: m[1].toLowerCase(), name: m[2].trim(), price: Number(m[3]), what: m[4].trim() };
+    if (out.byId[tool.id]) return out.problems.push(`rig-parts/_tools.txt line ${i + 1}: ${tool.id} is written twice`);
+    out.list.push(tool);
+    out.byId[tool.id] = tool;
+  });
+  return out;
+}
+let toolsCache = null;
+export function benchToolsNow() {
+  const now = Date.now();
+  if (toolsCache && now - toolsCache.looked < 1000) return toolsCache;
+  const file = path.join(RIG_PARTS_DIR, "_tools.txt");
+  let stamp = "";
+  try {
+    stamp = String(fs.statSync(file).mtimeMs);
+  } catch {
+    stamp = "none";
+  }
+  if (toolsCache?.stamp === stamp) {
+    toolsCache.looked = now;
+    return toolsCache;
+  }
+  const read = stamp === "none" ? { list: [], byId: {}, problems: [] } : parseBenchTools(fs.readFileSync(file, "utf8"));
+  toolsCache = { ...read, stamp, looked: now };
+  return toolsCache;
+}
+export const benchToolById = (id) => benchToolsNow().byId[String(id ?? "")] ?? null;
+// A recipe's tool, and the lathe's, have to be tools the file names.
+function recipeToolProblems() {
+  const out = rigPartsNow().list.filter((p) => p.made?.tool && !benchToolById(p.made.tool)).map((p) => `rig-parts/${p.id}.txt: it's made with the ${p.made.tool.replace(/_/g, " ")}, which isn't a tool in rig-parts/_tools.txt`);
+  if (BENCH_RULES.lathe.tool && !benchToolById(BENCH_RULES.lathe.tool) && fs.existsSync(path.join(RIG_PARTS_DIR, "_tools.txt"))) out.push(`rig-parts/_tools.txt: the bench's lathe is the ${BENCH_RULES.lathe.tool.replace(/_/g, " ")}, which needs a line here`);
+  return out;
+}
+// What a part is worth in credits.
+export const worthOf = (id) => rigPartById(id)?.worth ?? 0;
 
 const half = (v) => (v > 0 ? Math.floor(v / 2) : Math.ceil(v / 2));
 const tenth = (v) => Math.round(v * 10) / 10;

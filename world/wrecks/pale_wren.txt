@@ -1,0 +1,16 @@
+# The Pale Wren
+draft: mine, not yet edited by the owner
+at: graveyard
+order: 2
+it was: a Navy picket
+in a line: Military: boards, cores and couplers, behind a hatch, and hard work.
+the shuttle: 20 minutes each way
+a bottle of air: 60 minutes
+out of air: stress 15
+
+Jobs:
+lockers: Empty the crew lockers, 15 minutes, Engineering 1: service_clip, fin_sink, 2 scrap
+console: Open up the gunnery console, 20 minutes, Engineering 2: deep_core, memory_2
+hatch: Cut through the bulkhead hatch, 10 minutes, Engineering 1: nothing
+engine: Strip the engine room, 25 minutes, Engineering 3, behind the hatch: hot_cell, 3 scrap
+bridge: Pull the bridge computer, 30 minutes, Engineering 4, behind the hatch: navy, navy_coupler

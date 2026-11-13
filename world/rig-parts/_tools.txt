@@ -1,0 +1,13 @@
+# Tools for the bench
+draft: mine, not yet edited by the owner
+#
+# The Repair Bay's bench has its own tools, and these can be bought for it at Tessen Colony's workshop (world/dealers).
+# Once bought, a tool stays on the bench. A part whose "made from" line ends "with the soldering kit" needs that tool,
+# and the bench's lathe needs the micro lathe to rebuild a broken part from scrap.
+#
+# A line: the tool's id, its name, its price in credits, and what it's for.
+# After changing this file, run "npm run check-story", and close and reopen the game.
+
+soldering_kit: Soldering kit, 60 credits: fin sinks made from scrap, and optical readers made from a camera's lens unit
+cell_press: Cell press, 120 credits: hot cells pressed from a fuel cell and a parts crate
+micro_lathe: Micro lathe, 150 credits: a broken part rebuilt from 2 scrap, worn but working, with no parts crate

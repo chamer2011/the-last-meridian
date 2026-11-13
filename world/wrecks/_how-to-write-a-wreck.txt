@@ -1,0 +1,41 @@
+How to write a wreck
+====================
+
+A wreck is a dead ship the player can take the shuttle out to, for the parts a rig is built from. Each file here is
+one wreck, named by its file. The player finds it under You can, anywhere at the place the file names: a run out takes
+an air bottle from their pack, and the bottle's air runs down with the clock whatever they're doing (pausing with
+Space stops it, like everything). The Harrow, the ship's own salvage run in world/salvage.txt, is something else and
+works as it did.
+
+The first line is the wreck's name, after a #:
+
+    # The Merrow
+
+Then these lines:
+
+    at: graveyard                 the place it's reached from, by its id in world/places
+    order: 1                      where it comes in the list under You can
+    it was: an ore freighter      a few words, shown under the button
+    in a line: ...                a few words about it
+    the shuttle: 20 minutes each way
+                                  the trip out and back, which doesn't count against the air
+    a bottle of air: 60 minutes   how long one bottle lasts out there
+    out of air: stress 15         what being hauled out with an empty bottle costs
+
+Then a line that says Jobs:, and under it one line for each job, in the order they're listed:
+
+    lockers: Empty the crew lockers, 15 minutes, Engineering 1: standard_cell, memory_2, 2 scrap
+
+    - first its id, then the button's words, the minutes it takes, and the Engineering it needs;
+    - ", behind the hatch" before the colon means the job called hatch has to be done first;
+    - after the colon, what comes out: rig parts by their file names in world/rig-parts, and items by theirs in
+      world/items, with a number in front for more than one (2 scrap), or "nothing" for a job that only opens the way.
+
+Rig parts come out worn if the player's Engineering is at least the job's, and broken if it isn't. Scrap and anything
+else come out as they are. A job done stays done, and what's taken stays taken: once every job that gives something is
+done, the wreck is stripped bare.
+
+What's carried goes home when the player goes back to the shuttle. If the air runs out first, the shuttle's crew haul
+them out, and what they were carrying is left by the airlock, to be picked up on their next run there.
+
+After changing a file, run "npm run check-story", and close and reopen the game.

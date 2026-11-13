@@ -24,7 +24,7 @@ import { changeStanding, changeStress, hoursNow } from "./rules.js";
 import { holderOf } from "./daily.js";
 import { atPost, mapFor, roomOf, roomsOf, roomsOn, thingsIn } from "./walk.js";
 import { notePut } from "./puts.js";
-import { airSpoiled } from "./room-hooks.js";
+import { airSpoiled, partExtras } from "./room-hooks.js";
 import { SYSTEMS_DEFAULTS, SYSTEMS_FILE_PROBLEMS, WORLD_CHARACTERS, WORLD_COMPUTERS, WORLD_LIFE, WORLD_SYSTEMS } from "./world.js";
 import { KNOWN_SYSTEMS, SYSTEM_TITLES, readComputerLine, readDoorLine, readLocksLine, readPartLine, slugOf } from "../public/systems-text.js";
 
@@ -1205,12 +1205,14 @@ const ringingNow = (game, place, part) => part.system === "alarm" && Boolean(ala
 
 // What any part looks like when it was shot up in a battle (src/aftermath.js), rather than tampered with.
 const SHOT_UP = "It was shot up in the fighting, and it's dead.";
+// And when it was taken apart for a rig's parts (src/ship-parts.js).
+const STRIPPED = "It's been taken apart for parts, and it's dead.";
 
 export function lookAt(game, place, part) {
   const spec = kindSpec(part.kind);
   const s = partState(game, place, part.id);
   const works = partWorks(game, place, part);
-  const state = s.damage ? (s.by === "wear" && spec.worn) || (s.by === "battle" && SHOT_UP) || spec.damaged || "It's broken." : s.on === false ? spec.off ?? "It's off." : !works ? deadWords(game, place, part) : ringingNow(game, place, part) ? "It's ringing." : spec.on ?? "It's working.";
+  const state = s.damage ? (s.by === "wear" && spec.worn) || (s.by === "battle" && SHOT_UP) || (s.by === "stripped" && STRIPPED) || spec.damaged || "It's broken." : s.on === false ? spec.off ?? "It's off." : !works ? deadWords(game, place, part) : ringingNow(game, place, part) ? "It's ringing." : spec.on ?? "It's working.";
   return `${part.look ?? spec.look ?? `The ${part.name}.`} ${state}${s.damage ? repairWords(game, place, s) : ""}`;
 }
 
@@ -1401,6 +1403,8 @@ export function partThings(game, place, room) {
         ...(SPARKING.has(damage) ? { sparks: true } : {}),
       },
       actions: partActions(game, place, part).map((action) => ({ id: action.id, label: action.label, detail: detailOf(action) })),
+      // What else can be done to it, from the parts of the game that add to a room: taking it apart for a rig.
+      ...partExtras(game, place, part),
     };
   });
 }

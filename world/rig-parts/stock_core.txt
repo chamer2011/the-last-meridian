@@ -3,6 +3,7 @@ kind: core
 order: 20
 grade: 1
 weight: 0.1
+worth: 35
 heat: 1
 where from: Comes with the rig.
 

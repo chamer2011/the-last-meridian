@@ -1,0 +1,45 @@
+How to write a dealer in rig parts
+==================================
+
+A dealer buys and sells the parts a rig is built from, at a port. Each file here is one dealer, named by its file
+(haven.txt is Haven's market). The player finds them in the Market menu while they're at that port.
+
+The first line is the dealer's name, after a #:
+
+    # Kessara's fence
+
+Then these lines:
+
+    at: kessara                   the place it's at, by its id in world/places (Tessen Colony is frontier)
+    in a line: ...                a few words about it, shown in the Market menu
+    buys: anything                anything, broken too: a broken part fetches 5 credits
+    buys: what works              only parts that still work
+    buys: scrap, 4 credits each   only scrap, at that price
+    markup: 1.5                   everything it sells costs this much more than it's worth (1.5 is half again)
+    friends pay less: yes         a friend of whoever holds the place pays less and gets more, and every day the
+                                  player sells there counts a little with them
+    wants: cores, boards          the kinds it wants, one a day in turn; it pays half again for one of them
+                                  (cells, memory, cores, boards, casings, links, heat sinks, extras, scrap)
+
+Then a line that says Sells:, and under it one line for each thing it sells, with how many it has:
+
+    memory_4: 2                   a rig part (world/rig-parts), a tool for the bench (world/rig-parts/_tools.txt),
+                                  or an item (world/items), and how many it has
+    scrap: 3, 15 credits, 3 at a time
+                                  its own price instead of what the thing is worth, and how many come with each one
+                                  bought
+
+What things cost: a rig part its worth line, a tool its price, an item its price; times the markup. Each one bought
+makes the next a fifth dearer until the port restocks: it takes in one more of everything it sells each day. The
+player's way with a price (Commerce and Presence, as at the market) takes a little off what they pay and adds a little
+to what they get.
+
+What it pays for a spare part: half its worth where it buys anything, two fifths where it buys only what works; half
+that for a worn one; half again for the kind it wants today.
+
+Tools for the bench are the ship's, so a captain pays for them out of the ship's purse.
+
+A program whose file says "sold at: kessara" is sold by the dealer at kessara, at its price line (or 30 credits for
+each point of Hacking it needs), times the markup.
+
+After changing a file, run "npm run check-story", and close and reopen the game.

@@ -1,0 +1,12 @@
+# Short radio
+kind: link
+order: 43
+grade: 2
+weight: 0.15
+worth: 80
+heat: 1
+reaches: radio
+where from: Haven's market; the Saint Ilse; the Meridian's comms relay, taken apart; the mutineers' belongings.
+
+What it is:
+Talks to a computer from a room or two away, by radio. It runs a little warm.

@@ -3,7 +3,8 @@ kind: cell
 order: 50
 grade: 1
 weight: 0.3
-where from: Comes with the rig.
+worth: 35
+where from: Comes with the rig; Haven's market; the Merrow's lockers and drive room.
 
 What it is:
 Keeps the rig running. Without a cell, it won't start.

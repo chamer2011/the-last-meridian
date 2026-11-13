@@ -1,0 +1,11 @@
+# Service clip
+kind: link
+order: 41
+grade: 2
+weight: 0.1
+worth: 70
+reaches: clip
+where from: Tech Oona's old one, for two parts crates; the Pale Wren's crew lockers.
+
+What it is:
+A tech's clip that bites onto a computer's service port, for the panels and boxes with no socket for a cable.

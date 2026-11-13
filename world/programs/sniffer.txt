@@ -7,6 +7,7 @@ noise: 1
 minutes: 1
 once: yes
 sold at: kessara
+price: 110
 
 What it does:
 Stays behind and writes down the passwords typed here. A day later you know the password of every computer this one reaches.

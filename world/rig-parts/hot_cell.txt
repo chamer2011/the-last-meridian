@@ -3,9 +3,11 @@ kind: cell
 order: 51
 grade: 3
 weight: 0.3
+worth: 105
 heat: 2
 power: 1
-where from: Pressed from a fuel cell, with a cell press.
+made from: a fuel cell and a parts crate, Engineering 4, 3 hours, with the cell press
+where from: The Pale Wren's engine room; pressed at the bench from a fuel cell, with a cell press.
 
 What it is:
 Drives programs harder, and runs hot.

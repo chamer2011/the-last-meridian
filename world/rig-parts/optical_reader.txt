@@ -1,0 +1,12 @@
+# Optical reader
+kind: link
+order: 42
+grade: 2
+weight: 0.1
+worth: 70
+reaches: optic
+made from: a lens unit and 1 scrap, Engineering 3, 2 hours, with the soldering kit
+where from: Made at the bench from a camera's lens unit, with a soldering kit.
+
+What it is:
+Reads a computer through the little glass eye some of them have, without touching a wire.

@@ -40,6 +40,8 @@ import "./emergencies.js";
 import "./law.js";
 import "./trade.js";
 import "./salvage.js";
+import "./wrecks.js";
+import "./ship-parts.js";
 
 const STEPS = [[0, -1], [-1, 0], [1, 0], [0, 1]];
 const DOOR = "+";

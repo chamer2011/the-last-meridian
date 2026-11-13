@@ -11,6 +11,7 @@ const people = [];
 const notes = [];
 const areaStates = [];
 const things = [];
+const partActs = [];
 const rooms = [];
 const orders = new Map();
 const clocks = [];
@@ -27,6 +28,8 @@ const holds = [];
 export const addPersonActs = (fn) => { people.push(fn); };
 // (game, thing, level) => { does: acts, and any other fields for the page }, or nothing.
 export const addThingActs = (fn) => { things.push(fn); };
+// (game, place, part) => { does: acts } for a part of a place's systems (src/systems.js), or nothing.
+export const addPartActs = (fn) => { partActs.push(fn); };
 // (game, { place, room, level }) => the acts for the room the player's in, or nothing.
 export const addRoomActs = (fn) => { rooms.push(fn); };
 // (game, body, context) => { said, and whatever else the page reads }. context is { walk, map, level, spot, people, room }.
@@ -112,6 +115,12 @@ export function thingExtras(game, thing, level) {
     out = { ...out, ...more, ...(does.length ? { does } : {}) };
   }
   return out;
+}
+
+export function partExtras(game, place, part) {
+  if (!partActs.length) return {};
+  const does = partActs.flatMap((fn) => fn(game, place, part)?.does ?? []);
+  return does.length ? { does } : {};
 }
 
 export function roomExtras(game, context) {

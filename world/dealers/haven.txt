@@ -1,0 +1,13 @@
+# Haven's market
+draft: mine, not yet edited by the owner
+at: haven
+in a line: Ordinary parts at fair prices, from a stall between the noodle counter and the customs line.
+buys: what works
+wants: cells, memory
+
+Sells:
+memory_2: 3
+memory_4: 2
+standard_cell: 2
+shielded_case: 1
+short_radio: 1

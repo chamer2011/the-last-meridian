@@ -3,6 +3,7 @@ kind: core
 order: 21
 grade: 3
 weight: 0.1
+worth: 105
 heat: 3
 speed: 0.6
 where from: Kessara's fence.

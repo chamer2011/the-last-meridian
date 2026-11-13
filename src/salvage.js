@@ -112,7 +112,8 @@ const carriedWords = (run) => {
 
 addRoomActs((game, { place }) => {
   const rules = salvageRules();
-  if (!rules || place !== rules.at) return null;
+  // Out at one of the three wrecks the rig's parts come from (src/wrecks.js), the Harrow waits.
+  if (!rules || place !== rules.at || game.wreckRun) return null;
   const run = game.salvage;
   if (!run) {
     const wait = (game.salvageNext ?? 0) - Math.floor(nowOf(game) / 24);
@@ -129,7 +130,7 @@ addRoomActs((game, { place }) => {
 addOrder("salvage-start", (game) => {
   const rules = salvageRules();
   if (!rules || game.location !== rules.at) throw new Error("There's no wreck to go out to from here.");
-  if (game.salvage) throw new Error("You're out there already.");
+  if (game.salvage || game.wreckRun) throw new Error("You're out there already.");
   if ((game.salvageNext ?? 0) > Math.floor(nowOf(game) / 24)) throw new Error("It's been picked over for now.");
   const notes = passTime(game, rules.shuttle / 60, "active");
   game.salvage = { since: nowOf(game), air: rules.air, power: false, hatch: false, done: {}, carried: {}, credits: 0 };

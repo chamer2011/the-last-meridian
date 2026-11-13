@@ -3,9 +3,10 @@ kind: memory
 order: 31
 grade: 2
 weight: 0.05
+worth: 70
 memory: 4
 heat: 1
-where from: Haven's market.
+where from: Haven's market; the Merrow's bridge terminal.
 
 What it is:
 Room for four blocks, and a little warmer.

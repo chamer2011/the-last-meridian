@@ -3,7 +3,9 @@ kind: link
 order: 40
 grade: 1
 weight: 0.05
-where from: Comes with the rig.
+worth: 35
+reaches: cable
+where from: Comes with the rig; the Merrow's bridge terminal.
 
 What it is:
 Plugs in at the terminal itself. Without a link, the rig can't connect to anything.

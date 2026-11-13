@@ -1,0 +1,12 @@
+# Navy coupler
+kind: link
+order: 44
+grade: 4
+weight: 0.2
+worth: 140
+heat: 1
+reaches: navy
+where from: The Pale Wren's bridge.
+
+What it is:
+A Navy ship's own coupling, for a Navy computer that takes nothing else. Heavy, and warm.

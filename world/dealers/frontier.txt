@@ -1,0 +1,13 @@
+# Tessen Colony's workshop
+draft: mine, not yet edited by the owner
+at: frontier
+in a line: Air for salvage runs, tools for the bench and scrap by the sack, from the colony's machine shed.
+buys: scrap, 4 credits each
+wants: scrap
+
+Sells:
+air_bottle: 4
+scrap: 3, 15 credits, 3 at a time
+soldering_kit: 1
+cell_press: 1
+micro_lathe: 1

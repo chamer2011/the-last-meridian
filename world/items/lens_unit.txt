@@ -1,0 +1,10 @@
+# Lens unit
+order: 74
+type: gadget
+price: 10
+size: 1x1
+weight: 0.1
+stack: 5
+
+In a line:
+A camera's lens and its reader, taken out whole. With a soldering kit, the Repair Bay's bench makes an optical reader of it.

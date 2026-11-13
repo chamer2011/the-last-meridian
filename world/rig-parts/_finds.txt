@@ -1,0 +1,15 @@
+# Finds: things that turn up aboard, for your rig
+draft: mine, not yet edited by the owner
+#
+# Each find is in a room aboard the Meridian, and shows under You can there for her captain, until it's taken. What's
+# in it is worn.
+#
+# A line: what it is; "in" and the room; ", after the mutiny" if it's there only once the opening battle's been fought;
+# ", for 2 parts crates" if it costs that many of the ship's parts crates from the stores; a colon, and what's in it
+# (rig parts by their file names, items by theirs, a number in front for more than one); a semicolon, and what's said
+# when it's taken.
+#
+# After changing this file, run "npm run check-story", and close and reopen the game.
+
+the mutineers' belongings: in The Brig, after the mutiny: short_radio, scrap_memory, 1 scrap; The prisoners watch you go through what they carried. They'll remember it.
+Tech Oona's old service clip: in The Repair Bay, for 2 parts crates: service_clip; Oona takes the crates for her repair list, and lets you have the clip she's carried since the yards.

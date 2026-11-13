@@ -42,7 +42,7 @@ test("the program files read with nothing wrong, and a bad one says what's wrong
 
 test("a new game's captain has the plain rig in their pack, with DICTIONARY, DOORKEY and MASK loaded", () => {
   const game = newGame();
-  assert.equal(game.version, 27);
+  assert.equal(game.version, 28);
   assert.equal(game.inventory.rig, 1);
   const rig = publicState(game).rig;
   assert.deepEqual(rig.loaded, ["dictionary", "doorkey", "mask"]);
@@ -214,7 +214,7 @@ test("an old save gets the rig", () => {
   delete old.rig;
   delete old.inventory.rig;
   const moved = migrateGame(old);
-  assert.equal(moved.version, 27);
+  assert.equal(moved.version, 28);
   assert.equal(moved.inventory.rig, 1);
   assert.deepEqual(moved.rig.loaded, ["dictionary", "doorkey", "mask"]);
 });

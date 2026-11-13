@@ -361,6 +361,14 @@ function fromVersion26(save) {
   return game;
 }
 
+// Version 28 (2026-11-13): getting the rig's parts, step 5 of the hacking rework. A run out to one of the Graveyard's
+// wrecks takes an air bottle, and a new game has two in the pack: so does one from before.
+function fromVersion27(save) {
+  const game = { ...save, version: 28 };
+  if (game.inventory && !game.inventory.air_bottle) game.inventory = { ...game.inventory, air_bottle: 2 };
+  return game;
+}
+
 export function migrateGame(save) {
   if (!save) return save;
   let game = save;
@@ -390,6 +398,7 @@ export function migrateGame(save) {
   if (game.version < 25) game = fromVersion24(game);
   if (game.version < 26) game = fromVersion25(game);
   if (game.version < 27) game = fromVersion26(game);
+  if (game.version < 28) game = fromVersion27(game);
   // A place that's gone from the world's files can't hold anyone, and factions added since this save was made need a standing.
   if (!LOCATIONS[game.location]) game.location = "meridian";
   game.factions ??= {};
