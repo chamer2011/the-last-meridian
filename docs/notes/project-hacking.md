@@ -489,3 +489,19 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
 - Not done: weak points elsewhere (step 8), sealed systems and trust (step 9), the story knowing (step 10); going back
   along the network from a logon you haven't got past (log off instead); the Story board keeps a Network part as
   written but doesn't draw it. The owner hasn't tried it.
+
+## A change asked after step 7: the rig's map beside a panel (examples shown 2026-11-13, not built)
+
+- They said: "Before continuing, a little modification, the network map should appear on a computer but if it's a
+  keypad, door, alarm control, etc. The network map should appear beside it on windows of your rig, show me examples
+  before implementing".
+- Three examples on https://claude.ai/artifact/BPcqWZnXpN8DpeYNiiutD5 (source in my scratchpad only), each in a scaled
+  copy of the game screen at 1400 or 810 wide, starting from the Bridge door's keypad, JB-3 or Camera D3-02, with the
+  Meridian's real map and hops that work: **A**, a window of the rig's in the game's green glued to the panel's side
+  (the map only; it folds to a strip); **B**, the rig as a pocket computer beside the panel (YARD BOARD · PLAIN CASE,
+  link and heat lights), wired to it by how it's plugged in (a clip lead, the optical reader's beam, radio arcs), its
+  screen with NET (the map), D: (the loaded programs, moved out of the panel's window) and LOG; **C**, the rig's own
+  Keelworks windows (Network, Programs, Log) beside the panel with a strip to open and close them. My pick: B. In all
+  three a computer keeps the map in its Network folder and the panel's window loses its The network button. The game
+  has no alarm panel (the alarm is run from computers and speakers); one added later would get the rig the same way.
+- Build only what they pick.
