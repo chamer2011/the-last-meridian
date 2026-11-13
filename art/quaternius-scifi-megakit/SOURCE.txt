@@ -1,0 +1,11 @@
+Modular Sci-Fi MegaKit, the free Standard version, by Quaternius (quaternius.com), CC0: see License.txt beside this file.
+
+Downloaded on 2026-11-12 from https://quaternius.itch.io/modular-sci-fi-megakit ("Modular SciFi MegaKit[Standard].zip",
+46 MB, nothing paid), at the owner's "Show me with a better kit" after the test with Kenney's kit.
+
+Kept: the glTF models of the walls, floors (Platforms), columns, props and decals, all in one folder (gltf/) with the
+pictures they use beside them, as the models expect; the pack's first preview and its licence.
+Left out: the same models as FBX and OBJ, the three aliens, and the pictures no model uses (the emissive and detail
+masks, and the blue trim, which turns everything blue).
+
+tools/blender-room.py builds a room of a deck out of these with --kit quaternius. See docs/notes/project-tiled.md.
