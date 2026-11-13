@@ -9,6 +9,7 @@
 
 const people = [];
 const notes = [];
+const areaStates = [];
 const things = [];
 const rooms = [];
 const orders = new Map();
@@ -74,6 +75,11 @@ export const airSpoiled = (game, place, room) => spoilers.some((fn) => fn(game, 
 // (game, place, room) => a line more for a room's description, or nothing: who's held in the brig (src/aftermath.js).
 export const addRoomNote = (fn) => { notes.push(fn); };
 export const roomNotes = (game, place, room) => notes.map((fn) => fn(game, place, room)).filter(Boolean);
+
+// (game, place, room) => what the room's picture should show of a room drawn on a deck, or nothing: a fire and how big
+// it is, a hole in the hull (src/emergencies.js). Merged into that room's entry in the room view's areas.
+export const addAreaState = (fn) => { areaStates.push(fn); };
+export const areaExtras = (game, place, room) => Object.assign({}, ...areaStates.map((fn) => fn(game, place, room) ?? {}));
 
 // (game, place) => true while a place's stores aren't to be refilled from nothing: something else supplies them.
 export const addRefillHold = (fn) => { holds.push(fn); };

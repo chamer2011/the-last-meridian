@@ -133,4 +133,46 @@ with stars, screens on the walls), and two pictures went to them. Then they said
   name tests count a seat or a bed as one square for that reason. The cabin spots are on the bunks' back row, because
   the cabins' names are painted on the deck under the front row and nobody stops on a painted name.
 
-Build step 4 only when they say so.
+## Step 4, built on 2026-11-12 and 13, at their "Yes, step 4", untried by them
+
+- **What the room view sends** (`walkView` in `src/walk.js`): each room on a deck gets `power: false` when it has no
+  power (`roomPowered`), and whatever `areaExtras` adds (a new hook in `src/room-hooks.js`, `addAreaState`), which
+  `src/emergencies.js` uses for `fire` (its size) and `breach`; the view gets `power` (`powerView` in
+  `src/systems.js`: `{ off }` with no supply, `{ short, dropped }` when the loads are more than it) and `growing`
+  (`growingAt` in `src/logistics.js`: each growing machine's room and how many times it has given what it grows, its
+  `made`); a part thing gets `sparks` when its damage is cut, broken or crippled (`SPARKING` in `src/systems.js`,
+  whatever caused it); one of the ship's stores gets `stock` (`storeStock`: its share full, and of what).
+- **The still picture** (`buildScene` in `public/iso.js`, drawn afresh when the scene's id changes, which now
+  includes the rooms without power, the fires and holes, and the garden's stage): in a room without power, consoles
+  (`machine` blocks, `off`, a dark top `consoleOff`) and furniture with a screen or light (`off`, dark glass, no lines,
+  no chart glow, a cold stove, no light; windows aren't powered) are dark; a fire burns on 1 + 2 × its size of the room's
+  floor squares, the same ones each time (`scene.fires`, each also a glow with light of its own); a hole in the hull is
+  on one of the room's walls that faces into it, with space beyond if there is (`scene.breaches`); the garden's beds
+  (`"` marks in a room with a growing machine) each get a stage (`growthStage`: five stages, one each `GROW_EVERY` = 6
+  produce, each bed starting where its place puts it), drawn by `drawPlants` from turned earth to fruit; the doorways
+  between rooms are listed (`scene.doorways`), not where a way out is.
+- **Every frame** (`draw`): the doorways' panels (`drawDoorPanels`, open while anyone is within reach, `doorOpenFor`,
+  easing in about a quarter of a second, `iso.doors`), the stores drawn as what they hold (`drawStoreCrates`, slots by
+  `crateSlots`, the box they used to be left out), and the flames (`drawFlames`) and the hole (`drawBreachHole`) are
+  props in the same order as the people, with whatever stands in front of them drawn again over them (`cover`). After
+  the light (`drawAfterLight`): smoke over a fire, the air streaming into a hole and its amber lamp, sparks off a broken
+  part (a burst every second or two), steam off the kettle while there's soup, and a red lamp blinking over a door the
+  systems have locked. When power is short, console lights and screens stutter (`flickering`; `drawLights`,
+  `drawShining`). The room redraws thirty times a second, not eight, while a door is moving or anything is burning,
+  holed or sparking (`iso.lively`).
+- **Two old faults fixed on the way:** a lamp in a room with its lights out still drew its glow (`drawShining` now
+  skips an `off` fixture); and a door's frame stood at right angles to its wall wherever the wall was cut low in front of
+  a room, which is most of them, because which way it ran was read from the walls' heights; it's read from where the
+  walls are now (`doorAlong`), so frames and panels stand across their doorways.
+- **Tests:** `test/ship-state.test.js` (6): the rooms without power, on fire, holed, the sparking part; power short and
+  none; the stores' stock; the garden's `made` and stages; the picture's dark consoles, fires, hole, beds and doorways;
+  `doorOpenFor` and `crateSlots`. Screens on a test copy on port 3297, from saves staged by a scratch script
+  (`stage4.mjs`): the galley on fire with its power cut at 1400 and 810 wide, the holed airlock, the garden's beds, the
+  shuttle stores' crates and cells, a cut speaker sparking on the bridge, a door open beside the player and shut away
+  from them. The stutter of screens when power is short is drawn but wasn't looked at moving, since the browser pane
+  was hidden and only drew when a picture was taken.
+- **Not done:** a brawl isn't drawn; the stores' stock reaches the page with the rest of the room every couple of game
+  hours or when something happens, not as each crate goes; a door doesn't open for someone the page hasn't been told
+  is walking; lockers and the medicine cabinet don't show their stock.
+
+Build step 5 only when they say so.

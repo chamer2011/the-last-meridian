@@ -1045,6 +1045,27 @@ export function storesView(game, place) {
   });
 }
 
+// How full one of a place's stores is, for the room's picture (public/iso.js stacks crates, cells or soup by it): the
+// share of what it keeps that it has, and of what. Reading this changes nothing.
+export function storeStock(game, place, storeId) {
+  const store = logisticsOf(place)?.stores.find((one) => one.id === storeId);
+  if (!store) return null;
+  const share = (n, of) => (of > 0 ? Math.max(0, Math.min(1, n / of)) : 0);
+  if (store.count) return { full: share(countOf(game, store), store.count.n), unit: store.count.unit };
+  const counts = storeCounts(game, store.key, store.holds);
+  const goods = Object.entries(store.holds).map(([item, of]) => ({ item, n: Math.min(of, counts[item] ?? 0), of }));
+  const of = goods.reduce((sum, one) => sum + one.of, 0);
+  return { full: share(goods.reduce((sum, one) => sum + one.n, 0), of), goods };
+}
+
+// What grows at a place and how much it's grown, for the room's picture of its beds: each growing machine's room and
+// how many times it's given what it grows, which only goes up while it's working. Reading this changes nothing.
+export function growingAt(game, place) {
+  const model = logisticsOf(place);
+  if (!model) return [];
+  return model.machines.filter((m) => /^grows?$/i.test(m.verb ?? "")).map((m) => ({ room: m.room, made: game.logistics?.[place]?.machines?.[m.id]?.made ?? 0 }));
+}
+
 // Every machine with what it does and how it's getting on. Reading this changes nothing.
 export function machinesView(game, place) {
   const model = logisticsOf(place);

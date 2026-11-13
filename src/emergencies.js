@@ -17,7 +17,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { addAirSpoiler, addChecker, addClockWork, addDetour, addOrder, addRoomActs } from "./room-hooks.js";
+import { addAirSpoiler, addAreaState, addChecker, addClockWork, addDetour, addOrder, addRoomActs } from "./room-hooks.js";
 import { addWounds, keyAt, newWound, woundKindsByName } from "./body.js";
 import { SKILLS } from "./character-data.js";
 import { rememberRequest } from "./command.js";
@@ -150,6 +150,12 @@ const made = (game) => (game.emergencies ??= { fires: {}, breaches: {}, brawl: n
 export const fireIn = (game, place, room) => game.emergencies?.fires?.[keyOf(place, room)] ?? null;
 export const breachIn = (game, place, room) => game.emergencies?.breaches?.[keyOf(place, room)] ?? null;
 export const brawlAt = (game, place) => (game.emergencies?.brawl?.place === place ? game.emergencies.brawl : null);
+// What the room's picture shows of a room on fire or holed (public/iso.js draws the flames, the smoke and the venting).
+addAreaState((game, place, room) => {
+  const fire = fireIn(game, place, room);
+  const breach = breachIn(game, place, room);
+  return { ...(fire ? { fire: fire.size } : {}), ...(breach ? { breach: true } : {}) };
+});
 const playerRoom = (game) => {
   const walk = game.walk;
   if (!walk || walk.room || walk.place !== game.location) return null;

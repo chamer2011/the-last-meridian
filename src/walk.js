@@ -13,8 +13,8 @@ import { namesLook, readNames } from "./death.js";
 import { allCharacters, campaignRooms, findCampaignRoom, findCharacter, fullName, saveCampaignRoom } from "./campaign.js";
 import { startCheck, startChoiceCheck } from "./checks.js";
 import { useComputer } from "./computers.js";
-import { clearSystems, doorActions, doorLocked, doorLook, exitLocked, partSquares, partThings, roomDark, roomView, systemsOf, workOnDoor, workOnPart } from "./systems.js";
-import { clearLogistics, logisticsOf, storeLook } from "./logistics.js";
+import { clearSystems, doorActions, doorLocked, doorLook, exitLocked, partSquares, partThings, powerView, roomDark, roomPowered, roomView, systemsOf, workOnDoor, workOnPart } from "./systems.js";
+import { clearLogistics, growingAt, logisticsOf, storeLook, storeStock } from "./logistics.js";
 import { ITEMS, LOCATIONS } from "./data.js";
 import { clearLife, hasADay, livesHere, peopleAboard } from "./life.js";
 import { isCaptain, toOutsider } from "./role.js";
@@ -28,7 +28,7 @@ import { colorForName, parseNarration } from "../public/story.js";
 import { FURNITURE_BY_ID, isFurniture, looksOf, squaresOf } from "../public/furniture.js";
 import { COMBAT_ART, LOOKS, ROOM_KINDS, ROOM_TALK, WORLD_MAPS, roomsRedrawn } from "./world.js";
 import { notePut, putsOf } from "./puts.js";
-import { orderFor, personExtras, roomExtras, roomNotes, thingExtras } from "./room-hooks.js";
+import { areaExtras, orderFor, personExtras, roomExtras, roomNotes, thingExtras } from "./room-hooks.js";
 // The parts of the game that add to a room: each registers itself with src/room-hooks.js when it's read.
 import "./hands.js";
 import "./uses.js";
@@ -1377,6 +1377,8 @@ const thingView = (game, thing, level = null) => ({
   written: Boolean(thing.item || thing.used || thing.holds || (!isCaptain(game) && thing.usedOther)),
   // A thing with a holds line can be opened, and this is what the inventory calls it.
   ...(thing.holds ? { holds: true, store: `thing:${game.location}:${thing.id}` } : {}),
+  // One of the ship's stores says how full it is, for the room's picture to stack its crates by (src/logistics.js).
+  ...(thing.store ? { stock: storeStock(game, game.location, thing.store) } : {}),
   // What it does besides what its file says (src/room-hooks.js).
   ...thingExtras(game, thing, level),
   // What it's drawn as, if it's a piece of furniture by its looks line or its name (public/furniture.js), and which way.
@@ -1534,13 +1536,21 @@ export function walkView(game) {
     // On a deck, each way out says which room it's in, a shut door between rooms counting as in the player's room.
     exits: [...level.exits, ...inner].map((exit) => ({ ...exitView(game, exit, level.id), ...(onDeck ? { room: exit.inner && level.doorAreas.get(spotKey(exit.x, exit.y))?.has(roomNow) ? roomNow : level.roomAt(exit.x, exit.y) } : {}) })),
     ...(walk.room ? {} : { room: roomView(game, game.location, roomNow) }),
-    // The rooms drawn on the deck, with which are dark, so the picture can darken each by itself, and the doors out
-    // of this one to the rooms beside it, shut or not.
+    // The rooms drawn on the deck, with which are dark, so the picture can darken each by itself, which have no power
+    // (their screens go dark too), what else it shows of them (a fire, a hole in the hull: src/room-hooks.js), and the
+    // doors out of this one to the rooms beside it, shut or not.
     ...(onDeck ? {
-      areas: level.areas.map((area) => ({ id: area.id, name: area.name, x: area.x, y: area.y, w: area.w, h: area.h, dark: roomDark(game, game.location, area.id), look: lookOf(game.location, area.name, { only: true }) })),
+      areas: level.areas.map((area) => ({ id: area.id, name: area.name, x: area.x, y: area.y, w: area.w, h: area.h, dark: roomDark(game, game.location, area.id), ...(systemsOf(game.location) && !roomPowered(game, game.location, area.id) ? { power: false } : {}), look: lookOf(game.location, area.name, { only: true }), ...areaExtras(game, game.location, area.id) })),
       ways: waysFrom(map, level, roomNow).map((way) => ({ ...way, ...(locked.has(spotKey(way.x, way.y)) ? { locked: true } : {}) })),
     } : {}),
     overview: overviewView(game, walk, map),
+    // How the place's power stands, when there's none or not enough, so the picture can flicker its screens; and what
+    // grows on this level and how much it's grown, for its beds (src/logistics.js).
+    ...(walk.room ? {} : (() => {
+      const power = powerView(game, game.location);
+      const growing = growingAt(game, game.location).filter((one) => roomOf(map, one.room)?.level === level);
+      return { ...(power ? { power } : {}), ...(growing.length ? { growing } : {}) };
+    })()),
     ...(livesHere(walk.place) ? { life: true } : {}),
     // How fast the player walks, as a share of the usual: slower with a limp, slower still on a leg they can't stand on.
     pace: paceOf(bodyOf(game, "you")) * (game.carrying ? 0.5 : 1),

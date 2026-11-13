@@ -106,6 +106,8 @@ export function buildScene(view) {
   const areas = view.areas ?? [];
   const areaAt = (x, y) => areas.filter((area) => x >= area.x && x < area.x + area.w && y >= area.y && y < area.y + area.h).sort((a, b) => a.w * a.h - b.w * b.h)[0] ?? null;
   const darkAt = (x, y) => Boolean(areaAt(x, y)?.dark);
+  // A room with no power has its screens dark and its consoles still, whether its lights are on a switch or not.
+  const unpoweredAt = (x, y) => areaAt(x, y)?.power === false;
   const grid = (fill) => Array.from({ length: lines }, () => Array(cols).fill(fill));
   const kinds = grid("blank");
   const marks = grid(" ");
@@ -326,6 +328,7 @@ export function buildScene(view) {
           // Whether the rooms a wall's two faces look into have their lights on, for the strips along its top.
           litLeft: !darkAt(x, y + 1),
           litRight: !darkAt(x + 1, y),
+          ...(styles[y][x] === "machine" && unpoweredAt(x, y) ? { off: true } : {}),
         });
       }
     }
@@ -340,8 +343,56 @@ export function buildScene(view) {
     blocks.push({ type: "block", style: shape.kind, x: shape.from[0], y: shape.from[1], wx, wy, radius, h, seed: 0, mark: " ", right: 0, left: 0, back: 0, side: 0, depth: wx + wy, frontDepth: (shape.to[0] + 1) * CELL_WIDTH + shape.to[1] + 1, span: { minU: top.u - radius, maxU: top.u + radius, minV: top.v - radius / 2, maxV: top.v + radius / 2 + h } });
   }
   // Furniture (public/furniture.js), as blocks of its own, with the light some of it gives off.
-  const furniture = furnish(view, { kinds, heights, blocks, painted: (x, y) => runs.some((run) => run.y === y && x >= run.x && x < run.x + run.length) });
+  const furniture = furnish(view, { kinds, heights, blocks, painted: (x, y) => runs.some((run) => run.y === y && x >= run.x && x < run.x + run.length), unpowered: unpoweredAt });
   blocks.sort((a, b) => a.depth - b.depth);
+
+  // A room on fire burns on a few of its squares, more as it grows: each a flicker on the floor with light of its own,
+  // flames over it every frame (drawFlames) and smoke over the room (drawSmoke). The same squares every time, in an
+  // order of the room's own, so a fire that grows keeps burning where it was.
+  const fires = [];
+  for (const area of areas.filter((one) => one.fire > 0)) {
+    const squares = [];
+    for (let y = area.y; y < area.y + area.h; y += 1) for (let x = area.x; x < area.x + area.w; x += 1) if (kindAt(x, y) === "floor" && areaAt(x, y) === area) squares.push({ x, y, order: hashOf(x * 7 + area.x, y * 13 + area.y) });
+    squares.sort((a, b) => a.order - b.order);
+    for (const { x, y } of squares.slice(0, 1 + area.fire * 2)) {
+      const seed = hashOf(x, y);
+      fires.push({ x, y, seed, room: area.id, size: area.fire });
+      glows.push({ x, y, seed: 0.85 + seed * 0.15 });
+    }
+  }
+  // A hole in the hull: on one of the room's walls the camera sees from inside it, with space beyond it where it can be.
+  const breaches = [];
+  for (const area of areas.filter((one) => one.breach)) {
+    const inRoom = (x, y) => seeThrough(kindAt(x, y)) && areaAt(x, y) === area;
+    const walls = [];
+    for (let y = area.y - 1; y <= area.y + area.h; y += 1) {
+      for (let x = area.x - 1; x <= area.x + area.w; x += 1) {
+        if (kindAt(x, y) !== "wall") continue;
+        const face = inRoom(x, y + 1) ? "s" : inRoom(x + 1, y) ? "e" : null;
+        if (!face) continue;
+        const beyond = face === "s" ? kindAt(x, y - 1) : kindAt(x - 1, y);
+        walls.push({ x, y, face, outside: !seeThrough(beyond) && beyond !== "wall", order: hashOf(x * 3 + 1, y * 5 + 2) });
+      }
+    }
+    walls.sort((a, b) => Number(b.outside) - Number(a.outside) || a.order - b.order);
+    if (walls[0]) breaches.push({ x: walls[0].x, y: walls[0].y, face: walls[0].face, room: area.id });
+  }
+  // What grows in a room grows on its beds a stage at a time as the room gives what it grows, each bed at a stage of
+  // its own; anywhere else, beds are drawn as they always were.
+  for (const grow of view.growing ?? []) {
+    const area = areas.find((one) => one.id === grow.room);
+    if (!area) continue;
+    for (const block of blocks) {
+      if (block.style !== "plants" || areaAt(block.x, block.y) !== area) continue;
+      let start = block.x;
+      while (marks[block.y][start - 1] === "\"") start -= 1;
+      block.growth = growthStage(grow.made, start, block.y);
+    }
+  }
+  // On a ship, the doorways between rooms, where doors slide (drawn every frame, drawDoorPanels): each in the plane its
+  // frame is in, and not where a way out is drawn, a locked door being one.
+  const exitAt = new Set((view.exits ?? []).map((exit) => `${exit.x},${exit.y}`));
+  const doorways = style ? ground.filter((cell) => cell.kind === "door" && !exitAt.has(`${cell.x},${cell.y}`)).map((cell) => ({ x: cell.x, y: cell.y, along: doorAlong(kinds, cell.x, cell.y) })) : [];
 
   // Lamps you can see, on the walls at the back of the room, and a pool of light on the floor in front of each.
   const lights = [];
@@ -389,7 +440,7 @@ export function buildScene(view) {
     addLight(middle.x, middle.y, pick(0.3), 5, 0.9);
   }
   blocks.filter((block) => block.style === "lamp" && block.seed > 0.5 && !darkAt(block.x, block.y)).forEach((block) => addLight(block.x, block.y, pickAt(block.x, block.y, block.seed), 2.4, 0.8));
-  blocks.filter((block) => block.style === "machine" && block.seed > 0.86).forEach((block) => addLight(block.x, block.y, look.glow, 1.5, 0.5));
+  blocks.filter((block) => block.style === "machine" && block.seed > 0.86 && !block.off).forEach((block) => addLight(block.x, block.y, look.glow, 1.5, 0.5));
   for (const exit of view.exits ?? []) addLight(exit.x, exit.y, exit.closed ? "#c86048" : "#d8d0b0", 1.8, 0.55);
   for (const light of furniture.lights) if (!darkAt(light.x, light.y)) addLight(light.x, light.y, light.color, light.radius, light.power);
   // A whole level goes dark where it's one room. On a deck, the rooms drawn there go dark one by one, below.
@@ -421,6 +472,9 @@ export function buildScene(view) {
     style,
     dark,
     darkAreas: areas.filter((area) => area.dark),
+    fires,
+    breaches,
+    doorways,
     bounds: bounds ?? { minU: -1, maxU: 1, minV: -1, maxV: 1 },
     colors: { ...FALLBACK_COLORS, ...view.colors },
   };
@@ -993,6 +1047,7 @@ function materialsFor(scene) {
     steel: textureFor("panels", WALLS, steel, 7),
     steelTop: textureFor("deck", FLOORS, scaled(steel, 0.9), 6),
     console: consoleTop(steel, look.glow),
+    consoleOff: consoleTop(steel, "#0e1513"),
     crate: crateSide(crate),
     crateTop: textureFor("wood", FLOORS, crate, 3),
     rock: textureFor("rock", WALLS, rock, 1),
@@ -1225,22 +1280,60 @@ function fixtureCorners(painter, { x, y, face }) {
   return { left: at(wx, y + 0.8, z + high), right: at(wx, y + 0.2, z + high), bottom: at(wx, y + 0.2, z), top: at(wx, y + 0.8, z), middle: at(wx, y + 0.5, z + high / 2) };
 }
 
+// Which way a doorway runs: along the screen's width ("x") where it's in a wall with wall to its left or right, else
+// down it ("y").
+function doorAlong(kinds, x, y) {
+  const at = (dx, dy) => kinds[y + dy]?.[x + dx];
+  // A doorway two squares wide has a door beside it, and the wall past that.
+  const walled = (dx, dy) => at(dx, dy) === "wall" || (at(dx, dy) === "door" && at(dx * 2, dy * 2) === "wall");
+  const across = walled(-1, 0) || walled(1, 0);
+  const down = walled(0, -1) || walled(0, 1);
+  return across || !down ? "x" : "y";
+}
+
 const PLANT_COLORS = ["#6a8a44", "#54763a", "#7a9650", "#465f30"];
+
+// A bed in a garden goes through five stages (turned earth, seedlings, leaves, flowers, fruit) and round again, a stage
+// each time the garden has given what it grows GROW_EVERY times, so only while it's working; each bed starts at a stage
+// of its own, by where it is.
+export const GROW_STAGES = 5;
+export const GROW_EVERY = 6;
+export const growthStage = (made, x, y) => (Math.floor(Math.max(0, made) / GROW_EVERY) + Math.floor(hashOf(x * 11 + 3, y * 17 + 5) * GROW_STAGES)) % GROW_STAGES;
 
 function drawPlants(painter, block, color) {
   const { ctx, at, unit } = painter;
   ctx.lineWidth = Math.max(1, unit * 0.022);
   ctx.lineCap = "round";
   const random = randomFrom(`${block.x},${block.y}`);
-  for (let i = 0; i < 7; i += 1) {
+  // A bed nobody grows anything in is drawn as it always was; a garden's bed by its stage, from turned earth to fruit.
+  const stage = block.growth;
+  const count = stage === undefined ? 7 : [2, 5, 7, 8, 8][stage];
+  const [least, more] = stage === undefined ? [0.14, 0.14] : [[0.025, 0.02], [0.05, 0.04], [0.1, 0.08], [0.15, 0.12], [0.16, 0.12]][stage];
+  if (stage === 0) {
+    ctx.strokeStyle = "rgba(34,24,14,.6)";
+    for (const across of [0.3, 0.7]) {
+      ctx.beginPath();
+      ctx.moveTo(...at((block.x + 0.12) * CELL_WIDTH, block.y + across));
+      ctx.lineTo(...at((block.x + 0.88) * CELL_WIDTH, block.y + across));
+      ctx.stroke();
+    }
+  }
+  for (let i = 0; i < count; i += 1) {
     const [x, y] = at((block.x + 0.1 + random() * 0.8) * CELL_WIDTH, block.y + 0.1 + random() * 0.8);
     const lean = (random() - 0.5) * unit * 0.1;
-    const high = unit * (0.14 + random() * 0.14);
+    const high = unit * (least + random() * more);
     ctx.strokeStyle = mix(PLANT_COLORS[Math.floor(random() * PLANT_COLORS.length)], color, 0.3);
     ctx.beginPath();
     ctx.moveTo(x, y);
     ctx.quadraticCurveTo(x, y - high * 0.6, x + lean, y - high);
     ctx.stroke();
+    // Flowers, and then fruit, at the tips.
+    if (stage >= 3) {
+      ctx.fillStyle = stage === 3 ? "#e6dfb4" : random() > 0.5 ? "#d4472f" : "#e6a232";
+      ctx.beginPath();
+      ctx.arc(x + lean, y - high, Math.max(1, unit * (stage === 3 ? 0.012 : 0.019)), 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 }
 
@@ -1305,7 +1398,7 @@ function drawBlock(painter, block, materials) {
     return;
   }
   const side = { crate: materials.crate, rock: materials.rock, ice: materials.ice, scrap: materials.scrap, body: materials.body[Math.floor(block.seed * 2)], bench: materials.body[Math.floor(block.seed * 2)], dais: materials.body[0] }[style] ?? materials.steel;
-  const top = { crate: materials.crateTop, machine: materials.console, rock: materials.rockTop, ice: materials.iceTop, scrap: materials.scrap, body: materials.roof, bench: materials.roof, dais: materials.roof }[style] ?? materials.steelTop;
+  const top = { crate: materials.crateTop, machine: block.off ? materials.consoleOff : materials.console, rock: materials.rockTop, ice: materials.iceTop, scrap: materials.scrap, body: materials.roof, bench: materials.roof, dais: materials.roof }[style] ?? materials.steelTop;
   if (block.left < h) leftFace(painter, side, x, y, h, block.left, 0.08);
   if (block.right < h) rightFace(painter, side, x, y, h, block.right, 0.4);
   topFace(painter, top, x, y, h, style === "body" ? 0.12 : 0);
@@ -1605,8 +1698,9 @@ function drawThing(painter, thing) {
     drawPart(painter, thing);
     return;
   }
-  // A thing that looks like a piece of furniture is drawn as one (furnish, below), not as a box.
-  if (thing.looks) return;
+  // A thing that looks like a piece of furniture is drawn as one (furnish, below), not as a box; one of the ship's
+  // stores as what's in it, every frame (drawStoreCrates).
+  if (thing.looks || thing.stock?.goods) return;
   const { ctx, at } = painter;
   const x0 = thing.x * CELL_WIDTH + 0.05;
   const x1 = x0 + CELL_WIDTH - 0.1;
@@ -1870,13 +1964,13 @@ function standingOf(view, scene) {
     const { wx, wy } = cellCentre(fixture.x, fixture.y);
     standing.push({ type: "fixture", fixture, depth: wx + wy + 0.01, box: uvBox(fixture.x - 1, fixture.y - 1, fixture.x + 2, fixture.y + 2, 3), wide: true });
   }
-  // On a ship, a bulkhead door frames every opening between rooms.
+  // On a ship, a bulkhead door frames every opening between rooms, across it, in the line of the wall it's in (a wall
+  // cut low in front of the room counts as much as a tall one).
   if (scene.style) {
-    const tallAt = (x, y) => (scene.heights[y]?.[x] ?? 0) > 1;
     for (const cell of scene.ground) {
       if (cell.kind !== "door") continue;
       const { wx, wy } = cellCentre(cell.x, cell.y);
-      const along = tallAt(cell.x - 1, cell.y) || tallAt(cell.x + 1, cell.y) ? "x" : "y";
+      const along = doorAlong(scene.kinds, cell.x, cell.y);
       standing.push({ type: "frame", x: cell.x, y: cell.y, along, depth: wx + wy - 0.4, box: uvBox(cell.x - 1, cell.y - 1, cell.x + 2, cell.y + 2, 3), wide: true });
     }
   }
@@ -2445,6 +2539,8 @@ const iso = {
   camera: null,
   you: null,
   shown: new Map(),
+  // How far open each door between rooms is, 0 to 1, by "x,y" on the level.
+  doors: new Map(),
   hits: [],
   pointer: null,
   hover: null,
@@ -2474,7 +2570,13 @@ const iso = {
 function useScene(view) {
   const parts = (view.things ?? []).filter((thing) => thing.part).map((thing) => `${thing.id}=${thing.part.word}`).join(",");
   const darkRooms = (view.areas ?? []).filter((area) => area.dark).map((area) => area.id).join(",");
-  const id = `${view.here.deck?.id ?? view.here.id}|${view.here.drawn ?? 0}|${view.cols}x${view.lines}|${closedKey(view)}|${view.room?.dark ? "dark" : "lit"}|${darkRooms}|${parts}`;
+  // What changes the still picture of the level: rooms without power, rooms on fire or holed, the garden's stage.
+  const state = [
+    (view.areas ?? []).filter((area) => area.power === false).map((area) => area.id).join(","),
+    (view.areas ?? []).filter((area) => area.fire || area.breach).map((area) => `${area.id}:${area.fire ?? 0}${area.breach ? "b" : ""}`).join(","),
+    (view.growing ?? []).map((one) => `${one.room}:${Math.floor(one.made / GROW_EVERY)}`).join(","),
+  ].join("/");
+  const id = `${view.here.deck?.id ?? view.here.id}|${view.here.drawn ?? 0}|${view.cols}x${view.lines}|${closedKey(view)}|${view.room?.dark ? "dark" : "lit"}|${darkRooms}|${parts}|${state}`;
   if (iso.sceneId === id) return;
   // The same level: on the ship, the same deck, whichever of its rooms the player's in.
   const sameRoom = iso.sceneId?.split("|")[0] === (view.here.deck?.id ?? view.here.id);
@@ -2488,6 +2590,7 @@ function useScene(view) {
   iso.camera = null;
   iso.you = null;
   iso.shown = new Map();
+  iso.doors = new Map();
   iso.fadeFrom = performance.now();
 }
 
@@ -2686,11 +2789,13 @@ function glowSprite(color) {
 }
 
 // What shines through the dark: this goes on after the light in the room, so that it isn't dimmed by it.
-function drawShining(painter, now) {
+function drawShining(painter, now, view) {
   const { ctx, at, unit } = painter;
   const { scene } = iso;
   ctx.globalCompositeOperation = "lighter";
   for (const fixture of scene.fixtures) {
+    // A lamp in a room with its lights out doesn't shine.
+    if (fixture.off) continue;
     if (!painter.seen?.(at((fixture.x + 0.5) * CELL_WIDTH, fixture.y + 0.5, 1), unit * 2)) continue;
     const { middle } = fixtureCorners(painter, fixture);
     const size = unit * 0.9;
@@ -2706,8 +2811,26 @@ function drawShining(painter, now) {
     ctx.drawImage(flame, x - size / 2, y - size / 2, size, size);
   }
   ctx.globalAlpha = 1;
+  // When the ship hasn't the power it wants, the screens that still have it stutter.
+  if (view?.power?.short && !iso.calm) {
+    const screen = glowSprite("#86dcff");
+    for (const block of scene.blocks) {
+      if (block.style !== "piece" || block.off || !SCREENS[block.kind]) continue;
+      const point = block.face === "e" ? at((block.wallX + 1) * CELL_WIDTH, block.wallY + 0.5, SCREENS[block.kind]) : block.face === "s" ? at((block.wallX + 0.5) * CELL_WIDTH, block.wallY + 1, SCREENS[block.kind]) : at((block.x0 + block.x1) / 2, (block.y0 + block.y1) / 2, SCREENS[block.kind]);
+      if (!painter.seen?.(point, unit) || flickering(now, block.seed)) continue;
+      const size = unit * 0.7;
+      ctx.globalAlpha = 0.5;
+      ctx.drawImage(screen, point[0] - size / 2, point[1] - size / 2, size, size);
+    }
+    ctx.globalAlpha = 1;
+  }
   ctx.globalCompositeOperation = "source-over";
 }
+
+// Which pieces have a screen that flickers, and how high its glass is.
+const SCREENS = { desk: 0.92, screen: 1.0, "wall-screen": 1.08, "plot-table": 0.9 };
+// Whether something flickering is dark this moment: off now and then, irregularly, a little differently for each.
+const flickering = (now, seed) => Math.sin(now / 83 + seed * 70) * Math.sin(now / 211 + seed * 13) > 0.25;
 
 function drawSparks(painter, now) {
   const { ctx, at, unit } = painter;
@@ -2723,11 +2846,14 @@ function drawSparks(painter, now) {
 }
 
 // The little lights on the machines, which are the only thing in the room that moves by itself.
-function drawLights(painter, now) {
+function drawLights(painter, now, view) {
   const { ctx, at, unit } = painter;
   const { scene } = iso;
+  const short = Boolean(view?.power?.short);
   for (const block of scene.blocks) {
-    if (block.style !== "machine" || block.seed < 0.55) continue;
+    if (block.style !== "machine" || block.seed < 0.55 || block.off) continue;
+    // When the ship hasn't the power it wants, the consoles' lights stutter.
+    if (short && !iso.calm && flickering(now, block.seed)) continue;
     const middle = at((block.x + 0.5) * CELL_WIDTH, block.y + 0.5, block.h);
     if (!painter.seen?.(middle, unit)) continue;
     const lit = 0.3 + 0.7 * Math.abs(Math.sin(now / (500 + block.seed * 1500) + block.seed * 20));
@@ -2801,7 +2927,7 @@ function draw(now, dt) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   drawStill(ctx, room, far, ox, oy, ratio, canvas.width, canvas.height, now);
   painter.flat();
-  drawLights(painter, now);
+  drawLights(painter, now, view);
   drawPartLights(painter, now, view);
 
   // Where the mouse is, if that's somewhere to walk.
@@ -2858,6 +2984,40 @@ function draw(now, dt) {
     const { wx, wy } = cellCentre(one.x, one.y);
     figures.push({ type: "fighter", one, wx, wy, depth: wx + wy });
   }
+  // What else moves among them, each put in order with them: the doors between rooms, sliding open for whoever comes
+  // near and shut behind them; the ship's stores, as crates by how full they are; flames; a hole in the hull.
+  const props = [];
+  // A door on the move, a fire, a hole in the hull or something sparking wants more than the eight frames a second a
+  // still room gets.
+  let lively = (scene.fires?.length ?? 0) > 0 || (scene.breaches?.length ?? 0) > 0 || (view.things ?? []).some((thing) => thing.part?.sparks);
+  for (const door of scene.doorways ?? []) {
+    const key = `${door.x},${door.y}`;
+    const { wx, wy } = cellCentre(door.x, door.y);
+    const target = doorOpenFor(door, figures);
+    const was = iso.doors.get(key) ?? target;
+    const open = iso.calm ? target : was + (target - was) * (1 - Math.exp(-dt / 90));
+    iso.doors.set(key, Math.abs(open - target) < 0.01 ? target : open);
+    if (open !== target) lively = true;
+    if (open > 0.97 || !painter.seen(at(wx, wy, 0.8), unit * 2)) continue;
+    props.push({ type: "prop", draw: () => drawDoorPanels(painter, door, open, scene.style), depth: wx + wy - 0.39, span: uvBox(door.x, door.y, door.x + 1, door.y + 1, WALL_HEIGHT) });
+  }
+  for (const thing of view.things ?? []) {
+    if (!thing.stock?.goods || thing.looks) continue;
+    const { wx, wy } = cellCentre(thing.x, thing.y);
+    if (!painter.seen(at(wx, wy, 0.3), unit * 2)) continue;
+    props.push({ type: "prop", draw: () => drawStoreCrates(painter, thing), depth: wx + wy + 0.001, span: uvBox(thing.x, thing.y, thing.x + 1, thing.y + 1, 0.6) });
+  }
+  for (const fire of scene.fires ?? []) {
+    const { wx, wy } = cellCentre(fire.x, fire.y);
+    if (!painter.seen(at(wx, wy, 0.4), unit * 2)) continue;
+    props.push({ type: "prop", draw: () => drawFlames(painter, fire, now), depth: wx + wy + 0.02, span: uvBox(fire.x - 1, fire.y, fire.x + 2, fire.y + 1, 1.3) });
+  }
+  for (const breach of scene.breaches ?? []) {
+    const { wx, wy } = cellCentre(breach.x, breach.y);
+    if (!painter.seen(at(wx, wy, 0.8), unit * 3)) continue;
+    props.push({ type: "prop", draw: () => drawBreachHole(painter, breach, now), depth: wx + wy + 0.4, span: uvBox(breach.x, breach.y, breach.x + 2, breach.y + 2, 1.4) });
+  }
+  iso.lively = lively;
   const covering = new Set();
   const cover = (depth, minU, maxU, minV, maxV, own) => {
     for (const block of scene.blocks) {
@@ -2871,14 +3031,16 @@ function draw(now, dt) {
     cover(figure.depth, u - 0.25, u + 0.25, v - 0.95, v + 0.05, figure.seat);
   }
   for (const extra of extras) if (extra.type === "bed") cover(extra.depth, extra.block.span.minU, extra.block.span.maxU, extra.block.span.minV, extra.block.span.maxV, extra.block);
+  for (const prop of props) cover(prop.depth, prop.span.minU, prop.span.maxU, prop.span.minV, prop.span.maxV, null);
   // A bed with someone in it is drawn with them, never again without them.
   for (const extra of extras) if (extra.type === "bed") covering.delete(extra.block);
-  const order = [...figures, ...covering, ...extras].sort((a, b) => a.depth - b.depth);
+  const order = [...figures, ...covering, ...extras, ...props].sort((a, b) => a.depth - b.depth);
   const hits = [];
   const hoverKey = iso.hover?.key;
   for (const item of order) {
     if (item.type === "block") drawBlock(painter, item, iso.materials);
     else if (item.type === "seatback") drawPiece(painter, item.block, { only: item.tag ?? "back", sleepers: beds.get(item.block) ?? null });
+    else if (item.type === "prop") item.draw();
     else if (item.type === "bed") {
       for (const one of item.sleepers) one.ring = hoverKey === `person:${one.person.key}` ? "rgba(255,250,220,.9)" : null;
       drawPiece(painter, item.block, { sleepers: item.sleepers });
@@ -2918,7 +3080,8 @@ function draw(now, dt) {
   ctx.globalAlpha = 0.14;
   ctx.drawImage(iso.lightmap.haze, ox + room.left * scale, oy + room.top * scale, room.width * scale, room.height * scale);
   ctx.globalAlpha = 1;
-  drawShining(painter, now);
+  drawShining(painter, now, view);
+  drawAfterLight(painter, now, view);
   // The player can always see a little way around themselves: a soft glow made once, drawn over them, rather than a
   // gradient laid over the whole screen every frame.
   ctx.globalCompositeOperation = "overlay";
@@ -3072,7 +3235,7 @@ function loop(now) {
   iso.lastGoal = iso.camera ? `${Math.round(iso.camera.u * 50)},${Math.round(iso.camera.v * 50)}` : "";
   // Nothing going on: just enough to keep the lights and the water moving.
   // Walking, every frame there is; anything else moving, thirty a second; nothing going on, eight.
-  const every = iso.youMoving ? 0 : moving || cameraMoving || iso.redraw || iso.hooks.fighting?.() || now - iso.fadeFrom < 320 ? 1000 / 30 : 1000 / 8;
+  const every = iso.youMoving ? 0 : moving || cameraMoving || iso.redraw || iso.lively || iso.hooks.fighting?.() || now - iso.fadeFrom < 320 ? 1000 / 30 : 1000 / 8;
   if (now - iso.lastDraw < every) return;
   const since = now - iso.lastDraw;
   iso.lastDraw = now;
@@ -3253,7 +3416,7 @@ function partRect(piece, a0, a1, b0, b1) {
 }
 
 // The furniture in a scene: what's drawn on the level, and the things that look like a piece of it.
-function furnish(view, { kinds, heights, blocks, painted }) {
+function furnish(view, { kinds, heights, blocks, painted, unpowered = () => false }) {
   const lights = [];
   // A part of the ship's systems mounted on a wall square has it; a window or a screen there gives way.
   const wallUsed = new Set((view.things ?? []).filter((thing) => thing.part?.mount === "wall").map((thing) => `${thing.x},${thing.y}`));
@@ -3288,17 +3451,19 @@ function furnish(view, { kinds, heights, blocks, painted }) {
       const face = floorAt(x, y + 1) ? "s" : floorAt(x + 1, y) ? "e" : null;
       if (!face) continue;
       wallUsed.add(`${x},${y}`);
-      add({ kind: piece.kind, face, x0: x * CELL_WIDTH, x1: (x + 1) * CELL_WIDTH, y0: y, y1: y + 1, top: WALL_HEIGHT, wallX: x, wallY: y, bias: face === "s" ? 0.51 : 0.3 });
       const window = piece.kind === "window";
-      lights.push({ x: face === "s" ? x : x + 1, y: face === "s" ? y + 1 : y, color: kind.lit, radius: window ? 3.2 : 1.3, power: window ? 0.55 : 0.35 });
+      const off = !window && unpowered(face === "s" ? x : x + 1, face === "s" ? y + 1 : y);
+      add({ kind: piece.kind, face, x0: x * CELL_WIDTH, x1: (x + 1) * CELL_WIDTH, y0: y, y1: y + 1, top: WALL_HEIGHT, wallX: x, wallY: y, bias: face === "s" ? 0.51 : 0.3, ...(off ? { off: true } : {}) });
+      if (!off) lights.push({ x: face === "s" ? x : x + 1, y: face === "s" ? y + 1 : y, color: kind.lit, radius: window ? 3.2 : 1.3, power: window ? 0.55 : 0.35 });
       continue;
     }
     const facing = piece.facing ?? "s";
     const { across, down } = footprintOf({ kind: piece.kind, facing });
     const placed = { kind: piece.kind, facing, x0: piece.x * CELL_WIDTH, x1: (piece.x + across) * CELL_WIDTH, y0: piece.y, y1: piece.y + down, top: PIECE_TOP[piece.kind] ?? 1 };
     const [ha, hb] = PIECE_SHADOW[piece.kind] ?? [0.2, 0.2];
-    add({ ...placed, shadow: partRect(placed, -ha, ha, -hb, hb) });
-    if (kind.lit) {
+    const off = Boolean(kind.lit) && unpowered(piece.x, piece.y);
+    add({ ...placed, shadow: partRect(placed, -ha, ha, -hb, hb), ...(off ? { off: true } : {}) });
+    if (kind.lit && !off) {
       const big = piece.kind === "plot-table";
       lights.push({ x: piece.x + Math.floor(across / 2), y: piece.y + Math.floor(down / 2), color: kind.lit, radius: big ? 2.8 : piece.kind === "kettle" ? 1.6 : 1.2, power: big ? 0.85 : 0.42 });
     }
@@ -3391,13 +3556,15 @@ function drawPiece(painter, piece, { only = null, sleepers = null } = {}) {
   // A flat panel across the front of a part, between two heights: a screen's glass, a stove's glow. Only drawn when
   // that side faces the camera.
   const frontFaces = piece.facing === "s" || piece.facing === "e";
+  // Without power, a screen is dark glass with nothing on it.
+  const glass = piece.off ? "#06090b" : KIT.glass;
   const panel = (a0, a1, b, z0, z1, color) => {
     if (!frontFaces) return null;
     polygon(ctx, [point(a0, b, z1), point(a1, b, z1), point(a1, b, z0), point(a0, b, z0)], color);
     return true;
   };
-  const lines = (glass, a0, a1, b, zs) => {
-    if (!glass) return;
+  const lines = (shown, a0, a1, b, zs) => {
+    if (!shown || piece.off) return;
     zs.forEach((z, i) => {
       const [x0, y0] = point(a0 + (a1 - a0) * 0.1, b, z);
       const [x1, y1] = point(a0 + (a1 - a0) * (0.45 + i * 0.12), b, z);
@@ -3456,7 +3623,7 @@ function drawPiece(painter, piece, { only = null, sleepers = null } = {}) {
       put(part(-0.44, -0.4, -0.22, 0.18), 0, 0.68, steelColors);
       put(part(0.18, 0.44, -0.22, 0.18), 0, 0.68, steelColors);
       put(part(-0.46, 0.46, -0.25, 0.2), 0.68, 0.74, laminateColors);
-      put(part(-0.2, 0.2, -0.21, -0.17), 0.74, 1.08, [KIT.frameDark, KIT.frameDeep, KIT.frameDeep], () => lines(panel(-0.17, 0.17, -0.165, 0.77, 1.05, KIT.glass), -0.17, 0.17, -0.165, [1.0, 0.93, 0.86]));
+      put(part(-0.2, 0.2, -0.21, -0.17), 0.74, 1.08, [KIT.frameDark, KIT.frameDeep, KIT.frameDeep], () => lines(panel(-0.17, 0.17, -0.165, 0.77, 1.05, glass), -0.17, 0.17, -0.165, [1.0, 0.93, 0.86]));
       break;
     case "bunk":
     case "cot": {
@@ -3552,6 +3719,8 @@ function drawPiece(painter, piece, { only = null, sleepers = null } = {}) {
     case "plot-table":
       put(part(-0.13, 0.13, -0.13, 0.13), 0, 0.66, frameColors);
       put(part(-0.46, 0.46, -0.46, 0.46), 0.66, 0.78, ["#0b1c18", KIT.frameDark, KIT.frameDeep], () => {
+        // Without power, the chart table is a dark slab.
+        if (piece.off) return;
         const [x0, y0, x1, y1] = part(-0.46, 0.46, -0.46, 0.46);
         stroke(painter, [[x0, y0, 0.781], [x1, y0, 0.781], [x1, y1, 0.781], [x0, y1, 0.781], [x0, y0, 0.781]], "rgba(125,255,168,.6)");
         // Forty-one dots, and a few that aren't green.
@@ -3587,10 +3756,10 @@ function drawPiece(painter, piece, { only = null, sleepers = null } = {}) {
     case "screen":
       put(part(-0.12, 0.12, -0.06, 0.06), 0, 0.04, [KIT.frameDark, KIT.frameDeep, KIT.frameDeep]);
       put(part(-0.025, 0.025, -0.025, 0.025), 0.04, 0.84, frameColors);
-      put(part(-0.22, 0.22, -0.03, 0.03), 0.82, 1.18, [KIT.frameDark, KIT.frameDeep, KIT.frameDeep], () => lines(panel(-0.2, 0.2, 0.032, 0.85, 1.15, KIT.glass), -0.2, 0.2, 0.032, [1.1, 1.03, 0.96]));
+      put(part(-0.22, 0.22, -0.03, 0.03), 0.82, 1.18, [KIT.frameDark, KIT.frameDeep, KIT.frameDeep], () => lines(panel(-0.2, 0.2, 0.032, 0.85, 1.15, glass), -0.2, 0.2, 0.032, [1.1, 1.03, 0.96]));
       break;
     case "kettle": {
-      put(part(-0.42, 0.42, -0.42, 0.42), 0, 0.42, ["#3d4248", "#2c3035", "#202327"], () => panel(-0.3, 0.3, 0.422, 0.09, 0.14, "rgba(255,140,60,.85)"));
+      put(part(-0.42, 0.42, -0.42, 0.42), 0, 0.42, ["#3d4248", "#2c3035", "#202327"], () => panel(-0.3, 0.3, 0.422, 0.09, 0.14, piece.off ? "rgba(46,32,24,.9)" : "rgba(255,140,60,.85)"));
       lay();
       const [x0, y0, x1, y1] = part(-0.42, 0.42, -0.42, 0.42);
       cylinder(painter, (x0 + x1) / 2, (y0 + y1) / 2, 0.31, 0.42, 0.98, KIT.steel, "#3a3f44");
@@ -3640,10 +3809,10 @@ function drawPiece(painter, piece, { only = null, sleepers = null } = {}) {
       break;
     case "wall-screen": {
       const face = wallFace(painter, piece, 0.05);
-      polygon(ctx, face.corners(0.86, 1.3), "#0b2733");
-      for (let i = 0; i < 3; i += 1) stroke(painter, [face.along(0.1, 1.22 - i * 0.1), face.along(0.3 + ((piece.wallX * 3 + i * 5) % 4) * 0.13, 1.22 - i * 0.1)], "rgba(134,220,255,.8)");
+      polygon(ctx, face.corners(0.86, 1.3), piece.off ? "#05080a" : "#0b2733");
+      if (!piece.off) for (let i = 0; i < 3; i += 1) stroke(painter, [face.along(0.1, 1.22 - i * 0.1), face.along(0.3 + ((piece.wallX * 3 + i * 5) % 4) * 0.13, 1.22 - i * 0.1)], "rgba(134,220,255,.8)");
       const [ax, ay] = at(...face.along(0.85, 0.95));
-      ctx.fillStyle = KIT.amber;
+      ctx.fillStyle = piece.off ? "#3a2a18" : KIT.amber;
       ctx.fillRect(ax - 1, ay - 1, 2, 2);
       stroke(painter, [face.along(0, 0.86), face.along(0, 1.3), face.along(1, 1.3)], "rgba(150,170,190,.4)");
       return;
@@ -3671,4 +3840,268 @@ function drawPiece(painter, piece, { only = null, sleepers = null } = {}) {
       put(part(-0.2, 0.2, -0.2, 0.2), 0, 0.5, shades(KIT.steel));
   }
   lay();
+}
+
+// ---- The ship's state ---------------------------------------------------------------------------------------------
+// What the room shows of how the ship is getting on, drawn every frame over the still picture of the level: doors that
+// slide, the stores by how full they are, fire, a hole in the hull, sparks from what's broken, steam off the kettle.
+
+// How open a door between rooms should be: open while anyone is near it (the player, anyone walking, anyone fighting),
+// shut otherwise. A locked door is a way out of its own and isn't one of these.
+export function doorOpenFor(door, movers) {
+  const { wx, wy } = cellCentre(door.x, door.y);
+  return movers.some((one) => Math.hypot((one.wx - wx) * 1.2, one.wy - wy) < 1.6) ? 1 : 0;
+}
+
+// A door between rooms, slid open by open (0 shut, 1 open): two panels meeting in the middle of its frame, in the
+// plane the frame is in, each sliding into the post beside it, with the yellow stripe low across them.
+function drawDoorPanels(painter, door, open, style) {
+  const { ctx, at } = painter;
+  const x0 = door.x * CELL_WIDTH;
+  const y0 = door.y;
+  const top = WALL_HEIGHT * 0.94 - 0.16;
+  const shut = 1 - open;
+  const metal = mix(style?.frame ?? "#6a7078", "#39414a", 0.45);
+  const panel = (corner, shade) => {
+    polygon(ctx, [corner(0, top), corner(1, top), corner(1, 0.02), corner(0, 0.02)], scaled(metal, shade));
+    polygon(ctx, [corner(0, 0.17), corner(1, 0.17), corner(1, 0.1), corner(0, 0.1)], "#b89430");
+    ctx.strokeStyle = "rgba(0,0,0,.55)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(...corner(1, top));
+    ctx.lineTo(...corner(1, 0.02));
+    ctx.stroke();
+  };
+  if (door.along === "x") {
+    const a = x0 + CELL_WIDTH * 0.14;
+    const b = x0 + CELL_WIDTH * 0.86;
+    const m = (a + b) / 2;
+    const y = y0 + 0.03;
+    // Each panel's own edge (1) is the one that meets the other.
+    panel((t, z) => at(a + (m - a) * shut * t, y, z), 1.08);
+    panel((t, z) => at(b - (b - m) * shut * t, y, z), 0.9);
+  } else {
+    const a = y0 + 0.14;
+    const b = y0 + 0.86;
+    const m = (a + b) / 2;
+    const x = x0 + 0.03;
+    panel((t, z) => at(x, a + (m - a) * shut * t, z), 0.82);
+    panel((t, z) => at(x, b - (b - m) * shut * t, z), 0.96);
+  }
+}
+
+// What a store holds, slot by slot, for its picture: up to twelve, two layers of six, shared among what it keeps by how
+// much of each it has, and at least one for anything there's any of.
+export function crateSlots(stock, slots = 12) {
+  if (!stock?.goods) return [];
+  const of = stock.goods.reduce((sum, one) => sum + one.of, 0);
+  if (!of) return [];
+  const out = [];
+  for (const one of stock.goods) {
+    const share = one.n > 0 ? Math.max(1, Math.round((one.n / of) * slots)) : 0;
+    for (let i = 0; i < share; i += 1) out.push(one.item);
+  }
+  return out.slice(0, slots);
+}
+const GOODS_LOOK = { ration_crate: "#7d6c48", produce: "#5f7d3c", parts_crate: "#5e6872", medicine_crate: "#cfcac0", fuel_cell: "#c99b3a" };
+
+// One of the ship's stores as what's in it: crates, or fuel cells standing up, on a pallet, as many as it's full.
+function drawStoreCrates(painter, thing) {
+  const { ctx, at } = painter;
+  const x0 = thing.x * CELL_WIDTH;
+  const y0 = thing.y;
+  box(painter, [x0 + 0.02, y0 + 0.05, x0 + CELL_WIDTH - 0.02, y0 + 0.95], 0, 0.06, ...shades("#4c4030"));
+  crateSlots(thing.stock).forEach((item, i) => {
+    const layer = Math.floor(i / 6);
+    const row = Math.floor((i % 6) / 2);
+    const col = i % 2;
+    const cx = x0 + 0.13 + col * 0.24;
+    const cy = y0 + 0.2 + row * 0.3;
+    const z = 0.06 + layer * 0.23;
+    const color = GOODS_LOOK[item] ?? "#7a6a50";
+    if (item === "fuel_cell") {
+      cylinder(painter, cx, cy, 0.07, z, z + 0.21, color, "#3a3228");
+      return;
+    }
+    box(painter, [cx - 0.1, cy - 0.13, cx + 0.1, cy + 0.13], z, z + 0.2, ...shades(color));
+    // A strap across its top, or a red cross on a crate of medicine.
+    const mark = item === "medicine_crate" ? "#c03a2c" : "rgba(0,0,0,.35)";
+    ctx.strokeStyle = mark;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(...at(cx - 0.1, cy, z + 0.201));
+    ctx.lineTo(...at(cx + 0.1, cy, z + 0.201));
+    if (item === "medicine_crate") {
+      ctx.moveTo(...at(cx, cy - 0.09, z + 0.201));
+      ctx.lineTo(...at(cx, cy + 0.09, z + 0.201));
+    }
+    ctx.stroke();
+  });
+}
+
+// A burning square: three tongues of flame, taller as the fire grows, never still.
+function drawFlames(painter, fire, now) {
+  const { ctx, at, unit } = painter;
+  const { wx, wy } = cellCentre(fire.x, fire.y);
+  const grow = 0.6 + Math.min(5, fire.size) * 0.12;
+  for (let i = 0; i < 3; i += 1) {
+    const phase = now / (170 + i * 37) + fire.seed * 40 + i * 2.1;
+    const flicker = iso.calm ? 0.85 : 0.78 + 0.22 * Math.sin(phase) * Math.sin(phase * 1.7);
+    const [x, y] = at(wx + (i - 1) * 0.11 + (iso.calm ? 0 : Math.sin(phase * 0.5) * 0.02), wy + (i % 2) * 0.14 - 0.07, 0);
+    const high = unit * 0.42 * grow * flicker * (i === 1 ? 1.2 : 0.85);
+    const wide = unit * 0.085 * grow;
+    for (const [part, color] of [[1, i === 1 ? "#ff9a3c" : "#f0682a"], [0.5, "#ffe27a"]]) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(x - wide * part, y);
+      ctx.quadraticCurveTo(x - wide * part * 0.9, y - high * part * 0.6, x, y - high * (part === 1 ? 1 : 0.6));
+      ctx.quadraticCurveTo(x + wide * part * 0.9, y - high * part * 0.6, x + wide * part, y);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+}
+
+// Where on its wall a hole in the hull is, as a point on the wall's face toward the room and the way into the room.
+function breachFace(breach) {
+  if (breach.face === "e") return { at: [(breach.x + 1) * CELL_WIDTH + 0.004, breach.y + 0.5, 0.85], across: [0, 1, 0], into: [1, 0, 0] };
+  return { at: [(breach.x + 0.5) * CELL_WIDTH, breach.y + 1.004, 0.85], across: [1, 0, 0], into: [0, 1, 0] };
+}
+
+// A hole torn in the hull: a ragged black mouth on the wall, rimed white round its edge.
+function drawBreachHole(painter, breach, now) {
+  const { ctx, at } = painter;
+  const { at: middle, across } = breachFace(breach);
+  const random = randomFrom(`breach${breach.x},${breach.y}`);
+  const points = [];
+  for (let i = 0; i < 12; i += 1) {
+    const angle = (i / 12) * Math.PI * 2;
+    const reach = (i % 2 ? 0.12 : 0.24) + random() * 0.06;
+    const side = Math.cos(angle) * reach * (breach.face === "e" ? 1.5 : 0.75);
+    points.push(at(middle[0] + across[0] * side, middle[1] + across[1] * side, middle[2] + Math.sin(angle) * reach * 1.2));
+  }
+  polygon(ctx, points, "#010203");
+  ctx.strokeStyle = `rgba(225,236,242,${iso.calm ? 0.7 : 0.55 + 0.2 * Math.sin(now / 400)})`;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  points.forEach((point, i) => (i ? ctx.lineTo(...point) : ctx.moveTo(...point)));
+  ctx.closePath();
+  ctx.stroke();
+}
+
+// What goes on after the light in the room, so the dark doesn't dim it: smoke over a fire, air streaming out of a hole
+// in the hull with a warning lamp beside it, sparks off what's broken, steam off a kettle with soup in it, and the red
+// lamp of a door the systems have locked.
+function drawAfterLight(painter, now, view) {
+  const { ctx, at, unit } = painter;
+  const { scene } = iso;
+  const still = iso.calm;
+  // Smoke, two puffs rising off each burning square, thicker as the fire grows.
+  for (const fire of scene.fires ?? []) {
+    const { wx, wy } = cellCentre(fire.x, fire.y);
+    if (!painter.seen(at(wx, wy, 1.5), unit * 3)) continue;
+    for (let k = 0; k < 2; k += 1) {
+      const p = still ? 0.4 + k * 0.3 : (now / 3200 + k / 2 + fire.seed * 3) % 1;
+      const [x, y] = at(wx + Math.sin(p * 4 + fire.seed * 9) * 0.15, wy, 0.6 + p * 2.4);
+      ctx.fillStyle = `rgba(24,22,20,${(0.26 + fire.size * 0.04) * (1 - p)})`;
+      ctx.beginPath();
+      ctx.arc(x, y, unit * (0.12 + p * 0.38), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  // Air streaming out of a hole in the hull, and an amber lamp blinking by it.
+  ctx.globalCompositeOperation = "lighter";
+  for (const breach of scene.breaches ?? []) {
+    const face = breachFace(breach);
+    const [mx, my, mz] = face.at;
+    if (!painter.seen(at(mx, my, mz), unit * 4)) continue;
+    const random = randomFrom(`vent${breach.x},${breach.y}`);
+    ctx.lineWidth = 1.6;
+    // A pale haze round the hole, where the air goes out.
+    const [hx, hy] = at(mx, my, mz);
+    const haze = unit * 1.1;
+    ctx.globalAlpha = 0.35;
+    ctx.drawImage(glowSprite("#cfe6f2"), hx - haze / 2, hy - haze / 2, haze, haze);
+    ctx.globalAlpha = 1;
+    for (let k = 0; k < 16; k += 1) {
+      const side = (random() - 0.5) * 1.8;
+      const lift = (random() - 0.5) * 0.7;
+      const speed = 0.8 + random() * 0.6;
+      const p = still ? (k + 0.5) / 10 : (now / (900 / speed) + k / 10) % 1;
+      const far = 2.2 * (1 - p);
+      const point = (d) => at(mx + face.into[0] * d + face.across[0] * side * d * 0.4, my + face.into[1] * d + face.across[1] * side * d * 0.4, mz + lift * d * 0.3);
+      ctx.strokeStyle = `rgba(214,230,240,${0.18 + 0.55 * p})`;
+      ctx.beginPath();
+      ctx.moveTo(...point(far + 0.4));
+      ctx.lineTo(...point(far));
+      ctx.stroke();
+    }
+    const [lx, ly] = at(...point3(face, 0.3, 0.6));
+    const size = unit * 0.9;
+    ctx.globalAlpha = still ? 0.8 : 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(now / 220));
+    ctx.drawImage(glowSprite("#ffae30"), lx - size / 2, ly - size / 2, size, size);
+    ctx.globalAlpha = 1;
+  }
+  // Sparks off what's broken: a burst every second or two, a few bright specks thrown out and falling.
+  for (const thing of view.things ?? []) {
+    if (!thing.part?.sparks) continue;
+    const part = thing.part;
+    const look = partLook(thing);
+    const floor = part.mount === "floor";
+    const z0 = floor ? Math.min(0.9, look.z0 * 0.6 + 0.12) : look.z0;
+    const z1 = floor ? Math.min(1.05, Math.max(z0 + 0.18, look.z1 * 0.7)) : look.z1;
+    const [px, py] = partFace(painter, thing, z0, z1, look.inset).point(0.5, 0.45);
+    if (!painter.seen([px, py], unit * 2)) continue;
+    const every = 1500 + hashOf(thing.x, thing.y) * 900;
+    const burst = Math.floor((now + hashOf(thing.y, thing.x) * every) / every);
+    const t = still ? 0.2 : ((now + hashOf(thing.y, thing.x) * every) % every) / 420;
+    if (t > 1) continue;
+    if (t < 0.3) {
+      const size = unit * 0.75 * (1 - t);
+      ctx.drawImage(glowSprite("#ffd27a"), px - size / 2, py - size / 2, size, size);
+    }
+    for (let i = 0; i < 9; i += 1) {
+      const angle = Math.PI * (1.05 + hashOf(i * 13 + burst, thing.x * 7) * 0.9);
+      const speed = unit * (0.25 + hashOf(burst, i * 5 + thing.y) * 0.35);
+      const x = px + Math.cos(angle) * speed * t;
+      const y = py + Math.sin(angle) * speed * t + unit * 0.5 * t * t;
+      ctx.fillStyle = `rgba(255,236,170,${1 - t * 0.8})`;
+      ctx.fillRect(x - 1.3, y - 1.3, 2.6, 2.6);
+    }
+  }
+  ctx.globalCompositeOperation = "source-over";
+  // Steam off a kettle with soup in it.
+  for (const thing of view.things ?? []) {
+    if (thing.looks !== "kettle" || !(thing.stock?.full > 0)) continue;
+    // Where the kettle is drawn, as furnish lays a piece from the thing it is.
+    const { across, down } = footprintOf({ kind: "kettle", facing: thing.facing });
+    const wx = ((across > 1 ? thing.x - (thing.x % 2) : thing.x) + across / 2) * CELL_WIDTH;
+    const wy = thing.y + down / 2;
+    if (!painter.seen(at(wx, wy, 1.2), unit * 2)) continue;
+    for (let k = 0; k < 3; k += 1) {
+      const p = still ? 0.3 + k * 0.2 : (now / 2600 + k / 3) % 1;
+      const [x, y] = at(wx + Math.sin(p * 5 + k) * 0.08, wy, 1.06 + p * 0.9);
+      ctx.fillStyle = `rgba(232,236,240,${0.16 * (1 - p) * Math.min(1, thing.stock.full * 4)})`;
+      ctx.beginPath();
+      ctx.arc(x, y, unit * (0.06 + p * 0.12), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  // A door the systems have locked has its lock lit red, blinking.
+  ctx.globalCompositeOperation = "lighter";
+  const blink = still || Math.floor(now / 600) % 2 === 0;
+  for (const exit of view.exits ?? []) {
+    if (!exit.inner || !exit.closed || !blink) continue;
+    const [x, y] = at((exit.x + 0.5) * CELL_WIDTH, exit.y + 0.5, WALL_HEIGHT * 0.88);
+    if (!painter.seen([x, y], unit)) continue;
+    const size = unit * 0.45;
+    ctx.drawImage(glowSprite("#ff3a24"), x - size / 2, y - size / 2, size, size);
+  }
+  ctx.globalCompositeOperation = "source-over";
+}
+
+// A point on a hole's wall beside it, across it and up from its middle, in the game's measure.
+function point3(face, side, up) {
+  const [mx, my, mz] = face.at;
+  return [mx + face.across[0] * side, my + face.across[1] * side, mz + up];
 }

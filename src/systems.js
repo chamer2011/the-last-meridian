@@ -610,6 +610,15 @@ export function powerBalance(game, place) {
   return value;
 }
 
+// How the place's power stands, for the room's picture: none at all, or not enough, with the systems let go. Null
+// while there's enough, or where nothing counts the power.
+export function powerView(game, place) {
+  const b = powerBalance(game, place);
+  if (!b) return null;
+  if (b.supply <= 0) return { off: true };
+  return b.short > 0 ? { short: true, dropped: b.dropped } : null;
+}
+
 // The generator against the loads, in a line: for the Ship menu, a computer's screen and the reactor's readouts.
 export function powerNote(game, place) {
   const b = powerBalance(game, place);
@@ -1357,11 +1366,16 @@ export function settlePart(game, outcome, enterPanel = null) {
 // ---- What the page gets to see --------------------------------------------------------------------------
 
 // The parts in the room the player's in, as things they can walk up to and work.
+// Damage that leaves a part's insides open and live, so the room's picture shows it sparking: cut cables, something
+// broken (by a hand, a fire, a fight or wear), a pulled injector. A sealed vent or a covered lens doesn't spark.
+const SPARKING = new Set(["cut", "broken", "crippled"]);
+
 export function partThings(game, place, room) {
   const model = systemsOf(place);
   if (!model) return [];
   return (model.partsIn[room] ?? []).map((id) => model.parts[id]).filter((part) => part && !part.unplaced).map((part) => {
     const works = partWorks(game, place, part);
+    const damage = partState(game, place, part.id).damage;
     return {
       id: `part:${part.id}`,
       name: upperFirst(part.kind === "console" ? part.name : `the ${part.name}`),
@@ -1378,6 +1392,7 @@ export function partThings(game, place, room) {
         works,
         word: stateWord(game, place, part),
         ...(part.system === "alarm" && alarmRinging(game, place) && works ? { ringing: true } : {}),
+        ...(SPARKING.has(damage) ? { sparks: true } : {}),
       },
       actions: partActions(game, place, part).map((action) => ({ id: action.id, label: action.label, detail: detailOf(action) })),
     };
