@@ -1,0 +1,9 @@
+Space Station Kit 1.0, by Kenney (www.kenney.nl), CC0: see License.txt beside this file.
+
+Downloaded on 2026-11-12 from https://kenney.nl/assets/space-station-kit (kenney_space-station-kit.zip, 1.8 MB),
+at the owner's choice of it over Quaternius's Modular Sci-Fi MegaKit, for a test of the pre-rendered look.
+
+Kept: the 90 models as .glb, their one palette picture (glb/Textures/colormap.png), the pack's preview and its licence.
+Left out: the same models as .fbx and .obj, and the pack's per-model preview pictures.
+
+tools/blender-room.py builds a room of a deck out of these. See docs/notes/project-tiled.md.
