@@ -50,12 +50,15 @@ const ui = {
 // ---- Reading preferences ------------------------------------------------
 
 const READING_KEY = "meridian-reading";
-const reading = { font: "book", size: 17, view: "iso", tiles: "techlab", chosen: true, story: "popups", popFont: "terminal", writing: "normal", interface: "auto" };
+const reading = { font: "book", size: 17, view: "iso", tiles: "techlab", chosen: true, story: "popups", popFont: "terminal", writing: "normal", interface: "auto", deskSkin: "grey", deskCrt: "light" };
 const textSizes = { min: 13, max: 26 };
 
 function applyReading() {
   document.documentElement.dataset.storyFont = reading.font;
   document.documentElement.dataset.popFont = reading.popFont;
+  // How a computer the player is in looks: its desktop's skin and the old screen's strength (desktop.css).
+  document.documentElement.dataset.deskSkin = reading.deskSkin;
+  document.documentElement.dataset.deskCrt = reading.deskCrt;
   document.documentElement.style.setProperty("--story-size", `${reading.size}px`);
   applyInterface();
 }
@@ -78,6 +81,8 @@ function loadReading() {
     if (saved?.popFont === "terminal" || saved?.popFont === "book") reading.popFont = saved.popFont;
     if (saved?.writing in WRITING_SPEEDS) reading.writing = saved.writing;
     if (saved?.interface in INTERFACE_SIZES) reading.interface = saved.interface;
+    if (["grey", "slate", "phosphor"].includes(saved?.deskSkin)) reading.deskSkin = saved.deskSkin;
+    if (["off", "light", "heavy"].includes(saved?.deskCrt)) reading.deskCrt = saved.deskCrt;
   } catch {
     // Without saved preferences, the defaults are fine.
   }

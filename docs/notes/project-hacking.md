@@ -65,3 +65,31 @@ Seven choices with my picks, not yet answered: the computer floats over the room
 starts with the plain yard rig and DICTIONARY, DOORKEY and MASK; writing a program takes hours at the bench; old saves
 keep computers already open; being caught works as now; NAVCOM 7 for the ship's main system and the Navy's computers;
 the numbers are mine from the examples, to tune after they play.
+
+## Step 1, the new screen (built 2026-11-13, at "Your picks, step 1")
+
+The seven picks were taken. What changed, all on the page side except one line of text:
+
+- `public/computer.js` draws the computer as Keelworks 4.1 on an old monitor, in the same floating window over the room
+  (`check-float`, the line to what you sat down at, pulled aside and sliding back). The server and its actions are as
+  they were: a folder's things send `file`, `mail`, `log`, `program`, `connect` or `show`; a system's switches `system`;
+  the menu's Log off and Esc `logoff`. The desktop is drawn at 640 by 480 and scaled to the glass (`--s`, a
+  ResizeObserver). Windows (folder, viewer, session log) keep their places in the window's own state, come to the front
+  on a press without redrawing (so the click still lands), and move by their title bars. A new screen from the server
+  brings the viewer up. The command line went: typing is still understood by the server, but nothing needs it, and Help
+  (which lists typed commands) isn't in the menu.
+- `public/desktop.css` holds the monitor, the old screen's effects and the three skins, all under `.desk` and `.os`, and
+  undoes the game's own button look inside the desktop (its brackets and inverted hover). The game already used `.title`
+  and `.screen`, so the desktop's are `.wtitle` and `.desk-screen`.
+- Settings: `deskSkin` and `deskCrt` in the reading preferences (`public/app.js`, kept in `meridian-reading`), on the
+  root as `data-desk-skin` and `data-desk-crt`; a Computers fold in `public/menus.js`.
+- `public/pull.js`: `.os` is in `NOT_FOR_PULLING`, so the desktop's windows drag and the monitor is pulled by its frame.
+- `src/computers.js`: the first line in a session's log says to open a folder on the desktop, not to click on the left
+  or type.
+
+Checked: all 1,098 tests; on a test copy (port 3297, its own data folder, two saves made with the game's own code: the
+ medbay's records terminal, and Haven's berth board hacked with the trace at 75%), at 1400 and 810 wide: folders open,
+ files show, a system's switch works and the trace warning comes through, a window drags without pulling the monitor,
+ Log off closes it, the hacked one's eye, light and warning show, Settings' Phosphor and Heavy save and apply. At 810
+ the advisor moved under the monitor (below 980 wide), and the icons were tightened so six fit above the taskbar.
+Not done: the NAVCOM look (step 6). The owner hasn't tried it.

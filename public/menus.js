@@ -277,6 +277,18 @@ function settingsMenu() {
       ]),
       el("div", { class: "row small" }, "Full screen:", el("button", { "aria-pressed": String(Boolean(document.fullscreenElement)), onclick: toggleFullScreen }, document.fullscreenElement ? "Leave full screen" : "Go full screen")),
       muted("You can also press F11 for full screen, and pull the edges of the window to make it any size. Automatic makes everything bigger in a bigger window, so it looks the same on any screen. A size can't go past what still fits in the window.")),
+    folded("settings-computers", "Computers",
+      pickRow("Screen:", "deskSkin", [
+        ["grey", "Shipyard grey", "Grey panels and blue title bars, as desktops looked around 1999"],
+        ["slate", "Slate", "The same desktop, darkened to sit with the ship's colours"],
+        ["phosphor", "Phosphor", "A one-colour green monitor showing the desktop"],
+      ]),
+      pickRow("Old screen:", "deskCrt", [
+        ["off", "Off", "A clean picture"],
+        ["light", "Light", "Scanlines and a little glow"],
+        ["heavy", "Heavy", "Stronger lines, a rolling band and a flicker"],
+      ]),
+      muted("How a computer looks once you're in it. They change nothing else.")),
     folded("settings-checks", "Skill checks",
       el("div", { class: "row small" }, "Checks open as:",
         el("button", { class: checkStyle() === "play" ? "primary" : "", "aria-pressed": String(checkStyle() === "play"), onclick: () => { setCheckStyle("play"); app.renderMenus(); } }, "A game"),

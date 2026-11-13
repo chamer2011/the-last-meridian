@@ -279,7 +279,7 @@ export function openSession(game, content, { hacked = false, trace = 0, maxTrace
   const greeting = hacked && !yours ? "ACCESS GRANTED." : yours ? "Logged in." : "Logged in with the password.";
   session.log.push(line(`${content.name}: ${greeting} Welcome, ${content.user}.`, "good"));
   if (flavor.length) session.log.push(line(flavor[Math.floor(seeded(content.id)() * flavor.length)], "dim"));
-  session.log.push(line("Click what's on the left to read it or run it, or type: ls, cat <file>, mail, log <name>, run <program>, net, logoff.", "dim"));
+  session.log.push(line("Open a folder on the desktop to read or run what's in it. Log off from the Keel menu, or with Esc.", "dim"));
   return session;
 }
 

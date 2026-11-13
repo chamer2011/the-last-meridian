@@ -6,7 +6,8 @@
 import { zoom } from "./dom.js";
 
 // Taking hold anywhere but these, which are for clicking.
-const NOT_FOR_PULLING = "button, a, input, textarea, select, label, summary, details, [data-lore]";
+// A computer's desktop (.os) has windows of its own to drag, so the monitor round it is pulled by its frame instead.
+const NOT_FOR_PULLING = "button, a, input, textarea, select, label, summary, details, [data-lore], .os";
 // A hand that wobbles while clicking isn't pulling.
 const WOBBLE = 4;
 // How long sliding back takes, as the stylesheet's .pullable.springing has it.

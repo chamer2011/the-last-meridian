@@ -1,0 +1,132 @@
+/* A computer the player is in: Keelworks 4.1, a made-up shipyard desktop of about 1999, on an old monitor floating over
+   the room. The desktop is drawn at 640 by 480 and scaled to the monitor's glass. Its skin (Shipyard grey, Slate,
+   Phosphor) and the old screen's strength (off, light, heavy) are Settings choices, on the root as data-desk-skin and
+   data-desk-crt. Everything inside .os undoes the game's own button look (brackets, inverted hover). */
+.check-float > .desk { pointer-events: auto; width: min(100%, 980px, calc((100vh - 12em) * 1.3)); display: flex; gap: 10px; align-items: flex-start; }
+.desk .monitor { flex: 1 1 auto; min-width: 0; position: relative; background: linear-gradient(#2b2f2c, #1c1f1d); border-radius: 18px; padding: 18px 18px 30px; box-shadow: inset 0 2px 0 #3d423e, inset 0 -3px 0 #121412, 0 12px 34px #000a; cursor: grab; }
+.desk .plate { position: absolute; left: 0; right: 0; bottom: 8px; display: flex; justify-content: center; gap: 10px; align-items: center; color: #6c736d; font: 600 10px/1 var(--mono); letter-spacing: .25em; }
+.desk .led { width: 8px; height: 8px; border-radius: 50%; background: #3cff7a; box-shadow: 0 0 6px #3cff7a; }
+.desk .led.warn { background: #f2c14e; box-shadow: 0 0 6px #f2c14e; }
+.desk .led.bad { background: #ff7b6b; box-shadow: 0 0 8px #ff7b6b; animation: desk-blink .8s steps(2) infinite; }
+.desk .glass { position: relative; aspect-ratio: 4 / 3; border-radius: 14px / 12px; overflow: hidden; background: #000; box-shadow: 0 0 0 3px #0c0d0c, 0 0 0 5px #3a3f3b; cursor: default; }
+.desk .desk-screen { position: absolute; left: 0; top: 0; width: 640px; height: 480px; transform: scale(var(--s, 1)); transform-origin: 0 0; }
+.desk .fx { position: absolute; inset: 0; pointer-events: none; }
+.desk .fx.scan { background: repeating-linear-gradient(to bottom, #0000 0 2px, #0003 2px 3px); }
+.desk .fx.vig { background: radial-gradient(ellipse at center, #0000 58%, #0006 86%, #000c 100%); }
+.desk .fx.glare { background: radial-gradient(ellipse at 28% 18%, #ffffff14, #0000 45%); }
+.desk .fx.band { background: linear-gradient(#0000, #ffffff0a 45%, #0000); height: 30%; top: -30%; display: none; }
+:root[data-desk-crt="off"] .desk .fx { display: none; }
+:root[data-desk-crt="heavy"] .desk .desk-screen { filter: saturate(1.15) contrast(1.1) blur(.35px); text-shadow: .6px 0 #ff00002e, -.6px 0 #00a2ff2e; }
+:root[data-desk-crt="heavy"] .desk .fx.scan { background: repeating-linear-gradient(to bottom, #0000 0 2px, #0006 2px 3px); }
+:root[data-desk-crt="heavy"] .desk .fx.band { display: block; }
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-desk-crt="heavy"] .desk .fx.band { animation: desk-roll 7s linear infinite; }
+  :root[data-desk-crt="heavy"] .desk .glass { animation: desk-flicker 3.2s infinite; }
+}
+@keyframes desk-roll { to { top: 100%; } }
+@keyframes desk-flicker { 0%, 100% { opacity: 1; } 50% { opacity: .95; } }
+@keyframes desk-blink { 50% { opacity: .25; } }
+
+/* The skins */
+.os { --desk: #2e6a6c; --face: #c3c3c3; --hi: #fff; --lo: #808080; --dark: #000; --t1: #0b2a6b; --t2: #3a7bd5; --tt: #fff; --tx: #000; --sel: #0b2a6b; --selt: #fff; --field: #fff; --dim: #5e5e5e; --warnc: #8a5a00; --badc: #b40000; --goodc: #006400; --font: Tahoma, Verdana, "Segoe UI", sans-serif; --size: 11px;
+  position: absolute; inset: 0; background: var(--desk); color: var(--tx); font: var(--size)/1.35 var(--font); overflow: hidden; user-select: none; text-align: left; }
+:root[data-desk-skin="slate"] .os { --desk: #1b262e; --face: #a9b2ba; --hi: #e9eef2; --lo: #5d6872; --dark: #161b20; --t1: #1d2b38; --t2: #4f7393; --tx: #0c1116; --sel: #2d4a63; --field: #eef2f5; --dim: #4d5761; }
+:root[data-desk-skin="phosphor"] .os { --desk: #020b05; --face: #071a0d; --hi: #4fc46e; --lo: #1d5a2c; --dark: #000; --t1: #134a22; --t2: #2a8c45; --tt: #c9ffd8; --tx: #8ff0a8; --sel: #2a8c45; --selt: #031107; --field: #031107; --dim: #3f8f57; --warnc: #f2c14e; --badc: #ff8d7a; --goodc: #8ff0a8; --font: var(--mono); --size: 11px; text-shadow: 0 0 3px #4fc46e66; }
+:root[data-desk-skin="phosphor"] .os svg { filter: grayscale(1) sepia(1) hue-rotate(80deg) saturate(3) brightness(.95); }
+:root[data-desk-skin="slate"] .os::before { content: "HALDEN YARDS"; position: absolute; right: 18px; bottom: 40px; font: 700 34px/1 var(--font); letter-spacing: .3em; color: #ffffff0d; }
+
+/* Panels, buttons and fields, undoing the game's own button look */
+.os .bev { background: var(--face); border: 1px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi); box-shadow: inset -1px -1px 0 var(--lo), inset 1px 1px 0 var(--face); }
+.os .sunk { background: var(--field); border: 1px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); box-shadow: inset 1px 1px 0 var(--dark); }
+.os button:not(.card)::before, .os button:not(.card)::after { content: none; }
+.os button { font: inherit; color: var(--tx); background: var(--face); border: 1px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi); box-shadow: inset -1px -1px 0 var(--lo); padding: 2px 8px; cursor: pointer; text-align: center; border-radius: 0; opacity: 1; }
+.os button:hover:not(:disabled), .os button:focus-visible { background: var(--face); color: var(--tx); outline: 1px dotted var(--tx); outline-offset: -4px; }
+.os button:active:not(:disabled) { border-color: var(--dark) var(--hi) var(--hi) var(--dark); box-shadow: inset 1px 1px 0 var(--lo); }
+.os button:disabled { color: var(--dim); opacity: 1; cursor: default; }
+/* Desktop icons */
+.os .icons { position: absolute; left: 6px; top: 6px; display: grid; gap: 4px; }
+.os button.icon { width: 76px; display: grid; justify-items: center; gap: 3px; padding: 2px; color: #fff; background: none; border: 0; box-shadow: none; text-shadow: 1px 1px 0 #000; }
+:root[data-desk-skin="phosphor"] .os button.icon { color: var(--tx); text-shadow: 0 0 3px #4fc46e66; }
+.os button.icon:hover:not(:disabled), .os button.icon:focus-visible { background: none; color: #fff; outline: 0; }
+:root[data-desk-skin="phosphor"] .os button.icon:hover:not(:disabled) { color: var(--tx); }
+.os .icon svg { width: 32px; height: 32px; }
+.os .icon span { padding: 0 2px; }
+.os .icon.sel span { background: var(--sel); color: var(--selt); outline: 1px dotted #fff8; }
+/* Windows */
+.os .win { position: absolute; display: flex; flex-direction: column; padding: 2px; }
+.os .wtitle { display: flex; align-items: center; gap: 4px; height: 18px; flex: none; padding: 0 2px 0 4px; background: linear-gradient(90deg, var(--t1), var(--t2)); color: var(--tt); font-weight: 700; cursor: move; touch-action: none; }
+.os .win:not(.top) .wtitle { background: linear-gradient(90deg, var(--lo), var(--dim)); color: var(--face); }
+:root[data-desk-skin="phosphor"] .os .win:not(.top) .wtitle { color: var(--tx); }
+.os .wtitle span { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.os .wtitle svg { width: 14px; height: 14px; flex: none; }
+.os .wtitle button { width: 16px; height: 14px; padding: 0; font: 700 9px/1 var(--font); flex: none; }
+.os .menu-bar { display: flex; gap: 10px; padding: 1px 6px; flex: none; }
+.os .body { padding: 5px; display: flex; flex-direction: column; gap: 5px; flex: 1; min-height: 0; }
+.os .pane-in { flex: 1; min-height: 0; overflow: auto; padding: 5px 6px; scrollbar-width: thin; }
+.os .status { display: flex; gap: 2px; flex: none; }
+.os .status > * { flex: 1; padding: 1px 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* Lists in a folder window */
+.os .rows { display: grid; }
+.os button.row-item { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 4px; align-items: baseline; text-align: left; background: none; border: 0; box-shadow: none; padding: 2px 4px; color: var(--tx); }
+.os button.row-item:hover:not(:disabled), .os button.row-item:focus-visible { background: var(--sel); color: var(--selt); outline: 0; }
+.os button.row-item.done { color: var(--dim); }
+.os button.row-item.open { background: var(--sel); color: var(--selt); }
+.os .row-item small { color: inherit; opacity: .8; }
+/* What's on the screen, in the desktop's colours */
+.os .tone-dim { color: var(--dim); }
+.os .tone-info, .os .tone-cell { color: var(--tx); }
+.os .tone-bright, .os .tone-link { color: var(--tx); font-weight: 700; }
+.os .tone-warn { color: var(--warnc); }
+.os .tone-bad { color: var(--badc); }
+.os .tone-good { color: var(--goodc); }
+.os .check-line { white-space: pre-wrap; overflow-wrap: anywhere; }
+.os .check-line.you { color: var(--dim); }
+.os .computer-screen-title { font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+.os .viewer-in { display: flex; flex-direction: column; gap: 5px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; user-select: text; }
+.os .computer-rows { display: grid; gap: 6px; }
+.os .computer-row { border: 1px solid var(--lo); padding: 4px 6px; display: grid; gap: 2px; }
+.os .computer-row.down { border-color: var(--badc); }
+.os .computer-row-head { display: flex; justify-content: space-between; gap: 6px; }
+.os .computer-row-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.os .register-table { display: grid; font-size: 10px; }
+.os .register-row { display: grid; grid-template-columns: 1.4fr .5fr .7fr 1fr 1fr; gap: 4px; padding: 1px 2px; }
+.os .register-head button { background: var(--face); padding: 1px 3px; text-align: left; font-weight: 700; }
+/* The taskbar and its menu */
+.os .taskbar { position: absolute; left: 0; right: 0; bottom: 0; height: 28px; display: flex; gap: 4px; align-items: center; padding: 2px; border-width: 1px 0 0; z-index: 800; }
+.os button.keel { display: flex; gap: 4px; align-items: center; font-weight: 700; padding: 2px 6px; }
+.os .keel svg { width: 16px; height: 16px; }
+.os .tasks { flex: 1; display: flex; gap: 3px; min-width: 0; }
+.os .tasks button { flex: 0 1 130px; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: left; }
+.os .tasks button.on { border-color: var(--dark) var(--hi) var(--hi) var(--dark); background: repeating-conic-gradient(var(--face) 0 25%, var(--hi) 0 50%) 0 0 / 2px 2px; }
+.os .tray { display: flex; gap: 6px; align-items: center; padding: 2px 8px; height: 22px; background: var(--face); flex: none; }
+.os .tray svg { width: 16px; height: 16px; display: block; }
+.os .tray .watch.noticed svg { filter: drop-shadow(0 0 2px #f2c14e); }
+.os .tray .watch.tracing svg { animation: desk-blink .7s steps(2) infinite; }
+.os .menu { position: absolute; left: 2px; bottom: 28px; padding: 2px; min-width: 180px; z-index: 900; display: flex; }
+.os .menu .side { width: 20px; background: linear-gradient(var(--t2), var(--t1)); color: var(--tt); writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 700; padding: 6px 0; letter-spacing: .1em; text-align: right; }
+.os .menu .items { display: grid; flex: 1; }
+.os .menu button { display: flex; gap: 8px; align-items: center; text-align: left; border: 0; box-shadow: none; background: none; padding: 4px 16px 4px 6px; }
+.os .menu button:hover:not(:disabled), .os .menu button:focus-visible { background: var(--sel); color: var(--selt); outline: 0; }
+.os .menu hr { border: 0; border-top: 1px solid var(--lo); border-bottom: 1px solid var(--hi); margin: 2px; }
+.os .menu svg { width: 16px; height: 16px; }
+/* The watcher's balloon */
+.os .balloon { position: absolute; right: 8px; bottom: 34px; width: 250px; padding: 6px 8px 8px; background: #ffffe1; color: #000; border: 1px solid #000; border-radius: 6px; z-index: 850; box-shadow: 2px 2px 0 #0004; }
+:root[data-desk-skin="phosphor"] .os .balloon { background: var(--field); color: var(--tx); border-color: var(--hi); }
+.os .balloon::after { content: ""; position: absolute; right: 52px; bottom: -9px; border: 9px solid transparent; border-top-color: #000; border-bottom: 0; }
+.os .balloon b { display: flex; gap: 5px; align-items: center; margin-bottom: 2px; color: #b40000; }
+.os .balloon svg { width: 16px; height: 16px; flex: none; }
+/* The advisor beside the monitor: the game's own hints, not part of the computer */
+.desk-advisor { flex: none; width: 30ch; align-self: stretch; display: flex; flex-direction: column; border: 1px solid #33507f; background: rgba(9, 20, 42, .92); color: #e6f0ff; font: 12.5px/1.4 var(--mono); }
+.desk-advisor header { display: flex; justify-content: space-between; gap: 6px; padding: 3px 8px; background: #8ab8ff; color: #040a17; font-weight: 700; letter-spacing: .05em; }
+.desk-advisor .lines { padding: 6px 8px; display: grid; gap: 6px; overflow-y: auto; min-height: 0; }
+.desk-advisor button { color: #040a17; font-weight: 700; }
+.desk-advisor button::before, .desk-advisor button::after { content: none; }
+.desk-hints { flex: none; align-self: flex-start; writing-mode: vertical-rl; padding: 8px 3px; border: 1px solid #33507f; background: rgba(9, 20, 42, .92); color: #8ab8ff; font: 700 11px/1 var(--mono); letter-spacing: .1em; }
+.desk-hints::before, .desk-hints::after { content: none !important; }
+.desk-note { position: absolute; left: 18px; right: 18px; top: 4px; color: #ff9b8f; font: 12px/1.3 var(--mono); }
+/* Narrower than this, the advisor goes under the monitor, so the desktop keeps its size. */
+@media (max-width: 980px) {
+  .check-float > .desk { flex-direction: column; align-items: stretch; width: min(100%, 860px, calc((100vh - 16em) * 1.3)); }
+  .desk-advisor { width: auto; max-height: 8em; }
+  .desk-hints { writing-mode: horizontal-tb; align-self: flex-end; }
+}
