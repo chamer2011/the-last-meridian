@@ -33,6 +33,8 @@ BATTLE mutiny: Boots on the forward stair, and the first of them come up into th
 
 == held
 WITH: nobody
+PAGE: The Red Cloth | Deck 1, after the battle
+DRAWING: meridian
 The last sidearm clatters onto the deck plates, and then it's quiet enough to hear the air plant again. The corridor smells of scorched paint. Somewhere down the Names Bulkhead, someone is calling for a medic, and someone else is already answering.
 
 The bridge is still yours. Now the rest of the ship is too, whatever's left of her after this.
@@ -44,6 +46,8 @@ END
 
 == woke
 WITH: nobody
+PAGE: The Red Cloth | The medbay, after the battle
+DRAWING: meridian
 You come back slowly, to the smell of antiseptic and the hum of the medbay's lights. Someone has cut your sleeve away and dressed what was under it.
 
 Whoever's on duty tells you it's over: the mutiny was put down without you, by the people you left standing on the deck and the ones who came up from below. The bridge is still the ship's. Nobody will say yet what it cost.

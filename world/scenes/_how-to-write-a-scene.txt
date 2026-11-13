@@ -642,6 +642,28 @@ if can be any condition from above. A door with if and check tries the condition
 the check. flag is remembered when the door opens.
 
 
+PAGES OF THE SHIP'S LOG
+-----------------------
+
+A big moment can be shown whole, as a page of the ship's log over the room, instead of a piece at a time on panes
+by people's heads: the end of a battle, a decision for the captain, a story's turning point. Two lines at the top of
+the part do it:
+
+    == held
+    PAGE: The Red Cloth | Deck 1, after the battle
+    DRAWING: meridian
+    The last sidearm clatters onto the deck plates...
+
+PAGE: is the page's title, and after a |, if you like, a line under it. DRAWING:, if you like, is a drawing for the
+page's top, by its name in world/drawings (world/drawings/_how-to-draw.txt says how to draw one). The page has the
+part's words and its choices, each with the labels its [ ] tags give it ([morale +2], [persuasion moderate] with the
+odds), and a Close when there are no choices. The clock stops while it's open, the notes and the quest tracker step
+aside, and it can be pulled aside to see the room. A closed page stays closed.
+
+It works in a conversation too, and so in a request: a part with PAGE: shows the conversation as a page from that
+part on, what's said to the answer included, with what the answer did, and then only Close (request_prisoners does).
+
+
 GAME MESSAGES
 -------------
 

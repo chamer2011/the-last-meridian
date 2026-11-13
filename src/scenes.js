@@ -33,6 +33,7 @@ import { storyHitsShip } from "./ship.js";
 import { requestFacts, requestProblems } from "./requests.js";
 import { checkExtras } from "./room-hooks.js";
 import { allBattleProblems, battleProblem } from "./battles.js";
+import { drawingNames, drawingOf, drawingProblems } from "./drawings.js";
 import { FACT_LINES, MAP_FILE_PROBLEMS, SET_ASIDE, STORIES_DIR, STORY_CLOCK, STORY_FILE_PROBLEMS, WORLD_COMMAND, WORLD_COMPUTERS, WORLD_FILE_PROBLEMS, WORLD_MAPS, WORLD_THREADS, endingsOf } from "./world.js";
 
 // Something the player did that the written story has no answer to. The turn changes nothing, and they read this.
@@ -347,8 +348,10 @@ function enterPart(game, scene, id, { emit, turn }, hops = 0) {
   game.scene.at = waitsAt(part);
   game.scene.seen ??= [];
   if (!game.scene.seen.includes(id)) game.scene.seen.push(id);
-  // What a scene says is marked with its scene and quest, so the quest log can show what happened in each.
-  const tag = { scene: game.scene.id, quest: game.scene.quest ?? null };
+  // What a scene says is marked with its scene and quest, so the quest log can show what happened in each, and a
+  // big moment carries the page of the ship's log it's shown on.
+  const page = pageOf(game, part);
+  const tag = { scene: game.scene.id, quest: game.scene.quest ?? null, ...(page ? { page } : {}) };
   const text = partText(part, game);
   if (text) emit({ type: "text", text, ...tag });
   if (part.note) emit({ type: "notice", text: part.note });
@@ -711,8 +714,25 @@ function checkProblem(text) {
 // Everything wrong with a scene, in plain words, so a mistake is found before anyone plays it. Each
 // problem names the file's line when the scene came from a text file. A conversation (talk_<person>)
 // has no checks or fights, and a part with nothing more to say is where it ends.
+// A part shown as a page of the ship's log (PAGE:, DRAWING:): its title, the line under it, the drawing's lines, and
+// when it was written, for the page's bar. Null for a part that isn't one.
+export function pageOf(game, part) {
+  if (!part?.page) return null;
+  const hours = game.clock?.hours ?? 0;
+  const minutes = Math.floor((hours % 1) * 60);
+  const at = `day ${Math.floor(hours / 24) + 1}, ${String(Math.floor(hours % 24)).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  const drawing = part.drawing ? drawingOf(part.drawing) : null;
+  return { title: part.page.title, ...(part.page.under ? { under: part.page.under } : {}), ...(drawing ? { drawing } : {}), at };
+}
+
 export function sceneProblems(scene, id = "the scene", { talk = false } = {}) {
   const problems = [];
+  // A drawing has to be one there is, and goes with a page.
+  const drawings = new Set(drawingNames());
+  for (const [name, part] of Object.entries(scene?.parts ?? {})) {
+    if (part.drawing && !drawings.has(part.drawing)) problems.push(`${id} (part ${name}): DRAWING: ${part.drawing} isn't in world/drawings${drawings.size ? `; the drawings there are ${[...drawings].join(", ")}` : ""}`);
+    if (part.drawing && !part.page) problems.push(`${id} (part ${name}): DRAWING: is for a part shown as a page, with a PAGE: line`);
+  }
   // A scene's stand-ins are checked as if real people stood in them, and one the game doesn't fill in is a mistake.
   // A request has whoever's asking as well, checked as if Dr. Aduro were; what's broken, as if the speaker in the Galley
   // were; whose trouble it is, as if Kara Tarrow had lost the post of chief medical officer to Dr. Aduro; and the
@@ -852,7 +872,7 @@ export function allStoryProblems(dir = SCENES_DIR) {
       for (const text of conditions) for (const flag of flagsIn(text)) if (!known.has(flag)) problems.push(`${id}, part ${name}: nothing leaves the fact ${flag}. Set it with * flag in a scene, or name it in a story's facts in world/stories`);
     }
   }
-  problems.push(...STORY_FILE_PROBLEMS, ...WORLD_FILE_PROBLEMS, ...MAP_FILE_PROBLEMS, ...notesProblems(known), ...clockProblems(known), ...computerProblems(), ...systemsProblems(), ...logisticsProblems(), ...commandProblems(), ...healthProblems(), ...medbayProblems(), ...deathProblems(), ...allBattleProblems().problems, ...checkExtras());
+  problems.push(...STORY_FILE_PROBLEMS, ...WORLD_FILE_PROBLEMS, ...MAP_FILE_PROBLEMS, ...notesProblems(known), ...clockProblems(known), ...computerProblems(), ...systemsProblems(), ...logisticsProblems(), ...commandProblems(), ...healthProblems(), ...medbayProblems(), ...deathProblems(), ...allBattleProblems().problems, ...drawingProblems(), ...checkExtras());
   const drawn = Object.values(WORLD_MAPS).flatMap((map) => Object.values(map.levels ?? {})).filter((level) => level.drawn).length;
   return { count, requests, stories: Object.keys(WORLD_THREADS).length, computers: Object.keys(WORLD_COMPUTERS).length, systems: placesWithSystems(), logistics: placesWithLogistics(), command: Object.keys(WORLD_COMMAND).length, health: healthFiles(), battles: allBattleProblems().count, drawn, problems, fleet: fleetLeftovers(dir) };
 }

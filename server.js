@@ -154,8 +154,9 @@ function streamTurn(res, { playerText, event, threadId, person = null, talking =
     const emit = (e) => {
       if (e.type === "text") {
         const last = pieces.at(-1);
-        if (last?.role === "narrator" && last.scene === (e.scene ?? null)) last.text += e.text;
-        else pieces.push({ role: "narrator", text: e.text, scene: e.scene ?? null, quest: e.quest ?? null });
+        // A page of the ship's log is a piece of its own, not run on from what came before it.
+        if (last?.role === "narrator" && last.scene === (e.scene ?? null) && !last.page && !e.page) last.text += e.text;
+        else pieces.push({ role: "narrator", text: e.text, scene: e.scene ?? null, quest: e.quest ?? null, ...(e.page ? { page: e.page } : {}) });
         send({ type: "text", text: e.text });
       }
       if (e.type === "notice") {

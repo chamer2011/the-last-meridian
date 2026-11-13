@@ -1710,6 +1710,8 @@ export function talkView(game) {
     relationship: person ? audienceBonus(game, person.id) : 0,
     log: talk.log,
     lastReply: talk.lastReply,
+    // A talk shown on a page of the ship's log (src/talks.js), and whether all that's left is to close it.
+    page: talk.page ?? null,
     rumors: rumorsLeft(game, talk).length,
     rumorLabel: map?.talk?.rumor ?? "Ask what they've heard",
     goodbyeLabel: map?.talk?.goodbye ?? "Say goodbye",

@@ -881,6 +881,21 @@ export function parseSceneText(text, name = "the scene") {
       else part.with = /^nobody$/i.test(who) ? "nobody" : who;
       return;
     }
+    // A big moment shown as a page of the ship's log over the room, with a title, a line under it, and a drawing.
+    if (/^PAGE:/i.test(trimmed)) {
+      flush();
+      const [title, under] = trimmed.replace(/^PAGE:\s*/i, "").split("|").map((one) => one.trim());
+      if (!title) problem(line, "PAGE: needs a title, and if you like a | and a line under it, like PAGE: The prisoners | The Brig, deck 2");
+      else part.page = { ...(part.page ?? {}), title, ...(under ? { under } : {}) };
+      return;
+    }
+    if (/^DRAWING:/i.test(trimmed)) {
+      flush();
+      const name = trimmed.replace(/^DRAWING:\s*/i, "").trim().toLowerCase();
+      if (!/^[a-z0-9_]+$/.test(name)) problem(line, "DRAWING: needs the name of a drawing in world/drawings, like DRAWING: brig");
+      else part.drawing = name;
+      return;
+    }
     // A note for whoever writes, about what the people here would and wouldn't do. The player never sees it.
     if (/^AI:/i.test(trimmed)) {
       flush();

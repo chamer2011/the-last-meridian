@@ -1,0 +1,20 @@
+HOW TO DRAW FOR THE SHIP'S LOG
+==============================
+
+A big moment in the story can be shown as a page of the ship's log over the room, instead of on a pane by
+someone's head (see PAGES in world/scenes/_how-to-write-a-scene.txt). The top of the page can have a drawing
+beside its title, made of plain characters, the way the game draws its consoles. Each drawing is a file here,
+named by what the scenes call it: brig.txt is the drawing a scene asks for with DRAWING: brig.
+
+    ┌────────┬────────┐
+    │ ║ ║ ║ ║│ ║ ║ ║ ║│
+    │ ║ ║ ║ ║│ ║ ║ ║ ║│
+    └───┤├───┴───┤├───┘
+
+Draw it in Notepad, with a font where every character is the same width (Consolas, Courier New). Any
+character will do: letters, | / \ _ - = : [ ] < >, and the box-drawing ones (─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼ ═ ║).
+A drawing has room for 8 lines of 32 characters; more is cut off, and npm run check-story says so. Empty
+lines at the top and bottom are left out. A line that starts with // is a note for whoever draws, and isn't
+drawn. The name is letters, numbers and _, all small letters.
+
+The game reads the file again each time a page is opened, so a changed drawing shows the next time.

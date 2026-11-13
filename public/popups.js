@@ -9,6 +9,7 @@ import { isoLook, isoSpot } from "./iso.js";
 import { paneNode, panesPlacedBy, putPane } from "./pane.js";
 import { latestSceneStart, personSpeaking, sceneOf } from "./scene.js";
 import { blockNode, optionContent, sceneBlocks, speakerOf, storyEntryNode, thinkingNode, wordNodes } from "./story-view.js";
+import { shipLogNode } from "./logpage.js";
 import { talkPanesNode } from "./talk.js";
 import { WRITING_SPEEDS, holdBack, newPen } from "./writer.js";
 
@@ -67,7 +68,8 @@ function limitNow() {
 
 function readScene() {
   const { ui } = app;
-  const entries = living() ? ui.liveEntries : ui.game.transcript.slice(pop.start);
+  // A page of the ship's log is shown whole on its page, not a piece at a time.
+  const entries = (living() ? ui.liveEntries : ui.game.transcript.slice(pop.start)).filter((entry) => !entry.page);
   Object.assign(pop, sceneOf(entries, { blocksOf: sceneBlocks, limit: pop.limit, streaming: living() }));
 }
 
@@ -528,19 +530,77 @@ function drawScene() {
   const root = document.getElementById("pops");
   if (!root) return;
   root.classList.toggle("pop-open", pop.open);
+  // A scene's page of the ship's log, if its newest words are one, in place of the caption, the pane and the answers.
+  document.getElementById("ship-log")?.remove();
+  const page = pageNode();
+  if (page) root.append(page);
   document.getElementById("pop-balloon")?.remove();
-  const balloon = balloonNode();
+  const balloon = page ? null : balloonNode();
   if (balloon) root.prepend(balloon);
   document.getElementById("pop-answer")?.remove();
-  const answer = answerNode();
+  const answer = page ? null : answerNode();
   if (answer) root.prepend(answer);
   document.getElementById("pop-story")?.remove();
-  const caption = captionNode();
+  const caption = page ? null : captionNode();
   if (caption) root.append(caption);
   document.getElementById("pop-waiting")?.remove();
-  const waiting = waitingChip();
+  const waiting = page ? null : waitingChip();
   if (waiting) root.append(waiting);
   settle();
+}
+
+// ---- A page of the ship's log ---------------------------------------------------------------
+
+// The scene's newest words, when they're a big moment shown on a page of the ship's log (a part with a PAGE: line),
+// and the page hasn't been closed: the page, with the scene's choices on it, or Close when there are none. While a page
+// is up, it's what's over the room: no caption, no pane, no answers off a pane.
+function pageNow() {
+  // A talk has the room while it's open, and the page comes back after it.
+  if (living() || app.ui.game?.talk) return null;
+  const { transcript } = app.ui.game;
+  for (let i = transcript.length - 1; i >= Math.max(0, pop.start ?? 0); i -= 1) {
+    const entry = transcript[i];
+    if (entry.role === "player" || entry.role === "combat" || entry.turnover) return null;
+    if (entry.role !== "narrator") continue;
+    if (!entry.page) return null;
+    const key = `${app.ui.game.name}|${i}|${entry.text.length}|${entry.page.at}`;
+    return pageShut(key) ? null : { entry, key };
+  }
+  return null;
+}
+// Pages that have been closed stay closed, after a reload too: kept in the browser for this viewer, the last few.
+const SHUT_KEY = "meridian-pages-closed";
+function pageShut(key) {
+  if (pop.pageShut === key) return true;
+  try {
+    return (JSON.parse(localStorage.getItem(SHUT_KEY) ?? "[]") ?? []).includes(key);
+  } catch {
+    return false;
+  }
+}
+function shutPage(key) {
+  pop.pageShut = key;
+  try {
+    const kept = (JSON.parse(localStorage.getItem(SHUT_KEY) ?? "[]") ?? []).filter((one) => one !== key);
+    localStorage.setItem(SHUT_KEY, JSON.stringify([...kept, key].slice(-20)));
+  } catch {
+    // Without the browser's storage, a closed page comes back after a reload, and closes again.
+  }
+}
+function pageNode() {
+  const found = pageNow();
+  if (!found) return null;
+  const options = app.options?.() ?? [];
+  return shipLogNode({
+    page: found.entry.page,
+    text: found.entry.text,
+    options,
+    close: () => {
+      shutPage(found.key);
+      drawScene();
+      app.render();
+    },
+  });
 }
 
 // With the story put away and something waiting to be answered, one small line at the top brings it back.
@@ -565,13 +625,15 @@ export function popupsAttached() {
 export function popsNode(legend, clock) {
   // This comes first, because what's on the typing line depends on whether the story's open.
   sync();
+  const page = pageNode();
   return el("div", { class: `pops${pop.open ? " pop-open" : ""}`, id: "pops" },
-    answerNode(),
-    balloonNode(),
+    page ? null : answerNode(),
+    page ? null : balloonNode(),
     talkPanesNode(),
     notesNode(),
-    captionNode(),
-    waitingChip(),
+    page ? null : captionNode(),
+    page ? null : waitingChip(),
+    page,
     legend,
     clock,
     // Nothing sits along the bottom of the room any more: the choices hang off whoever's answered, and the story

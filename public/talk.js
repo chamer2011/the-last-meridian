@@ -5,6 +5,7 @@
 
 import { trimmedArt } from "./art.js";
 import { api, el, readLines, signed } from "./dom.js";
+import { shipLogNode } from "./logpage.js";
 import { paneNode } from "./pane.js";
 import { choicesFor, optionContent, storyEntryNode, thinkingNode } from "./story-view.js";
 import { WRITING_SPEEDS, holdBack, newPen } from "./writer.js";
@@ -212,6 +213,7 @@ export function talkNode() {
   const view = app.ui.game?.talk;
   if (!view || onPane()) return null;
   noteTalk(view);
+  if (view.page) return el("div", { class: "check-overlay ship-log-overlay", id: "talk" }, talkPageNode(view));
   return el("div", { class: "check-overlay", id: "talk" },
     el("div", { class: "check-window talk-window", id: "talk-window", "data-theme": THEMES[view.attitude] ?? "blue", role: "dialog", "aria-label": `Talking with ${view.name}`, tabindex: "-1" },
       el("header", { class: "check-title" },
@@ -270,10 +272,30 @@ function choicesPanel(view, ready) {
       el("div", { class: "pop-record-lines" }, view.log.map((entry) => storyEntryNode(entry)))));
 }
 
+// A conversation shown as a page of the ship's log (a part with a PAGE: line, src/talks.js): its words and the file's own
+// answers, with their labels, and once it's been answered, what's said to that and only Close.
+function talkPageNode(view) {
+  const said = latestSaid(view);
+  const offered = view.page.done || talk.sending || !view.lastReply ? [] : choicesFor([{ role: "narrator", text: view.lastReply }]);
+  const withCheck = (choice) => choice.tags?.some((tag) => tag.kind === "check" && tag.difficulty);
+  // What the answer did ("Taken on: ...", what's done with the prisoners), said since the player last spoke.
+  const since = view.log.findLastIndex((entry) => entry.role === "player");
+  const notes = view.page.done && since >= 0 ? view.log.slice(since + 1).filter((entry) => entry.role === "notice") : [];
+  return shipLogNode({
+    id: "ship-log-talk",
+    page: view.page,
+    text: said?.text ?? null,
+    notes,
+    options: offered.map((choice) => ({ ...choice, run: () => (withCheck(choice) ? order({ action: "check", label: choice.label }) : say(choice.label)) })),
+    close: talk.sending ? null : endTalk,
+  });
+}
+
 // The person's pane and, while they answer, yours. Both go among the popups over the room.
 export function talkPanesNode() {
   const view = app.ui.game?.talk;
   if (!view || !onPane()) return null;
+  if (view.page) return talkPageNode(view);
   noteTalk(view);
   const opening = view.id !== talk.paneFor && !calm();
   talk.paneFor = view.id;

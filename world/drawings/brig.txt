@@ -1,0 +1,5 @@
+// The brig's two cells, for the page about the prisoners. Claude's draft, not yet edited by the owner.
+┌────────┬────────┐
+│ ║ ║ ║ ║│ ║ ║ ║ ║│
+│ ║ ║ ║ ║│ ║ ║ ║ ║│
+└───┤├───┴───┤├───┘

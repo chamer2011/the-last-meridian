@@ -594,6 +594,8 @@ function clockHeld() {
   if (ui.streaming || ui.waiting) return "The story's being written";
   if (walk.stopped === "paused") return "Paused: Space goes on";
   if (ui.draft.trim()) return "Stopped while you're typing";
+  if (document.querySelector(".ship-log")) return "Stopped while the log is open";
+  if (document.getElementById("mapedit")) return "Stopped while the map editor is open";
   return null;
 }
 
@@ -603,7 +605,7 @@ function clockHeld() {
 function clockWaits() {
   const { ui } = app;
   const g = ui.game;
-  return ui.streaming || ui.waiting || Boolean(g.combat || g.talk) || Boolean(document.getElementById("board"));
+  return ui.streaming || ui.waiting || Boolean(g.combat || g.talk) || Boolean(document.getElementById("board")) || Boolean(document.querySelector(".ship-log"));
 }
 
 // Time stands still for anything that stops the clock, and while the game's window is put away.

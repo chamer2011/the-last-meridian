@@ -7,7 +7,7 @@ import { storyRequest } from "./request-hook.js";
 import { findCharacter } from "./campaign.js";
 import { clearFact, recordFact } from "./record.js";
 import { isCaptain, toOutsider } from "./role.js";
-import { HELPERS, StoryError, choiceLine, loadScenes, matchChoice, openChoices, partText, ruleThatHolds, withStandIns } from "./scenes.js";
+import { HELPERS, StoryError, choiceLine, loadScenes, matchChoice, openChoices, pageOf, partText, ruleThatHolds, withStandIns } from "./scenes.js";
 import { newTurnLimits, runTool } from "./tools.js";
 import { seedFrom, talkHeard, walkView } from "./walk.js";
 import { ROOM_TALK } from "./world.js";
@@ -98,11 +98,16 @@ function enterTalkPart(game, talk, scene, id, emit, hops = 0) {
   }
   talk.written.part = id;
   if (!talk.written.seen.includes(id)) talk.written.seen.push(id);
+  // A part shown as a page of the ship's log keeps the talk on that page until it's over: what's said to the answer is
+  // on it too, and then only closing it.
+  const page = pageOf(game, part);
+  if (page) talk.page = page;
   let text = partText(part, game, helpersFor(talk));
   // A request that's been answered hands the talk back to the person's own conversation: what they say to the answer,
   // then the things the player can usually say to them.
   const handBack = talk.written.request && !openChoices(part, game, helpersFor(talk)).length ? usualStart(game, talk) : null;
-  if (handBack) text = [text, handBack.choices.map(choiceLine).join("\n")].filter(Boolean).join("\n\n");
+  if (handBack && talk.page) talk.page = { ...talk.page, done: true };
+  else if (handBack) text = [text, handBack.choices.map(choiceLine).join("\n")].filter(Boolean).join("\n\n");
   // The pane by someone's head shows the newest thing said, so in a request what they say comes after what it changes
   // ("Taken on: ..."), which goes in the notes at the top as well.
   const speak = () => {
