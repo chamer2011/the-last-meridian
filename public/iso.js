@@ -5,6 +5,7 @@
 // server still decides everything.
 
 import { el } from "./dom.js";
+import { FURNITURE_BY_ID, footprintOf } from "./furniture.js";
 
 // A console square is about twice as tall as it's wide, so two columns make one tile.
 export const CELL_WIDTH = 0.5;
@@ -338,6 +339,8 @@ export function buildScene(view) {
     // The whole of it is drawn after the dais under it, though people are only behind it if they're behind the middle of it.
     blocks.push({ type: "block", style: shape.kind, x: shape.from[0], y: shape.from[1], wx, wy, radius, h, seed: 0, mark: " ", right: 0, left: 0, back: 0, side: 0, depth: wx + wy, frontDepth: (shape.to[0] + 1) * CELL_WIDTH + shape.to[1] + 1, span: { minU: top.u - radius, maxU: top.u + radius, minV: top.v - radius / 2, maxV: top.v + radius / 2 + h } });
   }
+  // Furniture (public/furniture.js), as blocks of its own, with the light some of it gives off.
+  const furniture = furnish(view, { kinds, heights, blocks, painted: (x, y) => runs.some((run) => run.y === y && x >= run.x && x < run.x + run.length) });
   blocks.sort((a, b) => a.depth - b.depth);
 
   // Lamps you can see, on the walls at the back of the room, and a pool of light on the floor in front of each.
@@ -356,7 +359,7 @@ export function buildScene(view) {
   const fixtures = [];
   for (let y = 0; y < lines; y += 1) {
     for (let x = 0; x < cols; x += 1) {
-      if (kinds[y][x] !== "wall" || heights[y][x] !== WALL_HEIGHT || painted(x, y) || mounted.has(`${x},${y}`)) continue;
+      if (kinds[y][x] !== "wall" || heights[y][x] !== WALL_HEIGHT || painted(x, y) || mounted.has(`${x},${y}`) || furniture.wallUsed.has(`${x},${y}`)) continue;
       const seed = hashOf(x, y);
       if (seeThrough(kindAt(x, y + 1)) && (x + y * 5) % 18 === 7) {
         const off = darkAt(x, y + 1);
@@ -388,6 +391,7 @@ export function buildScene(view) {
   blocks.filter((block) => block.style === "lamp" && block.seed > 0.5 && !darkAt(block.x, block.y)).forEach((block) => addLight(block.x, block.y, pickAt(block.x, block.y, block.seed), 2.4, 0.8));
   blocks.filter((block) => block.style === "machine" && block.seed > 0.86).forEach((block) => addLight(block.x, block.y, look.glow, 1.5, 0.5));
   for (const exit of view.exits ?? []) addLight(exit.x, exit.y, exit.closed ? "#c86048" : "#d8d0b0", 1.8, 0.55);
+  for (const light of furniture.lights) if (!darkAt(light.x, light.y)) addLight(light.x, light.y, light.color, light.radius, light.power);
   // A whole level goes dark where it's one room. On a deck, the rooms drawn there go dark one by one, below.
   const dark = Boolean(view.room?.dark) && !areas.length;
   if (dark) {
@@ -1245,6 +1249,10 @@ function drawBlock(painter, block, materials) {
   const { x, y, h, style } = block;
   const x0 = x * CELL_WIDTH;
   const x1 = x0 + CELL_WIDTH;
+  if (style === "piece") {
+    drawPiece(painter, block);
+    return;
+  }
   if (style === "plants") {
     drawPlants(painter, block, materials.plant);
     return;
@@ -1597,6 +1605,8 @@ function drawThing(painter, thing) {
     drawPart(painter, thing);
     return;
   }
+  // A thing that looks like a piece of furniture is drawn as one (furnish, below), not as a box.
+  if (thing.looks) return;
   const { ctx, at } = painter;
   const x0 = thing.x * CELL_WIDTH + 0.05;
   const x1 = x0 + CELL_WIDTH - 0.1;
@@ -2061,6 +2071,15 @@ function drawTile(room, tx, ty) {
   shadowPainter.flat();
   sctx.fillStyle = "#000";
   for (const block of scene.blocks) {
+    if (block.style === "piece") {
+      if (!block.shadow || !reaches(block.span, unit * 1.5)) continue;
+      const [x0, y0, x1, y1] = block.shadow;
+      sctx.beginPath();
+      for (const [wx, wy] of [[x0, y0], [x1 + 0.07, y0], [x1 + 0.07, y1 + 0.07], [x0, y1 + 0.07]]) sctx.lineTo(...shadowPainter.at(wx, wy));
+      sctx.closePath();
+      sctx.fill();
+      continue;
+    }
     if (block.style === "plants" || block.style === "lamp" || block.wx !== undefined) continue;
     if (!reaches(block.span, unit * 1.5)) continue;
     const x0 = block.x * CELL_WIDTH;
@@ -3112,4 +3131,397 @@ export function isoFrameNode(hooks) {
   iso.redraw = true;
   if (!iso.frame) iso.frame = requestAnimationFrame(loop);
   return iso.canvas;
+}
+
+// ---- Furniture ----------------------------------------------------------------------------------------------------
+// The pieces public/furniture.js names, each built of a few shaded boxes in the same light as everything else, turned
+// the way it faces. A piece is a block of the scene of its own (style "piece"), so it's put in order with the walls and
+// people like any other, throws a soft shadow, and some give off a little light of their own.
+
+const KIT = {
+  frame: "#5a636e", frameDark: "#363d46", frameDeep: "#22272d",
+  seat: "#2c3948", seatTop: "#3b4c61", seatDark: "#1d2630",
+  leather: "#4a3f30", webbing: "#6e6b3c",
+  steel: "#6b737b", steelTop: "#828a92", steelDark: "#474e55",
+  laminate: "#59636f", laminateEdge: "#3c444d",
+  sheet: "#c9cfd1", sheetDark: "#9aa2a5", glass: "#0f3a49", amber: "#ffb45a",
+};
+// How high each piece stands, in the game's units, and how much of the floor its shadow covers (half across and half
+// deep, from its middle, before it's turned).
+const PIECE_TOP = { chair: 0.95, "command-chair": 1.35, table: 0.76, "long-table": 0.76, desk: 1.1, bunk: 1.5, cot: 0.62, locker: 1.5, shelf: 1.6, "plot-table": 1.5, screen: 1.2, kettle: 1.06, barrel: 0.8, plant: 0.9, basin: 0.86 };
+const PIECE_SHADOW = { chair: [0.17, 0.17], "command-chair": [0.4, 0.4], table: [0.45, 0.45], "long-table": [0.95, 0.43], desk: [0.46, 0.25], bunk: [0.45, 0.95], cot: [0.4, 0.9], locker: [0.2, 0.2], shelf: [0.46, 0.21], "plot-table": [0.46, 0.46], screen: [0.12, 0.08], kettle: [0.42, 0.42], barrel: [0.17, 0.17], plant: [0.14, 0.14], basin: [0.2, 0.16] };
+const BLANKETS = ["#4a5a44", "#3e4f66", "#6a4a3a", "#5a4f63", "#4d5a5e"];
+const SHELF_GOODS = ["#7a6a4e", "#5d6e7a", "#8a5a3a", "#6e7a5a", "#b0a890"];
+
+// Where a part of a piece is on the floor: a0..a1 across it, to the right as someone facing the way it faces sees it,
+// and b0..b1 toward its front, both in tiles from its middle.
+function partRect(piece, a0, a1, b0, b1) {
+  const cx = (piece.x0 + piece.x1) / 2;
+  const cy = (piece.y0 + piece.y1) / 2;
+  const [[rx, ry], [fx, fy]] = { n: [[1, 0], [0, -1]], s: [[-1, 0], [0, 1]], e: [[0, 1], [1, 0]], w: [[0, -1], [-1, 0]] }[piece.facing ?? "s"];
+  const xs = [a0, a1].flatMap((a) => [b0, b1].map((b) => cx + a * rx + b * fx));
+  const ys = [a0, a1].flatMap((a) => [b0, b1].map((b) => cy + a * ry + b * fy));
+  return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+}
+
+// The furniture in a scene: what's drawn on the level, and the things that look like a piece of it.
+function furnish(view, { kinds, heights, blocks, painted }) {
+  const lights = [];
+  const wallUsed = new Set();
+  const floorAt = (x, y) => seeThrough(kinds[y]?.[x]);
+  const pieces = [...(view.furniture ?? [])];
+  for (const thing of view.things ?? []) {
+    if (!thing.looks || thing.part || !FURNITURE_BY_ID[thing.looks]) continue;
+    // A thing is on one square; a piece wider than that is laid from the pair of squares the thing is half of.
+    const { across } = footprintOf({ kind: thing.looks, facing: thing.facing });
+    pieces.push({ kind: thing.looks, facing: thing.facing ?? "s", x: across > 1 ? thing.x - (thing.x % 2) : thing.x, y: thing.y });
+  }
+  const add = (piece) => {
+    const span = { minU: Infinity, maxU: -Infinity, minV: Infinity, maxV: -Infinity };
+    for (const wx of [piece.x0, piece.x1]) for (const wy of [piece.y0, piece.y1]) for (const z of [0, piece.top]) {
+      const { u, v } = project(wx, wy, z);
+      span.minU = Math.min(span.minU, u);
+      span.maxU = Math.max(span.maxU, u);
+      span.minV = Math.min(span.minV, v);
+      span.maxV = Math.max(span.maxV, v);
+    }
+    const cx = (piece.x0 + piece.x1) / 2;
+    const cy = (piece.y0 + piece.y1) / 2;
+    blocks.push({ type: "block", style: "piece", ...piece, x: Math.floor(cx / CELL_WIDTH), y: Math.floor(cy), h: piece.top, seed: hashOf(Math.floor(cx * 8), Math.floor(cy * 8)), right: 0, left: 0, back: 0, side: 0, depth: cx + cy + (piece.bias ?? 0), span });
+  };
+  for (const piece of pieces) {
+    const kind = FURNITURE_BY_ID[piece.kind];
+    if (!kind) continue;
+    if (kind.wall) {
+      // On whichever side of the wall the room is, of the two the camera sees.
+      const { x, y } = piece;
+      if (kinds[y]?.[x] !== "wall" || heights[y][x] !== WALL_HEIGHT || painted(x, y) || wallUsed.has(`${x},${y}`)) continue;
+      const face = floorAt(x, y + 1) ? "s" : floorAt(x + 1, y) ? "e" : null;
+      if (!face) continue;
+      wallUsed.add(`${x},${y}`);
+      add({ kind: piece.kind, face, x0: x * CELL_WIDTH, x1: (x + 1) * CELL_WIDTH, y0: y, y1: y + 1, top: WALL_HEIGHT, wallX: x, wallY: y, bias: face === "s" ? 0.51 : 0.3 });
+      const window = piece.kind === "window";
+      lights.push({ x: face === "s" ? x : x + 1, y: face === "s" ? y + 1 : y, color: kind.lit, radius: window ? 3.2 : 1.3, power: window ? 0.55 : 0.35 });
+      continue;
+    }
+    const facing = piece.facing ?? "s";
+    const { across, down } = footprintOf({ kind: piece.kind, facing });
+    const placed = { kind: piece.kind, facing, x0: piece.x * CELL_WIDTH, x1: (piece.x + across) * CELL_WIDTH, y0: piece.y, y1: piece.y + down, top: PIECE_TOP[piece.kind] ?? 1 };
+    const [ha, hb] = PIECE_SHADOW[piece.kind] ?? [0.2, 0.2];
+    add({ ...placed, shadow: partRect(placed, -ha, ha, -hb, hb) });
+    if (kind.lit) {
+      const big = piece.kind === "plot-table";
+      lights.push({ x: piece.x + Math.floor(across / 2), y: piece.y + Math.floor(down / 2), color: kind.lit, radius: big ? 2.8 : piece.kind === "kettle" ? 1.6 : 1.2, power: big ? 0.85 : 0.42 });
+    }
+  }
+  return { lights, wallUsed };
+}
+
+function box(painter, [x0, y0, x1, y1], z0, z1, top, front, side) {
+  const { ctx, at } = painter;
+  polygon(ctx, [at(x1, y0, z1), at(x1, y1, z1), at(x1, y1, z0), at(x1, y0, z0)], side);
+  polygon(ctx, [at(x0, y1, z1), at(x1, y1, z1), at(x1, y1, z0), at(x0, y1, z0)], front);
+  polygon(ctx, [at(x0, y0, z1), at(x1, y0, z1), at(x1, y1, z1), at(x0, y1, z1)], top);
+}
+
+// A box in three shades of one colour: its top, its side toward the camera, its side away to the right.
+const shades = (hex) => [scaled(hex, 1.12), hex, scaled(hex, 0.68)];
+
+function stroke(painter, points, color, width = 1) {
+  const { ctx, at } = painter;
+  ctx.beginPath();
+  points.forEach(([wx, wy, z], i) => (i ? ctx.lineTo(...at(wx, wy, z)) : ctx.moveTo(...at(wx, wy, z))));
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.stroke();
+}
+
+// Something round standing on the floor: a drum, a pot.
+function cylinder(painter, wx, wy, r, z0, z1, side, top) {
+  const { ctx, at, unit } = painter;
+  const [bx, by] = at(wx, wy, z0);
+  const [tx, ty] = at(wx, wy, z1);
+  const rx = r * unit * Math.SQRT1_2;
+  const ry = rx / 2;
+  const body = ctx.createLinearGradient(bx - rx, 0, bx + rx, 0);
+  body.addColorStop(0, scaled(side, 1.15));
+  body.addColorStop(0.55, side);
+  body.addColorStop(1, scaled(side, 0.6));
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.ellipse(bx, by, rx, ry, 0, 0, Math.PI);
+  ctx.lineTo(tx - rx, ty);
+  ctx.ellipse(tx, ty, rx, ry, 0, Math.PI, 0, true);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = top;
+  ctx.beginPath();
+  ctx.ellipse(tx, ty, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Something flat on a wall's face toward the room, a little in from the square's edges: its corners between two
+// heights, and a point along it.
+function wallFace(painter, piece, inset) {
+  const { at } = painter;
+  if (piece.face === "e") {
+    const x = (piece.wallX + 1) * CELL_WIDTH + 0.003;
+    const ya = piece.wallY + inset * 2;
+    const yb = piece.wallY + 1 - inset * 2;
+    return { corners: (za, zb) => [at(x, ya, zb), at(x, yb, zb), at(x, yb, za), at(x, ya, za)], along: (t, z) => [x, ya + (yb - ya) * t, z] };
+  }
+  const y = piece.wallY + 1.003;
+  const xa = piece.wallX * CELL_WIDTH + inset;
+  const xb = (piece.wallX + 1) * CELL_WIDTH - inset;
+  return { corners: (za, zb) => [at(xa, y, zb), at(xb, y, zb), at(xb, y, za), at(xa, y, za)], along: (t, z) => [xa + (xb - xa) * t, y, z] };
+}
+
+function drawPiece(painter, piece) {
+  const { ctx, at, unit } = painter;
+  const part = (a0, a1, b0, b1) => partRect(piece, a0, a1, b0, b1);
+  const random = randomFrom(`piece${piece.x0},${piece.y0}`);
+  // A piece's parts go on from the back of the room to the front, so whichever way it's turned the near ones cover.
+  const parts = [];
+  const put = (rect, z0, z1, colors, then = null) => parts.push({ rect, z0, z1, colors, then, depth: (rect[0] + rect[2]) / 2 + (rect[1] + rect[3]) / 2 });
+  const lay = () => {
+    parts.sort((a, b) => a.depth - b.depth);
+    for (const one of parts) {
+      box(painter, one.rect, one.z0, one.z1, ...one.colors);
+      one.then?.();
+    }
+  };
+  // A point on the piece, across it and toward its front, at a height.
+  const point = (a, b, z) => {
+    const [x0, y0, x1, y1] = part(a, a, b, b);
+    return at((x0 + x1) / 2, (y0 + y1) / 2, z);
+  };
+  // A flat panel across the front of a part, between two heights: a screen's glass, a stove's glow. Only drawn when
+  // that side faces the camera.
+  const frontFaces = piece.facing === "s" || piece.facing === "e";
+  const panel = (a0, a1, b, z0, z1, color) => {
+    if (!frontFaces) return null;
+    polygon(ctx, [point(a0, b, z1), point(a1, b, z1), point(a1, b, z0), point(a0, b, z0)], color);
+    return true;
+  };
+  const lines = (glass, a0, a1, b, zs) => {
+    if (!glass) return;
+    zs.forEach((z, i) => {
+      const [x0, y0] = point(a0 + (a1 - a0) * 0.1, b, z);
+      const [x1, y1] = point(a0 + (a1 - a0) * (0.45 + i * 0.12), b, z);
+      ctx.strokeStyle = "rgba(134,220,255,.8)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+    });
+  };
+  const frameColors = [KIT.frame, KIT.frameDark, KIT.frameDeep];
+  const steelColors = [KIT.steel, KIT.steelDark, KIT.frameDeep];
+  const laminateColors = [KIT.laminate, KIT.laminateEdge, scaled(KIT.laminateEdge, 0.7)];
+  switch (piece.kind) {
+    case "chair":
+      put(part(-0.12, 0.12, -0.12, 0.12), 0, 0.035, [KIT.frameDark, KIT.frameDeep, KIT.frameDeep]);
+      put(part(-0.025, 0.025, -0.025, 0.025), 0.035, 0.38, frameColors);
+      put(part(-0.16, 0.16, -0.13, 0.16), 0.38, 0.49, [KIT.seatTop, KIT.seat, KIT.seatDark]);
+      put(part(-0.16, 0.16, -0.18, -0.13), 0.47, 0.95, [KIT.seatTop, KIT.seat, KIT.seatDark]);
+      break;
+    case "command-chair":
+      put(part(-0.42, 0.42, -0.42, 0.42), 0, 0.07, ["#3b4450", "#2a3139", "#1f252b"], () => stroke(painter, [[piece.x0 + 0.05, piece.y1 - 0.05, 0.07], [piece.x1 - 0.05, piece.y1 - 0.05, 0.07], [piece.x1 - 0.05, piece.y0 + 0.05, 0.07]], "rgba(255,200,110,.35)"));
+      put(part(-0.07, 0.07, -0.07, 0.07), 0.07, 0.42, frameColors);
+      put(part(-0.31, -0.23, -0.22, 0.22), 0.42, 0.68, frameColors);
+      put(part(0.23, 0.31, -0.22, 0.22), 0.42, 0.68, frameColors, () => {
+        const [px, py] = point(0.27, 0.18, 0.69);
+        ctx.fillStyle = "rgba(134,220,255,.9)";
+        ctx.fillRect(px - 1.5, py - 1, 3, 2);
+      });
+      put(part(-0.24, 0.24, -0.22, 0.2), 0.42, 0.56, shades(KIT.leather));
+      put(part(-0.25, 0.25, -0.31, -0.21), 0.54, 1.25, shades(KIT.leather));
+      put(part(-0.18, 0.12, -0.32, -0.31), 0.86, 0.98, shades(KIT.webbing));
+      put(part(-0.2, 0.2, -0.3, -0.22), 1.25, 1.35, shades(scaled(KIT.leather, 1.2)));
+      break;
+    case "table":
+      for (const a of [-0.38, 0.33]) for (const b of [-0.38, 0.33]) put(part(a, a + 0.05, b, b + 0.05), 0, 0.7, steelColors);
+      put(part(-0.44, 0.44, -0.44, 0.44), 0.7, 0.76, laminateColors);
+      break;
+    case "long-table":
+      for (const a of [-0.9, 0.85]) for (const b of [-0.36, 0.31]) put(part(a, a + 0.05, b, b + 0.05), 0, 0.7, steelColors);
+      put(part(-0.94, 0.94, -0.42, 0.42), 0.7, 0.76, laminateColors, () => {
+        // Mugs and trays left on it.
+        for (let i = 0; i < 4; i += 1) {
+          const [mx, my] = point(-0.8 + random() * 1.6, -0.3 + random() * 0.6, 0.77);
+          ctx.fillStyle = random() > 0.5 ? "rgba(210,205,190,.75)" : "rgba(120,130,140,.75)";
+          ctx.fillRect(mx - 1.5, my - 1.5, 3, 2.5);
+        }
+      });
+      break;
+    case "desk":
+      put(part(-0.44, -0.4, -0.22, 0.18), 0, 0.68, steelColors);
+      put(part(0.18, 0.44, -0.22, 0.18), 0, 0.68, steelColors);
+      put(part(-0.46, 0.46, -0.25, 0.2), 0.68, 0.74, laminateColors);
+      put(part(-0.2, 0.2, -0.21, -0.17), 0.74, 1.08, [KIT.frameDark, KIT.frameDeep, KIT.frameDeep], () => lines(panel(-0.17, 0.17, -0.165, 0.77, 1.05, KIT.glass), -0.17, 0.17, -0.165, [1.0, 0.93, 0.86]));
+      break;
+    case "bunk":
+    case "cot": {
+      const cot = piece.kind === "cot";
+      for (const a of [-0.44, 0.4]) for (const b of [-0.94, 0.9]) put(part(a, a + 0.04, b, b + 0.04), 0, cot ? 0.45 : 1.5, frameColors);
+      const bed = (z, colour) => {
+        put(part(-0.42, 0.42, -0.92, 0.92), z, z + 0.1, frameColors);
+        put(part(-0.4, 0.4, -0.9, -0.62), z + 0.1, z + 0.18, shades(KIT.sheet));
+        put(part(-0.41, 0.41, -0.55, 0.9), z + 0.1, z + 0.17, shades(colour));
+      };
+      bed(cot ? 0.35 : 0.22, cot ? "#8fa6b8" : BLANKETS[Math.floor(random() * BLANKETS.length)]);
+      if (!cot) bed(1.02, BLANKETS[Math.floor(random() * BLANKETS.length)]);
+      break;
+    }
+    case "locker":
+      put(part(-0.2, 0.2, -0.2, 0.2), 0, 1.5, ["#545c65", "#3a4149", "#292e34"], () => {
+        if (!frontFaces) return;
+        const [ax, ay] = point(0, 0.202, 0.06);
+        const [bx, by] = point(0, 0.202, 1.44);
+        ctx.strokeStyle = "rgba(0,0,0,.55)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(bx, by);
+        ctx.stroke();
+        const [lx, ly] = point(0.08, 0.202, 0.8);
+        ctx.fillStyle = KIT.amber;
+        ctx.fillRect(lx - 1.2, ly - 1.2, 2.4, 2.4);
+      });
+      break;
+    case "shelf":
+      put(part(-0.46, 0.46, -0.22, -0.19), 0, 1.6, [KIT.frameDark, KIT.frameDeep, KIT.frameDeep]);
+      for (const a of [-0.46, 0.42]) put(part(a, a + 0.04, -0.22, 0.2), 0, 1.6, frameColors);
+      for (const z of [0.05, 0.45, 0.85, 1.25]) {
+        put(part(-0.42, 0.42, -0.19, 0.19), z, z + 0.04, [KIT.steelTop, KIT.steelDark, KIT.frameDeep]);
+        for (let a = -0.38; a < 0.32; a += 0.14 + random() * 0.08) {
+          if (random() < 0.25) continue;
+          const tall = 0.12 + random() * 0.2;
+          put(part(a, a + 0.1, -0.15, 0.06 + random() * 0.08), z + 0.04, z + 0.04 + tall, shades(SHELF_GOODS[Math.floor(random() * SHELF_GOODS.length)]));
+        }
+      }
+      break;
+    case "plot-table":
+      put(part(-0.13, 0.13, -0.13, 0.13), 0, 0.66, frameColors);
+      put(part(-0.46, 0.46, -0.46, 0.46), 0.66, 0.78, ["#0b1c18", KIT.frameDark, KIT.frameDeep], () => {
+        const [x0, y0, x1, y1] = part(-0.46, 0.46, -0.46, 0.46);
+        stroke(painter, [[x0, y0, 0.781], [x1, y0, 0.781], [x1, y1, 0.781], [x0, y1, 0.781], [x0, y0, 0.781]], "rgba(125,255,168,.6)");
+        // Forty-one dots, and a few that aren't green.
+        for (let i = 0; i < 41; i += 1) {
+          const [px, py] = at(x0 + 0.06 + random() * (x1 - x0 - 0.12), y0 + 0.06 + random() * (y1 - y0 - 0.12), 0.785);
+          ctx.fillStyle = random() > 0.88 ? "rgba(255,190,110,.95)" : "rgba(125,255,168,.95)";
+          ctx.fillRect(px - 0.9, py - 0.6, 1.8, 1.2);
+        }
+        const [bx, by] = at((x0 + x1) / 2, (y0 + y1) / 2, 0.8);
+        const [, ty] = at((x0 + x1) / 2, (y0 + y1) / 2, 1.45);
+        const w = unit * 0.3;
+        const glow = ctx.createLinearGradient(0, by, 0, ty);
+        glow.addColorStop(0, "rgba(125,255,168,.32)");
+        glow.addColorStop(1, "rgba(125,255,168,0)");
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.moveTo(bx - w, by);
+        ctx.lineTo(bx + w, by);
+        ctx.lineTo(bx + w * 0.55, ty);
+        ctx.lineTo(bx - w * 0.55, ty);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = "rgba(170,255,205,.55)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(bx, (by + ty) / 2, w * 0.42, w * 0.42, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(bx, (by + ty) / 2, w * 0.62, w * 0.16, -0.25, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+      break;
+    case "screen":
+      put(part(-0.12, 0.12, -0.06, 0.06), 0, 0.04, [KIT.frameDark, KIT.frameDeep, KIT.frameDeep]);
+      put(part(-0.025, 0.025, -0.025, 0.025), 0.04, 0.84, frameColors);
+      put(part(-0.22, 0.22, -0.03, 0.03), 0.82, 1.18, [KIT.frameDark, KIT.frameDeep, KIT.frameDeep], () => lines(panel(-0.2, 0.2, 0.032, 0.85, 1.15, KIT.glass), -0.2, 0.2, 0.032, [1.1, 1.03, 0.96]));
+      break;
+    case "kettle": {
+      put(part(-0.42, 0.42, -0.42, 0.42), 0, 0.42, ["#3d4248", "#2c3035", "#202327"], () => panel(-0.3, 0.3, 0.422, 0.09, 0.14, "rgba(255,140,60,.85)"));
+      lay();
+      const [x0, y0, x1, y1] = part(-0.42, 0.42, -0.42, 0.42);
+      cylinder(painter, (x0 + x1) / 2, (y0 + y1) / 2, 0.31, 0.42, 0.98, KIT.steel, "#3a3f44");
+      cylinder(painter, (x0 + x1) / 2, (y0 + y1) / 2, 0.27, 0.98, 1.04, KIT.steelTop, "#5a6168");
+      return;
+    }
+    case "barrel": {
+      const cx = (piece.x0 + piece.x1) / 2;
+      const cy = (piece.y0 + piece.y1) / 2;
+      cylinder(painter, cx, cy, 0.17, 0, 0.8, "#5b5a3a", "#3e3d28");
+      for (const z of [0.25, 0.55]) {
+        const [px, py] = at(cx, cy, z);
+        const rx = 0.17 * unit * Math.SQRT1_2;
+        ctx.strokeStyle = "rgba(0,0,0,.35)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(px, py, rx, rx / 2, 0, 0, Math.PI);
+        ctx.stroke();
+      }
+      return;
+    }
+    case "plant": {
+      const cx = (piece.x0 + piece.x1) / 2;
+      const cy = (piece.y0 + piece.y1) / 2;
+      cylinder(painter, cx, cy, 0.14, 0, 0.3, "#6b4f3a", "#2a2018");
+      ctx.lineCap = "round";
+      ctx.lineWidth = Math.max(1, unit * 0.025);
+      for (let i = 0; i < 9; i += 1) {
+        const [x, y] = at(cx + (random() - 0.5) * 0.12, cy + (random() - 0.5) * 0.12, 0.3);
+        const lean = (random() - 0.5) * unit * 0.22;
+        const high = unit * (0.18 + random() * 0.16);
+        ctx.strokeStyle = PLANT_COLORS[Math.floor(random() * PLANT_COLORS.length)];
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.quadraticCurveTo(x + lean * 0.3, y - high * 0.7, x + lean, y - high);
+        ctx.stroke();
+      }
+      return;
+    }
+    case "basin":
+      put(part(-0.07, 0.07, -0.07, 0.07), 0, 0.6, shades(KIT.sheet));
+      put(part(-0.2, 0.2, -0.16, 0.16), 0.6, 0.74, [KIT.sheet, KIT.sheetDark, scaled(KIT.sheetDark, 0.8)], () => {
+        const [x0, y0, x1, y1] = part(-0.15, 0.15, -0.11, 0.11);
+        polygon(ctx, [at(x0, y0, 0.742), at(x1, y0, 0.742), at(x1, y1, 0.742), at(x0, y1, 0.742)], "rgba(70,90,100,.55)");
+      });
+      put(part(-0.02, 0.02, -0.16, -0.1), 0.74, 0.86, [KIT.steelTop, KIT.steel, KIT.steelDark]);
+      break;
+    case "wall-screen": {
+      const face = wallFace(painter, piece, 0.05);
+      polygon(ctx, face.corners(0.86, 1.3), "#0b2733");
+      for (let i = 0; i < 3; i += 1) stroke(painter, [face.along(0.1, 1.22 - i * 0.1), face.along(0.3 + ((piece.wallX * 3 + i * 5) % 4) * 0.13, 1.22 - i * 0.1)], "rgba(134,220,255,.8)");
+      const [ax, ay] = at(...face.along(0.85, 0.95));
+      ctx.fillStyle = KIT.amber;
+      ctx.fillRect(ax - 1, ay - 1, 2, 2);
+      stroke(painter, [face.along(0, 0.86), face.along(0, 1.3), face.along(1, 1.3)], "rgba(150,170,190,.4)");
+      return;
+    }
+    case "window": {
+      const face = wallFace(painter, piece, 0.025);
+      const high = WALL_HEIGHT - 0.18;
+      polygon(ctx, face.corners(0.38, high), "#050b14");
+      const [, topY] = at(...face.along(0, high));
+      const [, bottomY] = at(...face.along(0, 0.38));
+      const sky = ctx.createLinearGradient(0, topY, 0, bottomY);
+      sky.addColorStop(0, "rgba(30,50,90,.55)");
+      sky.addColorStop(1, "rgba(5,10,20,0)");
+      polygon(ctx, face.corners(0.38, high), sky);
+      for (let i = 0; i < 6; i += 1) {
+        const [sx, sy] = at(...face.along(random(), 0.42 + random() * (high - 0.5)));
+        ctx.fillStyle = `rgba(230,240,255,${0.45 + random() * 0.5})`;
+        ctx.fillRect(sx, sy, random() > 0.8 ? 1.6 : 1, random() > 0.8 ? 1.6 : 1);
+      }
+      stroke(painter, [face.along(0, 0.38), face.along(0, high), face.along(1, high)], "rgba(170,185,200,.55)", 1.2);
+      stroke(painter, [face.along(0.15, 0.6), face.along(0.6, 1.25)], "rgba(200,225,255,.12)", 2);
+      return;
+    }
+    default:
+      put(part(-0.2, 0.2, -0.2, 0.2), 0, 0.5, shades(KIT.steel));
+  }
+  lay();
 }

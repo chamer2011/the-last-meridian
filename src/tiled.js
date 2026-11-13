@@ -8,6 +8,7 @@
 // the same all over, such as a wall, or two for one with something on its back half and something else on its front
 // half, such as a thin wall. Its floor property says which of those characters are floor. People, things, ways out and
 // where the player starts are objects, and they stand on whichever half of a tile they're on. Words are text objects.
+// Furniture is objects of the class Furniture, named for their kind, which stand on the floor the plan already has.
 //
 // This turns a Tiled room into the same shape as a room in the JSON files, so the rest of the game doesn't know where a
 // room came from, and a room the other way, for tools/to-tiled.mjs and the tests. Reading a room changes nothing.
@@ -15,6 +16,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
+import { FACINGS, FURNITURE_BY_ID, isFurniture, looksOf, squaresOf } from "../public/furniture.js";
 
 const TILE_WIDTH = 128;
 const TILE_HEIGHT = 64;
@@ -27,7 +29,7 @@ const START = "@";
 const VOID = " ";
 const FLIPS = 0x0fffffff;
 const MARKS = { person: "ABCDEFGHIJKLMNOPQRSTUVWXYZ", thing: "abcdefghijklmnopqrstuvwxyz", exit: "1234567890" };
-const ROLES = { person: "person", people: "person", thing: "thing", things: "thing", exit: "exit", "way out": "exit", start: "start", label: "label", writing: "writing", words: "writing", room: "area", area: "area" };
+const ROLES = { person: "person", people: "person", thing: "thing", things: "thing", exit: "exit", "way out": "exit", start: "start", label: "label", writing: "writing", words: "writing", room: "area", area: "area", furniture: "furniture" };
 // What a property holds, where it isn't a line of words: one per line, or written out as JSON.
 const LISTS = new Set(["asks", "asksOther", "aliases"]);
 const OBJECTS = new Set(["closed", "holds"]);
@@ -35,7 +37,7 @@ const COLORS = ["floor", "walls", "scenery", "writing"];
 // A tile's own properties, which an object made from it shouldn't take as its own.
 const TILE_ONLY = ["mark", "floor", "what"];
 // The parts of a room that a Tiled file draws. Anything else about the room can still come from the place's JSON file.
-export const DRAWN = ["plan", "floor", "people", "things", "exits", "writing", "labels", "areas", "starts"];
+export const DRAWN = ["plan", "floor", "people", "things", "exits", "writing", "labels", "areas", "starts", "furniture"];
 // A room's id from its name, when it doesn't say one: the_long_mess.
 export const slugOf = (text) => String(text).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 
@@ -406,11 +408,35 @@ export function roomFromMap(map, { personId = (text) => text, rooms = null } = {
   const placed = [];
   const starts = [];
   const areas = [];
+  const furniture = [];
   const taken = new Map();
   for (const object of objects) {
     const found = object.gid ? tileOf(object.gid) : null;
     const props = { ...(found?.tile?.props ?? {}), ...object.props };
     const role = roleOf(object, found?.tile, props);
+    // Furniture (public/furniture.js) stands on squares the plan already has, so it takes no letter: an object of the
+    // class Furniture, named for its kind, with a facing property, on its back left square.
+    if (role === "furniture") {
+      const kind = (words(props.kind).trim() || object.name.trim()).toLowerCase();
+      if (!isFurniture(kind)) {
+        say(`a piece of furniture called ${kind || "nothing"} isn't one the game knows, so it's left out: it can be ${Object.keys(FURNITURE_BY_ID).join(", ")}`);
+        continue;
+      }
+      let facing = words(props.facing).trim().toLowerCase() || "s";
+      if (!FACINGS.includes(facing)) {
+        say(`the ${FURNITURE_BY_ID[kind].name.toLowerCase()} faces ${facing}, and it can face n, e, s or w, so it's taken to face s`);
+        facing = "s";
+      }
+      const [fx, fy] = inTiles(object.x, object.y);
+      const x = Math.floor((fx - left) * 2 + 1e-6);
+      const y = Math.floor(fy - top + 1e-6);
+      if (x < 0 || y < 0 || x >= width * 2 || y >= height) {
+        say(`the ${FURNITURE_BY_ID[kind].name.toLowerCase()} is outside the room`);
+        continue;
+      }
+      furniture.push({ kind, x, y, facing });
+      continue;
+    }
     if (role === "area") {
       const name = object.name.trim() || words(props.name).trim();
       if (!name) {
@@ -527,6 +553,27 @@ export function roomFromMap(map, { personId = (text) => text, rooms = null } = {
     if (one.role !== "start") legend[one.role][mark] = one.fields;
     plan[one.y][one.x] = mark;
   }
+  // A thing can say what it's drawn as; it has to be a piece of furniture that stands on the floor, or a box.
+  for (const thing of Object.values(legend.thing)) {
+    const looks = thing.looks === undefined ? "" : String(thing.looks).trim().toLowerCase();
+    if (looks && looks !== "box" && (!isFurniture(looks) || FURNITURE_BY_ID[looks].wall)) say(`${thing.name} is to look like ${looks}, which isn't a piece of furniture that stands on the floor, so it's drawn ${looksOf({ name: thing.name }) ? "as its name says" : "as a box"}`);
+  }
+  // Furniture stands on floor, or for a window or a screen, on a wall; and two pieces don't share a square.
+  const standable = (ch) => floors.includes(ch) || ch === START || Boolean(legend.person[ch]);
+  const under = new Map();
+  for (const piece of furniture) {
+    const kind = FURNITURE_BY_ID[piece.kind];
+    const where = `the ${kind.name.toLowerCase()} at ${piece.x},${piece.y}`;
+    if (kind.wall) {
+      if (plan[piece.y]?.[piece.x] !== "#") say(`${where} hangs on a wall, and there's no wall on that square`);
+      continue;
+    }
+    const squares = squaresOf(piece);
+    if (squares.some(([x, y]) => !standable(plan[y]?.[x] ?? VOID))) say(`${where} stands on something that isn't floor`);
+    const shared = squares.map(([x, y]) => under.get(`${x},${y}`)).find(Boolean);
+    if (shared) say(`${where} is on top of the ${shared}`);
+    for (const [x, y] of squares) under.set(`${x},${y}`, `${kind.name.toLowerCase()} at ${piece.x},${piece.y}`);
+  }
   // A room whose last tiles have nothing on their front halves ends half a tile sooner, as the game's squares can.
   if (plan.length && plan[0].length > 1 && plan.every((row) => row.at(-1) === VOID)) for (const row of plan) row.pop();
 
@@ -548,6 +595,7 @@ export function roomFromMap(map, { personId = (text) => text, rooms = null } = {
   if (labels.length) level.labels = labels;
   if (areas.length) level.areas = areas;
   if (starts.length > 1) level.starts = starts;
+  if (furniture.length) level.furniture = furniture.sort((a, b) => a.y - b.y || a.x - b.x || a.kind.localeCompare(b.kind));
   if (width * 2 > MOST_ACROSS || height > MOST_DOWN) say(`it's ${width} tiles across and ${height} down, and a map can be ${MOST_ACROSS / 2} across and ${MOST_DOWN} down at most`);
   return { level, problems };
 }
@@ -695,8 +743,11 @@ export function roomToMap(level, { gidOf, figures, tileset = "../tiles/stand-ins
     if (mainStart && start.x === mainStart.x && start.y === mainStart.y) continue;
     standing.push({ id: nextId++, name: "Start", type: "", gid: figures.start.gid, ...at(start.x, start.y), width: figures.start.width, height: figures.start.height, rotation: 0, visible: true });
   }
+  // Furniture, as points on each piece's back left square, named for its kind.
+  const furniture = (level.furniture ?? []).map((piece) => ({ id: nextId++, name: piece.kind, type: "Furniture", ...at(piece.x, piece.y), width: 0, height: 0, rotation: 0, visible: true, point: true, properties: props([["facing", "string", piece.facing ?? "s"]]) }));
   const layer = (id, name, data) => ({ id, name, type: "tilelayer", width: across, height: down, x: 0, y: 0, opacity: 1, visible: true, data });
   const objectLayer = (id, name, objects) => ({ id, name, type: "objectgroup", draworder: "topdown", objects, x: 0, y: 0, opacity: 1, visible: true });
+  const extra = [...(rooms.length ? [["Rooms", rooms]] : []), ...(furniture.length ? [["Furniture", furniture]] : [])];
   return {
     type: "map",
     version: "1.10",
@@ -710,7 +761,7 @@ export function roomToMap(level, { gidOf, figures, tileset = "../tiles/stand-ins
     tileheight: TILE_HEIGHT,
     infinite: false,
     compressionlevel: -1,
-    nextlayerid: rooms.length ? 6 : 5,
+    nextlayerid: 5 + extra.length,
     nextobjectid: nextId,
     properties: props([
       ["name", "string", level.name],
@@ -721,6 +772,6 @@ export function roomToMap(level, { gidOf, figures, tileset = "../tiles/stand-ins
       ...COLORS.map((key) => [`${key} color`, /^#[0-9a-f]{6}$/i.test(String(level.colors?.[key])) ? "color" : "string", tiledColor(level.colors?.[key])]),
     ]),
     tilesets: [{ firstgid: 1, source: tileset }],
-    layers: [layer(1, "Floor", floor), layer(2, "Walls and things", walls), objectLayer(3, "People and things", standing), objectLayer(4, "Words", words), ...(rooms.length ? [objectLayer(5, "Rooms", rooms)] : [])],
+    layers: [layer(1, "Floor", floor), layer(2, "Walls and things", walls), objectLayer(3, "People and things", standing), objectLayer(4, "Words", words), ...extra.map(([name, objects], i) => objectLayer(5 + i, name, objects))],
   };
 }

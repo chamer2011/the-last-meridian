@@ -25,6 +25,7 @@ import { attackPerson, isHurt, isWary, pickPocket, pocketDetail } from "./deeds.
 import { rumorsFrom } from "./story-library.js";
 import { pilesIn } from "./bag.js";
 import { colorForName, parseNarration } from "../public/story.js";
+import { FURNITURE_BY_ID, isFurniture, looksOf, squaresOf } from "../public/furniture.js";
 import { COMBAT_ART, LOOKS, ROOM_KINDS, ROOM_TALK, WORLD_MAPS, roomsRedrawn } from "./world.js";
 import { notePut, putsOf } from "./puts.js";
 import { orderFor, personExtras, roomExtras, roomNotes, thingExtras } from "./room-hooks.js";
@@ -102,6 +103,19 @@ export function compileLevel(id, file, districts = []) {
   }
   const layer = (pick) => rows.map((row, y) => [...row].map((ch, x) => (covered.has(spotKey(x, y)) ? " " : pick(ch))).join(""));
   const solid = new Set(things.map((thing) => spotKey(thing.x, thing.y)));
+  // Furniture that's in the way (public/furniture.js) can't be stood on, like a thing, except on someone's post, a
+  // doorway or where the level starts, which have to stay floor; a bed or a chair is somewhere to be.
+  const furniture = (file.furniture ?? []).filter((piece) => isFurniture(piece.kind));
+  const keep = new Set([...homes.map((home) => spotKey(home.x, home.y)), ...(start ? [spotKey(start.x, start.y)] : [])]);
+  for (const piece of furniture) {
+    if (!FURNITURE_BY_ID[piece.kind].blocks) continue;
+    for (const [x, y] of squaresOf(piece)) {
+      const key = spotKey(x, y);
+      if (!open[y]?.[x] || doors.has(key) || keep.has(key)) continue;
+      open[y][x] = false;
+      solid.add(key);
+    }
+  }
   const areas = compileAreas(file, { id, width, height: rows.length, open, solid, doors, exits, start, districts });
   return {
     id,
@@ -117,6 +131,7 @@ export function compileLevel(id, file, districts = []) {
     exits,
     doors,
     solid,
+    furniture: furniture.map(({ kind, x, y, facing }) => ({ kind, x, y, facing: facing ?? "s" })),
     start: start ?? { x: 1, y: 1 },
     // The rooms drawn on a deck, and which one each square is in: the deck itself, where no room is drawn.
     areas: areas.list,
@@ -1357,7 +1372,22 @@ const thingView = (game, thing, level = null) => ({
   ...(thing.holds ? { holds: true, store: `thing:${game.location}:${thing.id}` } : {}),
   // What it does besides what its file says (src/room-hooks.js).
   ...thingExtras(game, thing, level),
+  // What it's drawn as, if it's a piece of furniture by its looks line or its name (public/furniture.js), and which way.
+  ...thingLooks(level, thing),
 });
+
+// A thing drawn as furniture faces the way its file says, or away from a wall it stands against, or for a seat toward
+// the bow and for anything else toward the camera.
+function thingLooks(level, thing) {
+  const looks = looksOf(thing);
+  if (!looks) return {};
+  if (["n", "e", "s", "w"].includes(thing.facing)) return { looks, facing: thing.facing };
+  const wallAt = (x, y) => level?.layers?.walls[y]?.[x] === "#";
+  for (const [facing, dx, dy] of [["s", 0, 1], ["e", 1, 0], ["n", 0, -1], ["w", -1, 0]]) {
+    if (level && canStand(level, thing.x + dx, thing.y + dy) && wallAt(thing.x - dx, thing.y - dy)) return { looks, facing };
+  }
+  return { looks, facing: looks === "chair" || looks === "command-chair" ? "n" : "s" };
+}
 
 function exitView(game, exit, levelId) {
   const { key, x, y, label, glyph, side } = exit;
@@ -1492,6 +1522,8 @@ export function walkView(game) {
     here: { id: roomNow, name: room?.name ?? level.name, desc: [room?.desc ?? level.desc, ...roomNotes(game, game.location, roomNow)].filter(Boolean).join(" "), ...(level.drawn ? { drawn: level.drawn } : {}), ...(onDeck ? { deck: { id: level.id, name: level.name } } : {}) },
     people: peopleOnLevel(game, walk, level).map((entry) => personView(game, entry, level)),
     things: [...level.things.map((thing) => thingView(game, thing, level)), ...(walk.room ? [] : roomsOn(map, level.id).flatMap((one) => partThings(game, game.location, one.id).map((thing) => (onDeck ? { ...thing, room: one.id } : thing)))), ...pilesIn(game, game.location, roomId(walk, level)).map((pile) => ({ ...pile, store: pile.id }))],
+    // The furniture drawn on the level (public/furniture.js), for the picture of the room.
+    furniture: level.furniture ?? [],
     // On a deck, each way out says which room it's in, a shut door between rooms counting as in the player's room.
     exits: [...level.exits, ...inner].map((exit) => ({ ...exitView(game, exit, level.id), ...(onDeck ? { room: exit.inner && level.doorAreas.get(spotKey(exit.x, exit.y))?.has(roomNow) ? roomNow : level.roomAt(exit.x, exit.y) } : {}) })),
     ...(walk.room ? {} : { room: roomView(game, game.location, roomNow) }),

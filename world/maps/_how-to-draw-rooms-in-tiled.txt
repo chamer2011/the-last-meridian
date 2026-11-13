@@ -149,6 +149,26 @@ Class to Writing for words painted on the walls, which cover what's under them s
 the name of a room or a part of one, painted on the floor.
 
 
+FURNITURE
+---------
+
+The Map editor in the game puts furniture down with a click, and that's the easy way. In Tiled, it's a layer called
+Furniture (Layer > New > Object Layer), with one point for each piece (Insert Point), put on the piece's back left
+square. In the Properties panel:
+
+  Class    Furniture
+  Name     what it is: chair, command-chair, table, long-table, desk, bunk, cot, locker, shelf, plot-table,
+           screen, kettle, barrel, plant, basin, wall-screen or window
+  facing   n, e, s or w: the way someone sitting in it looks, or a locker's door or a screen faces
+
+A table is two squares across, a long table four, and a bunk or a cot two across and two down, turned to lie the other
+way when they face e or w. A window or a wall-screen goes on a wall square, and shows on whichever side of the wall
+the room is on. Tables, lockers and the like are in the way; chairs, bunks and cots aren't.
+
+A thing can be drawn as a piece of furniture too: give it a looks property (one of the names above that stands on the
+floor, or box for a plain box) and a facing. Without one, a thing is drawn as what its name says, if it says.
+
+
 THE DECK ITSELF
 ---------------
 

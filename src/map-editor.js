@@ -21,6 +21,7 @@ import { isDeepStrictEqual } from "node:util";
 import { dataDir, projectDir } from "./paths.js";
 import { FIGURES, PIECE, figureImage, pieceImage, pieceWords } from "./stand-in-art.js";
 import { pieceKey, readMapFile, roomFromMap, roomToMap } from "./tiled.js";
+import { FACINGS, FURNITURE_BY_ID, isFurniture, squaresOf } from "../public/furniture.js";
 import { compileLevel } from "./walk.js";
 import { LIFE_DIR, MAPS_DIR, WORLD_CHARACTERS, WORLD_LIFE } from "./world.js";
 
@@ -152,6 +153,7 @@ export function deckForEditing(place, level) {
     writing: (read.writing ?? []).map(([x, y, text]) => ({ x, y, text })),
     labels: (read.labels ?? []).map((label) => ({ x: label.at[0], y: label.at[1], text: label.text })),
     areas: (read.areas ?? []).map((area) => ({ ...area })),
+    furniture: (read.furniture ?? []).map((piece) => ({ ...piece })),
     spots: spotsOn(place, level),
     decks: decksOf(place).map(({ id, name }) => ({ id, name })),
     floors: read.floor ?? parts.floor,
@@ -209,6 +211,14 @@ function together(doc, read) {
       if (value) out[key] = value;
       else delete out[key];
     }
+    // What it's drawn as (public/furniture.js): a piece that stands on the floor, a plain box, or, with nothing, what
+    // its name says; and which way it faces.
+    const looks = words(one.looks, 30).toLowerCase();
+    if (looks && looks !== "box" && (!isFurniture(looks) || FURNITURE_BY_ID[looks].wall)) throw new Error(`${name} can't be drawn as that.`);
+    if (looks) out.looks = looks;
+    else delete out.looks;
+    if (FACINGS.includes(one.facing)) out.facing = one.facing;
+    else delete out.facing;
     return out;
   }), "thing", (one) => one.name ?? "A thing");
   const exits = marked((doc.exits ?? []).map((one) => ({ ...(read.exits?.[one.mark] ?? {}), mark: one.mark, x: one.x, y: one.y })), "exit", (one) => one.label ?? "A way out");
@@ -239,8 +249,16 @@ function together(doc, read) {
     if (!whole(one.x, width) || !whole(one.y, height)) throw new Error(`"${text}" is off the edge of the deck.`);
     return { x: one.x, y: one.y, text };
   });
+  // Furniture, in the order the deck's file keeps it, so the deck reads back the same.
+  const furniture = (doc.furniture ?? []).map((one) => {
+    if (!isFurniture(one?.kind)) throw new Error("A piece of furniture on the deck isn't one the game knows. Open the deck again.");
+    if (!whole(one.x, width) || !whole(one.y, height)) throw new Error(`The ${FURNITURE_BY_ID[one.kind].name.toLowerCase()} is off the edge of the deck.`);
+    return { kind: one.kind, x: one.x, y: one.y, facing: FACINGS.includes(one.facing) ? one.facing : "s" };
+  }).sort((a, b) => a.y - b.y || a.x - b.x || a.kind.localeCompare(b.kind));
+  const { furniture: _was, ...rest } = read;
   return {
-    ...read,
+    ...rest,
+    ...(furniture.length ? { furniture } : {}),
     // Every row at its full width, so the deck stays the size it is however much of its edge is open space.
     plan: plan.map((row) => row.join("")),
     floor: read.floor ?? floor,
@@ -321,6 +339,31 @@ export function deckProblems(level, id = "deck") {
     let floor = 0;
     for (let y = area.y; y < area.y + area.h; y += 1) for (let x = area.x; x < area.x + area.w; x += 1) if (open[y]?.[x] && compiled.areaAt(x, y) === area.id) floor += 1;
     if (!floor) out.push({ words: `${area.name} has no floor in it.`, x: area.x, y: area.y });
+  }
+  // Furniture stands on floor, a window or a screen on a wall the room can see, and two pieces don't share a square.
+  const floors = new Set(level.floor ?? ".");
+  const standable = (x, y) => {
+    const ch = level.plan[y]?.[x] ?? VOID;
+    return floors.has(ch) || ch === START || Boolean(level.people?.[ch]);
+  };
+  const under = new Map();
+  for (const piece of level.furniture ?? []) {
+    const kind = FURNITURE_BY_ID[piece.kind];
+    if (!kind) continue;
+    const name = kind.name.toLowerCase();
+    const at = { x: piece.x, y: piece.y };
+    if (kind.wall) {
+      if (level.plan[piece.y]?.[piece.x] !== WALL) out.push({ words: `The ${name} has to hang on a wall.`, ...at });
+      else if (!standable(piece.x, piece.y + 1) && !standable(piece.x + 1, piece.y)) out.push({ words: `Nobody would see the ${name} from the room: put it on a wall with floor below it or to the right of it.`, ...at });
+      continue;
+    }
+    const squares = squaresOf(piece);
+    if (squares.some(([x, y]) => !standable(x, y))) out.push({ words: `The ${name} is standing on something that isn't floor.`, ...at });
+    const on = squares.map(([x, y]) => under.get(`${x},${y}`)).find(Boolean);
+    if (on) out.push({ words: `The ${name} is on top of the ${on}.`, ...at });
+    for (const [x, y] of squares) under.set(`${x},${y}`, name);
+    const post = kind.blocks && compiled.homes.find((home) => squares.some(([x, y]) => x === home.x && y === home.y));
+    if (post) out.push({ words: `The ${name} is on ${WORLD_CHARACTERS[post.id]?.name ?? post.label ?? post.id}'s post, and they'd stand inside it.`, ...at });
   }
   if (width > 200 || height > 60) out.push({ words: "The deck is bigger than the game can draw." });
   return out;

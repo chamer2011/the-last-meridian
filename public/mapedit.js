@@ -11,10 +11,11 @@
 // has in play.
 
 import { el } from "./dom.js";
+import { FACINGS, FACING_WORDS, FURNITURE, FURNITURE_BY_ID, footprintOf, looksOf, squaresOf } from "./furniture.js";
 
 const state = {
   maps: [], place: null, level: null, doc: null, cells: [],
-  tool: "select", paint: "wall", shape: "brush",
+  tool: "select", paint: "wall", shape: "brush", piece: "chair",
   selected: null, hover: null, drag: null,
   zoom: 7, show: { rooms: true, spots: false },
   undo: [], redo: [], dirty: false, busy: false,
@@ -107,13 +108,14 @@ function parcel() {
     writing: doc.writing,
     labels: doc.labels,
     areas: doc.areas,
+    furniture: doc.furniture,
     spots: doc.spots.map(({ name, x, y }) => ({ name, x, y })),
   };
 }
 
 // ---- Undo: the deck as it was before each change -----------------------------------------------------------------
 
-const KEPT = ["people", "things", "exits", "start", "writing", "labels", "areas", "spots"];
+const KEPT = ["people", "things", "exits", "start", "writing", "labels", "areas", "furniture", "spots"];
 const picture = () => JSON.stringify({ cells: state.cells.map((row) => row.join("")), ...Object.fromEntries(KEPT.map((key) => [key, state.doc[key]])) });
 function restore(text) {
   const was = JSON.parse(text);
@@ -173,12 +175,15 @@ function fillBox(a, b, paint, outline) {
 
 // ---- What's on the deck, and what's under the pointer --------------------------------------------------------------
 
-const KIND_WORDS = { person: "Someone's post", thing: "A thing", exit: "Stairs", start: "The start flag", writing: "Words on a wall", label: "A name on the deck", spot: "Where someone stands", area: "A room" };
+const KIND_WORDS = { person: "Someone's post", thing: "A thing", exit: "Stairs", start: "The start flag", writing: "Words on a wall", label: "A name on the deck", spot: "Where someone stands", area: "A room", furniture: "Furniture" };
 function listOf(kind) {
   const { doc } = state;
-  return { person: doc.people, thing: doc.things, exit: doc.exits, writing: doc.writing, label: doc.labels, spot: doc.spots, area: doc.areas, start: doc.start ? [doc.start] : [] }[kind];
+  return { person: doc.people, thing: doc.things, exit: doc.exits, writing: doc.writing, label: doc.labels, spot: doc.spots, area: doc.areas, furniture: doc.furniture ??= [], start: doc.start ? [doc.start] : [] }[kind];
 }
-const lengthOf = (kind, one) => (kind === "writing" || kind === "label" ? Math.max(1, one.text.length) : 1);
+const lengthOf = (kind, one) => (kind === "writing" || kind === "label" ? Math.max(1, one.text.length) : kind === "furniture" ? footprintOf(one).across : 1);
+const heightOf = (kind, one) => (kind === "furniture" ? footprintOf(one).down : 1);
+// Whether something on the deck is on a square: a piece of furniture covers all of its own.
+const covers = (kind, one, x, y) => (kind === "furniture" ? squaresOf(one).some(([sx, sy]) => sx === x && sy === y) : one.y === y && x >= one.x && x < one.x + lengthOf(kind, one));
 const itemOf = (sel) => (sel ? listOf(sel.kind)[sel.index] ?? null : null);
 
 // The smallest room drawn over a square.
@@ -193,9 +198,9 @@ function areaAt(x, y) {
 
 // What a click on a square picks up: whatever stands there first, then a room's name tag, then the room itself.
 function pick(x, y) {
-  const order = ["thing", "person", "exit", "start", "writing", "label", ...(state.show.spots ? ["spot"] : [])];
+  const order = ["thing", "person", "exit", "start", "furniture", "writing", "label", ...(state.show.spots ? ["spot"] : [])];
   for (const kind of order) {
-    const index = listOf(kind).findIndex((one) => one.y === y && x >= one.x && x < one.x + lengthOf(kind, one));
+    const index = listOf(kind).findIndex((one) => covers(kind, one, x, y));
     if (index >= 0) return { kind, index };
   }
   if (!state.show.rooms) return null;
@@ -217,6 +222,7 @@ function nameOf(sel) {
   if (sel.kind === "person" || sel.kind === "thing" || sel.kind === "area" || sel.kind === "spot") return one.name;
   if (sel.kind === "exit") return one.label ?? "";
   if (sel.kind === "writing" || sel.kind === "label") return one.text;
+  if (sel.kind === "furniture") return FURNITURE_BY_ID[one.kind]?.name ?? one.kind;
   return "";
 }
 
@@ -280,6 +286,36 @@ function drawDeck() {
   });
   letters(doc.writing, "#ffe0a8");
   letters(doc.labels, "#8ec5ff");
+  // Furniture: the floor it takes, a bright edge along its front, and its first letter. A window or a screen is a
+  // bar along the side of its wall the room is on.
+  for (const piece of doc.furniture ?? []) {
+    const kind = FURNITURE_BY_ID[piece.kind];
+    if (!kind) continue;
+    if (kind.wall) {
+      g.fillStyle = piece.kind === "window" ? "#bcd8ff" : "#86dcff";
+      if (lookOf(state.cells[piece.y + 1]?.[piece.x] ?? " ").floor) g.fillRect(piece.x * cw + 1, (piece.y + 1) * ch - 4, cw - 2, 4);
+      else g.fillRect((piece.x + 1) * cw - 4, piece.y * ch + 2, 4, ch - 4);
+      continue;
+    }
+    const { across, down } = footprintOf(piece);
+    const [x0, y0, w, h] = [piece.x * cw + 1, piece.y * ch + 1, across * cw - 2, down * ch - 2];
+    g.fillStyle = kind.blocks ? "rgba(196,160,110,0.78)" : "rgba(140,165,205,0.7)";
+    g.fillRect(x0, y0, w, h);
+    g.strokeStyle = "rgba(255,240,210,0.65)";
+    g.lineWidth = 1;
+    g.strokeRect(x0 + 0.5, y0 + 0.5, w - 1, h - 1);
+    const edge = Math.max(2, Math.round(cw * 0.22));
+    g.fillStyle = "#fff6dc";
+    if (piece.facing === "n") g.fillRect(x0, y0, w, edge);
+    else if (piece.facing === "e") g.fillRect(x0 + w - edge, y0, edge, h);
+    else if (piece.facing === "w") g.fillRect(x0, y0, edge, h);
+    else g.fillRect(x0, y0 + h - edge, w, edge);
+    if (cw >= 7) {
+      g.fillStyle = "#1a140c";
+      g.font = `bold ${Math.max(8, Math.round(cw * 0.95))}px Consolas, monospace`;
+      g.fillText(kind.name[0], x0 + w / 2, y0 + h / 2 + 0.5);
+    }
+  }
   // Whoever and whatever stands on the deck.
   const mid = (one) => [(one.x + 0.5) * cw, (one.y + 0.5) * ch];
   const size = Math.max(4, cw * 0.9);
@@ -327,12 +363,12 @@ function drawDeck() {
   }
   // What's chosen, what's being dragged out, and what a problem points at.
   g.lineWidth = 2;
-  const ring = (x, y, w, color) => {
+  const ring = (x, y, w, color, h = 1) => {
     g.strokeStyle = color;
-    g.strokeRect(x * cw - 1, y * ch - 1, w * cw + 2, ch + 2);
+    g.strokeRect(x * cw - 1, y * ch - 1, w * cw + 2, h * ch + 2);
   };
   const sel = itemOf(state.selected);
-  if (sel && state.selected.kind !== "area") ring(sel.x, sel.y, lengthOf(state.selected.kind, sel), "#ffffff");
+  if (sel && state.selected.kind !== "area") ring(sel.x, sel.y, lengthOf(state.selected.kind, sel), "#ffffff", heightOf(state.selected.kind, sel));
   if (state.drag?.box) {
     const { from, to } = state.drag.box;
     g.strokeStyle = "#ffffff";
@@ -376,6 +412,9 @@ function pressed(event) {
   else if (tool === "thing" || tool === "writing" || tool === "label") {
     addAt(tool, at);
     return;
+  } else if (tool === "furniture") {
+    addFurniture(at);
+    return;
   } else {
     // Choosing and moving. The white corner of a chosen room pulls its far corner.
     const chosen = state.selected?.kind === "area" ? itemOf(state.selected) : null;
@@ -413,7 +452,7 @@ function movedOver(event) {
         }
       } else {
         const wide = state.selected.kind === "area" ? one.w : lengthOf(state.selected.kind, one);
-        const tall = state.selected.kind === "area" ? one.h : 1;
+        const tall = state.selected.kind === "area" ? one.h : heightOf(state.selected.kind, one);
         const x = clamp(at.x - drag.dx, 0, state.doc.width - wide);
         const y = clamp(at.y - drag.dy, 0, state.doc.height - tall);
         if ((x !== before[0] || y !== before[1]) && free(state.selected, x, y)) {
@@ -484,9 +523,41 @@ function addAt(kind, at) {
   $("mapedit-name")?.select();
 }
 
+// A seat put down beside a console, a desk or a table faces it; anything else faces the camera, until it's turned.
+const MACHINES = "=^<>(){}&[]";
+function facingFor(kind, at) {
+  if (kind !== "chair" && kind !== "command-chair") return "s";
+  const toward = (x, y) => MACHINES.includes(state.cells[y]?.[x] ?? " ") || (state.doc.furniture ?? []).some((one) => ["table", "long-table", "desk", "plot-table"].includes(one.kind) && squaresOf(one).some(([sx, sy]) => sx === x && sy === y));
+  for (const [facing, dx, dy] of [["n", 0, -1], ["s", 0, 1], ["e", 1, 0], ["w", -1, 0]]) if (toward(at.x + dx, at.y + dy)) return facing;
+  return "n";
+}
+
+// Puts a piece of the furniture chosen on the left down where it's clicked, and keeps the tool, so a row of chairs is a
+// row of clicks.
+function addFurniture(at) {
+  const kind = FURNITURE_BY_ID[state.piece];
+  if (!kind) return;
+  remember();
+  const list = listOf("furniture");
+  list.push({ kind: kind.id, x: at.x, y: at.y, facing: facingFor(kind.id, at) });
+  state.selected = { kind: "furniture", index: list.length - 1 };
+  say(kind.wall ? `${kind.name} put on the wall. It shows on the side of the wall the room is on.` : `${kind.name} put down. Turn it on the right, or drag it with Choose and move.`);
+  drawAll();
+}
+
+// Turns what's chosen a quarter round, to its right: a piece of furniture, or a thing drawn as one.
+function turnSelected() {
+  const one = itemOf(state.selected);
+  if (!one) return;
+  remember();
+  const now = FACINGS.indexOf(one.facing ?? "s");
+  one.facing = FACINGS[(now + 1) % FACINGS.length];
+  drawAll();
+}
+
 function removeSelected() {
   const sel = state.selected;
-  if (!sel || !["thing", "writing", "label", "area"].includes(sel.kind)) return;
+  if (!sel || !["thing", "writing", "label", "area", "furniture"].includes(sel.kind)) return;
   remember();
   listOf(sel.kind).splice(sel.index, 1);
   state.selected = null;
@@ -528,11 +599,14 @@ function drawTools() {
     tool("thing", "A thing", "Click a square to put down something to look at and use"),
     tool("writing", "Words on a wall", "Click where the words begin"),
     tool("label", "A name on the deck", "Click where the name begins"),
+    el("h3", {}, "Furniture"),
+    el("div", { class: "mapedit-paints" }, FURNITURE.map((kind) => el("button", { type: "button", class: "mapedit-paint", title: `${kind.about}. Click a ${kind.wall ? "wall" : "square"} to put one there`, "aria-pressed": state.tool === "furniture" && state.piece === kind.id ? "true" : "false", onclick: () => { state.piece = kind.id; setTool("furniture"); } },
+      el("span", { class: "mapedit-swatch", style: `background:${kind.wall ? "#86dcff" : kind.blocks ? "#c4a06e" : "#8ca5cd"}` }), kind.name))),
     el("h3", {}, "Show"),
     el("label", { class: "mapedit-tick" }, el("input", { type: "checkbox", checked: state.show.rooms, onchange: (event) => { state.show.rooms = event.target.checked; drawDeck(); } }), "Rooms"),
     el("label", { class: "mapedit-tick", title: "The spots people's days send them to: where they work, eat and sleep" }, el("input", { type: "checkbox", checked: state.show.spots, onchange: (event) => { state.show.spots = event.target.checked; drawDeck(); } }), "Where people stand"),
     el("div", { class: "mapedit-key" },
-      [["#ffcc4d", "a thing"], ["#f4acc7", "someone's post"], ["#4fd0d0", "stairs"], ["#ffffff", "where the deck starts"], ["#c9a6ff", "where people stand"]].map(([color, words]) => el("div", {}, el("span", { class: "mapedit-swatch", style: `background:${color}` }), words))),
+      [["#ffcc4d", "a thing"], ["#f4acc7", "someone's post"], ["#4fd0d0", "stairs"], ["#ffffff", "where the deck starts"], ["#c9a6ff", "where people stand"], ["#c4a06e", "furniture in the way"], ["#8ca5cd", "a seat or a bed"]].map(([color, words]) => el("div", {}, el("span", { class: "mapedit-swatch", style: `background:${color}` }), words))),
   );
 }
 
@@ -559,7 +633,7 @@ function drawSide() {
   const sel = state.selected;
   const one = itemOf(sel);
   const parts = [];
-  if (!one) parts.push(el("p", { class: "mapedit-hint" }, state.tool === "paint" ? "Hold the mouse button down on the deck to paint." : "Click something on the deck to choose it."));
+  if (!one) parts.push(el("p", { class: "mapedit-hint" }, state.tool === "paint" ? "Hold the mouse button down on the deck to paint." : state.tool === "furniture" ? `Click a ${FURNITURE_BY_ID[state.piece]?.wall ? "wall" : "square"} on the deck to put the ${FURNITURE_BY_ID[state.piece]?.name.toLowerCase() ?? "furniture"} there.` : "Click something on the deck to choose it."));
   else {
     parts.push(el("h3", {}, KIND_WORDS[sel.kind]));
     if (sel.kind === "area") {
@@ -570,13 +644,28 @@ function drawSide() {
       parts.push(field("Name", one.name, (value) => { one.name = value; }, { id: "mapedit-name" }));
       parts.push(field("What Look says", one.look, (value) => { one.look = value; }, { tall: true }));
       parts.push(field("What you do with it (\"I ...\")", one.use, (value) => { one.use = value; }, { tall: true }));
+      // What it's drawn as in the room: what its name says, a piece of furniture, or the plain box.
+      const named = looksOf({ name: one.name });
+      const choices = [["", named ? `As its name says: ${FURNITURE_BY_ID[named].name.toLowerCase()}` : "As its name says: a box"], ...FURNITURE.filter((kind) => !kind.wall).map((kind) => [kind.id, kind.name]), ["box", "A plain box"]];
+      parts.push(el("label", { class: "mapedit-field" }, el("span", {}, "Drawn in the room as"),
+        el("select", { onchange: (event) => { edit(() => { if (event.target.value) one.looks = event.target.value; else delete one.looks; }); drawSide(); } },
+          choices.map(([value, words]) => el("option", { value, ...((one.looks ?? "") === value ? { selected: true } : {}) }, words)))));
+      if (looksOf(one)) parts.push(el("div", { class: "mapedit-row" }, button("Turn it", { title: "A quarter turn to its right", onclick: turnSelected }), el("span", { class: "mapedit-hint" }, one.facing ? `Facing ${FACING_WORDS[one.facing]}` : "Turned by the game: away from a wall beside it, or a seat toward the bow")));
+    } else if (sel.kind === "furniture") {
+      const kind = FURNITURE_BY_ID[one.kind];
+      parts.push(el("p", {}, kind?.name ?? one.kind), el("p", { class: "mapedit-hint" }, kind?.about ?? ""));
+      if (kind?.wall) parts.push(el("p", { class: "mapedit-hint" }, "It shows on the side of the wall the room is on. Drag it to move it along the wall."));
+      else {
+        parts.push(el("div", { class: "mapedit-row" }, button("Turn it", { title: "A quarter turn to its right", onclick: turnSelected }), el("span", { class: "mapedit-hint" }, `Facing ${FACING_WORDS[one.facing ?? "s"]}`)));
+        parts.push(el("p", { class: "mapedit-hint" }, kind?.blocks ? "People walk round it. Drag it to move it." : "People can stand on it: sit, or lie down. Drag it to move it."));
+      }
     } else if (sel.kind === "writing" || sel.kind === "label") {
       parts.push(field("The words", one.text, (value) => { one.text = value.toUpperCase(); }, { id: "mapedit-name" }));
     } else if (sel.kind === "person") parts.push(el("p", {}, one.name), el("p", { class: "mapedit-hint" }, "This is where they stand at their post. Drag them to move it."));
     else if (sel.kind === "exit") parts.push(el("p", {}, one.label ?? "Stairs"), el("p", { class: "mapedit-hint" }, "Drag the stairs to move them. Where they lead stays the same."));
     else if (sel.kind === "start") parts.push(el("p", { class: "mapedit-hint" }, "Where someone arriving on this deck stands. Drag it to move it."));
     else if (sel.kind === "spot") parts.push(el("p", {}, one.name.replaceAll("-", " ")), el("p", { class: "mapedit-hint" }, "Somewhere a person's day sends them. Drag it to move it."));
-    if (["thing", "writing", "label", "area"].includes(sel.kind)) parts.push(button(sel.kind === "area" ? "Take this room away" : "Take it away", { class: "mapedit-remove", onclick: removeSelected }));
+    if (["thing", "writing", "label", "area", "furniture"].includes(sel.kind)) parts.push(button(sel.kind === "area" ? "Take this room away" : "Take it away", { class: "mapedit-remove", onclick: removeSelected }));
   }
   const result = state.result;
   if (result) {

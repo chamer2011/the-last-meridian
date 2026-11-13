@@ -32,7 +32,7 @@
 .mapedit-view canvas { display: block; cursor: crosshair; touch-action: none; }
 .mapedit-field { display: flex; flex-direction: column; gap: 2px; }
 .mapedit-field span { color: var(--muted); font-size: 12px; }
-.mapedit-field input, .mapedit-field textarea { background: var(--panel); border: 1px solid var(--line); color: var(--bright); font: inherit; padding: 4px 6px; width: 100%; resize: vertical; }
+.mapedit-field input, .mapedit-field textarea, .mapedit-field select { background: var(--panel); border: 1px solid var(--line); color: var(--bright); font: inherit; padding: 4px 6px; width: 100%; resize: vertical; }
 .mapedit-hint { margin: 2px 0; color: var(--muted); font-size: 13px; }
 .mapedit-note { margin: 2px 0; color: var(--text); }
 .mapedit-side p { margin: 2px 0; }
