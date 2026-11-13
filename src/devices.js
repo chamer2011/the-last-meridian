@@ -19,6 +19,9 @@ import { seenTampering } from "./systems.js";
 import { peopleAboard } from "./life.js";
 import { mapFor } from "./walk.js";
 
+// The looks with no screen of their own: a door's panel, a junction box's service menu, a camera's feed. Beside them the
+// player's rig shows the map and the programs.
+export const PANEL_LOOKS = ["door", "service", "camera"];
 export const LOOKS = {
   keelworks: { reach: "cable", watcher: null, name: "Keelworks 4.1", how: "Open a folder on the desktop to read or run what's in it. Log off from the Keel menu, or with Esc." },
   door: { reach: "optic", watcher: "DoorCtl", name: "DoorCtl 2.1", leave: "Unclip", how: "Open or lock the door from its panel, or give it a new code. Unclip to leave, or press Esc." },

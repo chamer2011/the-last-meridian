@@ -12,7 +12,7 @@
 // folder shows.
 import { WORLD_COMPUTERS } from "./world.js";
 import { computerAtDoor, computerAtThing, consoleContent, openLogon, writtenContent } from "./computers.js";
-import { cameraContent, codeOf, serviceContent } from "./devices.js";
+import { PANEL_LOOKS, cameraContent, codeOf, lookOf, reachWhy, serviceContent } from "./devices.js";
 import { systemsOf } from "./systems.js";
 import { addChecker } from "./room-hooks.js";
 import { LOCATIONS } from "./data.js";
@@ -164,12 +164,18 @@ function nodeContent(game, place, node) {
 }
 
 // Going along a link from the session's node to the next. helpers: { act, finish }. Returns what an order returns.
-export function hop(game, session, id, { act, finish }) {
+export function hop(game, session, id, { act, finish, content: from = null }) {
   const net = networkOf(session.place);
   const here = nodeOfSession(session);
   if (!net?.nodes[here]) return { over: false, said: "This computer isn't on the place's network." };
   const node = net.nodes[id];
   if (!node || !linkedTo(net, here).some((one) => one.id === id)) return { over: false, said: "That isn't linked to where you are." };
+  // A door's panel, a junction box or a camera has no screen of its own: the map is on the player's rig, which has to be
+  // plugged into it to go on from it. Over the network the rig is still plugged in where the player started.
+  if (from && !session.remote && PANEL_LOOKS.includes(session.look ?? lookOf(from))) {
+    const why = reachWhy(game, from);
+    if (why) return { over: false, said: `Your rig isn't plugged into it, so it can't go on from here: ${why}.` };
+  }
   const content = nodeContent(game, session.place, node);
   if (!content) return { over: false, said: "There's nothing there to reach." };
   // Heard where you leave; if that's the end of the session, that's where you stay.

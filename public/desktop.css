@@ -171,8 +171,9 @@
 
 /* Step 6: computers that aren't desks, each with a face of its own: a door's panel (a keypad and a two-line screen),
    a junction box's service menu and a camera's feed on the rig's little amber screen, with the buttons under it. */
-.check-float > .desk.device { width: min(100%, 720px); }
-.desk.device .device-frame { flex: 1 1 380px; position: relative; }
+.check-float > .desk.device { width: auto; max-width: 100%; flex-direction: row; flex-wrap: wrap; align-items: flex-start; gap: 0; }
+.desk.device .device-frame { flex: 0 0 380px; min-width: 0; position: relative; }
+.desk.device.narrow .device-frame { flex-basis: 300px; }
 .desk.device .device-frame .desk-note { position: static; }
 .desk.device .desk-advisor { align-self: flex-start; }
 .desk .device-frame { flex: 1 1 auto; min-width: 0; display: grid; gap: 8px; padding: 10px 12px 12px; background: linear-gradient(#2b2f2c, #1c1f1d); border-radius: 12px; box-shadow: inset 0 2px 0 #3d423e, inset 0 -3px 0 #121412, 0 12px 34px #000a; cursor: grab; color: #d6dcd7; }
@@ -186,7 +187,7 @@
 .desk .device-acts { display: grid; gap: 4px; }
 .desk .device-acts button { text-align: left; justify-content: flex-start; }
 .desk .device-acts small { color: #9aa39c; }
-.desk .device-log { max-height: 7.5em; overflow: hidden; font: 12px/1.35 var(--mono); border-top: 1px solid #3a3f3b; padding-top: 6px; }
+.desk .device-log { max-height: 10em; overflow: hidden; font: 12px/1.35 var(--mono); border-top: 1px solid #3a3f3b; padding-top: 6px; }
 .desk .device-foot { display: flex; justify-content: flex-end; }
 /* The door's panel */
 .desk .door-plate { width: 200px; justify-self: center; padding: 12px; background: linear-gradient(#5b625d, #3f4541); border: 1px solid #222; border-radius: 6px; box-shadow: inset 0 1px 0 #7b837d, 0 6px 14px #0008; display: grid; gap: 9px; cursor: default; }
@@ -245,7 +246,7 @@
 .netmap .net-data { stroke: #4fa3d9; opacity: .5; }
 .netmap .net-bus { stroke: #e09a35; stroke-dasharray: 4 3; opacity: .55; }
 .netmap .net-near { opacity: 1; stroke-width: 2.2; }
-.netmap button.net-node { position: absolute; transform: translate(-50%, -50%); box-sizing: border-box; max-width: 100px; max-height: 36px; padding: 1px 4px; font: 10px/1.1 var(--mono); text-align: center; white-space: normal; overflow: hidden; display: grid; gap: 0; z-index: 1; cursor: pointer; }
+.netmap button.net-node { position: absolute; transform: translate(-50%, -50%); box-sizing: border-box; width: max-content; max-width: 100px; max-height: 36px; padding: 1px 4px; font: 10px/1.1 var(--mono); text-align: center; white-space: normal; overflow: hidden; display: grid; gap: 0; z-index: 1; cursor: pointer; }
 .netmap .net-node .nm { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .netmap button.net-node::before, .netmap button.net-node::after { content: none; }
 .netmap .net-node small { font-size: 8px; line-height: 1; letter-spacing: .1em; opacity: .75; }
@@ -255,6 +256,55 @@
 .netmap button.net-node.near:not(:disabled) { opacity: 1; outline: 1px solid #8fd8ff; }
 .netmap button.net-node.here { opacity: 1; outline: 2px solid #73e3a6; }
 .netmap button.net-node.seen:disabled { opacity: .95; }
-.desk .device-net { overflow-x: auto; border-top: 1px solid #3a3f3b; padding-top: 8px; }
-.desk .device-net .netmap button.net-node { background: #16221f; color: #d6dcd7; border: 1px solid #3a4a44; }
 .desk .device-foot { gap: 8px; }
+
+/* Beside a panel with no screen of its own (a door's panel, a junction box, a camera), the player's rig: a pocket
+   computer with its board and casing on it, its link and heat lights, wired to the panel the way it's plugged in, and
+   on its green screen the place's network (NET), what's loaded (D:) and the session (LOG). */
+.desk.device .device-row { display: flex; align-items: flex-start; flex: none; max-width: 100%; }
+.desk.device > .desk-advisor, .desk.device > .desk-hints { margin-left: 10px; }
+@media (max-width: 980px) {
+  .desk.device > .desk-advisor { flex: 1 1 100%; margin: 10px 0 0; }
+  .desk.device > .desk-hints { margin: 10px 0 0 auto; }
+}
+.desk .rig-lead { position: relative; flex: 0 0 56px; align-self: stretch; pointer-events: none; }
+.desk.device.narrow .rig-lead { flex-basis: 26px; }
+.desk .rig-lead svg { position: absolute; left: 0; top: 0; width: 100%; height: 180px; overflow: visible; }
+.desk .pocket { flex: none; position: relative; display: grid; gap: 8px; padding: 12px 14px 10px; background: linear-gradient(#3a3d40, #26282a); border: 1px solid #111; border-radius: 16px; box-shadow: inset 0 1px 0 #5a5e62, inset 0 -3px 0 #151618, 0 14px 30px #000b; color: #b9bec2; font: 12px/1.35 var(--mono); cursor: grab; }
+.desk .pocket::before, .desk .pocket::after { content: ""; position: absolute; top: 8px; width: 6px; height: 6px; border-radius: 50%; background: radial-gradient(#777, #333); }
+.desk .pocket::before { left: 8px; }
+.desk .pocket::after { right: 8px; }
+.desk .pocket-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 0 10px; font-size: 10px; letter-spacing: .14em; }
+.desk .pocket-lights { display: flex; gap: 10px; align-items: center; }
+.desk .pocket-light { display: inline-flex; gap: 5px; align-items: center; }
+.desk .pocket .lamp { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #2a2f2b; box-shadow: inset 0 1px 1px #0008; }
+.desk .pocket .lamp.on, .desk .pocket .lamp.cool { background: #5aff7a; box-shadow: 0 0 6px #5aff7a; }
+.desk .pocket .lamp.net { background: #74c8f0; box-shadow: 0 0 6px #74c8f0; }
+.desk .pocket .lamp.warm { background: #f2c14e; box-shadow: 0 0 6px #f2c14e; }
+.desk .pocket .lamp.hot { background: #ff7b6b; box-shadow: 0 0 6px #ff7b6b; animation: desk-blink .8s steps(2) infinite; }
+.desk .pocket-screen { display: grid; gap: 6px; padding: 6px 8px 8px; background: #020a04; border: 3px solid #0b0d0c; border-radius: 6px; box-shadow: inset 0 0 24px #000; color: #8ff0a8; text-shadow: 0 0 3px #4fc46e66; cursor: default; }
+.desk .pocket-tabs { display: flex; gap: 4px; align-items: center; border-bottom: 1px solid #1d5a2c; padding-bottom: 4px; }
+.desk .pocket button { font: 11px/1 var(--mono); letter-spacing: .1em; color: #4fc46e; background: none; border: 1px solid #1d5a2c; padding: 4px 8px; min-height: 0; box-shadow: none; text-shadow: inherit; cursor: pointer; }
+.desk .pocket button::before, .desk .pocket button::after { content: none; }
+.desk .pocket button:hover:not(:disabled), .desk .pocket button:focus-visible { background: #0d3a1a; color: #c9ffd8; outline: 0; }
+.desk .pocket-tabs button[aria-selected="true"] { background: #2a8c45; color: #031107; text-shadow: none; }
+.desk .pocket-where { margin-left: auto; color: #3f8f57; font-size: 10px; letter-spacing: .08em; white-space: nowrap; }
+.desk .pocket-page { overflow: hidden; }
+.desk .pocket-note { padding: 8px 2px; color: #4fc46e; max-width: 46ch; }
+.desk .pocket-list { display: grid; gap: 5px; }
+.desk .pocket-row { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.desk .pocket-row b { font-weight: 600; color: #8ff0a8; }
+.desk .pocket-row small { color: #3f8f57; }
+.desk .pocket-row button:disabled { color: #2a6a3a; border-color: #1d3a24; cursor: default; }
+.desk .pocket-log { display: grid; gap: 2px; }
+.desk .pocket-bottom { display: flex; justify-content: space-between; gap: 10px; padding: 0 10px; font-size: 10px; letter-spacing: .1em; color: #8b9196; }
+/* The map on the rig's green screen. */
+.desk .pocket .netmap .net-band { border-color: #1d5a2c88; }
+.desk .pocket .netmap .net-band span { color: #4fc46e; }
+.desk .pocket .netmap .net-data { stroke: #4fc46e; opacity: .45; }
+.desk .pocket .netmap .net-bus { stroke: #8ff0a8; opacity: .4; }
+.desk .pocket .netmap .net-near { opacity: 1; }
+.desk .pocket .netmap button.net-node { font: 10px/1.1 var(--mono); letter-spacing: 0; padding: 1px 4px; background: #031107; color: #8ff0a8; border: 1px solid #1d5a2c; text-shadow: 0 0 3px #4fc46e66; }
+.desk .pocket .netmap button.net-node.near:not(:disabled) { color: #c9ffd8; outline: 1px solid #c9ffd8; }
+.desk .pocket .netmap button.net-node.here { background: #2a8c45; color: #031107; outline: 2px solid #8ff0a8; text-shadow: none; }
+.desk .pocket .netmap .net-node small { font-size: 8px; letter-spacing: .1em; }

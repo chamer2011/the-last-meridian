@@ -12,7 +12,8 @@ process.env.GAME_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-netw
 
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 await import("../src/tools.js");
-const { enterComputer } = await import("../src/computers.js");
+const { enterComputer, openDoorPanel } = await import("../src/computers.js");
+const { rigCommand } = await import("../src/rig.js");
 const { computerCommand } = await import("../src/computer-use.js");
 const { linkedTo, networkOf } = await import("../src/network.js");
 const { parseSystemsText, writeSystemsText } = await import("../public/systems-text.js");
@@ -148,6 +149,33 @@ test("the map: the decks, where each system sits, and what's linked to here", ()
   apart(view(haven).netmap);
   // A deck as crowded as can be is still laid out apart.
   apart({ bands: [{ id: "deck1", name: "Deck 1" }], nodes: Array.from({ length: 30 }, (_, i) => ({ id: `n${i}`, band: "deck1", i })), links: [] });
+});
+
+test("beside a panel the rig is the screen: its board and casing go with the view, and it has to be plugged in to go on", () => {
+  const game = newGame();
+  // The captain's own Bridge door: its panel opens by right, with no optical reader on the rig.
+  openDoorPanel(game, "meridian", "bridge");
+  let v = view(game);
+  assert.equal(v.look, "door");
+  assert.equal(v.locked, false);
+  assert.deepEqual(v.rigFace, { board: "Yard board", casing: "Plain case" });
+  assert.deepEqual([v.reach.ok, v.reach.remote], [false, false]);
+  const before = game.clock.hours;
+  assert.match(hop(game, "c:meridian_plot_table").said, /^Your rig isn't plugged into it, so it can't go on from here: it takes an optical reader/);
+  assert.equal(game.computer.id, "meridian:door:bridge", "still at the panel");
+  assert.equal(game.clock.hours, before, "and no time went by");
+  // With an optical reader in the link socket (fitted away from any computer) it is.
+  computerCommand(game, { action: "logoff" });
+  game.rig.nextUid += 1;
+  const uid = `p${game.rig.nextUid}`;
+  game.rig.parts.push({ uid, id: "optical_reader", cond: "new", tune: null, from: "" });
+  rigCommand(game, { action: "fit", uid, socket: "link1" });
+  openDoorPanel(game, "meridian", "bridge");
+  assert.equal(view(game).reach.ok, true);
+  assert.equal(hop(game, "c:meridian_plot_table").computer, true);
+  v = view(game);
+  assert.equal(v.name, "The plot table");
+  assert.equal(v.rigFace, null, "a desk has a screen of its own");
 });
 
 test("plugging into someone else's box in front of people is seen, like tampering", () => {

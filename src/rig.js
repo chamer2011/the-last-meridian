@@ -217,6 +217,15 @@ function buildView(game) {
 }
 
 // What the page shows: memory, what's loaded, what the rig has, every program there is, and the build.
+// The rig's own face, as the page draws it beside a door's panel, a junction box or a camera: its board and its casing by
+// name, stencilled on the pocket computer.
+export function rigFace(game) {
+  const rig = game.rig;
+  if (!rig?.build) return null;
+  const byUid = Object.fromEntries(rig.parts.map((item) => [item.uid, item]));
+  return { board: rigPartById(byUid[rig.build.board]?.id)?.name ?? null, casing: rigPartById(byUid[rig.build.casing]?.id)?.name ?? null };
+}
+
 export function rigView(game) {
   const rig = game.rig;
   if (!rig) return null;

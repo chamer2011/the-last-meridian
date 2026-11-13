@@ -290,7 +290,7 @@ There's no free way in. A computer that isn't yours, and whose password you don'
 
 Not every computer is a desk, and **your rig's link decides which ones it can reach at all**. Each kind takes one kind of link: a crew terminal or a desktop a **cable jack**, a door's panel an **optical reader**, a junction box a **service clip**, a camera a **short radio**, and the ship's main system a **Navy coupler**. The rig has one link socket, so you choose before you go, on the Rig page. Without the right link the rig's breakers, its other programs and copying all say "your rig can't reach it". A computer with its own keyboard (a desktop, a door's panel, the bridge) can still be used by right, or with a password, without the rig; a junction box and a camera have neither, so they're reached only through it.
 
-- **A door's panel** (DoorCtl 2.1) is a keypad and a two-line screen with a card slot, and the ways in off your rig under it. Inside, it opens or locks its door, or gives the door **a new code**: the door stays locked to everyone there, guards included, and you have the code, so you get straight back in to open it. Its watcher is the door's own log.
+- **A door's panel** (DoorCtl 2.1) is a keypad and a two-line screen with a card slot; the ways in are on your rig beside it (below). Inside, it opens or locks its door, or gives the door **a new code**: the door stays locked to everyone there, guards included, and you have the code, so you get straight back in to open it. Its watcher is the door's own log.
 - **A junction box's service menu** opens from the box's window or right-click menu (**Open its service menu**), on your rig's little amber screen: 1 STATUS, 2 BREAKERS, 3 LOG, 4 CLEAR LOG, 0 EXIT. Under BREAKERS each room the box feeds can be switched off on its own: that room goes dark, and its machines stop. Every switch shows on the chief engineer's **fault board**, the watcher here, and at someone else's place their people put the power back after a while. Clearing the box's own log takes **CLEANER.EXE** or the service password.
 - **A camera's feed** (**Tap its feed**, or from the room next door with a short radio, **Tap the camera in ... by radio**) shows its picture: the room, the time, and who's in it, you too if you're standing there. **Loop the last minute** and for ten minutes it shows that minute over and over and sees nobody pass, so nothing it would have seen counts (tampering, theft, taking the ship apart); loop it with someone in the picture and **the security desk** notices. **Blind it** and the picture goes to snow, which they see at once; **Back to live** puts it right.
 - **NAVCOM 7**, the Navy's own desktop, is the ship's main system: the plot table on the bridge. It's the same desktop in the Navy's colours, with a restricted bar along the top and **SENTRY**, its watcher, in it when it's listening, and two folders of its own: **Ship's log**, where a line can be struck out (on your own system it's done under your name, and the first officer reads the log), and **Crew assessments**, the first officer's view of each officer and their loyalty to the chair. Copying GHOST or WORM off the plot table now takes a Navy coupler in the rig.
@@ -298,7 +298,7 @@ Not every computer is a desk, and **your rig's link decides which ones it can re
 
 ### The ship's network
 
-Every system a place's systems file knows is on its network: the computers, the door panels of the doors they run, the junction boxes, the cameras and the comms relay. Inside any of them, the **Network** folder (or **The network** under a door panel, a junction box's menu or a camera's picture) is a map of it, deck by deck. Two networks join them:
+Every system a place's systems file knows is on its network: the computers, the door panels of the doors they run, the junction boxes, the cameras and the comms relay. Inside a computer, the **Network** folder is a map of it, deck by deck; beside a door's panel, a junction box or a camera, the map is on your rig (below). Two networks join them:
 
 - **The data network** runs from each computer to what it runs (its doors, its cameras, the relay, and the junction boxes it runs the power through), and between computers that name each other.
 - **The maintenance bus** runs along the junction boxes, and from each box to the door panels and the relay in the rooms it feeds.
@@ -306,6 +306,18 @@ Every system a place's systems file knows is on its network: the computers, the 
 On the map, what's linked to the system you're on can be clicked, and you go there: it takes two minutes, and it's heard where you leave and where you arrive. A system that isn't yours opens at its logon, with the breakers you brought; over the network your rig's link doesn't matter, since it's still plugged in where you started. Aboard the Meridian, as her captain, you go through her systems freely. You can join the network from anything you can plug into in a room (a terminal by cable, a junction box by clip, a camera by radio), but plugging into someone else's box or camera in front of people is seen, like any tampering.
 
 A systems file's **Network** part adds links the rest of the file doesn't give ("the records terminal to the plot table", with ", bus" at the end for the bus); `world/systems/_how-to-write-systems.txt` explains it.
+
+### Your rig beside a panel
+
+A door's panel, a junction box and a camera have no screen of their own, so when you're at one your rig comes out of your pocket and sits beside its window: a little handheld with your board and casing on it (a yard board in a plain case to start with) and two lights, **LINK** (green when it's plugged in, blue over the network, dark when it isn't) and **HEAT** (dark on your own ship's systems, then green, amber and a blinking red as it warms). Between the two is how it's plugged in: a clip lead to a junction box, the optical reader's red beam to a keypad, radio waves to a camera, and a dashed line when you came over the network.
+
+Its screen has three pages, under **NET**, **D:** and **LOG**:
+
+- **NET** is the place's network, the same map a computer's Network folder shows, in the rig's own green. Click a system linked to here to go there.
+- **D:** is what's loaded on the rig, each with why it won't run here if it won't. At a logon it's what gets you past it, and the rig opens on this page; once you're in it turns to the map.
+- **LOG** is everything that's happened at this one. The panel's window keeps its last few lines too.
+
+The panel's window keeps only the panel: its face, its own buttons (open or lock the door, loop or blind the camera; a junction box's are its menu) and its log. **Going on from a panel needs your rig plugged into it**: with the wrong link fitted, it says it isn't plugged in and why, and you can still work the panel by hand if it's yours. A computer keeps the map in its own Network folder, and going to one from your rig's map opens it there.
 
 ### Your rig
 

@@ -476,7 +476,7 @@ export function computerCommand(game, body) {
     // A door panel's, a junction box's, a camera's or NAVCOM 7's own buttons (src/devices.js).
     case "device": return deviceCommand(game, session, content, String(body.id ?? ""), { act, finish });
     // Going along the network to the next system (src/network.js).
-    case "hop": return hop(game, session, String(body.id ?? ""), { act, finish });
+    case "hop": return hop(game, session, String(body.id ?? ""), { act, finish, content });
     default: throw new Error("Unknown order.");
   }
 }

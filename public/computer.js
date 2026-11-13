@@ -40,11 +40,14 @@ const startWindows = () => ({
 });
 
 export function resetComputer() {
-  Object.assign(comp, { id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1, showNet: false });
+  Object.assign(comp, { id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1, rigTab: null, hopping: false, wasLocked: null });
 }
 resetComputer();
 
 const screenKey = (screen) => `${screen?.kind}|${screen?.id ?? ""}|${screen?.title ?? ""}`;
+
+// A door's panel, a junction box and a camera have no screen of their own: their face, and the player's rig beside it.
+const PANEL_LOOKS = ["door", "service", "camera"];
 
 function sync() {
   const live = app.ui.game?.computer ?? null;
@@ -53,20 +56,25 @@ function sync() {
     return;
   }
   if (live.id !== comp.id) {
-    // Going along the network to the next system keeps the map open, to go on from there: in the Network folder on a
-    // desktop, and under the face of a door's panel, a junction box or a camera.
-    const onTheMap = (comp.folder === "network" && comp.wins?.list?.open) || comp.showNet;
+    // Going along the network to the next system keeps the map in front, to go on from there: a desktop opens its
+    // Network folder, and beside a panel the rig shows its map anyway once past the logon.
+    const onTheMap = comp.hopping;
     resetComputer();
     comp.id = live.id;
     comp.screenKey = screenKey(live.screen);
-    if (onTheMap && live.netmap) {
-      comp.showNet = true;
+    if (onTheMap && live.netmap && !PANEL_LOOKS.includes(live.look)) {
       comp.folder = "network";
       Object.assign(comp.wins.list, netWindow(live.netmap), { open: true });
       comp.top = "list";
       comp.z.list = Math.max(...Object.values(comp.z)) + 1;
     }
   }
+  // Getting past a logon turns the rig to what it shows best: the programs at a logon, the map once inside.
+  if (live.locked !== comp.wasLocked) {
+    comp.wasLocked = live.locked;
+    comp.rigTab = null;
+  }
+  if (!comp.sending) comp.hopping = false;
   // Something new opened: the viewer comes up in front with it.
   const key = screenKey(live.screen);
   if (key !== comp.screenKey) {
@@ -476,6 +484,7 @@ function netMapNode(map, width = NET_MAP.width) {
       title: node.here ? `${node.name}: you're on this one` : node.linked ? `Go to ${node.name}: ${map.hop.minutes} min, heard here and there` : `${node.name}: not linked to where you are`,
       onclick: (event) => {
         event.stopPropagation();
+        comp.hopping = true;
         send({ action: "hop", id: node.id });
       },
     }, el("small", {}, NET_KIND[node.kind] ?? ""), el("span", { class: "nm" }, node.name))));
@@ -492,19 +501,6 @@ const sendDevice = (id) => (event) => {
 };
 const shortName = (name) => String(name ?? "").replace(/^The /, "").toUpperCase();
 
-// The ways in off the rig at a logon, as buttons, each saying why it won't work if it won't.
-function waysNode(view) {
-  const ways = view.logon?.ways ?? [];
-  if (!ways.length) return el("div", { class: "device-note" }, "Nothing loaded on your rig gets past this logon. Load a breaker on the Rig page first.");
-  return el("div", { class: "device-acts" }, ways.map((one) => el("button", {
-    disabled: comp.sending || Boolean(one.why),
-    title: one.why ? `Won't: ${one.why}.` : one.about,
-    onclick: (event) => {
-      event.stopPropagation();
-      send({ action: "rig", id: one.id });
-    },
-  }, `${one.kind === "in" ? "Run" : "Read it with"} ${one.name}`, one.why && el("small", {}, ` · ${one.why}`))));
-}
 function actsNode(actions) {
   if (!actions?.length) return null;
   return el("div", { class: "device-acts" }, actions.map((one) => el("button", { disabled: comp.sending || Boolean(one.why), title: one.why ?? one.about ?? "", onclick: sendDevice(one.id) }, one.label, one.why && el("small", {}, ` · ${one.why}`))));
@@ -544,28 +540,112 @@ function deviceWindow(view) {
   const look = view.look;
   const face = look === "door" ? doorPlate(view) : look === "service" ? serviceScreen(view) : cameraPicture(view);
   const seen = look === "camera" && el("div", { class: "device-note" }, d.mode === "blind" ? "In the picture: snow." : `In the picture: ${d.people?.length ? d.people.join(", ") : "nobody"}.${d.mode === "loop" ? ` The loop runs ${d.loopLeft} more ${d.loopLeft === 1 ? "minute" : "minutes"}.` : ""}`);
-  const reach = view.reach && !view.reach.ok && el("div", { class: "device-note warn" }, `Your rig can't reach it: it takes ${view.reach.words}.`);
   const head = el("div", { class: "device-head" }, el("strong", {}, view.name), el("span", { class: "device-tray" },
     watch && el("span", { class: `device-watch ${watch.stage}`, title: `${watch.name}: ${watchWords(watch).toLowerCase()}` }, `${watch.name}: ${watchWords(watch)}`),
-    rigHeatNode(view),
     el("span", { title: "The ship's time" }, clockText())));
   const log = view.log.slice(-4);
   const frame = el("div", { class: `device-frame device-${look}`, title: "Pull the frame to move it aside" },
     comp.message && el("div", { class: "desk-note" }, comp.message),
-    head, face, seen, reach,
-    view.locked ? waysNode(view) : look === "service" ? null : actsNode(d.actions),
+    head, face, seen,
+    // At its logon, what gets past it is on the rig beside it; inside, the panel's own buttons (a junction box's are its menu).
+    view.locked ? el("div", { class: "device-note" }, "Locked: what gets you past it is on your rig, under D:.") : look === "service" ? null : actsNode(d.actions),
     el("div", { class: "device-log", id: "computer-console", role: "log" }, log.map((entry, i) => lineNode(entry, view.log.length - log.length + i >= comp.seen))),
-    !view.locked && view.netmap && comp.showNet && el("div", { class: "device-net" }, netMapNode(view.netmap, 420)),
     el("div", { class: "device-foot" },
-      !view.locked && view.netmap && el("button", { disabled: comp.sending, "aria-pressed": String(Boolean(comp.showNet)), onclick: (event) => { event.stopPropagation(); comp.showNet = !comp.showNet; draw(); } }, comp.showNet ? "Hide the network" : "The network"),
       el("button", { disabled: comp.sending, onclick: (event) => { event.stopPropagation(); logOff(); } }, d.leave ?? "Log off")));
-  return el("div", { class: "desk device", id: "computer-window", role: "dialog", "aria-label": view.name, tabindex: "-1" }, frame, advisorNode(view));
+  const narrow = pocketRoom() < 960;
+  return el("div", { class: `desk device${narrow ? " narrow" : ""}`, id: "computer-window", role: "dialog", "aria-label": view.name, tabindex: "-1" },
+    el("div", { class: "device-row" }, frame, leadNode(view), pocketNode(view, narrow)),
+    advisorNode(view));
+}
+
+// ---- Your rig, beside a panel with no screen of its own ----------------------------------------------------------
+// A pocket computer with your board and casing on it, its link and heat lights, wired to the panel the way it's
+// plugged in, and on its screen the place's network (NET), what's loaded on it (D:) and the session (LOG).
+
+// What the floating window has across: the screen, less the rail of menus and its own margins. When the screen changes
+// size, the window beside a panel is drawn again for the room there is.
+let pocketResize = 0;
+if (typeof window !== "undefined") window.addEventListener("resize", () => {
+  cancelAnimationFrame(pocketResize);
+  pocketResize = requestAnimationFrame(() => { if (comp.view && PANEL_LOOKS.includes(comp.view.look) && document.getElementById("computer")) draw(); });
+});
+function pocketRoom() {
+  const game = document.querySelector(".game");
+  const rail = game ? parseFloat(getComputedStyle(game).getPropertyValue("--rail-width")) || 0 : 0;
+  return (game?.clientWidth || window.innerWidth) - rail - 32;
+}
+
+// How wide the rig's map can be: the panel's window, the lead and the rig's case take their room first, and the map has
+// the rest, from 300 to its own width. The hints stand beside them where there's room, and under them where there isn't.
+function pocketMapWidth(narrow) {
+  return Math.round(Math.max(300, Math.min(NET_MAP.width, pocketRoom() - (narrow ? 300 : 380) - (narrow ? 26 : 56) - 52)));
+}
+
+// The lead from the rig to the panel, by how it's plugged in: a clip lead to a junction box, the optical reader's red
+// beam to a keypad, radio to a camera. Over the network it's the network, a dashed line; not plugged in, nothing.
+const LEADS = {
+  clip: '<svg viewBox="0 0 56 180" preserveAspectRatio="none"><path d="M56 96 C 40 96, 34 70, 22 74 S 8 92, 2 92" fill="none" stroke="#c8352c" stroke-width="3"/><path d="M56 104 C 42 104, 30 120, 18 112 S 6 98, 2 98" fill="none" stroke="#222" stroke-width="3"/><rect x="0" y="86" width="9" height="18" rx="2" fill="#9aa09b" stroke="#333"/></svg>',
+  optic: '<svg viewBox="0 0 56 180" preserveAspectRatio="none"><line x1="54" y1="96" x2="4" y2="96" stroke="#ff5a4a" stroke-width="2" stroke-dasharray="3 4"/><circle cx="4" cy="96" r="4" fill="#ff5a4a" opacity=".85"/><rect x="44" y="88" width="12" height="16" rx="2" fill="#4a4d50" stroke="#111"/></svg>',
+  radio: '<svg viewBox="0 0 56 180" preserveAspectRatio="none"><g fill="none" stroke="#8ff0a8" stroke-width="2" opacity=".85"><path d="M44 84 Q 36 96 44 108"/><path d="M34 78 Q 22 96 34 114"/><path d="M24 72 Q 8 96 24 120"/></g><rect x="48" y="90" width="8" height="12" rx="2" fill="#4a4d50" stroke="#111"/></svg>',
+  cable: '<svg viewBox="0 0 56 180" preserveAspectRatio="none"><path d="M56 96 C 36 96, 30 110, 16 104 S 6 96, 2 96" fill="none" stroke="#1a1a1a" stroke-width="4"/><rect x="0" y="90" width="8" height="12" rx="1" fill="#777" stroke="#333"/></svg>',
+  navy: '<svg viewBox="0 0 56 180" preserveAspectRatio="none"><path d="M56 96 C 36 96, 30 110, 16 104 S 6 96, 2 96" fill="none" stroke="#2d3f5c" stroke-width="6"/><rect x="0" y="88" width="10" height="16" rx="2" fill="#8ab8ff" stroke="#1d2b38"/></svg>',
+  net: '<svg viewBox="0 0 56 180" preserveAspectRatio="none"><line x1="54" y1="96" x2="2" y2="96" stroke="#4fa3d9" stroke-width="2" stroke-dasharray="5 4"/></svg>',
+};
+function leadNode(view) {
+  const kind = view.reach?.remote ? "net" : view.reach?.ok ? view.reach.link : null;
+  const box = document.createElement("template");
+  box.innerHTML = (kind && LEADS[kind]) || "";
+  return el("div", { class: "rig-lead", "aria-hidden": "true" }, box.content.firstChild);
+}
+
+const POCKET_TABS = [["net", "NET", "The place's network: go along it from here"], ["prog", "D:", "What's loaded on your rig, to run here"], ["log", "LOG", "What's happened at this one"]];
+function pocketNode(view, narrow) {
+  const face = view.rigFace ?? {};
+  const reach = view.reach ?? {};
+  const plugged = Boolean(reach.ok);
+  const heat = view.rigHeat;
+  const tab = comp.rigTab ?? (view.locked ? "prog" : "net");
+  const width = pocketMapWidth(narrow);
+  const tall = view.netmap ? layOutNetMap(view.netmap, width).height : 0;
+  const note = (text) => el("div", { class: "pocket-note" }, text);
+  let page;
+  if (heat?.dead) page = note(`It won't start: ${heat.dead}.`);
+  else if (tab === "net") page = !plugged ? note(`Not plugged in: this takes ${reach.words}, and the map shows here once your rig has one. Fit it on the Rig page.`) : view.locked ? note("Get past its logon first: the map shows here once you're in.") : view.netmap ? netMapNode(view.netmap, width) : note("This isn't on the place's network.");
+  else if (tab === "prog") page = pocketPrograms(view);
+  else page = el("div", { class: "pocket-log" }, view.log.slice(-14).map((entry) => lineNode(entry)));
+  const light = (cls, label, title) => el("span", { class: "pocket-light", title }, el("i", { class: `lamp${cls ? ` ${cls}` : ""}` }), label);
+  const linkTitle = reach.remote ? "Over the network, from where it's plugged in" : plugged ? `Plugged in by ${reach.words}` : `Not plugged in: this takes ${reach.words}`;
+  const heatTitle = heat ? `Your rig: ${heat.dead ? `it won't start, ${heat.dead}` : heat.words}` : "Your own ship's: nothing works your rig hard";
+  const where = reach.remote ? "OVER THE NETWORK" : plugged ? `ON THE ${String(reach.words ?? "").replace(/^(an?|the) /i, "").toUpperCase()}` : "NOT PLUGGED IN";
+  return el("div", { class: "pocket", role: "group", "aria-label": "Your rig", title: "Pull the frame to move it aside" },
+    el("div", { class: "pocket-top" },
+      el("span", {}, [face.board, face.casing].filter(Boolean).join(" · ").toUpperCase() || "YOUR RIG"),
+      el("span", { class: "pocket-lights" },
+        light(reach.remote ? "net" : plugged ? "on" : "", "LINK", linkTitle),
+        light(!heat || heat.dead ? "" : heat.overheating ? "hot" : heat.fan ? "warm" : "cool", "HEAT", heatTitle))),
+    el("div", { class: "pocket-screen" },
+      el("div", { class: "pocket-tabs", role: "tablist", "aria-label": "Your rig's pages" },
+        POCKET_TABS.map(([id, label, about]) => el("button", { role: "tab", "aria-selected": String(tab === id), title: about, onclick: (event) => { event.stopPropagation(); comp.rigTab = id; draw(); } }, label)),
+        el("span", { class: "pocket-where" }, where)),
+      el("div", { class: "pocket-page", style: `width:${width}px;min-height:${Math.max(tall, 120)}px` }, page)),
+    el("div", { class: "pocket-bottom" },
+      el("span", {}, `${view.rig?.used ?? 0} OF ${view.rig?.memory ?? 0} BLOCKS`),
+      view.netmap && plugged && !view.locked && el("span", {}, `${view.netmap.hop.minutes} MIN A HOP`)));
+}
+
+// D: on the rig: at a logon, what gets past it; inside, what's loaded; each with why it won't run here, if it won't.
+function pocketPrograms(view) {
+  const list = view.locked ? view.logon?.ways ?? [] : view.rig?.loaded ?? [];
+  if (!list.length) return el("div", { class: "pocket-note" }, view.locked ? "Nothing loaded on your rig gets past this logon. Load a breaker on the Rig page first." : "Nothing's loaded on your rig. Load programs on the Rig page.");
+  return el("div", { class: "pocket-list" }, list.map((one) => el("div", { class: `pocket-row${one.why ? " no" : ""}` },
+    el("span", {}, el("b", {}, one.name), el("small", {}, one.why ? ` won't: ${one.why}` : ` ${one.about ?? ""}`)),
+    el("button", { disabled: comp.sending || Boolean(one.why), title: one.why ? `Won't: ${one.why}.` : one.about ?? "", onclick: (event) => { event.stopPropagation(); send({ action: "rig", id: one.id }); } }, view.locked && one.kind !== "in" ? "READ" : "RUN"))));
 }
 
 function windowNode() {
   const view = comp.view;
   // A door's panel, a junction box and a camera have no desktop: their own face, and the buttons under it.
-  if (["door", "service", "camera"].includes(view.look)) return deviceWindow(view);
+  if (PANEL_LOOKS.includes(view.look)) return deviceWindow(view);
   // Nobody watches the player's own computers; any other has AuditGuard listening, from the logon on.
   const watch = view.watch ?? null;
   const glass = el("div", lastScale ? { class: "glass", style: `--s:${lastScale}` } : { class: "glass" }, el("div", { class: "desk-screen" }, osNode(view, watch)), el("div", { class: "fx scan" }), el("div", { class: "fx vig" }), el("div", { class: "fx glare" }), el("div", { class: "fx band" }));

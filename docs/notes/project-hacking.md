@@ -505,3 +505,40 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
   three a computer keeps the map in its Network folder and the panel's window loses its The network button. The game
   has no alarm panel (the alarm is run from computers and speakers); one added later would get the rig the same way.
 - Build only what they pick.
+
+## The rig beside a panel, built (2026-11-13, at "Do the pocket computer")
+
+- They picked B. A door's panel, a junction box or a camera (`PANEL_LOOKS`, in `src/devices.js` and on the page) now
+  opens as two things side by side in the floating window: the panel's own window (its face, its buttons, its last
+  log lines and its leave button; no map and no breakers any more) and the rig as a pocket computer (`pocketNode` in
+  `public/computer.js`), joined by a lead drawn by the link (`LEADS`: a clip lead, the optical reader's red beam,
+  radio arcs, a cable, the Navy coupler, and a dashed blue line over the network; nothing when it isn't plugged in).
+- The rig shows its board and casing by name (`rigFace` in `src/rig.js`, sent as the view's `rigFace` for panels), a
+  LINK light (green plugged in, blue over the network, dark not plugged in) and a HEAT light from `rigHeat` (dark on
+  the player's own systems, green, amber with the fan, blinking red overheating). Its screen has NET (the network map,
+  in the rig's green; a note instead when it isn't plugged in, at a logon, or off the network), D: (at a logon the
+  ways in, `logon.ways`; inside, the loaded programs, `rig.loaded`, each with why it won't run; RUN or READ) and LOG
+  (the session's last 14 lines). It opens on D: at a logon and on NET inside, and turns to NET when the logon gives way
+  (`comp.rigTab`, reset when the locked state changes or the session does). The bottom says the blocks used and the
+  minutes a hop. A click on a map sets `comp.hopping`, so a desktop reached from the rig's map (or a folder's) opens
+  its Network folder; the old `showNet` toggle and `waysNode` are gone.
+- **A rule that came with it:** going on from a panel needs the rig plugged into it (`hop` in `src/network.js` gets
+  the leaving content; a panel session that isn't remote and whose link the rig lacks is refused with the reason, and
+  no time passes). Remote sessions still skip the link. Desktops don't need it, since the map there is the computer's.
+- Layout: the panel, the lead and the rig sit in one row that never wraps (`.device-row`); the hints go beside them
+  where there's room and under them where there isn't. Beside a panel the page measures the room on the game's box
+  (`pocketRoom`, where `--rail-width` is set): under 960 px the panel's window is 300 wide and the lead 26, else 380 and
+  56, and the map takes the rest between 300 and 440 (`pocketMapWidth`); the window is drawn again when the screen
+  changes size. A panel's log keeps 10em now, since at 300 wide its lines wrap more.
+- Found while checking: the map's boxes near the right edge were squeezed by the browser to the room left of the edge
+  and their names wrapped and clipped ("Hot Bunks…", in the Network folder too); `width: max-content` on the node fixes
+  it. The rig's width variable lives on `.game`, not the page's root.
+- Tests: `test/network.test.js` gained one (7): the captain's own Bridge door panel by right carries the rig's face,
+  a hop from it without an optical reader is refused with no time passing, and with one fitted it goes to the plot
+  table, whose view has no rig face. 1,147 tests pass.
+- Screens on a test copy at 1400 and 810 wide (and 1000 and 1200 by resizing): JB-3 with a service clip (NET, D:, LOG,
+  a hop to the comms relay over the network, then to the plot table, which opened NAVCOM 7 with its Network folder),
+  the Bridge door with no optical reader (not plugged in, no lead), and Haven's docks camera by radio at its logon
+  (D: first, DICTIONARY and SCOPE). Not tried: an overheating rig's red light, and a rig that won't start.
+- Not done: the casing's look following the build (a shielded case darker, an open frame showing its board), which the
+  examples page said could come later. The owner hasn't tried it.

@@ -19,8 +19,8 @@ import { notePut } from "./puts.js";
 import { fill } from "./check-games/kit.js";
 import { CHECK_TEXT, COMPUTER_FLAVOR, WORLD_COMPUTERS, WORLD_MAPS } from "./world.js";
 import { controlsFor, controlsView, partWorks, roomPowered, runsSystems } from "./systems.js";
-import { rigHeat, rigInComputer } from "./rig.js";
-import { LINK_WORDS, LOOKS, deviceView, lookOf, reachOf, rigReaches } from "./devices.js";
+import { rigFace, rigHeat, rigInComputer } from "./rig.js";
+import { LINK_WORDS, LOOKS, PANEL_LOOKS, deviceView, lookOf, reachOf, rigReaches } from "./devices.js";
 import { networkView } from "./network.js";
 
 
@@ -549,6 +549,8 @@ export function computerView(game) {
     // Its look, what reaches it and whether the rig does, and what the look shows and offers (src/devices.js).
     look: session.look ?? lookOf(content),
     reach: { link: reachOf(content), words: LINK_WORDS[reachOf(content)], ok: Boolean(session.remote) || rigReaches(game, content), remote: Boolean(session.remote) },
+    // Beside a panel with no screen of its own, the player's rig shows the map and the programs: its board and casing.
+    rigFace: PANEL_LOOKS.includes(session.look ?? lookOf(content)) ? rigFace(game) : null,
     device: deviceView(game, session, content),
     // The place's network as a map, once past the logon (src/network.js).
     netmap: inside ? networkView(game, session) : null,
