@@ -16,6 +16,7 @@ import { useComputer } from "./computers.js";
 import { clearSystems, doorActions, doorLocked, doorLook, exitLocked, partSquares, partThings, powerView, roomDark, roomPowered, roomView, systemsOf, workOnDoor, workOnPart } from "./systems.js";
 import { clearLogistics, growingAt, logisticsOf, storeLook, storeStock } from "./logistics.js";
 import { marksOn, wearOf } from "./wear.js";
+import { chatterSlot, withChatter } from "./chatter.js";
 import { ITEMS, LOCATIONS } from "./data.js";
 import { clearLife, hasADay, livesHere, peopleAboard } from "./life.js";
 import { isCaptain, toOutsider } from "./role.js";
@@ -1530,7 +1531,8 @@ export function walkView(game) {
     // A room's description, with what the parts of the game that add to a room have to say about it now: who's held in
     // the brig (src/room-hooks.js).
     here: { id: roomNow, name: room?.name ?? level.name, desc: [room?.desc ?? level.desc, ...roomNotes(game, game.location, roomNow)].filter(Boolean).join(" "), ...(level.drawn ? { drawn: level.drawn } : {}), ...(onDeck ? { deck: { id: level.id, name: level.name } } : {}) },
-    people: peopleOnLevel(game, walk, level).map((entry) => personView(game, entry, level)),
+    // Whoever's near the player has a line or two they might say over their head (src/chatter.js).
+    people: withChatter(game, game.location, peopleOnLevel(game, walk, level).map((entry) => personView(game, entry, level)), spot),
     things: [...level.things.map((thing) => thingView(game, thing, level)), ...(walk.room ? [] : roomsOn(map, level.id).flatMap((one) => partThings(game, game.location, one.id).map((thing) => (onDeck ? { ...thing, room: one.id } : thing)))), ...pilesIn(game, game.location, roomId(walk, level)).map((pile) => ({ ...pile, store: pile.id }))],
     // The furniture drawn on the level (public/furniture.js), for the picture of the room.
     furniture: level.furniture ?? [],
@@ -1566,11 +1568,14 @@ export function walkView(game) {
   };
 }
 
-// Just who's in the room with the captain and where they've got to, because this is twice a second.
-function peopleNow(game) {
+// Just who's in the room with the captain and where they've got to, because this is twice a second. What people near
+// the player might say (src/chatter.js) changes only every half hour of the clock, so it comes only with the tick that
+// crosses one, marked chatter: true, and the page keeps what each had in between.
+function peopleNow(game, { lines = false } = {}) {
   const walk = walkAt(game);
   const level = levelOf(game, walk, mapFor(game.location));
-  return { here: walk.room ? walk.room.name : level.id, drawn: walk.room ? 0 : level.drawn, people: peopleOnLevel(game, walk, level).map((entry) => personView(game, entry, level)) };
+  const people = peopleOnLevel(game, walk, level).map((entry) => personView(game, entry, level));
+  return { here: walk.room ? walk.room.name : level.id, drawn: walk.room ? 0 : level.drawn, people: lines ? withChatter(game, game.location, people, walk.room ?? walk) : people, ...(lines ? { chatter: true } : {}) };
 }
 
 // The clock running by itself, while the player explores somewhere people live their days. It waits
@@ -1582,8 +1587,9 @@ export function walkTick(game, body) {
   if (!walkAt(game) || !livesHere(game.location)) return { still: true };
   if (!CLOCK_RATES.includes(body.rate)) throw new Error("That isn't one of the clock's speeds.");
   const ms = Math.max(0, Math.min(Number(body.ms) || 0, LONGEST_TICK));
+  const slot = chatterSlot(game);
   const notes = clockRuns(game, (ms / 60000) * body.rate);
-  return { notes, ...peopleNow(game) };
+  return { notes, ...peopleNow(game, { lines: chatterSlot(game) !== slot }) };
 }
 
 // What a check from the story is about, when it can be told from the room: the person it's aimed at, or the first person

@@ -2674,6 +2674,8 @@ const iso = {
   shown: new Map(),
   // How far open each door between rooms is, 0 to 1, by "x,y" on the level.
   doors: new Map(),
+  // What's being said over people's heads now, when someone next will, and who said what last (drawChatter).
+  chatter: { shown: [], next: 0, said: new Map(), last: new Map() },
   hits: [],
   pointer: null,
   hover: null,
@@ -3296,6 +3298,9 @@ function draw(now, dt) {
     const filled = hovered || person.asks;
     chip(ctx, text, hit.floorX, hit.floorY - unit * 0.95, filled ? BACKGROUND : tag, { background: filled ? tag : undefined, size: person.asks && !hovered && !near ? 13 : 11, ...clip });
   }
+
+  // Now and then someone near the player says something over their head (src/chatter.js).
+  drawChatter(ctx, now, view, hits, clip, unit);
 
   // A fight in the room puts its health, readiness, names, odds and shots over everything.
   iso.hooks.fightOverlay?.({ ctx, at, unit, hover: hoverKey, chip: (c2, text, x, y, color, opts = {}) => chip(c2, text, x, y, color, { ...clip, ...opts }) });
@@ -4240,4 +4245,56 @@ function drawAfterLight(painter, now, view) {
 function point3(face, side, up) {
   const [mx, my, mz] = face.at;
   return [mx + face.across[0] * side, my + face.across[1] * side, mz + up];
+}
+
+// ---- Chatter ------------------------------------------------------------------------------------------------------
+// What people near the player say to nobody in particular (src/chatter.js gives each of them a line or two): every three
+// to ten seconds someone on the screen who hasn't spoken in the last twenty says one of theirs, over their head, for a
+// few seconds, two at most at once. Nobody does in a fight, or while a story's being read or a window's open.
+const CHATTER = { every: 3000, more: 7000, lasts: 4600, most: 2, again: 20000 };
+
+export function chatterNext(talk, people, seen, now, random = Math.random) {
+  talk.shown = talk.shown.filter((one) => one.until > now);
+  if (now < talk.next || talk.shown.length >= CHATTER.most) return null;
+  talk.next = now + CHATTER.every + random() * CHATTER.more;
+  const candidates = people.filter((person) => person.chatter?.length && seen.has(person.key) && !talk.shown.some((one) => one.key === person.key) && now - (talk.said.get(person.key) ?? -Infinity) > CHATTER.again);
+  if (!candidates.length) return null;
+  const person = candidates[Math.floor(random() * candidates.length)];
+  const fresh = person.chatter.filter((line) => line !== talk.last.get(person.key));
+  const lines = fresh.length ? fresh : person.chatter;
+  const said = { key: person.key, text: lines[Math.floor(random() * lines.length)], from: now, until: now + CHATTER.lasts };
+  talk.shown.push(said);
+  talk.said.set(person.key, now);
+  talk.last.set(person.key, said.text);
+  return said;
+}
+
+function drawChatter(ctx, now, view, hits, clip, unit) {
+  const talk = iso.chatter;
+  if (iso.hooks.fighting?.() || iso.hooks.reading?.() || iso.hooks.blocked?.()) {
+    talk.shown = [];
+    return;
+  }
+  const heads = new Map(hits.filter((hit) => hit.kind === "person").map((hit) => [hit.person.key, hit]));
+  chatterNext(talk, view.people ?? [], new Set(heads.keys()), now);
+  for (const one of talk.shown) {
+    const head = heads.get(one.key);
+    if (!head) continue;
+    const fade = iso.calm ? 1 : Math.max(0, Math.min(1, (now - one.from) / 250, (one.until - now) / 600));
+    ctx.save();
+    ctx.globalAlpha = fade;
+    const box = chip(ctx, `“${one.text}”`, head.floorX, head.floorY - unit * 1.24, "#d9d3ba", { background: "rgba(4,6,5,.58)", size: 10, ...clip });
+    // A small tail under it, to whoever's saying it.
+    const tip = Math.max(box.x + 4, Math.min(box.x + box.w - 4, head.floorX));
+    ctx.fillStyle = "rgba(4,6,5,.58)";
+    ctx.beginPath();
+    ctx.moveTo(tip - 4, box.y + box.h);
+    ctx.lineTo(tip + 4, box.y + box.h);
+    ctx.lineTo(tip, box.y + box.h + 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+  // Someone mid-sentence wants the room drawn often enough to fade in and out.
+  if (talk.shown.length) iso.lively = true;
 }

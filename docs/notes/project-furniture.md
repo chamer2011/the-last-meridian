@@ -205,4 +205,33 @@ with stars, screens on the walls), and two pictures went to them. Then they said
 - **Not done:** a fight leaves no casings or scorch of its own beyond the stains; walls cut low in front of a room
   don't show rust (only tall ones do); nothing is cleaned faster for good morale or by anyone in particular.
 
-Build step 6 only when they say so.
+## Step 6, built on 2026-11-13, at their "Yes, step 6", untried by them
+
+- **The lines** are `world/chatter.txt` (my draft, marked so at its top): parts by moment, each its name and a colon,
+  then lines starting "- ", 60 letters at most (`LONGEST`), with the moments and when each is true listed in its
+  header. Twenty moments (`MOMENTS` in `src/chatter.js`), the most particular first: Fire here, The alarm, Hull
+  breached, Fire aboard, No power, In the dark, Someone died (three days), After the mutiny (five days after
+  `game.battles.mutiny`), Grumbling (`mutinyHolds`), Hungry (the kettle ran dry for a tenth of the sittings, today or
+  yesterday), Short of food, Short of medicine (`game.ship.out`), Hurt, Under way, Low morale (under 35), High morale
+  (70 or more), Eating and At work (by what their day says they're doing), At night (22:00 to 06:00), Anywhere.
+- **Who says what** (`src/chatter.js`): `placeMoments` works out what's true for the place once, `momentsFor` adds
+  their room's (fire, power, lights), what they're doing and their wounds, and `linesFor` gives a line from each of the
+  first two moments true for them that have lines, the same for half an hour of the clock; nobody asleep, laid up or
+  in a talk with the player says anything. `withChatter` gives them to the people within 10 squares of the player (a
+  square across counting half) in the room view (`src/walk.js`), and in the twice-a-second tick only when it crosses a
+  half hour of the clock (`chatterSlot`, marked `chatter: true`), since `test/life.test.js` holds the tick under 5,000
+  characters; the page keeps what each person had in between (`applyTick` in `public/walk.js`). The file is read
+  again when it changes, and `npm run check-story` names a moment it doesn't know, a line before any moment, one too
+  long, or one that's neither.
+- **Saying it** (`public/iso.js`): `chatterNext` has someone on the screen with lines, who hasn't spoken in twenty
+  seconds, say one (not the one they said last) every three to ten seconds, for 4.6 seconds, two at most at once;
+  `drawChatter` draws it in quotes over their head on a dark chip with a little tail, fading in and out, and none in a
+  fight, while a story's being read or while a window's open. Nothing about the game changes.
+- **Tests:** `test/chatter.test.js` (6): the file reads clean and every moment has lines, and a bad one's problems; the
+  moments true for someone (eating, night, the ship's troubles, their room and wounds); the most particular first, the
+  same for the half hour, nothing from anyone asleep, laid up or in a talk; only those near the player have lines; the
+  picture's pacing; the tick carrying lines only across a half hour. Screens on a test copy on port 3297, lunch in the Long Mess at 1400 and 810 wide.
+- **Not done:** nobody answers anybody; lines don't name anyone (no stand-ins); a crowd's people say the same kinds of
+  thing as the officers.
+
+All six steps are built.

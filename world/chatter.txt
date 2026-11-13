@@ -1,0 +1,180 @@
+# CHATTER: what people say to nobody in particular
+#
+# This is Claude's draft, not yet edited.
+#
+# Now and then, someone near you in the room says something under their breath, and it hangs over their head for a
+# moment: a line from this file, from one of the moments that's true for them right now. Nobody answers, and nothing
+# changes because of it. It's the ship talking to itself.
+#
+# Each part below is a moment: its name and a colon, then its lines, one to a line, each starting with "- ". Change any
+# line, add more, take some away. Keep each one short, since it hangs over someone's head: 60 letters at most. A part
+# can be left with no lines, and then that moment says nothing.
+#
+# The moments, and when each is true:
+#   Fire here           the room they're in is on fire
+#   The alarm           the alarm is ringing
+#   Hull breached       there's a hole in the hull somewhere aboard
+#   Fire aboard         something's burning somewhere aboard
+#   No power            the room they're in has no power
+#   In the dark         the room they're in has its lights out
+#   Someone died        someone aboard has died in the last three days
+#   After the mutiny    the five days after the mutiny was fought
+#   Grumbling           a mutiny is brewing
+#   Hungry              the kettle ran dry before everyone had eaten, today or yesterday
+#   Short of food       the ship's food has run out
+#   Short of medicine   the ship's medicine has run out
+#   Hurt                they're hurt
+#   Under way           the ship is jumping
+#   Low morale          the ship's morale is under 35
+#   High morale         the ship's morale is 70 or more
+#   Eating              they're eating
+#   At work             they're at work, in the day
+#   At night            it's between ten at night and six in the morning, and they're awake
+#   Anywhere            always
+#
+# Someone says something from the first moment on that list that's true for them, or the next: whoever's in a burning
+# room talks about the fire before the soup. Nobody asleep, laid up or talking to you says anything.
+#
+# After changing this file, run "npm run check-story", and close and reopen the game.
+
+Fire here:
+- Get out! Get out of here!
+- Grab an extinguisher or get clear!
+- Can't breathe in here!
+- It's spreading! Move!
+
+The alarm:
+- That's the alarm. That's the real alarm.
+- Stations! Everyone to stations!
+- Is it a drill? Tell me it's a drill.
+- What now? What is it now?
+
+Hull breached:
+- Feel that draught? That's the void.
+- Seal the hatch! Seal it!
+- Don't go near the lock.
+- My ears keep popping.
+
+Fire aboard:
+- Smell that? Something's burning.
+- Fire crews are moving. Stay clear.
+- If it reaches the stores, we're done.
+- Keep the doors shut. Starve it.
+
+No power:
+- Everything's dead in here.
+- No power, no screens, no idea.
+- Engineering had better be on this.
+- The cold's creeping in already.
+
+In the dark:
+- Who turned out the lights?
+- Mind your feet, there's stuff everywhere.
+- I can't see my own hands.
+- Somebody find the switch. Or a torch.
+- Dark like this, you hear everything.
+
+Someone died:
+- Did you hear who we lost?
+- Another name for the bulkhead.
+- I keep thinking it could've been me.
+- Light a candle if you've got one.
+- They were here yesterday. Just yesterday.
+
+After the mutiny:
+- I knew some of them. That's the worst part.
+- There's still blood on deck one.
+- Who's next, if the captain falls?
+- The brig's never been this full.
+- Keep your voice down. People are jumpy.
+- They thought they could take the ship.
+- My hands haven't stopped shaking.
+
+Grumbling:
+- Somebody should say something to the captain.
+- Who decided we'd go hungry? Not us.
+- Quiet. Walls have ears on this ship.
+- If the officers won't act, someone will.
+- Things can't go on like this.
+
+Hungry:
+- The kettle was empty when I got there.
+- Missed the sitting. Again.
+- My stomach's louder than the engines.
+- Somebody's eating better than us.
+- Half rations of half rations.
+- Dreamt about bread. Just bread.
+
+Short of food:
+- The pantry shelves echo now.
+- How long do the crates last? Really.
+- The quartermaster won't look anyone in the eye.
+- We're counting beans. Actual beans.
+
+Short of medicine:
+- No painkillers left. Grit your teeth.
+- The doc's rationing bandages now.
+- Don't get hurt. That's the whole plan.
+- The cabinet's empty. I looked twice.
+
+Hurt:
+- Don't make me laugh, it pulls the stitches.
+- The doc says rest. The doc doesn't do my shifts.
+- It's nothing. It's mostly nothing.
+- Mind the arm. The left one. Both, really.
+- I've had worse. I can't remember when.
+
+Under way:
+- Hold on to something.
+- Jumping again. My stomach hates this.
+- Hope the plot's right this time.
+- Feel the deck shake? We're moving.
+
+Low morale:
+- What's the point of any of it?
+- Nobody's told us anything in days.
+- Keep your head down and your mouth shut.
+- Everyone's tired. Everyone's angry.
+- I used to whistle on shift.
+- This ship's running on spite.
+
+High morale:
+- Feels like we might actually make it.
+- Heard a joke in the mess. Real laughing.
+- Whoever fixed the heaters, I love you.
+- Good shift. Don't jinx it.
+- The captain's got a plan. Probably.
+
+Eating:
+- Soup again. Bold choice.
+- It's warm. That's the nicest thing I can say.
+- Who keeps salting it? Stop salting it.
+- Eat slow. Makes it feel like more.
+- Trade you my bread for a quiet hour.
+- Something from the garden today. Practically a feast.
+- The cook says it's a stew. I believe the cook.
+
+At work:
+- Hand me the long spanner. No, the other one.
+- If it hums, leave it. If it clanks, call me.
+- Logged it. Logged it again. Nobody reads the log.
+- Two more hours and I'm horizontal.
+- This panel's been patched more than my boots.
+- Who signed off on this weld?
+- Check it twice. The ship doesn't forgive.
+
+At night:
+- Can't sleep. The hull's ticking again.
+- Night shift. The ship talks to itself.
+- Keep it down, people are trying to dream.
+- Quiet tonight. I don't trust quiet.
+
+Anywhere:
+- Nine hundred souls and one coffee pot.
+- Did anyone else feel that shudder?
+- Same corridor, same faces, same hum.
+- I keep counting the days. It stopped helping.
+- My bunkmate snores in three languages.
+- Somebody keep an eye on the gauges.
+- Wonder what the stars look like from home.
+- Don't touch that, it's holding something up.

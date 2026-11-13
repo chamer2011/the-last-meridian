@@ -678,6 +678,12 @@ function applyTick(reply) {
   ui.game.clock = reply.clock;
   if (changed) app.renderStatus();
   if (reply.here === walk.shownLevel && reply.here === levelIdOf(ui.game.walk)) {
+    // What people near the player might say comes with the whole game and with the tick that crosses a half hour of the
+    // clock (chatter: true, src/chatter.js); in between, each keeps what they had.
+    if (!reply.chatter) {
+      const had = new Map((ui.game.walk.people ?? []).map((one) => [one.key, one.chatter]));
+      for (const one of reply.people) if (!one.chatter && had.get(one.key)) one.chatter = had.get(one.key);
+    }
     ui.game.walk.people = reply.people;
     updatePeople();
   }
