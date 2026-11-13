@@ -1,0 +1,10 @@
+# Scrap
+order: 72
+type: gadget
+price: 2
+size: 1x1
+weight: 0.2
+stack: 10
+
+In a line:
+Bits of boards, wire and casing. The Repair Bay's bench makes rig parts from it, and its lathe rebuilds a broken part from two of it.

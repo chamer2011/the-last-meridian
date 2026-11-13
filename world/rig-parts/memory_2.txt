@@ -1,0 +1,10 @@
+# 2-block memory
+kind: memory
+order: 30
+grade: 1
+weight: 0.05
+memory: 2
+where from: Comes with the rig.
+
+What it is:
+Room for two blocks of programs.

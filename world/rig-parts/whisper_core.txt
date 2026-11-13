@@ -1,0 +1,12 @@
+# Whisper core
+kind: core
+order: 23
+grade: 2
+weight: 0.1
+heat: 0
+speed: -0.3
+quiet: 1
+where from: Graveyard wrecks.
+
+What it is:
+Slow and very quiet.

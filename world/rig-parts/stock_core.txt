@@ -1,0 +1,10 @@
+# Stock core
+kind: core
+order: 20
+grade: 1
+weight: 0.1
+heat: 1
+where from: Comes with the rig.
+
+What it is:
+Does the job. The bench can overclock it, or undervolt it.

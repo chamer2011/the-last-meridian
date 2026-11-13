@@ -1,0 +1,12 @@
+# Deep core
+kind: core
+order: 22
+grade: 3
+weight: 0.2
+heat: 2
+speed: -0.2
+power: 1
+where from: A crew terminal's insides, if you open one up.
+
+What it is:
+Slower, but programs hit harder.

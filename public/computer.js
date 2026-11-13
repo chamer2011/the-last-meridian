@@ -355,6 +355,7 @@ function osNode(view, watch) {
     el("div", { class: "tray sunk" },
       watch && el("span", { class: `watch ${watch.stage}`, title: `${watch.name}: ${watchWords(watch).toLowerCase()}` }, picture("eye")),
       watch && el("span", {}, watchWords(watch)),
+      view.rigHeat && el("span", { class: `rig-heat${view.rigHeat.overheating ? " hot" : view.rigHeat.fan ? " warm" : ""}`, title: `Your rig: ${view.rigHeat.dead ? `it won't start, ${view.rigHeat.dead}` : view.rigHeat.words}` }, view.rigHeat.dead ? "Rig off" : `Rig ${view.rigHeat.words.split(":")[0]}`),
       el("span", { title: "The ship's time" }, clockText())));
   const os = el("div", { class: "os", onclick: () => { if (comp.menu) { comp.menu = false; draw(); } } }, icons, list, viewer, view.locked && logonNode(view), log, balloon, taskbar, menu);
   os.addEventListener("pointerdown", dragWindow);

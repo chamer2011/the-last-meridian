@@ -107,7 +107,7 @@ test("on day one, every price and every chart entry is exactly what it always wa
 });
 
 test("a new game has a world, and an older save gets one that starts from now", () => {
-  assert.equal(newGame().version, 26);
+  assert.equal(newGame().version, 27);
   assert.ok(newGame().world.places.haven);
   const old = { ...newGame(), version: 11, clock: { hours: 24 * 40 + 8 } };
   old.ship.day = 40;
@@ -115,7 +115,7 @@ test("a new game has a world, and an older save gets one that starts from now", 
   // A save that old had no wounds kept, nobody laid up and no medbay of its own.
   for (const key of ["wounds", "bodies", "down", "medbay", "healthStarted"]) delete old[key];
   const game = migrateGame(JSON.parse(JSON.stringify(old)));
-  assert.equal(game.version, 26);
+  assert.equal(game.version, 27);
   assert.equal(game.world.day, 40, "nobody pays for the days that went by before");
   assert.deepEqual(passTime(game, 1), [], "and nothing happens all at once");
   assert.doesNotThrow(() => publicState(game));

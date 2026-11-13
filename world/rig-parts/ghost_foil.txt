@@ -1,0 +1,12 @@
+# Ghost foil
+kind: casing
+order: 12
+grade: 3
+weight: 0.5
+cooling: -1
+quiet: 2
+speed: -0.3
+where from: Graveyard wrecks.
+
+What it is:
+Very quiet, and it traps heat.

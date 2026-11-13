@@ -151,3 +151,20 @@
 .os button.row-item.logon-way > span small { font-size: 10px; white-space: normal; }
 .os .logon-none { color: var(--dim); }
 .os .logon-buttons { display: flex; justify-content: flex-end; }
+
+/* The rig's build on the Rig page (step 4 of the hacking rework): the board's sockets on their grid, each a tile with
+   the part in it; the one picked; the sockets a picked spare part fits, lit. */
+.rig-board { display: grid; gap: 6px; margin: 6px 0; max-width: 560px; }
+.rig-page button.card { text-align: left; background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+.rig-socket { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; min-height: 70px; overflow: hidden; }
+.rig-socket strong, .rig-frame strong { overflow-wrap: anywhere; }
+.rig-socket.full { border-color: var(--text); }
+.rig-socket.shut { opacity: .5; border-style: dashed; cursor: default; }
+.rig-socket.chosen, .rig-frame.chosen { outline: 2px solid var(--text); outline-offset: -2px; }
+.rig-socket.takes { border-color: var(--good, #7fdc8f); box-shadow: inset 0 0 0 1px var(--good, #7fdc8f); }
+.rig-socket-kind { font-size: 10px; letter-spacing: .08em; opacity: .7; }
+.rig-frame { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 120px; }
+.rig-picked { max-width: 560px; }
+/* The rig's heat in the desktop's tray. */
+.os .tray .rig-heat.warm { color: var(--warnc); }
+.os .tray .rig-heat.hot { color: var(--badc); font-weight: 700; }

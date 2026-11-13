@@ -1,0 +1,59 @@
+HOW TO WRITE A RIG PART
+=======================
+
+The rig in the player's pack is built from parts: a casing round a board, and the board's sockets each holding a
+part of their kind. Each board, casing and part is one plain text file in this folder, world/rig-parts/<id>.txt. The
+game reads them again a moment after one changes.
+
+    npm run check-story
+
+checks these files too.
+
+
+THE FILE
+--------
+
+    # Yard board
+    kind: board
+    order: 1
+    grade: 1
+    weight: 0.3
+    sockets: core at 1 1, sink at 2 1, memory at 3 1, link at 1 2, cell at 2 2, memory at 3 2
+    where from: Comes with the rig.
+
+    What it is:
+    The shipyard's own. Six sockets on a grid.
+
+The first line is its name. The lines under it can come in any order, and any number that isn't there is 0:
+
+    kind          board, casing, core, memory, link, cell, sink or extra.
+    order         Where it comes in the lists, smallest first.
+    grade         How good it is, 1 and up. Mending it at the bench takes that many hours and that much
+                  Engineering, and one of the ship's parts crates.
+    weight        In kilograms. The rig weighs its board, casing and every part with it.
+    heat          How much heat it makes. A session adds a point every ten minutes on top.
+    power         Added to a program's power against a computer's class (1 a door panel to 5 the Beacon).
+    quiet         Takes noise off what the rig does: 1 takes one off anything making 2 or more, 2 takes one off
+                  everything, 3 makes it silent. Below 0 it adds one.
+    speed         Added to the rig's speed, which starts at 1: minutes are divided by it.
+    memory        Blocks of memory for programs.
+    cools         A heat sink's: the heat it takes off each socket beside it (left, right, above, below).
+    cooling       A casing's: the heat it takes off the whole rig.
+    echo          An extra's: noise CLEANER takes off on top of its own.
+    sockets       A board's: each socket's kind and where it is on the grid, column then row, from 1. A socket
+                  can open only from a level of Hacking: extra at 5 1 from Hacking 7. A board needs a core, a
+                  cell and a link socket.
+    made from     What making it at the bench takes, if it can be made: 2 scrap, Engineering 1, 2 hours.
+    where from    Where it comes from, in a few words, for the Rig page.
+
+    What it is: a few words for the Rig page.
+
+
+HOW A BUILD ADDS UP
+-------------------
+
+The rig won't start without a core, a cell and a link that work. A worn part gives half and runs a point warmer; a
+broken one gives nothing until it's mended. A session warms the rig a point every ten of its minutes: at 3 its fan
+is heard (anything noisy is one louder), and at 5 it's overheating (everything takes twice as long, and the hottest
+part wears a step when the player logs off). The bench's rules (mending, overclocking and undervolting a core, the
+lathe, taking apart) are in the game's code, src/rig-parts.js, with my first numbers.

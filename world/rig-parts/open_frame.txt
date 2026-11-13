@@ -1,0 +1,13 @@
+# Open frame
+kind: casing
+order: 13
+grade: 1
+weight: 0.2
+cooling: 2
+quiet: -1
+speed: 0.2
+made from: 2 scrap, Engineering 1, 2 hours
+where from: Made at the bench from scrap.
+
+What it is:
+Cool and quick, and loud.

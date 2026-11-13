@@ -1,4 +1,4 @@
-# The hacking rework (2026-11-13): designed on example pages, planned, steps 1 to 3 built
+# The hacking rework (2026-11-13): designed on example pages, planned, steps 1 to 4 built
 
 ## What was asked
 
@@ -229,3 +229,54 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
 - Not done: the rig's own power from parts (step 4: the yard build adds nothing, so a Ministry or Navy server or worse
   needs a password for now), noise from a rig's heat or a radio (step 4), the NAVCOM look and SENTRY (step 6), the
   Story board for programs (step 7). The owner hasn't tried it.
+
+## Step 4, the rig built from parts (built 2026-11-13, at "Yes, step 4")
+
+- From the design page's third round (option A, parts in sockets): the boards, casings and parts are
+  `world/rig-parts/<id>.txt`, 21 of them (yard, slim and Navy boards; plain, shielded, ghost foil and open frame
+  casings; stock, racing, deep and whisper cores; 2-block, 4-block and scrap memory; the cable jack; standard and hot
+  cells; fin sink and cold plate; overclock board and echo buffer), with `_how-to-build-a-rig.txt`. `src/rig-parts.js`
+  reads them (`parseRigPart`, `rigPartsNow`, `GAME_RIG_PARTS_DIR`; problems through `addChecker` into check-story,
+  which counts them now): kind, order, grade, weight, heat, power, quiet, speed, memory, cools, cooling, echo, a board's
+  `sockets` ("core at 1 1, ... extra at 5 1 from Hacking 7", keys core1, memory1, memory2...), `made from` ("2 scrap,
+  Engineering 1, 2 hours") and `where from`. Only the cable jack is a link for now: the other links (clip, optic,
+  radio, Navy coupler) belong with step 6's computers that need them.
+- `rigStats(rig, hacking)`: board and casing numbers (half if worn, +1 heat worn), each open socket's part
+  (`partNumbers`: worn half and +1 heat, broken nothing, a core's `tune`), heat sinks taking their `cools` off each
+  socket beside them, the parts' heat less the casing's cooling; memory, power (−1..3), speed (0.4..2.5), quiet
+  (−1..3), echo, weight; `dead` without a working core, cell and link, or with a broken board. `rigNoise`, `rigMinutes`
+  and `sessionHeat` are the session's sums. My numbers: overclock speed +0.3 heat +2 (the design had +1, which the yard
+  build's sink and case swallowed), undervolt −0.2 and −1; both Engineering 1 (the design's 3 and 2 were out of a new
+  captain's reach, 0 or 1); mending Engineering and hours by grade, a parts crate; the lathe 2 scrap and 2 hours for a
+  broken part back as worn; taking apart 1 scrap (2 for a board or casing), 1 hour. No charge on cells (the design's
+  battery): a cell is needed to start, and the hot cell adds power.
+- The save (version 27, `fromVersion26`): `game.rig.parts` [{ uid, id, cond, tune, from }], `game.rig.build`
+  { board, casing, fit: { socket: uid } }, `nextUid`; `newRig`/`giveStartingBuild` make the yard build (the same 4
+  blocks as before). The rig's memory is the build's (`memoryOf`), and anything that takes memory away unloads what
+  no longer fits, last loaded first (`trimLoaded`).
+- At a computer that isn't the player's, `act` in `src/computer-use.js` puts the rig in: minutes divided by its speed
+  and doubled when overheating, noise through its quiet and its fan (heat 3 and up), heat rising a point every 10 of
+  the session's minutes, the fan and overheating said once each in the log (`fanOn`, `overheated`), and `finish`
+  wearing the hottest working part a step (`wearHottest`) after an overheated session, not in practice. `cantRun`
+  refuses everything on a rig that won't start and adds the rig's power to a program's against the class; CLEANER
+  takes `3 + echo`. `computerView` sends `rigHeat`, shown in the tray as Rig cool, warm, hot or overheating.
+- The Rig page (`public/rig.js`, styles in `public/desktop.css`): The build section with the board and casing tiles,
+  the totals, when the fan and overheating come in a session (or that it won't start), the sockets as card tiles on
+  their grid (part, condition, tune, heat and cooling), the picked part's details and its actions from the server
+  (`partActions`: Use this board/casing, Take it out, Mend, Rebuild on the lathe, Overclock, Undervolt, Put it back,
+  Take it apart, each with why not), the spare parts (a picked one lights the sockets it fits; a click fits it), scrap,
+  crates aboard and Engineering, the Make buttons, and a folded Every part there is. `rigCommand` takes fit, remove,
+  board (the old parts find sockets of their kind on the new board), casing, mend, tune, rebuild, apart and make;
+  fitting anywhere but at a computer or in a fight, the bench's jobs at the Repair Bay with the clock running.
+- `world/items/scrap.txt` (67 items); the pack weighs the rig by its parts (`loadOf` in `src/bag.js`) and its tip
+  shows that weight.
+- Tests: `test/rig-build.test.js` (9): the files, the yard build's numbers and weight, worn and broken and a rig that
+  won't start, the sink's neighbours, fitting and taking out, the bench's jobs, a session's fan and overheating and
+  wear, quiet and power and the echo buffer with the Navy board, the old save. Versions to 27, 67 items.
+- Screens, on a test copy at 1400 and 810 wide: the build at the bench with spare parts (worn 4-block memory, broken
+  whisper core, Navy board) and three scrap; picking and fitting the 4-block memory (the rig going warm, the fan
+  sooner); overclocking the core on screen (speed 1.3, the fan on from the start with the worn memory away from the
+  sink); the tray's "Rig hot" at a hacked computer; at 810 a rig without its link saying it won't start, and fitting
+  the cable jack back; Every part there is opened, nothing overflowing.
+- Not done: getting the other parts (step 5: wrecks, ports, tools, finds), the other links and the computers that
+  need them (step 6), cell charge, and the Story board for programs and parts (step 7). The owner hasn't tried it.

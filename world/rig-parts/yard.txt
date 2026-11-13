@@ -1,0 +1,10 @@
+# Yard board
+kind: board
+order: 1
+grade: 1
+weight: 0.3
+sockets: core at 1 1, sink at 2 1, memory at 3 1, link at 1 2, cell at 2 2, memory at 3 2
+where from: Comes with the rig.
+
+What it is:
+The shipyard's own. Six sockets on a grid: a heat sink cools the sockets beside it, so where a part goes matters.

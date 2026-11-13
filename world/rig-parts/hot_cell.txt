@@ -1,0 +1,11 @@
+# Hot cell
+kind: cell
+order: 51
+grade: 3
+weight: 0.3
+heat: 2
+power: 1
+where from: Pressed from a fuel cell, with a cell press.
+
+What it is:
+Drives programs harder, and runs hot.

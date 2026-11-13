@@ -14,7 +14,7 @@ import { noteLoreSeen, startingLoreIds } from "./lore.js";
 import { crewContacts, maxEnergy, maxHp } from "./rules.js";
 import { emptyStory } from "./story-library.js";
 import { walkFromOnePlan, walkFromStory } from "./walk.js";
-import { newRig } from "./rig.js";
+import { giveStartingBuild, newRig } from "./rig.js";
 import { classOf } from "./hack-classes.js";
 
 // What each original background becomes under the deeper character system.
@@ -353,6 +353,14 @@ function fromVersion25(save) {
   return game;
 }
 
+// Version 27 (2026-11-13): the rig built from parts, step 4 of the hacking rework. A rig that's only programs gets the
+// plain yard build, which holds the same four blocks.
+function fromVersion26(save) {
+  const game = { ...save, version: 27 };
+  if (game.rig && !game.rig.parts) game.rig = giveStartingBuild({ ...game.rig });
+  return game;
+}
+
 export function migrateGame(save) {
   if (!save) return save;
   let game = save;
@@ -381,6 +389,7 @@ export function migrateGame(save) {
   if (game.version < 24) game = fromVersion23(game);
   if (game.version < 25) game = fromVersion24(game);
   if (game.version < 26) game = fromVersion25(game);
+  if (game.version < 27) game = fromVersion26(game);
   // A place that's gone from the world's files can't hold anyone, and factions added since this save was made need a standing.
   if (!LOCATIONS[game.location]) game.location = "meridian";
   game.factions ??= {};

@@ -1,0 +1,11 @@
+# Scrap memory
+kind: memory
+order: 32
+grade: 1
+weight: 0.05
+memory: 1
+made from: 1 scrap, Engineering 0, 1 hour
+where from: Made at the bench from scrap.
+
+What it is:
+One block, soldered from scrap.

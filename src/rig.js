@@ -1,41 +1,81 @@
 // The player's rig: the pocket computer in their pack that carries programs onto computers (step 2 of the hacking
-// rework). For now every rig is the plain yard build, four blocks of memory. The programs are world files
-// (src/programs.js); what each one does when it runs is here. At a computer's logon the breakers get the player in, if
-// they're strong enough for its class (step 3); inside, the watcher hears each program's noise, and what the computer
-// runs (doors, cameras, power) is switched through the systems. Writing a program takes hours at the Repair Bay's
-// bench, and Hacking decides which ones the player can write; one they have, however they came by it, runs whatever
-// their skill. Some can be copied off the computers that hold them.
+// rework). It's built from parts (step 4): a casing round a board, the board's sockets each holding a part, all world
+// files read by src/rig-parts.js, which says what a build adds up to: its memory, power, speed, quiet and heat. The
+// programs are world files too (src/programs.js); what each one does when it runs is here. At a computer's logon the
+// breakers get the player in, if they and the rig are strong enough for its class (step 3); inside, the watcher hears
+// each program's noise, and what the computer runs (doors, cameras, power) is switched through the systems. Writing a
+// program takes hours at the Repair Bay's bench, and Hacking decides which ones the player can write; one they have,
+// however they came by it, runs whatever their skill. Some can be copied off the computers that hold them. The bench
+// also mends parts with the ship's parts crates, tunes the core with the player's Engineering, rebuilds broken parts
+// from scrap with its lathe, takes parts apart for scrap, and makes a few from it.
 //
-// game.rig: { programs: [ids the rig has], loaded: [ids in its memory], timers: [what's been left behind, and when] }.
+// game.rig: { programs: [ids the rig has], loaded: [ids in its memory], timers: [what's been left behind, and when],
+// parts: [{ uid, id, cond: new|worn|broken, tune: over|under|null, from }], build: { board: uid, casing: uid,
+// fit: { socket: uid } }, nextUid }.
 import { addClockWork } from "./room-hooks.js";
 import { PROGRAM_KINDS, programById, programsNow } from "./programs.js";
+import { BENCH_RULES, CONDITIONS, HEAT, PART_KINDS, heatWords, partNumbers, rigPartById, rigPartsNow, rigStats, sessionHeat } from "./rig-parts.js";
 import { classKeys, gotIn, line, watchFor } from "./computers.js";
 import { controlSystem, controlsView, damagePart, systemsOf } from "./systems.js";
-import { passTime, skillRank } from "./rules.js";
+import { countAboard, takeAboard } from "./logistics.js";
+import { addItem, passTime, removeItem, skillRank } from "./rules.js";
 import { roomHere } from "./walk.js";
 import { WORLD_COMPUTERS } from "./world.js";
 
-export const RIG_MEMORY = 4;
 export const BENCH = { place: "meridian", room: "repair", name: "the Repair Bay's bench" };
 export const STARTING_PROGRAMS = ["dictionary", "doorkey", "mask"];
+// The plain yard build every rig starts as: what goes in each of the yard board's sockets.
+export const STARTING_BUILD = { board: "yard", casing: "plain_case", fit: { core1: "stock_core", sink1: "fin_sink", memory1: "memory_2", link1: "cable_jack", cell1: "standard_cell", memory2: "memory_2" } };
+
+// A part come by: its own id on the rig, its condition, and where it came from.
+function addPart(rig, id, { cond = "new", from = null } = {}) {
+  rig.nextUid = (rig.nextUid ?? 0) + 1;
+  const item = { uid: `p${rig.nextUid}`, id, cond, tune: null, from: from ?? rigPartById(id)?.from ?? "" };
+  rig.parts.push(item);
+  return item;
+}
+
+// The yard build, put into a rig that has no parts yet.
+export function giveStartingBuild(rig) {
+  rig.parts = [];
+  rig.build = { board: null, casing: null, fit: {} };
+  const from = "Came with the rig.";
+  rig.build.board = addPart(rig, STARTING_BUILD.board, { from }).uid;
+  rig.build.casing = addPart(rig, STARTING_BUILD.casing, { from }).uid;
+  for (const [socket, id] of Object.entries(STARTING_BUILD.fit)) rig.build.fit[socket] = addPart(rig, id, { from }).uid;
+  return rig;
+}
 
 export function newRig() {
+  const rig = giveStartingBuild({ programs: [], loaded: [], timers: [] });
   const all = programsNow().list;
-  const programs = [...new Set([...all.filter((p) => p.everyRig || p.builtIn).map((p) => p.id), ...STARTING_PROGRAMS.filter((id) => programById(id))])];
-  const loaded = [];
+  rig.programs = [...new Set([...all.filter((p) => p.everyRig || p.builtIn).map((p) => p.id), ...STARTING_PROGRAMS.filter((id) => programById(id))])];
+  const memory = rigStats(rig).memory;
   let used = 0;
   for (const id of STARTING_PROGRAMS) {
     const p = programById(id);
-    if (!p || p.builtIn || used + p.size > RIG_MEMORY) continue;
-    loaded.push(id);
+    if (!p || p.builtIn || used + p.size > memory) continue;
+    rig.loaded.push(id);
     used += p.size;
   }
-  return { programs, loaded, timers: [] };
+  return rig;
 }
 
 const usedMemory = (rig) => rig.loaded.reduce((n, id) => n + (programById(id)?.size ?? 0), 0);
 const hackingOf = (game) => skillRank(game, "hacking");
+const engineeringOf = (game) => skillRank(game, "engineering");
 const atBench = (game) => game.location === BENCH.place && roomHere(game)?.id === BENCH.room;
+// What the rig's build adds up to now.
+export const rigNow = (game) => rigStats(game.rig, hackingOf(game));
+const memoryOf = (game) => rigNow(game).memory;
+// A build that's lost memory (a part out, worn or broken) unloads what no longer fits, the last loaded first.
+function trimLoaded(game) {
+  const rig = game.rig;
+  const memory = memoryOf(game);
+  const off = [];
+  while (rig.loaded.length && usedMemory(rig) > memory) off.push(programById(rig.loaded.pop())?.name ?? "a program");
+  return off.length ? ` ${off.join(" and ")} ${off.length === 1 ? "comes" : "come"} off the rig's memory: there's no room for ${off.length === 1 ? "it" : "them"} now.` : "";
+}
 const classNumber = (classKey) => Math.max(1, classKeys().indexOf(classKey) + 1);
 const computerName = (id) => WORLD_COMPUTERS[id]?.name ?? id;
 
@@ -49,14 +89,103 @@ function cantWrite(game, p) {
   return null;
 }
 
-// What the page shows: memory, what's loaded, what the rig has, and every program there is.
+// ---- The build -----------------------------------------------------------------------------------------------------
+
+const partOf = (rig, uid) => rig.parts.find((item) => item.uid === uid) ?? null;
+const fittedIn = (rig, uid) => Object.entries(rig.build.fit).find(([, one]) => one === uid)?.[0] ?? null;
+const inUse = (rig, uid) => uid === rig.build.board || uid === rig.build.casing || Boolean(fittedIn(rig, uid));
+const partName = (item) => rigPartById(item?.id)?.name ?? item?.id ?? "a part";
+const lower = (item) => partName(item).toLowerCase();
+const hoursWords = (n) => `${n} ${n === 1 ? "hour" : "hours"}`;
+const sign = (n) => (n > 0 ? `+${n}` : `${n}`);
+const cratesAboard = (game) => countAboard(game, BENCH.place, "parts_crate")?.n ?? 0;
+
+// Why a bench job can't be done now, or null: it's done standing at the Repair Bay's bench, and not in the middle of
+// anything else.
+function benchWhy(game) {
+  if (!atBench(game)) return `at ${BENCH.name}`;
+  if (game.computer || game.combat || game.check || game.talk) return "not now";
+  return null;
+}
+
+// What can be done to one part, and why not: each { action, label, why }.
+function partActions(game, item) {
+  const rig = game.rig;
+  const p = rigPartById(item.id);
+  if (!p) return [];
+  const out = [];
+  const bench = benchWhy(game);
+  const busy = game.computer ? "log off the computer first" : game.combat ? "finish the fight first" : null;
+  if (p.kind === "board" && item.uid !== rig.build.board) out.push({ action: "board", label: "Use this board", why: busy ?? (item.cond === "broken" ? "it's broken" : null) });
+  else if (p.kind === "casing" && item.uid !== rig.build.casing) out.push({ action: "casing", label: "Use this casing", why: busy });
+  else if (fittedIn(rig, item.uid)) out.push({ action: "remove", label: "Take it out", why: busy });
+  if (item.cond !== "new") {
+    const crates = cratesAboard(game);
+    out.push({ action: "mend", label: `Mend it: a parts crate, ${hoursWords(p.grade)}`, why: bench ?? (engineeringOf(game) < p.grade ? `needs Engineering ${p.grade}` : crates < 1 ? "there's no parts crate aboard" : null) });
+  }
+  if (item.cond === "broken") out.push({ action: "rebuild", label: `Rebuild it on the lathe: ${BENCH_RULES.lathe.scrap} scrap, ${hoursWords(BENCH_RULES.lathe.hours)}`, why: bench ?? ((game.inventory?.scrap ?? 0) < BENCH_RULES.lathe.scrap ? `needs ${BENCH_RULES.lathe.scrap} scrap` : null) });
+  if (p.kind === "core" && item.cond !== "broken") {
+    for (const [how, tune] of Object.entries(BENCH_RULES.tunes)) {
+      if (item.tune === how) continue;
+      out.push({ action: "tune", how, label: `${how === "over" ? "Overclock" : "Undervolt"} it: ${hoursWords(tune.hours)}`, why: bench ?? (engineeringOf(game) < tune.engineering ? `needs Engineering ${tune.engineering}` : null) });
+    }
+    if (item.tune) out.push({ action: "tune", how: "none", label: `Put it back as it was: ${hoursWords(BENCH_RULES.untune.hours)}`, why: bench });
+  }
+  if (!inUse(rig, item.uid)) {
+    const scrap = BENCH_RULES.apart.scrap[p.kind === "board" || p.kind === "casing" ? p.kind : "part"];
+    out.push({ action: "apart", label: `Take it apart for ${scrap} scrap: ${hoursWords(BENCH_RULES.apart.hours)}`, why: bench });
+  }
+  return out;
+}
+
+// What one part does, in a line of words.
+function factsOf(item) {
+  const p = rigPartById(item.id);
+  if (!p) return "";
+  if (p.kind === "board") return [`${p.sockets.length} sockets`, p.power && `power ${sign(p.power)}`, p.quiet && `quiet ${sign(p.quiet)}`, p.heat && `heat ${p.heat}`].filter(Boolean).join(" · ");
+  if (p.kind === "casing") return [`cooling ${p.cooling}`, p.quiet && `quiet ${sign(p.quiet)}`, p.speed && `speed ${sign(p.speed)}`].filter(Boolean).join(" · ");
+  const n = partNumbers(item);
+  if (!n.works) return "broken: it does nothing";
+  return [n.fx.memory && `${n.fx.memory} ${n.fx.memory === 1 ? "block" : "blocks"}`, n.fx.power && `power ${sign(n.fx.power)}`, n.fx.speed && `speed ${sign(n.fx.speed)}`, n.fx.quiet && `quiet ${sign(n.fx.quiet)}`, n.fx.echo && `CLEANER ${sign(n.fx.echo)}`, n.cools && `cools ${n.cools} beside it`, `heat ${n.heat}`].filter(Boolean).join(" · ");
+}
+
+const partView = (game, item) => {
+  const p = rigPartById(item.id);
+  return { uid: item.uid, id: item.id, name: partName(item), kind: p?.kind ?? null, kindName: PART_KINDS[p?.kind] ?? "Part", cond: item.cond, tune: item.tune ? BENCH_RULES.tunes[item.tune]?.name ?? null : null, grade: p?.grade ?? 1, weight: p?.weight ?? 0, facts: factsOf(item), what: p?.what ?? "", from: item.from || p?.from || "", socket: fittedIn(game.rig, item.uid), actions: partActions(game, item) };
+};
+
+// The build for the Rig page: the board's sockets with what's in them, the casing, the spare parts, the totals, what
+// the bench can make, and every part there is.
+function buildView(game) {
+  const rig = game.rig;
+  const stats = rigNow(game);
+  const byUid = Object.fromEntries(rig.parts.map((item) => [item.uid, item]));
+  const bench = benchWhy(game);
+  const scrap = game.inventory?.scrap ?? 0;
+  return {
+    board: byUid[rig.build.board] ? partView(game, byUid[rig.build.board]) : null,
+    casing: byUid[rig.build.casing] ? partView(game, byUid[rig.build.casing]) : null,
+    sockets: stats.sockets.map((s) => ({ ...s, kindName: PART_KINDS[s.kind], part: s.uid ? partView(game, byUid[s.uid]) : null })),
+    stats: { memory: stats.memory, power: stats.power, speed: stats.speed, quiet: stats.quiet, heat: stats.heat, heatWords: heatWords(stats.heat), weight: stats.weight, dead: stats.dead, fanAfter: Math.max(0, (HEAT.fan - stats.heat) * HEAT.minutesAPoint), hotAfter: Math.max(0, (HEAT.overheating - stats.heat) * HEAT.minutesAPoint) },
+    box: rig.parts.filter((item) => !inUse(rig, item.uid)).map((item) => partView(game, item)),
+    scrap,
+    crates: cratesAboard(game),
+    engineering: engineeringOf(game),
+    makes: rigPartsNow().list.filter((p) => p.made).map((p) => ({ id: p.id, name: p.name, kindName: PART_KINDS[p.kind], what: p.what, label: `Make ${/^[aeiou]/i.test(p.name) ? "an" : "a"} ${p.name.toLowerCase()}: ${p.made.scrap} scrap, ${hoursWords(p.made.hours)}`, why: bench ?? (engineeringOf(game) < p.made.engineering ? `needs Engineering ${p.made.engineering}` : scrap < p.made.scrap ? `needs ${p.made.scrap} scrap` : null) })),
+    every: rigPartsNow().list.map((p) => ({ id: p.id, name: p.name, kind: p.kind, kindName: PART_KINDS[p.kind], grade: p.grade, from: p.from, what: p.what, facts: factsOf({ id: p.id, cond: "new" }) })),
+    kinds: PART_KINDS,
+  };
+}
+
+// What the page shows: memory, what's loaded, what the rig has, every program there is, and the build.
 export function rigView(game) {
   const rig = game.rig;
   if (!rig) return null;
   const hacking = hackingOf(game);
   return {
-    memory: RIG_MEMORY,
+    memory: memoryOf(game),
     used: usedMemory(rig),
+    build: buildView(game),
     hacking,
     atBench: atBench(game),
     bench: BENCH.name,
@@ -72,20 +201,23 @@ export function rigView(game) {
   };
 }
 
-// Loading, unloading and writing, outside any computer (/api/rig). Returns { said, notes }.
+// Loading, unloading and writing programs, and changing the build and working on it at the bench, outside any computer
+// (/api/rig). Returns { said, notes }.
 export function rigCommand(game, body) {
   const rig = game.rig;
   if (!rig) throw new Error("You don't have a rig.");
-  const p = programById(body.id);
-  if (!p) throw new Error("There's no such program.");
-  // What's loaded is decided in the room, before sitting down: at a computer the rig runs what it brought.
+  // What's loaded and fitted is decided in the room, before sitting down: at a computer the rig runs what it brought.
   if (game.computer) throw new Error("Log off the computer first: the rig's programs are loaded before you sit down.");
   if (game.combat) throw new Error("Finish the fight first.");
-  if (body.action === "write" && game.talk) throw new Error("Finish the talk first.");
+  if (["write", "mend", "tune", "rebuild", "apart", "make"].includes(body.action) && game.talk) throw new Error("Finish the talk first.");
+  if (["fit", "remove", "board", "casing", "mend", "tune", "rebuild", "apart", "make"].includes(body.action)) return buildCommand(game, body);
+  const p = programById(body.id);
+  if (!p) throw new Error("There's no such program.");
+  const memory = memoryOf(game);
   if (body.action === "load") {
     if (p.builtIn || rig.loaded.includes(p.id)) return { said: `${p.name} is already loaded.` };
     if (!rig.programs.includes(p.id)) throw new Error(`Your rig doesn't have ${p.name}.`);
-    if (usedMemory(rig) + p.size > RIG_MEMORY) throw new Error(`${p.name} needs ${p.size} ${p.size === 1 ? "block" : "blocks"}, and your rig has ${RIG_MEMORY - usedMemory(rig)} free.`);
+    if (usedMemory(rig) + p.size > memory) throw new Error(`${p.name} needs ${p.size} ${p.size === 1 ? "block" : "blocks"}, and your rig has ${Math.max(0, memory - usedMemory(rig))} free.`);
     rig.loaded.push(p.id);
     return { said: `${p.name} is loaded.` };
   }
@@ -98,11 +230,123 @@ export function rigCommand(game, body) {
     if (why) throw new Error(`You can't write ${p.name}: ${why}.`);
     const notes = passTime(game, p.hours) ?? [];
     rig.programs.push(p.id);
-    const fits = usedMemory(rig) + p.size <= RIG_MEMORY;
+    const fits = usedMemory(rig) + p.size <= memory;
     if (fits) rig.loaded.push(p.id);
     return { said: `${p.hours} ${p.hours === 1 ? "hour" : "hours"} at the bench, and ${p.name} is written${fits ? " and loaded" : "; there's no room to load it until something comes off"}.`, notes: Array.isArray(notes) ? notes : [] };
   }
   throw new Error("Unknown order.");
+}
+
+// Hours at the bench, with the clock running.
+const atTheBench = (game, hours) => {
+  const notes = passTime(game, hours) ?? [];
+  return Array.isArray(notes) ? notes : [];
+};
+
+// Fitting parts, swapping the board or the casing, and the bench's jobs.
+function buildCommand(game, body) {
+  const rig = game.rig;
+  if (body.action === "make") {
+    const p = rigPartById(body.id);
+    if (!p?.made) throw new Error("That can't be made at the bench.");
+    const why = benchWhy(game) ?? (engineeringOf(game) < p.made.engineering ? `it needs Engineering ${p.made.engineering}` : (game.inventory?.scrap ?? 0) < p.made.scrap ? `it needs ${p.made.scrap} scrap` : null);
+    if (why) throw new Error(`You can't make ${p.name.toLowerCase()}: ${why === `at ${BENCH.name}` ? `it's made at ${BENCH.name}` : why}.`);
+    removeItem(game, "scrap", p.made.scrap);
+    const notes = atTheBench(game, p.made.hours);
+    addPart(rig, p.id, { from: "Made at the bench, from scrap." });
+    return { said: `${hoursWords(p.made.hours)} at the bench, and ${p.made.scrap} scrap make ${p.name.toLowerCase()}. It's with your rig's spare parts.`, notes };
+  }
+  const item = partOf(rig, body.uid);
+  if (!item) throw new Error("Your rig has no such part.");
+  const p = rigPartById(item.id);
+  if (!p) throw new Error("That part's file has gone.");
+  const action = partActions(game, item).find((one) => one.action === body.action && (body.action !== "tune" || one.how === body.how));
+  if (body.action !== "fit" && !action) throw new Error(`That can't be done to the ${lower(item)}.`);
+  if (action?.why) throw new Error(`You can't do that to the ${lower(item)}: ${action.why === `at ${BENCH.name}` ? `it's done at ${BENCH.name}` : action.why}.`);
+  switch (body.action) {
+    case "fit": {
+      const stats = rigNow(game);
+      const socket = stats.sockets.find((s) => s.key === body.socket);
+      if (!socket) throw new Error("The board has no such socket.");
+      if (!socket.open) throw new Error(`That socket opens only from Hacking ${socket.gate}.`);
+      if (socket.kind !== p.kind) throw new Error(`A ${PART_KINDS[p.kind]?.toLowerCase() ?? "part"} doesn't go in a ${PART_KINDS[socket.kind].toLowerCase()} socket.`);
+      const was = fittedIn(rig, item.uid);
+      if (was) delete rig.build.fit[was];
+      const out = rig.build.fit[socket.key] ? partOf(rig, rig.build.fit[socket.key]) : null;
+      rig.build.fit[socket.key] = item.uid;
+      return { said: `The ${lower(item)} goes in.${out ? ` The ${lower(out)} comes out, to the spare parts.` : ""}${trimLoaded(game)}` };
+    }
+    case "remove": {
+      delete rig.build.fit[fittedIn(rig, item.uid)];
+      return { said: `The ${lower(item)} comes out, to the spare parts.${trimLoaded(game)}` };
+    }
+    case "board": {
+      // The parts in the old board go into the new one's sockets of their kind, as far as they'll go.
+      const fitted = Object.entries(rig.build.fit);
+      rig.build.board = item.uid;
+      rig.build.fit = {};
+      const sockets = p.sockets.filter((s) => s.gate <= hackingOf(game));
+      const left = [];
+      for (const [, uid] of fitted) {
+        const kind = rigPartById(partOf(rig, uid)?.id)?.kind;
+        const free = sockets.find((s) => s.kind === kind && !rig.build.fit[s.key]);
+        if (free) rig.build.fit[free.key] = uid;
+        else left.push(lower(partOf(rig, uid)));
+      }
+      return { said: `Your rig is on the ${lower(item)} now.${left.length ? ` No room on it for the ${left.join(" and the ")}: ${left.length === 1 ? "it's" : "they're"} with the spare parts.` : ""}${trimLoaded(game)}` };
+    }
+    case "casing":
+      rig.build.casing = item.uid;
+      return { said: `Your rig is in the ${lower(item)} now.` };
+    case "mend": {
+      takeAboard(game, BENCH.place, "parts_crate", 1);
+      const notes = atTheBench(game, p.grade);
+      item.cond = "new";
+      return { said: `${hoursWords(p.grade)} at the bench and a parts crate from the ship's stores, and the ${lower(item)} is as good as new.`, notes };
+    }
+    case "tune": {
+      const notes = atTheBench(game, body.how === "none" ? BENCH_RULES.untune.hours : BENCH_RULES.tunes[body.how].hours);
+      item.tune = body.how === "none" ? null : body.how;
+      const words = { over: "overclocked: quicker, and it runs hotter", under: "undervolted: slower, and it runs cooler", none: "back as it was" }[body.how];
+      return { said: `At the bench, the ${lower(item)} is ${words}.`, notes };
+    }
+    case "rebuild": {
+      removeItem(game, "scrap", BENCH_RULES.lathe.scrap);
+      const notes = atTheBench(game, BENCH_RULES.lathe.hours);
+      item.cond = "worn";
+      return { said: `The lathe rebuilds the ${lower(item)} from ${BENCH_RULES.lathe.scrap} scrap: worn now, but it works.${trimLoaded(game)}`, notes };
+    }
+    case "apart": {
+      const scrap = BENCH_RULES.apart.scrap[p.kind === "board" || p.kind === "casing" ? p.kind : "part"];
+      const notes = atTheBench(game, BENCH_RULES.apart.hours);
+      rig.parts = rig.parts.filter((one) => one.uid !== item.uid);
+      addItem(game, "scrap", scrap);
+      return { said: `The ${lower(item)} comes apart into ${scrap} scrap.`, notes };
+    }
+    default:
+      throw new Error("Unknown order.");
+  }
+}
+
+// How hot the rig is in a session, for the desktop's tray: its build's heat and a point every ten of the session's
+// minutes.
+export function rigHeat(game, session) {
+  const stats = rigNow(game);
+  const heat = sessionHeat(stats, session?.minutes ?? 0);
+  return { heat, words: heatWords(heat), fan: heat >= HEAT.fan, overheating: heat >= HEAT.overheating, dead: stats.dead };
+}
+
+// After a session that ran the rig too hot, the hottest part in it wears a step: new to worn, worn to broken. Returns
+// the line that says so, or null.
+export function wearHottest(game) {
+  const rig = game.rig;
+  if (!rig?.parts) return null;
+  const stats = rigNow(game);
+  const hottest = [...stats.sockets].filter((s) => s.uid && s.works).sort((a, b) => b.heat - a.heat || (a.kind === "core" ? -1 : 1))[0];
+  if (!hottest) return null;
+  const item = partOf(rig, hottest.uid);
+  item.cond = CONDITIONS[Math.min(CONDITIONS.length - 1, CONDITIONS.indexOf(item.cond) + 1)];
+  return `[COMPUTER] Your rig ran too hot: the ${lower(item)} is ${item.cond} now.${trimLoaded(game)}`;
 }
 
 // ---- Inside a computer -------------------------------------------------------------------------
@@ -128,13 +372,17 @@ const TRACE_PROGRAMS = ["mask", "ghost", "cleaner", "forger", "decoy", "lullaby"
 function cantRun(game, session, content, p) {
   if (!p) return "there's no such program";
   if (!p.builtIn && !game.rig.loaded.includes(p.id)) return "it isn't loaded";
+  // A rig without a working core, cell or link runs nothing at all.
+  const stats = rigNow(game);
+  if (stats.dead) return `your rig won't start: ${stats.dead}`;
   if (p.once && session.rigUsed?.includes(p.id)) return "it's already run this session";
   // At the logon only the breakers and Scope run; inside, there's nothing left to break.
   if (session.locked) {
     if (p.id === "scope") return session.scanned ? "it's read the logon already" : null;
     if (p.kind !== "in") return "log on first";
   } else if (p.kind === "in") return "you're already in";
-  if (p.power && p.power < classNumber(session.classKey)) return `it's too weak for a ${String(session.className).toLowerCase()}`;
+  // A program's power, and the rig's own from its build, against the computer's class.
+  if (p.power && p.power + stats.power < classNumber(session.classKey)) return `it's too weak for a ${String(session.className).toLowerCase()}`;
   if (p.id === "mimic" && !game.inventory?.keycard) return "it needs a lifted keycard in your pockets";
   if (p.id === "skeleton" && !session.scanned) return "Scope has to read the logon first";
   if (p.id === "shadow" && !onShift(game)) return "nobody has a session open at this hour";
@@ -157,7 +405,7 @@ export function rigInComputer(game, session, content) {
   const loaded = mine.map((p) => ({ id: p.id, name: p.name, about: p.what, why: cantRun(game, session, content, p), noise: p.noise ?? 0, minutes: p.minutes ?? 1 }));
   const copies = programsNow().list.filter((p) => (p.foundOn ?? []).includes(session.id) && !game.rig.programs.includes(p.id)).map((p) => ({ id: p.id, name: p.name, about: p.what }));
   const ways = session.locked ? mine.filter((p) => p.kind === "in" || p.id === "scope").map((p) => ({ id: p.id, name: p.name, about: p.what, kind: p.kind, power: p.power ?? null, noise: p.noise ?? 0, minutes: p.minutes ?? 1, why: cantRun(game, session, content, p) })) : [];
-  return { loaded, copies, ways, memory: RIG_MEMORY, used: usedMemory(game.rig) };
+  return { loaded, copies, ways, memory: memoryOf(game), used: usedMemory(game.rig) };
 }
 
 // Who a breaker gets the player in as, and what it says.
@@ -232,7 +480,8 @@ export function runRigProgram(game, session, content, id, helpers) {
       say(`${p.name} is running: the next ${p.id === "mask" ? "three" : "six"} things you do here make no noise.`);
       break;
     case "cleaner": case "forger": case "decoy": {
-      const off = { cleaner: 3, forger: 1, decoy: 2 }[p.id];
+      // An echo buffer in the rig makes CLEANER take more off.
+      const off = { cleaner: 3 + rigNow(game).echo, forger: 1, decoy: 2 }[p.id];
       const watch = watchFor(game, session.classKey);
       const before = session.noise ?? 0;
       session.noise = Math.max(0, before - off);
@@ -312,7 +561,7 @@ export function copyProgram(game, session, content, id, helpers) {
   if (!p || !(p.foundOn ?? []).includes(session.id)) return { over: false, said: "There's no such program here to copy." };
   if (game.rig.programs.includes(p.id)) return { over: false, said: `Your rig already has ${p.name}.` };
   game.rig.programs.push(p.id);
-  const fits = usedMemory(game.rig) + p.size <= RIG_MEMORY;
+  const fits = usedMemory(game.rig) + p.size <= memoryOf(game);
   if (fits) game.rig.loaded.push(p.id);
   const said = line(`${p.name} is copied onto your rig${fits ? " and loaded" : "; there's no room to load it yet"}.`, "good");
   session.screen = { kind: "program", id: `copy:${id}`, title: p.name, lines: [line(p.what, "dim"), said] };

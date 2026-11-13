@@ -1,0 +1,10 @@
+# Plain case
+kind: casing
+order: 10
+grade: 1
+weight: 0.4
+cooling: 1
+where from: Comes with the rig.
+
+What it is:
+Vents everywhere: it cools well.

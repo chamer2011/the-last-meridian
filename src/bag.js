@@ -11,6 +11,7 @@ import { INVENTORY } from "./world.js";
 import { addItem, attr, removeItem, useItem } from "./rules.js";
 import { standingAt } from "./walk.js";
 import { notePut } from "./puts.js";
+import { rigWeight } from "./rig-parts.js";
 
 const R = () => INVENTORY;
 const round1 = (n) => Math.round(n * 10) / 10;
@@ -35,7 +36,9 @@ const SLOT_NAMES = { weapon: "in hand", armor: "worn", sidearm: "on the hip" };
 // ---- The load ------------------------------------------------------------------------------------------
 
 export const maxLoad = (game) => (R().load?.base ?? 12) + (R().load?.perMight ?? 3) * attr(game, "might");
-export const loadOf = (game) => round1(Object.entries(game.inventory ?? {}).reduce((sum, [id, n]) => sum + weightOf(ITEMS[id]) * n, 0));
+// The rig weighs what its board, casing and parts weigh, the spare ones with it included (src/rig-parts.js).
+const weightIn = (game, id) => (id === "rig" && game.rig?.parts ? rigWeight(game.rig) : weightOf(ITEMS[id]));
+export const loadOf = (game) => round1(Object.entries(game.inventory ?? {}).reduce((sum, [id, n]) => sum + weightIn(game, id) * n, 0));
 export const overloaded = (game) => loadOf(game) > maxLoad(game);
 // How many times as fast the player tires: more than they can carry wears them out.
 export const tiring = (game) => (overloaded(game) ? R().load?.tiring ?? 2 : 1);

@@ -1,0 +1,12 @@
+# Navy board
+kind: board
+order: 3
+grade: 4
+weight: 0.6
+heat: 1
+power: 1
+sockets: core at 1 1, sink at 2 1, memory at 3 1, memory at 4 1, extra at 5 1 from Hacking 7, link at 1 2, cell at 2 2, sink at 3 2, memory at 4 2
+where from: Pulled from a Navy wreck in the Graveyard.
+
+What it is:
+Military, salvaged: strong, hot and heavy. Nine sockets, and the extra one opens only to someone who knows what they're doing.

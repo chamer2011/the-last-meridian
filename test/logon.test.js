@@ -222,7 +222,7 @@ test("an old save keeps the computer it's on, with its trace turned into noise, 
   old.computer = { id: "test_terminal", name: "The test terminal", classKey: "moderate", className: "Crew terminal", user: "oona", place: "haven", yours: false, hacked: true, trace: 3, maxTrace: 6, how: "hacked", generic: TERMINAL, screen: { kind: "home" }, log: [], actions: 4, read: [], ran: [], startedAt: old.clock.hours, roomId: null, at: null };
   old.check = { id: 1, skill: "hacking", game: "crack", difficulty: "moderate", state: {}, log: [] };
   const moved = migrateGame(old);
-  assert.equal(moved.version, 26);
+  assert.equal(moved.version, 27);
   assert.equal(moved.computer.locked, false);
   assert.equal(moved.computer.trace, undefined);
   assert.ok(moved.computer.noise > 0 && moved.computer.noise < watchFor(moved, "moderate").traces, `noise ${moved.computer.noise}`);

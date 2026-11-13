@@ -1,0 +1,12 @@
+# Shielded case
+kind: casing
+order: 11
+grade: 2
+weight: 0.9
+cooling: 0
+quiet: 1
+speed: -0.1
+where from: Haven's market.
+
+What it is:
+Quieter, warmer, heavier.

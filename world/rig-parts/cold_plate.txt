@@ -1,0 +1,10 @@
+# Cold plate
+kind: sink
+order: 61
+grade: 3
+weight: 0.4
+cools: 2
+where from: The galley's chiller, if nobody's looking.
+
+What it is:
+Takes two points of heat off each socket beside it.

@@ -763,7 +763,7 @@ initCheck({ ui, render, sendChat, openMenu, closeMenu });
 initMap({ ui, render, runAction, renderMenus, openMenu, closeMenu });
 initShip({ ui, render, runAction, renderMenus, openMenu, closeMenu });
 initCommand({ ui, render, runAction, closeMenu, openPersonSheet });
-initRig({ ui, runAction });
+initRig({ ui, runAction, renderMenus: () => renderMenus() });
 initWalk({
   ui,
   reading,

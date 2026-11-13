@@ -1,0 +1,10 @@
+# Echo buffer
+kind: extra
+order: 71
+grade: 3
+weight: 0.05
+echo: 2
+where from: Kessara's fence.
+
+What it is:
+CLEANER takes two more noise off.

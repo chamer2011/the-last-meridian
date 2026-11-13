@@ -1,0 +1,10 @@
+# Fin sink
+kind: sink
+order: 60
+grade: 1
+weight: 0.2
+cools: 1
+where from: Comes with the rig.
+
+What it is:
+Takes a point of heat off each socket beside it.

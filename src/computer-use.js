@@ -16,7 +16,8 @@ import { WORLD_COMPUTERS } from "./world.js";
 import { applySystemsEffect, controlSystem, controlsView, powerNote, roomPowered } from "./systems.js";
 import { manifestLines } from "./logistics.js";
 import { untagged } from "../public/story.js";
-import { copyProgram, runRigProgram } from "./rig.js";
+import { copyProgram, rigNow, runRigProgram, wearHottest } from "./rig.js";
+import { HEAT, rigMinutes, rigNoise, sessionHeat } from "./rig-parts.js";
 import { MAX_LOG, MINUTES_PER_ACTION, contentOf, knowsPassword, levelNamed, line, memoryOf, openLogon, openSession, peopleAt, programOffered, readNoise, sameName, settleHack, slug, watchFor, watchStage, writtenContent } from "./computers.js";
 
 // Found by the trace, or cut off: out at once. On a ship's main system or worse that leaves a mark on the record.
@@ -47,7 +48,12 @@ function thrownOut(game, session, why = "traced") {
 // minutes and finds them when they're up; at its cut-off they're out at once.
 function act(game, session, { noise = 0, minutes = MINUTES_PER_ACTION } = {}) {
   session.actions += 1;
-  const spent = Math.max(0, Number(minutes) || 0);
+  // The rig is plugged into any computer that isn't the player's own: its speed divides the minutes (overheating
+  // doubles them), its quiet takes noise off, and its fan, once it's hot, is heard.
+  const rig = session.yours ? null : rigNow(game);
+  const heatBefore = rig ? sessionHeat(rig, session.minutes) : 0;
+  const base = Math.max(0, Number(minutes) || 0);
+  const spent = rig ? rigMinutes(rig, base, heatBefore >= HEAT.overheating) : base;
   session.minutes = (session.minutes ?? 0) + spent;
   if (session.yours) return null;
   const watch = watchFor(game, session.classKey);
@@ -57,11 +63,22 @@ function act(game, session, { noise = 0, minutes = MINUTES_PER_ACTION } = {}) {
     heard = 0;
   }
   if (heard > 0 && session.blindLeft > 0) heard = 0;
+  if (heard > 0) heard = rigNoise(rig, heard, heatBefore >= HEAT.fan);
   if (heard > 0 && session.shadow) heard += 1;
   if (heard > 0 && session.noticed) heard += 1;
   session.noise = (session.noise ?? 0) + heard;
   const last = session.log.at(-1);
   if (heard > 0 && last?.text) last.text = `${last.text} (+${heard} noise)`;
+  // The rig warms with the session: its fan comes on, then it overheats, each said once.
+  const heat = sessionHeat(rig, session.minutes);
+  if (heat >= HEAT.fan && !session.fanOn) {
+    session.fanOn = true;
+    session.log.push(line("Your rig's fan comes on. Anything noisy is one louder now.", "warn"));
+  }
+  if (heat >= HEAT.overheating && !session.overheated) {
+    session.overheated = true;
+    session.log.push(line("Your rig is overheating: everything takes twice as long, and something in it will wear.", "warn"));
+  }
   if (session.blindLeft > 0) {
     session.blindLeft = Math.max(0, session.blindLeft - spent);
     if (!session.blindLeft) {
@@ -302,6 +319,9 @@ const watcherWords = (session) => ({
 // tells whatever asked for the hack that it didn't happen. Practice leaves nothing: no line, and no time gone by.
 function finish(game, session, notes = []) {
   if (session.locked) settleHack(game, session, false, "left");
+  // A rig that overheated wears its hottest part, except in practice, where nothing counts.
+  const worn = session.overheated && !session.practice ? wearHottest(game) : null;
+  if (worn) notes = [...notes, worn];
   if (session.practice) {
     game.computer = null;
     return { over: true, summary: notes[0] ?? "[PRACTICE] You log off. Nothing that happened there counts." };

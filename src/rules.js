@@ -763,7 +763,7 @@ export const tellStoryWaits = (fn) => {
 export function assembleGame(profile) {
   const start = START_LIST[profile.start] ?? START_LIST.captain;
   const game = {
-    version: 26,
+    version: 27,
     campaign: null,
     scene: null,
     flags: {},

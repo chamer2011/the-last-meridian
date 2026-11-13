@@ -225,7 +225,7 @@ function showTip(node, item) {
   const facts = factsOf(item);
   state.tip = el("div", { class: "bag-tip", style: `left:${Math.max(4, left)}px;top:${Math.max(24, (at.top - box.top) / z)}px;width:${width}px` },
     el("div", { class: "bag-tip-name" }, `${item.name}${item.n > 1 ? ` x${item.n}` : ""}`),
-    el("div", { class: "check-hint" }, `${KINDS[item.type] ?? "Item"}, ${item.w}x${item.h}, ${item.weight} kg${item.stack > 1 ? `, ${item.stack} to a square` : ""}${item.price ? `, worth ${item.price} cr` : ""}`),
+    el("div", { class: "check-hint" }, `${KINDS[item.type] ?? "Item"}, ${item.w}x${item.h}, ${item.id === "rig" ? app.ui.game?.rig?.build?.stats?.weight ?? item.weight : item.weight} kg${item.stack > 1 ? `, ${item.stack} to a square` : ""}${item.price ? `, worth ${item.price} cr` : ""}`),
     facts && el("div", { class: "bag-tip-facts" }, facts),
     item.desc && el("div", { class: "bag-tip-line" }, item.desc));
   win.append(state.tip);

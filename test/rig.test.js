@@ -15,7 +15,7 @@ const { enterComputer, watchFor } = await import("../src/computers.js");
 const { computerCommand } = await import("../src/computer-use.js");
 const { controlSystem, controlsView } = await import("../src/systems.js");
 const { passTime, publicState } = await import("../src/rules.js");
-const { RIG_MEMORY, rigCommand } = await import("../src/rig.js");
+const { rigCommand } = await import("../src/rig.js");
 const { parseProgram, programsNow } = await import("../src/programs.js");
 const { migrateGame } = await import("../src/migrate.js");
 const { walkCommand } = await import("../src/walk.js");
@@ -42,11 +42,12 @@ test("the program files read with nothing wrong, and a bad one says what's wrong
 
 test("a new game's captain has the plain rig in their pack, with DICTIONARY, DOORKEY and MASK loaded", () => {
   const game = newGame();
-  assert.equal(game.version, 26);
+  assert.equal(game.version, 27);
   assert.equal(game.inventory.rig, 1);
   const rig = publicState(game).rig;
   assert.deepEqual(rig.loaded, ["dictionary", "doorkey", "mask"]);
-  assert.equal(rig.used, RIG_MEMORY);
+  assert.equal(rig.used, rig.memory, "the yard build holds exactly the three");
+  assert.equal(rig.memory, 4);
   assert.ok(rig.programs.find((p) => p.id === "knock").owned, "KNOCK comes on every rig");
   assert.ok(rig.programs.find((p) => p.id === "scope").loaded, "SCOPE is built in");
 });
@@ -213,7 +214,7 @@ test("an old save gets the rig", () => {
   delete old.rig;
   delete old.inventory.rig;
   const moved = migrateGame(old);
-  assert.equal(moved.version, 26);
+  assert.equal(moved.version, 27);
   assert.equal(moved.inventory.rig, 1);
   assert.deepEqual(moved.rig.loaded, ["dictionary", "doorkey", "mask"]);
 });

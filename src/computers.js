@@ -19,7 +19,7 @@ import { notePut } from "./puts.js";
 import { fill } from "./check-games/kit.js";
 import { CHECK_TEXT, COMPUTER_FLAVOR, WORLD_COMPUTERS, WORLD_MAPS } from "./world.js";
 import { controlsFor, controlsView, partWorks, roomPowered, runsSystems } from "./systems.js";
-import { rigInComputer } from "./rig.js";
+import { rigHeat, rigInComputer } from "./rig.js";
 
 
 export const slug = (words) => String(words).toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40);
@@ -527,6 +527,8 @@ export function computerView(game) {
     systems: inside ? controlsView(game, session.place, content.controls ?? [], { room: session.roomId }) : [],
     // The player's rig: what's loaded on it to run here, and what this computer has to copy onto it.
     rig: inside ? rig : rig && { ...rig, copies: [] },
+    // How hot the rig is: nothing's plugged into the player's own computers.
+    rigHeat: session.yours ? null : rigHeat(game, session),
     // At the logon: the ways in off the rig, each with why it won't work, if it won't.
     logon: session.locked ? { ways: rig?.ways ?? [], keycard: Boolean(game.inventory?.keycard) } : null,
   };

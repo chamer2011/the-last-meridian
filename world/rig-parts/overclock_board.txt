@@ -1,0 +1,12 @@
+# Overclock board
+kind: extra
+order: 70
+grade: 4
+weight: 0.1
+heat: 2
+power: 1
+speed: 0.3
+where from: A ship's main system's spares shelf.
+
+What it is:
+Faster and stronger, and hot.
