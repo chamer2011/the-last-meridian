@@ -1,0 +1,12 @@
+# MASK.EXE
+order: 10
+kind: quiet
+hacking: 2
+size: 1
+noise: 0
+minutes: 0
+once: yes
+written in: 2 hours
+
+What it does:
+Your next three actions don't add to the trace.

@@ -1,0 +1,13 @@
+# MIMIC.EXE
+order: 3
+kind: in
+hacking: 3
+size: 1
+power: 2
+noise: 0
+minutes: 1
+once: no
+written in: 3 hours
+
+What it does:
+Plays back a lifted keycard. Silent, but the card has to be in your pockets.

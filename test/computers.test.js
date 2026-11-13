@@ -128,7 +128,7 @@ test("the player's own computers open with no hack, and reading, running and log
   assert.ok(view.files.some((one) => one.name === "course.txt"));
   assert.ok(view.logs.some((one) => one.id === "berths"));
   assert.ok(view.programs.some((one) => one.name === "Log the day's orders"));
-  assert.ok(!JSON.stringify(view).includes("password"));
+  assert.ok(!JSON.stringify(view).includes("\"password\""));
   assert.ok(view.hints.length >= 1);
   // Reading a file puts it in What you know, once.
   computerCommand(game, { action: "file", id: "course_txt" });
@@ -255,7 +255,7 @@ test("what reaches the browser has the computer, and never its password or a pro
   enterComputer(game, { id: "haven_berth_board", hacked: true, trace: 1, maxTrace: 6 });
   const shown = JSON.stringify(publicState(game).computer);
   assert.ok(shown.includes('"name":"The berth board"'));
-  assert.ok(!shown.includes("password"));
+  assert.ok(!shown.includes("\"password\""));
   assert.ok(!shown.includes('"effects"'));
   assert.ok(!shown.includes("ORBIT"));
 });

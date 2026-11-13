@@ -1,0 +1,12 @@
+# WORM.EXE
+order: 23
+kind: leave
+hacking: 7
+size: 2
+noise: 2
+minutes: 2
+once: yes
+found on: meridian_plot_table
+
+What it does:
+Copies itself to the first computer on this one's network. You know that one's password from then on.

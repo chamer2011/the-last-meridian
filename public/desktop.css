@@ -130,3 +130,9 @@
   .desk-advisor { width: auto; max-height: 8em; }
   .desk-hints { writing-mode: horizontal-tb; align-self: flex-end; }
 }
+
+/* The Rig page, under Gear: its memory as a row of blocks, and a lit card for each program loaded. */
+.rig-memory { display: inline-flex; gap: 3px; margin: 0 6px; vertical-align: middle; }
+.rig-memory i { width: 18px; height: 10px; border: 1px solid var(--line); }
+.rig-memory i.on { background: var(--text); border-color: var(--text); }
+.rig-card.rig-loaded { border-color: var(--text); }

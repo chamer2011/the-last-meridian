@@ -6,6 +6,7 @@ import { api, columns, el, folded, meter, signed, strainMeter } from "./dom.js";
 import { mapMenu } from "./map.js";
 import { shipMenu } from "./ship.js";
 import { commandMenu } from "./command.js";
+import { rigMenu } from "./rig.js";
 import { oddsFor } from "./story.js";
 
 // What the menus need from the main screen. Set once, when the page loads.
@@ -338,6 +339,7 @@ export const MENUS = {
   ship: { label: "Ship", command: "ship", about: "The Meridian: her stores, rations, orders, systems and crew. If you aren't the captain, how she stands", view: shipMenu },
   command: { label: "Command", command: "command", about: "Who holds each post aboard the Meridian, who chose them, and since when", view: commandMenu },
   map: { label: "Star map", command: "map", about: "The chart of known space, and setting course", view: mapMenu },
+  rig: { label: "Rig", command: "rig", about: "Your pocket computer: the programs on it, loading them, and writing new ones at the Repair Bay's bench", view: rigMenu },
   market: { label: "Market", command: "market", about: "Buying and selling, where there's a market", view: marketMenu },
   bestiary: { label: "Enemies met", command: "bestiary", about: "Enemies you know of, how they fight, and the simulator", view: bestiaryMenu },
   mapedit: { label: "Map editor", command: "mapedit", about: "Redraw the ship's decks yourself: walls, floors, doors, rooms and what's in them", editor: true, view: () => el("div") },
@@ -348,6 +350,6 @@ export const MENUS = {
 export const MENU_GROUPS = [
   { title: "The story", ids: ["leads", "board", "people", "codex", "bestiary"] },
   { title: "The ship", ids: ["ship", "command", "map"] },
-  { title: "Gear", ids: ["inventory", "market"] },
+  { title: "Gear", ids: ["inventory", "rig", "market"] },
   { title: "Game", ids: ["mapedit", "settings"] },
 ];

@@ -1,0 +1,13 @@
+# DICTIONARY.EXE
+order: 2
+kind: in
+hacking: 2
+size: 2
+power: 2
+noise: 3
+minutes: 6
+once: no
+written in: 2 hours
+
+What it does:
+Runs a word list against a crew account. Slow and loud, but lazy passwords fall to it.

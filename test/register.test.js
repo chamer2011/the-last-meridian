@@ -52,7 +52,7 @@ test("the files say how illness is caught and spreads, where the register sleeps
 test("a new game has the register: everyone aboard without a day of their own, made up, the same every look", () => {
   const game = newGame();
   const people = register.registerPeople(game);
-  assert.equal(game.version, 24);
+  assert.equal(game.version, 25);
   assert.equal(people.length, game.ship.aboard - register.lifePeople().length);
   assert.equal(new Set(people.map((one) => one.name)).size, people.length, "nobody's name twice");
   assert.ok(!people.some((one) => NAMES.includes(one.name)), "and never one of the game's whole names");

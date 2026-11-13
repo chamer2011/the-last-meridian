@@ -1,0 +1,13 @@
+# RELAY.EXE
+order: 9
+kind: doors
+hacking: 4
+size: 1
+power: 2
+noise: 0
+minutes: 1
+once: no
+written in: 2 hours
+
+What it does:
+Switches off the cameras this computer runs for ten minutes, without the trace noticing.

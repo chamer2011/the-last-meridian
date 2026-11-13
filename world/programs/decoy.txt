@@ -1,0 +1,12 @@
+# DECOY.EXE
+order: 14
+kind: quiet
+hacking: 4
+size: 1
+noise: 0
+minutes: 1
+once: yes
+written in: 2 hours
+
+What it does:
+Makes noise on another terminal: the trace drops by two.

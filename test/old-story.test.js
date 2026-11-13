@@ -56,7 +56,7 @@ test("what's left in the game's folders: no main story, no written story or arri
 test("a new game is the captain's, with no quest, and it opens with the mutiny's alarm on the bridge", () => {
   assert.deepEqual(Object.keys(creatorSetup().starts), ["captain"]);
   const game = newGame();
-  assert.equal(game.version, 24);
+  assert.equal(game.version, 25);
   assert.deepEqual(game.quests, []);
   assert.equal(questsView(game).following, null);
   const said = play(game, { event: "start" });
@@ -110,7 +110,7 @@ function savedInTheOldStory() {
 test("a game saved in the middle of the old story opens with that story closed, and everything else as it was", () => {
   const saved = savedInTheOldStory();
   const game = migrateGame(structuredClone(saved));
-  assert.equal(game.version, 24);
+  assert.equal(game.version, 25);
   assert.equal(game.scene, null, "the opening it was in is gone, though there's a new opening by that name: the mutiny's");
   assert.deepEqual(Object.keys(game.parked), ["command_delegation"], "a scene whose file is still there keeps its place");
   const quest = (id) => game.quests.find((one) => one.id === id);
@@ -142,7 +142,7 @@ test("a saved game with nothing of the old story in it is told nothing, and anot
   quiet.transcript = [{ role: "narrator", text: "A quiet watch." }];
   quiet.quests = [{ id: "request_pantry", title: "A bare pantry", description: "x", objective: "Bring 2 ration crates to the pantry.", status: "active", request: "pantry" }];
   const opened = migrateGame(structuredClone(quiet));
-  assert.equal(opened.version, 24);
+  assert.equal(opened.version, 25);
   assert.deepEqual(opened.transcript, quiet.transcript);
   assert.deepEqual(opened.quests, quiet.quests);
   // A game that hadn't begun says nothing either, even with the old quests in it: it has no story to interrupt.

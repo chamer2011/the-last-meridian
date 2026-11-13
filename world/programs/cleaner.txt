@@ -1,0 +1,12 @@
+# CLEANER.EXE
+order: 12
+kind: quiet
+hacking: 3
+size: 1
+noise: 0
+minutes: 1
+once: yes
+written in: 2 hours
+
+What it does:
+Wipes your lines from the log: the trace drops by three, once.

@@ -1,0 +1,12 @@
+# GHOST.EXE
+order: 11
+kind: quiet
+hacking: 7
+size: 2
+noise: 0
+minutes: 0
+once: yes
+found on: meridian_plot_table
+
+What it does:
+Your next six actions don't add to the trace.

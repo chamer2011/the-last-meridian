@@ -1,0 +1,12 @@
+# BLINDFOLD.EXE
+order: 16
+kind: watcher
+hacking: 8
+size: 2
+noise: 0
+minutes: 1
+once: yes
+found on: asterion_ministry_archive
+
+What it does:
+Blinds the trace for five actions. When it sees again it notices the gap: two points.

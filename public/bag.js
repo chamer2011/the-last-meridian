@@ -191,7 +191,20 @@ function windowNode() {
 
 // ---- What an item is ------------------------------------------------------------------------------------
 
+// The rig in the pack says what's loaded on it and the memory left, and opens its page.
+function rigLine() {
+  const rig = app.ui.game?.rig;
+  if (!rig) return null;
+  const loaded = rig.programs.filter((p) => p.loaded && !p.builtIn).map((p) => p.name);
+  return `${loaded.length ? `Loaded: ${loaded.join(", ")}` : "Nothing loaded"}. ${rig.memory - rig.used} of ${rig.memory} blocks free.`;
+}
+function openRig() {
+  closeBag();
+  app.openMenu?.("rig");
+}
+
 function factsOf(item) {
+  if (item.id === "rig") return rigLine();
   if (item.damage) return `Damage ${item.damage[0]}-${item.damage[1]}${item.sidearm ? ", fits on the hip" : ""}`;
   if (item.defense) return `Defense +${item.defense}`;
   if (item.effect) return `${Object.entries(item.effect).map(([key, amount]) => `+${amount} ${key === "hp" ? "health" : key}`).join(", ")}${item.fight ? ", usable in a fight from the belt" : ""}`;
@@ -267,6 +280,7 @@ function clicked(item, where) {
   else if (GEAR.includes(where.at)) send({ action: "stow", from: where });
   else if (item.type === "consumable") send({ action: "use", from: where });
   else if (item.type === "weapon" || item.type === "armor") send({ action: "equip", from: where });
+  else if (item.id === "rig") openRig();
 }
 
 // ---- Dragging ----------------------------------------------------------------------------------------------
@@ -379,6 +393,7 @@ function choicesFor(item, where) {
   const b = app.ui.game.bag;
   if (where.at === "open") return [["Take", () => send({ action: "take", from: where })], ["Look", () => look(item)]];
   const list = [];
+  if (item.id === "rig") list.push(["Open the rig", openRig]);
   if (GEAR.includes(where.at)) list.push(["Take off", () => send({ action: "stow", from: where })]);
   else if (item.type === "weapon" || item.type === "armor") list.push(["Put on", () => send({ action: "equip", from: where })]);
   if (item.type === "consumable") {
@@ -392,7 +407,7 @@ function choicesFor(item, where) {
 }
 
 function look(item) {
-  state.message = `${item.name}: ${item.desc}`;
+  state.message = `${item.name}: ${item.desc}${item.id === "rig" && rigLine() ? ` ${rigLine()}` : ""}`;
   draw();
 }
 

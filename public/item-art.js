@@ -15,7 +15,7 @@ const ART = {
   tool_roll: ["{=|=|=}"], nav_slate: ["[/]"], resonance_tuner: ["~(|)~"], ledger_of_favors: ["[$]"], old_concord_medal: ["(O)"], pilot_gloves: ["<w>"],
   beacon_shard: ["<*>"], ilun_codex: ["[|||]"], choir_core: ["(@)"], data_chip: ["[::]"], quiet_token: ["(.)"], remnant_codes: ["[%]"], gate_key: ["o-+"],
   ninth_vault_index: ["[9]"], asterion_voice_recording: ["(>)"], unbound_safe_conduct: ["[s]"], wheel_marker: ["<o>"], lumen_lens: ["(*)"],
-  maris_core_sample: ["[o]"], tessen_seed_vault_key: ["o-#"],
+  maris_core_sample: ["[o]"], tessen_seed_vault_key: ["o-#"], rig: ["[::::]", "[_o__]"],
 };
 const KIND = { weapon: ["=[#]=-"], armor: ["/\\_/\\", "|[ ]|"], consumable: ["[+]"], gadget: ["[*]"], story: ["<*>"] };
 

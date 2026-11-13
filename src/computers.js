@@ -15,6 +15,7 @@ import { classOf } from "./check-games/crack.js";
 import { fill } from "./check-games/kit.js";
 import { CHECK_TEXT, COMPUTER_FLAVOR, WORLD_COMPUTERS, WORLD_MAPS } from "./world.js";
 import { controlsFor, controlsView, partWorks, roomPowered, runsSystems, systemsOf } from "./systems.js";
+import { rigInComputer } from "./rig.js";
 
 
 export const slug = (words) => String(words).toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40);
@@ -392,6 +393,8 @@ export function computerView(game) {
     tierName: (CHECK_TEXT.tierNames ?? ["untrained", "novice", "trained", "expert", "master"])[tierFor(game, "hacking")],
     // The place's systems this computer runs, each with what can be done about it from here.
     systems: controlsView(game, session.place, content.controls ?? [], { room: session.roomId }),
+    // The player's rig: what's loaded on it to run here, and what this computer has to copy onto it.
+    rig: rigInComputer(game, session, content),
   };
   view.hints = hintsFor(game, session, content, view);
   return view;

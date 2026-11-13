@@ -1,0 +1,12 @@
+# MAPPER.EXE
+order: 20
+kind: find
+hacking: 4
+size: 1
+noise: 1
+minutes: 1
+once: yes
+written in: 2 hours
+
+What it does:
+Lists every computer this one reaches, how hard each is, and which are open to you.

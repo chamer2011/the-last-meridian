@@ -1,0 +1,12 @@
+# SLEEPER.EXE
+order: 22
+kind: leave
+hacking: 4
+size: 1
+noise: 1
+minutes: 1
+once: yes
+written in: 3 hours
+
+What it does:
+Left in a computer that runs doors, it unlocks them at the next 02:00.

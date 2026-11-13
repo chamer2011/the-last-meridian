@@ -1,0 +1,12 @@
+# DIGGER.EXE
+order: 19
+kind: find
+hacking: 3
+size: 1
+noise: 1
+minutes: 2
+once: yes
+written in: 2 hours
+
+What it does:
+Searches the whole computer at once: every file and letter read in one go.

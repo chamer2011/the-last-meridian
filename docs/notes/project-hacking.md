@@ -1,4 +1,4 @@
-# The hacking rework (2026-11-13): designed on example pages, planned, nothing built
+# The hacking rework (2026-11-13): designed on example pages, planned, steps 1 and 2 built
 
 ## What was asked
 
@@ -61,7 +61,7 @@ Build only the step they name, each after they've tried the one before.
 
 Later, if wanted: the ports' and the Navy's computers and the wrecks' dead ones, playable; other lives' rigs.
 
-Seven choices with my picks, not yet answered: the computer floats over the room with the clock running; the captain
+Seven choices with my picks, taken at "Your picks, step 1": the computer floats over the room with the clock running; the captain
 starts with the plain yard rig and DICTIONARY, DOORKEY and MASK; writing a program takes hours at the bench; old saves
 keep computers already open; being caught works as now; NAVCOM 7 for the ship's main system and the Navy's computers;
 the numbers are mine from the examples, to tune after they play.
@@ -93,3 +93,61 @@ Checked: all 1,098 tests; on a test copy (port 3297, its own data folder, two sa
  Log off closes it, the hacked one's eye, light and warning show, Settings' Phosphor and Heavy save and apply. At 810
  the advisor moved under the monitor (below 980 wide), and the icons were tightened so six fit above the taskbar.
 Not done: the NAVCOM look (step 6). The owner hasn't tried it.
+
+## Step 2, the rig and its programs (built 2026-11-13, at "Yes, step 2")
+
+- The rig is an item, `world/items/rig.txt` (a gadget, 2 by 2, 1.6 kg; 65 items now), put in the pack by
+  `assembleGame` with `game.rig = newRig()` (`src/rig.js`): `programs` (those `on every rig`, KNOCK, plus DICTIONARY,
+  DOORKEY and MASK), `loaded` (the starting three as memory allows; a `built in` one, SCOPE, is never in the list and
+  always runs) and `timers` (what's left behind). `RIG_MEMORY` is 4 blocks. Save version 25: `fromVersion24` gives an
+  older save the same rig and the item.
+- The programs are `world/programs/<id>.txt`, 24 of them, my drafts from the example pages, with
+  `_how-to-write-a-program.txt`. `src/programs.js` reads them (`parseProgram`, `programsNow`, which looks at the files at
+  most once a second and reads them again when one changed, `programById`, `PROGRAM_KINDS`, `GAME_PROGRAMS_DIR` for
+  tests), and their problems go through `addChecker` into `npm run check-story`, which now names the folder and counts
+  them. Lines: order, kind, hacking, size, power, noise, minutes (read and kept, used by nothing yet), once, written in,
+  found on, sold at (only said: nobody sells programs until step 5), on every rig, built in.
+- Hacking decides only what can be written. The captain starts at Hacking 0, so if running needed it, the starting
+  programs would be dead weight. Where a program runs is its `power` against the computer's class number (1 door panel up
+  to 5 the Beacon or the Choir, `classNumber`, from the order of the classes in `world/checks.json`). `noise` above 0
+  costs a point of trace per run through `act`, as any action on a hacked computer does; DOORKEY, MASTERKEY and RELAY have
+  noise 0, as their words say (the code had overridden their files at first; the files decide now).
+- `rigCommand` (`POST /api/rig`): load (memory permitting), unload, and write: at `BENCH`, the Repair Bay (through
+  `roomHere`), with Hacking enough and a `written in` line, the hours passed with `passTime` (its notes logged), loaded if
+  it fits. It refuses everything while a computer is open, since the owner wanted getting ready done in the room and not
+  at the terminal, and swapping programs at the desk would make the memory meaningless; and in a fight; and writing in a
+  talk.
+- At a computer: `computerView` carries `rig` (`rigInComputer`: what's loaded, each with why it won't run here, and the
+  computer's programs to copy). The desktop has a **Rig (D:)** folder (a click sends `{action: "rig", id}`; one that won't
+  run is greyed with the reason as its tooltip; the status bar shows the memory), and the **Programs** folder ends with
+  "Copy X.EXE to your rig" (`{action: "copy", id}`). `computerCommand` hands them to `runRigProgram` and `copyProgram`
+  (an action, a point of trace on a hacked computer).
+- What each does is by id in `runRigProgram`: doorkey and masterkey unlock the doors the computer runs, relay puts its
+  cameras off for ten minutes, mask and ghost (`session.free`, 3 and 6) and blindfold (`session.blind`) work in `act`,
+  cleaner, decoy and forger take the trace down, lullaby raises `maxTrace` by 2, cutout makes `thrownOut` end with nothing
+  on the record, digger reads everything (`readEverything` in `src/computer-use.js`), scope and mapper say what it runs
+  and reaches, worm and backdoor learn passwords, and sniffer, sleeper and saboteur leave timers on `game.rig.timers` that
+  `addClockWork` fires with `[COMPUTER]` lines (a day later; the next 02:00; the next 03:00, through `damagePart`). The
+  kind `in` (KNOCK, DICTIONARY, SKELETON, SHADOW, MIMIC) says there's nothing to break once you're in: getting in with
+  them is step 3. The trace programs need a hacked computer.
+- Where copies are: GHOST and WORM on the plot table, BLINDFOLD and BACKDOOR on the Ministry archive; SHADOW, MASTERKEY,
+  SNIFFER and CUTOUT are `sold at: kessara`.
+- The Rig page (`public/rig.js`; `rig` in `MENUS` under Gear, 13 entries now): Your rig (the memory bar, Hacking, the
+  bench, a note while at a computer, Left behind), Loaded, On the rig but not loaded, and every other program by kind in
+  two columns, each with its blocks, the Hacking to write it (not for one built in), its power, whether the trace notices
+  it, once a session, what it does, where it's copied or sold, and Load, Unload or Write it. At a computer or in a fight
+  the buttons are greyed and the note says why. In the inventory (`public/bag.js`) the rig's tip says what's loaded and
+  the memory free, and a double-click or **Open the rig** on its right-click menu opens the page (`openMenu` handed to
+  `initBag` from `public/app.js`); it has its own drawing in `public/item-art.js`. A program that's only copied or
+  bought shows no Hacking to write, and says where it comes from once.
+- Found while checking and fixed: every click on the desktop typed the session log's newest lines out again, so the log
+  blinked (`comp.seen` now moves on once a drawing has shown them, in `computerNode`); MASK's result repeated its
+  description word for word.
+- Tests: `test/rig.test.js` (12). Older tests moved to version 25 and 65 items, and the two computer tests that keep the
+  password from the browser now look for a `"password"` key, since the programs' words say "passwords".
+- Screens, on a test copy (port 3297, its own data folder, three saves made with the game's own code), at 1400 and 810
+  wide: the Rig page at the bench, writing CLEANER (two hours on the clock, not loaded for want of room); the plot table's
+  Programs folder copying GHOST; a hacked door console's Rig (D:) running CLEANER (the trace from 33% to 0%), MASK,
+  DOORKEY and SLEEPER; the Rig page at a computer with its note and greyed buttons; no overflow among the 24 cards at 810.
+- Not done: getting in with the programs (step 3), the rig's parts (step 4), selling programs (step 5), programs on the
+  Story board (step 7), and `minutes`. The owner hasn't tried it.

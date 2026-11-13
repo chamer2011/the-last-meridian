@@ -1,0 +1,13 @@
+# DOORKEY.EXE
+order: 7
+kind: doors
+hacking: 2
+size: 1
+power: 2
+noise: 0
+minutes: 2
+once: no
+written in: 3 hours
+
+What it does:
+Unlocks the doors this computer runs without the trace noticing. Too weak for a ship's main system.

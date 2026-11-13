@@ -7,6 +7,7 @@ import { fightNode, fightOpen, focusFight, initFight, resetFight, startSim } fro
 import { initMap } from "./map.js";
 import { initShip } from "./ship.js";
 import { initCommand } from "./command.js";
+import { initRig } from "./rig.js";
 import { openBoard } from "./board.js";
 import { openMapEditor } from "./mapedit.js";
 import { MENUS, MENU_GROUPS, initMenus } from "./menus.js";
@@ -762,6 +763,7 @@ initCheck({ ui, render, sendChat, openMenu, closeMenu });
 initMap({ ui, render, runAction, renderMenus, openMenu, closeMenu });
 initShip({ ui, render, runAction, renderMenus, openMenu, closeMenu });
 initCommand({ ui, render, runAction, closeMenu, openPersonSheet });
+initRig({ ui, runAction });
 initWalk({
   ui,
   reading,
@@ -802,7 +804,7 @@ initPopups({
 });
 initTalk({ ui, reading, render, openMenu, popupsShown });
 initComputer({ ui, render, openMenu });
-initBag({ ui, render, renderStatus, renderWalk, putAway: putAwayRoomWindows });
+initBag({ ui, render, renderStatus, renderWalk, putAway: putAwayRoomWindows, openMenu: (id) => openMenu(id) });
 initSheet({ ui, render, act, openMenu, startPractice: (skill, difficulty) => runAction(() => startPractice(skill, difficulty))() });
 initQuests({ ui, render, placed: popupDrawn });
 aimWith(markPoint, keepClear);

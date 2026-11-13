@@ -1,0 +1,13 @@
+# BACKDOOR.EXE
+order: 6
+kind: in
+hacking: 8
+size: 3
+power: 3
+noise: 2
+minutes: 3
+once: no
+found on: asterion_ministry_archive
+
+What it does:
+Leaves an account of your own behind. Next time you just log on.

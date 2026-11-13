@@ -110,6 +110,7 @@ const PICTURES = {
   network: r(0, 3, 7, 6, "#222") + r(1, 4, 5, 4, "#3a7bd5") + r(9, 3, 7, 6, "#222") + r(10, 4, 5, 4, "#3a7bd5") + r(3, 9, 1, 3, "#222") + r(12, 9, 1, 3, "#222") + r(3, 12, 10, 1, "#222"),
   txt: r(3, 1, 10, 14, "#222") + r(4, 2, 8, 12, "#fff") + r(5, 4, 6, 1, "#999") + r(5, 6, 6, 1, "#999") + r(5, 8, 6, 1, "#999"),
   keel: r(1, 9, 14, 2, "#222") + r(2, 11, 12, 2, "#2a6f9e") + r(4, 13, 8, 1, "#1d4f73") + r(7, 2, 1, 7, "#222") + r(8, 3, 5, 5, "#f2f2f2") + r(8, 3, 1, 5, "#c33"),
+  rig: r(2, 4, 12, 9, "#123d22") + r(3, 5, 10, 7, "#1f6b3a") + r(4, 6, 3, 2, "#ffd84a") + r(8, 9, 4, 2, "#9fd9a8") + r(3, 13, 1, 2, "#d8b040") + r(6, 13, 1, 2, "#d8b040") + r(9, 13, 1, 2, "#d8b040") + r(12, 13, 1, 2, "#d8b040"),
   eye: r(2, 6, 12, 4, "#222") + r(3, 5, 10, 6, "#fff") + r(6, 5, 4, 6, "#2a6f9e") + r(7, 7, 2, 2, "#000") + r(4, 4, 8, 1, "#222") + r(4, 11, 8, 1, "#222"),
 };
 function picture(name) {
@@ -128,8 +129,11 @@ const FOLDERS = [
   ["logs", "Logs", "log", "log"],
   ["programs", "Programs", "exe", "program"],
   ["network", "Network", "network", "connect"],
+  ["rig", "Rig (D:)", "rig", "rig"],
 ];
-const foldersHere = (view) => FOLDERS.filter(([id]) => (view[id] ?? []).length > 0);
+// What a folder holds: the computer's own lists, the programs it has to copy, and the rig's loaded programs.
+const folderItems = (view, id) => (id === "rig" ? view.rig?.loaded ?? [] : id === "programs" ? [...view.programs, ...(view.rig?.copies ?? []).map((one) => ({ ...one, copy: true }))] : view[id] ?? []);
+const foldersHere = (view) => FOLDERS.filter(([id]) => folderItems(view, id).length > 0);
 
 const lineNode = (entry, isNew = false) => {
   if (entry.you !== undefined) return el("div", { class: `check-line you${isNew ? " new" : ""}` }, el("span", { class: "tone-dim" }, `${comp.view?.prompt ?? ">"} `), el("span", { class: "tone-bright" }, entry.you));
@@ -249,7 +253,12 @@ function folderRows(view) {
         picture("systems"), el("span", {}, system.title), el("small", {}, down ? `${down} down` : `${system.rows.length} parts`));
     });
   }
-  return view[id].map((item) => el("button", {
+  if (id === "rig") {
+    return view.rig.loaded.map((item) => el("button", { class: `row-item${item.why ? " done" : ""}`, title: item.why ? `It won't run here: ${item.why}` : item.about, disabled: comp.sending, onclick: (event) => { event.stopPropagation(); send({ action: "rig", id: item.id }); } },
+      picture("exe"), el("span", {}, item.name), el("small", {}, item.why ? "won't run here" : "run")));
+  }
+  return folderItems(view, id).map((item) => item.copy ? el("button", { class: "row-item", title: item.about, disabled: comp.sending, onclick: (event) => { event.stopPropagation(); send({ action: "copy", id: item.id }); } },
+    picture("rig"), el("span", {}, `Copy ${item.name} to your rig`), el("small", {}, "copy")) : el("button", {
     class: `row-item${item.read || item.ran ? " done" : ""}${screen.kind === kind && screen.id === item.id ? " open" : ""}`,
     title: item.about ?? (item.ran ? "Already run" : item.read ? "Read" : item.name),
     disabled: comp.sending,
@@ -282,7 +291,7 @@ function osNode(view, watch, pct) {
   const here = foldersHere(view);
   const icons = el("div", { class: "icons" }, here.map(([id, name, pic]) => el("button", {
     class: `icon${comp.sel === id ? " sel" : ""}`,
-    title: `${name}: ${(view[id] ?? []).length}`,
+    title: `${name}: ${folderItems(view, id).length}`,
     onclick: (event) => {
       event.stopPropagation();
       if (comp.sel === id) openFolder(id);
@@ -292,9 +301,9 @@ function osNode(view, watch, pct) {
       }
     },
     ondblclick: (event) => { event.stopPropagation(); openFolder(id); },
-  }, picture(pic), el("span", {}, `${name} (${(view[id] ?? []).length})`))));
+  }, picture(pic), el("span", {}, `${name} (${folderItems(view, id).length})`))));
   const folder = FOLDERS.find(([id]) => id === comp.folder);
-  const list = folder && winNode("list", `${folder[1]} - ${view.name}`, folder[2], el("div", { class: "pane-in sunk" }, el("div", { class: "rows" }, folderRows(view))), [`${(view[folder[0]] ?? []).length} ${folder[0] === "mail" ? "letters" : "objects"}`, comp.sending ? "Working..." : "Click one to open it"]);
+  const list = folder && winNode("list", `${folder[1]} - ${view.name}`, folder[2], el("div", { class: "pane-in sunk" }, el("div", { class: "rows" }, folderRows(view))), [folder[0] === "rig" ? `${view.rig.used} of ${view.rig.memory} blocks used` : `${folderItems(view, folder[0]).length} ${folder[0] === "mail" ? "letters" : "objects"}`, comp.sending ? "Working..." : folder[0] === "rig" ? "Click one to run it" : "Click one to open it"]);
   const viewer = winNode("view", view.screen.kind === "home" ? `Welcome - ${view.name}` : view.screen.title ?? view.name, "txt", el("div", { class: "pane-in sunk viewer-in", id: "computer-screen" }, screenNode(view)), [view.hacked ? "Hacked" : view.yours ? "Yours" : "Logged in", view.className]);
   const log = winNode("log", "Session log", "log", el("div", { class: "pane-in sunk", id: "computer-console", role: "log" }, view.log.map((entry, i) => lineNode(entry, i >= comp.seen))), [`${view.actions} ${view.actions === 1 ? "action" : "actions"}`, view.prompt ?? ""]);
   const named = { list: list ? `${folder[1]}` : null, view: "Viewer", log: "Session log" };
@@ -385,7 +394,10 @@ export function computerNode() {
   sync();
   if (!computerOpen()) return null;
   fitter?.disconnect();
-  return el("div", { class: "check-float", id: "computer" }, leaderNode(comp.view?.at), pullable(windowNode()));
+  const node = el("div", { class: "check-float", id: "computer" }, leaderNode(comp.view?.at), pullable(windowNode()));
+  // The lines that came with the last answer type out once: drawing the desktop again for a click doesn't retype them.
+  comp.seen = comp.view?.log?.length ?? 0;
+  return node;
 }
 
 function draw() {

@@ -1,0 +1,12 @@
+# SNIFFER.EXE
+order: 21
+kind: find
+hacking: 5
+size: 1
+noise: 1
+minutes: 1
+once: yes
+sold at: kessara
+
+What it does:
+Stays behind and writes down the passwords typed here. A day later you know the password of every computer this one reaches.

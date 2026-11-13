@@ -1,0 +1,13 @@
+# SKELETON.EXE
+order: 5
+kind: in
+hacking: 6
+size: 2
+power: 3
+noise: 1
+minutes: 2
+once: no
+written in: 4 hours
+
+What it does:
+Uses a known flaw in the logon's version. Scope has to read the version first.

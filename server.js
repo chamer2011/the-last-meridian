@@ -33,6 +33,7 @@ import { airBadHere, controlSystem, settlePart, systemsOf } from "./src/systems.
 import { computerCommand, screenGoesDark } from "./src/computer-use.js";
 import { afterDeedFight, settleDeed } from "./src/deeds.js";
 import { bagCommand } from "./src/bag.js";
+import { rigCommand } from "./src/rig.js";
 
 const savesDir = path.join(dataDir(), "saves");
 const publicDir = path.join(projectDir, "public");
@@ -367,6 +368,13 @@ async function handleApi(req, res, route) {
   }
   // The Command menu's orders: the captain moving someone on the watch bill, putting someone in a post, answering the
   // first officer, or holding the reviews. It's all on this computer.
+  // The rig: loading and unloading programs, and writing one at the Repair Bay's bench.
+  if (route === "/api/rig") {
+    const { said, notes = [] } = rigCommand(requireGame(), body);
+    if (notes.length) log("notice", notes.join("\n"));
+    autosave();
+    return json(res, 200, { game: publicState(game), message: said });
+  }
   if (route === "/api/command") {
     const { message, notes = [] } = commandCommand(requireGame(), body);
     if (notes.length) log("notice", notes.join("\n"));

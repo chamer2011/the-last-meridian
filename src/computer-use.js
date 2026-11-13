@@ -16,10 +16,13 @@ import { WORLD_COMPUTERS } from "./world.js";
 import { applySystemsEffect, controlSystem, controlsView, powerNote, roomPowered } from "./systems.js";
 import { manifestLines } from "./logistics.js";
 import { untagged } from "../public/story.js";
+import { copyProgram, runRigProgram } from "./rig.js";
 import { MAX_LOG, MINUTES_PER_ACTION, classKeys, contentOf, knowsPassword, levelNamed, line, memoryOf, openSession, peopleAt, programOffered, sameName, slug, writtenContent } from "./computers.js";
 
 // What a completed trace inside leaves on the record, the same mark a failed hack leaves.
 function thrownOut(game, session) {
+  // CUTOUT.EXE sends the trace to another terminal: out, but nothing on the record.
+  if (session.cutout) return finish(game, session, [`[COMPUTER] TRACE COMPLETE on ${session.name}, at another terminal: your cutout took it. You're out, and nothing has your name.`]);
   const marked = classKeys().indexOf(session.classKey) >= classKeys().indexOf("hard");
   const notes = [`[COMPUTER] TRACE COMPLETE on ${session.name}. The connection drops, and you're out, with the trace at 100%.`];
   if (marked) {
@@ -35,9 +38,21 @@ function thrownOut(game, session) {
 }
 
 // Each action takes a little time, and on a hacked computer the trace notices some of them.
+// MASK.EXE and GHOST.EXE let some actions go unnoticed; BLINDFOLD.EXE blinds the trace for a while, and it notices the
+// gap when it sees again.
 function act(game, session, cost) {
   session.actions += 1;
   if (!session.hacked || !cost) return null;
+  if (session.free > 0) {
+    session.free -= 1;
+    return null;
+  }
+  if (session.blind > 0) {
+    session.blind -= 1;
+    if (session.blind > 0) return null;
+    cost = 2;
+    session.log.push(line("The trace sees again, and notices the gap.", "warn"));
+  }
   session.trace += cost;
   if (session.trace >= session.maxTrace) return thrownOut(game, session);
   if (session.trace === session.maxTrace - 1) session.log.push(line("WARNING: trace nearly complete.", "warn"));
@@ -70,6 +85,28 @@ function openFile(game, session, content, id) {
   showScreen(session, { kind: "file", id, title: file.name, lines: [line(file.text, "bright")] });
   const out = act(game, session, first ? readCost(session) : 0);
   return out ?? { over: false };
+}
+
+// DIGGER.EXE: every file and letter read in one go, into What you know. Returns how many were new.
+function readEverything(game, session, content) {
+  const memory = memoryOf(game, session);
+  let count = 0;
+  for (const file of content.files) {
+    if (memory.read.includes(`file:${file.id}`)) continue;
+    memory.read.push(`file:${file.id}`);
+    if (!session.read.includes(file.name)) session.read.push(file.name);
+    learn(game, session, file.name, file.text);
+    count += 1;
+  }
+  for (const entry of content.mail) {
+    if (memory.read.includes(`mail:${entry.id}`)) continue;
+    memory.read.push(`mail:${entry.id}`);
+    const title = entry.to ? `From ${entry.from} to ${entry.to}` : entry.subject ?? entry.from;
+    if (!session.read.includes(title)) session.read.push(title);
+    learn(game, session, title, entry.text);
+    count += 1;
+  }
+  return count;
 }
 
 function openMail(game, session, content, id) {
@@ -370,6 +407,8 @@ export function computerCommand(game, body) {
       return { over: false };
     }
     case "system": return runSystem(game, session, content, body);
+    case "rig": return runRigProgram(game, session, content, String(body.id ?? ""), { act, readEverything });
+    case "copy": return copyProgram(game, session, content, String(body.id ?? ""), { act });
     default: throw new Error("Unknown order.");
   }
 }

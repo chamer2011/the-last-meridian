@@ -1,0 +1,13 @@
+# MASTERKEY.EXE
+order: 8
+kind: doors
+hacking: 6
+size: 2
+power: 3
+noise: 0
+minutes: 2
+once: no
+sold at: kessara
+
+What it does:
+Unlocks the doors this computer runs, on anything up to a ship's main system, without the trace noticing.

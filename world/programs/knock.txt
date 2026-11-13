@@ -1,0 +1,13 @@
+# KNOCK.EXE
+order: 1
+kind: in
+hacking: 1
+size: 1
+power: 1
+noise: 3
+minutes: 1
+once: no
+on every rig: yes
+
+What it does:
+Tries the passwords nobody changes. Door panels and old terminals.

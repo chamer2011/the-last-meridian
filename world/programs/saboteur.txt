@@ -1,0 +1,12 @@
+# SABOTEUR.EXE
+order: 24
+kind: leave
+hacking: 6
+size: 2
+noise: 2
+minutes: 2
+once: yes
+written in: 4 hours
+
+What it does:
+Left in a computer that runs the place's systems, it breaks one of them at the next 03:00.

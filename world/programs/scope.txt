@@ -1,0 +1,12 @@
+# SCOPE.EXE
+order: 18
+kind: find
+hacking: 0
+size: 0
+noise: 1
+minutes: 1
+once: no
+built in: yes
+
+What it does:
+Reads what runs on this computer and the systems it controls. Built into every rig, and takes no memory.

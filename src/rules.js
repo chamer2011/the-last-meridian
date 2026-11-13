@@ -36,6 +36,7 @@ import { heldUp, questsView } from "./quests.js";
 import { clockExtras, dayExtras } from "./room-hooks.js";
 
 import { notePut } from "./puts.js";
+import { newRig, rigView } from "./rig.js";
 export { combatAction, startCombat } from "./combat.js";
 
 // Limits on what one turn of the story may do, so a mistake in a file can't hand out a fortune.
@@ -762,7 +763,7 @@ export const tellStoryWaits = (fn) => {
 export function assembleGame(profile) {
   const start = START_LIST[profile.start] ?? START_LIST.captain;
   const game = {
-    version: 24,
+    version: 25,
     campaign: null,
     scene: null,
     flags: {},
@@ -832,6 +833,9 @@ export function assembleGame(profile) {
   startCommand(game);
   startHealth(game);
   startRegister(game);
+  // The rig: the pocket computer in the pack that carries programs onto computers.
+  game.rig = newRig();
+  game.inventory.rig = 1;
   return game;
 }
 
@@ -1131,6 +1135,7 @@ export function publicState(game) {
     walk: walkView(game),
     talk: talkView(game),
     computer: computerView(game),
+    rig: rigView(game),
     shipSystems: shipSystemsView(game),
     difficulty: game.difficulty ?? "normal",
     transcript: game.transcript,

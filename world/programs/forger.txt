@@ -1,0 +1,12 @@
+# FORGER.EXE
+order: 13
+kind: quiet
+hacking: 5
+size: 2
+noise: 0
+minutes: 2
+once: yes
+written in: 4 hours
+
+What it does:
+Rewrites your lines in someone else's name: the trace drops by one.

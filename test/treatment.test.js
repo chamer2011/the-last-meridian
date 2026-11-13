@@ -64,7 +64,7 @@ test("the health file says who treats, where the medicine is, the bed rest and e
 
 test("Vik and Hana start laid up on their cots, with wounds that heal, and an older save gets the same", () => {
   const game = newGame();
-  assert.equal(game.version, 24);
+  assert.equal(game.version, 25);
   assert.equal(game.down[VIK].bed, "patient-1");
   assert.equal(game.down[HANA].bed, "patient-2");
   assert.deepEqual(body.woundsNow(game, VIK).map((wound) => wound.kind), ["broken_bone"]);
@@ -73,7 +73,7 @@ test("Vik and Hana start laid up on their cots, with wounds that heal, and an ol
   // A version 21 game: the start lines were made-up marks then, and become kept wounds now.
   const { down: _down, bodies: _bodies, healthStarted: _started, ...old } = structuredClone(game);
   const migrated = migrateGame({ ...old, version: 21, bodies: {} });
-  assert.equal(migrated.version, 24);
+  assert.equal(migrated.version, 25);
   assert.equal(migrated.down[VIK].bed, "patient-1");
   assert.equal(body.woundsNow(migrated, VIK).length, 1);
   assert.equal(body.woundsNow(migrateGame(structuredClone(migrated)), VIK).length, 1, "only once");

@@ -1,0 +1,13 @@
+# SHADOW.EXE
+order: 4
+kind: in
+hacking: 4
+size: 2
+power: 2
+noise: 1
+minutes: 1
+once: no
+sold at: kessara
+
+What it does:
+Rides a session someone already has open. Here, Tarrow's: everything is done in the security chief's name, and Tarrow might notice.

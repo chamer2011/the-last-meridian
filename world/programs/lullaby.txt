@@ -1,0 +1,12 @@
+# LULLABY.EXE
+order: 15
+kind: watcher
+hacking: 6
+size: 1
+noise: 1
+minutes: 1
+once: yes
+written in: 3 hours
+
+What it does:
+Slows a trace: the computer allows two more actions before it completes.
