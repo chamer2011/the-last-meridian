@@ -18,6 +18,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { addAirSpoiler, addAreaState, addChecker, addClockWork, addDetour, addOrder, addRoomActs } from "./room-hooks.js";
+import { addMark } from "./wear.js";
 import { addWounds, keyAt, newWound, woundKindsByName } from "./body.js";
 import { SKILLS } from "./character-data.js";
 import { rememberRequest } from "./command.js";
@@ -177,6 +178,8 @@ export function startFire(game, place, room, at = nowOf(game)) {
 
 function fireOut(game, fire, how) {
   delete game.emergencies.fires[keyOf(fire.place, fire.room)];
+  // The room keeps the soot for days after, as big as the fire got (src/wear.js).
+  addMark(game, fire.place, { kind: "scorch", room: fire.room, size: Math.max(1, fire.most ?? fire.size ?? 1) });
   return told(game, fire.place, [`[FIRE] The fire in ${roomName(fire.place, fire.room)} is out${how ? `: ${how}` : ""}.`]);
 }
 
@@ -195,6 +198,7 @@ function stepFire(game, fire, t, latest) {
   else if (fire.fought !== undefined && (t - fire.fought) * 60 < rules.step) return lines;
   else if (fire.size < rules.most) {
     fire.size += 1;
+    fire.most = Math.max(fire.most ?? 1, fire.size);
     lines.push(`[FIRE] The fire in ${roomName(fire.place, fire.room)} grows: it's ${SIZES[Math.min(fire.size, SIZES.length - 1)]}.`);
     if (fire.size >= rules.breaks) {
       const parts = (systemsOf(fire.place)?.partsIn?.[fire.room] ?? []).filter((id) => !partBroken(game, fire.place, id));

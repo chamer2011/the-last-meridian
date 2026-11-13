@@ -23,6 +23,7 @@ import { doorLocked, roomPowered } from "./systems.js";
 import { deathRulesOf, deathsView } from "./death.js";
 import { roundsView } from "./register.js";
 import { advanceWorkshop, limbFitted, limbReady, waitsInWorkshop, workshopBedFor, workshopOf, workshopProblems } from "./workshop.js";
+import { addMark } from "./wear.js";
 import { WORLD_CHARACTERS, WORLD_HEALTH, WORLD_LIFE } from "./world.js";
 import { LOCATIONS } from "./data.js";
 import { noneLeft, tradedAt } from "./daily.js";
@@ -194,6 +195,8 @@ export function fallDown(game, { who, place, level, x, y, why, hours = 0 }) {
   if (!key || key === YOU || game.down?.[key]) return false;
   game.down ??= {};
   game.down[key] = { who, place, level, x, y, since: nowOf(game), until: nowOf(game) + hours, why };
+  // A stain where they fell, which the crew clean up in the days after (src/wear.js).
+  addMark(game, place, { kind: "fallen", level, x, y });
   const state = stateOf(game, place, who);
   if (state) Object.assign(state, { level, x, y, path: null, goal: { level, x, y }, task: null });
   return true;

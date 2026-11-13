@@ -175,4 +175,34 @@ with stars, screens on the walls), and two pictures went to them. Then they said
   hours or when something happens, not as each crate goes; a door doesn't open for someone the page hasn't been told
   is walking; lockers and the medicine cabinet don't show their stock.
 
-Build step 5 only when they say so.
+## Step 5, built on 2026-11-13, at their "Yes, step 5", untried by them
+
+- **How worn and cluttered** (`src/wear.js`, `wearOf`): aboard the ship only, 0 to 3 each: grime by the hull as a share
+  of its most (85 or more 0, 60 or more 1, 35 or more 2, else 3), clutter by morale (75 or more 0, 50 or more 1, 30 or
+  more 2, else 3). As she starts (hull 70 of 100, morale 55) that's 1 and 1, which is how the floors always looked. The
+  room view sends it as `wear`.
+- **Marks** (`addMark`, `marksOn`, `MARK_DAYS`): kept in `game.marks[place]` (the newest 60, nothing past its days;
+  no save version, since an older save just has none): `scorch` for a room, as big as the fire got (`fire.most`, kept as
+  it grows in `src/emergencies.js`), left when it goes out (`fireOut`), 12 days; and `fallen` for a square, left by
+  `fallDown` in `src/medbay.js` for anyone who falls (not the player, who never lies there), 4 days. How much of a
+  mark is left goes down in quarters, so a fading mark draws the level afresh only a few times. A burnt room says so in
+  its own entry in the room view's areas (`scorched: { size, left }`, through `addAreaState`); the squares' marks come as
+  `marks` for the level the player's on.
+- **The picture** (`public/iso.js`): the floor's rubbish is on more squares as clutter rises (`CLUTTER_ABOVE`: 6%, 16%,
+  26%, 38%; a place with no wear said keeps the old 16%), and at 2 and above some of it is a cup, a tray, a rag or a
+  wrapper (`drawRubbish`); grime is on more squares as the hull falls (`GRIME_ABOVE`: none, 10%, 20%, 32%; `drawGrime`:
+  oil and rust, and a puddle's sheen at 3); the tall walls get a dirty foot and rust streaks from the pipes
+  (`drawWallDetail`); soot lies on the squares the fire burned on, the same ones its flames were on (`burntSquares`,
+  `drawMark`), and a dark stain where someone fell. All of it is flat on the floor, in the still picture, so nothing
+  moves and nothing needs putting in order with the people; the scene's id has the wear and the marks, so a change
+  draws the level afresh.
+- **Tests:** `test/wear.test.js` (4): the levels by hull and morale and nowhere else; soot as big as the fire got,
+  fading and gone; a stain where someone fell, on that level, gone, and only the newest 60 kept; the picture's soot on
+  the fire's squares (flames instead while it burns), the stain, and the wear. Screens on a test copy on port 3297 from
+  saves staged by a scratch script (`stage5.mjs`): the Long Mess battered and unhappy (hull 30, morale 20, three
+  stains) against the same at hull 96 and morale 88, the galley's soot after a fire, at 1400 wide, and the galley at
+  810 wide.
+- **Not done:** a fight leaves no casings or scorch of its own beyond the stains; walls cut low in front of a room
+  don't show rust (only tall ones do); nothing is cleaned faster for good morale or by anyone in particular.
+
+Build step 6 only when they say so.

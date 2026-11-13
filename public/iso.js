@@ -349,17 +349,27 @@ export function buildScene(view) {
   // A room on fire burns on a few of its squares, more as it grows: each a flicker on the floor with light of its own,
   // flames over it every frame (drawFlames) and smoke over the room (drawSmoke). The same squares every time, in an
   // order of the room's own, so a fire that grows keeps burning where it was.
-  const fires = [];
-  for (const area of areas.filter((one) => one.fire > 0)) {
+  const burntSquares = (area, size) => {
     const squares = [];
     for (let y = area.y; y < area.y + area.h; y += 1) for (let x = area.x; x < area.x + area.w; x += 1) if (kindAt(x, y) === "floor" && areaAt(x, y) === area) squares.push({ x, y, order: hashOf(x * 7 + area.x, y * 13 + area.y) });
     squares.sort((a, b) => a.order - b.order);
-    for (const { x, y } of squares.slice(0, 1 + area.fire * 2)) {
+    return squares.slice(0, 1 + size * 2);
+  };
+  const fires = [];
+  for (const area of areas.filter((one) => one.fire > 0)) {
+    for (const { x, y } of burntSquares(area, area.fire)) {
       const seed = hashOf(x, y);
       fires.push({ x, y, seed, room: area.id, size: area.fire });
       glows.push({ x, y, seed: 0.85 + seed * 0.15 });
     }
   }
+  // Where a fire burned, the soot it left on the same squares, fading as the crew clean it away (src/wear.js); and the
+  // stains where people fell.
+  const stains = [];
+  for (const area of areas.filter((one) => one.scorched && !(one.fire > 0))) {
+    for (const { x, y } of burntSquares(area, area.scorched.size)) stains.push({ kind: "scorch", x, y, left: area.scorched.left });
+  }
+  for (const mark of view.marks ?? []) if (inPlan(mark.x, mark.y)) stains.push(mark);
   // A hole in the hull: on one of the room's walls the camera sees from inside it, with space beyond it where it can be.
   const breaches = [];
   for (const area of areas.filter((one) => one.breach)) {
@@ -475,6 +485,9 @@ export function buildScene(view) {
     fires,
     breaches,
     doorways,
+    marks: stains,
+    // How worn and cluttered the place looks, 0 to 3 each, where it's said (the ship: src/wear.js).
+    wear: view.wear ?? null,
     bounds: bounds ?? { minU: -1, maxU: 1, minV: -1, maxV: 1 },
     colors: { ...FALLBACK_COLORS, ...view.colors },
   };
@@ -1467,10 +1480,23 @@ function drawWallDetail(painter, block, style) {
     band([at(...a, z + 0.07), at(...b, z + 0.07), at(...b, z), at(...a, z)], style.strip);
     band([at(...a, z), at(...b, z), at(...b, z - 0.14), at(...a, z - 0.14)], see(style.strip, 0.24));
   };
+  // As the ship wears, rust runs down from the pipes and the foot of the walls goes dark (scene.wear, src/wear.js).
+  const grime = iso.scene?.wear?.grime ?? 0;
+  const rust = (a, b, seed) => {
+    if (!grime) return;
+    band([at(...a, 0.3), at(...b, 0.3), at(...b, 0), at(...a, 0)], see("#140f0a", 0.16 + grime * 0.08));
+    if (seed > 1 - grime * 0.22) {
+      const t = 0.25 + (seed * 7 % 0.5);
+      const p = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+      const q = [a[0] + (b[0] - a[0]) * (t + 0.08), a[1] + (b[1] - a[1]) * (t + 0.08)];
+      band([at(...p, 1.18), at(...q, 1.18), at(...q, 0.35 + seed * 0.3), at(...p, 0.25 + seed * 0.3)], see("#7a4424", 0.22 + grime * 0.08));
+    }
+  };
   // Along a row, the walls' faces that look down the screen; along a column, the ones that look right.
   if (block.left < h) {
     const a = [x0, y + 1];
     const b = [x1, y + 1];
+    rust(a, b, hashOf(x * 3 + 5, y * 7 + 1));
     if (hashOf(y, 7) < style.pipes) pipe(a, b, 1.18);
     if (hashOf(y, 7) < style.pipes * 0.5) pipe(a, b, 1.3);
     if (hashOf(y, 13) < style.strips) strip(a, b, block.litLeft);
@@ -1478,6 +1504,7 @@ function drawWallDetail(painter, block, style) {
   if (block.right < h) {
     const a = [x1, y + 1];
     const b = [x1, y];
+    rust(a, b, hashOf(x * 5 + 2, y * 3 + 9));
     if (hashOf(x, 11) < style.pipes) pipe(a, b, 1.18);
     if (hashOf(x, 11) < style.pipes * 0.5) pipe(a, b, 1.3);
     if (hashOf(x, 17) < style.strips) strip(a, b, block.litRight);
@@ -1730,11 +1757,21 @@ function paintWords(painter, text, where) {
 }
 
 // Bits of rubbish on the floor. They're only marks: nobody trips over them.
-function drawLitter(painter, cell) {
+// How much of the floor has rubbish on it, by how cluttered the place is (0 to 3): the share of squares above the mark;
+// and how much has grime on it, by how worn (0 to 3). A place nobody says is a 1 for rubbish and has no grime.
+const CLUTTER_ABOVE = [0.94, 0.84, 0.74, 0.62];
+const GRIME_ABOVE = [1, 0.9, 0.8, 0.68];
+
+function drawLitter(painter, cell, clutter = 1) {
   const { ctx, at, unit } = painter;
   const [x, y] = at((cell.x + 0.5) * CELL_WIDTH, cell.y + 0.5);
   const random = randomFrom(`litter${cell.x},${cell.y}`);
   const kind = random();
+  // Past a point, what's left lying about is the rubbish of people who've stopped caring: cups, trays, rags.
+  if (clutter >= 2 && random() < 0.2 + (clutter - 2) * 0.2) {
+    drawRubbish(painter, x, y, random);
+    return;
+  }
   if (kind < 0.4) {
     // A dark stain.
     ctx.fillStyle = "rgba(0,0,0,.28)";
@@ -1763,6 +1800,97 @@ function drawLitter(painter, cell) {
     ctx.moveTo(x - unit * 0.14, y);
     ctx.bezierCurveTo(x - unit * 0.05, y - unit * 0.06, x + unit * 0.05, y + unit * 0.06, x + unit * 0.15, y - unit * 0.01);
     ctx.stroke();
+  }
+}
+
+// The rubbish of a ship nobody's tidying: a tin cup on its side, a meal tray, a rag, a crumpled wrapper.
+function drawRubbish(painter, x, y, random) {
+  const { ctx, unit } = painter;
+  const pick = random();
+  ctx.save();
+  ctx.translate(x + (random() - 0.5) * unit * 0.16, y + (random() - 0.5) * unit * 0.06);
+  if (pick < 0.3) {
+    ctx.fillStyle = "rgba(150,156,160,.75)";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, unit * 0.035, unit * 0.022, random() * 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(40,30,20,.6)";
+    ctx.fillRect(-1, -1, 2, 2);
+  } else if (pick < 0.55) {
+    ctx.rotate(random() * 0.6 - 0.3);
+    ctx.fillStyle = "rgba(96,104,108,.8)";
+    ctx.fillRect(-unit * 0.08, -unit * 0.03, unit * 0.16, unit * 0.06);
+    ctx.fillStyle = "rgba(160,140,90,.6)";
+    ctx.fillRect(-unit * 0.06, -unit * 0.015, unit * 0.05, unit * 0.03);
+  } else if (pick < 0.8) {
+    ctx.rotate(random() * 3);
+    ctx.fillStyle = random() > 0.5 ? "rgba(120,90,60,.6)" : "rgba(90,100,110,.6)";
+    ctx.beginPath();
+    ctx.moveTo(-unit * 0.07, 0);
+    ctx.quadraticCurveTo(-unit * 0.02, -unit * 0.05, unit * 0.06, -unit * 0.01);
+    ctx.quadraticCurveTo(unit * 0.02, unit * 0.04, -unit * 0.07, 0);
+    ctx.fill();
+  } else {
+    ctx.fillStyle = random() > 0.5 ? "rgba(190,60,40,.6)" : "rgba(200,180,80,.55)";
+    ctx.beginPath();
+    ctx.arc(0, 0, unit * 0.02, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// Grime on a worn floor: oil and rust soaked into the plates, and on the worst of it a puddle with a sheen.
+function drawGrime(painter, cell, grime) {
+  const { ctx, at, unit } = painter;
+  const [x, y] = at((cell.x + 0.5) * CELL_WIDTH, cell.y + 0.5);
+  const random = randomFrom(`grime${cell.x},${cell.y}`);
+  const wide = unit * (0.1 + random() * 0.12 + grime * 0.03);
+  ctx.fillStyle = random() > 0.5 ? `rgba(20,16,12,${0.18 + grime * 0.05})` : `rgba(90,52,26,${0.14 + grime * 0.05})`;
+  ctx.beginPath();
+  ctx.ellipse(x + (random() - 0.5) * unit * 0.1, y, wide, wide * 0.45, random() * 0.6 - 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  if (grime >= 3 && random() > 0.6) {
+    ctx.strokeStyle = "rgba(150,170,190,.16)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(x, y, wide * 0.6, wide * 0.25, 0, Math.PI * 1.1, Math.PI * 1.7);
+    ctx.stroke();
+  }
+}
+
+// What happened in a room, fading as it's cleaned away: soot where a fire burned, a dark stain where someone fell.
+function drawMark(painter, mark) {
+  const { ctx, at, unit } = painter;
+  const [x, y] = at((mark.x + 0.5) * CELL_WIDTH, mark.y + 0.5);
+  const left = Math.max(0, Math.min(1, mark.left ?? 1));
+  if (mark.kind === "scorch") {
+    const reach = unit * 0.42;
+    const soot = ctx.createRadialGradient(x, y, 0, x, y, reach);
+    soot.addColorStop(0, `rgba(8,6,5,${0.75 * left})`);
+    soot.addColorStop(0.6, `rgba(30,20,12,${0.4 * left})`);
+    soot.addColorStop(1, "rgba(30,20,12,0)");
+    ctx.fillStyle = soot;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(1, 0.5);
+    ctx.translate(-x, -y);
+    ctx.beginPath();
+    ctx.arc(x, y, reach, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  // A stain where someone lay, and a smear or two where they were moved.
+  const random = randomFrom(`fallen${mark.x},${mark.y}`);
+  ctx.fillStyle = `rgba(92,18,14,${0.5 * left})`;
+  ctx.beginPath();
+  ctx.ellipse(x, y, unit * 0.16, unit * 0.07, random() * 0.5 - 0.25, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = `rgba(70,14,10,${0.35 * left})`;
+  for (let i = 0; i < 3; i += 1) {
+    ctx.beginPath();
+    ctx.arc(x + (random() - 0.5) * unit * 0.4, y + (random() - 0.5) * unit * 0.16, unit * (0.015 + random() * 0.025), 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
@@ -2131,9 +2259,13 @@ function drawTile(room, tx, ty) {
     if (open(cell.x + 1, cell.y)) polygon(ctx, [at(x1, cell.y), at(x1, y1), at(x1, y1, edgeDepth(cell.x + 1, cell.y)), at(x1, cell.y, edgeDepth(cell.x + 1, cell.y))], scaled(edge, 0.7));
     if (open(cell.x, cell.y + 1)) polygon(ctx, [at(x0, y1), at(x1, y1), at(x1, y1, edgeDepth(cell.x, cell.y + 1)), at(x0, y1, edgeDepth(cell.x, cell.y + 1))], edge);
   }
-  // Rubbish, and hazard paint at the doors.
+  // Rubbish, more of it the more cluttered the place is; grime, the more worn it is; and hazard paint at the doors.
+  const wear = scene.wear;
+  const littered = wear ? CLUTTER_ABOVE[wear.clutter] : 0.84;
+  const grimed = wear ? GRIME_ABOVE[wear.grime] : 1;
   for (const cell of ground) {
-    if (cell.kind === "floor" && cell.seed > 0.84) drawLitter(painter, cell);
+    if (cell.kind === "floor" && hashOf(cell.x * 5 + 1, cell.y * 3 + 2) > grimed) drawGrime(painter, cell, wear.grime);
+    if (cell.kind === "floor" && cell.seed > littered) drawLitter(painter, cell, wear?.clutter ?? 1);
     if (cell.kind === "exit" || cell.kind === "door") {
       const x0 = cell.x * CELL_WIDTH;
       for (let i = 0; i < 4; i += 1) {
@@ -2141,6 +2273,7 @@ function drawTile(room, tx, ty) {
       }
     }
   }
+  for (const mark of scene.marks ?? []) drawMark(painter, mark);
   const paint = mix(hexOr(scene.colors.writing, FALLBACK_COLORS.writing), "#c8c4b0", 0.5);
   for (const label of room.labels) {
     if (!reaches(uvBox(label.x, label.y, label.x + label.text.length, label.y + 1, 0.5), unit * 3)) continue;
@@ -2575,6 +2708,9 @@ function useScene(view) {
     (view.areas ?? []).filter((area) => area.power === false).map((area) => area.id).join(","),
     (view.areas ?? []).filter((area) => area.fire || area.breach).map((area) => `${area.id}:${area.fire ?? 0}${area.breach ? "b" : ""}`).join(","),
     (view.growing ?? []).map((one) => `${one.room}:${Math.floor(one.made / GROW_EVERY)}`).join(","),
+    view.wear ? `${view.wear.grime}${view.wear.clutter}` : "",
+    (view.areas ?? []).filter((area) => area.scorched).map((area) => `${area.id}:${area.scorched.size}:${area.scorched.left}`).join(","),
+    (view.marks ?? []).map((mark) => `${mark.kind[0]}${mark.x},${mark.y}:${mark.left}`).join(","),
   ].join("/");
   const id = `${view.here.deck?.id ?? view.here.id}|${view.here.drawn ?? 0}|${view.cols}x${view.lines}|${closedKey(view)}|${view.room?.dark ? "dark" : "lit"}|${darkRooms}|${parts}|${state}`;
   if (iso.sceneId === id) return;

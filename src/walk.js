@@ -15,6 +15,7 @@ import { startCheck, startChoiceCheck } from "./checks.js";
 import { useComputer } from "./computers.js";
 import { clearSystems, doorActions, doorLocked, doorLook, exitLocked, partSquares, partThings, powerView, roomDark, roomPowered, roomView, systemsOf, workOnDoor, workOnPart } from "./systems.js";
 import { clearLogistics, growingAt, logisticsOf, storeLook, storeStock } from "./logistics.js";
+import { marksOn, wearOf } from "./wear.js";
 import { ITEMS, LOCATIONS } from "./data.js";
 import { clearLife, hasADay, livesHere, peopleAboard } from "./life.js";
 import { isCaptain, toOutsider } from "./role.js";
@@ -1549,7 +1550,11 @@ export function walkView(game) {
     ...(walk.room ? {} : (() => {
       const power = powerView(game, game.location);
       const growing = growingAt(game, game.location).filter((one) => roomOf(map, one.room)?.level === level);
-      return { ...(power ? { power } : {}), ...(growing.length ? { growing } : {}) };
+      // How worn and cluttered the ship looks, by her hull and her morale, and the marks left on this level: a stain
+      // where someone fell (src/wear.js; a burnt room says so in its own entry in areas).
+      const wear = wearOf(game, game.location);
+      const marks = marksOn(game, game.location, level.id);
+      return { ...(power ? { power } : {}), ...(growing.length ? { growing } : {}), ...(wear ? { wear } : {}), ...(marks.length ? { marks } : {}) };
     })()),
     ...(livesHere(walk.place) ? { life: true } : {}),
     // How fast the player walks, as a share of the usual: slower with a limp, slower still on a leg they can't stand on.
