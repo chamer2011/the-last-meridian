@@ -38,7 +38,8 @@ const savesDir = path.join(dataDir(), "saves");
 const publicDir = path.join(projectDir, "public");
 const PORT = Number(process.env.PORT) || 3210;
 // "previous" keeps the last game when a new one starts, in case that was a mistake.
-const SAVE_SLOTS = ["autosave", "previous", "slot1", "slot2", "slot3"];
+// "test" is the test save tools/test-save.mjs makes (src/test-mode.js).
+const SAVE_SLOTS = ["autosave", "previous", "slot1", "slot2", "slot3", "test"];
 
 fs.mkdirSync(savesDir, { recursive: true });
 

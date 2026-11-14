@@ -27,6 +27,7 @@ import { addItem, passTime, removeItem, skillRank } from "./rules.js";
 import { roomHere } from "./walk.js";
 import { WORLD_COMPUTERS } from "./world.js";
 import { contentHardened, weakWay } from "./weak-points.js";
+import { testRig } from "./test-mode.js";
 
 export const BENCH = { place: "meridian", room: "repair", name: "the Repair Bay's bench" };
 export const STARTING_PROGRAMS = ["dictionary", "doorkey", "mask"];
@@ -87,8 +88,8 @@ const usedMemory = (rig) => rig.loaded.reduce((n, id) => n + (programById(id)?.s
 const hackingOf = (game) => skillRank(game, "hacking");
 const engineeringOf = (game) => skillRank(game, "engineering");
 const atBench = (game) => game.location === BENCH.place && roomHere(game)?.id === BENCH.room;
-// What the rig's build adds up to now.
-export const rigNow = (game) => rigStats(game.rig, hackingOf(game));
+// What the rig's build adds up to now: on a test save, as if it had every part a hack needs (src/test-mode.js).
+export const rigNow = (game) => testRig(game, rigStats(game.rig, hackingOf(game)));
 const memoryOf = (game) => rigNow(game).memory;
 // A build that's lost memory (a part out, worn or broken) unloads what no longer fits, the last loaded first.
 function trimLoaded(game) {

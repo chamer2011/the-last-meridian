@@ -187,7 +187,7 @@ async function sendChat(body) {
 
 // ---- Title screen and starting a game -----------------------------------
 
-const SLOT_LABELS = { autosave: "Autosave", previous: "Previous game", slot1: "Slot 1", slot2: "Slot 2", slot3: "Slot 3" };
+const SLOT_LABELS = { autosave: "Autosave", previous: "Previous game", slot1: "Slot 1", slot2: "Slot 2", slot3: "Slot 3", test: "Test save" };
 
 function titleScreen() {
   const saves = ui.saves.filter((s) => !s.empty);

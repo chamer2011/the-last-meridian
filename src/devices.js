@@ -22,6 +22,7 @@ import { mapFor } from "./walk.js";
 import { busWeakPoints, learnWeak } from "./weak-points.js";
 import { mayWorkDoor, partOpen, partSealedWords, sealedNow, sealedWords } from "./sealed.js";
 import { noteCamera, noteRecoded, noteStruck } from "./story-rig.js";
+import { testing } from "./test-mode.js";
 
 // The looks with no screen of their own: a door's panel, a junction box's service menu, a camera's feed.
 export const PANEL_LOOKS = ["door", "service", "camera"];
@@ -57,8 +58,9 @@ export const lookOf = (content) => (LOOKS[content?.look] ? content.look : conten
 // A computer's file can say what reaches it ("reached by: radio"); otherwise its look decides.
 export const reachOf = (content) => (content?.reach && LINK_WORDS[content.reach] ? content.reach : LOOKS[lookOf(content)].reach);
 
-// The kinds of link fitted in the rig that work, if the rig starts at all.
+// The kinds of link fitted in the rig that work, if the rig starts at all. A test save's rig has them all.
 export function rigLinks(game) {
+  if (testing(game, "rig")) return Object.keys(LINK_WORDS);
   const rig = game.rig;
   if (!rig?.build) return [];
   const stats = rigStats(rig, game.skills?.hacking ?? 0);

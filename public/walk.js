@@ -272,7 +272,7 @@ function updatePeople() {
 
 // What each kind of part looks like on the plan, as one character.
 const PART_GLYPHS = { "junction box": "%", "air plant": "&", vent: "=", "light switch": "'", camera: "o", speaker: ")", relay: "^", console: "]", engines: "&", "nav core": "+", "docking clamps": "H", machine: "*" };
-const PART_WORDS = { "junction box": "power", "air plant": "air plant", vent: "vent", "light switch": "lights", camera: "camera", speaker: "alarm", relay: "comms", console: "console", engines: "engines", "nav core": "nav", "docking clamps": "clamps", machine: "machine" };
+const PART_WORDS = { "junction box": "power", "air plant": "air plant", vent: "vent", "light switch": "lights", camera: "camera", speaker: "alarm", relay: "comms", console: "console", engines: "engines", "nav core": "nav", "docking clamps": "clamps", "door panel": "keypad", machine: "machine" };
 
 function thingMark(thing) {
   const part = thing.part;
@@ -401,7 +401,7 @@ const listOf = (view) => JSON.stringify(view.people.map((person) => (person.crow
 // red when it's ringing, with its state when it isn't the usual one.
 function partChip(thing, button) {
   const { part } = thing;
-  const usual = ["on", "open", "watching", "released"].includes(part.word);
+  const usual = ["on", "open", "watching", "released", "lit"].includes(part.word);
   const state = part.ringing ? " ringing" : part.works ? "" : " down";
   return button([el("span", { class: "walk-here-dot", "aria-hidden": "true" }), `${PART_WORDS[part.kind] ?? "part"}${usual ? "" : ` (${part.word})`}`], `thing:${thing.id}`, { class: `walk-here-part${state}`, title: `${thing.name}, ${part.word}` });
 }
