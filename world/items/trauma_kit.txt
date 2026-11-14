@@ -9,3 +9,6 @@ effect: hp 30
 
 In a line:
 Restores 30 health, plus your Medicine rank.
+
+Drawing:
+`[++]`

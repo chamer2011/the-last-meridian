@@ -19,6 +19,8 @@ with the file and the line.
     defense: 2                          (armor)
     restricted: yes                     (not for sale to just anyone; leave it out if not)
     effect: hp 10, energy 5             (consumables: what using it does; hp, energy, hull or fuel)
+    found in: armory, crew locker       (the kinds of container it turns up in, from world/loot/containers.txt)
+    rarity: uncommon                    (common, uncommon or rare: how often it turns up there)
 
     In a line:
     The old navy's standard long gun, easy to find now that so few are left to carry one.
@@ -27,7 +29,14 @@ with the file and the line.
     in a setting: vacuum 1              (while it's worn or carried: easier or harder in a setting)
     skills: hacking 1                   (a bonus or penalty to a skill)
 
+    Drawing:
+    `==[##]======-`                     (its little picture in the inventory, one row to a line, between backticks)
+
 In a line is what the player reads in the inventory and the market. A part that has nothing in it can be left out.
+
+Found in and rarity are for the containers in the rooms (a dresser, the armory's rack, a crate): world/loot explains
+them. An item without a found in line is never found in a container. The Drawing is how the inventory draws it, in plain
+characters, one row to a line, each row between backticks so its spaces are kept; without one it's drawn as its kind.
 
 Size, weight and stack are for the inventory. A thing one square big goes in a pocket; anything bigger goes in the
 pack, which is 8 squares by 5, so nothing can be bigger than that, and a weapon of 2 squares or fewer can go on the hip.

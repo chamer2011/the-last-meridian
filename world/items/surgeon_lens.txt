@@ -10,3 +10,6 @@ A jeweler's eyepiece rebuilt for field surgery: +2 on Medicine checks while carr
 
 Effects:
 skills: medicine 2
+
+Drawing:
+`(o)`

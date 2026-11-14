@@ -7,3 +7,6 @@ weight: 0.1
 
 In a line:
 Recognition codes for the Concord Remnant's warships, good until someone notices they've gone missing.
+
+Drawing:
+`[%]`

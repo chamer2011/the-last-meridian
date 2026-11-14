@@ -10,3 +10,6 @@ A canvas roll of well-kept tools that someone once trusted with their life: +2 o
 
 Effects:
 skills: engineering 2
+
+Drawing:
+`{=|=|=}`

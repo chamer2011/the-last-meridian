@@ -338,10 +338,13 @@ function itemGraph() {
   const P = state.item, L = state.links;
   const list = [], ws = [];
   const add = (node) => { list.push(node); return node.id; };
-  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${P.type ?? "an item"}, ${P.price ?? 0} credits.${P.size ? ` ${P.size} squares in the inventory, ${P.weight ?? 0} kg${P.stack > 1 ? `, ${P.stack} to a square` : ""}.` : ""}${P.damage ? ` ${P.damage[0]} to ${P.damage[1]} damage, ${P.stat ?? ""} and ${P.skill ?? ""}.` : ""}${P.defense ? ` Defense ${P.defense}.` : ""}${P.effect ? ` ${Object.entries(P.effect).map(([k, v]) => `${k} ${v}`).join(", ")}.` : ""}${P.restricted ? " Restricted." : ""}`, label: "About this item" });
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${P.type ?? "an item"}, ${P.price ?? 0} credits.${P.size ? ` ${P.size} squares in the inventory, ${P.weight ?? 0} kg${P.stack > 1 ? `, ${P.stack} to a square` : ""}.` : ""}${P.damage ? ` ${P.damage[0]} to ${P.damage[1]} damage, ${P.stat ?? ""} and ${P.skill ?? ""}.` : ""}${P.defense ? ` Defense ${P.defense}.` : ""}${P.effect ? ` ${Object.entries(P.effect).map(([k, v]) => `${k} ${v}`).join(", ")}.` : ""}${P.restricted ? " Restricted." : ""}${P.foundIn?.length ? ` Found in ${P.foundIn.join(", ")}, ${P.rarity ?? "common"}.` : " Not found in containers."}`, label: "About this item" });
   add({ id: "desc", kind: "lead", col: 1, name: "In a line", text: P.desc ?? "", label: "What the player reads", bind: { path: "desc" } });
   add({ id: "effects", kind: "ending", col: 2, name: "Effects", text: Object.entries(P.fx ?? {}).map(([key, value]) => `${spaced(key)}: ${Object.entries(value).map(([name, amount]) => `${name} ${amount}`).join(", ")}`).join("\n") || "none", label: "While it's worn or carried", bind: { effects: true } });
   ws.push({ from: "desc", to: "effects" });
+  // Its little picture in the inventory, its spaces kept (they'd be squeezed together in a box otherwise).
+  add({ id: "drawing", kind: "beat", col: 2, name: "Drawing", text: (P.art ?? []).map((one) => one.replace(/ /g, " ")).join("\n") || "None of its own: it's drawn as its kind.", label: "In the inventory", bind: { drawing: true } });
+  ws.push({ from: "about", to: "drawing" });
   for (const one of L.sold ?? []) { add(linkNode(`link_place_${one.id}`, "place", one.name, "Sold here.", "A market")); ws.push({ from: "desc", to: `link_place_${one.id}` }); }
   for (const one of L.found ?? []) if (!list.some((node) => node.id === `link_place_${one.id}`)) { add(linkNode(`link_place_${one.id}`, "place", one.name, "Can turn up here.", "A place")); ws.push({ from: "desc", to: `link_place_${one.id}` }); }
   return { list, ws };
@@ -1136,6 +1139,7 @@ function inspect() {
   if (node.bind?.fight) return inspectFight(inspector, node);
   if (node.bind?.speciesNumbers) return inspectSpeciesNumbers(inspector, node);
   if (node.bind?.effects) return inspectEffects(inspector, node);
+  if (node.bind?.drawing) return inspectDrawing(inspector);
   if (node.bind?.enemyLines) return inspectEnemyLines(inspector, node);
   if (node.bind?.beliefs) return inspectBeliefs(inspector, node);
   if (node.bind?.district !== undefined) return inspectDistrict(inspector, node);
@@ -1279,6 +1283,7 @@ function inspectWorldAbout(inspector) {
   const optionsFor = (path) => (path === "species" ? lists.species : path === "location" ? lists.places : path === "faction" ? lists.factions
     : path === "stat" ? lists.attributes.map((one) => ({ id: one, name: one })) : path === "skill" ? lists.skills.map((one) => ({ id: one, name: one }))
       : path === "type" ? lists.itemTypes.map((one) => ({ id: one, name: one })) : path === "art" ? lists.arts.map((one) => ({ id: one, name: one })) : path === "motive" ? lists.motives.map((one) => ({ id: one, name: one }))
+        : path === "rarity" ? (lists.rarities ?? []).map((one) => ({ id: one, name: one }))
         : path === "requires" ? lists.perks.filter((one) => one.id !== state.id) : path === "ability" ? lists.abilities
           : path === "class" ? lists.classes : path === "place" ? lists.places : path === "flavor" ? (lists.flavors ?? []).map((one) => ({ id: one, name: one }))
             : path === "kind" ? (state.kind === "program" ? lists.programKinds : state.kind === "part" ? lists.partKinds : null) : path === "soldAt" ? lists.places : path === "reaches" ? lists.reaches : null);
@@ -1291,6 +1296,13 @@ function inspectWorldAbout(inspector) {
       // Numbers with names, like on hit: stress 2, have an editor of their own, with Keep buttons of its own.
       const names = field.path === "onHit" ? ["stress", "energy"] : field.path === "loot" ? lists.items.map((one) => one.id) : field.path === "effect" ? ["hp", "energy", "hull", "fuel"] : field.path === "requiresSkill" ? lists.skills : field.path === "requiresStat" ? lists.attributes : lists.axes;
       boxes.push({ field, box: pairsEditor(item, field.path, field.key, names), own: true });
+      continue;
+    }
+    // Where an item turns up as loot: a tick for each kind of container in world/loot/containers.txt.
+    if (field.path === "foundIn" && lists.containerKinds?.length) {
+      const picked = new Set((value ?? []).map((one) => String(one).toLowerCase()));
+      const checks = lists.containerKinds.map((name, i) => ({ name, box: checkBox(`${id}-${i}`, picked.has(name.toLowerCase())) }));
+      boxes.push({ field, checks, box: el("div", { class: "subfacts" }, el("label", {}, "Found in: the containers it turns up in"), ...checks.map(({ name, box }) => row(box, el("label", { for: box.id }, name)))) });
       continue;
     }
     if (field.type === "range") {
@@ -1308,11 +1320,17 @@ function inspectWorldAbout(inspector) {
   fill(inspector,
     h2(`About this ${state.kind}`),
     el("label", { for: "edit-title" }, "The name"), title,
-    ...boxes.map(({ field, box, own, low }) => (own || low ? box : field.type === "flag" || box.tagName === "SELECT" || field.type === "number" ? row(el("label", { for: box.id }, field.key), box) : [el("label", { for: box.id }, field.type === "list" ? `${field.key}, separated by commas` : field.key), box])),
+    ...boxes.map(({ field, box, own, low, checks }) => (own || low || checks ? box : field.type === "flag" || box.tagName === "SELECT" || field.type === "number" ? row(el("label", { for: box.id }, field.key), box) : [el("label", { for: box.id }, field.type === "list" ? `${field.key}, separated by commas` : field.key), box])),
     row(button("Keep", () => {
       item[spec.title] = title.value.trim() || item[spec.title];
-      for (const { field, box, own, low, high } of boxes) {
+      for (const { field, box, own, low, high, checks } of boxes) {
         if (own) continue;
+        if (checks) {
+          const ticked = checks.filter((one) => one.box.checked).map((one) => one.name);
+          // None ticked leaves the line out: the item isn't found in containers.
+          setPath(item, field.path, ticked.length ? ticked : undefined);
+          continue;
+        }
         let value;
         if (field.type === "range") value = low.value === "" && high.value === "" ? undefined : [Number(low.value || 0), Number(high.value || 0)];
         else if (field.type === "flag") value = box.checked ? true : (get(item, field.path) === undefined && !box.checked ? undefined : false);
@@ -1967,6 +1985,21 @@ function inspectSpeciesNumbers(inspector, node) {
   const P = state.item, lists = state.lists;
   fill(inspector, h2("Their numbers"), hint("What this species adds or takes from a new character's attributes and skills."),
     pairsEditor(P, "attrs", "Attributes", lists.attributes), pairsEditor(P, "attrCaps", "Attribute caps", lists.attributes), pairsEditor(P, "skills", "Skills", lists.skills));
+}
+// An item's drawing for the inventory: one row to a line, spaces kept.
+function inspectDrawing(inspector) {
+  const P = state.item;
+  const area = textarea("edit-drawing", (P.art ?? []).join("\n"), 6);
+  area.classList.add("board-drawing");
+  fill(inspector, h2("Its drawing in the inventory"),
+    el("label", { for: "edit-drawing" }, "One row to a line, in plain characters. Spaces count, and it's drawn in the squares the item takes."), area,
+    row(button("Keep", () => {
+      const rows = area.value.replace(/\r\n?/g, "\n").split("\n").map((one) => one.replace(/\s+$/, ""));
+      while (rows.length && !rows.at(-1)) rows.pop();
+      P.art = rows.length ? rows : undefined;
+      changed();
+    }), button("Undo", () => inspect())),
+    hint("Leave it empty and the item is drawn as its kind: a weapon, armor, a supply, a gadget or a story piece. Keep changes the box and the file together. Save writes the file."));
 }
 function inspectEffects(inspector, node) {
   const P = state.item, lists = state.lists;

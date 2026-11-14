@@ -10,3 +10,6 @@ A service medal from the old navy, and people still straighten up when they see 
 
 Effects:
 skills: leadership 2
+
+Drawing:
+`(O)`

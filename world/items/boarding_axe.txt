@@ -10,3 +10,6 @@ skill: melee
 
 In a line:
 Forged to cut hatch seals, and it doesn't mind what's behind them: 4 to 9 damage, using Might and Melee.
+
+Drawing:
+`---====[<`

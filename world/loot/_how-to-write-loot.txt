@@ -1,0 +1,61 @@
+HOW TO WRITE WHAT'S IN THE CONTAINERS
+=====================================
+
+A container is a thing in a room that opens and has things inside to find: a dresser with clothes in it, a rack in the
+armory with a pistol, a crate of salvage. containers.txt says which kinds of container there are, what a thing has to
+be called to be one, how big it is inside and how many things it holds. What turns up in it comes from the items:
+each item's file says which kinds of container it's found in, and how rare it is.
+
+This is step 1 of the loot plan: the game reads all of this and the checker checks it, but nothing opens in the rooms
+yet. Containers aboard the Meridian open in step 3, and at the other places in step 4.
+
+containers.txt
+--------------
+
+    # The containers and what's in them
+    draft: the AI's, not yet edited by the owner
+
+    Kinds:
+    - dresser: called dresser, wardrobe, chest of drawers; 6x4; 1 to 4 things
+
+A kind's line is its name, a colon, then three pieces separated by semicolons:
+    called ...          the words in a thing's name that make it this kind, separated by commas. A thing called
+                        "The bosun's dresser" is a dresser. Whole words only, so "bar" isn't "crowbar". When two kinds'
+                        words both fit, the longer words win: "weapons locker" is an armory, not a crew locker.
+    6x4                 how many squares it holds inside, across by down (at most 8 by 6).
+    1 to 4 things       how many things are in it when it's first opened (or "2 things" for always two).
+
+    Richer and poorer:
+    - rooms called cabin, quarters, office: one more
+    - places graveyard, frontier: one fewer
+
+A container in a room whose name has one of those words, or at one of those places (by their ids, as in world/places),
+holds one more thing, or one fewer (two, three: as many as you write). Both can add up.
+
+    Furniture:
+    - shelf: tool shelf in Engineering, The Repair Bay; pantry in The Galley; crate anywhere else
+    - barrel: crate
+
+The furniture drawn on the Meridian's decks (lockers, shelves, desks, barrels; see public/furniture.js) opens too, as
+the kind its line says: by the room it stands in, by the rooms' names on the deck, or anywhere else.
+
+An item's file
+--------------
+
+    found in: dresser, crew locker
+    rarity: uncommon
+
+found in is the kinds of container it can turn up in, by their names in containers.txt. rarity is common, uncommon or
+rare: common things turn up often, rare ones seldom. An item without a found in line is never found in a container,
+only bought, given or carried by someone. A story item shouldn't be found in containers.
+
+An item's file can also have its own little drawing for the inventory, under Drawing:, one row to a line, each row
+between backticks so its spaces are kept:
+
+    Drawing:
+    ` _/\_ `
+    `|.||.|`
+    `|_||_|`
+
+After changing anything here, run "npm run check-story", and close and reopen the game. The Story board shows found in,
+rarity and the drawing on each item, under The story, then Story board, then Items.

@@ -11,3 +11,9 @@ Warm and patched from three other coats, it stops nothing, but nobody in a crowd
 
 Effects:
 in a setting: crowd 1
+
+Drawing:
+` _/\_ `
+`|' |'|`
+`|  | |`
+`|_/\_|`

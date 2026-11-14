@@ -68,6 +68,9 @@
 .board-inspector .quote { color: var(--story); font-family: var(--book-font); }
 .board-inspector textarea { width: 100%; background: var(--bg); color: var(--story); border: 1px solid var(--line); font: 14px/1.4 var(--book-font); padding: 6px 8px; resize: vertical; }
 .board-inspector textarea#edit-part { font: 13px/1.45 var(--mono); color: var(--text); }
+/* An item's drawing for the inventory, in its box and in the inspector, in the console's own letters so it lines up. */
+.board-node[data-id="drawing"] .words { font-family: var(--mono); font-size: 12px; line-height: 1.2; white-space: pre; -webkit-line-clamp: 6; }
+.board-inspector textarea.board-drawing { font: 14px/1.25 var(--mono); color: var(--text); white-space: pre; overflow-x: auto; }
 .board-inspector input.name-box { width: 100%; }
 .board-inspector input.number-box { width: 7ch; background: var(--panel); border: 1px solid var(--line); color: var(--bright); font: inherit; padding: 3px 6px; }
 .board-inspector input[type="checkbox"] { accent-color: var(--text); }

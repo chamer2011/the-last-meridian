@@ -11,3 +11,6 @@ restricted: yes
 
 In a line:
 A weapon stripped from a Choir Hunter. It sings when fired.
+
+Drawing:
+`<<==|=========*`

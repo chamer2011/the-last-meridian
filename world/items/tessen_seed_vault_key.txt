@@ -7,3 +7,6 @@ weight: 0.2
 
 In a line:
 The old iron key to Tessen Colony's seed vault, which holds enough to plant a world and the whole of the colony's future.
+
+Drawing:
+`o-#`

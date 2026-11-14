@@ -7,3 +7,6 @@ weight: 1
 
 In a line:
 A sealed tube of material drilled out of the drowned structure at Maris Deep, and it won't cool down.
+
+Drawing:
+`[o]`

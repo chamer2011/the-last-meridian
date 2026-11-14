@@ -8,3 +8,8 @@ defense: 1
 
 In a line:
 Stops shrapnel, mostly.
+
+Drawing:
+`/\__/\`
+`|[==]|`
+`|____|`

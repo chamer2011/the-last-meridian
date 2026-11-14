@@ -7,3 +7,6 @@ weight: 0.1
 
 In a line:
 A smooth silver disc that the Quiet press into the hands of the frightened, and people who carry one sleep very well.
+
+Drawing:
+`(.)`

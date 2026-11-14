@@ -10,3 +10,6 @@ A Kessara-built cracking deck, illegal everywhere that still has laws: +3 on Hac
 
 Effects:
 skills: hacking 3
+
+Drawing:
+`[::]=o`

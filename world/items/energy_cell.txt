@@ -9,3 +9,6 @@ effect: energy 6
 
 In a line:
 Restores 6 energy.
+
+Drawing:
+`(|)`

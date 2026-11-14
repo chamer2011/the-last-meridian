@@ -10,3 +10,6 @@ In a line:
 
 Effects:
 skills: persuasion 2, deception 2
+
+Drawing:
+`[~]`

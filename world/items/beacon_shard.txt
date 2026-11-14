@@ -7,3 +7,6 @@ weight: 0.2
 
 In a line:
 A warm fragment of alien crystal. It points somewhere.
+
+Drawing:
+`<*>`

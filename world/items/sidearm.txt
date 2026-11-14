@@ -10,3 +10,6 @@ skill: firearms
 
 In a line:
 Standard-issue pulse pistol. Reliable, unremarkable.
+
+Drawing:
+`[##]=-`

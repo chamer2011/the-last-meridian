@@ -10,3 +10,6 @@ In a line:
 
 Effects:
 skills: hacking 2
+
+Drawing:
+`o-=`

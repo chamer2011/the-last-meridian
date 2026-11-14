@@ -36,6 +36,7 @@ import { parseLogisticsText } from "../public/logistics-text.js";
 import { COMPUTER, ENEMY, FACTION, ITEM, PERK, PERSON, PLACE, PROGRAM, RIG_PART, SPECIES_SPEC, parseWorldText, writeWorldText } from "../public/world-text.js";
 import { PROGRAMS_DIR, PROGRAM_KINDS, forgetPrograms, parseProgram, programsNow } from "./programs.js";
 import { PART_KINDS, REACHES, RIG_PARTS_DIR, benchToolById, forgetRigParts, parseRigPart, rigPartById, rigPartsNow } from "./rig-parts.js";
+import { lootLists } from "./loot.js";
 
 const ID = /^[a-z][a-z0-9_]{1,60}$/;
 function checkId(id) {
@@ -506,6 +507,8 @@ function boardLists() {
     partKinds: Object.entries(PART_KINDS).map(([id, name]) => ({ id, name })),
     reaches: Object.entries(REACHES).map(([id, name]) => ({ id, name })),
     flavors: Object.keys(COMPUTER_FLAVOR?.motd ?? { default: 1, yours: 1 }),
+    // The kinds of container an item can be found in, and how rare it is (src/loot.js).
+    ...lootLists(),
   };
 }
 

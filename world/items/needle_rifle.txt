@@ -10,3 +10,6 @@ skill: firearms
 
 In a line:
 Silent long-range flechettes favoured by Drift assassins.
+
+Drawing:
+`=[#]==========-`

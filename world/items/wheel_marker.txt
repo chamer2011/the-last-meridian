@@ -7,3 +7,6 @@ weight: 0.1
 
 In a line:
 A gilded chip that records a debt at the Gilded Wheel, and the House always remembers who holds it.
+
+Drawing:
+`<o>`

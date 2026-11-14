@@ -7,3 +7,6 @@ weight: 0
 
 In a line:
 Someone would pay to read this, or pay more to destroy it.
+
+Drawing:
+`[::]`

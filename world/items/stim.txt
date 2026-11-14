@@ -9,3 +9,6 @@ effect: hp 8, energy 3
 
 In a line:
 Restores 8 health and 3 energy.
+
+Drawing:
+`-=|>`

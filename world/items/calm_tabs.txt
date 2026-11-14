@@ -9,3 +9,6 @@ effect: energy 2
 
 In a line:
 Restores 2 energy, but does nothing for stress.
+
+Drawing:
+`o o`

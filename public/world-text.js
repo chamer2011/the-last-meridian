@@ -17,7 +17,8 @@ const listOf = (words) => words.split(",").map((one) => one.trim()).filter(Boole
 // header: lines at the top, key: value. sections: parts under a heading. Types: string, number (unknown for none),
 // flag (yes or no), list (comma-separated), range (2 to 5), pairs (name number, name number), text (a paragraph),
 // items (one per line, starting with - ), named (name: words, one per line), fields (key: value lines of their own),
-// parts (like pairs, but a name can be more than one word: head 10, right arm 15, kept as right_arm).
+// parts (like pairs, but a name can be more than one word: head 10, right arm 15, kept as right_arm), drawing (a little
+// picture in console art, one row to a line, each row between backticks so its spaces are kept: `|_||_|`).
 
 const FIGHT_FIELDS = [
   { path: "threat", key: "threat", type: "number" }, { path: "hp", key: "hp", type: "number" }, { path: "attack", key: "attack", type: "number" }, { path: "defense", key: "defense", type: "number" },
@@ -122,10 +123,15 @@ export const ITEM = {
     { path: "size", key: "size", type: "string" }, { path: "weight", key: "weight", type: "number" }, { path: "stack", key: "stack", type: "number" },
     { path: "damage", key: "damage", type: "range" }, { path: "stat", key: "stat", type: "string" }, { path: "skill", key: "skill", type: "string" },
     { path: "defense", key: "defense", type: "number" }, { path: "restricted", key: "restricted", type: "flag" }, { path: "effect", key: "effect", type: "pairs" },
+    // Where it turns up as loot: the kinds of container it's found in, from world/loot/containers.txt, and how often:
+    // common, uncommon or rare (src/loot.js).
+    { path: "foundIn", key: "found in", type: "list" }, { path: "rarity", key: "rarity", type: "string" },
   ],
   sections: [
     { path: "desc", phrase: "In a line", type: "text" },
     { path: "fx", phrase: "Effects", type: "fields", fields: [{ path: "context", key: "in a setting", type: "pairs" }, { path: "skills", key: "skills", type: "pairs" }] },
+    // How it's drawn in the inventory's grid (public/item-art.js); without one, it's drawn as its kind.
+    { path: "art", phrase: "Drawing", type: "drawing" },
   ],
 };
 
@@ -327,7 +333,7 @@ export function parseWorldText(text, spec, id = "it") {
       seen.add(section.path);
       append = null;
       if (section.type === "text") set(obj, section.path, "");
-      else if (section.type === "items" || section.type === "named") set(obj, section.path, []);
+      else if (section.type === "items" || section.type === "named" || section.type === "drawing") set(obj, section.path, []);
       else if (section.type === "pairs") set(obj, section.path, {});
       else if (section.type === "fields") set(obj, section.path, get(obj, section.path) ?? {});
       continue;
@@ -353,6 +359,12 @@ export function parseWorldText(text, spec, id = "it") {
         append = (words) => { list[list.length - 1] += ` ${words}`; };
       } else if (append) append(line);
       else problem(n, `under "${section.phrase}", each one starts with - and a space`);
+      continue;
+    }
+    if (section.type === "drawing") {
+      // A row between backticks keeps its spaces; one without them is taken as it stands.
+      const wrapped = line.match(/^`(.*)`$/);
+      get(obj, section.path).push(wrapped ? wrapped[1] : line);
       continue;
     }
     if (section.type === "named") {
@@ -395,6 +407,7 @@ export function writeWorldText(obj, spec) {
     if (section.type === "text") out.push(String(value));
     else if (section.type === "items") out.push(...value.map((one) => `- ${one}`));
     else if (section.type === "named") out.push(...value.map((one) => `${one.name}: ${one.desc}`));
+    else if (section.type === "drawing") out.push(...value.map((row) => `\`${row}\``));
     else if (section.type === "pairs") { const words = writeValue("pairs", value); if (words) out.push(words); }
     else if (section.type === "fields") {
       for (const field of section.fields) {

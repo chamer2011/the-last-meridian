@@ -7,3 +7,6 @@ weight: 0.1
 
 In a line:
 A signed data tag from the Unbound that their sentries will honor once, and only for the person it was given to.
+
+Drawing:
+`[s]`

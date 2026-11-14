@@ -10,3 +10,7 @@ skill: firearms
 
 In a line:
 Loud, heavy and very persuasive.
+
+Drawing:
+`=[####]=======-`
+`  |__|  |/`

@@ -8,3 +8,9 @@ defense: 4
 
 In a line:
 Bends light and targeting sensors alike.
+
+Drawing:
+` _/\_ `
+`|.  .|`
+`|    |`
+`|_||_|`

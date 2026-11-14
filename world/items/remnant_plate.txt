@@ -12,3 +12,9 @@ Concord assault armor kept like new by people who won't admit the war is over, a
 
 Effects:
 skills: leadership 1
+
+Drawing:
+` _/<>\_ `
+`|[####]|`
+`| |##| |`
+`|_|__|_|`

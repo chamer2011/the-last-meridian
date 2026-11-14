@@ -7,3 +7,6 @@ weight: 0.2
 
 In a line:
 A fist-sized ring of pale, seamless metal that grows heavier the closer it gets to the Pale Gate.
+
+Drawing:
+`o-+`

@@ -10,3 +10,7 @@ skill: engineering
 
 In a line:
 A tool first, a weapon whenever necessary.
+
+Drawing:
+`[==]~`
+` ||  *`

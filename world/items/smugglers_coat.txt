@@ -8,3 +8,9 @@ defense: 1
 
 In a line:
 Armored lining and many hidden pockets.
+
+Drawing:
+` _/\_ `
+`|.||.|`
+`| || |`
+`|_||_|`

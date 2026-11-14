@@ -1,0 +1,26 @@
+# The containers and what's in them
+draft: the AI's, not yet edited by the owner
+
+Kinds:
+- dresser: called dresser, wardrobe, chest of drawers, clothes chest; 6x4; 1 to 4 things
+- crew locker: called locker, lockers, footlocker, kit bag; 4x4; 0 to 3 things
+- armory: called armory, weapon rack, weapons rack, rifle rack, armor rack, gun locker, weapons locker; 6x5; 1 to 4 things
+- medicine cabinet: called medicine cabinet, first aid box, medical crate, medical crates, medicine chest; 6x4; 1 to 4 things
+- desk: called desk, desks, filing cabinet, drawer, drawers, tray; 6x3; 0 to 3 things
+- pantry: called pantry, cupboard, larder, sack, sacks; 6x4; 1 to 4 things
+- tool shelf: called tool roll, tool rack, tool chest, toolbox, workbench; 6x4; 1 to 4 things
+- crate: called crate, crates, barrel, barrels, box, boxes, bin, bins; 6x5; 0 to 4 things
+- safe: called safe, strongbox, lockbox, cash box; 4x3; 0 to 2 things
+- cooler: called cooler, icebox, bar; 4x4; 1 to 3 things
+
+Richer and poorer:
+- rooms called cabin, cabins, quarters, ready room, wardroom, office: one more
+- rooms called hot bunks, overflow, hold, holds: one fewer
+- places vantor, wheel, asterion, bastion: one more
+- places graveyard, frontier, nest, cinder: one fewer
+
+Furniture:
+- locker: armory in The Armory; crew locker anywhere else
+- shelf: tool shelf in Engineering, The Repair Bay, Stores; pantry in The Galley; medicine cabinet in Medbay; crate anywhere else
+- desk: desk
+- barrel: crate

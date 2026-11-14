@@ -7,3 +7,6 @@ weight: 1
 
 In a line:
 A monastery's record of what the First Builders feared.
+
+Drawing:
+`[|||]`

@@ -11,3 +11,8 @@ Load-bearing plate from the Korrath forges, built to hold a body up under crushi
 
 Effects:
 in a setting: heavy_gravity 2
+
+Drawing:
+` _/==\_ `
+`|=|##|=|`
+`|_|__|_|`

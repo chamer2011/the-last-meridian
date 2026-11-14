@@ -7,3 +7,6 @@ weight: 0.1
 
 In a line:
 Eleven minutes of voices pulled off the dead wires of Asterion, and every time you play it, it runs a little longer.
+
+Drawing:
+`(>)`

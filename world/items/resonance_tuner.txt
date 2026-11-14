@@ -10,3 +10,6 @@ A forked crystal from the old monasteries that you hold against your teeth to he
 
 Effects:
 skills: attunement 2
+
+Drawing:
+`~(|)~`

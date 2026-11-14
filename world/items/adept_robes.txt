@@ -8,3 +8,9 @@ defense: 1
 
 In a line:
 Light fabric threaded with dampening filament.
+
+Drawing:
+` _/\_ `
+`|:||:|`
+`|:||:|`
+`/_||_\`

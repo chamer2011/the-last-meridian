@@ -10,3 +10,6 @@ A battered handheld scanner, still in calibration: +2 on Awareness checks and +1
 
 Effects:
 skills: awareness 2, science 1
+
+Drawing:
+`[(o)]~`

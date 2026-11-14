@@ -10,3 +10,6 @@ Worn flight gloves with the fingertips rewired for feel: +2 on Piloting checks w
 
 Effects:
 skills: piloting 2
+
+Drawing:
+`<w>`

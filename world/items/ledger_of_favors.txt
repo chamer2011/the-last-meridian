@@ -10,3 +10,6 @@ A worn book of who owes whom from here to Kessara: +2 on Commerce checks and +1 
 
 Effects:
 skills: commerce 2, streetwise 1
+
+Drawing:
+`[$]`

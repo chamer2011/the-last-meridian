@@ -7,3 +7,6 @@ weight: 0.5
 
 In a line:
 A brittle handwritten list of what's sealed in the Ninth Vault of Sarn, and the First Keeper would very much like it back.
+
+Drawing:
+`[9]`

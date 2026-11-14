@@ -11,3 +11,8 @@ The thin pressure layer the Long Families wear under everything: +2 defense, and
 
 Effects:
 in a setting: vacuum 2
+
+Drawing:
+`/\__/\`
+`|~~~~|`
+`|____|`

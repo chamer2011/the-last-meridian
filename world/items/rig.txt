@@ -8,3 +8,7 @@ stack: 1
 
 In a line:
 Your pocket computer: a yard board in a plain case, four blocks of memory, a cable jack. It carries programs onto computers you get into. Rig, under Gear, shows what's on it.
+
+Drawing:
+`[::::]`
+`[_o__]`

@@ -10,3 +10,6 @@ A pocket jammer that smears your trace on anyone's sensors: +2 on Stealth checks
 
 Effects:
 skills: stealth 2
+
+Drawing:
+`(((.`

@@ -296,7 +296,7 @@ export const drawnWeapon = (game) => (game.combat?.drawn && game.equipped?.sidea
 function itemFacts(id, extra = {}) {
   const item = ITEMS[id];
   const { w, h } = sizeOf(item);
-  return { id, name: item.name, type: item.type, w, h, weight: weightOf(item), stack: stackOf(item), desc: item.desc ?? "", price: item.price ?? 0, damage: item.damage ?? null, defense: item.defense ?? null, effect: item.effect ?? null, sidearm: fitsSidearm(item), fight: fightable(item), ...extra };
+  return { id, name: item.name, type: item.type, w, h, weight: weightOf(item), stack: stackOf(item), desc: item.desc ?? "", price: item.price ?? 0, damage: item.damage ?? null, defense: item.defense ?? null, effect: item.effect ?? null, sidearm: fitsSidearm(item), fight: fightable(item), ...(item.art?.length ? { art: item.art } : {}), ...extra };
 }
 // Reading this changes nothing in the save.
 export function bagView(game) {

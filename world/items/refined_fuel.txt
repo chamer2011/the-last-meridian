@@ -9,3 +9,6 @@ effect: fuel 5
 
 In a line:
 Adds 5 fuel to the ship.
+
+Drawing:
+`{FF}`
