@@ -4,14 +4,15 @@
 // Logs, Programs, Network) that open in a window; what's opened shows in a second window; a third keeps the session's
 // log; the taskbar has the menu, the windows, the watcher's eye on a hacked computer, and the clock. Windows are dragged
 // by their title bars. The monitor and the player's rig beside it are two windows of their own, each dragged by its
-// frame and left where it's let go, with the lead between them following.
+// frame: the monitor slides back when it's let go, like the game's other floating windows, and the rig stays where it's
+// put, with the lead between them following.
 // Skin and the old screen's strength are Settings choices (desktop.css). Nothing here needs typing. Since step 6 a
 // computer can look like something else: a door's panel with its keypad, a junction box's service menu and a camera's
 // feed on the rig's little screen, and NAVCOM 7, the Navy's desktop, for the ship's main system.
 
 import { api, el, zoom } from "./dom.js";
 import { leaderNode } from "./float.js";
-import { makePullable, pulledBy } from "./pull.js";
+import { SPRING_MS, makePullable, pulledBy } from "./pull.js";
 import { NET_MAP, layOutNetMap } from "./net-layout.js";
 
 const comp = { id: null, view: null, sending: false, message: null, seen: 0 };
@@ -517,7 +518,7 @@ function deviceWindow(view) {
       el("button", { disabled: comp.sending, onclick: (event) => { event.stopPropagation(); logOff(); } }, d.leave ?? "Log off")));
   const narrow = pocketRoom() < 960;
   return el("div", { class: `desk device${narrow ? " narrow" : ""}`, id: "computer-desk", role: "dialog", "aria-label": view.name, tabindex: "-1" },
-    el("div", { class: "device-row" }, movable(frame, "window"), el("div", { class: "rig-gap", "aria-hidden": "true" }), movable(el("div", { class: "rig-case", id: "computer-rig" }, pocketNode(view, pocketMapWidth(narrow))), "rig")));
+    el("div", { class: "device-row" }, movable(frame, "window"), el("div", { class: "rig-gap", "aria-hidden": "true" }), movable(el("div", { class: "rig-case", id: "computer-rig" }, pocketNode(view, pocketMapWidth(narrow))), "rig", { stays: true })));
 }
 
 // ---- Your rig, beside a panel with no screen of its own ----------------------------------------------------------
@@ -549,18 +550,31 @@ function pocketMapWidth(narrow) {
 }
 
 // ---- The computer and the rig, each moved on its own ----------------------------------------------------------------
-// The computer (its monitor, or a panel's own window) and the rig beside it start side by side, and each is dragged by
-// its frame and stays where it's let go, kept on the screen. Where they were moved to lasts while going along the
-// network and is forgotten at a computer come to afresh, when the computer closes, and when the screen changes size.
+// The computer (its monitor, or a panel's own window) and the rig beside it start side by side, and each is pulled by
+// its frame on its own. The computer slides back when it's let go, like the game's other floating windows; the rig
+// stays where it's let go, kept on the screen. Where the rig was moved to lasts while going along the network and is
+// forgotten at a computer come to afresh, when the computer closes, and when the screen changes size.
 
-const moved = { window: null, rig: null };
+const moved = { rig: null };
 function forgetMoves() {
-  moved.window = null;
   moved.rig = null;
 }
 
-function movable(node, key) {
-  const at = () => moved[key] ?? { x: 0, y: 0 };
+// The lead drawn again every frame for a while, as the computer slides home.
+let leadUntil = 0;
+function followLead(ms) {
+  const going = leadUntil > performance.now();
+  leadUntil = Math.max(leadUntil, performance.now() + ms);
+  if (going) return;
+  const frame = () => {
+    drawLead();
+    if (performance.now() < leadUntil) requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
+
+function movable(node, key, { stays = false } = {}) {
+  const at = () => (stays && moved[key]) || { x: 0, y: 0 };
   const put = (win, x, y) => {
     win.style.transform = x || y ? `translate(${x}px, ${y}px)` : "";
   };
@@ -574,9 +588,18 @@ function movable(node, key) {
       drawLead();
     },
     back: (win) => {
-      win.classList.remove("springing");
-      if (last) moved[key] = keptOnScreen(win, { x: at().x + last.dx, y: at().y + last.dy });
+      const pulled = last;
       last = null;
+      if (!stays) {
+        // Home, the way the other floating windows go, with the lead following it there.
+        put(win, 0, 0);
+        setTimeout(() => win.classList.remove("springing"), SPRING_MS);
+        followLead(SPRING_MS + 60);
+        win.addEventListener("transitionend", drawLead, { once: true });
+        return;
+      }
+      win.classList.remove("springing");
+      if (pulled) moved[key] = keptOnScreen(win, { x: at().x + pulled.dx, y: at().y + pulled.dy });
       put(win, at().x, at().y);
       win.classList.toggle("moved", Boolean(at().x || at().y));
       drawLead();
@@ -818,8 +841,8 @@ function windowNode() {
     el("div", { class: "plate" }, el("span", {}, "VARNE 15SX"), el("span", { class: `led${watch?.stage === "tracing" ? " bad" : watch?.stage === "noticed" ? " warn" : ""}` })));
   // Folded, the rig is the strip down the monitor's side, and the page that slides out of it goes where it goes.
   const rig = lay.strip
-    ? [movable(el("div", { class: "rig-folded", id: "computer-rig" }, stripNode(view), comp.rigSlide && el("div", { class: "rig-slide" }, pocketNode(view, lay.map, { closeable: true }))), "rig")]
-    : [el("div", { class: "rig-gap", "aria-hidden": "true" }), movable(el("div", { class: "rig-case", id: "computer-rig" }, pocketNode(view, lay.map)), "rig")];
+    ? [movable(el("div", { class: "rig-folded", id: "computer-rig" }, stripNode(view), comp.rigSlide && el("div", { class: "rig-slide" }, pocketNode(view, lay.map, { closeable: true }))), "rig", { stays: true })]
+    : [el("div", { class: "rig-gap", "aria-hidden": "true" }), movable(el("div", { class: "rig-case", id: "computer-rig" }, pocketNode(view, lay.map)), "rig", { stays: true })];
   return el("div", { class: `desk computer${lay.strip ? " folded" : ""}`, id: "computer-desk", role: "dialog", "aria-label": view.name, tabindex: "-1" },
     el("div", { class: "device-row" }, movable(monitor, "window"), rig));
 }

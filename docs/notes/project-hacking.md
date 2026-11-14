@@ -821,3 +821,10 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
 - **Screens** on a test copy at 1400 and 810 wide: Haven's berth board with the rig dragged down and the monitor up and
   left, connected with the cable following; at 810 the strip moved off the monitor with its D: page sliding out of it;
   the Bridge keypad's beam with the rig dragged away, and with the keypad dragged under the rig.
+- **The computer springs back (the same day),** at their "The computer should do like the windows an spring back, the
+  rig doesn't": `movable` takes `stays`, given to the rig only; the computer's window is pulled aside and slides home
+  when let go, like the check window and the panes (`put` back to nothing under `.springing`), and the lead is drawn
+  every frame while it goes (`followLead`) and once more on `transitionend`. `moved` keeps the rig's place alone.
+  Checked on a test copy at 1400 and 810 wide: the monitor pulled away slides home with the cable following it, and
+  the rig, and the folded strip, stay where they were dropped. (In the browser pane while it's hidden, a slide only
+  moves when a frame is drawn, so it looked stuck halfway until a few pictures were taken: that's the pane, not the game.)
