@@ -19,9 +19,10 @@ import { seenTampering } from "./systems.js";
 import { peopleAboard } from "./life.js";
 import { mapFor } from "./walk.js";
 
-// The looks with no screen of their own: a door's panel, a junction box's service menu, a camera's feed. Beside them the
-// player's rig shows the map and the programs.
+// The looks with no screen of their own: a door's panel, a junction box's service menu, a camera's feed.
 export const PANEL_LOOKS = ["door", "service", "camera"];
+// A junction box and a camera have no keyboard either: they're reached only through the rig, so opening one plugs it in.
+export const THROUGH_RIG = ["service", "camera"];
 export const LOOKS = {
   keelworks: { reach: "cable", watcher: null, name: "Keelworks 4.1", how: "Open a folder on the desktop to read or run what's in it. Log off from the Keel menu, or with Esc." },
   door: { reach: "optic", watcher: "DoorCtl", name: "DoorCtl 2.1", leave: "Unclip", how: "Open or lock the door from its panel, or give it a new code. Unclip to leave, or press Esc." },
@@ -154,9 +155,49 @@ function openDevice(game, body, look) {
   const notes = seen ? seenTampering(game, place, seen.camera ? "a camera" : seen.name) : [];
   const content = deviceContent(game, place, part, look);
   const session = openLogon(game, content, { at: part.room === room ? `thing:part:${part.id}` : null });
+  session.plugged = true;
   const what = look === "service" ? `You clip onto ${content.name}'s service port` : `Your radio finds the feed of ${lowerFirst(content.name)} in ${inSentence(content.room)}`;
   return { said: [`${what}${session.locked ? ": it wants a password." : "."}`, ...notes].join("\n"), computer: true };
 }
+// ---- Plugging the rig in -------------------------------------------------------------------------------------------
+
+// Connecting the rig takes a minute, whatever the link.
+export const PLUG_MINUTES = 1;
+const PLUGGED_WORDS = {
+  cable: "Your rig is on the cable port.",
+  optic: "Your optical reader is on the panel's eye.",
+  clip: "Your clip is on the service port.",
+  radio: "Your radio has its feed.",
+  navy: "The Navy coupler seats in its port.",
+};
+
+// The player plugs their rig into the computer they're at, by the link it takes: they connect it before they hack, see
+// the network or run their programs. At someone else's, in front of people, it's seen like any tampering. Over the
+// network it's plugged in where the player started already. helpers: { act }.
+export function plugIn(game, session, content, { act }) {
+  if (session.remote) return { over: false, said: "Your rig is on the network already, plugged in where you started." };
+  if (session.plugged) return { over: false, said: "Your rig is connected already." };
+  const why = reachWhy(game, content);
+  if (why) return { over: false, said: `Your rig can't connect to it: ${why}.` };
+  session.plugged = true;
+  session.log.push(line(PLUGGED_WORDS[reachOf(content)] ?? "Your rig is connected.", "good"));
+  const out = act(game, session, { noise: 0, minutes: PLUG_MINUTES });
+  if (out) return out;
+  const spot = playerSpot(game);
+  const seen = !session.practice && !ownedBy(game, session.place) && spot?.place === session.place ? whoSees(game, session.place, spot.room) : null;
+  const notes = seen ? seenTampering(game, session.place, seen.camera ? "a camera" : seen.name) : [];
+  return { over: false, said: notes.length ? notes.join("\n") : null };
+}
+
+// Taking the rig off again. A junction box or a camera is left to unplug.
+export function unplugRig(game, session) {
+  if (session.remote || !session.plugged) return { over: false, said: "Your rig isn't plugged in here." };
+  if (THROUGH_RIG.includes(session.look)) return { over: false, said: "It's reached only through your rig: leave it to unplug." };
+  session.plugged = false;
+  session.log.push(line("You unplug your rig.", "dim"));
+  return { over: false };
+}
+
 addOrder("device-service", (game, body) => openDevice(game, body, "service"));
 addOrder("device-camera", (game, body) => openDevice(game, body, "camera"));
 

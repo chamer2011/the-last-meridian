@@ -12,7 +12,7 @@ process.env.GAME_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-netw
 
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 await import("../src/tools.js");
-const { enterComputer, openDoorPanel } = await import("../src/computers.js");
+const { enterComputer, openDoorPanel, openLogon, writtenContent } = await import("../src/computers.js");
 const { rigCommand } = await import("../src/rig.js");
 const { computerCommand } = await import("../src/computer-use.js");
 const { linkedTo, networkOf } = await import("../src/network.js");
@@ -75,14 +75,19 @@ test("going along the network aboard your own ship: two minutes, straight in, an
   assert.equal(v.netmap.here, "c:meridian_medbay_records");
   assert.deepEqual(v.netmap.nodes.filter((one) => one.linked).map((one) => one.name), ["The plot table"]);
   assert.match(hop(game, "door:bridge").said, /isn't linked to where you are/);
+  // The map is on the rig, which is connected first.
+  assert.match(hop(game, "c:meridian_plot_table").said, /^Your rig isn't connected, so it can't go on from here: connect it first/);
   const before = game.clock.hours;
+  computerCommand(game, { action: "plug" });
+  assert.equal(view(game).reach.ok, true);
   const out = hop(game, "c:meridian_plot_table");
   assert.equal(out.computer, true);
   v = view(game);
   assert.equal(v.name, "The plot table");
   assert.equal(v.locked, false, "your own ship's systems let you straight in");
   assert.equal(v.reach.remote, true);
-  assert.ok(Math.abs((game.clock.hours - before) * 60 - 2) < 0.01, "a hop takes two minutes");
+  assert.equal(v.reach.ok, true, "over the network the rig is plugged in where you started");
+  assert.ok(Math.abs((game.clock.hours - before) * 60 - 3) < 0.01, "connecting takes a minute, and a hop two");
   // On along the bus: the relay, then the bridge's junction box, with its own menu.
   hop(game, "part:comms:relay:bridge");
   assert.equal(view(game).name, "The comms relay");
@@ -161,7 +166,8 @@ test("beside a panel the rig is the screen: its board and casing go with the vie
   assert.deepEqual(v.rigFace, { board: "Yard board", casing: "Plain case" });
   assert.deepEqual([v.reach.ok, v.reach.remote], [false, false]);
   const before = game.clock.hours;
-  assert.match(hop(game, "c:meridian_plot_table").said, /^Your rig isn't plugged into it, so it can't go on from here: it takes an optical reader/);
+  assert.match(hop(game, "c:meridian_plot_table").said, /^Your rig isn't connected, so it can't go on from here: it takes an optical reader/);
+  assert.match(computerCommand(game, { action: "plug" }).said, /^Your rig can't connect to it: it takes an optical reader/);
   assert.equal(game.computer.id, "meridian:door:bridge", "still at the panel");
   assert.equal(game.clock.hours, before, "and no time went by");
   // With an optical reader in the link socket (fitted away from any computer) it is.
@@ -171,11 +177,54 @@ test("beside a panel the rig is the screen: its board and casing go with the vie
   game.rig.parts.push({ uid, id: "optical_reader", cond: "new", tune: null, from: "" });
   rigCommand(game, { action: "fit", uid, socket: "link1" });
   openDoorPanel(game, "meridian", "bridge");
+  assert.deepEqual([view(game).reach.fits, view(game).reach.ok], [true, false], "it fits, but isn't plugged in yet");
+  computerCommand(game, { action: "plug" });
   assert.equal(view(game).reach.ok, true);
   assert.equal(hop(game, "c:meridian_plot_table").computer, true);
   v = view(game);
   assert.equal(v.name, "The plot table");
-  assert.equal(v.rigFace, null, "a desk has a screen of its own");
+  assert.deepEqual(v.rigFace, { board: "Yard board", casing: "Plain case" }, "the rig is beside a desk too");
+});
+
+test("the rig is connected before anything is hacked: a minute, seen in front of people, and off again with Unplug", () => {
+  const game = newGame();
+  game.location = "haven";
+  game.walk = null;
+  const docks = Object.keys(walk.mapFor("haven").rooms).find((id) => walk.mapFor("haven").rooms[id].name === "The Manifest Docks");
+  // Walking there sets down where the player stands, which is how anyone in the room can see them.
+  walk.walkCommand(game, { action: "go", to: `room:${docks}` });
+  for (let i = 0; i < 6 && publicState(game).walk?.here?.id !== docks; i += 1) walk.walkCommand(game, { action: "go", to: `room:${docks}` });
+  openLogon(game, writtenContent("haven_berth_board"));
+  let v = view(game);
+  assert.equal(v.locked, true);
+  assert.deepEqual([v.reach.fits, v.reach.ok], [true, false]);
+  assert.ok(v.logon.ways.every((way) => way.why === "your rig isn't connected"));
+  assert.match(v.hints[0], /^Connect your rig first: it takes a minute, and anyone in the room can see you plug in/);
+  assert.ok(v.hints.some((line) => /^DICTIONARY\.EXE gets you in/.test(line)), "the advisor weighs the ways as they'd be once plugged in");
+  assert.equal(v.rigHeat, null, "an unplugged rig isn't working");
+  assert.match(computerCommand(game, { action: "rig", id: "dictionary" }).said ?? view(game).screen?.lines?.map((one) => one.text).join(" ") ?? "", /isn't connected/);
+  // The docks are busy in the morning: plugging in there is seen.
+  const standing = Object.values(game.factions).reduce((sum, n) => sum + n, 0);
+  const plugged = computerCommand(game, { action: "plug" });
+  assert.match(plugged.said, /saw you plug into Haven Station's systems/);
+  assert.ok(Object.values(game.factions).reduce((sum, n) => sum + n, 0) < standing);
+  v = view(game);
+  assert.equal(v.reach.ok, true);
+  assert.equal(v.minutes, 1, "connecting takes a minute");
+  assert.equal(v.logon.ways.find((way) => way.id === "dictionary").why, null);
+  assert.equal(v.rigHeat.words, "cool");
+  assert.match(computerCommand(game, { action: "plug" }).said, /connected already/);
+  computerCommand(game, { action: "unplug" });
+  assert.equal(view(game).reach.ok, false);
+  assert.equal(view(game).logon.ways.find((way) => way.id === "dictionary").why, "your rig isn't connected");
+  computerCommand(game, { action: "logoff" });
+  // A junction box is reached only through the rig: opening it connects it, and it's left, not unplugged.
+  game.rig.nextUid += 1;
+  game.rig.parts.push({ uid: `p${game.rig.nextUid}`, id: "service_clip", cond: "new", tune: null, from: "" });
+  game.rig.build.fit.link1 = `p${game.rig.nextUid}`;
+  walk.walkCommand(game, { action: "device-service", key: "part:power:junction_box:docks" });
+  assert.equal(view(game).reach.ok, true);
+  assert.match(computerCommand(game, { action: "unplug" }).said, /leave it to unplug/);
 });
 
 test("plugging into someone else's box in front of people is seen, like tampering", () => {

@@ -32,7 +32,8 @@ const newGame = (hacking = 0) => {
 };
 // A made-up computer that isn't the player's, of whichever class.
 const TERMINAL = { id: "test_terminal", name: "The test terminal", classKey: "moderate", user: "oona", place: "haven", desc: "A terminal for the tests.", files: [{ id: "a", name: "a.txt", text: "Alpha." }], mail: [], logs: [], programs: [], network: [], controls: [] };
-const logonAt = (game, classKey = "moderate") => enterComputer(game, { generic: { ...TERMINAL, classKey }, locked: true });
+// A logon to work on, with the rig already plugged in, as Connect leaves it.
+const logonAt = (game, classKey = "moderate") => Object.assign(enterComputer(game, { generic: { ...TERMINAL, classKey }, locked: true }), { plugged: true });
 const run = (game, id) => computerCommand(game, { action: "rig", id });
 // A link in the rig's link socket (step 6: each kind of computer takes one kind of link).
 function fitLink(game, id) {
@@ -129,6 +130,7 @@ test("a breaker's own noise can get the player cut off at the logon, and a scene
   assert.equal(game.computer.locked, true);
   game.rig.programs.push("skeleton");
   game.rig.loaded = ["skeleton"];
+  computerCommand(game, { action: "plug" });
   run(game, "scope");
   game.computer.noise = watch.cuts - 1;
   const out = run(game, "skeleton");
@@ -187,6 +189,7 @@ test("a door's panel opens at its logon, and a map file's door opens once the pl
   // A door's panel takes an optical reader.
   fitLink(game, "optical_reader");
   openDoorPanel(game, "foundry", "sublevels", { classKey: "hard", doorRule: rule });
+  computerCommand(game, { action: "plug" });
   run(game, "scope");
   run(game, "skeleton");
   assert.equal(game.computer.locked, false);

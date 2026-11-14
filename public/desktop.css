@@ -145,11 +145,9 @@
 .os .logon .banner small { display: block; margin-top: 3px; font-size: 10px; font-weight: 400; letter-spacing: .1em; opacity: .85; }
 .os .logon .grid2 { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 4px 8px; align-items: center; }
 .os .logon .field { padding: 1px 4px; min-height: 17px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.os .logon-ways { max-height: 118px; overflow: auto; padding: 2px; scrollbar-width: thin; }
-.os button.row-item.logon-way { align-items: start; }
-.os button.row-item.logon-way > span { display: flex; flex-direction: column; min-width: 0; }
-.os button.row-item.logon-way > span small { font-size: 10px; white-space: normal; }
-.os .logon-none { color: var(--dim); }
+.os .logon-rig { display: flex; gap: 8px; align-items: center; padding: 6px 8px; margin: 6px 0 2px; }
+.os .logon-rig .plugdot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #888; border: 1px solid #444; }
+.os .logon-rig.on .plugdot { background: #2fbf4f; box-shadow: 0 0 4px #2fbf4f; }
 .os .logon-buttons { display: flex; justify-content: flex-end; }
 
 /* The rig's build on the Rig page (step 4 of the hacking rework): the board's sockets on their grid, each a tile with
@@ -261,7 +259,7 @@
 /* Beside a panel with no screen of its own (a door's panel, a junction box, a camera), the player's rig: a pocket
    computer with its board and casing on it, its link and heat lights, wired to the panel the way it's plugged in, and
    on its green screen the place's network (NET), what's loaded (D:) and the session (LOG). */
-.desk.device .device-row { display: flex; align-items: flex-start; flex: none; max-width: 100%; }
+.desk .device-row { display: flex; align-items: flex-start; flex: none; max-width: 100%; position: relative; }
 .desk.device > .desk-advisor, .desk.device > .desk-hints { margin-left: 10px; }
 @media (max-width: 980px) {
   .desk.device > .desk-advisor { flex: 1 1 100%; margin: 10px 0 0; }
@@ -277,11 +275,11 @@
 .desk .pocket-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 0 10px; font-size: 10px; letter-spacing: .14em; }
 .desk .pocket-lights { display: flex; gap: 10px; align-items: center; }
 .desk .pocket-light { display: inline-flex; gap: 5px; align-items: center; }
-.desk .pocket .lamp { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #2a2f2b; box-shadow: inset 0 1px 1px #0008; }
-.desk .pocket .lamp.on, .desk .pocket .lamp.cool { background: #5aff7a; box-shadow: 0 0 6px #5aff7a; }
-.desk .pocket .lamp.net { background: #74c8f0; box-shadow: 0 0 6px #74c8f0; }
-.desk .pocket .lamp.warm { background: #f2c14e; box-shadow: 0 0 6px #f2c14e; }
-.desk .pocket .lamp.hot { background: #ff7b6b; box-shadow: 0 0 6px #ff7b6b; animation: desk-blink .8s steps(2) infinite; }
+.desk .lamp { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #2a2f2b; box-shadow: inset 0 1px 1px #0008; }
+.desk .lamp.on, .desk .lamp.cool { background: #5aff7a; box-shadow: 0 0 6px #5aff7a; }
+.desk .lamp.net { background: #74c8f0; box-shadow: 0 0 6px #74c8f0; }
+.desk .lamp.warm { background: #f2c14e; box-shadow: 0 0 6px #f2c14e; }
+.desk .lamp.hot { background: #ff7b6b; box-shadow: 0 0 6px #ff7b6b; animation: desk-blink .8s steps(2) infinite; }
 .desk .pocket-screen { display: grid; gap: 6px; padding: 6px 8px 8px; background: #020a04; border: 3px solid #0b0d0c; border-radius: 6px; box-shadow: inset 0 0 24px #000; color: #8ff0a8; text-shadow: 0 0 3px #4fc46e66; cursor: default; }
 .desk .pocket-tabs { display: flex; gap: 4px; align-items: center; border-bottom: 1px solid #1d5a2c; padding-bottom: 4px; }
 .desk .pocket button { font: 11px/1 var(--mono); letter-spacing: .1em; color: #4fc46e; background: none; border: 1px solid #1d5a2c; padding: 4px 8px; min-height: 0; box-shadow: none; text-shadow: inherit; cursor: pointer; }
@@ -308,3 +306,30 @@
 .desk .pocket .netmap button.net-node.near:not(:disabled) { color: #c9ffd8; outline: 1px solid #c9ffd8; }
 .desk .pocket .netmap button.net-node.here { background: #2a8c45; color: #031107; outline: 2px solid #8ff0a8; text-shadow: none; }
 .desk .pocket .netmap .net-node small { font-size: 8px; letter-spacing: .1em; }
+
+/* Beside every computer, the rig too: the monitor and the rig side by side where there's room, else the rig folded to a
+   strip down the monitor's side with its pages sliding out over the monitor. Nothing gets hacked until it's connected. */
+.check-float > .desk.computer { width: auto; max-width: 100%; flex-direction: row; flex-wrap: wrap; align-items: flex-start; gap: 0; }
+.desk.computer .monitor { flex: none; }
+.desk.computer > .desk-advisor { flex: 1 1 100%; width: auto; max-height: 8em; margin: 10px 0 0; }
+.desk.computer > .desk-hints { writing-mode: horizontal-tb; margin: 10px 0 0 auto; }
+.desk .rig-strip { flex: none; width: 64px; align-self: stretch; display: flex; flex-direction: column; gap: 6px; padding: 14px 7px; background: linear-gradient(90deg, #3a3d40, #26282a); border: 1px solid #111; border-left: 0; border-radius: 0 14px 14px 0; box-shadow: inset 0 1px 0 #5a5e62, 0 12px 34px #000a; color: #b9bec2; font: 12px/1.35 var(--mono); cursor: grab; }
+.desk .rig-strip .strip-lights { display: grid; gap: 8px; justify-items: center; font-size: 9px; letter-spacing: .1em; padding-bottom: 8px; border-bottom: 1px solid #44484c; }
+.desk .rig-strip .pocket-light { flex-direction: column; gap: 3px; }
+.desk .rig-strip button { font: 11px/1 var(--mono); letter-spacing: .1em; color: #4fc46e; background: #020a04; border: 1px solid #1d5a2c; padding: 7px 2px; min-height: 0; box-shadow: none; cursor: pointer; text-shadow: 0 0 3px #4fc46e66; }
+.desk .rig-strip button::before, .desk .rig-strip button::after { content: none; }
+.desk .rig-strip button:hover:not(:disabled), .desk .rig-strip button:focus-visible { background: #0d3a1a; color: #c9ffd8; outline: 0; }
+.desk .rig-strip button[aria-pressed="true"] { background: #2a8c45; color: #031107; text-shadow: none; }
+.desk .rig-strip button.go { color: #c9ffd8; border-color: #2a8c45; background: #0d3a1a; font-size: 10px; letter-spacing: .04em; }
+.desk .rig-strip button:disabled { color: #2a6a3a; border-color: #1d3a24; cursor: default; }
+.desk .rig-slide { position: absolute; top: 0; right: 64px; z-index: 5; }
+.desk .pocket button.pocket-close { position: absolute; left: -10px; top: -10px; z-index: 2; width: 24px; height: 24px; padding: 0; border-radius: 50%; background: #26282a; border: 1px solid #111; color: #c9ffd8; font-size: 12px; letter-spacing: 0; }
+.desk .pocket-plug { display: grid; gap: 10px; justify-items: start; padding: 10px 4px; }
+.desk .pocket-plug b { color: #c9ffd8; letter-spacing: .12em; font-weight: 600; }
+.desk .pocket-plug span { max-width: 46ch; }
+.desk .pocket button.go { font-size: 12px; padding: 8px 12px; color: #c9ffd8; border-color: #2a8c45; background: #0d3a1a; }
+.desk .pocket button.go:disabled { color: #2a6a3a; border-color: #1d3a24; background: none; }
+.desk .pocket-plug small { color: #3f8f57; max-width: 46ch; }
+.desk .pocket-plug small.why { color: #f2c14e; text-shadow: none; }
+.desk .pocket-dot { display: inline-block; width: 5px; height: 5px; margin-left: 5px; border-radius: 50%; background: #c9ffd8; box-shadow: 0 0 4px #c9ffd8; vertical-align: middle; }
+.desk .pocket-bottom button { font-size: 10px; padding: 2px 6px; color: #8b9196; border-color: #44484c; }

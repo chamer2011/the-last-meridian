@@ -192,12 +192,14 @@ test("the rig's quiet takes noise off, its power is added to a program's, and th
   // The Navy board's power lets DICTIONARY at a ship's main system.
   game.rig.loaded = ["dictionary"];
   enterComputer(game, { generic: { ...TERMINAL, classKey: "hard" }, locked: true });
+  computerCommand(game, { action: "plug" });
   assert.match(publicState(game).computer.logon.ways.find((w) => w.id === "dictionary").why, /too weak/);
   computerCommand(game, { action: "logoff" });
   rigCommand(game, { action: "board", uid: "n1" });
   assert.equal(rigNow(game).power, 1);
   assert.equal(rigNow(game).sockets.filter((s) => s.uid).length, 6, "the yard's parts all found a socket on the Navy board");
   enterComputer(game, { generic: { ...TERMINAL, classKey: "hard" }, locked: true });
+  computerCommand(game, { action: "plug" });
   assert.equal(publicState(game).computer.logon.ways.find((w) => w.id === "dictionary").why, null);
   computerCommand(game, { action: "logoff" });
   // An echo buffer only fits the Navy board's extra socket, which opens from Hacking 7.

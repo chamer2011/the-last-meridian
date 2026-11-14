@@ -27,7 +27,8 @@ const newGame = () => {
 };
 // A made-up console aboard that runs the doors and the cameras, for the programs that switch things.
 const CONSOLE = { id: "test_console", name: "The test console", classKey: "easy", user: "tech", place: "meridian", desc: "A console for the tests.", files: [{ id: "a", name: "a.txt", text: "Alpha." }, { id: "b", name: "b.txt", text: "Beta." }], mail: [{ id: "m", from: "Oona", to: "Brandt", text: "Gamma." }], logs: [], programs: [], network: [], controls: [{ systems: ["doors", "cameras"], rooms: null }] };
-const sitAt = (game, { hacked = true, noise = 0, content = CONSOLE } = {}) => enterComputer(game, { generic: content, hacked, noise, how: "hacked" });
+// Sitting at a computer with the rig plugged in, as Connect leaves it.
+const sitAt = (game, { hacked = true, noise = 0, content = CONSOLE } = {}) => Object.assign(enterComputer(game, { generic: content, hacked, noise, how: "hacked" }), { plugged: true });
 const run = (game, id) => computerCommand(game, { action: "rig", id });
 // A link in the rig's link socket (step 6: each kind of computer takes one kind of link).
 function fitLink(game, id) {
@@ -170,6 +171,7 @@ test("a computer that holds a program can have it copied; the desktop shows it, 
   // The plot table is the ship's main system: copying off it goes through a Navy coupler.
   fitLink(game, "navy_coupler");
   enterComputer(game, { id: "meridian_plot_table" });
+  computerCommand(game, { action: "plug" });
   const view = publicState(game).computer.rig;
   assert.ok(view.copies.some((p) => p.id === "ghost"));
   assert.ok(view.loaded.some((p) => p.id === "mask"));

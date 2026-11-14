@@ -19,7 +19,7 @@ import { untagged } from "../public/story.js";
 import { copyProgram, rigNow, runRigProgram, wearHottest } from "./rig.js";
 import { HEAT, rigMinutes, rigNoise, sessionHeat } from "./rig-parts.js";
 import { MAX_LOG, MINUTES_PER_ACTION, contentOf, knowsPassword, levelNamed, line, memoryOf, openLogon, openSession, peopleAt, programOffered, readNoise, sameName, settleHack, slug, watcherOf, watchStage, writtenContent } from "./computers.js";
-import { deviceCommand } from "./devices.js";
+import { deviceCommand, plugIn, unplugRig } from "./devices.js";
 import { hop } from "./network.js";
 
 // Found by the trace, or cut off: out at once. On a ship's main system or worse that leaves a mark on the record.
@@ -50,13 +50,15 @@ function thrownOut(game, session, why = "traced") {
 // minutes and finds them when they're up; at its cut-off they're out at once.
 function act(game, session, { noise = 0, minutes = MINUTES_PER_ACTION } = {}) {
   session.actions += 1;
-  // The rig is plugged into any computer that isn't the player's own: its speed divides the minutes (overheating
-  // doubles them), its quiet takes noise off, and its fan, once it's hot, is heard.
-  const rig = session.yours ? null : rigNow(game);
-  const heatBefore = rig ? sessionHeat(rig, session.minutes) : 0;
+  // The rig works while it's plugged in (or reached over the network) at a computer that isn't the player's own: its
+  // speed divides the minutes (overheating doubles them), its quiet takes noise off, and its fan, once it's hot, is
+  // heard. It warms only with the minutes it's worked.
+  const rig = session.yours || !(session.plugged || session.remote) ? null : rigNow(game);
+  const heatBefore = rig ? sessionHeat(rig, session.rigMinutes ?? 0) : 0;
   const base = Math.max(0, Number(minutes) || 0);
   const spent = rig ? rigMinutes(rig, base, heatBefore >= HEAT.overheating) : base;
   session.minutes = (session.minutes ?? 0) + spent;
+  if (rig) session.rigMinutes = (session.rigMinutes ?? 0) + spent;
   if (session.yours) return null;
   const watch = watcherOf(game, session);
   let heard = Math.max(0, Number(noise) || 0);
@@ -65,14 +67,14 @@ function act(game, session, { noise = 0, minutes = MINUTES_PER_ACTION } = {}) {
     heard = 0;
   }
   if (heard > 0 && session.blindLeft > 0) heard = 0;
-  if (heard > 0) heard = rigNoise(rig, heard, heatBefore >= HEAT.fan);
+  if (heard > 0 && rig) heard = rigNoise(rig, heard, heatBefore >= HEAT.fan);
   if (heard > 0 && session.shadow) heard += 1;
   if (heard > 0 && session.noticed) heard += 1;
   session.noise = (session.noise ?? 0) + heard;
   const last = session.log.at(-1);
   if (heard > 0 && last?.text) last.text = `${last.text} (+${heard} noise)`;
-  // The rig warms with the session: its fan comes on, then it overheats, each said once.
-  const heat = sessionHeat(rig, session.minutes);
+  // The rig warms with the minutes it's worked: its fan comes on, then it overheats, each said once.
+  const heat = rig ? sessionHeat(rig, session.rigMinutes ?? 0) : 0;
   if (heat >= HEAT.fan && !session.fanOn) {
     session.fanOn = true;
     session.log.push(line("Your rig's fan comes on. Anything noisy is one louder now.", "warn"));
@@ -450,7 +452,7 @@ export function computerCommand(game, body) {
     throw new Error("That computer's file has gone.");
   }
   // At the logon there's nothing to open yet: only the rig's programs, and logging off.
-  if (session.locked && !["rig", "logoff", "home"].includes(body.action)) {
+  if (session.locked && !["rig", "logoff", "home", "plug", "unplug"].includes(body.action)) {
     if (body.action === "type" && /^(logoff|logout|exit|quit|bye)$/i.test(String(body.text ?? "").trim())) return finish(game, session);
     return { over: false, said: "Log on first: run something from your rig to get past the logon." };
   }
@@ -477,6 +479,9 @@ export function computerCommand(game, body) {
     case "device": return deviceCommand(game, session, content, String(body.id ?? ""), { act, finish });
     // Going along the network to the next system (src/network.js).
     case "hop": return hop(game, session, String(body.id ?? ""), { act, finish, content });
+    // Connecting the rig before hacking, and taking it off again (src/devices.js).
+    case "plug": return plugIn(game, session, content, { act });
+    case "unplug": return unplugRig(game, session);
     default: throw new Error("Unknown order.");
   }
 }

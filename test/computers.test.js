@@ -172,6 +172,8 @@ test("a scene's hack opens the computer it names at its logon, a breaker gets in
   assert.equal(game.check, null, "a hack has no window");
   assert.equal(game.computer.id, "haven_berth_board");
   assert.equal(game.computer.locked, true);
+  // The rig is connected before anything is hacked.
+  computerCommand(game, { action: "plug" });
   const logon = computerView(game);
   assert.equal(logon.files.length + logon.mail.length + logon.programs.length, 0, "nothing on it shows before the logon");
   assert.ok(logon.logon.ways.some((way) => way.id === "dictionary" && !way.why));

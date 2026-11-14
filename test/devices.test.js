@@ -79,6 +79,9 @@ test("a door's panel: its keypad and screen, the breakers only through a link th
   computerCommand(game, { action: "logoff" });
   fitLink(game, "optical_reader");
   openDoorPanel(game, "haven", hook);
+  // A door's panel has a keypad of its own: the rig connects to it before it's hacked.
+  assert.match(view(game).logon.ways.find((one) => one.id === "dictionary").why, /your rig isn't connected/);
+  computerCommand(game, { action: "plug" });
   computerCommand(game, { action: "rig", id: "dictionary" });
   v = view(game);
   assert.equal(v.locked, false);
@@ -226,6 +229,8 @@ test("NAVCOM 7 on the bridge: the crew assessments, a line struck from the ship'
   computerCommand(game, { action: "logoff" });
   fitLink(game, "navy_coupler");
   walk.walkCommand(game, { action: "use", key: table.id });
+  assert.match(computerCommand(game, { action: "copy", id: "ghost" }).said, /Connect your rig first/);
+  computerCommand(game, { action: "plug" });
   computerCommand(game, { action: "copy", id: "ghost" });
   assert.ok(game.rig.programs.includes("ghost"));
 });

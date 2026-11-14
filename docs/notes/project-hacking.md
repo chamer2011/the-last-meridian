@@ -563,3 +563,40 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
 - Calls of mine on the page: the strip at narrow screens; "the logs" as the session's log (the computer's own Logs
   folder stays); NAVCOM 7's map needing the Navy coupler even for the captain; unplugging to swap a link. Build only
   when they say so.
+
+## The rig at a computer too, built (2026-11-13, at "Build it as shown")
+
+- **Server.** A session keeps `plugged`: false when it opens, true from the start for a hack that already got in
+  (`hacked`) and for practice, and `rigMinutes`, the minutes the rig has worked there. `plugIn` in
+  `src/devices.js` (the `plug` order, allowed at a logon) plugs the rig in by the link the computer takes, taking
+  `PLUG_MINUTES` (1) through `act`; it's refused over the network ("plugged in where you started"), when connected
+  already, and with the reason when the link doesn't fit; at someone else's place, where `playerSpot` is, `whoSees`
+  decides whether it's seen (`seenTampering`: the line, the standing, `seen_tampering_at_<place>`). `unplugRig`
+  (`unplug`) takes it off, except at a junction box or a camera (`THROUGH_RIG`), which `openDevice` plugs into as it
+  opens. `cantRun`, `copyProgram` and the copies' reasons in `rigInComputer` need the rig plugged in or the session
+  remote ("your rig isn't connected", or the link's reason when it doesn't fit), and so does `hop` from any look
+  ("Your rig isn't connected, so it can't go on from here"). `act` works the rig (speed, quiet, the fan, overheating)
+  only while it's plugged in or remote, and heat comes from `rigMinutes`; `rigHeat` in the view is null otherwise.
+  The view's `reach` is `{ link, words, fits, why, plugged, remote, ok }` (ok = plugged or remote), every view has
+  `rigFace`, and the logon's line in the session log says to connect first. The advisor's logon hints say "Connect your
+  rig first" (or why it can't) and weigh each way by `whyIn`, its reason once plugged in.
+- **Page.** The desktop loses the Network folder, the Rig (D:) folder and the Session log window (and `netWindow`,
+  `rigHeatNode`, the hop-to-folder logic `hopping`; the welcome text no longer counts a network). The logon has a
+  `logon-rig` line in place of its list. `windowNode` puts every computer in a `.desk.computer` row with the rig:
+  `computerLayout` puts them side by side when the room keeps the monitor at 600 or more beside the rig at its
+  narrowest (the monitor up to 696, the map up to 440), else the rig folds to `stripNode` down the monitor's side
+  (LINK, HEAT, NET, D:, LOG, PLUG IN) and a page slides out over the monitor (`.rig-slide`, `comp.rigSlide`, kept open
+  across a hop to a remote system, with a round close button). `pocketNode(view, width, { closeable })` is shared with
+  the panels: `plugPage` (NOT CONNECTED, CONNECT BY <link>, a minute and the warning, or the reason), UNPLUG at the
+  foot, and a dot on LOG when lines arrived since it was last looked at (`comp.logSeen`). The monitor's width is
+  inline, `min(<px>, calc((100vh - 16em) * 1.3))`; the hints go under the row. The window is drawn again on any
+  resize while a computer is open. `pocketRoom` falls back to the stylesheet's rule (the rail above 860 wide) when
+  the game's box isn't on the page yet, which is how the first drawing had sized the monitor for no rail.
+- **Tests.** `test/network.test.js` gained one (8 in all): Haven's berth board waits for Connect, the advisor says so,
+  plugging in at the busy docks is seen, takes a minute and warms nothing yet, Unplug takes it off, and a junction box
+  connects as it opens and can't be unplugged. Tests that hack, run, copy or hop now connect first (the logon and rig
+  helpers start plugged in). 1,148 tests pass.
+- **Screens** on a test copy at 1400 and 810 wide: Haven's berth board (CONNECT seen by Mott, DICTIONARY from D:, the
+  desktop without the removed folders, NET), the folded strip and its slide-out with a hop to the harbor master's
+  logon, the Bridge door's keypad by optical reader, and the records terminal with its cable.
+- Not done: the casing's look following the build. The owner hasn't tried it.

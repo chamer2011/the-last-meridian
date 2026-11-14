@@ -40,7 +40,7 @@ const startWindows = () => ({
 });
 
 export function resetComputer() {
-  Object.assign(comp, { id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1, rigTab: null, hopping: false, wasLocked: null });
+  Object.assign(comp, { id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1, rigTab: null, rigSlide: null, wasLocked: null, logSeen: 0 });
 }
 resetComputer();
 
@@ -56,25 +56,19 @@ function sync() {
     return;
   }
   if (live.id !== comp.id) {
-    // Going along the network to the next system keeps the map in front, to go on from there: a desktop opens its
-    // Network folder, and beside a panel the rig shows its map anyway once past the logon.
-    const onTheMap = comp.hopping;
+    // Going along the network keeps the rig's page out where it was folded away, to go on from there.
+    const slid = Boolean(comp.rigSlide) && Boolean(live.reach?.remote);
     resetComputer();
     comp.id = live.id;
     comp.screenKey = screenKey(live.screen);
-    if (onTheMap && live.netmap && !PANEL_LOOKS.includes(live.look)) {
-      comp.folder = "network";
-      Object.assign(comp.wins.list, netWindow(live.netmap), { open: true });
-      comp.top = "list";
-      comp.z.list = Math.max(...Object.values(comp.z)) + 1;
-    }
+    comp.logSeen = live.log?.length ?? 0;
+    if (slid) comp.rigSlide = live.locked ? "prog" : "net";
   }
   // Getting past a logon turns the rig to what it shows best: the programs at a logon, the map once inside.
   if (live.locked !== comp.wasLocked) {
     comp.wasLocked = live.locked;
     comp.rigTab = null;
   }
-  if (!comp.sending) comp.hopping = false;
   // Something new opened: the viewer comes up in front with it.
   const key = screenKey(live.screen);
   if (key !== comp.screenKey) {
@@ -149,16 +143,14 @@ const FOLDERS = [
   ["mail", "Mail", "mail", "mail"],
   ["logs", "Logs", "log", "log"],
   ["programs", "Programs", "exe", "program"],
-  ["network", "Network", "network", "connect"],
-  ["rig", "Rig (D:)", "rig", "rig"],
 ];
 const NAVCOM_FOLDERS = [
   ["shiplog", "Ship's log", "log", null],
   ["crew", "Crew", "txt", null],
 ];
-// What a folder holds: the computer's own lists, the programs it has to copy, the rig's loaded programs, and on NAVCOM 7
-// the ship's log and the crew assessments.
-const folderItems = (view, id) => (id === "rig" ? view.rig?.loaded ?? [] : id === "programs" ? [...view.programs, ...(view.rig?.copies ?? []).map((one) => ({ ...one, copy: true }))] : id === "shiplog" ? view.device?.shipLog ?? [] : id === "crew" ? view.device?.crew?.list ?? [] : id === "network" && view.netmap ? view.netmap.nodes.filter((one) => one.linked) : view[id] ?? []);
+// What a folder holds: the computer's own lists, the programs it has to copy onto the rig, and on NAVCOM 7 the ship's log
+// and the crew assessments. The network and the rig's own programs are on the rig beside it.
+const folderItems = (view, id) => (id === "programs" ? [...view.programs, ...(view.rig?.copies ?? []).map((one) => ({ ...one, copy: true }))] : id === "shiplog" ? view.device?.shipLog ?? [] : id === "crew" ? view.device?.crew?.list ?? [] : view[id] ?? []);
 const allFolders = (view) => (view.look === "navcom" ? [...FOLDERS, ...NAVCOM_FOLDERS] : FOLDERS);
 const foldersHere = (view) => allFolders(view).filter(([id]) => folderItems(view, id).length > 0);
 
@@ -238,7 +230,7 @@ function screenNode(view) {
       return [
         el("div", { class: "computer-screen-title" }, view.name),
         el("div", {}, view.desc),
-        el("div", { class: "tone-dim" }, `${view.files.length} files, ${view.mail.length} letters, ${view.logs.length} logs, ${view.programs.length} programs${view.network.length ? `, ${view.network.length} on the network` : ""}. Open a folder on the desktop.`),
+        el("div", { class: "tone-dim" }, `${view.files.length} files, ${view.mail.length} letters, ${view.logs.length} logs, ${view.programs.length} programs. Open a folder on the desktop.`),
         view.systems?.length > 0 && el("div", { class: "tone-dim" }, `It runs ${view.systems.map((one) => one.title.toLowerCase()).join(", ")} here.`),
       ];
     case "mail": return listScreen("Mail", view.mail, "mail", "No letters.");
@@ -256,19 +248,15 @@ function screenNode(view) {
 
 // ---- The logon ------------------------------------------------------------------
 
-// A computer the player isn't past yet: Keelworks' logon box, with the ways in off their rig. Each says whether it will
-// work here and, when it won't, why; the advisor beside the monitor says what each costs.
+// A computer the player isn't past yet: Keelworks' logon box, and a line for whether a rig is on its port. What gets in
+// is on the rig beside it, under D:, once it's connected; the advisor beside the monitor says what each way costs.
 function logonNode(view) {
-  const ways = view.logon?.ways ?? [];
-  const way = (one) => el("button", {
-    class: `row-item logon-way${one.why ? " done" : ""}`,
-    disabled: comp.sending,
-    title: one.about,
-    onclick: (event) => {
-      event.stopPropagation();
-      send({ action: "rig", id: one.id });
-    },
-  }, picture(one.kind === "in" ? "exe" : "eye"), el("span", {}, one.name, el("small", {}, one.why ? `Won't: ${one.why}.` : one.kind === "in" ? "Run it to get past the logon." : "Run it to read the logon first.")), el("small", {}, one.why ? "" : "run"));
+  const reach = view.reach ?? {};
+  const port = view.look === "navcom" ? "Navy port" : "cable port";
+  const rigWords = reach.remote ? "Your rig reaches it over the network: what gets you in is on its D: page."
+    : reach.ok ? `Your rig is on the ${port}: what gets you in is on its D: page.`
+    : reach.fits ? `No rig on the ${port}. Connect your rig to work on this logon.`
+    : `No rig on the ${port}: ${reach.why}.`;
   return el("div", { class: "logon bev", role: "dialog", "aria-label": `Log on to ${view.name}` },
     el("div", { class: "banner" }, picture("keel"), el("div", {}, "Keelworks 4.1", el("small", {}, `${String(view.className).toUpperCase()} · ${view.practice ? "PRACTICE" : "LOGON"}`))),
     el("div", { class: "body" },
@@ -276,10 +264,7 @@ function logonNode(view) {
         el("span", {}, "User name:"), el("span", { class: "field sunk" }),
         el("span", {}, "Password:"), el("span", { class: "field sunk" }),
         el("span", {}, "Log on to:"), el("span", { class: "field sunk" }, view.name)),
-      el("div", { class: "logon-label" }, "From your rig:"),
-      ways.length
-        ? el("div", { class: "rows logon-ways sunk" }, ways.map(way))
-        : el("div", { class: "logon-none" }, "Nothing loaded on your rig gets past a logon. Load a breaker on the Rig page before you sit down."),
+      el("div", { class: `logon-rig sunk${reach.ok ? " on" : ""}` }, el("i", { class: "plugdot" }), el("span", {}, rigWords)),
       el("div", { class: "logon-buttons" }, el("button", { disabled: comp.sending, onclick: (event) => { event.stopPropagation(); logOff(); } }, "Log off"))));
 }
 
@@ -293,13 +278,9 @@ function raise(id) {
   comp.z[id] = Math.max(...Object.values(comp.z)) + 1;
 }
 
-// The Network folder's window: wide enough for the map, and tall enough for all of it where the desktop has the room.
-const netWindow = (map) => ({ x: 84, y: 6, w: 486, h: Math.min(420, layOutNetMap(map).height + 74) });
-
 function openFolder(id) {
   comp.folder = id;
   comp.wins.list.open = true;
-  if (id === "network" && comp.view?.netmap) Object.assign(comp.wins.list, netWindow(comp.view.netmap));
   raise("list");
   draw();
 }
@@ -309,7 +290,6 @@ function folderRows(view) {
   if (!folder) return [];
   const [id, , , kind] = folder;
   const { screen } = view;
-  if (id === "network" && view.netmap) return [netMapNode(view.netmap)];
   if (id === "shiplog") {
     return view.device.shipLog.map((entry) => el("div", { class: "row-item navcom-line" },
       el("span", {}, el("small", {}, entry.day), " ", entry.text),
@@ -329,12 +309,8 @@ function folderRows(view) {
         picture("systems"), el("span", {}, system.title), el("small", {}, down ? `${down} down` : `${system.rows.length} parts`));
     });
   }
-  if (id === "rig") {
-    return view.rig.loaded.map((item) => el("button", { class: `row-item${item.why ? " done" : ""}`, title: item.why ? `It won't run here: ${item.why}` : item.about, disabled: comp.sending, onclick: (event) => { event.stopPropagation(); send({ action: "rig", id: item.id }); } },
-      picture("exe"), el("span", {}, item.name), el("small", {}, item.why ? "won't run here" : "run")));
-  }
   return folderItems(view, id).map((item) => item.copy ? el("button", { class: `row-item${item.why ? " done" : ""}`, title: item.why ? `Can't copy it: ${item.why}` : item.about, disabled: comp.sending || Boolean(item.why), onclick: (event) => { event.stopPropagation(); send({ action: "copy", id: item.id }); } },
-    picture("rig"), el("span", {}, `Copy ${item.name} to your rig`), el("small", {}, item.why ? "can't reach" : "copy")) : el("button", {
+    picture("rig"), el("span", {}, `Copy ${item.name} to your rig`), el("small", {}, item.why ? (/connected/.test(item.why) ? "connect first" : "can't reach") : "copy")) : el("button", {
     class: `row-item${item.read || item.ran ? " done" : ""}${screen.kind === kind && screen.id === item.id ? " open" : ""}`,
     title: item.about ?? (item.ran ? "Already run" : item.read ? "Read" : item.name),
     disabled: comp.sending,
@@ -342,7 +318,7 @@ function folderRows(view) {
       event.stopPropagation();
       send({ action: kind, id: item.id });
     },
-  }, picture(id === "programs" ? "exe" : id === "mail" ? "mail" : id === "logs" ? "log" : id === "network" ? "network" : "txt"),
+  }, picture(id === "programs" ? "exe" : id === "mail" ? "mail" : id === "logs" ? "log" : "txt"),
   el("span", {}, item.name),
   el("small", {}, item.ran ? "run" : item.read ? "read" : item.className ? `${item.className.toLowerCase()}${item.known ? ", open" : ""}` : "")));
 }
@@ -380,15 +356,12 @@ function osNode(view, watch) {
     ondblclick: (event) => { event.stopPropagation(); openFolder(id); },
   }, picture(pic), el("span", {}, `${name} (${folderItems(view, id).length})`))));
   const folder = allFolders(view).find(([id]) => id === comp.folder);
-  const list = !view.locked && folder && winNode("list", `${folder[1]} - ${view.name}`, folder[2], el("div", { class: "pane-in sunk" }, el("div", { class: "rows" }, folderRows(view))), [folder[0] === "rig" ? `${view.rig.used} of ${view.rig.memory} blocks used` : `${folderItems(view, folder[0]).length} ${folder[0] === "mail" ? "letters" : "objects"}`, comp.sending ? "Working..." : folder[0] === "rig" ? "Click one to run it" : folder[0] === "shiplog" ? "Strike a line to take it out" : folder[0] === "crew" ? "Restricted: the first officer's" : folder[0] === "network" && view.netmap ? `Each hop: ${view.netmap.hop.minutes} min, heard at both ends` : "Click one to open it"]);
+  const list = !view.locked && folder && winNode("list", `${folder[1]} - ${view.name}`, folder[2], el("div", { class: "pane-in sunk" }, el("div", { class: "rows" }, folderRows(view))), [`${folderItems(view, folder[0]).length} ${folder[0] === "mail" ? "letters" : "objects"}`, comp.sending ? "Working..." : folder[0] === "shiplog" ? "Strike a line to take it out" : folder[0] === "crew" ? "Restricted: the first officer's" : "Click one to open it"]);
   const viewer = !view.locked && winNode("view", view.screen.kind === "home" ? `Welcome - ${view.name}` : view.screen.title ?? view.name, "txt", el("div", { class: "pane-in sunk viewer-in", id: "computer-screen" }, screenNode(view)), [view.hacked ? "Hacked" : view.yours ? "Yours" : "Logged in", view.className]);
-  const log = winNode("log", "Session log", "log", el("div", { class: "pane-in sunk", id: "computer-console", role: "log" }, view.log.map((entry, i) => lineNode(entry, i >= comp.seen))), [`${view.actions} ${view.actions === 1 ? "action" : "actions"}`, view.prompt ?? ""]);
-  const named = { list: list ? `${folder[1]}` : null, view: viewer ? "Viewer" : null, log: "Session log" };
+  const named = { list: list ? `${folder[1]}` : null, view: viewer ? "Viewer" : null };
   const tasks = el("div", { class: "tasks" }, Object.entries(comp.wins).filter(([id, w]) => w.open && named[id]).map(([id]) => el("button", { class: comp.top === id ? "on" : "", onclick: (event) => { event.stopPropagation(); raise(id); draw(); } }, named[id])));
   const menu = comp.menu && el("div", { class: "menu bev" }, el("div", { class: "side" }, navcom ? "NAVCOM 7" : "KEELWORKS 4.1"), el("div", { class: "items" },
     here.map(([id, name, pic]) => el("button", { onclick: (event) => { event.stopPropagation(); comp.menu = false; openFolder(id); } }, picture(pic), name)),
-    el("hr"),
-    el("button", { onclick: (event) => { event.stopPropagation(); comp.menu = false; comp.wins.log.open = true; raise("log"); draw(); } }, picture("log"), "Session log"),
     el("hr"),
     el("button", { onclick: (event) => { event.stopPropagation(); logOff(); } }, picture("keel"), "Log off")));
   // The watcher speaks up once for each step, noticing and tracing, until it's clicked away.
@@ -400,12 +373,11 @@ function osNode(view, watch) {
     el("div", { class: "tray sunk" },
       watch && el("span", { class: `watch ${watch.stage}`, title: `${watch.name}: ${watchWords(watch).toLowerCase()}` }, picture("eye")),
       watch && el("span", {}, watchWords(watch)),
-      rigHeatNode(view),
       el("span", { title: "The ship's time" }, clockText())));
   // NAVCOM 7's bar along the top, with SENTRY's meter when it's listening.
   const bar = navcom && el("div", { class: "navcom-top" }, el("span", {}, "RESTRICTED · CFS MERIDIAN · NAVCOM 7"),
     watch && el("span", { class: `navcom-sentry ${watch.stage}`, title: `${watch.name}: ${watchWords(watch).toLowerCase()}` }, watch.name, Array.from({ length: watch.cuts }, (_, i) => el("i", { class: i < watch.noise ? "on" : "" }))));
-  const os = el("div", { class: `os${navcom ? " navcom" : ""}`, onclick: () => { if (comp.menu) { comp.menu = false; draw(); } } }, bar, icons, list, viewer, view.locked && logonNode(view), log, balloon, taskbar, menu);
+  const os = el("div", { class: `os${navcom ? " navcom" : ""}`, onclick: () => { if (comp.menu) { comp.menu = false; draw(); } } }, bar, icons, list, viewer, view.locked && logonNode(view), balloon, taskbar, menu);
   os.addEventListener("pointerdown", dragWindow);
   return os;
 }
@@ -484,14 +456,12 @@ function netMapNode(map, width = NET_MAP.width) {
       title: node.here ? `${node.name}: you're on this one` : node.linked ? `Go to ${node.name}: ${map.hop.minutes} min, heard here and there` : `${node.name}: not linked to where you are`,
       onclick: (event) => {
         event.stopPropagation();
-        comp.hopping = true;
         send({ action: "hop", id: node.id });
       },
     }, el("small", {}, NET_KIND[node.kind] ?? ""), el("span", { class: "nm" }, node.name))));
 }
 
 // How hot the rig is, in the tray: nothing's plugged into the player's own computers.
-const rigHeatNode = (view) => view.rigHeat && el("span", { class: `rig-heat${view.rigHeat.overheating ? " hot" : view.rigHeat.fan ? " warm" : ""}`, title: `Your rig: ${view.rigHeat.dead ? `it won't start, ${view.rigHeat.dead}` : view.rigHeat.words}` }, view.rigHeat.dead ? "Rig off" : `Rig ${view.rigHeat.words.split(":")[0]}`);
 
 // ---- A door's panel, a junction box's service menu, a camera's feed ---------------------
 
@@ -548,13 +518,13 @@ function deviceWindow(view) {
     comp.message && el("div", { class: "desk-note" }, comp.message),
     head, face, seen,
     // At its logon, what gets past it is on the rig beside it; inside, the panel's own buttons (a junction box's are its menu).
-    view.locked ? el("div", { class: "device-note" }, "Locked: what gets you past it is on your rig, under D:.") : look === "service" ? null : actsNode(d.actions),
+    view.locked ? el("div", { class: "device-note" }, view.reach?.ok ? "Locked: what gets you past it is on your rig, under D:." : "Locked: connect your rig to work on it.") : look === "service" ? null : actsNode(d.actions),
     el("div", { class: "device-log", id: "computer-console", role: "log" }, log.map((entry, i) => lineNode(entry, view.log.length - log.length + i >= comp.seen))),
     el("div", { class: "device-foot" },
       el("button", { disabled: comp.sending, onclick: (event) => { event.stopPropagation(); logOff(); } }, d.leave ?? "Log off")));
   const narrow = pocketRoom() < 960;
   return el("div", { class: `desk device${narrow ? " narrow" : ""}`, id: "computer-window", role: "dialog", "aria-label": view.name, tabindex: "-1" },
-    el("div", { class: "device-row" }, frame, leadNode(view), pocketNode(view, narrow)),
+    el("div", { class: "device-row" }, frame, leadNode(view), pocketNode(view, pocketMapWidth(narrow))),
     advisorNode(view));
 }
 
@@ -563,16 +533,18 @@ function deviceWindow(view) {
 // plugged in, and on its screen the place's network (NET), what's loaded on it (D:) and the session (LOG).
 
 // What the floating window has across: the screen, less the rail of menus and its own margins. When the screen changes
-// size, the window beside a panel is drawn again for the room there is.
+// size, the computer and the rig beside it are drawn again for the room there is.
 let pocketResize = 0;
 if (typeof window !== "undefined") window.addEventListener("resize", () => {
   cancelAnimationFrame(pocketResize);
-  pocketResize = requestAnimationFrame(() => { if (comp.view && PANEL_LOOKS.includes(comp.view.look) && document.getElementById("computer")) draw(); });
+  pocketResize = requestAnimationFrame(() => { if (comp.view && document.getElementById("computer")) draw(); });
 });
 function pocketRoom() {
   const game = document.querySelector(".game");
-  const rail = game ? parseFloat(getComputedStyle(game).getPropertyValue("--rail-width")) || 0 : 0;
-  return (game?.clientWidth || window.innerWidth) - rail - 32;
+  // The window can be drawn before the game's box is on the page: then the rail is there above 860 wide, as the
+  // stylesheet has it.
+  const rail = game?.isConnected ? parseFloat(getComputedStyle(game).getPropertyValue("--rail-width")) || 0 : window.innerWidth > 860 ? 124 : 0;
+  return (game?.isConnected && game.clientWidth ? game.clientWidth : window.innerWidth) - rail - 32;
 }
 
 // How wide the rig's map can be: the panel's window, the lead and the rig's case take their room first, and the map has
@@ -587,7 +559,7 @@ const LEADS = {
   clip: '<svg viewBox="0 0 56 180" preserveAspectRatio="none"><path d="M56 96 C 40 96, 34 70, 22 74 S 8 92, 2 92" fill="none" stroke="#c8352c" stroke-width="3"/><path d="M56 104 C 42 104, 30 120, 18 112 S 6 98, 2 98" fill="none" stroke="#222" stroke-width="3"/><rect x="0" y="86" width="9" height="18" rx="2" fill="#9aa09b" stroke="#333"/></svg>',
   optic: '<svg viewBox="0 0 56 180" preserveAspectRatio="none"><line x1="54" y1="96" x2="4" y2="96" stroke="#ff5a4a" stroke-width="2" stroke-dasharray="3 4"/><circle cx="4" cy="96" r="4" fill="#ff5a4a" opacity=".85"/><rect x="44" y="88" width="12" height="16" rx="2" fill="#4a4d50" stroke="#111"/></svg>',
   radio: '<svg viewBox="0 0 56 180" preserveAspectRatio="none"><g fill="none" stroke="#8ff0a8" stroke-width="2" opacity=".85"><path d="M44 84 Q 36 96 44 108"/><path d="M34 78 Q 22 96 34 114"/><path d="M24 72 Q 8 96 24 120"/></g><rect x="48" y="90" width="8" height="12" rx="2" fill="#4a4d50" stroke="#111"/></svg>',
-  cable: '<svg viewBox="0 0 56 180" preserveAspectRatio="none"><path d="M56 96 C 36 96, 30 110, 16 104 S 6 96, 2 96" fill="none" stroke="#1a1a1a" stroke-width="4"/><rect x="0" y="90" width="8" height="12" rx="1" fill="#777" stroke="#333"/></svg>',
+  cable: '<svg viewBox="0 0 56 180" preserveAspectRatio="none"><path d="M56 96 C 36 96, 30 110, 16 104 S 6 96, 2 96" fill="none" stroke="#6a706c" stroke-width="6"/><path d="M56 96 C 36 96, 30 110, 16 104 S 6 96, 2 96" fill="none" stroke="#26292a" stroke-width="3"/><rect x="0" y="90" width="8" height="12" rx="1" fill="#9aa09b" stroke="#333"/></svg>',
   navy: '<svg viewBox="0 0 56 180" preserveAspectRatio="none"><path d="M56 96 C 36 96, 30 110, 16 104 S 6 96, 2 96" fill="none" stroke="#2d3f5c" stroke-width="6"/><rect x="0" y="88" width="10" height="16" rx="2" fill="#8ab8ff" stroke="#1d2b38"/></svg>',
   net: '<svg viewBox="0 0 56 180" preserveAspectRatio="none"><line x1="54" y1="96" x2="2" y2="96" stroke="#4fa3d9" stroke-width="2" stroke-dasharray="5 4"/></svg>',
 };
@@ -599,38 +571,73 @@ function leadNode(view) {
 }
 
 const POCKET_TABS = [["net", "NET", "The place's network: go along it from here"], ["prog", "D:", "What's loaded on your rig, to run here"], ["log", "LOG", "What's happened at this one"]];
-function pocketNode(view, narrow) {
+const THROUGH_RIG = ["service", "camera"];
+const linkName = (words) => String(words ?? "").replace(/^(an?|the) /i, "").toUpperCase();
+const capital = (text) => (text ? `${text[0].toUpperCase()}${text.slice(1)}` : "");
+const rigLight = (cls, label, title) => el("span", { class: "pocket-light", title }, el("i", { class: `lamp${cls ? ` ${cls}` : ""}` }), label);
+const linkLight = (reach) => rigLight(reach.remote ? "net" : reach.ok ? "on" : "", "LINK", reach.remote ? "Over the network, from where it's plugged in" : reach.ok ? `Plugged in by ${reach.words}` : `Not connected: this takes ${reach.words}`);
+const heatLight = (heat) => rigLight(!heat || heat.dead ? "" : heat.overheating ? "hot" : heat.fan ? "warm" : "cool", "HEAT", heat ? `Your rig: ${heat.dead ? `it won't start, ${heat.dead}` : heat.words}` : "Not working: it warms while it works someone else's computer");
+// New lines in the session since the player last looked at LOG.
+const unseenLog = (view, tab) => tab !== "log" && (view.log?.length ?? 0) > (comp.logSeen ?? 0);
+const plug = (event) => {
+  event.stopPropagation();
+  send({ action: "plug" });
+};
+
+// Until the rig is plugged in, its screen says so and offers to connect it by the link this one takes.
+function plugPage(view) {
+  const reach = view.reach ?? {};
+  const desk = !PANEL_LOOKS.includes(view.look);
+  return el("div", { class: "pocket-plug" },
+    el("b", {}, "NOT CONNECTED"),
+    el("span", {}, desk ? "Plug your rig in to hack it, see the network or run your programs here." : "Connect your rig to work on it, or to go on along the network."),
+    el("button", { class: "go", disabled: comp.sending || !reach.fits, onclick: plug }, `CONNECT BY ${linkName(reach.words)}`),
+    reach.fits
+      ? el("small", {}, `Takes a minute.${view.yours ? "" : " Anyone in the room can see you plug in."}`)
+      : el("small", { class: "why" }, `${capital(reach.why ?? "")}. Fit the right link on the Rig page first.`));
+}
+
+function pocketNode(view, width, { closeable = false } = {}) {
   const face = view.rigFace ?? {};
   const reach = view.reach ?? {};
-  const plugged = Boolean(reach.ok);
   const heat = view.rigHeat;
   const tab = comp.rigTab ?? (view.locked ? "prog" : "net");
-  const width = pocketMapWidth(narrow);
   const tall = view.netmap ? layOutNetMap(view.netmap, width).height : 0;
   const note = (text) => el("div", { class: "pocket-note" }, text);
+  if (tab === "log") comp.logSeen = view.log?.length ?? 0;
   let page;
   if (heat?.dead) page = note(`It won't start: ${heat.dead}.`);
-  else if (tab === "net") page = !plugged ? note(`Not plugged in: this takes ${reach.words}, and the map shows here once your rig has one. Fit it on the Rig page.`) : view.locked ? note("Get past its logon first: the map shows here once you're in.") : view.netmap ? netMapNode(view.netmap, width) : note("This isn't on the place's network.");
+  else if (!reach.ok && tab !== "log") page = plugPage(view);
+  else if (tab === "net") page = view.locked ? note("Get past its logon first: the map shows here once you're in.") : view.netmap ? netMapNode(view.netmap, width) : note("This isn't on the place's network.");
   else if (tab === "prog") page = pocketPrograms(view);
-  else page = el("div", { class: "pocket-log" }, view.log.slice(-14).map((entry) => lineNode(entry)));
-  const light = (cls, label, title) => el("span", { class: "pocket-light", title }, el("i", { class: `lamp${cls ? ` ${cls}` : ""}` }), label);
-  const linkTitle = reach.remote ? "Over the network, from where it's plugged in" : plugged ? `Plugged in by ${reach.words}` : `Not plugged in: this takes ${reach.words}`;
-  const heatTitle = heat ? `Your rig: ${heat.dead ? `it won't start, ${heat.dead}` : heat.words}` : "Your own ship's: nothing works your rig hard";
-  const where = reach.remote ? "OVER THE NETWORK" : plugged ? `ON THE ${String(reach.words ?? "").replace(/^(an?|the) /i, "").toUpperCase()}` : "NOT PLUGGED IN";
+  else page = el("div", { class: "pocket-log", id: "rig-log", role: "log" }, view.log.slice(-14).map((entry) => lineNode(entry)));
+  const where = reach.remote ? "OVER THE NETWORK" : reach.ok ? `ON THE ${linkName(reach.words)}` : "NOT CONNECTED";
   return el("div", { class: "pocket", role: "group", "aria-label": "Your rig", title: "Pull the frame to move it aside" },
+    closeable && el("button", { class: "pocket-close", title: "Fold the rig away", "aria-label": "Fold the rig away", onclick: (event) => { event.stopPropagation(); comp.rigSlide = null; draw(); } }, "×"),
     el("div", { class: "pocket-top" },
       el("span", {}, [face.board, face.casing].filter(Boolean).join(" · ").toUpperCase() || "YOUR RIG"),
-      el("span", { class: "pocket-lights" },
-        light(reach.remote ? "net" : plugged ? "on" : "", "LINK", linkTitle),
-        light(!heat || heat.dead ? "" : heat.overheating ? "hot" : heat.fan ? "warm" : "cool", "HEAT", heatTitle))),
+      el("span", { class: "pocket-lights" }, linkLight(reach), heatLight(heat))),
     el("div", { class: "pocket-screen" },
       el("div", { class: "pocket-tabs", role: "tablist", "aria-label": "Your rig's pages" },
-        POCKET_TABS.map(([id, label, about]) => el("button", { role: "tab", "aria-selected": String(tab === id), title: about, onclick: (event) => { event.stopPropagation(); comp.rigTab = id; draw(); } }, label)),
+        POCKET_TABS.map(([id, label, about]) => el("button", { role: "tab", "aria-selected": String(tab === id), title: about, onclick: (event) => { event.stopPropagation(); comp.rigTab = id; if (comp.rigSlide) comp.rigSlide = id; draw(); } }, label, id === "log" && unseenLog(view, tab) && el("i", { class: "pocket-dot", title: "Something new" }))),
         el("span", { class: "pocket-where" }, where)),
-      el("div", { class: "pocket-page", style: `width:${width}px;min-height:${Math.max(tall, 120)}px` }, page)),
+      el("div", { class: "pocket-page", style: `width:${width}px;min-height:${Math.max(tall, 150)}px` }, page)),
     el("div", { class: "pocket-bottom" },
       el("span", {}, `${view.rig?.used ?? 0} OF ${view.rig?.memory ?? 0} BLOCKS`),
-      view.netmap && plugged && !view.locked && el("span", {}, `${view.netmap.hop.minutes} MIN A HOP`)));
+      reach.plugged && !reach.remote && !THROUGH_RIG.includes(view.look) && el("button", { disabled: comp.sending, title: "Take your rig off this one", onclick: (event) => { event.stopPropagation(); send({ action: "unplug" }); } }, "UNPLUG"),
+      el("span", {}, view.netmap && reach.ok && !view.locked ? `${view.netmap.hop.minutes} MIN A HOP` : "")));
+}
+
+// Where there isn't room beside the monitor, the rig folds to a strip down its side: its lights, its pages, and PLUG IN
+// until it's connected. Picking a page slides the rig out over the monitor.
+function stripNode(view) {
+  const reach = view.reach ?? {};
+  const open = comp.rigSlide;
+  const tab = comp.rigTab ?? (view.locked ? "prog" : "net");
+  return el("div", { class: "rig-strip", role: "group", "aria-label": "Your rig, folded", title: "Pull the frame to move it aside" },
+    el("div", { class: "strip-lights" }, linkLight(reach), heatLight(view.rigHeat)),
+    POCKET_TABS.map(([id, label, about]) => el("button", { "aria-pressed": String(open === id), title: about, onclick: (event) => { event.stopPropagation(); comp.rigSlide = open === id ? null : id; comp.rigTab = id; draw(); } }, label, id === "log" && unseenLog(view, open ? tab : null) && el("i", { class: "pocket-dot", title: "Something new" }))),
+    !reach.ok && el("button", { class: "go", disabled: comp.sending || !reach.fits, title: reach.fits ? `Connect by ${reach.words}: a minute` : `${capital(reach.why ?? "")}`, onclick: plug }, "PLUG IN"));
 }
 
 // D: on the rig: at a logon, what gets past it; inside, what's loaded; each with why it won't run here, if it won't.
@@ -650,11 +657,30 @@ function windowNode() {
   const watch = view.watch ?? null;
   const glass = el("div", lastScale ? { class: "glass", style: `--s:${lastScale}` } : { class: "glass" }, el("div", { class: "desk-screen" }, osNode(view, watch)), el("div", { class: "fx scan" }), el("div", { class: "fx vig" }), el("div", { class: "fx glare" }), el("div", { class: "fx band" }));
   if (fitter) fitter.observe(glass);
-  const monitor = el("div", { class: "monitor", title: "Pull the frame to move it aside" },
+  const lay = computerLayout();
+  const monitor = el("div", { class: "monitor", title: "Pull the frame to move it aside", style: `width:min(${lay.monitor}px, calc((100vh - 16em) * 1.3))` },
     comp.message && el("div", { class: "desk-note" }, comp.message),
     glass,
     el("div", { class: "plate" }, el("span", {}, "VARNE 15SX"), el("span", { class: `led${watch?.stage === "tracing" ? " bad" : watch?.stage === "noticed" ? " warn" : ""}` })));
-  return el("div", { class: "desk", id: "computer-window", role: "dialog", "aria-label": view.name, tabindex: "-1" }, monitor, advisorNode(view));
+  const rig = lay.strip
+    ? [stripNode(view), comp.rigSlide && el("div", { class: "rig-slide" }, pocketNode(view, lay.map, { closeable: true }))]
+    : [leadNode(view), pocketNode(view, lay.map)];
+  return el("div", { class: `desk computer${lay.strip ? " folded" : ""}`, id: "computer-window", role: "dialog", "aria-label": view.name, tabindex: "-1" },
+    el("div", { class: "device-row" }, monitor, rig),
+    advisorNode(view));
+}
+
+// How a computer and the rig share the room: side by side where the monitor keeps 600 or more beside the rig at its
+// narrowest, the map as wide as it can be; else the rig folds to a strip down the monitor's side, and its pages slide
+// out over the monitor.
+function computerLayout() {
+  const room = pocketRoom();
+  if (room >= 600 + 56 + 352) {
+    const map = Math.round(Math.max(300, Math.min(NET_MAP.width, room - 56 - 52 - 696)));
+    return { strip: false, map, monitor: Math.min(980, room - 56 - (map + 52)) };
+  }
+  const monitor = Math.min(980, room - 66);
+  return { strip: true, map: Math.round(Math.max(300, Math.min(400, monitor - 140))), monitor };
 }
 
 // It floats over the room the way the check window does, with nothing dimmed behind it and the clock running on, can be
@@ -678,8 +704,10 @@ function draw() {
 
 // Shows the latest in the session log. Nothing takes the keyboard: everything on the desktop is clicked.
 export function focusComputer() {
-  const console = document.getElementById("computer-console");
-  if (console) console.scrollTop = console.scrollHeight;
+  for (const id of ["computer-console", "rig-log"]) {
+    const log = document.getElementById(id);
+    if (log) log.scrollTop = log.scrollHeight;
+  }
 }
 
 function onKey(event) {

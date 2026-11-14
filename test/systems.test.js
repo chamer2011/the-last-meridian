@@ -337,6 +337,7 @@ test("a locked door stops the walk both ways, can be forced, and stays forced un
   assert.equal(worked.computer, true);
   assert.equal(game.check, null, "no check window for a hack");
   assert.equal(game.computer.locked, true);
+  computerCommand(game, { action: "plug" });
   computerCommand(game, { action: "rig", id: "dictionary" });
   assert.equal(game.computer.locked, false);
   const panel = publicState(game).computer;

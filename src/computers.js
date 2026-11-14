@@ -20,7 +20,7 @@ import { fill } from "./check-games/kit.js";
 import { CHECK_TEXT, COMPUTER_FLAVOR, WORLD_COMPUTERS, WORLD_MAPS } from "./world.js";
 import { controlsFor, controlsView, partWorks, roomPowered, runsSystems } from "./systems.js";
 import { rigFace, rigHeat, rigInComputer } from "./rig.js";
-import { LINK_WORDS, LOOKS, PANEL_LOOKS, deviceView, lookOf, reachOf, rigReaches } from "./devices.js";
+import { LINK_WORDS, LOOKS, THROUGH_RIG, deviceView, lookOf, reachOf, reachWhy, rigReaches } from "./devices.js";
 import { networkView } from "./network.js";
 
 
@@ -309,13 +309,17 @@ export function openSession(game, content, { hacked = false, locked = false, noi
     at,
     // Reached over the network from another system (src/network.js), not plugged into here.
     remote: Boolean(remote),
+    // Whether the player's rig is plugged into this one: they connect it before they hack (devices.js, plugIn). A hack
+    // that got in already went through it, and a practice computer has it plugged in from the start.
+    plugged: Boolean(hacked) || Boolean(practising),
+    rigMinutes: 0,
   };
   const session = game.computer;
   if (!yours) session.noticed = session.noise >= watchFor(game, session.classKey).notices;
   const flavor = COMPUTER_FLAVOR?.motd?.[content.flavor] ?? COMPUTER_FLAVOR?.motd?.default ?? [];
   if (session.locked) {
     session.log.push(line(`${LOOKS[session.look].name}. ${content.name} wants ${session.look === "keelworks" || session.look === "navcom" ? "a user name and a password" : session.look === "door" ? "its code" : "a password"}.`, "info"));
-    session.log.push(line(`Run something from your rig to get past the logon, or ${(LOOKS[session.look].leave ?? "log off").toLowerCase()}. ${watcherOf(game, session).name === "AuditGuard" ? "The watcher" : watcherOf(game, session).name} hears everything from here on.`, "dim"));
+    session.log.push(line(`${session.plugged || THROUGH_RIG.includes(session.look) ? "Run something from your rig" : "Connect your rig and run something from it"} to get past the logon, or ${(LOOKS[session.look].leave ?? "log off").toLowerCase()}. ${watcherOf(game, session).name === "AuditGuard" ? "The watcher" : watcherOf(game, session).name} hears everything from here on.`, "dim"));
     return session;
   }
   const greeting = hacked && !yours ? "ACCESS GRANTED." : yours ? "Logged in." : "Logged in with the password.";
@@ -447,14 +451,20 @@ function afterWay(session, watch, noise) {
 }
 
 // The advisor at a logon: each way in off the rig and what it costs, saying more the more training the player has.
-function logonHints(game, session, ways, watch) {
+function logonHints(game, session, content, ways, watch) {
   const tier = tierFor(game, "hacking");
   const lines = [];
-  const working = ways.filter((way) => !way.why && way.kind === "in");
+  // Before the rig's connected, that comes first; the ways in are weighed as they would be once it's plugged in.
+  if (!session.plugged && !session.remote) {
+    const why = reachWhy(game, content);
+    lines.push(why ? `Your rig can't connect to it: ${why}.` : `Connect your rig first: it takes a minute${session.yours ? "" : ", and anyone in the room can see you plug in"}.`);
+  }
+  const whyOf = (way) => ("whyIn" in way ? way.whyIn : way.why);
+  const working = ways.filter((way) => !whyOf(way) && way.kind === "in");
   if (!working.length) lines.push(`Nothing on your rig gets into a ${String(session.className).toLowerCase()} as things stand.`);
   for (const way of ways) {
-    if (way.why) {
-      lines.push(`${way.name} won't: ${way.why}.`);
+    if (whyOf(way)) {
+      lines.push(`${way.name} won't: ${whyOf(way)}.`);
       continue;
     }
     const cost = tier >= 1 ? `, ${way.noise} noise and ${way.minutes} ${way.minutes === 1 ? "minute" : "minutes"}` : way.noise >= 3 ? ", and it's loud" : way.noise ? "" : ", and it's quiet";
@@ -469,7 +479,7 @@ function logonHints(game, session, ways, watch) {
 }
 
 function hintsFor(game, session, content, view) {
-  if (session.locked) return logonHints(game, session, view.logon?.ways ?? [], view.watch);
+  if (session.locked) return logonHints(game, session, content, view.logon?.ways ?? [], view.watch);
   const texts = COMPUTER_FLAVOR?.hints ?? {};
   const tier = tierFor(game, "hacking");
   const unread = view.files.filter((one) => !one.read).length;
@@ -543,14 +553,15 @@ export function computerView(game) {
     // The player's rig: what's loaded on it to run here, and what this computer has to copy onto it.
     rig: inside ? rig : rig && { ...rig, copies: [] },
     // How hot the rig is: nothing's plugged into the player's own computers.
-    rigHeat: session.yours ? null : rigHeat(game, session),
+    rigHeat: session.yours || !(session.plugged || session.remote) ? null : rigHeat(game, session),
     // At the logon: the ways in off the rig, each with why it won't work, if it won't.
     logon: session.locked ? { ways: rig?.ways ?? [], keycard: Boolean(game.inventory?.keycard) } : null,
     // Its look, what reaches it and whether the rig does, and what the look shows and offers (src/devices.js).
     look: session.look ?? lookOf(content),
-    reach: { link: reachOf(content), words: LINK_WORDS[reachOf(content)], ok: Boolean(session.remote) || rigReaches(game, content), remote: Boolean(session.remote) },
-    // Beside a panel with no screen of its own, the player's rig shows the map and the programs: its board and casing.
-    rigFace: PANEL_LOOKS.includes(session.look ?? lookOf(content)) ? rigFace(game) : null,
+    // Whether it's connected (plugged in here, or reached over the network), and whether the rig's link fits it at all.
+    reach: { link: reachOf(content), words: LINK_WORDS[reachOf(content)], fits: rigReaches(game, content), why: reachWhy(game, content), plugged: Boolean(session.plugged), remote: Boolean(session.remote), ok: Boolean(session.plugged || session.remote) },
+    // Beside every computer the player's rig shows the map, the programs and the log: its board and casing.
+    rigFace: rigFace(game),
     device: deviceView(game, session, content),
     // The place's network as a map, once past the logon (src/network.js).
     netmap: inside ? networkView(game, session) : null,
