@@ -1733,8 +1733,9 @@ function drawThing(painter, thing) {
     return;
   }
   // A thing that looks like a piece of furniture is drawn as one (furnish, below), not as a box; one of the ship's
-  // stores as what's in it, every frame (drawStoreCrates).
-  if (thing.looks || thing.stock?.goods) return;
+  // stores as what's in it, every frame (drawStoreCrates); a container that's a piece of the deck's furniture is that
+  // piece, drawn already.
+  if (thing.looks || thing.stock?.goods || thing.onPiece) return;
   const { ctx, at } = painter;
   const x0 = thing.x * CELL_WIDTH + 0.05;
   const x1 = x0 + CELL_WIDTH - 0.1;
@@ -2096,6 +2097,8 @@ function uvBox(x0, y0, x1, y1, z = 0) {
 function standingOf(view, scene) {
   const standing = scene.blocks.map((block) => ({ ...block, box: block.span, tall: false }));
   for (const thing of view.things) {
+    // A container that's a piece of the deck's furniture stands already, as the piece.
+    if (thing.onPiece) continue;
     const { wx, wy } = cellCentre(thing.x, thing.y);
     standing.push({ type: "thing", thing, depth: wx + wy, box: uvBox(thing.x, thing.y, thing.x + 1, thing.y + 1, 2.5), tall: true });
   }
@@ -3450,6 +3453,19 @@ function draw(now, dt) {
       const tone = part.ringing ? "#ff6050" : part.works ? "#7fd8e0" : "#e0a050";
       const text = hovered ? `${thing.name}: ${part.word}` : near ? PART_WORDS[part.kind] ?? "part" : "·";
       const rect = chip(ctx, text, x, y, hovered ? BACKGROUND : tone, { background: hovered ? tone : "rgba(4,6,5,.5)", size: hovered || near ? 10 : 9, ...clip });
+      hits.push({ kind: "thing", key: `thing:${thing.id}`, thing, ...rect });
+      continue;
+    }
+    if (thing.onPiece) {
+      // A piece of furniture that opens (src/loot.js) is drawn as itself, with a quiet mark like a part's: a dot from
+      // across the room, what it is from close by (or that it's empty), and its name under the mouse.
+      const { wx, wy } = cellCentre(thing.x, thing.y);
+      const [x, y] = at(wx, wy, 0.7);
+      if (x < -8 || y < -8 || x > width + 8 || y > height + 8) continue;
+      const hovered = hoverKey === `thing:${thing.id}`;
+      const near = Math.abs(thing.x - iso.you.x) * CELL_WIDTH + Math.abs(thing.y - iso.you.y) < 5;
+      const what = thing.empty ? "empty" : thing.name.replace(/^(a|an|the) /i, "").toLowerCase();
+      const rect = chip(ctx, hovered ? thing.name : near ? what : "·", x, y, hovered ? BACKGROUND : "#e8c060", { background: hovered ? "#e8c060" : "rgba(4,6,5,.5)", size: hovered || near ? 10 : 9, ...clip });
       hits.push({ kind: "thing", key: `thing:${thing.id}`, thing, ...rect });
       continue;
     }

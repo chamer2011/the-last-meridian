@@ -277,17 +277,17 @@ const PART_WORDS = { "junction box": "power", "air plant": "air plant", vent: "v
 function thingMark(thing) {
   const part = thing.part;
   return el("button", {
-    class: `walk-mark walk-thing${part ? ` walk-part${part.works ? "" : " down"}${part.ringing ? " ringing" : ""}` : ""}`,
+    class: `walk-mark walk-thing${part ? ` walk-part${part.works ? "" : " down"}${part.ringing ? " ringing" : ""}` : ""}${thing.onPiece ? " walk-furniture" : ""}`,
     "data-mark": `thing:${thing.id}`,
     style: spotStyle(thing.x, thing.y),
-    title: part ? `${thing.name}, ${part.word}. Click to walk over and work it.` : `${thing.name}. Click to walk over and take a look.`,
+    title: part ? `${thing.name}, ${part.word}. Click to walk over and work it.` : `${thing.name}${thing.empty ? ", empty" : ""}. Click to walk over and take a look.`,
     "aria-label": `Walk over to ${thing.name}`,
     disabled: cannotWalk(),
     onclick: (event) => {
       event.stopPropagation();
       go({ action: "go", to: `thing:${thing.id}` });
     },
-  }, part ? PART_GLYPHS[part.kind] ?? "*" : "?");
+  }, part ? PART_GLYPHS[part.kind] ?? "*" : thing.onPiece ? "=" : "?");
 }
 
 function exitMark(exit) {
@@ -357,8 +357,10 @@ function frameNode() {
     },
     topShown() ? tilesLayer(view, app.reading.tiles) : null,
     layersOf(view),
+    // A container that's a piece of the deck's furniture lies under the words, the names and the ways out, like the furniture.
+    view.things.filter((thing) => thing.onPiece).map(thingMark),
     view.labels.map((label) => el("div", { class: "walk-label", style: spotStyle(label.x, label.y) }, label.text)),
-    view.things.map(thingMark),
+    view.things.filter((thing) => !thing.onPiece).map(thingMark),
     view.exits.map(exitMark),
     view.people.map(personMark),
     el("div", { class: "walk-cursor", id: "walk-cursor", hidden: true }),
@@ -527,7 +529,7 @@ export function walkViewNode(logNode) {
   if (walk.fullStory) return el("div", { class: "walk-full" }, storyBar(), logNode());
   const popped = popupsShown();
   // The classic plan says what its marks are. The isometric room has nothing written over it.
-  const legend = isoShown() ? null : el("div", { class: "muted walk-legend" }, `@ you   ${app.ui.game.walk.things.length ? "? something to look at   " : ""}Walk with WASD or a click   Right-click for more   Space pauses`);
+  const legend = isoShown() ? null : el("div", { class: "muted walk-legend" }, `@ you   ${app.ui.game.walk.things.some((thing) => !thing.onPiece) ? "? something to look at   " : ""}${app.ui.game.walk.things.some((thing) => thing.onPiece) ? "= something that opens   " : ""}Walk with WASD or a click   Right-click for more   Space pauses`);
   const fighting = liveOn() && isoShown();
   return el("div", { class: `walk-view${isoShown() ? " iso" : ""}${topShown() ? " top" : ""}${popped || fighting ? " pops-on" : ""}${fighting ? " fighting" : ""}`, id: "walk-view" },
     el("div", { class: "walk-map" },

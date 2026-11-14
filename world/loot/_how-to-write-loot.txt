@@ -6,24 +6,35 @@ armory with a pistol, a crate of salvage. containers.txt says which kinds of con
 be called to be one, how big it is inside and how many things it holds. What turns up in it comes from the items:
 each item's file says which kinds of container it's found in, and how rare it is.
 
-This is step 1 of the loot plan: the game reads all of this and the checker checks it, but nothing opens in the rooms
-yet. Containers aboard the Meridian open in step 3, and at the other places in step 4.
+Aboard the Meridian the containers open (step 3 of the loot plan): the lockers, shelves, desks and barrels drawn on her
+decks, and the things named like a container (a sack under a rack, a footlocker, the captain's sea chest). A thing that
+hands out an item or has words of its own when it's used keeps to that and doesn't open, and neither do the ship's
+stores (the pantry, the medicine cabinet, the parts lockers), which have their own file in world/logistics. Each
+container is filled the first time it's opened, and never again: what's taken stays gone. The same game always finds
+the same in the same container. The other places' containers open in step 4.
 
 containers.txt
 --------------
 
     # The containers and what's in them
     draft: the AI's, not yet edited by the owner
+    chances: common 70, uncommon 25, rare 5
 
     Kinds:
-    - dresser: called dresser, wardrobe, chest of drawers; 6x4; 1 to 4 things
+    - dresser: called dresser, wardrobe, chest of drawers; 6x4; 1 to 4 things; Its drawers are full of somebody's life.
 
-A kind's line is its name, a colon, then three pieces separated by semicolons:
+chances says how often each rarity turns up: here, out of every 100 things found, about 70 are common, 25 uncommon
+and 5 rare. Each thing in a container is first given a rarity by these chances, then is any item of that rarity its kind
+holds.
+
+A kind's line is its name, a colon, then three or four pieces separated by semicolons:
     called ...          the words in a thing's name that make it this kind, separated by commas. A thing called
                         "The bosun's dresser" is a dresser. Whole words only, so "bar" isn't "crowbar". When two kinds'
                         words both fit, the longer words win: "weapons locker" is an armory, not a crew locker.
     6x4                 how many squares it holds inside, across by down (at most 8 by 6).
     1 to 4 things       how many things are in it when it's first opened (or "2 things" for always two).
+    Its drawers ...     if you like, what a piece of furniture that opens as this kind looks like when it's looked at
+                        (a thing named in a map file has its own words). No semicolons in it.
 
     Richer and poorer:
     - rooms called cabin, quarters, office: one more
@@ -37,7 +48,10 @@ holds one more thing, or one fewer (two, three: as many as you write). Both can 
     - barrel: crate
 
 The furniture drawn on the Meridian's decks (lockers, shelves, desks, barrels; see public/furniture.js) opens too, as
-the kind its line says: by the room it stands in, by the rooms' names on the deck, or anywhere else.
+the kind its line says: by the room it stands in, by the rooms' names on the deck, or anywhere else. It's called by
+what it is and its kind: a locker, a weapons locker, a tool shelf, a pantry shelf, a medicine shelf, a storage shelf, a
+desk, a barrel. In the room's picture it has a small mark of its own, a dot from across the room and what it is from
+close by, and once it's been emptied it says so.
 
 An item's file
 --------------
@@ -58,4 +72,5 @@ between backticks so its spaces are kept:
     `|_||_|`
 
 After changing anything here, run "npm run check-story", and close and reopen the game. The Story board shows found in,
-rarity and the drawing on each item, under The story, then Story board, then Items.
+rarity and the drawing on each item, under The story, then Story board, then Items. A container already opened in a
+game keeps what it had; one not yet opened is filled by the file as it is when it's opened.

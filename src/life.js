@@ -355,7 +355,8 @@ function fixedSquares(file, map) {
     }));
     for (const level of Object.values(map.levels)) {
       const covers = (x, y, length = 1) => Array.from({ length }, (_, i) => file.fixed.add(seatKey({ level: level.id, x: x + i, y })));
-      for (const thing of level.things) covers(thing.x, thing.y);
+      // A container that's a piece of the deck's furniture (src/loot.js) is furniture: names may run over it.
+      for (const thing of level.things) if (!thing.onPiece) covers(thing.x, thing.y);
       for (const key of map.place ? partSquares(map.place, level.id) : []) covers(...key.split(",").map(Number));
       for (const exit of level.exits) covers(exit.side === "left" ? exit.x - exit.label.length - 1 : exit.x, exit.y, exit.label.length + 2);
       for (const label of level.labels) covers(label.x, label.y, label.text.length);

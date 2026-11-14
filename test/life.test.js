@@ -241,7 +241,8 @@ test("no two names ever cover each other, or anything else on the level, over se
           taken.set(key, name);
         }
       };
-      for (const thing of level.things) claim(thing.name, thing.x, thing.y);
+      // A container that's a piece of the deck's furniture lies under names and words, like the furniture itself.
+      for (const thing of level.things.filter((one) => !one.onPiece)) claim(thing.name, thing.x, thing.y);
       for (const exit of level.exits) claim(exit.label, exit.x, exit.y);
       for (const label of level.labels) claim(label.text, label.x, label.y, label.text.length);
       level.layers.writing.forEach((row, y) => [...row].forEach((ch, x) => {
@@ -450,7 +451,7 @@ test("at every place, over a couple of days, names don't cover anything and nobo
             taken.set(key, name);
           }
         };
-        for (const thing of level.things) claim(thing.name, thing.x, thing.y);
+        for (const thing of level.things.filter((one) => !one.onPiece)) claim(thing.name, thing.x, thing.y);
         for (const exit of level.exits) claim(exit.label, exit.side === "left" ? exit.x - exit.label.length - 1 : exit.x, exit.y, exit.label.length + 2);
         for (const label of level.labels) claim(label.text, label.x, label.y, label.text.length);
         const people = peopleAboard(game, place, level.id);

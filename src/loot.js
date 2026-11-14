@@ -1,17 +1,22 @@
-// What's in the containers (step 1 of the loot plan, docs/notes/project-loot.md): world/loot/containers.txt, read by
+// What's in the containers (the loot plan, docs/notes/project-loot.md): world/loot/containers.txt, read by
 // public/loot-text.js, names the kinds of container, what a thing has to be called to be one, how big each is inside
-// and how many things it holds, which rooms and places hold more or fewer, and what the furniture on the decks opens
-// as; each item's file says which kinds it's found in (found in:) and how rare it is (rarity:). This reads it all,
-// says which kind a thing or a piece of furniture is, and tells the checker what's wrong. Nothing opens yet: the
-// containers aboard the Meridian come in step 3, and the other places' in step 4.
+// and how many things it holds, which rooms and places hold more or fewer, how often each rarity turns up, and what the
+// furniture on the decks opens as; each item's file says which kinds it's found in (found in:) and how rare it is
+// (rarity:). This reads it all, says which kind a thing or a piece of furniture is, and tells the checker what's wrong.
+// Since step 3 the Meridian's containers open: the things named like one, and the lockers, shelves, desks and barrels
+// on her decks, each filled the first time it's opened (src/bag.js keeps what's in it from then on). The other places'
+// come in step 4.
 
 import fs from "node:fs";
 import path from "node:path";
-import { FURNITURE_BY_ID } from "../public/furniture.js";
+import { FURNITURE_BY_ID, squaresOf } from "../public/furniture.js";
 import { parseLootText, RARITIES } from "../public/loot-text.js";
+import { seeded, weighted } from "./body.js";
 import { ITEMS, LOCATIONS } from "./data.js";
+import { logisticsPending } from "./logistics.js";
 import { worldDir } from "./paths.js";
-import { addChecker } from "./room-hooks.js";
+import { addChecker, addMapWork, addThingActs } from "./room-hooks.js";
+import { systemsPending } from "./systems.js";
 import { mapFor } from "./walk.js";
 
 export const LOOT_DIR = process.env.GAME_LOOT_DIR ?? path.join(worldDir, "loot");
@@ -77,6 +82,104 @@ export function itemsFoundIn(kindName) {
   return Object.entries(ITEMS)
     .filter(([, item]) => (item.foundIn ?? []).some((one) => one.toLowerCase() === name))
     .map(([id, item]) => ({ id, rarity: item.rarity ?? "common" }));
+}
+
+// ---- Opening them (step 3) ------------------------------------------------------------------------------
+
+// The places whose containers open: the Meridian's since step 3. The other places' come in step 4.
+export const LOOT_PLACES = new Set(["meridian"]);
+const DEFAULT_CHANCES = { common: 70, uncommon: 25, rare: 5 };
+
+// A thing that can be a container: not one of the ship's stores, a pile, a computer or a part, nor one whose map file
+// says what's in it, nor one that hands out an item or has words of its own when used, which keeps to that (a story's
+// piece, like the data chip in the comms tray, or a locker that's written to be locked).
+const canBeLoot = (thing) => !thing.item && !thing.used && !thing.usedOther && !thing.store && !thing.pile && !thing.computer && !thing.part && !Object.keys(thing.holds ?? {}).length;
+
+// The kind of container a thing in a room opens as, as { kind }, or null: a piece of furniture says so itself, and any
+// other thing by its name, at a place whose containers open.
+export function lootOf(place, thing) {
+  if (thing?.loot) return thing.loot;
+  if (!thing || !LOOT_PLACES.has(place) || !canBeLoot(thing)) return null;
+  const kind = containerKindOf(thing.name);
+  return kind ? { kind: kind.name } : null;
+}
+const kindNamed = (name) => lootModel()?.kinds.find((kind) => kind.name === name) ?? null;
+// How many squares a container holds, across and down: its kind's.
+export const lootBox = (loot) => kindNamed(loot?.kind)?.size ?? null;
+
+// What a piece of furniture that opens is called: a locker, a weapons locker, a tool shelf, a medicine shelf, a barrel.
+const QUALIFIERS = { armory: "weapons", "medicine cabinet": "medicine", pantry: "pantry", "tool shelf": "tool", crate: "storage" };
+const withArticle = (words) => `${/^[aeiou]/i.test(words) ? "An" : "A"} ${words}`;
+function pieceName(piece, kind) {
+  const noun = String(piece).replace(/-/g, " ");
+  return withArticle(kind.words.includes(noun) ? noun : `${QUALIFIERS[kind.name] ?? kind.name} ${noun}`);
+}
+
+// The room a square of a level is in, by name, for the rooms that hold more or fewer.
+function roomNameAt(map, level, x, y) {
+  const id = level.areas?.length ? level.roomAt(x, y) : level.id;
+  return map.rooms?.[id]?.name ?? level.name ?? "";
+}
+export function lootRoomOf(place, levelId, thing) {
+  const map = mapFor(place);
+  const level = map?.levels?.[levelId];
+  return level && thing ? roomNameAt(map, level, thing.x, thing.y) : "";
+}
+
+// Once for each map of a place whose containers open, after its parts and stores stand in it: a thing named like a
+// container opens (src/bag.js opens anything with a holds line), and so does each piece of storage furniture on the
+// decks, as a thing of its own standing on it, unless something drawn on the map stands there already.
+addMapWork((place, map) => {
+  if (!LOOT_PLACES.has(place)) return true;
+  if (systemsPending(place) || logisticsPending(place)) return false;
+  if (!lootModel()) return true;
+  for (const level of Object.values(map.levels ?? {})) {
+    for (const thing of level.things ?? []) if (!thing.holds && lootOf(place, thing)) thing.holds = {};
+    const standing = new Set((level.things ?? []).map((one) => `${one.x},${one.y}`));
+    for (const piece of level.furniture ?? []) {
+      const room = roomNameAt(map, level, piece.x, piece.y);
+      const kind = furnitureKindOf(piece.kind, room);
+      if (!kind || squaresOf(piece).some(([x, y]) => standing.has(`${x},${y}`))) continue;
+      const name = pieceName(piece.kind, kind);
+      level.things.push({ id: `loot:${level.id}:${piece.x},${piece.y}`, name, look: kind.look ?? `${name}.`, x: piece.x, y: piece.y, holds: {}, loot: { kind: kind.name }, onPiece: piece.kind });
+    }
+  }
+  return true;
+});
+
+// For the room's picture: a container says so, a piece of furniture is drawn as the piece itself with a quieter mark
+// than other things' (public/iso.js), and one that's been emptied says it's empty.
+addThingActs((game, thing) => {
+  const loot = lootOf(game.location, thing);
+  if (!loot) return null;
+  const kept = game.stores?.[`thing:${game.location}:${thing.id}`]?.items;
+  return { loot: true, ...(thing.onPiece ? { onPiece: thing.onPiece } : {}), ...(kept && !kept.length ? { empty: true } : {}) };
+});
+
+// What's in a container the first time it's opened, as [{ id, n }]: as many things as its kind holds, more or fewer by
+// the room and the place, each of a rarity by the file's chances and then any item of that rarity its kind holds, with
+// two or three of a supply or a small part now and then. The same game always finds the same in the same container
+// (the game's own seed and the container's key), so loading a save from before it was opened finds the same again.
+export function rollLoot(game, key, loot, place, roomName = "") {
+  const model = lootModel();
+  const kind = kindNamed(loot?.kind);
+  if (!model || !kind) return [];
+  const roll = seeded(`${game.bodySeed ?? 1}|loot|${key}`);
+  const [low, high] = kind.things;
+  const count = Math.max(0, Math.min(12, low + Math.floor(roll() * (high - low + 1)) + lootAdjustment(place, roomName)));
+  const chances = model.chances ?? DEFAULT_CHANCES;
+  const held = itemsFoundIn(kind.name).filter(({ id }) => ITEMS[id]);
+  const tiers = RARITIES.map((rarity) => [rarity, held.filter((one) => one.rarity === rarity)]).filter(([rarity, list]) => list.length && (chances[rarity] ?? 0) > 0);
+  if (!tiers.length) return [];
+  const out = [];
+  for (let i = 0; i < count; i += 1) {
+    const rarity = weighted(roll, tiers.map(([one]) => [one, chances[one]]));
+    const list = tiers.find(([one]) => one === rarity)[1];
+    const { id } = list[Math.floor(roll() * list.length)];
+    const stack = Math.max(1, Number(ITEMS[id].stack) || 1);
+    out.push({ id, n: rarity === "rare" || stack === 1 ? 1 : 1 + Math.floor(roll() * Math.min(3, stack)) });
+  }
+  return out;
 }
 
 // How many items turn up in containers at all, for the checker's summary.

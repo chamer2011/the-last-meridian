@@ -863,6 +863,8 @@ body:has(#computer) .pop-notes { visibility: hidden; }
 .walk-plan-row:hover .option-label, .walk-plan-row:hover .option-detail, .walk-plan-row:focus-visible .option-label, .walk-plan-row:focus-visible .option-detail { color: var(--c-bg); }
 .walk-mark { position: absolute; z-index: 1; padding: 0; margin: 0; font: inherit; line-height: var(--walk-row); white-space: nowrap; background: var(--bg); }
 .walk-mark::before, .walk-mark::after { content: none !important; }
+/* A container that's a piece of the deck's furniture lies under the words, names and ways out drawn after it. */
+.walk-mark.walk-furniture { z-index: auto; }
 .walk-person { color: var(--speaker); font-weight: 700; transition: left .5s linear, top .5s linear; }
 .walk-person-letter { background: var(--speaker); color: var(--bg); }
 .walk-person:hover:not(:disabled), .walk-person:focus-visible { background: var(--speaker); color: var(--bg); }

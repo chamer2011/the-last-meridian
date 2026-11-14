@@ -1,17 +1,18 @@
 # The containers and what's in them
 draft: the AI's, not yet edited by the owner
+chances: common 70, uncommon 25, rare 5
 
 Kinds:
-- dresser: called dresser, wardrobe, chest of drawers, clothes chest; 6x4; 1 to 4 things
-- crew locker: called locker, lockers, footlocker, kit bag; 4x4; 0 to 3 things
-- armory: called armory, weapon rack, weapons rack, rifle rack, armor rack, gun locker, weapons locker; 6x5; 1 to 4 things
-- medicine cabinet: called medicine cabinet, first aid box, medical crate, medical crates, medicine chest; 6x4; 1 to 4 things
-- desk: called desk, desks, filing cabinet, drawer, drawers, tray; 6x3; 0 to 3 things
-- pantry: called pantry, cupboard, larder, sack, sacks; 6x4; 1 to 4 things
-- tool shelf: called tool roll, tool rack, tool chest, toolbox, workbench; 6x4; 1 to 4 things
-- crate: called crate, crates, barrel, barrels, box, boxes, bin, bins; 6x5; 0 to 4 things
-- safe: called safe, strongbox, lockbox, cash box; 4x3; 0 to 2 things
-- cooler: called cooler, icebox, bar; 4x4; 1 to 3 things
+- dresser: called dresser, wardrobe, chest of drawers, clothes chest, sea chest, trunk; 6x4; 1 to 4 things; Its drawers are full of somebody's life.
+- crew locker: called locker, lockers, footlocker, kit bag; 4x4; 0 to 3 things; Its owner's name has been scratched off the door. It isn't locked.
+- armory: called armory, weapon rack, weapons rack, rifle rack, armor rack, gun locker, weapons locker; 6x5; 1 to 4 things; The armory's stencil is on the door, and a chain hangs through the handles with no padlock on it.
+- medicine cabinet: called medicine cabinet, first aid box, medical crate, medical crates, medicine chest; 6x4; 1 to 4 things; Dressings and brown bottles behind a sliding door.
+- desk: called desk, desks, filing cabinet, drawer, drawers, tray; 6x3; 0 to 3 things; Its drawers stick, and one of them is open a little.
+- pantry: called pantry, cupboard, larder, sack, sacks; 6x4; 1 to 4 things; Tins and sacks, labelled in the cooks' own hand.
+- tool shelf: called tool roll, tool rack, tool chest, toolbox, workbench; 6x4; 1 to 4 things; Tools and spares, more of the second than the first.
+- crate: called crate, crates, barrel, barrels, box, boxes, bin, bins; 6x5; 0 to 4 things; Nobody's opened it in a while, and the lid's strapped down.
+- safe: called safe, strongbox, lockbox, cash box; 4x3; 0 to 2 things; Its door is open a finger's width.
+- cooler: called cooler, icebox, bar; 4x4; 1 to 3 things; It hums to itself, and there's a stack of cups on top.
 
 Richer and poorer:
 - rooms called cabin, cabins, quarters, ready room, wardroom, office: one more
@@ -21,6 +22,6 @@ Richer and poorer:
 
 Furniture:
 - locker: armory in The Armory; crew locker anywhere else
-- shelf: tool shelf in Engineering, The Repair Bay, Stores; pantry in The Galley; medicine cabinet in Medbay; crate anywhere else
+- shelf: armory in The Armory; tool shelf in Engineering, The Repair Bay, Stores; pantry in The Galley; medicine cabinet in Medbay; crate anywhere else
 - desk: desk
 - barrel: crate

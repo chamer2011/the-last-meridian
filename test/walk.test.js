@@ -73,7 +73,8 @@ function assertNothingOverlaps(view, label) {
   for (const one of view.labels) claim(one.text, run(one.x, one.y, one.text.length));
   for (const one of view.exits) claim(one.label, run(one.x, one.y, one.label.length + 2, one.side));
   for (const one of view.people.filter((person) => !person.crowd && !person.walking)) claim(one.short, run(one.x, one.y, one.short.length + 2, one.side));
-  for (const one of view.things) claim(one.name, run(one.x, one.y, 1));
+  // A container that's a piece of the deck's furniture lies under names and words, like the furniture itself.
+  for (const one of view.things.filter((thing) => !thing.onPiece)) claim(one.name, run(one.x, one.y, 1));
   // A name can't sit over words on the wall, though a thing can be hung on them.
   view.layers.writing.forEach((row, y) => [...row].forEach((ch, x) => {
     const on = taken.get(`${x},${y}`);

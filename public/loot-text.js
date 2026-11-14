@@ -13,13 +13,14 @@ const WORD_FOR = Object.fromEntries(Object.entries(NUMBER_WORDS).map(([word, n])
 const listOf = (words) => String(words ?? "").split(",").map((one) => one.trim()).filter(Boolean);
 const countOf = (word) => (NUMBER_WORDS[word] ?? (/^\d+$/.test(word) ? Number(word) : null));
 
-// "dresser: called dresser, wardrobe; 6x4; 1 to 4 things"
+// "dresser: called dresser, wardrobe; 6x4; 1 to 4 things", and after another semicolon, if it's written, what a piece of
+// furniture that opens as this kind looks like (the decks' lockers, shelves, desks and barrels have no words of their own).
 export function readKindLine(text) {
   const head = String(text ?? "").match(/^([^:]{1,40}):\s*(.*)$/);
   if (!head) return { problem: `"${text}" is written as the kind's name, a colon, then called ...; 6x4; 1 to 4 things` };
   const name = head[1].trim();
   const pieces = head[2].split(";").map((one) => one.trim());
-  if (pieces.length !== 3) return { problem: `the line for ${name} has ${pieces.length} pieces, and it needs three, separated by semicolons: called ...; 6x4; 1 to 4 things` };
+  if (pieces.length !== 3 && pieces.length !== 4) return { problem: `the line for ${name} has ${pieces.length} pieces, and it needs three, separated by semicolons: called ...; 6x4; 1 to 4 things, and a fourth if you like, what a piece of furniture of this kind looks like` };
   const called = pieces[0].match(/^called\s+(.+)$/i);
   if (!called) return { problem: `the line for ${name} starts with called and the words in a thing's name that make it one, like called dresser, wardrobe` };
   const words = listOf(called[1]).map((one) => one.toLowerCase());
@@ -29,9 +30,24 @@ export function readKindLine(text) {
   if (!things) return { problem: `the line for ${name} says how many things are in it, like 1 to 4 things or 2 things, and it has "${pieces[2]}"` };
   const low = Number(things[1]);
   const high = things[2] === undefined ? low : Number(things[2]);
-  return { name, words, size: { cols: Number(size[1]), rows: Number(size[2]) }, things: [low, high] };
+  return { name, words, size: { cols: Number(size[1]), rows: Number(size[2]) }, things: [low, high], ...(pieces[3] ? { look: pieces[3] } : {}) };
 }
-export const writeKindLine = (kind) => `${kind.name}: called ${kind.words.join(", ")}; ${kind.size.cols}x${kind.size.rows}; ${kind.things[0] === kind.things[1] ? `${kind.things[0]} ${kind.things[0] === 1 ? "thing" : "things"}` : `${kind.things[0]} to ${kind.things[1]} things`}`;
+export const writeKindLine = (kind) => `${kind.name}: called ${kind.words.join(", ")}; ${kind.size.cols}x${kind.size.rows}; ${kind.things[0] === kind.things[1] ? `${kind.things[0]} ${kind.things[0] === 1 ? "thing" : "things"}` : `${kind.things[0]} to ${kind.things[1]} things`}${kind.look ? `; ${kind.look}` : ""}`;
+
+// "common 70, uncommon 25, rare 5": how often each rarity turns up, out of their sum.
+export function readChances(text) {
+  const chances = {};
+  for (const piece of listOf(text)) {
+    const found = piece.match(/^([a-z]+)\s+(\d+)$/i);
+    if (!found) return { problem: `"${piece}" is written a rarity and a number, like common 70` };
+    const rarity = found[1].toLowerCase();
+    if (!RARITIES.includes(rarity)) return { problem: `${found[1]} isn't a rarity: they're ${RARITIES.join(", ")}` };
+    chances[rarity] = Number(found[2]);
+  }
+  if (!Object.values(chances).some((n) => n > 0)) return { problem: "the chances need a number more than 0 for at least one rarity" };
+  return { chances };
+}
+export const writeChances = (chances) => RARITIES.filter((rarity) => chances[rarity] !== undefined).map((rarity) => `${rarity} ${chances[rarity]}`).join(", ");
 
 // "rooms called cabin, quarters: one more" or "places graveyard, frontier: one fewer"
 export function readAdjustLine(text) {
@@ -67,7 +83,7 @@ export function writeFurnitureLine(one) {
 
 // ---- Reading a file ---------------------------------------------------------------------------
 
-// The file into { name, draft, kinds: [...], adjust: [...], furniture: [...] }, each line with its line number, and
+// The file into { name, draft, chances, kinds: [...], adjust: [...], furniture: [...] }, each line with its line number, and
 // the problems in it, each with the line it's on.
 export function parseLootText(text) {
   const problems = [];
@@ -105,8 +121,13 @@ export function parseLootText(text) {
     }
     if (part === null) {
       const draft = line.match(/^draft:\s*(.*)$/i);
+      const chances = line.match(/^chances:\s*(.*)$/i);
       if (draft) value.draft = draft[1].trim();
-      else problem(n, "before the first part, the only line is draft:, then the parts Kinds, Richer and poorer, and Furniture");
+      else if (chances) {
+        const read = readChances(chances[1]);
+        if (read.problem) problem(n, read.problem);
+        else value.chances = read.chances;
+      } else problem(n, "before the first part, the lines are draft: and chances:, then the parts Kinds, Richer and poorer, and Furniture");
       continue;
     }
     if (part === "unknown") continue;
@@ -132,6 +153,7 @@ export function parseLootText(text) {
 export function writeLootText(value) {
   const out = [`# ${value.name || "The containers and what's in them"}`];
   if (value.draft) out.push(`draft: ${value.draft}`);
+  if (value.chances) out.push(`chances: ${writeChances(value.chances)}`);
   out.push("", "Kinds:", ...value.kinds.map((one) => `- ${writeKindLine(one)}`));
   out.push("", "Richer and poorer:", ...value.adjust.map((one) => `- ${writeAdjustLine(one)}`));
   out.push("", "Furniture:", ...value.furniture.map((one) => `- ${writeFurnitureLine(one)}`));

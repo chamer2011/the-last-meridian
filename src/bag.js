@@ -12,6 +12,7 @@ import { addItem, attr, removeItem, useItem } from "./rules.js";
 import { standingAt } from "./walk.js";
 import { notePut } from "./puts.js";
 import { rigWeight } from "./rig-parts.js";
+import { lootBox, lootOf, lootRoomOf, rollLoot } from "./loot.js";
 
 const R = () => INVENTORY;
 const round1 = (n) => Math.round(n * 10) / 10;
@@ -172,7 +173,10 @@ function containerHere(game, key) {
     return pile && pile.place === here.place && pile.level === here.levelId ? { key, name: pile.name, box: R().piles, pile } : null;
   }
   const thing = here.things.find((one) => `thing:${here.place}:${one.id}` === key && one.holds);
-  return thing ? { key, name: thing.name, box: R().containers, thing } : null;
+  if (!thing) return null;
+  // A container in a room (src/loot.js) holds as many squares as its kind does, and is filled the first time it's opened.
+  const loot = lootOf(here.place, thing);
+  return { key, name: thing.name, box: lootBox(loot) ?? R().containers, thing, ...(loot ? { loot, place: here.place, levelId: here.levelId } : {}) };
 }
 // What a store holds right now, by item: what's kept in the save once it's been opened, and otherwise what its holds
 // line says, so the Ship menu reads the same count as the open grid. Reading it changes nothing.
@@ -220,12 +224,17 @@ export function storePut(game, key, holds, id, n) {
   keepStore(game, key, items);
   return want - left;
 }
-// What's in a thing, from its map file's holds line the first time it's opened.
+// What's in a thing, from its map file's holds line the first time it's opened, or for a container in a room what's
+// found in it (src/loot.js); whatever doesn't fit its squares isn't there.
 function contentsOf(game, found) {
   if (found.pile) return found.pile.items;
   const kept = game.stores?.[found.key]?.items;
   if (kept) return kept;
   const items = [];
+  if (found.loot) {
+    for (const { id, n } of rollLoot(game, found.key, found.loot, found.place, lootRoomOf(found.place, found.levelId, found.thing))) pour(items, found.box, id, n);
+    return items;
+  }
   for (const [id, n] of Object.entries(found.thing.holds ?? {})) if (ITEMS[id]) pour(items, found.box, id, Math.max(0, Math.round(Number(n)) || 0));
   return items;
 }

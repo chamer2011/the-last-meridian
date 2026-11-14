@@ -176,6 +176,8 @@ test("the footlocker keeps what's left in it", () => {
   const locker = thing(game, "A footlocker with no name on it");
   addItem(game, "data_chip");
   bag.bagCommand(game, { action: "open", key: locker.store });
+  // Since the loot's third step a footlocker holds whatever was left in it (src/loot.js): that comes out first.
+  for (const one of [...bag.bagView(game).open.items]) bag.bagCommand(game, { action: "take", from: { at: "open", x: one.x, y: one.y } });
   assert.deepEqual(bag.bagView(game).open.items, []);
   const view = bag.bagView(game);
   const at = ["pockets", "pack"].find((where) => view[where].items.some((one) => one.id === "data_chip"));
