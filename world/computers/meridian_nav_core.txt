@@ -1,0 +1,30 @@
+# The navigation core
+class: hard
+owner: fleet
+yours: yes
+place: meridian
+room: The Bridge
+login: navigator
+flavor: yours
+sealed: yes
+
+What the player sees:
+The navigation core under the plot table: no screen or keys of its own, only the boards that plot every jump, and a cable to the comms relay, where the charts come in. Whatever reaches it comes down that cable, or through the table above.
+
+Files:
+jump_log.txt: Every jump the Meridian has made since the Fall: where from, where to, how long the core took to plot it, and how close the ship came to the line it drew.
+charts.txt: The charts the relay has fed it, the old Concord ones and the ones bought since, with the dates they stopped being true.
+
+Logs:
+- news
+
+Programs:
+Lock the navigation: The core's boards go still, and the line on the plot table stops at the edge of the glass. Until it's unlocked, every jump is plotted by hand. -> * navigation off at meridian; * flag navigation_locked: The Meridian's navigation was locked from its core ? not flag navigation_locked
+Unlock the navigation: The boards wake one by one, and the table's line comes back across the glass. -> * navigation on at meridian; * unflag navigation_locked ? flag navigation_locked
+
+Network:
+meridian_plot_table: The table above it.
+
+Trusts:
+- the comms relay: programs
+- meridian_plot_table: reading

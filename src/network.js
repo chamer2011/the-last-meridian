@@ -16,6 +16,7 @@ import { cameraContent, codeOf, reachWhy, serviceContent } from "./devices.js";
 import { systemsOf } from "./systems.js";
 import { addChecker } from "./room-hooks.js";
 import { hardenedAt, weakKnown } from "./weak-points.js";
+import { nodeSeal, sealedWords, trustLine } from "./sealed.js";
 import { LOCATIONS } from "./data.js";
 import { mapFor } from "./walk.js";
 
@@ -134,7 +135,8 @@ export const linkedTo = (net, id) => net.links.filter((one) => one.a === id || o
 // box's menu, a camera's feed.
 export function nodeOfSession(session) {
   if (!session) return null;
-  if (WORLD_COMPUTERS[session.id]) return `c:${session.id}`;
+  // A written door panel is its door's node.
+  if (WORLD_COMPUTERS[session.id]) return WORLD_COMPUTERS[session.id].door ? `door:${WORLD_COMPUTERS[session.id].door}` : `c:${session.id}`;
   const place = session.place ?? "";
   const rest = String(session.id).startsWith(`${place}:`) ? String(session.id).slice(place.length + 1) : String(session.id);
   const m = /^(service|camera|part):(.+)$/.exec(rest);
@@ -179,11 +181,13 @@ export function hop(game, session, id, { act, finish, content: from = null }) {
   }
   const content = nodeContent(game, session.place, node);
   if (!content) return { over: false, said: "There's nothing there to reach." };
+  // A sealed one lets in only the machines it trusts (step 9): from anywhere else it refuses, and no time goes by.
+  if (content.sealed && !trustLine(session.place, content, here)) return { over: false, said: sealedWords(content) };
   // Heard where you leave; if that's the end of the session, that's where you stay.
   const out = act(game, session, { noise: HOP.noiseLeaving, minutes: HOP.minutes });
   if (out) return out;
   const summary = finish(game, session, [`[COMPUTER] From ${session.name} you went on over the network to ${content.name}.`]).summary;
-  openLogon(game, content, { at: session.at ?? null, remote: true, noise: HOP.noiseArriving });
+  openLogon(game, content, { at: session.at ?? null, remote: true, noise: HOP.noiseArriving, from: here, fromName: net.nodes[here]?.name ?? null });
   return { over: true, summary, computer: true };
 }
 
@@ -210,7 +214,11 @@ export function networkView(game, session) {
   return {
     here,
     bands,
-    nodes: Object.values(net.nodes).map((node) => ({ id: node.id, name: node.name, kind: node.kind, band: node.band, i: order[node.id], here: node.id === here, linked: near.has(node.id), visited: Boolean(game.computers?.[nodeContentId(session.place, node)]), hardened: hardOf(node), weak: weakOf(node) })),
+    // Sealed ones too, with whether the machine you're on is one they trust (src/sealed.js).
+    nodes: Object.values(net.nodes).map((node) => {
+      const seal = nodeSeal(session.place, node, here);
+      return { id: node.id, name: node.name, kind: node.kind, band: node.band, i: order[node.id], here: node.id === here, linked: near.has(node.id), visited: Boolean(game.computers?.[nodeContentId(session.place, node)]), hardened: hardOf(node), weak: weakOf(node), sealed: seal.sealed, trusted: seal.trusted, answers: seal.answers };
+    }),
     links: net.links,
     hop: HOP,
   };

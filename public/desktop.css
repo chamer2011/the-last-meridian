@@ -353,3 +353,14 @@
 .desk .pocket .netmap .net-node.hard small { color: #f2c14e; }
 .desk .pocket .netmap .net-node.hard.weak small { color: #c9ffd8; }
 .desk .pocket .netmap button.net-node.here small { color: inherit; }
+
+/* Sealed computers (step 9): they answer only to the machines they trust. Red-amber on the map, green where you're trusted. */
+.netmap button.net-node.sealed { border-style: double; border-width: 3px; }
+.netmap .net-node.sealed small { color: #e8794a; opacity: 1; }
+.netmap .net-node.sealed.trusted small { color: #9ef0b4; }
+.desk .pocket .netmap button.net-node.sealed { border: 3px double #e8794a; }
+.desk .pocket .netmap button.net-node.sealed.trusted { border-color: #c9ffd8; }
+.desk .pocket .netmap .net-node.sealed small { color: #e8794a; }
+.desk .pocket .netmap .net-node.sealed.trusted small { color: #c9ffd8; }
+.os .through { margin-top: 6px; padding: 4px 6px; border-left: 3px solid #2f8f5a; font-size: 11px; }
+.os .sealed-note { color: #9a5b00; font-style: italic; }

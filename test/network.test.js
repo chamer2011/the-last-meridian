@@ -38,8 +38,10 @@ const linked = (net, a, b, kind) => net.links.some((one) => ((one.a === a && one
 test("the Meridian's network: every system its file knows, on the data network and the bus, and the file's own link", () => {
   const net = networkOf("meridian");
   assert.deepEqual(net.problems, []);
-  assert.equal(count(net, "terminal"), 3);
-  assert.equal(count(net, "door"), 5);
+  // The plot table, the reactor gauges and the records terminal, and since step 9 the navigation core, the reactor
+  // safety controller and three private terminals (the first officer's, the security desk and the ledger).
+  assert.equal(count(net, "terminal"), 8);
+  assert.equal(count(net, "door"), 6);
   assert.equal(count(net, "junction"), 4);
   assert.equal(count(net, "camera"), 3);
   assert.equal(count(net, "relay"), 1);
@@ -62,7 +64,7 @@ test("a systems file's Network part reads back as written, and a line naming not
   const text = fs.readFileSync(new URL("../world/systems/meridian.txt", import.meta.url), "utf8");
   const { value, problems } = parseSystemsText(text, "meridian");
   assert.deepEqual(problems, []);
-  assert.deepEqual(value.network.map((one) => one.text), ["the records terminal to the plot table"]);
+  assert.deepEqual(value.network.map((one) => one.text), ["the records terminal to the plot table", "the security desk to the door to The Armory", "the navigation core to the comms relay"]);
   assert.equal(writeSystemsText(value).trim(), text.replace(/\r/g, "").trim());
   const bad = parseSystemsText("# Somewhere\n\nNetwork:\n- the toaster to the kettle\n- the plot table\n", "x");
   assert.equal(bad.value.network.length, 2);

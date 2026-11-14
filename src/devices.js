@@ -19,6 +19,7 @@ import { seenTampering } from "./systems.js";
 import { peopleAboard } from "./life.js";
 import { mapFor } from "./walk.js";
 import { busWeakPoints, learnWeak } from "./weak-points.js";
+import { mayWorkDoor, partOpen, partSealedWords } from "./sealed.js";
 
 // The looks with no screen of their own: a door's panel, a junction box's service menu, a camera's feed.
 export const PANEL_LOOKS = ["door", "service", "camera"];
@@ -232,7 +233,8 @@ function doorView(game, session, content) {
   const locked = runs ? doorLocked(game, place, room) : !(game.opened?.[place] ?? []).includes(room);
   const label = String(plainRoom(place, room)).replace(/^The /, "").toUpperCase().slice(0, 12);
   const lcd = session.locked ? (session.scanned ? ["DOORCTL 2.1", "ADMIN LOCK"] : [label, locked ? "LOCKED" : "ENTER CODE"]) : s.recoded ? [label, "NEW CODE"] : [label, locked ? "LOCKED" : "OPEN"];
-  const actions = session.locked ? [] : [
+  // Let in by a machine it trusts, a session works the door only if that trust allows it (src/sealed.js).
+  const actions = session.locked || !mayWorkDoor(session) ? [] : [
     runs && (locked ? { id: "door-unlock", label: "Open the door" } : { id: "door-lock", label: "Lock the door" }),
     runs && { id: "door-recode", label: "Give the door a new code", why: s.recoded ? "it has your code already" : null, about: "Locked with a code only you have: nobody here can open it until you do." },
   ].filter(Boolean);
@@ -281,13 +283,15 @@ function assessments(game) {
   return { by: writer ? postAndName(game, SHIP, "first_officer") : null, list };
 }
 
-function navcomView(game, session) {
+function navcomView(game, session, content) {
   if (session.locked || session.place !== SHIP || !game.ship) return { kind: "navcom", shipLog: [], crew: null, purse: null };
   const log = game.ship.log ?? [];
+  // The crew file can be kept to a machine NAVCOM trusts (step 9): then it opens only from there.
+  const crewOpen = partOpen(content, session, "the crew file");
   return {
     kind: "navcom",
     shipLog: log.map((entry, i) => ({ i, day: entry.day, tag: entry.tag ?? null, text: entry.text })).slice(-12).reverse(),
-    crew: assessments(game),
+    crew: crewOpen ? assessments(game) : { by: null, list: [], sealed: partSealedWords(SHIP, content, "the crew file") },
     purse: game.ship.purse ?? null,
     struck: game.rig?.struck ?? 0,
   };
@@ -296,7 +300,7 @@ function navcomView(game, session) {
 export function deviceView(game, session, content) {
   const look = session.look ?? lookOf(content);
   if (look === "keelworks") return null;
-  const view = look === "door" ? doorView(game, session, content) : look === "service" ? serviceView(game, session, content) : look === "camera" ? cameraView(game, session, content) : navcomView(game, session);
+  const view = look === "door" ? doorView(game, session, content) : look === "service" ? serviceView(game, session, content) : look === "camera" ? cameraView(game, session, content) : navcomView(game, session, content);
   return { ...view, leave: LOOKS[look].leave };
 }
 
@@ -319,6 +323,7 @@ export function deviceCommand(game, session, content, id, { act, finish }) {
   if (look === "door") {
     const room = content.door;
     if (!systemsOf(place)?.doors?.[room]) throw new Error("This panel runs no door the place's systems know.");
+    if (!mayWorkDoor(session)) throw new Error("From where you came in, it lets you do nothing to the door.");
     const recoded = Boolean(game.systems?.[place]?.doors?.[room]?.recoded);
     if (id === "door-unlock" || id === "door-lock") {
       const lines = setDoor(game, place, room, id === "door-unlock" ? "unlocked" : "locked", { by: byOf(session) });

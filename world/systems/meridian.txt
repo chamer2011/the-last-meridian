@@ -26,6 +26,7 @@ Doors:
 - door to The Aft Holds
 - door to Medbay
 - door to The Hot Bunks
+- door to The Armory
 
 Cameras:
 - camera in The Bridge, Engineering, The Aft Holds
@@ -44,8 +45,10 @@ Navigation:
 - nav core in The Bridge: The navigation core under the plot table, plotting every jump on boards older than the war.
 
 Computers:
-- meridian_plot_table: navigation, comms, cameras, doors, alarm
+- meridian_plot_table: comms, cameras, doors, alarm
 - meridian_reactor_gauges: power, air, lights, engines
 
 Network:
 - the records terminal to the plot table
+- the security desk to the door to The Armory
+- the navigation core to the comms relay

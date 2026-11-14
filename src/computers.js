@@ -18,11 +18,13 @@ import { recordFact } from "./record.js";
 import { notePut } from "./puts.js";
 import { fill } from "./check-games/kit.js";
 import { CHECK_TEXT, COMPUTER_FLAVOR, WORLD_COMPUTERS, WORLD_MAPS } from "./world.js";
-import { controlsFor, controlsView, partWorks, roomPowered, runsSystems } from "./systems.js";
+import { controlsFor, controlsView, ownedBy, partWorks, roomPowered, runsSystems } from "./systems.js";
 import { rigFace, rigHeat, rigInComputer } from "./rig.js";
 import { LINK_WORDS, LOOKS, THROUGH_RIG, deviceView, lookOf, reachOf, reachWhy, rigReaches } from "./devices.js";
 import { networkView } from "./network.js";
 import { contentHardened, hardenedHints, weakWords, withWeakPoints } from "./weak-points.js";
+import { inSentence, rightsWords, sealedWords, trustLine, trustsOf, withRights } from "./sealed.js";
+import "./terminals.js";
 
 
 export const slug = (words) => String(words).toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40);
@@ -129,6 +131,9 @@ export function writtenContent(id) {
     reach: c.reach ? String(c.reach).trim().toLowerCase() : null,
     // No breaker works on it from the front: its way in is written somewhere else at its place (src/weak-points.js).
     hardened: Boolean(c.hardened),
+    // Sealed: it takes nothing at its own keyboard, and lets in only the machines it trusts (src/sealed.js).
+    sealed: Boolean(c.sealed),
+    trusts: trustsOf(c.trusts),
   };
 }
 
@@ -242,6 +247,7 @@ export function consoleContent(game, place, part) {
 }
 
 // Using one of those consoles: straight in when it's the player's own, else its logon. No power, no screen.
+// (A console the systems file stands is never sealed: only a computer with a file of its own is.)
 export function useConsolePart(game, place, part) {
   if (!partWorks(game, place, part)) return { said: "Its screen is dark. There's no power to it." };
   const content = consoleContent(game, place, part);
@@ -254,6 +260,7 @@ export function useConsolePart(game, place, part) {
 export function openDoorPanel(game, place, to, { classKey = "easy", at = null, doorRule = null } = {}) {
   const target = computerAtDoor(game, place, to, classKey);
   const content = target.id ? writtenContent(target.id) : target.generic;
+  if (content.sealed) throw new Error(sealedWords(content));
   return openLogon(game, content, { at, doorRule });
 }
 
@@ -261,7 +268,7 @@ export function openDoorPanel(game, place, to, { classKey = "easy", at = null, d
 // or a generic one of the class. Never a hardened one (src/weak-points.js): a scene that wants one names it.
 export function computerForPlace(game, classKey) {
   const place = game.location;
-  const written = Object.entries(WORLD_COMPUTERS).find(([, c]) => c.place === place && classKeyOf(c.class) === classKey && !c.yours && !c.hardened)?.[0];
+  const written = Object.entries(WORLD_COMPUTERS).find(([, c]) => c.place === place && classKeyOf(c.class) === classKey && !c.yours && !c.hardened && !c.sealed)?.[0];
   if (written) return { id: written };
   const kind = classKey === "easy" ? "panel" : classKey === "moderate" ? "console" : "server";
   return { generic: genericContent(game, { key: `${place}:${classKey}`, name: classNameOf(classKey), kind, place, room: roomOf(place, game.walk?.level), classKey }) };
@@ -274,7 +281,7 @@ export const knowsPassword = (game, id) => Boolean(id && game.passwords?.[id]);
 // at is what the player sat down at, as the room's marks name it, for the window's line to point at. locked is a
 // session still at the computer's logon; practice is one that counts for nothing; story is the scene's check it's for
 // ({ id, reason, source, difficulty }); doorRule is a map file's door that opens when the player gets in.
-export function openSession(game, content, { hacked = false, locked = false, noise = 0, how = "sat down", at = null, practice: practising = false, story = null, doorRule = null, remote = false }) {
+export function openSession(game, content, { hacked = false, locked = false, noise = 0, how = "sat down", at = null, practice: practising = false, story = null, doorRule = null, remote = false, from = null, fromName = null, trusted = null, rights = null }) {
   if (game.combat) throw new Error("Finish the fight first.");
   if (game.computer) throw new Error("Log off the computer you're on first.");
   game.computers ??= {};
@@ -316,6 +323,12 @@ export function openSession(game, content, { hacked = false, locked = false, noi
     // that got in already went through it, and a practice computer has it plugged in from the start.
     plugged: Boolean(hacked) || Boolean(practising),
     rigMinutes: 0,
+    // The node it was reached from over the network, and what a machine this one trusts lets it do (src/sealed.js):
+    // trusted is what the trust gives, rights what the session may do (null for everything).
+    from,
+    fromName,
+    trusted,
+    rights,
   };
   const session = game.computer;
   if (!yours) session.noticed = session.noise >= watchFor(game, session.classKey).notices;
@@ -325,10 +338,11 @@ export function openSession(game, content, { hacked = false, locked = false, noi
     session.log.push(line(`${session.plugged || THROUGH_RIG.includes(session.look) ? "Run something from your rig" : "Connect your rig and run something from it"} to get past the logon, or ${(LOOKS[session.look].leave ?? "log off").toLowerCase()}. ${watcherOf(game, session).name === "AuditGuard" ? "The watcher" : watcherOf(game, session).name} hears everything from here on.`, "dim"));
     return session;
   }
-  const greeting = hacked && !yours ? "ACCESS GRANTED." : yours ? "Logged in." : "Logged in with the password.";
+  const greeting = how === "trusted" ? `ACCESS GRANTED: it trusts ${inSentence(fromName ?? "where you came from")}.` : hacked && !yours ? "ACCESS GRANTED." : yours ? "Logged in." : "Logged in with the password.";
   session.log.push(line(`${content.name}: ${greeting} Welcome, ${content.user}.`, "good"));
   if (flavor.length) session.log.push(line(flavor[Math.floor(seeded(content.id)() * flavor.length)], "dim"));
   session.log.push(line(LOOKS[session.look].how, "dim"));
+  if (how === "trusted") session.log.push(line(rights ? `From ${inSentence(fromName ?? "there")} it lets you ${rightsWords(rights)}, and nothing more.` : `From ${inSentence(fromName ?? "there")} it also lets you ${rightsWords(trusted)}.`, "dim"));
   // A password, or the player's own computer, gets them straight in: whatever asked for the hack has its answer now.
   if (story || doorRule) settleHack(game, session, true);
   return session;
@@ -336,9 +350,15 @@ export function openSession(game, content, { hacked = false, locked = false, noi
 
 // Opening a computer the player wants to get into: straight in when it's theirs or they know its password, else at
 // its logon. A computer to practise on is never theirs.
-export function openLogon(game, content, { at = null, practice: practising = false, story = null, doorRule = null, remote = false, noise = 0 } = {}) {
-  if (!practising && (content.yours || knowsPassword(game, content.id))) return openSession(game, content, { how: content.yours ? "sat down" : "the password", at, story, doorRule, remote, noise });
-  return openSession(game, practising ? { ...content, yours: false } : content, { locked: true, how: "logon", at, practice: practising, story, doorRule, remote, noise });
+export function openLogon(game, content, { at = null, practice: practising = false, story = null, doorRule = null, remote = false, noise = 0, from = null, fromName = null } = {}) {
+  // A machine it trusts lets the player straight in, with what that trust allows (src/sealed.js); on a sealed computer
+  // that's all, and on another the player's own right or password still gives everything. A sealed one takes nothing else.
+  const trust = practising ? null : trustLine(content.place, content, from);
+  if (content.sealed && !trust && !practising) throw new Error(sealedWords(content));
+  const own = !practising && (content.yours || knowsPassword(game, content.id));
+  if (trust) return openSession(game, content, { how: "trusted", at, story, doorRule, remote, noise, from, fromName, trusted: trust.rights, rights: content.sealed || !own ? trust.rights : null });
+  if (own) return openSession(game, content, { how: content.yours ? "sat down" : "the password", at, story, doorRule, remote, noise, from });
+  return openSession(game, practising ? { ...content, yours: false } : content, { locked: true, how: "logon", at, practice: practising, story, doorRule, remote, noise, from });
 }
 
 // The player is past the logon: as whom, and how. What asked for the hack hears that it worked.
@@ -396,6 +416,8 @@ export function useComputer(game, { place, levelId, thing, generic = true }) {
   if (!target) return null;
   const content = target.id ? writtenContent(target.id) : target.generic;
   if (!roomPowered(game, place, levelId)) return { said: "The screen's dead. There's no power in here." };
+  // A sealed one takes nothing here: it answers only to the machines it trusts, over the network.
+  if (content.sealed) return { said: sealedWords(content) };
   const session = openLogon(game, content, { at: `thing:${thing.id}` });
   return { said: session.locked ? `${content.name} wants a logon.` : `You sit down at ${content.name}.`, computer: true };
 }
@@ -421,10 +443,15 @@ function hackFromCheck(game, { difficulty, reason, source, computer = null, targ
 }
 setHackHandler(hackFromCheck);
 
+// Whether plugging a rig in here can be seen as tampering: not at the player's own computers, nor anywhere aboard
+// their own ship, where even a private terminal is the captain's to touch (src/devices.js, plugIn).
+export const plugSeen = (game, session) => !session.yours && !session.practice && !ownedBy(game, session.place);
+
 // ---- What a session is looking at --------------------------------------------------------------
 
-// What's on it, with the letters, files and logs it holds of other computers' weak points (src/weak-points.js).
-export const contentOf = (game, session) => withWeakPoints(session.generic ? session.generic : writtenContent(session.id));
+// What's on it, with the letters, files and logs it holds of other computers' weak points (src/weak-points.js), as a
+// session let in by a machine it trusts may see it (src/sealed.js).
+export const contentOf = (game, session) => withRights(withWeakPoints(session.generic ? session.generic : writtenContent(session.id)), session);
 export const memoryOf = (game, session) => {
   game.computers ??= {};
   game.computers[session.id] ??= { read: [], ran: [], visits: 1 };
@@ -461,7 +488,7 @@ function logonHints(game, session, content, ways, watch) {
   // Before the rig's connected, that comes first; the ways in are weighed as they would be once it's plugged in.
   if (!session.plugged && !session.remote) {
     const why = reachWhy(game, content);
-    lines.push(why ? `Your rig can't connect to it: ${why}.` : `Connect your rig first: it takes a minute${session.yours ? "" : ", and anyone in the room can see you plug in"}.`);
+    lines.push(why ? `Your rig can't connect to it: ${why}.` : `Connect your rig first: it takes a minute${plugSeen(game, session) ? ", and anyone in the room can see you plug in" : ""}.`);
   }
   // A hardened one: what's known of its way in, and where to look for the rest.
   lines.push(...hardenedHints(game, content, tier));
@@ -565,7 +592,7 @@ export function computerView(game) {
     // Its look, what reaches it and whether the rig does, and what the look shows and offers (src/devices.js).
     look: session.look ?? lookOf(content),
     // Whether it's connected (plugged in here, or reached over the network), and whether the rig's link fits it at all.
-    reach: { link: reachOf(content), words: LINK_WORDS[reachOf(content)], fits: rigReaches(game, content), why: reachWhy(game, content), plugged: Boolean(session.plugged), remote: Boolean(session.remote), ok: Boolean(session.plugged || session.remote) },
+    reach: { link: reachOf(content), words: LINK_WORDS[reachOf(content)], fits: rigReaches(game, content), why: reachWhy(game, content), plugged: Boolean(session.plugged), remote: Boolean(session.remote), ok: Boolean(session.plugged || session.remote), seen: plugSeen(game, session) },
     // Beside every computer the player's rig shows the map, the programs and the log: its board and casing.
     rigFace: rigFace(game),
     device: deviceView(game, session, content),
@@ -574,6 +601,8 @@ export function computerView(game) {
     // Hardened: no breaker works on it from the front (src/weak-points.js). weak is what's known of its way in.
     hardened: contentHardened(content),
     weak: contentHardened(content) ? weakWords(game, session.id) : [],
+    // Reached through a machine it trusts, and what that lets the player do here (src/sealed.js).
+    through: session.trusted ? { name: inSentence(session.fromName ?? "another machine"), words: rightsWords(session.trusted), sealed: Boolean(content.sealed) } : null,
   };
   view.hints = hintsFor(game, session, content, view);
   return view;
@@ -593,7 +622,7 @@ export function computerProblems() {
     const level = c.room ? levels.find((one) => sameName(one.name, c.room)) : null;
     if (c.room && c.place && WORLD_MAPS[c.place] && !level) at(`${LOCATIONS[c.place]?.name ?? c.place} has no room called ${c.room}`);
     if (c.thing && !c.room) at("a thing needs its room: add a room line");
-    if (c.thing && level && !Object.values(level.things ?? {}).some((one) => sameName(one.name, c.thing))) at(`${c.room} has nothing called ${c.thing}`);
+    // A thing that isn't drawn in its room is stood there by the game (src/terminals.js).
     if (c.door && c.place && WORLD_MAPS[c.place] && !levels.some((one) => one.id === c.door)) at(`${c.place} has no room with the id ${c.door} for the door to lead to`);
     for (const program of (c.programs ?? []).map(programOf)) for (const message of program.problems) at(message);
     for (const entry of c.network ?? []) if (!WORLD_COMPUTERS[String(entry.name).trim()]) at(`the network names ${String(entry.name).trim()}, and there's no computer with that id`);

@@ -1,0 +1,13 @@
+# The Armory's panel
+class: easy
+owner: tarrow
+place: meridian
+door: armory
+look: door
+sealed: yes
+
+What the player sees:
+A keypad by the Armory's door, its little screen dark but for one line: SEALED - OPERATED FROM SECURITY. There's no slot for a card, and none of its keys do anything.
+
+Trusts:
+- meridian_security_desk: the door

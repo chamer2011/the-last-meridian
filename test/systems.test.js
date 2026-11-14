@@ -358,7 +358,8 @@ test("a computer runs what the place's file says, and one that cuts its own powe
   standIn(game, "meridian", "bridge");
   enterComputer(game, { id: "meridian_plot_table" });
   let view = publicState(game).computer;
-  assert.deepEqual(view.systems.map((one) => one.id), ["doors", "cameras", "alarm", "comms", "navigation"]);
+  // Navigation is the core's since step 9, locked and unlocked from it through the comms relay.
+  assert.deepEqual(view.systems.map((one) => one.id), ["doors", "cameras", "alarm", "comms"]);
   const camera = view.systems.find((one) => one.id === "cameras").rows.find((row) => /Bridge/.test(row.name));
   assert.equal(camera.word, "watching");
   assert.ok(Array.isArray(camera.feed));

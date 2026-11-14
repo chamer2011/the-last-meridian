@@ -665,3 +665,48 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
 - **Screens** on a test copy at 1400 and 810 wide: the berth board's three letters, the opened letter, the log line
   and the map turning to WAY IN, the hop straight in over the network; the office's logon with HARDENED, its D: page
   and the advisor; a junction box's 3 LOG with the service account; the folded strip's slide-outs at 810.
+
+## Step 9, sealed systems (built 2026-11-13, untried)
+
+- Asked as "Step 9". The plan page's step 9: a few systems take nothing at their own keyboard and let in only the
+  machines they trust, what you can do inside set by the machine you came through; NAVCOM 7's crew file from the
+  first officer's terminal, the Armory's panel only from the security desk, the reactor's safety controller from the
+  reactor gauges, navigation from the comms relay. With it, the step-8 pick that waited: hand-written weak points for
+  the Meridian's private terminals (the security desk, the ledger, Voss's terminal), and "Your own ship: freely, except
+  the sealed ones and private terminals".
+- **The rules** (`src/sealed.js`): `sealed: yes` and `Trusts:` lines in a computer's file (`COMPUTER` in
+  `public/world-text.js`). A sealed computer refuses its own keyboard everywhere (`useComputer`, `openDoorPanel`,
+  `openLogon`, `computerForPlace`, a door's actions and look through `tellSealed`), and `hop` refuses it from an
+  untrusted node before any time passes. From a trusted node `openLogon` (with `from` and `fromName`) opens it
+  straight in: `session.trusted` is what the line gives, `session.rights` what the session may do (the line's
+  rights on a sealed computer, or on one that isn't the player's and whose password isn't known; null otherwise).
+  `contentOf` applies `withRights`; a door panel needs the door; a part a line names (the crew file) is kept to
+  that machine on any computer (`partOpen`). A sealed door panel's door drops out of other computers' door rows
+  (`without`, from `controlsFor`).
+- **Things for written computers** (`src/terminals.js`): a written computer whose thing isn't drawn in its room has
+  the game stand one there on a free square (`computer: id`), so a file alone puts a terminal aboard.
+- **On screen:** `through` on the first screen ("Reached through the security desk, which it trusts: from there it
+  lets you work the door."), a log line saying the same, the map's `sealed`/`trusted` nodes (double red box,
+  SEALED, TRUSTED in green, a tooltip naming what it answers to), and NAVCOM's Crew folder as `Crew (sealed)` with
+  "Sealed: it opens only from the first officer's terminal." (an empty folder was hidden, so it never showed).
+- **Content (my drafts):** `meridian_first_officer` (Chart Room; first tried in the Officers' Cabins, which had no
+  free square), `meridian_security_desk` (Aft Holds, the chief of security's post room), `meridian_ledger` (Long
+  Mess, the quartermaster's), all moderate, private and hardened with written weak points; `meridian_armory_panel`,
+  `meridian_reactor_safety` and `meridian_nav_core`, sealed; the plot table trusts Voss's terminal with the crew
+  file. The systems file has a door to The Armory, the plot table's line without navigation, and two Network lines
+  (the security desk to the Armory's door, the navigation core to the comms relay).
+- **Power:** the navigation core first had a systems line of its own for its navigation control. The loads count each
+  computer line ("computers 2 each"), so at rest 82 against 100 and under way 112: cameras and comms let go weren't
+  enough and the lights would have gone everywhere during every jump. The core works through two programs instead
+  (Lock and Unlock the navigation, trusted to the relay), and the power is as it was.
+- **Calls of mine:** the Armory starts unlocked and holds nothing yet; the private terminals' owners are written by
+  name, not by post; plugging in aboard the captain's own ship was never seen as tampering, so the words that said
+  it would be now follow `plugSeen` (`reach.seen` for the rig's page).
+- **Tests:** `test/sealed.test.js` (7: the trust line and the files, the seal from the keyboard and from an untrusted
+  hop, rights by where you came from (the core from the table and from the relay, the safety controller's scram), the
+  crew file, the private terminals and their weak points, the Armory through the security desk, the checker); six
+  older tests changed for the new content; 1,163 in all, `check-story` clean.
+- **Screens** on a test copy at 1400 and 810 wide: the first officer's terminal stood in the Chart Room and its
+  logon; the plot table over the network with the map's marks and the Crew folder sealed; the plot table reached from
+  Voss's terminal with the crew file open and the line on its first screen; the Armory's panel from the security desk,
+  locked from there; the folded rig's map at 810.

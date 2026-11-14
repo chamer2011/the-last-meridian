@@ -30,3 +30,6 @@ Log the day's orders: Your orders go into the ship's log, in your own words, whe
 
 Network:
 meridian_reactor_gauges: Engineering, two decks down.
+
+Trusts:
+- meridian_first_officer: the crew file

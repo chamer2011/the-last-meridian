@@ -154,7 +154,8 @@ const NAVCOM_FOLDERS = [
 // and the crew assessments. The network and the rig's own programs are on the rig beside it.
 const folderItems = (view, id) => (id === "programs" ? [...view.programs, ...(view.rig?.copies ?? []).map((one) => ({ ...one, copy: true }))] : id === "shiplog" ? view.device?.shipLog ?? [] : id === "crew" ? view.device?.crew?.list ?? [] : view[id] ?? []);
 const allFolders = (view) => (view.look === "navcom" ? [...FOLDERS, ...NAVCOM_FOLDERS] : FOLDERS);
-const foldersHere = (view) => allFolders(view).filter(([id]) => folderItems(view, id).length > 0);
+// An empty folder isn't shown, except a sealed crew file, which shows that it's sealed (step 9).
+const foldersHere = (view) => allFolders(view).filter(([id]) => folderItems(view, id).length > 0 || (id === "crew" && view.device?.crew?.sealed));
 
 const lineNode = (entry, isNew = false) => {
   if (entry.you !== undefined) return el("div", { class: `check-line you${isNew ? " new" : ""}` }, el("span", { class: "tone-dim" }, `${comp.view?.prompt ?? ">"} `), el("span", { class: "tone-bright" }, entry.you));
@@ -239,6 +240,7 @@ function screenNode(view) {
         el("div", {}, view.desc),
         el("div", { class: "tone-dim" }, `${view.files.length} files, ${view.mail.length} letters, ${view.logs.length} logs, ${view.programs.length} programs. Open a folder on the desktop.`),
         view.systems?.length > 0 && el("div", { class: "tone-dim" }, `It runs ${view.systems.map((one) => one.title.toLowerCase()).join(", ")} here.`),
+        view.through && el("div", { class: "through" }, `Reached through ${view.through.name}, which it trusts: from there it lets you ${view.through.words}${view.through.sealed ? ", and nothing else gets in" : ""}.`),
       ];
     // The list of letters, or one letter opened, which has its id and its lines.
     case "mail": return screen.id ? opened() : listScreen("Mail", view.mail, "mail", "No letters.");
@@ -303,6 +305,7 @@ function folderRows(view) {
   }
   if (id === "crew") {
     const crew = view.device.crew;
+    if (crew.sealed) return [el("div", { class: "row-item navcom-head" }, el("span", {}, "CREW ASSESSMENTS · SEALED")), el("div", { class: "row-item sealed-note" }, el("span", {}, crew.sealed))];
     return [
       el("div", { class: "row-item navcom-head" }, el("span", {}, `CREW ASSESSMENTS · ${String(crew.by ?? "the first officer").toUpperCase()} · RESTRICTED`)),
       ...crew.list.map((one) => el("div", { class: "row-item" }, el("span", {}, one.name, el("small", {}, ` ${one.words}`)), el("small", {}, String(one.loyalty)))),
@@ -348,9 +351,11 @@ function clockText() {
 function osNode(view, watch) {
   const navcom = view.look === "navcom";
   const here = view.locked ? [] : foldersHere(view);
+  // How many are in a folder, or that it's sealed.
+  const countOf = (id) => (id === "crew" && view.device?.crew?.sealed ? "sealed" : folderItems(view, id).length);
   const icons = el("div", { class: "icons" }, here.map(([id, name, pic]) => el("button", {
     class: `icon${comp.sel === id ? " sel" : ""}`,
-    title: `${name}: ${folderItems(view, id).length}`,
+    title: `${name}: ${countOf(id)}`,
     onclick: (event) => {
       event.stopPropagation();
       if (comp.sel === id) openFolder(id);
@@ -360,9 +365,9 @@ function osNode(view, watch) {
       }
     },
     ondblclick: (event) => { event.stopPropagation(); openFolder(id); },
-  }, picture(pic), el("span", {}, `${name} (${folderItems(view, id).length})`))));
+  }, picture(pic), el("span", {}, `${name} (${countOf(id)})`))));
   const folder = allFolders(view).find(([id]) => id === comp.folder);
-  const list = !view.locked && folder && winNode("list", `${folder[1]} - ${view.name}`, folder[2], el("div", { class: "pane-in sunk" }, el("div", { class: "rows" }, folderRows(view))), [`${folderItems(view, folder[0]).length} ${folder[0] === "mail" ? "letters" : "objects"}`, comp.sending ? "Working..." : folder[0] === "shiplog" ? "Strike a line to take it out" : folder[0] === "crew" ? "Restricted: the first officer's" : "Click one to open it"]);
+  const list = !view.locked && folder && winNode("list", `${folder[1]} - ${view.name}`, folder[2], el("div", { class: "pane-in sunk" }, el("div", { class: "rows" }, folderRows(view))), [`${folderItems(view, folder[0]).length} ${folder[0] === "mail" ? "letters" : "objects"}`, comp.sending ? "Working..." : folder[0] === "shiplog" ? "Strike a line to take it out" : folder[0] === "crew" ? (view.device?.crew?.sealed ? "Sealed" : "Restricted: the first officer's") : "Click one to open it"]);
   const viewer = !view.locked && winNode("view", view.screen.kind === "home" ? `Welcome - ${view.name}` : view.screen.title ?? view.name, "txt", el("div", { class: "pane-in sunk viewer-in", id: "computer-screen" }, screenNode(view)), [view.hacked ? "Hacked" : view.yours ? "Yours" : "Logged in", view.className]);
   const named = { list: list ? `${folder[1]}` : null, view: viewer ? "Viewer" : null };
   const tasks = el("div", { class: "tasks" }, Object.entries(comp.wins).filter(([id, w]) => w.open && named[id]).map(([id]) => el("button", { class: comp.top === id ? "on" : "", onclick: (event) => { event.stopPropagation(); raise(id); draw(); } }, named[id])));
@@ -456,15 +461,15 @@ function netMapNode(map, width = NET_MAP.width) {
     bands.map((band) => el("div", { class: "net-band", style: `top:${band.y}px;height:${band.height}px` }, el("span", {}, band.name))),
     box.content.firstChild,
     map.nodes.map((node) => el("button", {
-      class: `net-node net-${node.kind}${node.here ? " here" : ""}${node.linked ? " near" : ""}${node.visited ? " seen" : ""}${node.hardened ? " hard" : ""}${node.weak ? " weak" : ""}`,
+      class: `net-node net-${node.kind}${node.here ? " here" : ""}${node.linked ? " near" : ""}${node.visited ? " seen" : ""}${node.hardened ? " hard" : ""}${node.weak ? " weak" : ""}${node.sealed ? " sealed" : ""}${node.trusted ? " trusted" : ""}`,
       style: `left:${at[node.id].x}px;top:${at[node.id].y}px;max-width:${NET_MAP.box}px;max-height:${NET_MAP.boxHeight}px`,
       disabled: comp.sending || !node.linked,
-      title: `${node.here ? `${node.name}: you're on this one` : node.linked ? `Go to ${node.name}: ${map.hop.minutes} min, heard here and there` : `${node.name}: not linked to where you are`}${node.hardened ? `. Hardened: no breaker works on it from the front${node.weak ? ", and you've found a way in" : ""}` : ""}`,
+      title: `${node.here ? `${node.name}: you're on this one` : node.linked ? `Go to ${node.name}: ${map.hop.minutes} min, heard here and there` : `${node.name}: not linked to where you are`}${node.hardened ? `. Hardened: no breaker works on it from the front${node.weak ? ", and you've found a way in" : ""}` : ""}${node.sealed ? `. Sealed: it answers only to ${node.answers}${node.trusted ? ", which is where you are" : ""}` : ""}`,
       onclick: (event) => {
         event.stopPropagation();
         send({ action: "hop", id: node.id });
       },
-    }, el("small", {}, `${NET_KIND[node.kind] ?? ""}${node.hardened ? (node.weak ? " · WAY IN" : " · HARD") : ""}`), el("span", { class: "nm" }, node.name))));
+    }, el("small", {}, `${NET_KIND[node.kind] ?? ""}${node.sealed ? (node.trusted ? " · TRUSTED" : " · SEALED") : node.hardened ? (node.weak ? " · WAY IN" : " · HARD") : ""}`), el("span", { class: "nm" }, node.name))));
 }
 
 // How hot the rig is, in the tray: nothing's plugged into the player's own computers.
@@ -600,7 +605,7 @@ function plugPage(view) {
     el("span", {}, desk ? "Plug your rig in to hack it, see the network or run your programs here." : "Connect your rig to work on it, or to go on along the network."),
     el("button", { class: "go", disabled: comp.sending || !reach.fits, onclick: plug }, `CONNECT BY ${linkName(reach.words)}`),
     reach.fits
-      ? el("small", {}, `Takes a minute.${view.yours ? "" : " Anyone in the room can see you plug in."}`)
+      ? el("small", {}, `Takes a minute.${view.reach?.seen ? " Anyone in the room can see you plug in." : ""}`)
       : el("small", { class: "why" }, `${capital(reach.why ?? "")}. Fit the right link on the Rig page first.`));
 }
 

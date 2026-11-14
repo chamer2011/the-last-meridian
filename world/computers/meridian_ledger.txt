@@ -1,0 +1,26 @@
+# The quartermaster's ledger
+class: moderate
+owner: odessa
+place: meridian
+room: The Long Mess
+thing: The ledger terminal
+login: brandt
+hardened: yes
+
+What the player sees:
+A terminal at the end of the serving counter, with the day's count on the screen and a pencil tied to it on a string. Brandt counts twice and writes once.
+
+Files:
+the_count.txt: What's in the stores by the crate, counted each morning: the pantry, the lockers and the shuttle stores. The numbers are neat, and they add up.
+pencilled.txt: A second column, kept in pencil and never typed in: smaller numbers, with dates beside a few of them.
+
+Logs:
+- manifest
+- news
+
+Network:
+meridian_first_officer: The first officer's terminal.
+
+Weak points:
+- password in mail on meridian_first_officer: From Brandt to Voss: The ledger takes TALLYMAN, if I'm not about. Nobody else needs it, and nobody else should want it.
+- service on the junction boxes: SERVICE ACCT stores/stores STILL OPENS THE LEDGER

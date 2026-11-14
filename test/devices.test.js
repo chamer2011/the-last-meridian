@@ -125,7 +125,8 @@ test("a junction box's service menu: a service clip to reach it, and a room's fe
   assert.equal(v.device.feeds.find((one) => one.room === "aft").on, false);
   assert.equal(roomPowered(game, "meridian", "aft"), false);
   assert.equal(roomPowered(game, "meridian", "engineering"), true, "only that room");
-  assert.deepEqual(v.device.lines, ["SVC  AFT HOLDS FEED OFF"]);
+  // The box's log keeps the service accounts the ship's hardened terminals still share (step 8), then what was done.
+  assert.deepEqual(v.device.lines, ["SVC  SERVICE ACCT stores/stores STILL OPENS THE LEDGER", "SVC  SERVICE ACCT watch/watch STILL OPENS THE SECURITY DESK", "SVC  AFT HOLDS FEED OFF"]);
   assert.match(v.log.at(-1).text, /The Aft Holds goes dark\./);
   // Clearing its log takes CLEANER.EXE or the password.
   assert.throws(() => device(game, "svc-clear"), /CLEANER/);
@@ -211,9 +212,9 @@ test("NAVCOM 7 on the bridge: the crew assessments, a line struck from the ship'
   let v = view(game);
   assert.equal(v.look, "navcom");
   assert.equal(v.className, "Ship's main system");
-  assert.ok(v.device.crew.list.length >= 4);
-  assert.match(v.device.crew.by, /Voss/);
-  assert.ok(v.device.crew.list.every((one) => Number.isFinite(one.loyalty) && one.words));
+  // The crew file is sealed at the plot table since step 9: it opens only from the first officer's terminal
+  // (test/sealed.test.js goes that way round).
+  assert.deepEqual([v.device.crew.list.length, v.device.crew.sealed], [0, "Sealed: it opens only from the first officer's terminal."]);
   const line = v.device.shipLog.find((one) => /overrode the rations/.test(one.text));
   const first = holderKey(game, "meridian", "first_officer");
   const before = regardFor(game, "meridian", first, "you");

@@ -1,0 +1,31 @@
+# The first officer's terminal
+class: moderate
+owner: voss
+place: meridian
+room: The Chart Room
+thing: The first officer's terminal
+login: voss
+hardened: yes
+
+What the player sees:
+A crew terminal in the chart room, a step from the bridge, its keys worn smooth in the pattern of the watch bill. Voss works here when she isn't on the bridge, and there's a cup of tea gone cold on the shelf above it, as there always is.
+
+Files:
+watch_bill.txt: Who stands which watch, in Voss's hand: names crossed out and written back as people are hurt, moved or relieved. The column headed SPARE HANDS is never long enough.
+officers.txt: A line on each officer, dated and initialled. Most are about the work. A few are not.
+
+Mail:
+From Voss to the captain: Not sent. The ration count is wrong again, and I think I know why, but I'd rather be sure before I say a name to you.
+
+Logs:
+- people
+- news
+
+Network:
+meridian_plot_table: The bridge.
+meridian_security_desk: Tarrow's desk, down in the holds.
+meridian_ledger: The quartermaster's ledger, in the mess.
+
+Weak points:
+- session 05:30-06:30 in logs on meridian_plot_table: The first officer's terminal stays signed in through the 06:00 watch change, while Voss walks the bridge with the night's log.
+- password in mail on meridian_medbay_records: From Voss to Dr. Aduro: If I'm ever on your cot and something on my terminal needs signing, it takes KESTREL. Don't make me regret telling you.

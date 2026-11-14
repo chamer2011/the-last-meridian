@@ -30,6 +30,12 @@ import { KNOWN_SYSTEMS, SYSTEM_TITLES, readComputerLine, readDoorLine, readLocks
 
 const D = () => SYSTEMS_DEFAULTS ?? {};
 const NORMAL = Object.freeze({});
+// Sealed door panels (step 9, src/sealed.js, which tells this file since it can't import it): the doors a computer may
+// not work because their panel trusts only others, whether a door's own panel is sealed, and what that says.
+export function tellSealed(fns) { tellSealed.fns = fns; }
+const sealedDoors = (place, ref) => tellSealed.fns?.without(place, ref) ?? [];
+const panelSealed = (place, room) => Boolean(tellSealed.fns?.panelSealed(place, room));
+const panelWords = (place, room) => tellSealed.fns?.panelWords(place, room) ?? null;
 const BIG_CLASSES = ["hard", "very_hard", "nearly_impossible"];
 // Parts that work with no power: the boxes the power comes through, and the clamps' levers.
 const NEEDS_NO_POWER = new Set(["junction box", "docking clamps"]);
@@ -1349,7 +1355,8 @@ export function doorActions(game, place, levelId, exit) {
   const doors = D().doors ?? {};
   const room = doorLocked(game, place, exit.to) ? exit.to : levelId;
   const out = [{ id: "force", label: doors.force?.label ?? "Force the door", check: doors.force?.check ?? "athletics:moderate", tampering: true }];
-  if (roomPowered(game, place, room)) out.push({ id: "hack", label: doors.hack?.label ?? "Hack the door panel", check: `hacking:${doors.hack?.class ?? "easy"}`, tampering: true });
+  // A sealed panel takes nothing at its own keypad (step 9): only the machine it trusts works it.
+  if (roomPowered(game, place, room) && !panelSealed(place, room)) out.push({ id: "hack", label: doors.hack?.label ?? "Hack the door panel", check: `hacking:${doors.hack?.class ?? "easy"}`, tampering: true });
   return out.map((one) => ({ ...one, room, detail: detailOf(one) }));
 }
 
@@ -1361,7 +1368,8 @@ export function doorLook(game, place, levelId, exit) {
   const room = doorLocked(game, place, exit.to) ? exit.to : levelId;
   const door = systemsOf(place)?.doors[room];
   const goesTo = exit.inner && exit.label ? exit.label : roomNameOf(place, exit.to);
-  return `${door?.look ?? String(doors.look ?? "The door to {room}.").replaceAll("{room}", goesTo)} ${doors.locked ?? "It's locked."}`;
+  const sealed = panelWords(place, room);
+  return `${door?.look ?? String(doors.look ?? "The door to {room}.").replaceAll("{room}", goesTo)} ${doors.locked ?? "It's locked."}${sealed ? ` ${sealed}` : ""}`;
 }
 
 // The player works a part in the room they're in. Something free happens at once; anything else opens a check, and
@@ -1498,7 +1506,7 @@ export function controlsFor(place, ref) {
     if (ref.thing && r.kind === "thing" && r.thing === ref.thing) return true;
     if (ref.console && r.kind === "console" && r.part === ref.console) return true;
     return Boolean(ref.written && r.kind === "thing" && writtenAtThing(place, r.room, { name: r.name }) === ref.written);
-  }).map((c) => ({ systems: c.systems, rooms: c.rooms }));
+  }).map((c) => ({ systems: c.systems, rooms: c.rooms, ...(c.systems.includes("doors") && sealedDoors(place, ref).length ? { without: sealedDoors(place, ref) } : {}) }));
 }
 
 // Whether a thing in a room has been made a computer by the place's file, even if its map line says otherwise.
@@ -1573,7 +1581,8 @@ export function controlsView(game, place, controls, { room = null } = {}) {
     const inScope = (one) => scopes.some((c) => !c.rooms || c.rooms.includes(one));
     const rows = [];
     if (system.id === "doors") {
-      for (const door of Object.values(model.doors)) if (inScope(door.to)) rows.push(doorRow(game, place, door));
+      // A door whose panel is sealed to this computer isn't its to work (step 9).
+      for (const door of Object.values(model.doors)) if (scopes.some((c) => (!c.rooms || c.rooms.includes(door.to)) && !c.without?.includes(door.to))) rows.push(doorRow(game, place, door));
     } else if (system.id === "alarm") {
       const rooms = scopes.some((c) => !c.rooms) ? null : scopes.flatMap((c) => c.rooms);
       rows.push(alarmRow(game, place, model, room && (!rooms || rooms.includes(room)) ? room : rooms?.[0] ?? room ?? partsOf(model, "alarm")[0]?.room ?? null));

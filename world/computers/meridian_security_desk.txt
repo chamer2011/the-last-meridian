@@ -1,0 +1,26 @@
+# The security desk
+class: moderate
+owner: tarrow
+place: meridian
+room: The Aft Holds
+thing: The security desk
+login: tarrow
+hardened: yes
+
+What the player sees:
+A cargo pallet with a crew terminal on it, the cameras' pictures down one side of the screen and the brig's log down the other. Tarrow keeps a mug of pens on it, and a drawer that's always locked.
+
+Files:
+brig_log.txt: Who's been in the brig, for how long and why, back to before the Fall. The newest pages are the mutiny, in a hand that presses hard.
+duty_roster.txt: The guards' hours and who to wake for what, with a line at the bottom: "The Armory is opened from this desk and nowhere else. Nobody argues."
+
+Logs:
+- people
+- news
+
+Network:
+meridian_first_officer: The first officer's terminal.
+
+Weak points:
+- password in mail on meridian_first_officer: From Tarrow to Voss: If I'm laid up again and you need the security desk, its word is ANCHORAGE. Change it once I'm back on my feet. I won't remember to.
+- service on the junction boxes: SERVICE ACCT watch/watch STILL OPENS THE SECURITY DESK

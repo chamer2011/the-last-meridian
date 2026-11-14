@@ -1,0 +1,26 @@
+# The reactor safety controller
+class: hard
+owner: fleet
+yours: yes
+place: meridian
+room: Engineering
+thing: The reactor safety controller
+login: engineer
+flavor: yours
+sealed: yes
+
+What the player sees:
+A grey cabinet beside the reactor with no keyboard at all: a row of interlock lamps, and a label that says CONTROLLED FROM THE GAUGES. Someone has written "and only from the gauges" under it in grease pencil, and underlined it twice.
+
+Files:
+interlocks.txt: The safety interlocks, one a line: what each one watches, the number that trips it, and what it does when it trips. Three have been bypassed with a jumper wire, and each has Marrow's initials beside it.
+
+Programs:
+Scram the reactor: The rods drop with a sound you feel in your teeth, and the drive winds down to nothing. Until someone brings it back up, the Meridian goes nowhere. -> * engines off at meridian; * flag reactor_scrammed: The Meridian's reactor was scrammed from the safety controller ? not flag reactor_scrammed
+Bring the reactor back up: The rods come out a finger's width at a time, and the drive comes back with a long, rising hum. -> * engines on at meridian; * unflag reactor_scrammed ? flag reactor_scrammed
+
+Network:
+meridian_reactor_gauges: The gauges, across the room.
+
+Trusts:
+- meridian_reactor_gauges: everything

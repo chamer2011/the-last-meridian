@@ -66,7 +66,8 @@ The first line is the name, written # The Name. Then, before the first part, one
     yours       yes when it's the player's own, such as aboard the Meridian: no logon, no watcher.
     place       The place it's at, by its id (the file name in world/places).
     room        The room it's in, by the room's name.
-    thing       The thing in that room it is, by the thing's name. Using the thing opens it.
+    thing       The thing in that room it is, by the thing's name. Using the thing opens it. If the map
+                doesn't draw a thing by that name in that room, the game stands one there, on a free square.
     door        Instead of a thing, the door it controls: the id of the room the door leads to.
                 Getting into that door's panel opens this computer, at its logon.
     login       The user name on the prompt.
@@ -82,6 +83,9 @@ The first line is the name, written # The Name. Then, before the first part, one
                 the look: a cable for keelworks, an optical reader for a door, a Navy coupler for navcom.
                 The rig is needed for the rig's own programs and for copying; using it by right or with
                 a password isn't.
+    sealed      yes when it takes nothing at its own keyboard at all (no logon, no breaker, no password, not
+                even the owner's right): it lets in only the machines it trusts, under Trusts below, over
+                the network.
     hardened    yes when no breaker works on it from the front. Its way in is written somewhere else
                 at its place, under Weak points below; with none written, the game makes one up (a
                 note on another computer here, a session left open at the shift change, or a service
@@ -126,6 +130,19 @@ The parts, each under its heading with a colon:
                             are added to that other computer's own; the junction boxes' line is in
                             their service log. The map on the player's rig marks a hardened
                             computer, and marks it again once a way in is found.
+    Trusts                  Each line starting with - is a machine it trusts, and what it lets the
+                            player do when they come from there over the network:
+                                - meridian_security_desk: the door
+                                - the comms relay: programs
+                            The machine is a computer's id, or a system on the place's network by
+                            its name (the comms relay, JB-1, Camera 01), and the two have to be
+                            linked on the network (a Network line here, in the other file, or in
+                            the place's systems file). What it allows: everything, reading (files,
+                            letters, logs), programs, systems (all it runs) or a system by name
+                            (doors, cameras, power...), the door (a door panel's own buttons), the
+                            crew file (NAVCOM 7's). A sealed computer lets in nothing else. One
+                            that isn't sealed lets a trusted machine straight in with what its line
+                            allows, and keeps the crew file, when a line names it, to that machine.
 
 A computer can also run a place's systems: its power, lights, cameras, doors and the rest. That's
 written in the place's file in world/systems, under Computers, and the computer's screen gets a
