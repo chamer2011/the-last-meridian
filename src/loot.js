@@ -1,11 +1,12 @@
 // What's in the containers (the loot plan, docs/notes/project-loot.md): world/loot/containers.txt, read by
 // public/loot-text.js, names the kinds of container, what a thing has to be called to be one, how big each is inside
-// and how many things it holds, which rooms and places hold more or fewer, how often each rarity turns up, and what the
-// furniture on the decks opens as; each item's file says which kinds it's found in (found in:) and how rare it is
+// and how many things it holds, which rooms and places hold more or fewer, how often each rarity turns up, what the
+// furniture on the decks opens as, which rooms everywhere else get a container of their own, and the things that open
+// as another kind or not at all; each item's file says which kinds it's found in (found in:) and how rare it is
 // (rarity:). This reads it all, says which kind a thing or a piece of furniture is, and tells the checker what's wrong.
-// Since step 3 the Meridian's containers open: the things named like one, and the lockers, shelves, desks and barrels
-// on her decks, each filled the first time it's opened (src/bag.js keeps what's in it from then on). The other places'
-// come in step 4.
+// Since step 3 the Meridian's containers open (the things named like one, and the lockers, shelves, desks and barrels
+// on her decks), and since step 4 every place's: the things named like one, and a container of its own in each room
+// the file names. Each is filled the first time it's opened (src/bag.js keeps what's in it from then on).
 
 import fs from "node:fs";
 import path from "node:path";
@@ -16,7 +17,7 @@ import { ITEMS, LOCATIONS } from "./data.js";
 import { logisticsPending } from "./logistics.js";
 import { worldDir } from "./paths.js";
 import { addChecker, addMapWork, addThingActs } from "./room-hooks.js";
-import { systemsPending } from "./systems.js";
+import { claimedSquares, floorSpot, systemsOf, systemsPending } from "./systems.js";
 import { mapFor } from "./walk.js";
 
 export const LOOT_DIR = process.env.GAME_LOOT_DIR ?? path.join(worldDir, "loot");
@@ -42,14 +43,31 @@ export const reloadLoot = () => { cached = null; };
 const plain = (words) => String(words ?? "").toLowerCase().replace(/[’']/g, "'").replace(/[^a-z0-9' -]+/g, " ").replace(/\s+/g, " ").trim();
 const hasWords = (name, words) => ` ${plain(name)} `.includes(` ${plain(words)} `);
 
-// The kind of container a thing called this is: the kind whose words fit it, the longest words winning, or null.
+// What a name is a name of, the way public/furniture.js reads it: the words before anything that only says where it is
+// or what's with it ("The drawing under the desks" is a drawing, "A footlocker with no name on it" a footlocker), with
+// "a stack of" and the like looked past ("A stack of medical crates" is medical crates); and its last word, with
+// anything "of" cut off too ("A box of colored tags" is a box).
+const WHERE = /\s+(?:with|in|on|under|for|facing|from|at|by|behind|beside|against|near|inside|beneath|below|above|over|into|onto|upon)\s+/;
+const MANY = /^(?:(?:a|an|the)\s+)?(?:row|pair|set|stack|line|pile|heap)\s+of\s+/;
+function nameOf(name) {
+  const lower = plain(name).replace(MANY, "");
+  const before = lower.split(WHERE)[0].trim();
+  const head = before.split(/\s+of\s+/)[0].trim().split(/\s+/).at(-1) ?? "";
+  return { before, head };
+}
+
+// The kind of container a thing called this is, or null: words of more than one word found whole in what the name is
+// of ("weapons rack", "medical crates"), and one word only as the word it's a name of; the longest words win, so
+// "a weapons locker" is an armory and not a crew locker.
 export function containerKindOf(name) {
   const model = lootModel();
   if (!model) return null;
+  const { before, head } = nameOf(name);
   let best = null;
   for (const kind of model.kinds) {
     for (const words of kind.words) {
-      if (hasWords(name, words) && (!best || words.length > best.words.length)) best = { kind, words };
+      const fits = words.includes(" ") ? hasWords(before, words) : head === plain(words);
+      if (fits && (!best || words.length > best.words.length)) best = { kind, words };
     }
   }
   return best?.kind ?? null;
@@ -84,36 +102,76 @@ export function itemsFoundIn(kindName) {
     .map(([id, item]) => ({ id, rarity: item.rarity ?? "common" }));
 }
 
-// ---- Opening them (step 3) ------------------------------------------------------------------------------
+// ---- Opening them (steps 3 and 4) -------------------------------------------------------------------------
 
-// The places whose containers open: the Meridian's since step 3. The other places' come in step 4.
-export const LOOT_PLACES = new Set(["meridian"]);
 const DEFAULT_CHANCES = { common: 70, uncommon: 25, rare: 5 };
 
 // A thing that can be a container: not one of the ship's stores, a pile, a computer or a part, nor one whose map file
 // says what's in it, nor one that hands out an item or has words of its own when used, which keeps to that (a story's
 // piece, like the data chip in the comms tray, or a locker that's written to be locked).
 const canBeLoot = (thing) => !thing.item && !thing.used && !thing.usedOther && !thing.store && !thing.pile && !thing.computer && !thing.part && !Object.keys(thing.holds ?? {}).length;
+const kindNamed = (name) => lootModel()?.kinds.find((kind) => kind.name === name) ?? null;
 
-// The kind of container a thing in a room opens as, as { kind }, or null: a piece of furniture says so itself, and any
-// other thing by its name, at a place whose containers open.
+// The file's line for a thing at a place, under Things: the kind it opens as, or none.
+const thingLine = (place, thing) => lootModel()?.things.find((one) => one.place === place && plain(one.thing) === plain(thing.name)) ?? null;
+
+// The kind of container a thing in a room opens as, as { kind }, or null: a piece of furniture or a container a room
+// was given says so itself; any other thing as the file's line for it says, or by its name.
 export function lootOf(place, thing) {
   if (thing?.loot) return thing.loot;
-  if (!thing || !LOOT_PLACES.has(place) || !canBeLoot(thing)) return null;
+  if (!thing || !canBeLoot(thing)) return null;
+  const line = thingLine(place, thing);
+  if (line) return line.kind && kindNamed(line.kind) ? { kind: line.kind } : null;
   const kind = containerKindOf(thing.name);
   return kind ? { kind: kind.name } : null;
 }
-const kindNamed = (name) => lootModel()?.kinds.find((kind) => kind.name === name) ?? null;
 // How many squares a container holds, across and down: its kind's.
 export const lootBox = (loot) => kindNamed(loot?.kind)?.size ?? null;
 
 // What a piece of furniture that opens is called: a locker, a weapons locker, a tool shelf, a medicine shelf, a barrel.
 const QUALIFIERS = { armory: "weapons", "medicine cabinet": "medicine", pantry: "pantry", "tool shelf": "tool", crate: "storage" };
 const withArticle = (words) => `${/^[aeiou]/i.test(words) ? "An" : "A"} ${words}`;
+const upperFirst = (words) => (words ? words[0].toUpperCase() + words.slice(1) : words);
 function pieceName(piece, kind) {
   const noun = String(piece).replace(/-/g, " ");
   return withArticle(kind.words.includes(noun) ? noun : `${QUALIFIERS[kind.name] ?? kind.name} ${noun}`);
 }
+
+// The line under Rooms that gets a room a container of its own: its place's own line for it first, then the first whose
+// words are in the room's name. A line can say "nothing".
+function roomLine(place, room) {
+  const model = lootModel();
+  if (!model) return null;
+  return model.rooms.find((one) => one.place === place && plain(one.room) === plain(room.name))
+    ?? model.rooms.find((one) => one.words?.some((words) => hasWords(room.name, words)))
+    ?? null;
+}
+// What a room at a place gets, by the file: { kind, name } (kind null for nothing), or null when no line fits it.
+export const roomGets = (place, roomName) => {
+  const line = roomLine(place, { name: roomName });
+  return line ? { kind: line.kind, ...(line.name ? { name: line.name } : {}) } : null;
+};
+// What a container a room was given is called: what its line says, or its kind's first word.
+const givenName = (line, kind) => upperFirst(line.name ?? withArticle(kind.words[0] ?? kind.name));
+
+// The squares a new container keeps off: the room's words and ways out, where people stand and stop, and the squares
+// round what already stands there (as src/uses.js and src/terminals.js stand theirs).
+function keptClear(place, map, level) {
+  const out = new Set(claimedSquares(place, map, level));
+  const around = (x, y) => { for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) out.add(`${x + dx},${y + dy}`); };
+  for (const thing of level.things) around(thing.x, thing.y);
+  const parts = systemsOf(place);
+  for (const room of Object.values(map.rooms ?? {})) {
+    if (room.levelId !== level.id) continue;
+    for (const id of parts?.partsIn?.[room.id] ?? []) {
+      const part = parts.parts[id];
+      if (part && !part.unplaced) around(part.x, part.y);
+    }
+  }
+  return out;
+}
+// What wouldn't stand where the file says, by place, for the checker.
+const placing = new Map();
 
 // The room a square of a level is in, by name, for the rooms that hold more or fewer.
 function roomNameAt(map, level, x, y) {
@@ -126,11 +184,11 @@ export function lootRoomOf(place, levelId, thing) {
   return level && thing ? roomNameAt(map, level, thing.x, thing.y) : "";
 }
 
-// Once for each map of a place whose containers open, after its parts and stores stand in it: a thing named like a
-// container opens (src/bag.js opens anything with a holds line), and so does each piece of storage furniture on the
-// decks, as a thing of its own standing on it, unless something drawn on the map stands there already.
+// Once for each map, after the place's parts and stores stand in it: a thing named like a container opens (src/bag.js
+// opens anything with a holds line); each piece of storage furniture on the decks opens, as a thing of its own standing
+// on it, unless something drawn on the map stands there already; and each room the file gives a container that has
+// none gets one, on a free square at the edge of the room, like a store nobody drew.
 addMapWork((place, map) => {
-  if (!LOOT_PLACES.has(place)) return true;
   if (systemsPending(place) || logisticsPending(place)) return false;
   if (!lootModel()) return true;
   for (const level of Object.values(map.levels ?? {})) {
@@ -144,16 +202,37 @@ addMapWork((place, map) => {
       level.things.push({ id: `loot:${level.id}:${piece.x},${piece.y}`, name, look: kind.look ?? `${name}.`, x: piece.x, y: piece.y, holds: {}, loot: { kind: kind.name }, onPiece: piece.kind });
     }
   }
+  const problems = [];
+  for (const room of Object.values(map.rooms ?? {})) {
+    if (room.deck) continue;
+    const line = roomLine(place, room);
+    const kind = line?.kind ? kindNamed(line.kind) : null;
+    if (!kind) continue;
+    const level = room.level;
+    const inRoom = (thing) => !room.area || level.areaAt?.(thing.x, thing.y) === room.area.id;
+    if (level.things.some((thing) => inRoom(thing) && (thing.store || lootOf(place, thing)))) continue;
+    const name = givenName(line, kind);
+    const spot = floorSpot(level, new Set(), 0, 1, keptClear(place, map, level), room.area ?? null);
+    if (!spot) {
+      problems.push(`${where(line.line)}: there's no free square in ${room.name} at ${LOCATIONS[place]?.name ?? place} to put ${name.toLowerCase()} on`);
+      continue;
+    }
+    level.things.push({ id: `loot:${room.id}`, name, look: kind.look ?? `${name}.`, x: spot.x, y: spot.y, holds: {}, loot: { kind: kind.name }, quiet: true, placed: true });
+    // It stands like a thing drawn there: its square isn't floor, and you reach it from beside it.
+    level.solid.add(`${spot.x},${spot.y}`);
+    if (level.open[spot.y]) level.open[spot.y][spot.x] = false;
+  }
+  placing.set(place, problems);
   return true;
 });
 
-// For the room's picture: a container says so, a piece of furniture is drawn as the piece itself with a quieter mark
-// than other things' (public/iso.js), and one that's been emptied says it's empty.
+// For the room's picture: a container says so, one on the furniture is drawn as the piece itself, a piece of furniture
+// or one a room was given has a quieter mark than other things' (public/iso.js), and one that's been emptied says so.
 addThingActs((game, thing) => {
   const loot = lootOf(game.location, thing);
   if (!loot) return null;
   const kept = game.stores?.[`thing:${game.location}:${thing.id}`]?.items;
-  return { loot: true, ...(thing.onPiece ? { onPiece: thing.onPiece } : {}), ...(kept && !kept.length ? { empty: true } : {}) };
+  return { loot: true, ...(thing.onPiece ? { onPiece: thing.onPiece } : {}), ...(thing.onPiece || thing.quiet ? { quiet: true } : {}), ...(kept && !kept.length ? { empty: true } : {}) };
 });
 
 // What's in a container the first time it's opened, as [{ id, n }]: as many things as its kind holds, more or fewer by
@@ -224,6 +303,34 @@ export function lootProblems() {
       for (const room of one.rules.flatMap((rule) => rule.rooms)) {
         if (meridian && !rooms.has(plain(room))) problems.push(`${where(one.line)}: there's no room called ${room} on the Meridian's decks`);
       }
+    }
+    // The rooms that get one, and the things that open as another kind or not at all, by place.
+    const roomsAt = (place) => new Set(Object.values(mapFor(place)?.rooms ?? {}).filter((room) => !room.deck).map((room) => plain(room.name)));
+    const thingsAt = (place) => new Set(Object.values(mapFor(place)?.levels ?? {}).flatMap((level) => level.things.map((thing) => plain(thing.name))));
+    const seenRooms = new Map();
+    for (const one of model.rooms) {
+      if (one.kind !== null && !kindNames.has(one.kind)) problems.push(`${where(one.line)}: there's no kind of container called ${one.kind} under Kinds`);
+      if (one.words) {
+        if (!one.words.length) problems.push(`${where(one.line)}: rooms called what? Write the words in a room's name, separated by commas`);
+        continue;
+      }
+      if (!LOCATIONS[one.place]) {
+        problems.push(`${where(one.line)}: there's no place called ${one.place}: use the places' ids, as in world/places`);
+        continue;
+      }
+      if (!roomsAt(one.place).has(plain(one.room))) problems.push(`${where(one.line)}: there's no room called ${one.room} at ${LOCATIONS[one.place].name}`);
+      const key = `${one.place}|${plain(one.room)}`;
+      if (seenRooms.has(key)) problems.push(`${where(one.line)}: ${one.room} at ${LOCATIONS[one.place].name} has a line already, on line ${seenRooms.get(key)}, and only the first counts`);
+      seenRooms.set(key, one.line);
+    }
+    for (const one of model.things) {
+      if (one.kind !== null && !kindNames.has(one.kind)) problems.push(`${where(one.line)}: there's no kind of container called ${one.kind} under Kinds`);
+      if (!LOCATIONS[one.place]) problems.push(`${where(one.line)}: there's no place called ${one.place}: use the places' ids, as in world/places`);
+      else if (!thingsAt(one.place).has(plain(one.thing))) problems.push(`${where(one.line)}: there's no thing called ${one.thing} at ${LOCATIONS[one.place].name}`);
+    }
+    for (const place of Object.keys(LOCATIONS)) {
+      mapFor(place);
+      problems.push(...(placing.get(place) ?? []));
     }
   }
   for (const [id, item] of Object.entries(ITEMS)) {

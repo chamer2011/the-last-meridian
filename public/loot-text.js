@@ -1,11 +1,12 @@
 // What's in the containers, as plain text: world/loot/containers.txt. The file names the kinds of container (what a
 // thing has to be called to be one, how many squares it holds and how many things), which rooms and places hold more
-// or fewer, and what the furniture drawn on the decks opens as. This only reads and writes the words; which rooms,
-// places, furniture and items they name is checked by src/loot.js, which knows the world. It runs in the browser too,
-// for the Story board. world/loot/_how-to-write-loot.txt explains the format.
+// or fewer, what the furniture drawn on the decks opens as, which rooms everywhere else get a container of their own,
+// and the things that open as another kind than their name says, or not at all. This only reads and writes the words;
+// which rooms, places, furniture, things and items they name is checked by src/loot.js, which knows the world. It runs
+// in the browser too, for the Story board. world/loot/_how-to-write-loot.txt explains the format.
 
-export const LOOT_PARTS = ["kinds", "richer and poorer", "furniture"];
-export const LOOT_TITLES = { kinds: "Kinds", "richer and poorer": "Richer and poorer", furniture: "Furniture" };
+export const LOOT_PARTS = ["kinds", "richer and poorer", "furniture", "rooms that get one", "things"];
+export const LOOT_TITLES = { kinds: "Kinds", "richer and poorer": "Richer and poorer", furniture: "Furniture", "rooms that get one": "Rooms that get one", things: "Things" };
 export const RARITIES = ["common", "uncommon", "rare"];
 
 const NUMBER_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5 };
@@ -81,14 +82,49 @@ export function writeFurnitureLine(one) {
   return `${one.piece}: ${pieces.join("; ")}`;
 }
 
+// What a line gives a room or a thing: "crate", "desk, called the clerk's desk", or "nothing".
+function readWhat(text, line) {
+  const words = String(text ?? "").trim();
+  if (/^nothing$/i.test(words)) return { kind: null };
+  const found = words.match(/^([a-z][a-z ]*?)(?:,\s*called\s+(.+))?$/i);
+  if (!found) return { problem: `the line for ${line} ends with a kind of container, or a kind and called what it's called (like desk, called the clerk's desk), or nothing` };
+  return { kind: found[1].trim().toLowerCase(), ...(found[2] ? { name: found[2].trim() } : {}) };
+}
+const writeWhat = (one) => (one.kind === null ? "nothing" : `${one.kind}${one.name ? `, called ${one.name}` : ""}`);
+
+// "rooms called bar, tavern: cooler", or "haven, The Hook: crew locker, called a refugee's footlocker", or
+// "kessara, The Tally Wall: nothing": a room that gets a container of its own, by the words in its name or by its place
+// and name.
+export function readRoomLine(text) {
+  const byWords = String(text ?? "").match(/^rooms called\s+(.+?):\s*(.+)$/i);
+  const byName = String(text ?? "").match(/^([a-z][a-z_]*),\s*(.+?):\s*(.+)$/i);
+  if (!byWords && !byName) return { problem: `"${text}" is written rooms called bar, tavern: cooler, or a place's id, a comma, a room's name, a colon and what it gets, like haven, The Hook: crate` };
+  const what = readWhat(byWords ? byWords[2] : byName[3], byWords ? `rooms called ${byWords[1]}` : byName[2]);
+  if (what.problem) return what;
+  return byWords ? { words: listOf(byWords[1]).map((one) => one.toLowerCase()), ...what } : { place: byName[1].toLowerCase(), room: byName[2].trim(), ...what };
+}
+export const writeRoomLine = (one) => `${one.words ? `rooms called ${one.words.join(", ")}` : `${one.place}, ${one.room}`}: ${writeWhat(one)}`;
+
+// "haven, Crates of paper: desk", or "frontier, The drawing under the desks: nothing": a thing in a room that opens as
+// another kind than its name says, or doesn't open at all.
+export function readThingLine(text) {
+  const found = String(text ?? "").match(/^([a-z][a-z_]*),\s*(.+?):\s*(.+)$/i);
+  if (!found) return { problem: `"${text}" is written a place's id, a comma, the thing's name, a colon and a kind of container or nothing, like haven, Crates of paper: desk` };
+  const what = readWhat(found[3], found[2]);
+  if (what.problem) return what;
+  if (what.name) return { problem: `the line for ${found[2]} gives it a name, and a thing keeps the name its map gives it` };
+  return { place: found[1].toLowerCase(), thing: found[2].trim(), kind: what.kind };
+}
+export const writeThingLine = (one) => `${one.place}, ${one.thing}: ${one.kind === null ? "nothing" : one.kind}`;
+
 // ---- Reading a file ---------------------------------------------------------------------------
 
-// The file into { name, draft, chances, kinds: [...], adjust: [...], furniture: [...] }, each line with its line number, and
-// the problems in it, each with the line it's on.
+// The file into { name, draft, chances, kinds: [...], adjust: [...], furniture: [...], rooms: [...], things: [...] },
+// each line with its line number, and the problems in it, each with the line it's on.
 export function parseLootText(text) {
   const problems = [];
   const problem = (line, message) => problems.push({ line, message });
-  const value = { name: "", kinds: [], adjust: [], furniture: [] };
+  const value = { name: "", kinds: [], adjust: [], furniture: [], rooms: [], things: [] };
   const lines = String(text ?? "").replace(/\r\n?/g, "\n").split("\n");
   let titled = false;
   let part = null;
@@ -127,7 +163,7 @@ export function parseLootText(text) {
         const read = readChances(chances[1]);
         if (read.problem) problem(n, read.problem);
         else value.chances = read.chances;
-      } else problem(n, "before the first part, the lines are draft: and chances:, then the parts Kinds, Richer and poorer, and Furniture");
+      } else problem(n, `before the first part, the lines are draft: and chances:, then the parts ${LOOT_PARTS.map((one) => LOOT_TITLES[one]).join(", ")}`);
       continue;
     }
     if (part === "unknown") continue;
@@ -136,13 +172,14 @@ export function parseLootText(text) {
       problem(n, `under "${LOOT_TITLES[part]}", each line starts with - and a space`);
       continue;
     }
-    const read = part === "kinds" ? readKindLine(entry[1]) : part === "furniture" ? readFurnitureLine(entry[1]) : readAdjustLine(entry[1]);
+    const readers = { kinds: readKindLine, furniture: readFurnitureLine, "richer and poorer": readAdjustLine, "rooms that get one": readRoomLine, things: readThingLine };
+    const read = readers[part](entry[1]);
     if (read.problem) {
       problem(n, read.problem);
       continue;
     }
-    const list = part === "kinds" ? value.kinds : part === "furniture" ? value.furniture : value.adjust;
-    list.push({ ...read, line: n });
+    const lists = { kinds: value.kinds, furniture: value.furniture, "richer and poorer": value.adjust, "rooms that get one": value.rooms, things: value.things };
+    lists[part].push({ ...read, line: n });
   }
   if (!titled) problem(1, "the file is empty: it starts with # The containers and what's in them");
   return { value, problems };
@@ -157,5 +194,7 @@ export function writeLootText(value) {
   out.push("", "Kinds:", ...value.kinds.map((one) => `- ${writeKindLine(one)}`));
   out.push("", "Richer and poorer:", ...value.adjust.map((one) => `- ${writeAdjustLine(one)}`));
   out.push("", "Furniture:", ...value.furniture.map((one) => `- ${writeFurnitureLine(one)}`));
+  if (value.rooms?.length) out.push("", "Rooms that get one:", ...value.rooms.map((one) => `- ${writeRoomLine(one)}`));
+  if (value.things?.length) out.push("", "Things:", ...value.things.map((one) => `- ${writeThingLine(one)}`));
   return `${out.join("\n")}\n`;
 }

@@ -3456,9 +3456,9 @@ function draw(now, dt) {
       hits.push({ kind: "thing", key: `thing:${thing.id}`, thing, ...rect });
       continue;
     }
-    if (thing.onPiece) {
-      // A piece of furniture that opens (src/loot.js) is drawn as itself, with a quiet mark like a part's: a dot from
-      // across the room, what it is from close by (or that it's empty), and its name under the mouse.
+    if (thing.onPiece || thing.quiet) {
+      // A piece of furniture that opens, or a container a room was given (src/loot.js), has a quiet mark like a part's:
+      // a dot from across the room, what it is from close by (or that it's empty), and its name under the mouse.
       const { wx, wy } = cellCentre(thing.x, thing.y);
       const [x, y] = at(wx, wy, 0.7);
       if (x < -8 || y < -8 || x > width + 8 || y > height + 8) continue;

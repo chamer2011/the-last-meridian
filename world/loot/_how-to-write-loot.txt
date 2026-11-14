@@ -6,12 +6,14 @@ armory with a pistol, a crate of salvage. containers.txt says which kinds of con
 be called to be one, how big it is inside and how many things it holds. What turns up in it comes from the items:
 each item's file says which kinds of container it's found in, and how rare it is.
 
-Aboard the Meridian the containers open (step 3 of the loot plan): the lockers, shelves, desks and barrels drawn on her
-decks, and the things named like a container (a sack under a rack, a footlocker, the captain's sea chest). A thing that
-hands out an item or has words of its own when it's used keeps to that and doesn't open, and neither do the ship's
-stores (the pantry, the medicine cabinet, the parts lockers), which have their own file in world/logistics. Each
-container is filled the first time it's opened, and never again: what's taken stays gone. The same game always finds
-the same in the same container. The other places' containers open in step 4.
+The containers open everywhere: aboard the Meridian the lockers, shelves, desks and barrels drawn on her decks (step 3
+of the loot plan); at every place the things named like a container (a sack under a rack, the weapons rack in Haven's
+bar, the clerk's desk in the Weigh House), and the containers of their own that the rooms under Rooms that get one are
+given (step 4). A thing that hands out an item or has words of its own when it's used keeps to that and doesn't open,
+and neither do the ship's stores (the pantry, the medicine cabinet, the parts lockers), which have their own file in
+world/logistics. A name is read for what it's a name of: "A stack of medical crates" is medical crates, and "The drawing
+under the desks" is a drawing, not a desk. Each container is filled the first time it's opened, and never again: what's
+taken stays gone. The same game always finds the same in the same container.
 
 containers.txt
 --------------
@@ -52,6 +54,26 @@ the kind its line says: by the room it stands in, by the rooms' names on the dec
 what it is and its kind: a locker, a weapons locker, a tool shelf, a pantry shelf, a medicine shelf, a storage shelf, a
 desk, a barrel. In the room's picture it has a small mark of its own, a dot from across the room and what it is from
 close by, and once it's been emptied it says so.
+
+    Rooms that get one:
+    - haven, The Hook: crew locker, called a refugee's footlocker
+    - sarn, The Vault Roads: nothing
+    - rooms called bar, tavern, cantina: cooler
+
+A room that has no container gets one of its own, as its line says, on a free square at the edge of the room, where it
+stands like something drawn there and has the same small mark. A line is a place's id (as in world/places), a comma
+and a room's name, or "rooms called" and the words in a room's name that fit, separated by commas; then a colon and the
+kind of container it gets, with ", called" and what it's called if you like (otherwise it's called by the first word
+under its kind's called, so put the word you'd want first: "weapons rack" for an armory, "cupboard" for a pantry), or
+"nothing" for no container. A room's own line comes before any rooms called line, and of those the first that fits
+counts. A room that already has a container, named like one or a store, gets nothing more. What it looks like when
+looked at is its kind's fourth piece.
+
+    Things:
+    - haven, Crates of paper: desk
+
+A thing in a room, by its place's id and its name, opens as another kind than its name says, or "nothing" for not at
+all. Tharel's crates of paper hold papers, not salvage.
 
 An item's file
 --------------

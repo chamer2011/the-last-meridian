@@ -74,11 +74,10 @@ test("aboard the Meridian, the lockers, shelves, desks and barrels on her decks 
   assert.ok(named("A sack under a rack").holds, "a thing named like a container opens");
 });
 
-test("only the Meridian's containers open for now: the other places' come in step 4", () => {
-  assert.equal(loot.lootOf("haven", { name: "A crate of something" }), null);
+test("furniture opens only where there's furniture: the other places have none, and their containers are step 4's", () => {
   assert.equal(loot.lootOf("meridian", { name: "A crate of something" })?.kind, "crate");
   for (const place of ["haven", "kessara", "frontier"]) {
-    for (const level of Object.values(mapFor(place).levels)) assert.ok(!level.things.some((thing) => thing.loot || thing.onPiece), `nothing opens as loot at ${place} yet`);
+    for (const level of Object.values(mapFor(place).levels)) assert.ok(!level.things.some((thing) => thing.onPiece), `no furniture opens at ${place}`);
   }
 });
 

@@ -287,7 +287,7 @@ function thingMark(thing) {
       event.stopPropagation();
       go({ action: "go", to: `thing:${thing.id}` });
     },
-  }, part ? PART_GLYPHS[part.kind] ?? "*" : thing.onPiece ? "=" : "?");
+  }, part ? PART_GLYPHS[part.kind] ?? "*" : thing.onPiece || thing.quiet ? "=" : "?");
 }
 
 function exitMark(exit) {
@@ -529,7 +529,7 @@ export function walkViewNode(logNode) {
   if (walk.fullStory) return el("div", { class: "walk-full" }, storyBar(), logNode());
   const popped = popupsShown();
   // The classic plan says what its marks are. The isometric room has nothing written over it.
-  const legend = isoShown() ? null : el("div", { class: "muted walk-legend" }, `@ you   ${app.ui.game.walk.things.some((thing) => !thing.onPiece) ? "? something to look at   " : ""}${app.ui.game.walk.things.some((thing) => thing.onPiece) ? "= something that opens   " : ""}Walk with WASD or a click   Right-click for more   Space pauses`);
+  const legend = isoShown() ? null : el("div", { class: "muted walk-legend" }, `@ you   ${app.ui.game.walk.things.some((thing) => !thing.onPiece && !thing.quiet) ? "? something to look at   " : ""}${app.ui.game.walk.things.some((thing) => thing.onPiece || thing.quiet) ? "= something that opens   " : ""}Walk with WASD or a click   Right-click for more   Space pauses`);
   const fighting = liveOn() && isoShown();
   return el("div", { class: `walk-view${isoShown() ? " iso" : ""}${topShown() ? " top" : ""}${popped || fighting ? " pops-on" : ""}${fighting ? " fighting" : ""}`, id: "walk-view" },
     el("div", { class: "walk-map" },

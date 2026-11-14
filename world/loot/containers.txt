@@ -5,11 +5,11 @@ chances: common 70, uncommon 25, rare 5
 Kinds:
 - dresser: called dresser, wardrobe, chest of drawers, clothes chest, sea chest, trunk; 6x4; 1 to 4 things; Its drawers are full of somebody's life.
 - crew locker: called locker, lockers, footlocker, kit bag; 4x4; 0 to 3 things; Its owner's name has been scratched off the door. It isn't locked.
-- armory: called armory, weapon rack, weapons rack, rifle rack, armor rack, gun locker, weapons locker; 6x5; 1 to 4 things; The armory's stencil is on the door, and a chain hangs through the handles with no padlock on it.
+- armory: called weapons rack, armory, weapon rack, rifle rack, armor rack, gun locker, weapons locker; 6x5; 1 to 4 things; The armory's stencil is on the door, and a chain hangs through the handles with no padlock on it.
 - medicine cabinet: called medicine cabinet, first aid box, medical crate, medical crates, medicine chest; 6x4; 1 to 4 things; Dressings and brown bottles behind a sliding door.
 - desk: called desk, desks, filing cabinet, drawer, drawers, tray; 6x3; 0 to 3 things; Its drawers stick, and one of them is open a little.
-- pantry: called pantry, cupboard, larder, sack, sacks; 6x4; 1 to 4 things; Tins and sacks, labelled in the cooks' own hand.
-- tool shelf: called tool roll, tool rack, tool chest, toolbox, workbench; 6x4; 1 to 4 things; Tools and spares, more of the second than the first.
+- pantry: called cupboard, pantry, larder, sack, sacks; 6x4; 1 to 4 things; Tins and sacks, labelled in the cooks' own hand.
+- tool shelf: called tool chest, tool roll, tool rack, toolbox, workbench; 6x4; 1 to 4 things; Tools and spares, more of the second than the first.
 - crate: called crate, crates, barrel, barrels, box, boxes, bin, bins; 6x5; 0 to 4 things; Nobody's opened it in a while, and the lid's strapped down.
 - safe: called safe, strongbox, lockbox, cash box; 4x3; 0 to 2 things; Its door is open a finger's width.
 - cooler: called cooler, icebox, bar; 4x4; 1 to 3 things; It hums to itself, and there's a stack of cups on top.
@@ -25,3 +25,79 @@ Furniture:
 - shelf: armory in The Armory; tool shelf in Engineering, The Repair Bay, Stores; pantry in The Galley; medicine cabinet in Medbay; crate anywhere else
 - desk: desk
 - barrel: crate
+
+Rooms that get one:
+- haven, The Consulate Row: desk, called a consul's desk
+- haven, The Hook: crew locker, called a refugee's footlocker
+- kessara, Raiders' Row: tool shelf, called a raider's tool chest
+- kessara, The Warrens: crate, called a stallholder's crate
+- kessara, Quill's Parlor: pantry, called a tea cupboard
+- kessara, The Sump: crate, called a sodden crate
+- ilun, The Empty Cells: crew locker, called a novice's footlocker
+- ilun, The Wind Gardens: pantry, called a sack of dried herbs
+- vantor, The Ministry Steps: desk, called a ticket clerk's desk
+- vantor, The Lower Stacks: dresser, called a tenant's wardrobe
+- vantor, The Outer Yards: crate, called a customs crate
+- vantor, The Regency Palace: safe, called a strongbox in an alcove
+- graveyard, Claim Row: crate, called a salvage bin
+- frontier, The Commons: desk, called the marshal's desk
+- frontier, The Schoolhouse: desk, called the teacher's desk
+- frontier, The Far Homesteads: pantry, called a farmhouse larder
+- anselm, The Long Ward: medicine cabinet, called a ward medicine chest
+- anselm, The Still Ward: medicine cabinet, called a bedside medicine cabinet
+- anselm, The Gallery: crate, called a trader's box
+- asterion, The Departure Lounges: dresser, called an abandoned trunk
+- asterion, Concord Hall: desk, called a senator's desk
+- asterion, The Exchange: desk, called an operator's desk
+- asterion, The Long Wire: tool shelf, called a lineman's tool chest
+- bastion, The Line: crew locker, called a family's footlocker
+- bastion, The Contract Hall: desk, called a clerk's desk
+- bastion, The Parade Ground: armory, called a drill rifle rack
+- bastion, The Commandant's Gallery: safe, called the Commandant's safe
+- cinder, Shift Row: pantry, called the strike kitchen's larder
+- cinder, The Stack: tool shelf, called a fitter's tool chest
+- cinder, Company Hill: desk, called the Director's desk
+- cinder, The Tubes: crate, called an abandoned equipment crate
+- cinder, The Tap: tool shelf, called a maintenance toolbox
+- deepyards, The Rinse: crew locker, called an attendant's locker
+- deepyards, The Long Drydock: tool shelf, called a gantry tool chest
+- deepyards, The Hearth Rings: dresser, called a family clothes chest
+- deepyards, The Ice Cut: cooler, called a melt-works icebox
+- foundry, The Long Rack: crate, called a bin of tagged parts
+- foundry, The Silent Line: tool shelf, called a line-side tool chest
+- foundry, The Sublevels: desk, called an engineer's desk
+- ghostlight, The Cold Market: crate, called a smuggler's crate
+- ghostlight, The Line of Battle: armory, called a marine's gun locker
+- ghostlight, The Drift of Lost Ships: crate, called a drifting cargo box
+- korrath, The Cradles: tool shelf, called a shipwright's tool chest
+- korrath, Slag Bridge: crate, called a stallholder's crate
+- korrath, The Long Furnaces: tool shelf, called a furnace tool rack
+- korrath, The Low Halls: dresser, called a clan clothes chest
+- lumen, The Water Courts: crate, called a floating stall's crate
+- maris, The Rafts: pantry, called a kelp sack
+- maris, Corso Station: desk, called a researcher's desk
+- orrin, The Burn Ward: medicine cabinet, called a medicine chest
+- pale_gate, Rimcamp: crate, called a crate of ship parts
+- sarn, The Deposit Hall: desk, called a clerk's writing desk
+- sarn, The Warm Stair: pantry, called a tea cupboard
+- sarn, The Deep Stacks: desk, called an old Keeper's desk
+- sarn, The Vault Roads: nothing
+- sundial, The Long Furrow: pantry, called a seed sack
+- sundial, The Sun Rail: crew locker, called the lamp tender's locker
+- sundial, Steward's Row: desk, called the Steward's desk
+- wheel, The Ticket Docks: crew locker, called a forfeited crewman's locker
+- wheel, The Marker Exchange: safe, called a marker safe
+- wheel, The Cellars: crew locker, called a debtor's locker
+- wheel, The Velvet Deck: dresser, called a wardrobe made for someone seven feet tall
+- rooms called bar, tavern, cantina, saloon: cooler
+- rooms called clinic, infirmary, sickbay, hospital, ward: medicine cabinet
+- rooms called office, offices, study: desk
+- rooms called armory, arsenal: armory
+- rooms called workshop, forge: tool shelf
+- rooms called warehouse, storeroom, depot: crate
+- rooms called vault, bank, treasury: safe
+- rooms called quarters, dormitory, barracks, bunkhouse: crew locker
+
+Things:
+- haven, Crates of paper: desk
+- anselm, A box of colored tags: desk
