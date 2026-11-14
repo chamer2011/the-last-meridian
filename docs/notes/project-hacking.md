@@ -600,3 +600,18 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
   desktop without the removed folders, NET), the folded strip and its slide-out with a hop to the harbor master's
   logon, the Bridge door's keypad by optical reader, and the records terminal with its cable.
 - Not done: the casing's look following the build. The owner hasn't tried it.
+
+## Three seconds to connect (examples shown 2026-11-13, not built)
+
+- They said: "Add a small loading screen for you connect you rig, like 3 seconds. Show me a few examples of what it
+  could look like, 6-7 examples".
+- Seven playable examples on https://claude.ai/artifact/8HLSA11GoqmNJeShfXWDom (source in my scratchpad only), each the
+  rig beside a sliver of a computer, three seconds of connecting on its screen with the cable in and LINK blinking
+  amber, then the connected rig on D:: **1 Handshake** (the port, the speed, the handshake and D: typed out line by
+  line; my pick), **2 Progress bar** (twenty segments and a percent), **3 Port sweep** (a radar finds the port and
+  locks), **4 The cable goes in** (the lead draws itself and seats with a spark while the screen ticks off steps),
+  **5 Carrier tone** (oscilloscope noise settling into a clean wave), **6 The rig wakes up** (a boot: BIOS, a memory
+  count, the link, D:), **7 Pins seat** (the port's twelve pins lighting one by one). Clicking the screen skips any of
+  them. In the game the words would follow the link (OPTICAL READER, NAVY COUPLER), a junction box or a camera would
+  play it as it opens, and on the folded strip its LINK light would blink for the three seconds.
+- Build only what they pick.
