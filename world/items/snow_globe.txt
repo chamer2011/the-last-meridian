@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.4
 found in: dresser, desk
 rarity: common
+keepsake: yes
 
 In a line:
 A glass globe with a tiny city inside. Shake it and snow falls on streets that are gone.

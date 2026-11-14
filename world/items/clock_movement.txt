@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.2
 found in: desk, crate
 rarity: uncommon
+salvage: 4
 
 In a line:
 The brass works of a wall clock, all wheels and springs.

@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.5
 found in: tool shelf, crate
 rarity: rare
+salvage: 15
 
 In a line:
 A high-grade seal from a reactor housing, rated for heat no person could stand.

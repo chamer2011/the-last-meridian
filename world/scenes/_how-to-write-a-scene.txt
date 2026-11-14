@@ -471,7 +471,7 @@ when:       a condition, as in a scene. While it holds, they ask. If it stops ho
             only needs its life, or its trouble (about:).
 about:      for a request about someone's own trouble, which trouble it is (more under PEOPLE'S
             TROUBLES, below): a rival, someone relieved, someone in the brig, the least loyal officer,
-            or someone down with nobody coming.
+            a post left empty, someone down with nobody coming, or a keepsake you took.
 asks:       who asks: a post (the chief medical officer: whoever holds it now), a job (a cook: one
             of the cooks at work), or someone by name. Add ", in The Galley" to say where to find
             them, if it isn't where their post or job is. With about:, "them" is the trouble's own
@@ -519,6 +519,8 @@ needs:      what's wanted, one of these:
                                                   (Carry them, on their right-click menu) and put
                                                   down on a cot (about: someone down with nobody
                                                   coming)
+                give 1 {thing} to {asker}         a keepsake given back to its owner (about: a
+                                                  keepsake you took, which says what {thing} is)
             Only what the player does counts. Taking something back out of a store takes it off.
 by:         how long they give, once the player says yes: 5 days, or 12 hours.
 gone when:  a condition that means it's been put right without the player. If it holds while the
@@ -532,7 +534,8 @@ handed to:  a post the captain can leave it to instead, like the chief engineer.
 Then the parts, in the talk window's way (see CONVERSATIONS), with {asker} for whoever's asking,
 in a request to fix something, {part} for what's broken and {room} for the room it's in, {damage} for what a
 battle broke that's still to mend (room by room, in the order the engineers will get to it), in a
-request about someone, {about}, {post} and {holder} (below), for a life that has one, {boss}, and in
+request about someone, {about}, {post} and {holder} (below), in one about a keepsake, {thing}, {container}
+and {room} (below), for a life that has one, {boss}, and in
 any request {place}, the place it was asked at, and {port}, whoever holds it (see AT THE PORTS):
 
     == ask          what they ask. One of its choices goes to yes (or given).
@@ -597,6 +600,17 @@ hasn't done it yet) once the trouble isn't there any more.
                                     nurse or spare hand on the way. {about} is them and {room} where
                                     they lie. It's gone when someone else picks them up, done when
                                     the player lays them on a cot, and failed if they die there.
+    a keepsake you took             something whose item file says keepsake: yes, taken aboard the
+                                    Meridian from a container that's someone's in particular: a
+                                    locker in a room people sleep in is whoever sleeps nearest it, a
+                                    container a post owns is whoever holds it (world/law/meridian.txt
+                                    says whose each room's containers are). asks: them is its owner,
+                                    who notices it's gone some hours later and asks while the
+                                    player still has it, never twice about the same thing. {thing}
+                                    is what it is, {container} what it was in (locker, desk) and
+                                    {room} where. It needs give 1 {thing} to {asker}. It's gone if
+                                    the player puts it back where it was, and failed if they said
+                                    yes and never gave it back.
 
 A request can take a side: what the yes and no parts' * lines do is the side taken, as when the
 rival's file has a no that the rival remembers kindly (* remember {about} you 4). {post} in a

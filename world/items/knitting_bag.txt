@@ -6,6 +6,7 @@ size: 2x1
 weight: 0.6
 found in: dresser
 rarity: common
+keepsake: yes
 
 In a line:
 Needles, three balls of wool and half a scarf in a cloth bag.

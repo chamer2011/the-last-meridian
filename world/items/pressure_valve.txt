@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.7
 found in: crate, tool shelf
 rarity: common
+salvage: 4
 
 In a line:
 A brass valve with a red wheel, stuck halfway open.

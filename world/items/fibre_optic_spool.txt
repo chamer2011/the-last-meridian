@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.4
 found in: crate, tool shelf
 rarity: uncommon
+salvage: 5
 
 In a line:
 A spool of fibre that glows faintly at the end when you hold the other end to a light.

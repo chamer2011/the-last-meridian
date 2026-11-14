@@ -6,6 +6,7 @@ size: 2x1
 weight: 1.4
 found in: crate, tool shelf
 rarity: uncommon
+salvage: 9
 
 In a line:
 A rack of capacitors. Don't touch the terminals; they remember.

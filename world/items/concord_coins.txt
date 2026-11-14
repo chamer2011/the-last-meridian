@@ -7,6 +7,7 @@ weight: 0.1
 stack: 5
 found in: desk, safe, crew locker
 rarity: common
+keepsake: yes
 
 In a line:
 A handful of Concord coins, worthless as money now and worth a little as metal.

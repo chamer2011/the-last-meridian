@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.3
 found in: dresser, desk
 rarity: common
+keepsake: yes
 
 In a line:
 A small diary with a lock that's been forced.

@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.6
 found in: crate, tool shelf
 rarity: uncommon
+salvage: 8
 
 In a line:
 A spinning-mass gyroscope from an old guidance system, still in its cage.

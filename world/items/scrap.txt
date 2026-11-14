@@ -7,6 +7,7 @@ weight: 0.2
 stack: 10
 found in: crate, tool shelf
 rarity: common
+salvage: 1
 
 In a line:
 Bits of boards, wire and casing. The Repair Bay's bench makes rig parts from it, and its lathe rebuilds a broken part from two of it.

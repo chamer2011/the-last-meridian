@@ -1,0 +1,39 @@
+# Something gone missing
+// Draft by the AI (Claude), 2026-11-14, not yet edited by the owner. Step 6 of the loot plan: a keepsake (an item whose
+// file says keepsake: yes) taken from a container aboard that's someone's in particular is missed by them: whoever
+// sleeps nearest the locker, or whoever holds the post a desk belongs to. Some hours later, while you still have it,
+// they ask after it. {thing} is what's missing, {container} what it was in, and {room} where. They don't know you
+// took it: they're asking whether anyone's come across it.
+for: anyone aboard
+about: a keepsake you took
+asks: them
+needs: give 1 {thing} to {asker}
+by: 2 days
+
+== ask
+@{asker}: "Something's gone missing from my {container} in {room}: my {thing}. It's worth nothing to anyone else. You haven't come across it, have you?"
+> Here. I came across it -> given
+> I'll keep an eye out for it -> yes
+> Not now -> later
+> I can't help you with that -> no
+
+== given
+@{asker}: "That's it. That's really it." They turn it over in their hands for a while. "Thank you."
+
+== yes
+@{asker}: "Thank you. It matters more than it looks."
+
+== later
+@{asker}: "When you've a moment, then."
+
+== no
+@{asker}: "No. Of course. Sorry to bother you."
+
+== done
+@{asker}: "You found it. I won't forget that."
+
+== failed
+@{asker}: "I've stopped looking for it. It's gone, I suppose."
+
+== gone
+@{asker}: "It turned up again, back where it should have been. I must have looked straight past it."

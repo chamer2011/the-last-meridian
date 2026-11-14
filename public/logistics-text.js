@@ -14,6 +14,7 @@ export const LOGISTICS_HEADER = [
   { key: "a crate feeds", path: "numbers.crateFeeds", type: "number", unit: "sittings" },
   { key: "sittings at", path: "sittings", type: "sittings" },
   { key: "a repair takes", path: "repair", type: "repair" },
+  { key: "salvage makes", path: "making", type: "making" },
 ];
 
 // "06:00, 12:00, 18:00, 22:00, each 90 minutes": when the whole ship eats, and how long each sitting lasts.
@@ -102,6 +103,10 @@ export function parseLogisticsText(text, id = "it") {
         else set(value, known.path, read);
       } else if (known.type === "repair") {
         const read = readRepair(words);
+        if (read.problem) problem(n, read.problem);
+        else set(value, known.path, { ...read, line: n });
+      } else if (known.type === "making") {
+        const read = readMaking(words);
         if (read.problem) problem(n, read.problem);
         else set(value, known.path, { ...read, line: n });
       } else set(value, known.path, words);
@@ -257,8 +262,36 @@ export function readRepair(words) {
   if (!found || !(n > 0)) return { problem: `"${written}" needs a number and what a repair takes, such as 1 parts crate, from the parts lockers` };
   return { n, what: found[2].trim(), from, damage };
 }
+// ---- The words of the salvage makes line --------------------------------------------------------------
+
+// "1 parts crate from 10 salvage, in The Repair Bay, in 2 hours, into the parts lockers": what the bench makes, from how
+// much salvage (each item's salvage line says what it counts for), the room it's made in, how long it takes, and the
+// stores it goes into, first to last (left out, it goes into the player's pack). "nothing" makes nothing, as does
+// leaving the line out.
+export function readMaking(words) {
+  const written = String(words ?? "").trim().replace(/\.$/, "");
+  if (/^nothing$/i.test(written)) return { n: 0, what: "", per: 0, room: null, hours: 0, into: [] };
+  const [head, ...rest] = written.split(/\s*,\s*/);
+  const found = head.match(/^(\S+)\s+(.+?)\s+from\s+(\S+)\s+salvage$/i);
+  const n = found ? (/^an?$/i.test(found[1]) ? 1 : numberOf(found[1])) : null;
+  const per = found ? numberOf(found[3]) : null;
+  if (!found || !(n > 0) || !(per > 0)) return { problem: `"${written}" starts with what's made and from how much salvage, such as 1 parts crate from 10 salvage` };
+  const out = { n, what: found[2].trim(), per, room: null, hours: 1, into: [] };
+  for (const piece of rest) {
+    let part;
+    if ((part = piece.match(/^in\s+(\d+(?:\.\d+)?)\s+hours?$/i))) out.hours = Number(part[1]);
+    else if ((part = piece.match(/^into\s+(.+)$/i))) out.into = part[1].split(/\s+or\s+/i).map((one) => one.trim().replace(/^the\s+/i, "")).filter(Boolean);
+    else if ((part = piece.match(/^in\s+(.+)$/i))) out.room = part[1].trim();
+    else return { problem: `"${piece}" isn't something a salvage makes line says: after what's made, write in the room, in so many hours, and into the store, such as 1 parts crate from 10 salvage, in The Repair Bay, in 2 hours, into the parts lockers` };
+  }
+  if (!out.room) return { problem: `"${written}" needs the room it's made in, such as in The Repair Bay` };
+  if (!(out.hours > 0)) return { problem: `"${written}" needs to take some time, such as in 2 hours` };
+  return out;
+}
+export const writeMaking = (m) => (!m?.n ? "nothing" : `${m.n} ${m.what} from ${m.per} salvage, in ${m.room}, in ${m.hours} hour${m.hours === 1 ? "" : "s"}${m.into?.length ? `, into the ${m.into.join(" or the ")}` : ""}`);
+
 const listWords = (list) => (list.length > 1 ? `${list.slice(0, -1).join(", ")} or ${list.at(-1)}` : list[0] ?? "");
-export const writeRepair = (r) => (!r?.n ? "nothing" : `${r.n} ${r.what}${r.from?.length ? `, from the ${r.from.join(" or the ")}` : ""}${r.damage?.length ? `, for what's ${listWords(r.damage)}` : ""}`);
+export const writeRepair =(r) => (!r?.n ? "nothing" : `${r.n} ${r.what}${r.from?.length ? `, from the ${r.from.join(" or the ")}` : ""}${r.damage?.length ? `, for what's ${listWords(r.damage)}` : ""}`);
 
 // "Quartermaster Brandt: ration crates from the shuttle stores to the pantry when under 4, two at a time": who
 // carries, what, from which store to which, when the store it goes to is short of how many, and how many a trip.
@@ -335,7 +368,7 @@ export function writeLogisticsText(value) {
   for (const field of LOGISTICS_HEADER) {
     const one = get(value, field.path);
     if (one === undefined || one === null || one === "") continue;
-    out.push(`${field.key}: ${field.type === "sittings" ? writeSittings(one) : field.type === "repair" ? writeRepair(one) : one}${field.type === "number" ? ` ${field.unit}` : ""}`);
+    out.push(`${field.key}: ${field.type === "sittings" ? writeSittings(one) : field.type === "repair" ? writeRepair(one) : field.type === "making" ? writeMaking(one) : one}${field.type === "number" ? ` ${field.unit}` : ""}`);
   }
   for (const part of LOGISTICS_PARTS) {
     const lines = value[part] ?? [];

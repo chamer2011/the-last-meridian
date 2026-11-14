@@ -6,6 +6,7 @@ size: 2x1
 weight: 1.6
 found in: crate, tool shelf
 rarity: uncommon
+salvage: 6
 
 In a line:
 A coiled copper exchanger from a cooling loop, gone green at the joints.

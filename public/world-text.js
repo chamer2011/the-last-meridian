@@ -128,6 +128,9 @@ export const ITEM = {
     // Where it turns up as loot: the kinds of container it's found in, from world/loot/containers.txt, and how often:
     // common, uncommon or rare (src/loot.js).
     { path: "foundIn", key: "found in", type: "list" }, { path: "rarity", key: "rarity", type: "string" },
+    // Someone's own: whoever it was taken from asks after it (src/keepsakes.js). And how much a piece of salvage counts
+    // for, toward the parts crates the bench makes (the logistics file's salvage makes line, src/making.js).
+    { path: "keepsake", key: "keepsake", type: "flag" }, { path: "salvage", key: "salvage", type: "number" },
   ],
   sections: [
     { path: "desc", phrase: "In a line", type: "text" },

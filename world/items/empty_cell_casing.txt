@@ -7,6 +7,7 @@ weight: 0.8
 stack: 3
 found in: crate
 rarity: common
+salvage: 2
 
 In a line:
 The shell of a spent fuel cell. Refillable, they say, somewhere with the plant to do it.

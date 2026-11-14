@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.05
 found in: desk
 rarity: uncommon
+keepsake: yes
 
 In a line:
 A heavy black pen with a gold nib, used for signing things that mattered.

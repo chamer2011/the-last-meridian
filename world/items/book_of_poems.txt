@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.3
 found in: dresser, desk
 rarity: common
+keepsake: yes
 
 In a line:
 A slim book of poems from a world with seas, its spine cracked at one page.

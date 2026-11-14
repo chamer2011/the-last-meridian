@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.01
 found in: dresser, safe
 rarity: rare
+keepsake: yes
 
 In a line:
 Two pearls on gold hooks, from an ocean world.

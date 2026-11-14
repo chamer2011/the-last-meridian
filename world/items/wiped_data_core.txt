@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.3
 found in: crate, desk
 rarity: uncommon
+salvage: 5
 
 In a line:
 A memory core with nothing left on it. Or so it says.

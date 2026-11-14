@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.1
 found in: dresser
 rarity: uncommon
+keepsake: yes
 
 In a line:
 A cut-glass bottle with an inch of perfume left. It smells of somewhere with flowers.

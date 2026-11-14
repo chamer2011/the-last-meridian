@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.6
 found in: crate, safe
 rarity: rare
+salvage: 20
 
 In a line:
 A ship's identity transponder from the old navy, still able to say a name if it's given power.

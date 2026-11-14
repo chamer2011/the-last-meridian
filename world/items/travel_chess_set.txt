@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.4
 found in: desk, dresser, cooler
 rarity: common
+keepsake: yes
 
 In a line:
 A folding chess set with magnetic pieces, two of the pawns replaced by bolts.

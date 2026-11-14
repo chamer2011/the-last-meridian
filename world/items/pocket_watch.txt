@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.1
 found in: dresser, desk, safe
 rarity: uncommon
+keepsake: yes
 
 In a line:
 A brass watch that still keeps a planet's day, not the ship's.

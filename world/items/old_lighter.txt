@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.1
 found in: crew locker, desk
 rarity: common
+keepsake: yes
 
 In a line:
 A petrol lighter with a dented lid, out of fuel.

@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.05
 found in: dresser, crew locker
 rarity: common
+keepsake: yes
 
 In a line:
 A twisted copper bracelet that's meant to help with aches. It turns your wrist green.

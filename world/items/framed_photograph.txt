@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.3
 found in: dresser, desk
 rarity: common
+keepsake: yes
 
 In a line:
 A family of four smiling on a beach somewhere warm. Nobody aboard looks like any of them.

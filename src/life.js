@@ -247,6 +247,26 @@ export function rosterOf(place) {
   ];
 }
 
+// Where everyone at a place sleeps, as the place's file has it: each person's key, their id if they're someone, and
+// the squares of the spots or groups their asleep steps go to (a spot is one bed, a group many shared ones). For
+// src/keepsakes.js, which takes a locker in a room people sleep in to be whoever's bed is nearest it. The file's own
+// days, not the watch bill's: a locker doesn't move when its owner's put to other work.
+export function sleepersOf(place) {
+  const file = lifeFileFor(place);
+  if (!file) return [];
+  return file.roster.map((entry) => {
+    const squares = [];
+    for (const block of entry.day ?? []) {
+      if (!block.asleep) continue;
+      for (const where of [block.go, ...(block.pick ?? [])].filter(Boolean)) {
+        if (file.spots[where]) squares.push(file.spots[where]);
+        else squares.push(...(file.groups[where] ?? []));
+      }
+    }
+    return { key: entry.key, id: entry.id ?? null, squares };
+  }).filter((one) => one.squares.length);
+}
+
 // Whether someone's awake and about at a time, as their day has it, and here at all.
 export function isAbout(game, place, key, hours) {
   const entry = rosterFor(game, place).find((one) => one.key === key);

@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.01
 found in: crew locker, dresser
 rarity: common
+keepsake: yes
 
 In a line:
 An old coin with a hole through it, rubbed smooth by a thumb.

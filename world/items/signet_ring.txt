@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.02
 found in: safe, desk
 rarity: rare
+keepsake: yes
 
 In a line:
 A gold ring with a crest you don't recognize, made for the smallest finger.

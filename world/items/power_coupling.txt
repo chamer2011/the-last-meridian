@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.5
 found in: crate, tool shelf
 rarity: common
+salvage: 4
 
 In a line:
 A heavy connector of the kind that joins a ship's cables inside the walls.

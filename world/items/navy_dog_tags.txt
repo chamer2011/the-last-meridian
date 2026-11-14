@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.05
 found in: crew locker, dresser
 rarity: common
+keepsake: yes
 
 In a line:
 A pair of navy identity tags on a chain.

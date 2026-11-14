@@ -6,6 +6,7 @@ size: 1x1
 weight: 1.1
 found in: crate, tool shelf
 rarity: common
+salvage: 5
 
 In a line:
 A strong electromagnet with its leads cut. It still grabs at your tools.

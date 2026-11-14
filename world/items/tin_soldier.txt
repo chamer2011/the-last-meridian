@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.05
 found in: dresser, desk
 rarity: common
+keepsake: yes
 
 In a line:
 A toy soldier painted in Concord blue, his rifle bent.

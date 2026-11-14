@@ -15,7 +15,8 @@
 //
 // game.requests, made the first time someone has something to ask, so a new game's save is unchanged until then:
 //   open:  by kind, { kind, asker, at, state: "offered", "accepted" or "handed", later, base, due, quest, part, to,
-//          give, holder, reminded }
+//          give, holder, reminded, and for one about someone's trouble about and post, and for a keepsake thing, room
+//          and container }
 //   rest:  by kind, the hour before which it won't be asked again
 //   asked: by kind, the hour it was last asked, so the one asked longest ago comes first
 //   day:   the day the last new ask came, since a quiet day comes between (src/requests.js's pacer)
@@ -37,6 +38,7 @@ import { findCharacter, fullName } from "./campaign.js";
 import { FACTIONS, ITEMS, LOCATIONS } from "./data.js";
 import { itemFactor } from "./daily.js";
 import { TROUBLES, YOU, calledBy, commandOf, deposedStart, deputyFor, holderKey, jobByWords, jobOf, lostReason, onJob, personByWords, postById, postByWords, postOf, rememberRequest, stillAlive, storyCommand, tallyDuty, troublesOf } from "./command.js";
+import { KEEPSAKE, keepsakeTroubles } from "./keepsakes.js";
 import { FACT_ID, clearFact, recordFact } from "./record.js";
 import { dueWords, heldUp } from "./quests.js";
 import { START_LIST, aboardShip, isCaptain, startOf } from "./role.js";
@@ -179,11 +181,13 @@ function readNeeds(words, problems) {
   }
   if ((found = text.match(/^give\s+(\d+)\s+(.+?)\s+to\s+(.+)$/i))) {
     const n = Number(found[1]);
-    const item = itemByWords(found[2]);
+    // {thing}: what a request about a keepsake is about, whatever it is (src/keepsakes.js).
+    const thing = /^\{thing\}$/i.test(found[2].trim());
+    const item = thing ? null : itemByWords(found[2]);
     if (!n) problems.push("needs: give needs a number more than 0");
-    if (!item) problems.push(`needs: there's no item called ${found[2].trim()}`);
+    if (!item && !thing) problems.push(`needs: there's no item called ${found[2].trim()}`);
     const to = readWho(found[3], problems, "needs");
-    return n && item && to ? { kind: "give", item, n, to } : null;
+    return n && (item || thing) && to ? { kind: "give", item, ...(thing ? { thing: true } : {}), n, to } : null;
   }
   // Sold to someone there and then, paid at what it costs on that market, or over it.
   if ((found = text.match(/^sell\s+(\S+)\s+(.+?)\s+to\s+(.+?)(?:,\s*at\s+(.+?))?$/i))) {
@@ -278,8 +282,9 @@ function readCondition(text, key, problems, needed = true) {
 // Whose trouble a request is about, from the chain of command (src/command.js) or the medbay: someone lying where they
 // fell with nobody coming for them.
 const DOWN = "someone down with nobody coming";
-const ABOUTS = [...TROUBLES, DOWN];
-const ABOUT_ASKS = new Set(["a rival", "someone relieved", "someone in the brig"]);
+// And a keepsake the player took from someone's container, asked after by its owner (src/keepsakes.js).
+const ABOUTS = [...TROUBLES, DOWN, KEEPSAKE];
+const ABOUT_ASKS = new Set(["a rival", "someone relieved", "someone in the brig", KEEPSAKE]);
 function readAbout(words, problems) {
   const want = String(words ?? "").trim().toLowerCase();
   if (!ABOUTS.includes(want)) {
@@ -296,9 +301,14 @@ function lyingDown(game) {
     .sort((a, b) => (a.since ?? 0) - (b.since ?? 0))
     .map((d) => ({ asker: null, about: d.who, post: null }));
 }
-const troublesFor = (game, model) => (model.about === DOWN ? lyingDown(game) : troublesOf(game, model.about));
-// Whether the trouble a request is about is still there: the same person in the same trouble.
-const troubleStands = (game, model, open) => troublesFor(game, model).some((one) => one.about === open.about && (one.post ?? null) === (open.post ?? null));
+const troublesFor = (game, model) => (model.about === DOWN ? lyingDown(game) : model.about === KEEPSAKE ? keepsakeTroubles(game) : troublesOf(game, model.about));
+// Whether the trouble a request is about is still there: the same person in the same trouble, about the same thing.
+// A trouble can say it isn't to be asked about now (ask: false), and an ask still waiting to be heard goes once its
+// trouble says it can't stand as an ask any more (offer: false: the keepsake's no longer in the player's hands).
+const sameTrouble = (one, open) => one.about === open.about && (one.post ?? null) === (open.post ?? null) && (one.thing ?? null) === (open.thing ?? null);
+const troubleStands = (game, model, open, offered = false) => troublesFor(game, model).some((one) => sameTrouble(one, open) && (!offered || one.offer !== false));
+// What an ask about a trouble keeps of it: whose it is, the post, and for a keepsake what it is and where it was.
+const troubleOpen = (trouble) => (trouble ? { about: trouble.about, post: trouble.post ?? null, ...(trouble.thing ? { thing: trouble.thing, room: trouble.room ?? null, container: trouble.container ?? null } : {}) } : {});
 const downOf = (game, who) => Object.values(game.down ?? {}).find((d) => d.who === who) ?? null;
 
 // Who a request can be handed to: a post.
@@ -388,6 +398,8 @@ export function compileRequest(kind, scene) {
   if (model.asker?.them && model.about && !ABOUT_ASKS.has(model.about)) problems.push(`asks: them is for a trouble that falls on someone (${[...ABOUT_ASKS].join(", ")}); for ${model.about}, say who asks`);
   if (model.asker?.them && !model.about) problems.push("asks: them needs an about: line saying whose trouble it is");
   if (model.need?.kind === "carry" && model.about !== DOWN) problems.push(`carry {about} to the medbay needs about: ${DOWN}`);
+  if (model.need?.thing && model.about !== KEEPSAKE) problems.push(`give 1 {thing} needs about: ${KEEPSAKE}, which says what {thing} is`);
+  if (model.about === KEEPSAKE && model.need && !model.need.thing) problems.push(`about: ${KEEPSAKE} is for a request to give it back: needs: give 1 {thing} to {asker}`);
   if (!model.about && JSON.stringify(scene?.parts ?? {}).includes("{about}")) problems.push("{about} is only filled in for a request with an about: line");
   for (const part of ["ask", ...ENDINGS]) if (!parts[part]) problems.push(`it needs a part called ${part}`);
   const yesParts = Object.keys(parts).filter((id) => answerOf(id) === "yes");
@@ -534,6 +546,12 @@ function extrasFor(game, open) {
   const map = d ? mapFor(SHIP) : null;
   const room = map ? roomOf(map, map.levels?.[d.level]?.roomAt?.(d.x, d.y)) : null;
   if (room) extra.room = { id: room.id, name: room.name.replace(/^The /, "the ") };
+  // A keepsake asked after: what it is, what it was in, and the room it was taken from.
+  if (open.thing) {
+    extra.thing = { id: open.thing, name: (ITEMS[open.thing]?.name ?? open.thing).toLowerCase() };
+    extra.container = { id: "container", name: open.container ?? "locker" };
+    if (open.room) extra.room = { id: open.room, name: open.room.replace(/^The /, "the ") };
+  }
   return extra;
 }
 
@@ -571,6 +589,8 @@ const needWords = (need, n) => {
   return `${n} ${n === 1 ? need.label.replace(/s$/, "") : need.label}`;
 };
 const counted = (need, got) => (need.n > 1 ? ` (${Math.min(need.n, Math.max(0, Math.floor(got)))}/${need.n})` : "");
+// What's to be given: the item the request names, or for one about a keepsake, the keepsake.
+const itemOf = (need, open) => (need.thing ? open?.thing ?? null : need.item);
 // "Bring 2 medicine crates aboard (1/2)", "Fix the speaker in the Galley", "Give Nurse Haru the medkit".
 function objectiveOf(game, model, open, got) {
   const { need } = model;
@@ -582,7 +602,7 @@ function objectiveOf(game, model, open, got) {
     case "sell":
       return `Sell ${nameOf(game, open.to)} ${need.n} ${itemName(need.item, need.n)} at ${open.give?.price ?? "?"} credits each${counted(need, got)}`;
     case "give":
-      return need.n === 1 ? `Give ${nameOf(game, open.to)} the ${itemName(need.item, 1)}` : `Give ${nameOf(game, open.to)} ${need.n} ${itemName(need.item, need.n)}${counted(need, got)}`;
+      return need.n === 1 ? `Give ${nameOf(game, open.to)} the ${itemName(itemOf(need, open), 1)}` : `Give ${nameOf(game, open.to)} ${need.n} ${itemName(itemOf(need, open), need.n)}${counted(need, got)}`;
     case "talk":
       return `Talk to ${nameOf(game, open.to)}`;
     case "carry":
@@ -609,7 +629,7 @@ function totalOf(game, need, open) {
   switch (need.kind) {
     case "fix": return putsOf(game, `fixed:${SHIP}`, open.part);
     case "give":
-    case "sell": return putsOf(game, `give:${open.to}`, need.item);
+    case "sell": return putsOf(game, `give:${open.to}`, itemOf(need, open));
     case "talk": return putsOf(game, "talk", open.to);
     // Being there is what counts, however they got there.
     case "go":
@@ -741,7 +761,7 @@ export function answerRequest(game, kind, answer) {
   // Who it's about, for giving, talking or a check with someone: whoever that is now, kept for the rest of it.
   const to = model.need.to ?? model.need.with ?? null;
   if (to) open.to = whoNow(game, to, { asker: open.asker, about: open.about }) ?? open.asker;
-  if (model.need.kind === "give") open.give = { item: model.need.item, n: model.need.n, to: open.to };
+  if (model.need.kind === "give") open.give = { item: itemOf(model.need, open), n: model.need.n, to: open.to };
   // What they'll pay for each, fixed now: what it costs on the market here, times what they offered.
   if (model.need.kind === "sell") open.give = { item: model.need.item, n: model.need.n, to: open.to, price: Math.max(1, Math.round((ITEMS[model.need.item]?.price ?? 0) * itemFactor(game, ITEMS[model.need.item]) * model.need.factor)) };
   open.base = totalOf(game, model.need, open);
@@ -888,7 +908,7 @@ function settleOffered(game, found, one) {
   const asker = askerNow(game, model, one);
   // One the written story started is asked whatever its when: line says, as long as there's someone to ask it, and
   // until what it's about is put right without the player (its gone when: line), if it wasn't already when asked.
-  const stale = !asker || Boolean(game.requests.off?.[one.kind]) || (!one.story && !whenHolds(game, model, one)) || (model.need.kind === "fix" && !partBroken(game, SHIP, one.part)) || Boolean(model.about && !troubleStands(game, model, one))
+  const stale = !asker || Boolean(game.requests.off?.[one.kind]) || (!one.story && !whenHolds(game, model, one)) || (model.need.kind === "fix" && !partBroken(game, SHIP, one.part)) || Boolean(model.about && !troubleStands(game, model, one, true))
     || Boolean(model.gone && !one.goneAtFirst && conditionHolds(game, placed(model.gone, one.place ?? SHIP)));
   if (stale) {
     delete game.requests.open[one.kind];
@@ -1029,6 +1049,8 @@ function roomWords(game, model, asker) {
 // or something to ask.
 function askWords(game, model, asker) {
   if (model.order) return "has orders for you";
+  // Something of their own gone missing is a question, not a decision, whoever's asking.
+  if (model.about === KEEPSAKE) return "has something to ask you";
   if (isCaptain(game) && postOf(game, SHIP, asker)) return "has something for you to decide";
   return "has something to ask you";
 }
@@ -1064,7 +1086,7 @@ function newAsks(game, kinds) {
     const trouble = model.about
       ? troublesFor(game, model).find((one) => {
         const key = model.asker.them ? one.asker : askerNow(game, model);
-        return key && (model.asker.them || key !== one.about) && !busy(key);
+        return one.ask !== false && key && (model.asker.them || key !== one.about) && !busy(key);
       })
       : null;
     if (model.about && !trouble) continue;
@@ -1074,7 +1096,7 @@ function newAsks(game, kinds) {
     const part = model.need.kind === "fix" ? partToFix(game, model.need) : null;
     if (model.need.kind === "fix" && !part) continue;
     const state = stateOf(game);
-    state.open[model.kind] = { kind: model.kind, asker, at: now, place: askedAt(game, model), state: "offered", ...(part ? { part } : {}), ...(trouble ? { about: trouble.about, post: trouble.post ?? null } : {}) };
+    state.open[model.kind] = { kind: model.kind, asker, at: now, place: askedAt(game, model), state: "offered", ...(part ? { part } : {}), ...troubleOpen(trouble) };
     state.asked[model.kind] = now;
     state.last = model.kind;
     // What can't wait doesn't take a day from the pace.
@@ -1111,7 +1133,7 @@ function storyRequestStep(game, step) {
   const busy = (key) => Object.values(state.open).some((one) => one.asker === key);
   const trouble = model.about ? troublesFor(game, model).find((one) => {
     const key = model.asker.them ? one.asker : askerNow(game, model);
-    return key && (model.asker.them || key !== one.about) && !busy(key);
+    return one.offer !== false && key && (model.asker.them || key !== one.about) && !busy(key);
   }) : null;
   const asker = model.about ? (trouble && (model.asker.them ? trouble.asker : askerNow(game, model))) : askerNow(game, model);
   const part = model.need.kind === "fix" ? partToFix(game, model.need) : null;
@@ -1120,7 +1142,7 @@ function storyRequestStep(game, step) {
   const now = nowOf(game);
   // Whether what it's about was already put right when the story asked it: then that doesn't end it.
   const already = Boolean(model.gone && conditionHolds(game, placed(model.gone, askedAt(game, model))));
-  state.open[model.kind] = { kind: model.kind, asker, at: now, place: askedAt(game, model), state: "offered", story: true, ...(already ? { goneAtFirst: true } : {}), ...(part ? { part } : {}), ...(trouble ? { about: trouble.about, post: trouble.post ?? null } : {}) };
+  state.open[model.kind] = { kind: model.kind, asker, at: now, place: askedAt(game, model), state: "offered", story: true, ...(already ? { goneAtFirst: true } : {}), ...(part ? { part } : {}), ...troubleOpen(trouble) };
   state.asked[model.kind] = now;
   state.last = model.kind;
   const room = roomWords(game, model, asker);

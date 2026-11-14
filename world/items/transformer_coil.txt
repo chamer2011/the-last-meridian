@@ -6,6 +6,7 @@ size: 1x1
 weight: 1.2
 found in: crate
 rarity: common
+salvage: 4
 
 In a line:
 A heavy wound coil from a power transformer, copper all the way through.

@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.9
 found in: crate, tool shelf
 rarity: common
+salvage: 3
 
 In a line:
 A ring of steel bearings in their race, gritty but sound.

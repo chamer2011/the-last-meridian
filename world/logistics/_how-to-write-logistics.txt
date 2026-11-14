@@ -31,6 +31,7 @@ THE FILE
     sittings at: 06:00, 07:30, 18:00, 19:30, each 90 minutes   (when the whole ship eats, two sittings to a
                                                      meal; this is what it is when the line is left out)
     a repair takes: 1 parts crate, from the parts lockers or the shuttle stores, for what's broken, cut, crippled or forced
+    salvage makes: 1 parts crate from 10 salvage, in The Repair Bay, in 2 hours, into the parts lockers
                                                      (what the engineers use up each time they fix something:
                                                      see REPAIRS)
 
@@ -198,6 +199,23 @@ scrambled, broken), and forced, for a door. A kind left out of the line is fixed
 comes off a camera's lens or a seal off a vent. Leave out from and every store that keeps the item is tried;
 leave out for what's and every kind of damage takes it; write a repair takes: nothing, or leave the line out,
 and repairs take nothing at all. Fixing something yourself takes nothing, and neither does a story's * fix.
+
+SALVAGE
+-------
+
+The line at the top that starts with salvage makes says what the player can make at the bench from the salvage
+they've found (step 6 of the loot plan): so many of an item, from how much salvage, the room it's made in, how
+long it takes, and the stores it goes into, first to last:
+
+    salvage makes: 1 parts crate from 10 salvage, in The Repair Bay, in 2 hours, into the parts lockers
+
+Each item's own salvage line says what a piece counts for (world/items: a circuit board 2, a reactor seal ring 15,
+scrap 1). In that room, You can offers it, greyed with the reason while the player hasn't enough or is too tired.
+It uses up the least valuable salvage first, takes the hours less a tenth for each point of the player's
+Engineering (never under half), practises Engineering, and puts what's made into the first of the stores with
+room, or into the player's pack; leave out into and it always goes into the pack. What's made into a store counts
+as brought aboard, for anyone who's asked for crates. Write salvage makes: nothing, or leave the line out, and
+nothing is made.
 
 THE COUNT ON THE SHIP MENU
 --------------------------

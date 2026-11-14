@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.2
 found in: crew locker, crate
 rarity: common
+salvage: 1
 
 In a line:
 A comms headset with a snapped band and one dead ear.

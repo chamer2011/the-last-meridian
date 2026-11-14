@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.2
 found in: dresser, crew locker
 rarity: common
+keepsake: yes
 
 In a line:
 A threadbare toy rabbit with one ear sewn back on in the wrong colour.

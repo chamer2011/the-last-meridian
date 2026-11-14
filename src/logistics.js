@@ -386,6 +386,37 @@ function compileLogistics(place) {
     if (sound && !from.length && !keeping.length) at(line, `no store keeps ${r.what}, for a repair to take`);
     else if (sound) model.repair = { item, n: r.n, from: from.length ? from : keeping, damage: r.damage ?? [], line };
   }
+  // What the bench makes from salvage (step 6 of the loot plan, src/making.js): so many of an item from so much
+  // salvage (each item's own salvage line says what it counts for), in a room, in so many hours, into which stores
+  // first to last, or the player's pack.
+  model.making = null;
+  const mk = file.making;
+  if (mk?.n > 0) {
+    const line = mk.line ?? null;
+    let sound = true;
+    const item = itemByWords(mk.what);
+    if (!item) {
+      at(line, `there's no item called ${mk.what} in world/items, for salvage to make`);
+      sound = false;
+    }
+    const room = findRoom(mk.room);
+    if (!room) {
+      at(line, `${name} has no room called ${mk.room}, for salvage to be made into ${mk.what} in`);
+      sound = false;
+    }
+    const into = [];
+    for (const words of mk.into ?? []) {
+      const store = findStore(words);
+      if (!store) {
+        at(line, `there's no store called ${words} for what salvage makes to go into: the stores are ${storeNames()}`);
+        sound = false;
+      } else if (item && (store.count || !(item in store.holds))) {
+        at(line, `the ${store.name} doesn't keep ${mk.what}: add it to the ${store.name}'s holds line`);
+        sound = false;
+      } else into.push(store.id);
+    }
+    if (sound) model.making = { item, n: mk.n, per: mk.per, room: room.id, roomName: room.name, hours: mk.hours, into, line };
+  }
   // The errands: who carries what from which store to which, when the store it goes to is short, so many a trip.
   model.errands = [];
   const roster = rosterOf(place);

@@ -6,6 +6,7 @@ size: 2x2
 weight: 1.5
 found in: crate
 rarity: common
+salvage: 4
 
 In a line:
 A ventilation fan with one bent blade. It hums when you spin it by hand.

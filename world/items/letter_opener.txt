@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.1
 found in: desk
 rarity: common
+keepsake: yes
 
 In a line:
 A brass letter opener shaped like a little sword. Nobody sends letters now.

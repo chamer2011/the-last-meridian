@@ -6,6 +6,7 @@ size: 2x1
 weight: 2
 found in: crate
 rarity: uncommon
+salvage: 6
 
 In a line:
 A ceramic liner from a thruster nozzle, scorched black inside.

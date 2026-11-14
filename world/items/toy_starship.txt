@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.2
 found in: dresser, crew locker
 rarity: common
+keepsake: yes
 
 In a line:
 A plastic model of a cruiser of the old navy, missing a wing.

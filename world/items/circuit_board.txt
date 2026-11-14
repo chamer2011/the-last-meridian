@@ -7,6 +7,7 @@ weight: 0.2
 stack: 5
 found in: crate, tool shelf
 rarity: common
+salvage: 2
 
 In a line:
 A green board crowded with components, pulled from something that doesn't work any more.

@@ -22,6 +22,8 @@ with the file and the line.
     effect: hp 10, energy 5             (consumables: what using it does; hp, energy, stress, dress, hull or fuel)
     found in: armory, crew locker       (the kinds of container it turns up in, from world/loot/containers.txt)
     rarity: uncommon                    (common, uncommon or rare: how often it turns up there)
+    keepsake: yes                       (someone's own: whoever it was taken from asks after it; leave it out if not)
+    salvage: 3                          (what it counts for toward a parts crate at the bench; leave it out if nothing)
 
     In a line:
     The old navy's standard long gun, easy to find now that so few are left to carry one.
@@ -56,6 +58,12 @@ them. An item without a found in line is never found in a container, and one wit
 character creator unless a market sells it too. The Drawing is how the inventory draws it, in plain characters, one row
 to a line, each row between backticks so its spaces are kept; without one it's drawn as its kind. Each square holds
 about 4 characters across and 2 rows down (a 2x1 thing about 8 across, a 2x3 thing about 8 across and 7 down).
+
+Keepsake and salvage are for using what's found. A keepsake (a photograph, a ring, a harmonica) taken aboard the
+Meridian from a container that's someone's in particular is missed: some hours later its owner asks after it, in
+world/scenes/request_keepsake.txt (the scene how-to says how, under PEOPLE'S TROUBLES). Salvage is turned into parts
+crates at the bench: each piece counts for its salvage number, and the ship's logistics file says how much a crate
+takes, where and how long (its salvage makes line). The drafts give salvage a quarter of the price, at least 1.
 
 Size, weight and stack are for the inventory. A thing one square big goes in a pocket; anything bigger goes in the
 pack, which is 8 squares by 5, so nothing can be bigger than that, and a weapon of 2 squares or fewer can go on the hip.

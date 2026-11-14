@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.05
 found in: desk, dresser
 rarity: common
+keepsake: yes
 
 In a line:
 Half-moon glasses in a scuffed case, the lenses smudged.

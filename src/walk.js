@@ -39,6 +39,8 @@ import "./asks.js";
 import "./emergencies.js";
 import "./law.js";
 import "./loot.js";
+import "./keepsakes.js";
+import "./making.js";
 import "./trade.js";
 import "./salvage.js";
 import "./wrecks.js";

@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.4
 found in: crate, tool shelf
 rarity: uncommon
+salvage: 7
 
 In a line:
 A sensor head from a hull array, its window fogged with age.

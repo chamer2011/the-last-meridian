@@ -7,6 +7,7 @@ weight: 0.6
 stack: 5
 found in: crate, tool shelf
 rarity: common
+salvage: 3
 
 In a line:
 A tangle of stripped copper wire, worth something by weight.

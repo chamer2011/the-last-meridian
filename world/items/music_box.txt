@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.3
 found in: dresser
 rarity: uncommon
+keepsake: yes
 
 In a line:
 A little box that plays four bars of a lullaby when you open it, then stops, and waits.

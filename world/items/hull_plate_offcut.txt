@@ -6,6 +6,7 @@ size: 2x2
 weight: 4
 found in: crate
 rarity: common
+salvage: 2
 
 In a line:
 A square of hull plating, cut for somewhere and never fitted.

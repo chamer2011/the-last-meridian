@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.3
 found in: crate
 rarity: common
+salvage: 2
 
 In a line:
 A red lens from one of the running lights on the hull.

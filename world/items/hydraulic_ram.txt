@@ -6,6 +6,7 @@ size: 3x1
 weight: 3.5
 found in: crate
 rarity: uncommon
+salvage: 8
 
 In a line:
 A piston from a cargo door, leaking a little dark fluid.

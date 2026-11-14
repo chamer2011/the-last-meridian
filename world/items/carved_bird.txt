@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.2
 found in: dresser, desk
 rarity: common
+keepsake: yes
 
 In a line:
 A little wooden bird, carved with more love than skill.

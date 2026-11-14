@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.01
 found in: dresser, safe, desk
 rarity: uncommon
+keepsake: yes
 
 In a line:
 A plain gold band, worn thin on one side.

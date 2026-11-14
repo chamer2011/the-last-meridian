@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.05
 found in: safe, dresser
 rarity: rare
+keepsake: yes
 
 In a line:
 A heavy gold chain, the kind people wear when they want you to know they can.

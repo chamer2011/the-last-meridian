@@ -6,6 +6,7 @@ size: 1x1
 weight: 0.2
 found in: dresser, desk, safe
 rarity: uncommon
+keepsake: yes
 
 In a line:
 Engraved with initials that aren't anyone's aboard. Empty.

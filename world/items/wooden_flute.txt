@@ -6,6 +6,7 @@ size: 2x1
 weight: 0.2
 found in: dresser, crew locker
 rarity: common
+keepsake: yes
 
 In a line:
 A simple flute of dark wood, with a crack mended with glue.
