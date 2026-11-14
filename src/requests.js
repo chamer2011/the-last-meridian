@@ -45,11 +45,11 @@ import { loadScenes, scenesUnderWay, withStandIns } from "./scenes.js";
 import { itemByWords, logisticsOf, storeByWords, storeNames } from "./logistics.js";
 import { notePut, putsOf } from "./puts.js";
 import { removeItem, tellRequests } from "./rules.js";
-import { battleDamageWords, partBroken, partByWords, partWords, partsWaitingIds } from "./systems.js";
+import { applySystemsEffect, battleDamageWords, partBroken, partByWords, partWords, partsWaitingIds } from "./systems.js";
 import { newTurnLimits, runTool } from "./tools.js";
 import { tellStoryRequests } from "./request-hook.js";
 import { mapFor, personWhere, roomOf, roomsOf } from "./walk.js";
-import { WORLD_CHARACTERS } from "./world.js";
+import { WORLD_CHARACTERS, WORLD_COMPUTERS } from "./world.js";
 
 const SHIP = "meridian";
 const PREFIX = "request_";
@@ -788,6 +788,13 @@ function playSteps(game, part, notes, where) {
       else if (clear) clearFact(game, clear);
       else if (step.command) notes.push(...storyCommand(game, step));
       else if (step.request) notes.push(...storyRequestStep(game, step));
+      // A system switched, or a password told (step 10 of the hacking rework).
+      else if (step.systems) notes.push(...applySystemsEffect(game, step.systems, { by: "story" }));
+      else if (step.password) {
+        game.passwords ??= {};
+        game.passwords[step.password] = step.word;
+        notes.push(`[COMPUTER] You know the password to ${WORLD_COMPUTERS[step.password]?.name ?? step.password} now.`);
+      }
       else if (tool) {
         const outcome = runTool(game, tool, input, turn);
         if (outcome.isError) throw new Error(outcome.result);

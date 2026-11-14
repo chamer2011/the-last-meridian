@@ -5,8 +5,8 @@ grade: 3
 weight: 0.2
 worth: 105
 heat: 2
-speed: -0.2
 power: 1
+speed: -0.2
 where from: The Pale Wren's gunnery console.
 
 What it is:

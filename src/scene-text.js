@@ -31,6 +31,7 @@ function splitPeople(words) {
 import { systemIdOf } from "../public/systems-text.js";
 import { REQUEST_STATES } from "./request-hook.js";
 import { healthHolds, readHealthAsk, readHealthEffect } from "./story-health.js";
+import { readRigAsk, readRigEffect, rigHolds } from "./story-rig.js";
 
 // The place's systems, in conditions and effects: "power off in The Docks", "alarm ringing at haven", "door locked
 // The Hook". What each one's state can be, asked about and made so.
@@ -309,6 +310,15 @@ export function parseCondition(text) {
         term.id = words;
         break;
       }
+      case "rig":
+      case "computer":
+      case "recoded": {
+        // The player's rig, what they've done on a computer, and a door they recoded (src/story-rig.js).
+        const read = readRigAsk(term.kind, rest);
+        if (read.problem) problems.push(`${read.problem}: "${raw.trim()}"`);
+        else Object.assign(term, read);
+        break;
+      }
       case "hurt":
       case "badly":
       case "ill":
@@ -412,6 +422,9 @@ function termHolds(game, term, helpers) {
     case "brig": result = brigHolds(game, term.who); break;
     // "health" is the player's own health, as a number; "body" is how someone is.
     case "body": result = healthHolds(game, term); break;
+    case "rig":
+    case "computer":
+    case "recoded": result = rigHolds(game, term); break;
     case "short": result = shortHolds(game, term.id); break;
     case "down": {
       // Lying where they fell, not yet in the medbay or on the way: game.down, kept by src/medbay.js.
@@ -575,6 +588,12 @@ export function parseEffect(text) {
     case "dies":
       // Someone's body, as the story changes it (src/story-health.js): wounded, healed, or dead.
       return readHealthEffect(verb, words.slice(1), after);
+    case "rig":
+    case "weak":
+    case "seal":
+    case "unseal":
+      // The player's rig, a way into a computer, a computer sealed or opened again (src/story-rig.js).
+      return readRigEffect(verb, words.slice(1), after, line);
     case "release": {
       // Someone let out of the brig before their days are done: * release tarrow: reason.
       const who = words.slice(1).join(" ");

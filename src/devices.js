@@ -20,6 +20,7 @@ import { peopleAboard } from "./life.js";
 import { mapFor } from "./walk.js";
 import { busWeakPoints, learnWeak } from "./weak-points.js";
 import { mayWorkDoor, partOpen, partSealedWords } from "./sealed.js";
+import { noteCamera, noteRecoded, noteStruck } from "./story-rig.js";
 
 // The looks with no screen of their own: a door's panel, a junction box's service menu, a camera's feed.
 export const PANEL_LOOKS = ["door", "service", "camera"];
@@ -338,6 +339,7 @@ export function deviceCommand(game, session, content, id, { act, finish }) {
       game.passwords[content.id] = true;
       say(session, `You give the door a new code. Nobody else can open it now, guards or anyone, until you do.`);
       notice(lines);
+      noteRecoded(game, place, room, plainRoom(place, room));
       return act(game, session, { noise: NOISE.recode }) ?? { over: false };
     }
   }
@@ -385,6 +387,7 @@ export function deviceCommand(game, session, content, id, { act, finish }) {
       if (cameraLooped(game, place, part.id)) throw new Error("It's looping already.");
       const people = peopleInRoom(game, place, part.room);
       loopCamera(game, place, part.id, LOOP_MINUTES, people);
+      noteCamera(game, place, "looped");
       say(session, people.length ? `You loop the last minute, with ${listed(people)} in it, standing still for ever. Whoever watches it will notice.` : `The camera shows an empty ${lowerFirst(String(plainRoom(place, part.room)).replace(/^The /, ""))} on repeat for ${LOOP_MINUTES} minutes.`, people.length ? "warn" : "good");
       return act(game, session, { noise: people.length ? NOISE.loopSeen : 0, minutes: 1 }) ?? { over: false };
     }
@@ -393,6 +396,7 @@ export function deviceCommand(game, session, content, id, { act, finish }) {
       endLoop(game, place, part.id);
       const lines = switchPart(game, place, part.id, false, { by: byOf(session) });
       say(session, "The picture goes to snow. Whoever watches it sees that at once.", "warn");
+      noteCamera(game, place, "blinded");
       notice(lines);
       return act(game, session, { noise: NOISE.blind, minutes: 1 }) ?? { over: false };
     }
@@ -414,6 +418,7 @@ export function deviceCommand(game, session, content, id, { act, finish }) {
       if (!entry) throw new Error("That line isn't in the log any more.");
       game.ship.log.splice(i, 1);
       game.rig.struck = (game.rig.struck ?? 0) + 1;
+      noteStruck(game);
       say(session, `You strike "${entry.text}" from the ship's log.`, "warn");
       // On the captain's own system it's done under the captain's name, and the first officer reads the log.
       const first = holderKey(game, SHIP, "first_officer");

@@ -710,3 +710,42 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
   logon; the plot table over the network with the map's marks and the Crew folder sealed; the plot table reached from
   Voss's terminal with the crew file open and the line on its first screen; the Armory's panel from the security desk,
   locked from there; the folded rig's map at 810.
+
+## Step 10, the story knows (built 2026-11-13, untried)
+
+- Asked as "Yed, step 10". The plan page's step 10: scenes and people's asks that can ask what's on the rig, give
+  parts and programs, react to what the player did (a door recoded, a camera looped, a log line struck, a system got
+  into over the network), plant a weak point or seal a system; the checker checks it all; the Story board gets pages
+  for programs, parts and the new computers.
+- **The words** (`src/story-rig.js`, read through `src/scene-text.js`): conditions `rig program|loaded|part|link|
+  tool`, `computer <id> in|hacked|network|trusted|sealed|password`, `recoded <room> [at <place>]`; effects `* rig
+  program|part|tool`, `* weak <computer> password|service|session [hours]`, `* seal`, `* unseal`, played through
+  `storyCommand` so scenes, talks and asks share them. The checker names an unknown program, part, tool, link,
+  computer or state, a session's hours on anything but a session, and a missing reason.
+- **The record:** `noteGotIn` (from `openSession` past a logon, and `gotIn`) keeps `in`, `hacked`, `network`,
+  `trusted` on `game.computers[id]` and puts `got_into_<id>` on the record for a written computer that isn't
+  the player's; the devices add `recoded_<place>_<room>`, `looped_a_camera_at_<place>`,
+  `blinded_a_camera_at_<place>` and `struck_from_the_ships_log`. `factsLeft` knows them all (`hackFacts`), and
+  the facts the written computers' programs leave (`computerFacts`), so a scene can wait on `navigation_locked`.
+- **The seal at run time:** `game.sealed[id]` beats the file (`sealedNow`). The sealed doors' rows moved from
+  `controlsFor` to `controlsView` (each control keeps its computer's `ref`; `doorBlocked` with the game), which
+  also stops the Ship menu, with no ref, from working a sealed door, as it could since step 9.
+- **Talks and asks** can switch a system and hand over a password now (`playWorldStep` in `src/talks.js`, and
+  `playSteps` in `src/requests.js`); a systems line in a talk used to stop it with an error.
+- **Content (my drafts, marked):** Sorel's talk: "Ask him about your rig" (a cable jack or a short radio, and MAPPER
+  if the rig hasn't got it) and "Ask whether anyone noticed the ship's log" after a struck line;
+  `request_navigation_locked`: the helm officer asks when the navigation's been locked from its core, and a yes
+  unlocks it.
+- **The Story board:** Programs and Rig parts pages (`PROGRAM`, `RIG_PART` in `public/world-text.js`; the board
+  reads each folder by the spec, saves only what the game's own parser takes, and reads the folder again at once);
+  each page has its about box (the spec's lines, kinds and places from lists), what it does or is, its numbers
+  (read-only), a board's sockets, where a part comes from and what making it takes, and the computers a program is
+  copied off and the market that sells it. A computer's page says hardened or sealed and has Weak points and Trusts
+  boxes. Two part files had two lines reordered to read back exactly. The computer page's Logs box was a story clock
+  box, whose buttons need a story; it's a plain box now.
+- **Tests:** `test/story-rig.test.js` (7: the words and the checker, the rig asked and given, a way in planted and a
+  computer sealed and opened, the record of deeds, Sorel's MAPPER and the helm officer's ask, the Ship menu and the
+  Armory, the board's pages and a save into a copy); `test/board.test.js` for the two kinds; 1,170 in all.
+- **Screens** on a test copy at 1400 and 810 wide: the board's picker, KNOCK and GHOST with its "found on", the about
+  editor for a program, the yard board's sockets, the optical reader's recipe, the Armory panel's Trusts box.
+- **All ten steps of the plan are built.**

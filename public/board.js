@@ -26,8 +26,8 @@ const $ = (id) => document.getElementById(id);
 const spaced = (id) => String(id ?? "").replaceAll("_", " ");
 const fill = (parent, ...children) => { for (const child of children.flat()) if (child !== null && child !== undefined && child !== false) parent.append(child); return parent; };
 const STOP = new Set("if the they she he it you someone anyone a an and or of is are that this their them its in on at for as has have then when there".split(" "));
-const KIND_WORDS = { story: "The story", place: "The place", person: "The person", species: "The species", enemy: "The enemy", item: "The item", faction: "The faction", perk: "The perk", computer: "The computer", systems: "The systems", logistics: "The logistics", command: "The chain of command", request: "The request" };
-const FOLDERS = { story: "stories", person: "characters", place: "places", species: "species", enemy: "enemies", item: "items", faction: "factions", perk: "perks", computer: "computers", systems: "systems", logistics: "logistics", command: "command", health: "health", request: "scenes" };
+const KIND_WORDS = { story: "The story", place: "The place", person: "The person", species: "The species", enemy: "The enemy", item: "The item", faction: "The faction", perk: "The perk", computer: "The computer", program: "The program", part: "The part", systems: "The systems", logistics: "The logistics", command: "The chain of command", request: "The request" };
+const FOLDERS = { story: "stories", person: "characters", place: "places", species: "species", enemy: "enemies", item: "items", faction: "factions", perk: "perks", computer: "computers", program: "programs", part: "rig-parts", systems: "systems", logistics: "logistics", command: "command", health: "health", request: "scenes" };
 
 // A name made from words, for an ending or a fact, so nobody has to type one.
 export function nameFrom(text) {
@@ -107,7 +107,7 @@ function boardNode() {
     el("header", { class: "board-head" },
       el("h2", {}, "Story board"),
       el("select", { id: "board-what", title: "Stories, places, people or species", onchange: (event) => changeKind(event.target.value) },
-        ...[["story", "Stories"], ["place", "Places"], ["person", "People"], ["species", "Species"], ["enemy", "Enemies"], ["item", "Items"], ["faction", "Factions"], ["perk", "Perks"], ["computer", "Computers"], ["systems", "Systems"], ["logistics", "Logistics"], ["command", "Command"], ["request", "Requests"], ["health", "Health"]].map(([kind, label]) => el("option", { value: kind }, label))),
+        ...[["story", "Stories"], ["place", "Places"], ["person", "People"], ["species", "Species"], ["enemy", "Enemies"], ["item", "Items"], ["faction", "Factions"], ["perk", "Perks"], ["computer", "Computers"], ["program", "Programs"], ["part", "Rig parts"], ["systems", "Systems"], ["logistics", "Logistics"], ["command", "Command"], ["request", "Requests"], ["health", "Health"]].map(([kind, label]) => el("option", { value: kind }, label))),
       el("select", { id: "board-pick", title: "Which one", onchange: (event) => load(state.kind, event.target.value) }),
       el("nav", { class: "board-tabs", role: "tablist" },
         ...[["notes", "The story"], ["scene", "The written scene"], ["file", "As the file"]].map(([tab, label]) => el("button", { class: "board-tab", role: "tab", "data-tab": tab, "aria-selected": "false", onclick: () => showTab(tab) }, label))),
@@ -382,22 +382,58 @@ function computerGraph() {
   const list = [], ws = [];
   const add = (node) => { list.push(node); return node.id; };
   const where = [P.room, P.thing].filter(Boolean).join(", ") || (P.door ? `the door to ${P.door}` : "no room in particular");
-  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${L.className ?? P.class ?? "Crew terminal"}. ${P.yours ? "The player's own: no hack, no trace. " : ""}${P.owner ? `Belongs to ${spaced(P.owner)}. ` : ""}At ${L.place?.name ?? P.place ?? "no place"}: ${where}. Login ${P.user ?? (P.yours ? "captain" : "admin")}${P.password ? ", with a password the story can hand out" : ""}.`, label: "About this computer" });
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${L.className ?? P.class ?? "Crew terminal"}. ${P.yours ? "The player's own: no hack, no trace. " : ""}${P.hardened ? "Hardened: no breaker works on it from the front. " : ""}${P.sealed ? "Sealed: it takes nothing at its own keyboard. " : ""}${P.owner ? `Belongs to ${spaced(P.owner)}. ` : ""}At ${L.place?.name ?? P.place ?? "no place"}: ${where}. Login ${P.user ?? (P.yours ? "captain" : "admin")}${P.password ? ", with a password the story can hand out" : ""}.`, label: "About this computer" });
   add({ id: "desc", kind: "lead", col: 1, name: "What the player sees", text: P.desc ?? "", label: "What they see when they sit down", bind: { path: "desc" } });
   (P.files ?? []).forEach((one, i) => { add({ id: `file${i}`, kind: "beat", col: 2, name: one.name, text: one.desc ?? "", label: "A file", bind: { entry: "files", i } }); ws.push({ from: "desc", to: `file${i}` }); });
   (P.mail ?? []).forEach((one, i) => { add({ id: `mail${i}`, kind: "fact", col: 2, name: one.name, text: one.desc ?? "", label: "A letter", bind: { entry: "mail", i } }); ws.push({ from: "desc", to: `mail${i}` }); });
-  add({ id: "logs", kind: "clock", col: 2, name: "Logs", text: (P.logs ?? []).join("\n") || "none", label: "The logs: berths, prices, people, news, or a line of your own", bind: { items: "logs" } });
+  add({ id: "logs", kind: "beat", col: 2, name: "Logs", text: (P.logs ?? []).join("\n") || "none", label: "The logs: berths, prices, people, news, or a line of your own", bind: { items: "logs" } });
   ws.push({ from: "desc", to: "logs" });
   (P.programs ?? []).forEach((one, i) => {
     const info = L.programs?.[i];
     add({ id: `program${i}`, kind: "route", col: 3, name: one.name, text: `${info?.text ?? one.desc ?? ""}${info?.effects ? `\n-> ${info.effects} ${info.effects === 1 ? "effect" : "effects"}` : ""}${info?.condition ? `\n? ${info.condition}` : ""}`, label: "A program", bind: { entry: "programs", i } });
     ws.push({ from: "desc", to: `program${i}` });
   });
+  // Its ways in, written somewhere else, and the machines it lets in (steps 8 and 9 of the hacking rework).
+  if (P.hardened || (P.weakPoints ?? []).length) { add({ id: "weak", kind: "beat", col: 3, name: "Weak points", text: (P.weakPoints ?? []).join("\n") || "None written: the game makes one up.", label: "Its ways in, written somewhere else", bind: { items: "weakPoints" } }); ws.push({ from: "about", to: "weak" }); }
+  if (P.sealed || (P.trusts ?? []).length) { add({ id: "trusts", kind: "route", col: 3, name: "Trusts", text: (P.trusts ?? []).join("\n") || "Nothing: nothing can get in.", label: "The machines it lets in, and what each may do", bind: { items: "trusts" } }); ws.push({ from: "about", to: "trusts" }); }
   for (const one of L.network ?? []) { add(linkNode(`link_computer_${one.id}`, "computer", one.name, `${one.className}. ${one.about}`, "On the network")); ws.push({ from: "desc", to: `link_computer_${one.id}` }); }
   for (const one of L.reachedFrom ?? []) if (!list.some((node) => node.id === `link_computer_${one.id}`)) { add(linkNode(`link_computer_${one.id}`, "computer", one.name, "Reaches this one over its network.", "Reached from")); ws.push({ from: `link_computer_${one.id}`, to: "about" }); }
   if (L.place) { add(linkNode(`link_place_${L.place.id}`, "place", L.place.name, "Where it is.", "The place")); ws.push({ from: `link_place_${L.place.id}`, to: "about" }); }
   return { list, ws };
 }
+// A program for the rig: what it is and what writing it takes, what it does, its numbers when it runs, and the
+// computers it's found on and the place that sells it.
+function programGraph() {
+  const P = state.item, L = state.links;
+  const list = [], ws = [];
+  const add = (node) => { list.push(node); return node.id; };
+  const flags = [P.builtIn && "built into every rig", P.everyRig && "on every rig from the start", P.once && "runs once a session"].filter(Boolean);
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${L.kindName || "A program"}. Hacking ${P.hacking ?? 0} to write it${P.written ? `, in ${P.written} at the bench` : ""}. ${P.builtIn ? "It takes no memory." : `${P.size ?? 1} ${P.size === 1 ? "block" : "blocks"} of memory.`}${flags.length ? ` ${flags.join(", ").replace(/^./, (c) => c.toUpperCase())}.` : ""}`, label: "About this program" });
+  add({ id: "desc", kind: "lead", col: 1, name: "What it does", text: P.what ?? "", label: "What the player reads", bind: { path: "what" } });
+  add({ id: "numbers", kind: "route", col: 2, name: "When it runs", text: [`power ${P.power ?? "none"}`, `noise ${P.noise ?? 0}`, `${P.minutes ?? 1} ${P.minutes === 1 ? "minute" : "minutes"}`].join("\n"), label: "Its power against a computer's class, the noise the watcher hears, the minutes it takes", readOnly: "Change them in About this program, the first box." });
+  ws.push({ from: "desc", to: "numbers" });
+  for (const one of L.foundOn ?? []) { add(linkNode(`link_computer_${one.id}`, "computer", one.name, one.known ? "It can be copied off this computer." : "There's no computer with this id.", "Found on")); ws.push({ from: `link_computer_${one.id}`, to: "desc" }); }
+  if (L.soldAt) { add(linkNode(`link_place_${L.soldAt.id}`, "place", L.soldAt.name, `Sold here, for ${P.price ?? "no price yet"} credits.`, "Sold at")); ws.push({ from: `link_place_${L.soldAt.id}`, to: "desc" }); }
+  return { list, ws };
+}
+// A part of a rig: what it is, what it adds to the build, a board's sockets, where it comes from and what making it at
+// the bench takes.
+function partGraph() {
+  const P = state.item, L = state.links;
+  const list = [], ws = [];
+  const add = (node) => { list.push(node); return node.id; };
+  const numbers = ["memory", "cooling", "cools", "echo", "heat", "power", "quiet", "speed"].filter((key) => P[key] !== undefined && P[key] !== null).map((key) => `${key} ${P[key]}`);
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${L.kindName || "A part"}, grade ${P.grade ?? 1}, ${P.weight ?? 0} kg, worth ${P.worth ?? "its grade in"} credits.${L.reaches ? ` It reaches a computer ${L.reaches}.` : ""}`, label: "About this part" });
+  add({ id: "desc", kind: "lead", col: 1, name: "What it is", text: P.what ?? "", label: "What the player reads", bind: { path: "what" } });
+  add({ id: "numbers", kind: "route", col: 2, name: "What it adds", text: numbers.join("\n") || "Nothing to the numbers.", label: "What it adds to the rig's build", readOnly: "Change them in About this part, the first box." });
+  ws.push({ from: "desc", to: "numbers" });
+  if (P.sockets) { add({ id: "sockets", kind: "beat", col: 2, name: "Sockets", text: (L.sockets ?? []).map((one) => `${one.key} at ${one.col} ${one.row}${one.gate ? `, from Hacking ${one.gate}` : ""}`).join("\n") || P.sockets, label: "A board's sockets: like core at 1 1, extra at 5 1 from Hacking 7", bind: { path: "sockets" } }); ws.push({ from: "desc", to: "sockets" }); }
+  add({ id: "from", kind: "beat", col: 3, name: "Where it comes from", text: P.from ?? "", label: "Where the player can come by one", bind: { path: "from" } });
+  ws.push({ from: "desc", to: "from" });
+  if (P.made) { add({ id: "made", kind: "route", col: 3, name: "Made at the bench", text: L.made ? `${L.made.needs.join(", ")}\nEngineering ${L.made.engineering}, ${L.made.hours} ${L.made.hours === 1 ? "hour" : "hours"}${L.made.tool ? `\nwith the ${L.made.tool.toLowerCase()}` : ""}` : P.made, label: "What making it takes: like 2 scrap, Engineering 1, 2 hours, with the soldering kit", bind: { path: "made" } }); ws.push({ from: "desc", to: "made" }); }
+  return { list, ws };
+}
+
 // A place's systems: who keeps it running, each system with its parts, each computer with arrows to what it runs,
 // and the rooms with what's in each.
 function systemsGraph() {
@@ -543,7 +579,7 @@ function sceneGraph() {
 }
 
 function build() {
-  const builders = { story: notesGraph, place: placeGraph, person: personGraph, species: speciesGraph, enemy: enemyGraph, item: itemGraph, faction: factionGraph, perk: perkGraph, computer: computerGraph, systems: systemsGraph, logistics: logisticsGraph, command: commandGraph, request: requestGraph, health: healthGraph };
+  const builders = { story: notesGraph, place: placeGraph, person: personGraph, species: speciesGraph, enemy: enemyGraph, item: itemGraph, faction: factionGraph, perk: perkGraph, computer: computerGraph, program: programGraph, part: partGraph, systems: systemsGraph, logistics: logisticsGraph, command: commandGraph, request: requestGraph, health: healthGraph };
   const graph = state.tab === "scene" ? sceneGraph() : builders[state.kind]();
   nodes = graph.list;
   wires = graph.ws;
@@ -1084,6 +1120,8 @@ function inspect() {
   if (state.tab === "scene") return inspectPart(inspector, node);
   if (state.kind === "request") return inspectRequestNode(inspector, node);
   if (node.kind === "link") return inspectLink(inspector, node);
+  // A box that only shows what's changed elsewhere.
+  if (node.readOnly) return fill(inspector, h2(node.label), el("h3", {}, node.name), el("div", { class: "quote" }, node.text), hint(node.readOnly));
   if (node.lines) return fill(inspector, h2("Written lines"), hint(node.text), state.written ? row(button("Open the written lines", () => showTab("scene"))) : hint("A file called talk_<id>.txt in world/scenes gives them written lines; the how-to there explains it."));
   if (node.kind === "about") return state.kind === "story" ? inspectAbout(inspector) : state.kind === "systems" ? inspectSystemsAbout(inspector) : state.kind === "logistics" ? inspectLogisticsAbout(inspector) : state.kind === "command" ? inspectCommandAbout(inspector) : state.kind === "health" ? inspectHealthAbout(inspector) : inspectWorldAbout(inspector);
   if (node.bind?.post !== undefined) return inspectPostLine(inspector, node);
@@ -1126,6 +1164,8 @@ function inspectNothing(inspector) {
                       : state.kind === "health" ? "A place's medbay as a board: the lines at the top that say where it is and how it works, each treatment and each kind of mending, and who starts the game hurt. Click any box to read it and change it."
                       : state.kind === "request" && state.item?.overview ? "Every kind of request as a box, in a column for the lives it's for, with who asks, what's wanted and how long they give. An order is in its own colour. Click one to open it."
                       : state.kind === "request" ? "A request as a board: its lines on top, which say who it's for, when it comes up, who asks and what's wanted; what they ask, with an arrow for each answer the player can give; and how it ends, done, failed or no longer needed. Click a line or a part to read it and change it. Every part shows the file's parts the way a written scene's are."
+                      : state.kind === "program" ? "A program for the rig as a board: what writing it takes and what memory it needs, what it does, its numbers when it runs, and the computers it can be copied off and the market that sells it, each a box that opens. Its numbers are in the box on the left."
+                      : state.kind === "part" ? "A part of a rig as a board: what it is and what it adds to the build, a board's sockets, where it comes from, and what making it at the bench takes. Its numbers are in the box on the left."
                       : state.kind === "command" ? "The chain of command as a board: each post with who holds it when a game begins, and an arrow from whoever chooses it; each job with who does it, and an arrow from the post that heads it; and the spare hands. Click any box to read it and change it."
                       : "The computer as a board: what the player sees when they sit down, its files, letters, logs and programs, and the computers it reaches over its network. Click any box to read all of it and change it; its class, place and login are in the box on the left."),
     el("div", { class: "legend" }, ...(state.tab === "scene" ? [["beat", "parts"], ["ending", "checks and fights"], ["end", "ends"], ["clock", "missing"]]
@@ -1240,7 +1280,8 @@ function inspectWorldAbout(inspector) {
     : path === "stat" ? lists.attributes.map((one) => ({ id: one, name: one })) : path === "skill" ? lists.skills.map((one) => ({ id: one, name: one }))
       : path === "type" ? lists.itemTypes.map((one) => ({ id: one, name: one })) : path === "art" ? lists.arts.map((one) => ({ id: one, name: one })) : path === "motive" ? lists.motives.map((one) => ({ id: one, name: one }))
         : path === "requires" ? lists.perks.filter((one) => one.id !== state.id) : path === "ability" ? lists.abilities
-          : path === "class" ? lists.classes : path === "place" ? lists.places : path === "flavor" ? (lists.flavors ?? []).map((one) => ({ id: one, name: one })) : null);
+          : path === "class" ? lists.classes : path === "place" ? lists.places : path === "flavor" ? (lists.flavors ?? []).map((one) => ({ id: one, name: one }))
+            : path === "kind" ? (state.kind === "program" ? lists.programKinds : state.kind === "part" ? lists.partKinds : null) : path === "soldAt" ? lists.places : path === "reaches" ? lists.reaches : null);
   const title = textBox("edit-title", item[spec.title]);
   for (const field of spec.header) {
     const value = get(item, field.path);

@@ -15,7 +15,7 @@ import { WORLD_COMPUTERS } from "./world.js";
 import { LOCATIONS } from "./data.js";
 import { addChecker } from "./room-hooks.js";
 import { KNOWN_SYSTEMS, systemIdOf } from "../public/systems-text.js";
-import { systemsOf, tellSealed } from "./systems.js";
+import { tellSealed } from "./systems.js";
 import { linkedTo, networkOf } from "./network.js";
 
 export const TRUST_WORDS = ["everything", "reading", "programs", "systems", "the door", "the crew file"];
@@ -69,6 +69,10 @@ export function rightsWords(rights) {
   return words.length < 2 ? words.join("") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`;
 }
 
+// Whether a computer is sealed now: a scene can seal or open one whatever its file says (* seal, * unseal).
+const sealedId = (game, id) => Boolean(game?.sealed?.[id] ?? WORLD_COMPUTERS[id]?.sealed);
+export const sealedNow = (game, content) => Boolean(content && (game?.sealed?.[content.id] ?? content.sealed));
+
 // A computer's content as a session let in by trust sees it: only what the trust allows.
 export function withRights(content, session) {
   const rights = session?.rights;
@@ -104,21 +108,21 @@ const panelOf = (place, room) => Object.entries(WORLD_COMPUTERS).find(([, c]) =>
 // The node a computer's ref is on: a written computer, a console, a thing.
 const nodeOfRef = (ref) => (ref.written ? (WORLD_COMPUTERS[ref.written]?.door ? `door:${WORLD_COMPUTERS[ref.written].door}` : `c:${ref.written}`) : ref.console ? `part:${ref.console}` : ref.thing ? `t:${ref.thing}` : null);
 tellSealed({
-  // The doors a computer may not work, because their panel is sealed and doesn't trust it.
-  without(place, ref) {
-    const model = systemsOf(place);
-    if (!model) return [];
-    return Object.keys(model.doors).filter((room) => {
-      const panel = panelOf(place, room);
-      if (!panel?.[1].sealed) return false;
-      const node = nodeOfRef(ref);
-      return !trustsOf(panel[1].trusts).some((one) => trustedNode(place, one.from)?.id === node);
-    });
-  },
-  panelSealed: (place, room) => Boolean(panelOf(place, room)?.[1].sealed),
-  panelWords(place, room) {
+  // Whether a computer (by its ref, or none for the Ship menu) may not work a door, because the door's panel is sealed
+  // and doesn't trust it.
+  blocked(game, place, room, ref) {
     const panel = panelOf(place, room);
-    if (!panel?.[1].sealed) return null;
+    if (!panel || !sealedId(game, panel[0])) return false;
+    const node = ref ? nodeOfRef(ref) : null;
+    return !node || !trustsOf(panel[1].trusts).some((one) => trustedNode(place, one.from)?.id === node);
+  },
+  panelSealed: (game, place, room) => {
+    const panel = panelOf(place, room);
+    return Boolean(panel && sealedId(game, panel[0]));
+  },
+  panelWords(game, place, room) {
+    const panel = panelOf(place, room);
+    if (!panel || !sealedId(game, panel[0])) return null;
     return `The panel is sealed and answers only to ${trustedNames(place, { place, trusts: trustsOf(panel[1].trusts) }) || "nothing at all"}.`;
   },
 });
@@ -131,11 +135,11 @@ export function writtenOfNode(place, node) {
   if (node.kind === "door") return panelOf(place, node.room)?.[0] ?? null;
   return null;
 }
-// For the map: whether a node is sealed, and whether the node you're on is a machine it trusts.
-export function nodeSeal(place, node, here) {
+// For the map: whether a node is sealed now, and whether the node you're on is a machine it trusts.
+export function nodeSeal(game, place, node, here) {
   const id = writtenOfNode(place, node);
   const c = id ? WORLD_COMPUTERS[id] : null;
-  if (!c?.sealed) return { sealed: false, trusted: false, answers: null };
+  if (!c || !sealedId(game, id)) return { sealed: false, trusted: false, answers: null };
   const content = { place, trusts: trustsOf(c.trusts) };
   return { sealed: true, trusted: Boolean(trustLine(place, content, here)), answers: trustedNames(place, content) };
 }

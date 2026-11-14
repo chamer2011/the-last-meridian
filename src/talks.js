@@ -10,8 +10,8 @@ import { isCaptain, toOutsider } from "./role.js";
 import { HELPERS, StoryError, choiceLine, loadScenes, matchChoice, openChoices, pageOf, partText, ruleThatHolds, withStandIns } from "./scenes.js";
 import { newTurnLimits, runTool } from "./tools.js";
 import { seedFrom, talkHeard, walkView } from "./walk.js";
-import { ROOM_TALK } from "./world.js";
-import { systemsTalk } from "./systems.js";
+import { ROOM_TALK, WORLD_COMPUTERS } from "./world.js";
+import { applySystemsEffect, systemsTalk } from "./systems.js";
 import { grudgeLine, storyCommand } from "./command.js";
 import { answerOf, answerRequest, requestFor, requestScene, requestSceneOf } from "./requests.js";
 import { notePut } from "./puts.js";
@@ -24,6 +24,19 @@ const lowerFirst = (text) => (text ? text[0].toLowerCase() + text.slice(1) : tex
 const fill = (text, values) => String(text).replace(/\{(\w+)\}/g, (_, key) => values[key] ?? "");
 // What someone says starts with a capital, even when it starts with what they're doing: "Clearing tables, if you must know."
 const upperFirst = (text) => (text ? text[0].toUpperCase() + text.slice(1) : text);
+
+
+// What a talk or a person's ask changes besides the game's actions: a system switched (* door locked The Armory,
+// * navigation on), or a password the player now knows. Lines for the story, or null when the step is neither.
+function playWorldStep(game, step) {
+  if (step.systems) return applySystemsEffect(game, step.systems, { by: "story" });
+  if (step.password) {
+    game.passwords ??= {};
+    game.passwords[step.password] = step.word;
+    return [`[COMPUTER] You know the password to ${WORLD_COMPUTERS[step.password]?.name ?? step.password} now.`];
+  }
+  return null;
+}
 
 // ---- Stock lines, for anyone without a conversation of their own ---------------
 
@@ -137,6 +150,12 @@ function enterTalkPart(game, talk, scene, id, emit, hops = 0) {
     // A request started now, or a kind turned off or on.
     if (step.request) {
       for (const notice of storyRequest(game, step)) emit({ type: "notice", text: notice });
+      continue;
+    }
+    // A system switched, or a password told (step 10 of the hacking rework): as a scene plays them.
+    const world = playWorldStep(game, step);
+    if (world) {
+      for (const notice of world) emit({ type: "notice", text: notice });
       continue;
     }
     const outcome = runTool(game, tool, input, turn);

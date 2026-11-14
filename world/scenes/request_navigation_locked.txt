@@ -1,0 +1,38 @@
+# The navigation, locked
+// Draft by the AI (Claude), 2026-11-13, for step 10 of the hacking rework, not yet edited by the owner. When the
+// navigation has been locked from its core (a program on the navigation core, reached through the comms relay), the
+// helm officer asks the captain to have it unlocked. A yes does it there and then. It reacts to what the player did
+// on a computer: the core's program leaves the fact navigation_locked.
+for: the captain
+when: flag navigation_locked
+asks: the helm officer
+needs: your word
+by: 1 day
+gone when: not flag navigation_locked
+
+== ask
+@{asker}: "Captain, the navigation core's locked. I'm plotting every jump by hand, off the old charts, and I'd rather not be. Do you want it open again?"
+> Unlock it -> yes
+> Leave it locked -> no
+> Not now -> later
+
+== yes
+@{asker}: "Thank you. I'll have it opened through the relay."
+* navigation on at meridian
+* unflag navigation_locked
+
+== no
+@{asker}: "Then I'll plot by hand. Slowly."
+
+== later
+@{asker}: "I'll keep plotting by hand till you say."
+
+== done
+@{asker}: "The line's back on the glass. Thank you, Captain."
+* xp 5: The navigation, unlocked
+
+== failed
+@{asker}: "Still plotting by hand, Captain."
+
+== gone
+@{asker}: "Someone's unlocked the core. That's better."

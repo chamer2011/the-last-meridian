@@ -20,6 +20,9 @@ import { atPost, mapFor, roomsOf, seedFrom, walkCommand } from "./walk.js";
 import { COMMAND_FILE_PROBLEMS, ROOM_TALK, WORLD_CHARACTERS, WORLD_COMMAND, WORLD_LIFE } from "./world.js";
 import { BODIES, SPARE, THE_CHAIR, readHolderLine, readJobLine, readPostLine, readWorkersLine, slugOf } from "../public/command-text.js";
 import { storyHealth } from "./story-health.js";
+import { storyRig } from "./story-rig.js";
+import { giveRigPart, loadIfRoom } from "./rig.js";
+import { learnWeak } from "./weak-points.js";
 
 // The player, when they hold a post.
 export const YOU = "you";
@@ -1428,6 +1431,8 @@ export function loyaltyFor(game, words, place = SHIP_PLACE) {
 export function storyCommand(game, step, place = SHIP_PLACE) {
   // Someone's body, as the story changes it, anywhere: src/story-health.js.
   if (step.command === "wound" || step.command === "heal" || step.command === "dies") return storyHealth(game, step);
+  // The player's rig and what they know of computers, as the story changes them: src/story-rig.js.
+  if (["rig_program", "rig_part", "rig_tool", "weak", "seal", "unseal"].includes(step.command)) return storyRig(game, step, { giveRigPart, learnWeak, loadIfRoom });
   const notes = [];
   const model = commandOf(place);
   if (!model) return notes;

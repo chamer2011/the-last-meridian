@@ -187,6 +187,15 @@ Lines starting with * happen when the part begins, and the player sees each as a
     * mutiny give ground: The reason      (the ship's chain of command, for the scenes it plays: give ground,
                                           calmed, arrest, crushed, step down, refused, taken, released, join,
                                           stay out or warn; world/command/_how-to-write-command.txt says what each does)
+    * rig program mapper: The reason            (the player's rig, as the story gives to it: a program by its id in
+    * rig part short_radio worn: The reason      world/programs, put on the rig and loaded if there's room; a part by its
+    * rig tool soldering_kit: The reason         id in world/rig-parts, with the spares, new unless worn or broken comes
+                                                after it; a tool for the bench, from world/rig-parts/_tools.txt)
+    * weak meridian_ledger session 18:00-19:30: The reason   (the player learns a way into a computer: its
+                                                password, which lets them straight in, a service account (KNOCK gets in),
+                                                or a session it leaves open, with its hours (SHADOW rides it then))
+    * seal meridian_plot_table: The reason      (sealed, whatever its file says: it takes nothing at its own keyboard,
+    * unseal meridian_armory_panel: The reason   and only the machines its file trusts get in; unseal opens it again)
     * raw add_lore {"term": "The Rim", "kind": "place", "text": "What the player would know."}
 
 The last one does any of the game's actions, with the fields from src/tools.js. The same rules
@@ -268,6 +277,20 @@ and join several with "and":
                                      with a leg to stand on (one broken leg is a hobble; two aren't) and the
                                      blood to stand. can't walk for the opposite. A limb lost in a fight or to
                                      rot leaves a fact, tarrow_lost_a_limb, for flag to ask about.
+    rig program mapper               The program is on the player's rig. rig loaded for loaded now, rig part
+                                     with a part's id (fitted or spare), rig link and cable, clip, optic,
+                                     radio or navy (what the fitted link reaches by), rig tool for the bench.
+    computer meridian_ledger in      The player has been past that computer's logon, any way. hacked for broken
+                                     into (a breaker, or a way in found), network for reached over the network,
+                                     trusted for let in by a machine it trusts, sealed for sealed now, password
+                                     for its password known.
+    recoded The Armory               The door to that room has a code only the player knows, now. Also
+                                     recoded and a room at a place: recoded The Hook at haven.
+                                     What the player does on computers also leaves facts, for flag to ask
+                                     about: got_into_<a computer's id> (not their own), recoded_<place>_<room>,
+                                     looped_a_camera_at_<place>, blinded_a_camera_at_<place> and
+                                     struck_from_the_ships_log. A program in a computer's file that leaves a
+                                     fact with * flag (the navigation core's navigation_locked) counts too.
     mutiny brewing                   A mutiny's brewing aboard the Meridian. Also mutiny calm, grumbling,
                                      refusing orders and delegation (how far it's got), taken (the officers
                                      relieved the player of command, and they're crew now), can arrest (the

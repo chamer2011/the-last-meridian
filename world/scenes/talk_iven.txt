@@ -6,6 +6,8 @@
 > Anything on comms, Lieutenant? -> comms ? not seen comms
 > You look like you could use a break -> break ? not seen break
 > Ask what the signal sounds like to him -> signal ? not seen signal
+> Ask him about your rig -> rig ? not seen rig
+> Ask whether anyone noticed the ship's log -> struck ? flag struck_from_the_ships_log and not seen struck
 > Leave him to his board -> done
 
 == comms
@@ -13,6 +15,8 @@
 
 > You look like you could use a break -> break ? not seen break
 > Ask what the signal sounds like to him -> signal ? not seen signal
+> Ask him about your rig -> rig ? not seen rig
+> Ask whether anyone noticed the ship's log -> struck ? flag struck_from_the_ships_log and not seen struck
 > Leave him to his board -> done
 
 == break
@@ -20,6 +24,8 @@
 
 > Anything on comms, Lieutenant? -> comms ? not seen comms
 > Ask what the signal sounds like to him -> signal ? not seen signal
+> Ask him about your rig -> rig ? not seen rig
+> Ask whether anyone noticed the ship's log -> struck ? flag struck_from_the_ships_log and not seen struck
 > Leave him to his board -> done
 
 == signal
@@ -31,7 +37,36 @@ He takes the headset off, which he almost never does.
 
 > Anything on comms, Lieutenant? -> comms ? not seen comms
 > You look like you could use a break -> break ? not seen break
+> Ask him about your rig -> rig ? not seen rig
+> Ask whether anyone noticed the ship's log -> struck ? flag struck_from_the_ships_log and not seen struck
 > Leave him to his board -> done
 
 == done
 @Lieutenant Iven Sorel: "Copy." Both sides of the headset go back on, and he's gone somewhere you can't follow.
+
+// Added for the hacking rework's step 10, as the example its plan asks for: what Sorel makes of the captain's rig (by
+// the link fitted), MAPPER given if it isn't on the rig, and a line struck from the ship's log that's been noticed.
+// Draft by the AI (Claude), 2026-11-13, not yet edited by the owner.
+== rig
+? rig link radio -> rig_radio
+@Lieutenant Iven Sorel: "Your rig? Hand it here." He turns it over the way he'd turn over a radio he's known for years. "Yard board, plain case, a cable jack. It'll talk to a desk. It won't talk to much else."
+
+> Ask if he has anything for it -> rig_mapper ? not rig program mapper
+> Leave him to his board -> done
+
+== rig_radio
+@Lieutenant Iven Sorel: "You've a short radio in it." Something close to approval. "Then you can hear a camera from the next room. Mind you only listen."
+
+> Ask if he has anything for it -> rig_mapper ? not rig program mapper
+> Leave him to his board -> done
+
+== rig_mapper
+@Lieutenant Iven Sorel: "MAPPER. It lists what a computer can reach, and how hard each one is to get into." He copies it across without asking where it should go. "I wrote it for this board, years ago. Don't tell the commander where you got it."
+* rig program mapper: Lieutenant Sorel gave you his copy of MAPPER
+
+> Leave him to his board -> done
+
+== struck
+@Lieutenant Iven Sorel: "Someone struck a line from the ship's log." He doesn't look at you. "The commander reads every line at the watch change. She noticed. She hasn't said anything, which is worse."
+
+> Leave him to his board -> done

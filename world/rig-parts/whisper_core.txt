@@ -5,8 +5,8 @@ grade: 2
 weight: 0.1
 worth: 70
 heat: 0
-speed: -0.3
 quiet: 1
+speed: -0.3
 where from: Kessara's fence; the Saint Ilse's purser's office.
 
 What it is:

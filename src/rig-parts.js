@@ -178,6 +178,8 @@ export function rigPartsNow() {
   return cache;
 }
 export const rigPartById = (id) => rigPartsNow().byId[String(id ?? "")] ?? null;
+// Read the files again at the next look, as when the Story board has just saved one.
+export const forgetRigParts = () => { cache = null; };
 addChecker(() => [...rigPartsNow().problems, ...benchToolsNow().problems, ...recipeToolProblems()]);
 
 // ---- The bench's tools (step 5) -------------------------------------------------------------------------------------

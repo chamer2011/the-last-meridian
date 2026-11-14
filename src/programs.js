@@ -85,4 +85,6 @@ export function programsNow() {
   return cache;
 }
 export const programById = (id) => programsNow().byId[String(id ?? "")] ?? null;
+// Read the files again at the next look, as when the Story board has just saved one.
+export const forgetPrograms = () => { cache = null; };
 addChecker(() => programsNow().problems);

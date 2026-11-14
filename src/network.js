@@ -16,7 +16,7 @@ import { cameraContent, codeOf, reachWhy, serviceContent } from "./devices.js";
 import { systemsOf } from "./systems.js";
 import { addChecker } from "./room-hooks.js";
 import { hardenedAt, weakKnown } from "./weak-points.js";
-import { nodeSeal, sealedWords, trustLine } from "./sealed.js";
+import { nodeSeal, sealedNow, sealedWords, trustLine } from "./sealed.js";
 import { LOCATIONS } from "./data.js";
 import { mapFor } from "./walk.js";
 
@@ -182,7 +182,7 @@ export function hop(game, session, id, { act, finish, content: from = null }) {
   const content = nodeContent(game, session.place, node);
   if (!content) return { over: false, said: "There's nothing there to reach." };
   // A sealed one lets in only the machines it trusts (step 9): from anywhere else it refuses, and no time goes by.
-  if (content.sealed && !trustLine(session.place, content, here)) return { over: false, said: sealedWords(content) };
+  if (sealedNow(game, content) && !trustLine(session.place, content, here)) return { over: false, said: sealedWords(content) };
   // Heard where you leave; if that's the end of the session, that's where you stay.
   const out = act(game, session, { noise: HOP.noiseLeaving, minutes: HOP.minutes });
   if (out) return out;
@@ -216,7 +216,7 @@ export function networkView(game, session) {
     bands,
     // Sealed ones too, with whether the machine you're on is one they trust (src/sealed.js).
     nodes: Object.values(net.nodes).map((node) => {
-      const seal = nodeSeal(session.place, node, here);
+      const seal = nodeSeal(game, session.place, node, here);
       return { id: node.id, name: node.name, kind: node.kind, band: node.band, i: order[node.id], here: node.id === here, linked: near.has(node.id), visited: Boolean(game.computers?.[nodeContentId(session.place, node)]), hardened: hardOf(node), weak: weakOf(node), sealed: seal.sealed, trusted: seal.trusted, answers: seal.answers };
     }),
     links: net.links,

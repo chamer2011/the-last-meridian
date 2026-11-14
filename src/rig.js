@@ -40,6 +40,14 @@ function addPart(rig, id, { cond = "new", from = null } = {}) {
   rig.parts.push(item);
   return item;
 }
+// A program given (a scene's * rig program) is loaded if there's room for it. Returns whether it's loaded.
+export function loadIfRoom(game, p) {
+  if (!game.rig || !p) return false;
+  if (p.builtIn || game.rig.loaded.includes(p.id)) return true;
+  if (usedMemory(game.rig) + p.size > memoryOf(game)) return false;
+  game.rig.loaded.push(p.id);
+  return true;
+}
 // A part come by from a wreck, a dealer, the ship or a find: it goes with the rig's spare parts.
 export function giveRigPart(game, id, { cond = "new", from = null } = {}) {
   if (!game.rig || !rigPartById(id)) return null;

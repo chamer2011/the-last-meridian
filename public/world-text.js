@@ -184,7 +184,41 @@ export const COMPUTER = {
   ],
 };
 
-export const SPECS = { person: PERSON, place: PLACE, species: SPECIES_SPEC, enemy: ENEMY, item: ITEM, faction: FACTION, perk: PERK, computer: COMPUTER };
+// A program for the rig (world/programs/<id>.txt) and a part of one (world/rig-parts/<id>.txt), as the Story board
+// reads and writes them (step 10 of the hacking rework). The game reads them itself with src/programs.js and
+// src/rig-parts.js, which say what's wrong with one; these only keep the lines in their order.
+export const PROGRAM = {
+  kind: "program",
+  title: "name",
+  header: [
+    { path: "order", key: "order", type: "number" }, { path: "kind", key: "kind", type: "string" },
+    { path: "hacking", key: "hacking", type: "number" }, { path: "size", key: "size", type: "number" },
+    { path: "power", key: "power", type: "number" }, { path: "noise", key: "noise", type: "number" },
+    { path: "minutes", key: "minutes", type: "number" }, { path: "once", key: "once", type: "flag" },
+    { path: "builtIn", key: "built in", type: "flag" }, { path: "everyRig", key: "on every rig", type: "flag" },
+    { path: "written", key: "written in", type: "string" }, { path: "foundOn", key: "found on", type: "list" },
+    { path: "soldAt", key: "sold at", type: "string" }, { path: "price", key: "price", type: "number" },
+  ],
+  sections: [{ path: "what", phrase: "What it does", type: "text" }],
+};
+export const RIG_PART = {
+  kind: "part",
+  title: "name",
+  header: [
+    { path: "kind", key: "kind", type: "string" }, { path: "order", key: "order", type: "number" },
+    { path: "grade", key: "grade", type: "number" }, { path: "weight", key: "weight", type: "number" },
+    { path: "worth", key: "worth", type: "number" }, { path: "memory", key: "memory", type: "number" },
+    { path: "cooling", key: "cooling", type: "number" }, { path: "cools", key: "cools", type: "number" },
+    { path: "echo", key: "echo", type: "number" }, { path: "heat", key: "heat", type: "number" },
+    { path: "power", key: "power", type: "number" }, { path: "quiet", key: "quiet", type: "number" },
+    { path: "speed", key: "speed", type: "number" }, { path: "reaches", key: "reaches", type: "string" },
+    { path: "sockets", key: "sockets", type: "string" }, { path: "made", key: "made from", type: "string" },
+    { path: "from", key: "where from", type: "string" },
+  ],
+  sections: [{ path: "what", phrase: "What it is", type: "text" }],
+};
+
+export const SPECS = { person: PERSON, place: PLACE, species: SPECIES_SPEC, enemy: ENEMY, item: ITEM, faction: FACTION, perk: PERK, computer: COMPUTER, program: PROGRAM, part: RIG_PART };
 
 // ---- Reading one value ------------------------------------------------------------------------
 function readValue(type, text, problem) {

@@ -22,8 +22,9 @@ import { answerDoor, bringOver, mapFor, personWhere, roomOf } from "./walk.js";
 import { findCharacter, fullName } from "./campaign.js";
 import { heldUp } from "./quests.js";
 import { parseNarration } from "../public/story.js";
-import { computerProblems, enterComputer } from "./computers.js";
-import { applySystemsEffect, placesWithSystems, systemsProblems } from "./systems.js";
+import { computerFacts, computerProblems, enterComputer } from "./computers.js";
+import { hackFacts } from "./story-rig.js";
+import { applySystemsEffect, placesWithSystems, systemsOf, systemsProblems } from "./systems.js";
 import { logisticsProblems, placesWithLogistics } from "./logistics.js";
 import { healthFiles, healthProblems } from "./body.js";
 import { medbayProblems } from "./medbay.js";
@@ -848,7 +849,7 @@ export function allSceneProblems(dir = SCENES_DIR) {
 // Every fact something in the world can leave on the record: a story's notes name it, a scene sets it with * flag,
 // or a door sets it when the player goes through.
 export function factsLeft(scenes) {
-  const names = new Set([...Object.keys(FACT_LINES), ...clockFacts(), ...commandFacts(), ...deathFacts(), ...requestFacts(scenes)]);
+  const names = new Set([...Object.keys(FACT_LINES), ...clockFacts(), ...commandFacts(), ...deathFacts(), ...requestFacts(scenes), ...hackFacts((place) => Object.keys(systemsOf(place)?.doors ?? {})), ...computerFacts()]);
   for (const scene of Object.values(scenes)) for (const part of Object.values(scene.parts ?? {})) for (const step of part.do ?? []) if (step.set) names.add(step.set);
   const walk = (node) => {
     if (!node || typeof node !== "object") return;

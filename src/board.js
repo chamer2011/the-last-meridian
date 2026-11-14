@@ -33,7 +33,9 @@ import { HEALTH_DIR, WORLD_HEALTH, WOUNDS, reloadHealth } from "./world.js";
 import { PARTS, parseHealthText, parseWoundsText } from "../public/health-text.js";
 import { LOGISTICS_DIR, SYSTEMS_DEFAULTS, SYSTEMS_DIR, WORLD_LOGISTICS, WORLD_SYSTEMS, reloadLogistics, reloadSystems } from "./world.js";
 import { parseLogisticsText } from "../public/logistics-text.js";
-import { COMPUTER, ENEMY, FACTION, ITEM, PERK, PERSON, PLACE, SPECIES_SPEC, parseWorldText, writeWorldText } from "../public/world-text.js";
+import { COMPUTER, ENEMY, FACTION, ITEM, PERK, PERSON, PLACE, PROGRAM, RIG_PART, SPECIES_SPEC, parseWorldText, writeWorldText } from "../public/world-text.js";
+import { PROGRAMS_DIR, PROGRAM_KINDS, forgetPrograms, parseProgram, programsNow } from "./programs.js";
+import { PART_KINDS, REACHES, RIG_PARTS_DIR, benchToolById, forgetRigParts, parseRigPart, rigPartById, rigPartsNow } from "./rig-parts.js";
 
 const ID = /^[a-z][a-z0-9_]{1,60}$/;
 function checkId(id) {
@@ -234,9 +236,23 @@ const WORLD_KINDS = {
   faction: { dir: () => FACTIONS_DIR, spec: FACTION, all: WORLD_FACTIONS, folder: "factions", what: "faction" },
   perk: { dir: () => PERKS_DIR, spec: PERK, all: WORLD_PERKS, folder: "perks", what: "perk" },
   computer: { dir: () => COMPUTERS_DIR, spec: COMPUTER, all: WORLD_COMPUTERS, folder: "computers", what: "computer" },
+  // The rig's programs and parts (step 10 of the hacking rework): the game reads them itself, so the board reads
+  // their files as it shows them, by the specs in public/world-text.js.
+  program: { dir: () => PROGRAMS_DIR, spec: PROGRAM, get all() { return specTable(PROGRAMS_DIR, PROGRAM); }, folder: "programs", what: "program" },
+  part: { dir: () => RIG_PARTS_DIR, spec: RIG_PART, get all() { return specTable(RIG_PARTS_DIR, RIG_PART); }, folder: "rig-parts", what: "rig part" },
 };
+// Every file in a folder, read by a spec, by id.
+function specTable(dir, spec) {
+  let names = [];
+  try {
+    names = fs.readdirSync(dir).filter((name) => name.endsWith(".txt") && !name.startsWith("_"));
+  } catch {
+    names = [];
+  }
+  return Object.fromEntries(names.map((name) => [name.slice(0, -4), parseWorldText(fs.readFileSync(path.join(dir, name), "utf8"), spec, name.slice(0, -4)).value]));
+}
 const kindOf = (kind) => {
-  if (!WORLD_KINDS[kind]) throw new Error("The board knows stories, people, places, species, enemies, items, factions, perks, computers, systems, logistics, the chain of command and health.");
+  if (!WORLD_KINDS[kind]) throw new Error("The board knows stories, people, places, species, enemies, items, factions, perks, computers, programs, rig parts, systems, logistics, the chain of command and health.");
   return WORLD_KINDS[kind];
 };
 const talkIds = () => new Set(fs.existsSync(SCENES_DIR) ? fs.readdirSync(SCENES_DIR).map((name) => name.match(/^talk_(.+)\.txt$/)?.[1]).filter(Boolean) : []);
@@ -455,7 +471,7 @@ export function boardWorldList(kind) {
   if (kind === "health") return healthList();
   const { all } = kindOf(kind);
   const written = kind === "person" ? talkIds() : new Set();
-  const groupOf = (one) => (kind === "person" || kind === "place" ? one.faction ?? "none" : kind === "enemy" ? one.motive ?? "other" : kind === "item" ? one.type ?? "other" : kind === "perk" ? (one.starting ? "starting" : one.ability ? "with an ability" : "learned") : kind === "computer" ? (LOCATIONS[one.place]?.name ?? one.place ?? "anywhere") : kind);
+  const groupOf = (one) => (kind === "person" || kind === "place" ? one.faction ?? "none" : kind === "enemy" ? one.motive ?? "other" : kind === "item" ? one.type ?? "other" : kind === "perk" ? (one.starting ? "starting" : one.ability ? "with an ability" : "learned") : kind === "computer" ? (LOCATIONS[one.place]?.name ?? one.place ?? "anywhere") : kind === "program" ? PROGRAM_KINDS[one.kind] ?? "other" : kind === "part" ? PART_KINDS[one.kind] ?? "other" : kind);
   const ordered = Object.values(all).some((one) => one.order !== undefined);
   return Object.entries(all)
     .map(([id, one]) => ({ id, name: [one.title, one.name].filter(Boolean).join(" ") || id, kind: groupOf(one), written: written.has(id) }))
@@ -486,6 +502,9 @@ function boardLists() {
     shipKeys: [...SHIP_EFFECT_KEYS],
     computers: named(WORLD_COMPUTERS),
     classes: classKeys().map((id) => ({ id, name: classNameOf(id) })),
+    programKinds: Object.entries(PROGRAM_KINDS).map(([id, name]) => ({ id, name })),
+    partKinds: Object.entries(PART_KINDS).map(([id, name]) => ({ id, name })),
+    reaches: Object.entries(REACHES).map(([id, name]) => ({ id, name })),
     flavors: Object.keys(COMPUTER_FLAVOR?.motd ?? { default: 1, yours: 1 }),
   };
 }
@@ -502,7 +521,26 @@ function computerLinks(id, value) {
   };
 }
 // The checker's problems with one file: how it reads, and for a computer what it says too.
-const fileProblems = (kind, folder, id) => [...WORLD_FILE_PROBLEMS, ...(kind === "computer" ? computerProblems() : []), ...(kind === "person" || kind === "species" ? healthProblems() : [])].filter((one) => one.startsWith(`${folder}/${id}.txt`));
+const fileProblems = (kind, folder, id) => [...WORLD_FILE_PROBLEMS, ...(kind === "computer" ? computerProblems() : []), ...(kind === "person" || kind === "species" ? healthProblems() : []), ...(kind === "program" ? programsNow().problems : []), ...(kind === "part" ? rigPartsNow().problems : [])].filter((one) => one.startsWith(`${folder}/${id}.txt`));
+
+// A program's links: where it's found and sold, and what the game makes of it.
+function programLinks(value) {
+  return {
+    kindName: PROGRAM_KINDS[value.kind] ?? value.kind ?? "",
+    foundOn: (value.foundOn ?? []).map((cid) => ({ id: cid, name: WORLD_COMPUTERS[cid]?.name ?? cid, known: Boolean(WORLD_COMPUTERS[cid]) })),
+    soldAt: value.soldAt ? { id: value.soldAt, name: LOCATIONS[value.soldAt]?.name ?? value.soldAt } : null,
+  };
+}
+// A part's links: its kind, what a link reaches, and what making it at the bench takes, as the game reads it.
+function partLinks(id, value) {
+  const made = rigPartById(id)?.made ?? null;
+  return {
+    kindName: PART_KINDS[value.kind] ?? value.kind ?? "",
+    reaches: value.reaches ? REACHES[String(value.reaches).toLowerCase()] ?? value.reaches : null,
+    made: made ? { needs: made.needs.map((need) => `${need.n} ${need.id.replace(/_/g, " ")}`), engineering: made.engineering, hours: made.hours, tool: made.tool ? benchToolById(made.tool)?.name ?? made.tool : null } : null,
+    sockets: rigPartById(id)?.sockets ?? [],
+  };
+}
 
 // One person, place or species as the board shows it: its file and what the game read, what it's linked to, what
 // there is to pick from, and the checker's problems with the file.
@@ -537,7 +575,11 @@ export function boardWorldItem(kind, id) {
               ? { people: people((one) => one.faction === id), places: places((place) => place.faction === id), stories: stories((thread) => (thread.factions ?? []).includes(id)), enemies: enemies((one) => one.faction === id) }
               : kind === "computer"
                 ? computerLinks(id, value)
-                : { needs: value.requires ? { id: value.requires, name: PERKS[value.requires]?.name ?? value.requires } : null, neededBy: Object.entries(PERKS).filter(([, perk]) => perk.requires === id).map(([perkId, perk]) => ({ id: perkId, name: perk.name })), ability: value.ability ? { id: value.ability, name: ABILITIES[value.ability]?.name ?? value.ability } : null };
+                : kind === "program"
+                  ? programLinks(value)
+                  : kind === "part"
+                    ? partLinks(id, value)
+                    : { needs: value.requires ? { id: value.requires, name: PERKS[value.requires]?.name ?? value.requires } : null, neededBy: Object.entries(PERKS).filter(([, perk]) => perk.requires === id).map(([perkId, perk]) => ({ id: perkId, name: perk.name })), ability: value.ability ? { id: value.ability, name: ABILITIES[value.ability]?.name ?? value.ability } : null };
   return { id, kind, text, value, links, lists: boardLists(), layout: readLayout()[`${kind}/${id}`] ?? {}, problems: fileProblems(kind, folder, id) };
 }
 
@@ -552,8 +594,16 @@ export function saveBoardWorldItem(kind, id, text) {
   if (typeof text !== "string" || !text.trim()) throw new Error("There's nothing to save.");
   const { problems } = parseWorldText(text, spec, id);
   if (problems.length) return { saved: false, problems: problems.map(lineOf) };
+  // A program or a rig part is also read the way the game reads it, and refused if the game couldn't use it.
+  const own = kind === "program" ? parseProgram(id, text).problems : kind === "part" ? parseRigPart(id, text).problems : [];
+  if (own.length) return { saved: false, problems: own };
   fs.mkdirSync(dir(), { recursive: true });
   fs.writeFileSync(path.join(dir(), `${id}.txt`), text.endsWith("\n") ? text : `${text}\n`);
+  if (kind === "program" || kind === "part") {
+    if (kind === "program") forgetPrograms();
+    else forgetRigParts();
+    return { saved: true, problems: fileProblems(kind, folder, id) };
+  }
   reloadWorld();
   clearBodies();
   refreshLocations();
