@@ -1,0 +1,17 @@
+# Rangefinder
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 120
+size: 1x1
+weight: 0.4
+found in: armory, desk
+rarity: rare
+
+In a line:
+A gunner's rangefinder from a Concord turret, still true: +1 on Gunnery checks while carried.
+
+Effects:
+skills: gunnery 1
+
+Drawing:
+`(+)`

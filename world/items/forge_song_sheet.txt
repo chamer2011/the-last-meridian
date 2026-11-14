@@ -1,0 +1,18 @@
+# Forge Song Sheet
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 3
+size: 1x1
+weight: 0.1
+found in: desk, crew locker
+rarity: uncommon
+
+In a line:
+A song sheet from the Korrun forges, the words written out for outsiders.
+
+When read:
+Strike for the weight and strike for the fire, / strike for the oath that the anvil remembers. / Heavy the world and heavier the word: / what's promised at the forge is forged. It has marks for the hammer beats, which are most of the tune.
+
+Drawing:
+`|==|`
+`|__|`

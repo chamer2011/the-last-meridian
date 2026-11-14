@@ -1,0 +1,16 @@
+# Rice Pudding Tin
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 9
+size: 1x1
+weight: 0.4
+stack: 10
+effect: hp 3, stress 2
+found in: pantry
+rarity: common
+
+In a line:
+Sweet rice in a tin, with a picture of a smiling child on the label.
+
+Drawing:
+`(==)`

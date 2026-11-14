@@ -1,0 +1,17 @@
+# Plated Vest
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 260
+size: 2x2
+weight: 4
+defense: 2
+found in: armory
+rarity: uncommon
+
+In a line:
+A vest with ceramic plates in front and behind, one of them cracked.
+
+Drawing:
+`/\___/\`
+`|[###]|`
+`|_____|`

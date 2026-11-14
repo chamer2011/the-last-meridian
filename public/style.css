@@ -680,6 +680,9 @@ button.watch-person.moving { background: var(--warn); color: var(--bg); }
 .bag-load-rest { color: var(--c-line); }
 .bag-load.heavy .bag-load-fill, .bag-heavy { color: #ffc466; }
 .bag-loose { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 4px 8px; border-top: 1px solid var(--c-line); }
+.bag-reading { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; border-top: 1px solid var(--c-line); max-width: 560px; }
+.bag-reading-words { color: var(--c); line-height: 1.4; white-space: pre-wrap; }
+.bag-reading-done { align-self: flex-start; }
 .bag-loose-item { position: relative; display: inline-block; width: 54px; height: 28px; }
 .bag-take-all { align-self: flex-start; }
 .bag-said { color: var(--c-bright); }

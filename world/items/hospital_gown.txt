@@ -1,0 +1,17 @@
+# Hospital Gown
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 2
+size: 2x2
+weight: 0.3
+defense: 0
+found in: dresser, crate
+rarity: common
+
+In a line:
+It ties at the back, which is the worst thing anyone can say about it.
+
+Drawing:
+` _/\_ `
+` |  | `
+` |__| `

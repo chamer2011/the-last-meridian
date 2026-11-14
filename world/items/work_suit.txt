@@ -5,6 +5,8 @@ price: 80
 size: 2x3
 weight: 4
 defense: 1
+found in: crew locker
+rarity: common
 
 In a line:
 Patched dock coveralls with padding at the joints: +1 defense.

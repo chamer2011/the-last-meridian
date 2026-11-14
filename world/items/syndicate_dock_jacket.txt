@@ -1,0 +1,17 @@
+# Syndicate Dock Jacket
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 110
+size: 2x2
+weight: 1.4
+defense: 1
+found in: crew locker
+rarity: uncommon
+
+In a line:
+Kessara cut, with a lining of woven mesh and a pocket nobody would think to search.
+
+Drawing:
+`_/\_/\_`
+`|  ||  |`
+`|__||__|`

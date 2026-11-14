@@ -1,0 +1,18 @@
+# Wanted Bill
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 2
+size: 1x1
+weight: 0.1
+found in: desk, crate
+rarity: uncommon
+
+In a line:
+A Kessara wanted bill with a blurry picture and a big number.
+
+When read:
+WANTED BY THE SYNDICATE, ALIVE: the pilot known as Sparrow, for a debt of eleven thousand. Reward on delivery to any Syndicate broker. Do not damage the hands. The hands are owed.
+
+Drawing:
+`|==|`
+`|__|`

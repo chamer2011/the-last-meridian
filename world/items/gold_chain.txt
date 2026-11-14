@@ -1,0 +1,14 @@
+# Gold Chain
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 150
+size: 1x1
+weight: 0.05
+found in: safe, dresser
+rarity: rare
+
+In a line:
+A heavy gold chain, the kind people wear when they want you to know they can.
+
+Drawing:
+`oooo`

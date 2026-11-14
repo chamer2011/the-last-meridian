@@ -1,0 +1,16 @@
+# Garden Tomatoes
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 6
+size: 1x1
+weight: 0.3
+stack: 10
+effect: hp 2, stress 2
+found in: pantry, cooler
+rarity: common
+
+In a line:
+Three small tomatoes from the garden, warm and red and real.
+
+Drawing:
+`ooo`

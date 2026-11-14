@@ -1,0 +1,17 @@
+# Cook's Whites
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 8
+size: 2x2
+weight: 0.6
+defense: 0
+found in: crew locker
+rarity: common
+
+In a line:
+A white double-breasted jacket that hasn't been white for years.
+
+Drawing:
+`_/\_/\_`
+`|  ||  |`
+`|__||__|`

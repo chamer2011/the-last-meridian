@@ -1,0 +1,14 @@
+# Signet Ring
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 180
+size: 1x1
+weight: 0.02
+found in: safe, desk
+rarity: rare
+
+In a line:
+A gold ring with a crest you don't recognize, made for the smallest finger.
+
+Drawing:
+` o `

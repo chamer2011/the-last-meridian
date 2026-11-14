@@ -11,11 +11,13 @@ import { artFor } from "./item-art.js";
 import { untagged } from "./story.js";
 
 const CELL = 26;
-const KINDS = { weapon: "Weapon", armor: "Armor", consumable: "Supplies", gadget: "Gadget", story: "Story item" };
+const KINDS = { weapon: "Weapon", armor: "Armor", consumable: "Supplies", gadget: "Gadget", goods: "Goods", story: "Story item" };
+// Armor that stops nothing is clothes: a jumpsuit, a sweater, a coat (the loot's drafts wear them in the armor's place).
+const kindWord = (item) => (item.type === "armor" && !item.defense ? "Clothes" : KINDS[item.type] ?? "Item");
 const GEAR = ["weapon", "armor", "sidearm"];
 const FIGURE = ["   .--.", "  (    )", "   `--'", " .-'  '-.", "/ |    | \\", "  |    |", "  |____|", "  /    \\", " /      \\"].join("\n");
 
-const state = { open: false, message: null, sending: false, drag: null, menu: null, tip: null, last: { key: null, at: 0 } };
+const state = { open: false, message: null, reading: null, sending: false, drag: null, menu: null, tip: null, last: { key: null, at: 0 } };
 let app;
 
 export function initBag(hooks) {
@@ -30,7 +32,7 @@ export const bagOpen = () => state.open && Boolean(app?.ui.game?.bag);
 export function resetBag() {
   closeMenu();
   hideTip();
-  Object.assign(state, { open: false, message: null, sending: false, drag: null });
+  Object.assign(state, { open: false, message: null, reading: null, sending: false, drag: null });
 }
 export function openBag() {
   state.open = true;
@@ -161,6 +163,14 @@ function loadPanel(b) {
 }
 
 // What's carried with nowhere to put it: dragged into a space, or put down.
+// What's written on something the player has just read, under the grids until they're done with it.
+function readingPanel() {
+  return el("div", { class: "bag-reading" },
+    el("div", { class: "bag-tip-name" }, state.reading.name),
+    el("div", { class: "bag-reading-words" }, state.reading.words),
+    el("button", { class: "bag-reading-done", onclick: () => { state.reading = null; draw(); } }, "Done reading"));
+}
+
 function loosePanel(loose) {
   return el("div", { class: "bag-loose" },
     el("span", { class: "check-hint" }, "In your hands, with no room for them:"),
@@ -183,6 +193,7 @@ function windowNode() {
         gridPanel(b.open, "open", b.open.name),
         el("button", { class: "bag-take-all", disabled: !b.open.items.length || state.sending, onclick: takeAll }, "Take everything"))),
     b.loose.length > 0 && loosePanel(b.loose),
+    state.reading && readingPanel(),
     el("footer", { class: "check-taskbar" },
       el("span", { class: state.message ? "bag-said" : "check-hint" }, state.message ?? "Drag to move   double-click to put on, use or take   right-click for more"),
       el("span", { class: "check-spacer" }),
@@ -207,9 +218,12 @@ function factsOf(item) {
   if (item.id === "rig") return rigLine();
   if (item.damage) return `Damage ${item.damage[0]}-${item.damage[1]}${item.sidearm ? ", fits on the hip" : ""}`;
   if (item.defense) return `Defense +${item.defense}`;
-  if (item.effect) return `${Object.entries(item.effect).map(([key, amount]) => `+${amount} ${key === "hp" ? "health" : key}`).join(", ")}${item.fight ? ", usable in a fight from the belt" : ""}`;
+  if (item.effect) return `${Object.entries(item.effect).map(([key, amount]) => effectWords(key, amount)).join(", ")}${item.fight ? ", usable in a fight from the belt" : ""}`;
+  if (item.read) return "Something's written on it: right-click, then Read";
   return null;
 }
+// What a supply does, in words: stress goes down, a dressing dresses.
+const effectWords = (key, amount) => (key === "stress" ? `-${amount} stress` : key === "dress" ? (amount > 1 ? `dresses ${amount} wounds` : "dresses a wound") : `+${amount} ${key === "hp" ? "health" : key}`);
 
 function showTip(node, item) {
   if (state.drag?.moved || state.menu) return;
@@ -225,7 +239,7 @@ function showTip(node, item) {
   const facts = factsOf(item);
   state.tip = el("div", { class: "bag-tip", style: `left:${Math.max(4, left)}px;top:${Math.max(24, (at.top - box.top) / z)}px;width:${width}px` },
     el("div", { class: "bag-tip-name" }, `${item.name}${item.n > 1 ? ` x${item.n}` : ""}`),
-    el("div", { class: "check-hint" }, `${KINDS[item.type] ?? "Item"}, ${item.w}x${item.h}, ${item.id === "rig" ? app.ui.game?.rig?.build?.stats?.weight ?? item.weight : item.weight} kg${item.stack > 1 ? `, ${item.stack} to a square` : ""}${item.price ? `, worth ${item.price} cr` : ""}`),
+    el("div", { class: "check-hint" }, `${kindWord(item)}, ${item.w}x${item.h}, ${item.id === "rig" ? app.ui.game?.rig?.build?.stats?.weight ?? item.weight : item.weight} kg${item.stack > 1 ? `, ${item.stack} to a square` : ""}${item.price ? `, worth ${item.price} cr` : ""}`),
     facts && el("div", { class: "bag-tip-facts" }, facts),
     item.desc && el("div", { class: "bag-tip-line" }, item.desc));
   win.append(state.tip);
@@ -237,9 +251,17 @@ function hideTip() {
 
 // ---- Telling the server --------------------------------------------------------------------------------
 
+// Reading something: the server keeps the words in What you know, and the window shows them until Done reading.
+async function readIt(item, where) {
+  if (!(await send({ action: "read", from: where }))) return;
+  state.reading = { name: item.name, words: item.read };
+  draw();
+}
+
 async function send(body, { quiet = false } = {}) {
   if (state.sending && !quiet) return false;
   state.sending = true;
+  if (!quiet) state.reading = null;
   closeMenu();
   hideTip();
   let done = true;
@@ -281,6 +303,7 @@ function clicked(item, where) {
   else if (item.type === "consumable") send({ action: "use", from: where });
   else if (item.type === "weapon" || item.type === "armor") send({ action: "equip", from: where });
   else if (item.id === "rig") openRig();
+  else if (item.read) readIt(item, where);
 }
 
 // ---- Dragging ----------------------------------------------------------------------------------------------
@@ -391,11 +414,12 @@ function dragEnd() {
 
 function choicesFor(item, where) {
   const b = app.ui.game.bag;
-  if (where.at === "open") return [["Take", () => send({ action: "take", from: where })], ["Look", () => look(item)]];
+  if (where.at === "open") return [["Take", () => send({ action: "take", from: where })], ...(item.read ? [["Read", () => readIt(item, where)]] : []), ["Look", () => look(item)]];
   const list = [];
   if (item.id === "rig") list.push(["Open the rig", openRig]);
   if (GEAR.includes(where.at)) list.push(["Take off", () => send({ action: "stow", from: where })]);
   else if (item.type === "weapon" || item.type === "armor") list.push(["Put on", () => send({ action: "equip", from: where })]);
+  if (item.read) list.push(["Read", () => readIt(item, where)]);
   if (item.type === "consumable") {
     list.push(["Use", () => send({ action: "use", from: where })]);
     list.push(where.at === "belt" ? ["Off the belt", () => send({ action: "stow", from: where })] : ["To the belt", () => send({ action: "equip", from: where })]);

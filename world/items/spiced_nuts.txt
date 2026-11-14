@@ -1,0 +1,16 @@
+# Spiced Nuts
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 10
+size: 1x1
+weight: 0.1
+stack: 10
+effect: hp 2, energy 1
+found in: cooler, pantry
+rarity: common
+
+In a line:
+A bag of roasted nuts in a hot red dust. A bar's best friend.
+
+Drawing:
+`{::}`

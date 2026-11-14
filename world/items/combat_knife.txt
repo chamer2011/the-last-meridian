@@ -1,0 +1,17 @@
+# Combat Knife
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 160
+size: 2x1
+weight: 0.5
+damage: 4 to 7
+stat: agility
+skill: melee
+found in: armory
+rarity: uncommon
+
+In a line:
+A Concord marine's knife, blackened and balanced, its edge kept keen by someone.
+
+Drawing:
+`[=]==->`

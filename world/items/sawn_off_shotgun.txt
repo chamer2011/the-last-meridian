@@ -1,0 +1,17 @@
+# Sawn-Off Shotgun
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 200
+size: 3x1
+weight: 2.6
+damage: 4 to 9
+stat: might
+skill: firearms
+found in: safe, crate
+rarity: uncommon
+
+In a line:
+A shotgun with its barrel and stock cut down to hide under a coat.
+
+Drawing:
+`=[##]=====`

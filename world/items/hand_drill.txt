@@ -1,0 +1,14 @@
+# Hand Drill
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 45
+size: 2x1
+weight: 1.4
+found in: tool shelf
+rarity: common
+
+In a line:
+A cordless drill with charge enough for three holes, and a fourth if you're lucky.
+
+Drawing:
+`[##]==-`

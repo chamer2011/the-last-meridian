@@ -1,0 +1,17 @@
+# Meat Cleaver
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 55
+size: 2x1
+weight: 1
+damage: 3 to 6
+stat: might
+skill: melee
+found in: pantry, crew locker
+rarity: common
+
+In a line:
+A square-bladed cleaver from the galley, notched from bone.
+
+Drawing:
+`=[###]`

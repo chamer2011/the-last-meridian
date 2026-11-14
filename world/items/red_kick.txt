@@ -1,0 +1,17 @@
+# Red Kick
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 80
+size: 1x1
+weight: 0.05
+stack: 5
+restricted: yes
+effect: energy 5
+found in: safe, crew locker
+rarity: uncommon
+
+In a line:
+Black-market stims in a red vial. They work, and then you pay for it.
+
+Drawing:
+`[!]`

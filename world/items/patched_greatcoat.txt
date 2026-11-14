@@ -1,0 +1,19 @@
+# Patched Greatcoat
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 40
+size: 2x3
+weight: 3
+defense: 1
+found in: crate, dresser
+rarity: common
+
+In a line:
+Heavy and old, more patch than coat, but it'll stop a knock.
+
+Drawing:
+` _/\_ `
+`|/  \|`
+`|  . |`
+`|  . |`
+`|_/\_|`

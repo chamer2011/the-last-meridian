@@ -1,0 +1,16 @@
+# Fresh Bread
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 6
+size: 1x1
+weight: 0.3
+stack: 10
+effect: hp 3, stress 3
+found in: pantry
+rarity: common
+
+In a line:
+A loaf from the galley's last bake, still soft in the middle.
+
+Drawing:
+`(--)`

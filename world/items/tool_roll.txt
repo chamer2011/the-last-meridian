@@ -4,6 +4,8 @@ type: gadget
 price: 220
 size: 2x1
 weight: 2
+found in: tool shelf
+rarity: rare
 
 In a line:
 A canvas roll of well-kept tools that someone once trusted with their life: +2 on Engineering checks while carried.

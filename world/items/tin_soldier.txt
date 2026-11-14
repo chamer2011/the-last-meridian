@@ -1,0 +1,15 @@
+# Tin Soldier
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 4
+size: 1x1
+weight: 0.05
+found in: dresser, desk
+rarity: common
+
+In a line:
+A toy soldier painted in Concord blue, his rifle bent.
+
+Drawing:
+` i `
+`/|\`

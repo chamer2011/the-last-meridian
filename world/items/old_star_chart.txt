@@ -1,0 +1,18 @@
+# Old Star Chart
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 12
+size: 1x1
+weight: 0.1
+found in: desk
+rarity: uncommon
+
+In a line:
+A printed chart of the near stars, years out of date, with routes drawn in by hand.
+
+When read:
+Most of the routes are crossed out. One, from Haven toward the edge of the chart, is circled, and beside it in small careful writing: safe as of last spring. Below that, in different ink: not any more.
+
+Drawing:
+`/\/\`
+`\/\/`

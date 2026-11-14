@@ -119,6 +119,8 @@ export const ITEM = {
   kind: "item",
   title: "name",
   header: [
+    // Whose words these are while nobody's changed them: "Claude's, not yet edited by the owner" on the loot's drafts.
+    { path: "draft", key: "draft", type: "string" },
     { path: "order", key: "order", type: "number" }, { path: "type", key: "type", type: "string" }, { path: "price", key: "price", type: "number" },
     { path: "size", key: "size", type: "string" }, { path: "weight", key: "weight", type: "number" }, { path: "stack", key: "stack", type: "number" },
     { path: "damage", key: "damage", type: "range" }, { path: "stat", key: "stat", type: "string" }, { path: "skill", key: "skill", type: "string" },
@@ -129,6 +131,8 @@ export const ITEM = {
   ],
   sections: [
     { path: "desc", phrase: "In a line", type: "text" },
+    // Words on it the player can read, from the inventory: a letter, a page, a label (src/bag.js).
+    { path: "read", phrase: "When read", type: "text" },
     { path: "fx", phrase: "Effects", type: "fields", fields: [{ path: "context", key: "in a setting", type: "pairs" }, { path: "skills", key: "skills", type: "pairs" }] },
     // How it's drawn in the inventory's grid (public/item-art.js); without one, it's drawn as its kind.
     { path: "art", phrase: "Drawing", type: "drawing" },

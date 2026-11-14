@@ -1,0 +1,14 @@
+# Knitting Bag
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 7
+size: 2x1
+weight: 0.6
+found in: dresser
+rarity: common
+
+In a line:
+Needles, three balls of wool and half a scarf in a cloth bag.
+
+Drawing:
+`(  )~~`

@@ -1,0 +1,14 @@
+# Hairbrush
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 2
+size: 1x1
+weight: 0.1
+found in: dresser
+rarity: common
+
+In a line:
+A wooden hairbrush with someone's long grey hairs still in it.
+
+Drawing:
+`=|||`

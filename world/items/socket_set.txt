@@ -1,0 +1,14 @@
+# Socket Set
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 40
+size: 2x1
+weight: 2
+found in: tool shelf
+rarity: common
+
+In a line:
+A case of sockets, the one size you need always missing.
+
+Drawing:
+`[_##_]`

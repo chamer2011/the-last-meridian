@@ -1,0 +1,17 @@
+# Korrun Forge Apron
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 70
+size: 2x2
+weight: 3.5
+defense: 1
+found in: crew locker
+rarity: uncommon
+
+In a line:
+Thick hide and riveted plates, made to turn sparks and spatter on a heavy world.
+
+Drawing:
+` .--. `
+` |  | `
+` |__| `

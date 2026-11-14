@@ -1,0 +1,17 @@
+# Powdered Milk
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 5
+size: 1x1
+weight: 0.3
+stack: 10
+effect: hp 2
+found in: pantry
+rarity: common
+
+In a line:
+A packet of white powder that makes something almost like milk.
+
+Drawing:
+`(~)`
+`|_|`

@@ -1,0 +1,17 @@
+# Harpoon Gun
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 260
+size: 4x1
+weight: 4
+damage: 5 to 9
+stat: perception
+skill: firearms
+found in: crate
+rarity: uncommon
+
+In a line:
+A Salvage Guild harpoon on a cable reel, for catching wreckage in the dark.
+
+Drawing:
+`@=[##]=======>`

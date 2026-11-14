@@ -1,0 +1,17 @@
+# Bolt Driver
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 65
+size: 2x1
+weight: 1.8
+damage: 2 to 6
+stat: intellect
+skill: engineering
+found in: tool shelf
+rarity: common
+
+In a line:
+A powered driver that fires bolts into hull plating, or into anything else in front of it.
+
+Drawing:
+`[#]==>`

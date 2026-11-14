@@ -1,0 +1,17 @@
+# Pickled Eggs
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 9
+size: 1x1
+weight: 0.6
+stack: 5
+effect: hp 4
+found in: pantry, cooler
+rarity: common
+
+In a line:
+A jar of eggs in purple vinegar. An acquired taste, and you haven't acquired it.
+
+Drawing:
+`[-]`
+`|_|`

@@ -1,0 +1,18 @@
+# Poem on a Napkin
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 1
+size: 1x1
+weight: 0.1
+found in: cooler, desk
+rarity: common
+
+In a line:
+A paper napkin with a poem written on it in pencil.
+
+When read:
+We ran so fast we left our shadows, / and now the lights are all we've got. / I count the stars we haven't lost, / and try not to count the ones we have. There's a ring on it from someone's cup.
+
+Drawing:
+`|==|`
+`|__|`

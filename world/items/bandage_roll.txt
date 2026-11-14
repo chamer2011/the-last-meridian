@@ -1,0 +1,16 @@
+# Bandage Roll
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 12
+size: 1x1
+weight: 0.1
+stack: 5
+effect: dress 1
+found in: medicine cabinet, crew locker
+rarity: common
+
+In a line:
+A roll of clean bandage, enough for one bad wound.
+
+Drawing:
+`(@)`

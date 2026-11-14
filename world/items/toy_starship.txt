@@ -1,0 +1,14 @@
+# Toy Starship
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 6
+size: 1x1
+weight: 0.2
+found in: dresser, crew locker
+rarity: common
+
+In a line:
+A plastic model of a cruiser of the old navy, missing a wing.
+
+Drawing:
+`=<>=`

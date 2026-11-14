@@ -1,0 +1,18 @@
+# Passenger Manifest Page
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 2
+size: 1x1
+weight: 0.1
+found in: desk
+rarity: common
+
+In a line:
+A page from the boarding manifest, names in a cramped list.
+
+When read:
+Deck 2, Overflow: Adler, J. (and two children). Bakshi, R. Bakshi, S. Castellan, M. (elderly, needs help on the stairs). Dube, family of five. Ferreira, A. (no papers, let aboard on the captain's word). It goes on in the same small hand, every name ticked, a few of them marked with a cross.
+
+Drawing:
+`|==|`
+`|__|`

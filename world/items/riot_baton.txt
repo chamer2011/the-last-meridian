@@ -1,0 +1,17 @@
+# Riot Baton
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 75
+size: 2x1
+weight: 0.9
+damage: 3 to 6
+stat: might
+skill: melee
+found in: armory
+rarity: common
+
+In a line:
+A plain black baton with a wrist strap, from the ship's security stores.
+
+Drawing:
+`[======`

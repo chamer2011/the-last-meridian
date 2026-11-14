@@ -1,0 +1,16 @@
+# Gauze Pads
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 8
+size: 1x1
+weight: 0.05
+stack: 10
+effect: dress 1
+found in: medicine cabinet
+rarity: common
+
+In a line:
+Sterile pads in paper sleeves, to press on a wound and tape down.
+
+Drawing:
+`[=]`

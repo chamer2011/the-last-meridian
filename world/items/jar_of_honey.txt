@@ -1,0 +1,17 @@
+# Jar of Honey
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 40
+size: 1x1
+weight: 0.5
+stack: 10
+effect: hp 2, stress 4
+found in: pantry, cooler
+rarity: rare
+
+In a line:
+Thick and golden, from bees kept somewhere with flowers.
+
+Drawing:
+`[-]`
+`|_|`

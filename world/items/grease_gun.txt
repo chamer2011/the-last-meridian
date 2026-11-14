@@ -1,0 +1,14 @@
+# Grease Gun
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 16
+size: 2x1
+weight: 1
+found in: tool shelf
+rarity: common
+
+In a line:
+A hand pump of black grease, for the bearings nobody else remembers.
+
+Drawing:
+`[==]=-`

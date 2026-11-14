@@ -1,0 +1,14 @@
+# Slide Rule
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 40
+size: 2x1
+weight: 0.2
+found in: desk
+rarity: uncommon
+
+In a line:
+An engineer's slide rule in a leather case, quicker than a slate for those who know how.
+
+Drawing:
+`|=|=|=|`

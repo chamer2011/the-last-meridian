@@ -1,0 +1,14 @@
+# Framed Photograph
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 3
+size: 1x1
+weight: 0.3
+found in: dresser, desk
+rarity: common
+
+In a line:
+A family of four smiling on a beach somewhere warm. Nobody aboard looks like any of them.
+
+Drawing:
+`[##]`

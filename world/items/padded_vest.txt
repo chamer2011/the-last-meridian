@@ -1,0 +1,17 @@
+# Padded Vest
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 70
+size: 2x2
+weight: 3
+defense: 1
+found in: armory, crew locker
+rarity: common
+
+In a line:
+Layers of quilted ballistic cloth, sweat-stained and mended.
+
+Drawing:
+` /\_/\`
+` |[#]|`
+` |___|`

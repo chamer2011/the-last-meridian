@@ -1,0 +1,14 @@
+# Hacksaw
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 14
+size: 2x1
+weight: 0.6
+found in: tool shelf
+rarity: common
+
+In a line:
+A saw for metal with a blade that has about half its teeth.
+
+Drawing:
+`[/\/\/\`

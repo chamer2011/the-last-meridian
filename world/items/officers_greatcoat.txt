@@ -1,0 +1,19 @@
+# Officer's Greatcoat
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 150
+size: 2x3
+weight: 3
+defense: 1
+found in: dresser
+rarity: uncommon
+
+In a line:
+Heavy wool over a padded lining, with the rank torn off the shoulders.
+
+Drawing:
+` _/\_ `
+`|/  \|`
+`|  . |`
+`|  . |`
+`|_/\_|`

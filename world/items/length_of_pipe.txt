@@ -1,0 +1,17 @@
+# Length of Pipe
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 6
+size: 3x1
+weight: 2
+damage: 2 to 5
+stat: might
+skill: melee
+found in: crate, tool shelf
+rarity: common
+
+In a line:
+A metre of steel pipe with a valve still on one end.
+
+Drawing:
+`[=========O`

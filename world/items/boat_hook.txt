@@ -1,0 +1,17 @@
+# Boat Hook
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 80
+size: 4x1
+weight: 2
+damage: 3 to 7
+stat: might
+skill: melee
+found in: crate
+rarity: common
+
+In a line:
+A long gaff from the boat bay, for catching lines and pulling in whatever drifts.
+
+Drawing:
+`==============J`

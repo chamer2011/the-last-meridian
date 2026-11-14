@@ -1,0 +1,19 @@
+# Evening Gown
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 140
+size: 2x3
+weight: 0.9
+defense: 0
+found in: dresser
+rarity: rare
+
+In a line:
+Midnight blue, beaded at the hem, packed for a dinner on the Gilded Wheel that never happened.
+
+Drawing:
+` )  ( `
+` |__| `
+` /  \ `
+`/    \`
+`------`

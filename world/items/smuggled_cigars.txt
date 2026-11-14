@@ -1,0 +1,17 @@
+# Smuggled Cigars
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 40
+size: 1x1
+weight: 0.1
+stack: 5
+restricted: yes
+effect: stress 6
+found in: safe, cooler
+rarity: uncommon
+
+In a line:
+Fat cigars from a world under a trade ban, rolled by hand.
+
+Drawing:
+`===-`

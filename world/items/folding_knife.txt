@@ -1,0 +1,17 @@
+# Folding Knife
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 30
+size: 1x1
+weight: 0.2
+damage: 2 to 4
+stat: agility
+skill: melee
+found in: crew locker, desk, dresser
+rarity: common
+
+In a line:
+A pocket knife with a bone handle and a blade that wobbles.
+
+Drawing:
+`-=>`

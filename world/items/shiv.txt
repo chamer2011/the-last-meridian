@@ -1,0 +1,17 @@
+# Shiv
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 15
+size: 1x1
+weight: 0.1
+damage: 2 to 5
+stat: agility
+skill: melee
+found in: crew locker, crate
+rarity: common
+
+In a line:
+A sharpened strip of hull plating with tape for a grip. Someone in the brig was busy.
+
+Drawing:
+`=->`

@@ -6,6 +6,8 @@ size: 1x1
 weight: 0.1
 stack: 5
 effect: hp 8, energy 3
+found in: medicine cabinet, armory
+rarity: uncommon
 
 In a line:
 Restores 8 health and 3 energy.

@@ -7,6 +7,8 @@ weight: 2.5
 damage: 4 to 9
 stat: might
 skill: melee
+found in: armory, crate
+rarity: uncommon
 
 In a line:
 Forged to cut hatch seals, and it doesn't mind what's behind them: 4 to 9 damage, using Might and Melee.

@@ -1,0 +1,14 @@
+# Pearl Earrings
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 120
+size: 1x1
+weight: 0.01
+found in: dresser, safe
+rarity: rare
+
+In a line:
+Two pearls on gold hooks, from an ocean world.
+
+Drawing:
+`o o`

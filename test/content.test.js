@@ -135,7 +135,7 @@ test("items and perks are complete", () => {
   for (const [id, item] of Object.entries(items)) {
     const where = `items/${id}`;
     if (!text(item.name) || !text(item.desc) || typeof item.price !== "number") report(where, "needs a name, desc and price");
-    if (!["weapon", "armor", "consumable", "gadget", "story"].includes(item.type)) report(where, `unknown type ${item.type}`);
+    if (!["weapon", "armor", "consumable", "gadget", "goods", "story"].includes(item.type)) report(where, `unknown type ${item.type}`);
     if (item.type === "weapon") {
       if (!Array.isArray(item.damage)) report(where, "needs damage");
       if (!SKILLS.includes(item.skill)) report(where, `unknown skill ${item.skill}`);

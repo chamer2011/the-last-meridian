@@ -1,0 +1,17 @@
+# Patched Work Shirt
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 5
+size: 2x2
+weight: 0.4
+defense: 0
+found in: crew locker, crate
+rarity: common
+
+In a line:
+Patched at both elbows with cloth that was never the same colour.
+
+Drawing:
+`_/\/\_`
+`\ |  /`
+` |__| `

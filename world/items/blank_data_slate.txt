@@ -1,0 +1,15 @@
+# Blank Data Slate
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 25
+size: 1x1
+weight: 0.3
+found in: desk
+rarity: common
+
+In a line:
+A slate wiped clean, waiting for whatever you'd write on it.
+
+Drawing:
+`[==]`
+`[__]`

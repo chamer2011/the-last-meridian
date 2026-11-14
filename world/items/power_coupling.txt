@@ -1,0 +1,14 @@
+# Power Coupling
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 15
+size: 1x1
+weight: 0.5
+found in: crate, tool shelf
+rarity: common
+
+In a line:
+A heavy connector of the kind that joins a ship's cables inside the walls.
+
+Drawing:
+`=[]=`

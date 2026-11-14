@@ -1,0 +1,14 @@
+# Magnet Coil
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 18
+size: 1x1
+weight: 1.1
+found in: crate, tool shelf
+rarity: common
+
+In a line:
+A strong electromagnet with its leads cut. It still grabs at your tools.
+
+Drawing:
+`(UU)`

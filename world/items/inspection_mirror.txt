@@ -1,0 +1,14 @@
+# Inspection Mirror
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 10
+size: 2x1
+weight: 0.1
+found in: tool shelf
+rarity: common
+
+In a line:
+A small round mirror on a telescoping stick, for looking behind panels.
+
+Drawing:
+`O-----`

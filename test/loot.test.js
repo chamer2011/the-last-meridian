@@ -84,12 +84,12 @@ test("the checker finds nothing wrong in the game's files, and names an item tha
     assert.ok(problems.some((one) => /__test_coat\.txt: rarity is legendary/.test(one)));
     assert.ok(problems.some((one) => /__test_relic\.txt: it's a story item/.test(one)));
     assert.equal(problems.length, 3);
-    assert.deepEqual(loot.itemsFoundIn("dresser").map((one) => one.id), ["__test_coat"]);
+    assert.ok(loot.itemsFoundIn("dresser").some((one) => one.id === "__test_coat"));
   } finally {
     delete ITEMS.__test_coat;
     delete ITEMS.__test_relic;
   }
-  assert.deepEqual(loot.itemsFoundIn("dresser"), [], "no item says it's found anywhere yet: that's step 2");
+  assert.ok(!loot.itemsFoundIn("dresser").some((one) => one.id === "__test_coat"));
   assert.deepEqual(RARITIES, ["common", "uncommon", "rare"]);
 });
 
@@ -114,5 +114,5 @@ test("every item file still reads back exactly, and the drawings that were in th
   assert.deepEqual(ITEMS.sidearm.art, ["[##]=-"]);
   assert.deepEqual(artFor(ITEMS.smugglers_coat), ITEMS.smugglers_coat.art, "the inventory draws an item's own drawing");
   assert.deepEqual(artFor({ type: "weapon" }), ["=[#]=-"], "and an item without one as its kind");
-  assert.equal(Object.values(ITEMS).filter((item) => item.art?.length).length, 61, "the 61 drawings the code had");
+  assert.equal(Object.values(ITEMS).filter((item) => item.art?.length && item.order !== undefined).length, 62, "the 61 drawings the code had, and scrap's since step 2");
 });

@@ -1,0 +1,17 @@
+# Syndicate Mesh Jacket
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 420
+size: 2x2
+weight: 2.5
+defense: 2
+found in: crew locker, armory
+rarity: rare
+
+In a line:
+Kessara mesh so fine it folds like cloth and stops a knife like steel.
+
+Drawing:
+`_/\_/\_`
+`|  ||  |`
+`|__||__|`

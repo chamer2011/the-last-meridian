@@ -1,0 +1,18 @@
+# Quiet Pamphlet
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 2
+size: 1x1
+weight: 0.1
+found in: crew locker, desk
+rarity: uncommon
+
+In a line:
+A cheap pamphlet of the Quiet, passed from hand to hand.
+
+When read:
+THE CHOIR DOES NOT KILL. IT REMEMBERS. Everything you are, kept forever, singing with all the others who went before. Why do you run from that? Why do you hide your children from it? Stop running. Be still. Be Quiet, and listen. Someone has torn it nearly in half, and then, it seems, thought better of it.
+
+Drawing:
+`|==|`
+`|__|`

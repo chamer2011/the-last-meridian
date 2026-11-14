@@ -1,0 +1,18 @@
+# Engine Hand's Notebook
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 4
+size: 1x1
+weight: 0.1
+found in: crew locker, desk
+rarity: common
+
+In a line:
+A greasy notebook of readings and sketches from the engine room.
+
+When read:
+Port coupling running hot again, four degrees over. Told the chief. Chief said tell the coupling. Drew the manifold so I'd remember which valve is which. The third from the left sticks. Hit it with the flat of the spanner, not the edge, or it dents and then it sticks worse.
+
+Drawing:
+`|##|`
+`|__|`

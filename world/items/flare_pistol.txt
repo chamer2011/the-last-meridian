@@ -1,0 +1,17 @@
+# Flare Pistol
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 50
+size: 2x1
+weight: 0.8
+damage: 2 to 5
+stat: agility
+skill: firearms
+found in: crate, armory
+rarity: common
+
+In a line:
+An orange emergency pistol made for signalling, and it'll burn whoever it's signalling at.
+
+Drawing:
+`[#]=(O`

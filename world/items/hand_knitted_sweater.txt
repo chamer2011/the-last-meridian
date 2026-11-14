@@ -1,0 +1,17 @@
+# Hand-Knitted Sweater
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 12
+size: 2x2
+weight: 0.8
+defense: 0
+found in: dresser
+rarity: common
+
+In a line:
+Lumpy, warm and too big, knitted by someone who loved whoever it was for.
+
+Drawing:
+`/~~~~\`
+`|####|`
+`\____/`

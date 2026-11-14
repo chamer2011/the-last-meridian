@@ -1,0 +1,15 @@
+# Forged Identity Card
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 90
+size: 1x1
+weight: 0.02
+restricted: yes
+found in: safe, desk
+rarity: uncommon
+
+In a line:
+An identity card with roughly your face and somebody else's name.
+
+Drawing:
+`[ID]`

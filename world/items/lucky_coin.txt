@@ -1,0 +1,14 @@
+# Lucky Coin
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 3
+size: 1x1
+weight: 0.01
+found in: crew locker, dresser
+rarity: common
+
+In a line:
+An old coin with a hole through it, rubbed smooth by a thumb.
+
+Drawing:
+`(o)`

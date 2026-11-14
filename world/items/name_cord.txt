@@ -1,0 +1,14 @@
+# Name Cord
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 10
+size: 1x1
+weight: 0.02
+found in: dresser
+rarity: uncommon
+
+In a line:
+A braided cord with knots spaced along it, one for each name in somebody's family.
+
+Drawing:
+`-o-o`

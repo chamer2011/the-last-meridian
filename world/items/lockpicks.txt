@@ -1,0 +1,14 @@
+# Lockpicks
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 60
+size: 1x1
+weight: 0.1
+found in: crew locker, desk, safe
+rarity: uncommon
+
+In a line:
+A roll of picks and tension bars. The ship's locks are electronic, but people keep old boxes.
+
+Drawing:
+`-==-`

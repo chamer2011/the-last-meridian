@@ -1,0 +1,16 @@
+# Survival Ration
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 25
+size: 1x1
+weight: 0.4
+stack: 5
+effect: hp 6, energy 1
+found in: crate, crew locker
+rarity: uncommon
+
+In a line:
+A sealed lifeboat ration, dated and stamped. It tastes of the date.
+
+Drawing:
+`[==]`

@@ -1,0 +1,14 @@
+# Sample Kit
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 45
+size: 2x1
+weight: 0.7
+found in: desk, tool shelf
+rarity: uncommon
+
+In a line:
+Vials, swabs and a magnifier in a padded case, for finding out what something is made of.
+
+Drawing:
+`[_##_]`

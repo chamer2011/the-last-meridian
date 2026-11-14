@@ -1,0 +1,18 @@
+# Hegemony Leaflet
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 1
+size: 1x1
+weight: 0.1
+found in: desk, crate
+rarity: common
+
+In a line:
+A glossy leaflet with a smiling family on the front.
+
+When read:
+SAFETY IS A GIFT. The Hegemony welcomes all who seek order in a broken time. Food. Shelter. Protection from the machines. All we ask is your trust, and your name on the register. Present this leaflet at any Hegemony station. On the back, someone has drawn a cage around the family.
+
+Drawing:
+`|==|`
+`|__|`

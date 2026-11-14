@@ -1,0 +1,15 @@
+# Empty Cell Casing
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 6
+size: 1x1
+weight: 0.8
+stack: 3
+found in: crate
+rarity: common
+
+In a line:
+The shell of a spent fuel cell. Refillable, they say, somewhere with the plant to do it.
+
+Drawing:
+`[ ]`

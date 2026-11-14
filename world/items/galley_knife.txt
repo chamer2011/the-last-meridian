@@ -1,0 +1,17 @@
+# Galley Knife
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 40
+size: 2x1
+weight: 0.3
+damage: 2 to 5
+stat: agility
+skill: melee
+found in: crew locker, pantry
+rarity: common
+
+In a line:
+A thin-bladed knife from the galley, sharpened so often there's not much blade left.
+
+Drawing:
+`==---->`

@@ -1,0 +1,17 @@
+# Galley Apron
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 4
+size: 2x2
+weight: 0.5
+defense: 0
+found in: crew locker, pantry
+rarity: common
+
+In a line:
+Heavy canvas, stiff with old grease, with a pocket for a ladle.
+
+Drawing:
+` .--. `
+` |  | `
+` |__| `

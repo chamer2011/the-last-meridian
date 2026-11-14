@@ -1,0 +1,20 @@
+# Ministry Field Armor
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 1500
+size: 2x3
+weight: 6
+defense: 4
+restricted: yes
+found in: armory
+rarity: rare
+
+In a line:
+Vantor's secret police wear this under their coats, and now you can, if you're careful who sees.
+
+Drawing:
+` _____`
+`|[###]|`
+`|[###]|`
+` |   |`
+` |___|`

@@ -9,12 +9,12 @@ import { programsNow } from "./programs.js";
 import { benchToolsNow, rigPartsNow } from "./rig-parts.js";
 import { wrecksNow } from "./wrecks.js";
 import { dealersNow } from "./dealers.js";
-import { lootModel } from "./loot.js";
+import { lootModel, lootItemCount } from "./loot.js";
 
 const dir = process.argv[2] ?? SCENES_DIR;
 const { count, requests, stories, computers, systems, logistics, command, health, battles, drawn, problems, fleet } = allStoryProblems(dir);
 if (!problems.length) {
-  console.log(`All ${count} ${count === 1 ? "scene is" : "scenes are"} sound (${requests} of them ${requests === 1 ? "a request" : "requests"}), and so are the notes of ${stories} stories, the ${computers} computers, the ${programsNow().list.length} programs, the ${rigPartsNow().list.length} rig parts and the bench's ${benchToolsNow().list.length} tools, the ${wrecksNow().list.length} wrecks they come from and the ${dealersNow().list.length} dealers in them, the systems of ${systems} places, the logistics of ${logistics} ${logistics === 1 ? "place" : "places"}, the chain of command of ${command} ${command === 1 ? "place" : "places"}, the wounds, the bodies and the health of ${health} ${health === 1 ? "place" : "places"}, the ${battles} ${battles === 1 ? "battle" : "battles"}, the ${drawn} ${drawn === 1 ? "map" : "maps"} drawn in Tiled, what people say over their heads, and the ${lootModel()?.kinds.length ?? 0} kinds of container.`);
+  console.log(`All ${count} ${count === 1 ? "scene is" : "scenes are"} sound (${requests} of them ${requests === 1 ? "a request" : "requests"}), and so are the notes of ${stories} stories, the ${computers} computers, the ${programsNow().list.length} programs, the ${rigPartsNow().list.length} rig parts and the bench's ${benchToolsNow().list.length} tools, the ${wrecksNow().list.length} wrecks they come from and the ${dealersNow().list.length} dealers in them, the systems of ${systems} places, the logistics of ${logistics} ${logistics === 1 ? "place" : "places"}, the chain of command of ${command} ${command === 1 ? "place" : "places"}, the wounds, the bodies and the health of ${health} ${health === 1 ? "place" : "places"}, the ${battles} ${battles === 1 ? "battle" : "battles"}, the ${drawn} ${drawn === 1 ? "map" : "maps"} drawn in Tiled, what people say over their heads, and the ${lootModel()?.kinds.length ?? 0} kinds of container with the ${lootItemCount()} things found in them.`);
 } else {
   console.log(`${problems.length} ${problems.length === 1 ? "problem" : "problems"} in ${dir}, world\\stories, world\\computers, world\\programs, world\\rig-parts, world\\systems, world\\logistics, world\\command, world\\health, world\\battles, world\\maps and world\\chatter.txt:\n`);
   for (const problem of problems) console.log(`- ${problem}`);

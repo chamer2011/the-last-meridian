@@ -1,0 +1,18 @@
+# Sledgehammer
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 250
+size: 4x2
+weight: 6
+damage: 5 to 9
+stat: might
+skill: melee
+found in: tool shelf, crate
+rarity: uncommon
+
+In a line:
+A demolition hammer from the yards, made for bulkheads.
+
+Drawing:
+` ___`
+`[___]==========`

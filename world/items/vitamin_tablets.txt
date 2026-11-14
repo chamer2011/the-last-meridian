@@ -1,0 +1,17 @@
+# Vitamin Tablets
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 8
+size: 1x1
+weight: 0.05
+stack: 10
+effect: hp 2, energy 1
+found in: medicine cabinet, dresser, desk
+rarity: common
+
+In a line:
+Chalky tablets that keep teeth in heads when there's nothing fresh to eat.
+
+Drawing:
+`[o]`
+`|_|`

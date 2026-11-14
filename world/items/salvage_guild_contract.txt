@@ -1,0 +1,18 @@
+# Salvage Guild Contract
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 10
+size: 1x1
+weight: 0.1
+found in: desk, safe, crate
+rarity: uncommon
+
+In a line:
+A copy of a Guild salvage contract, signed and stamped.
+
+When read:
+By this contract the undersigned claims salvage right to the hull and all contents of the vessel found drifting at the given mark, for thirty days, under the iron law of the Guild. Any who take from a claimed hull answer to the Guild's court. The ship's name has been left blank. The signature is a thumbprint in oil.
+
+Drawing:
+`|==|`
+`|__|`

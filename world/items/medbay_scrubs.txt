@@ -1,0 +1,17 @@
+# Medbay Scrubs
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 7
+size: 2x2
+weight: 0.4
+defense: 0
+found in: dresser, crew locker
+rarity: common
+
+In a line:
+Pale green and washed thin. They smell of the sterilizer.
+
+Drawing:
+`_/\/\_`
+`\ |  /`
+` |__| `

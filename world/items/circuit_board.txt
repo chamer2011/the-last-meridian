@@ -1,0 +1,15 @@
+# Circuit Board
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 8
+size: 1x1
+weight: 0.2
+stack: 5
+found in: crate, tool shelf
+rarity: common
+
+In a line:
+A green board crowded with components, pulled from something that doesn't work any more.
+
+Drawing:
+`#=#`

@@ -1,0 +1,14 @@
+# Seashell
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 5
+size: 1x1
+weight: 0.05
+found in: dresser, desk
+rarity: common
+
+In a line:
+A spiral shell. Hold it to your ear and you can hear the ventilation.
+
+Drawing:
+`(@>`

@@ -1,0 +1,19 @@
+# Ballistic Longcoat
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 300
+size: 2x3
+weight: 6
+defense: 2
+found in: armory, dresser
+rarity: uncommon
+
+In a line:
+A long coat with plates sewn into the lining, heavier than it looks.
+
+Drawing:
+` _/\_ `
+`|/  \|`
+`|  . |`
+`|  . |`
+`|_/\_|`

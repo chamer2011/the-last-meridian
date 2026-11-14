@@ -1,0 +1,17 @@
+# Flak Jacket
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 85
+size: 2x2
+weight: 2.5
+defense: 1
+found in: armory, crew locker
+rarity: common
+
+In a line:
+A lighter cousin of the flak vest, with sleeves.
+
+Drawing:
+`_/\_/\_`
+`|  ||  |`
+`|__||__|`

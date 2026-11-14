@@ -1,0 +1,14 @@
+# Capacitor Bank
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 35
+size: 2x1
+weight: 1.4
+found in: crate, tool shelf
+rarity: uncommon
+
+In a line:
+A rack of capacitors. Don't touch the terminals; they remember.
+
+Drawing:
+`|||||||`

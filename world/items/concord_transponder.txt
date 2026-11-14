@@ -1,0 +1,14 @@
+# Concord Transponder
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 80
+size: 1x1
+weight: 0.6
+found in: crate, safe
+rarity: rare
+
+In a line:
+A ship's identity transponder from the old navy, still able to say a name if it's given power.
+
+Drawing:
+`[_]`

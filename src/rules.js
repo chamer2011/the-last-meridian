@@ -440,6 +440,11 @@ export function useItem(game, id) {
       const before = game.ship.fuel;
       game.ship.fuel = Math.min(game.ship.maxFuel, game.ship.fuel + amount);
       parts.push(`+${game.ship.fuel - before} fuel`);
+    } else if (key === "stress") {
+      // Something that eases the mind: a hot drink, a smoke, a sleeping pill (the loot's drafts, world/items).
+      const before = game.needs.stress;
+      changeStress(game, -amount);
+      parts.push(before > game.needs.stress ? `-${before - game.needs.stress} stress` : "no stress to ease");
     }
   }
   removeItem(game, id);

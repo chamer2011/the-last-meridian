@@ -1,0 +1,14 @@
+# Harmonica
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 15
+size: 1x1
+weight: 0.1
+found in: crew locker, dresser
+rarity: common
+
+In a line:
+A harmonica with two dead reeds. Someone played it a lot.
+
+Drawing:
+`[::]`

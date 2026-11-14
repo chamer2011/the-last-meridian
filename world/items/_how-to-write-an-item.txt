@@ -7,8 +7,9 @@ board, then Items) shows and changes the same files, and npm run check-story rea
 with the file and the line.
 
     # Service Rifle
+    draft: Claude's, not yet edited by the owner   (on the things Claude wrote for you; take it out once it's yours)
     order: 23                           (where it comes in lists; leave it out to come after the rest, by name)
-    type: weapon                        (weapon, armor, consumable, gadget or story)
+    type: weapon                        (weapon, armor, consumable, gadget, goods or story)
     price: 250
     size: 4x1                           (squares it takes in the inventory, across by down; leave it out for its kind's)
     weight: 4.5                         (in kg; leave it out for its kind's)
@@ -18,12 +19,15 @@ with the file and the line.
     skill: firearms                     (weapons: the skill that adds to the attack)
     defense: 2                          (armor)
     restricted: yes                     (not for sale to just anyone; leave it out if not)
-    effect: hp 10, energy 5             (consumables: what using it does; hp, energy, hull or fuel)
+    effect: hp 10, energy 5             (consumables: what using it does; hp, energy, stress, dress, hull or fuel)
     found in: armory, crew locker       (the kinds of container it turns up in, from world/loot/containers.txt)
     rarity: uncommon                    (common, uncommon or rare: how often it turns up there)
 
     In a line:
     The old navy's standard long gun, easy to find now that so few are left to carry one.
+
+    When read:
+    A name is scratched into the stock, and under it a date.   (words on it, which Read in the inventory shows)
 
     Effects:
     in a setting: vacuum 1              (while it's worn or carried: easier or harder in a setting)
@@ -34,9 +38,24 @@ with the file and the line.
 
 In a line is what the player reads in the inventory and the market. A part that has nothing in it can be left out.
 
+The kinds: a weapon goes in the hand or on the hip, armor is worn (clothes too, with defense 0), a consumable is used up
+(and can go on the belt to use in a fight if it heals or gives energy), a gadget helps by being carried, goods are
+things to keep, sell, read or give back that do nothing by being carried (a letter, a keepsake, a burnt-out relay), and
+a story item is one the story hands out, which can't be put down if it has no price.
+
+What a consumable's effect does: hp gives health back (plus the player's Medicine rank), energy gives energy, stress
+takes that much stress off, dress dresses or splints that many of the player's wounds, hull mends the ship's hull (plus
+twice the Engineering rank) and fuel puts fuel in her tanks.
+
+When read is what's written on it: a letter, a page, a log, a label. The inventory offers Read for anything that has
+it, carried or in something the player has opened, shows the words, and keeps them in What you know under the item's
+name. Keep it to a few sentences on one line, and don't end it with a colon, or it reads as the start of a new part.
+
 Found in and rarity are for the containers in the rooms (a dresser, the armory's rack, a crate): world/loot explains
-them. An item without a found in line is never found in a container. The Drawing is how the inventory draws it, in plain
-characters, one row to a line, each row between backticks so its spaces are kept; without one it's drawn as its kind.
+them. An item without a found in line is never found in a container, and one with a found in line isn't for sale in the
+character creator unless a market sells it too. The Drawing is how the inventory draws it, in plain characters, one row
+to a line, each row between backticks so its spaces are kept; without one it's drawn as its kind. Each square holds
+about 4 characters across and 2 rows down (a 2x1 thing about 8 across, a 2x3 thing about 8 across and 7 down).
 
 Size, weight and stack are for the inventory. A thing one square big goes in a pocket; anything bigger goes in the
 pack, which is 8 squares by 5, so nothing can be bigger than that, and a weapon of 2 squares or fewer can go on the hip.

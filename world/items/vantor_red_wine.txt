@@ -1,0 +1,19 @@
+# Vantor Red Wine
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 90
+size: 1x2
+weight: 1.2
+stack: 1
+effect: stress 10
+found in: cooler, safe
+rarity: rare
+
+In a line:
+A dusty bottle of Vantor red, older than the ship's youngest officer.
+
+Drawing:
+` n`
+` |`
+`| |`
+`|_|`

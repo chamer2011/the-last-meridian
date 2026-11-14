@@ -1,0 +1,18 @@
+# Locked Diary
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 3
+size: 1x1
+weight: 0.3
+found in: dresser, desk
+rarity: common
+
+In a line:
+A small diary with a lock that's been forced.
+
+When read:
+Day one on the Meridian. I don't know anyone. Day nine. I know everyone in the overflow by their snoring. Day thirty. Someone stole my good socks. Day sixty. Got my socks back; Dagny had them. We're friends now. Day ninety. I think we're going to make it. Don't jinx it.
+
+Drawing:
+`|##|`
+`|__|`

@@ -5,6 +5,8 @@ price: 100
 size: 2x2
 weight: 4
 defense: 1
+found in: armory
+rarity: common
 
 In a line:
 Stops shrapnel, mostly.

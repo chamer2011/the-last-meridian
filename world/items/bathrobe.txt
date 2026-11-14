@@ -1,0 +1,19 @@
+# Bathrobe
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 10
+size: 2x3
+weight: 0.9
+defense: 0
+found in: dresser
+rarity: common
+
+In a line:
+Thick towelling with a cabin number embroidered on the pocket.
+
+Drawing:
+`  /\  `
+` /  \ `
+`|    |`
+`/    \`
+`\____/`

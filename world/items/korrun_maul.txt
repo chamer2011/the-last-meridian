@@ -1,0 +1,18 @@
+# Korrun Maul
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 600
+size: 4x2
+weight: 9
+damage: 6 to 11
+stat: might
+skill: melee
+found in: armory
+rarity: rare
+
+In a line:
+A forge-clan maul so heavy that most people can only lift it once.
+
+Drawing:
+` _____`
+`[#####]========`

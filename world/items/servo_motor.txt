@@ -1,0 +1,14 @@
+# Servo Motor
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 18
+size: 1x1
+weight: 0.8
+found in: crate, tool shelf
+rarity: common
+
+In a line:
+A small motor from a door or an arm, still turning if you coax it.
+
+Drawing:
+`(o)=`

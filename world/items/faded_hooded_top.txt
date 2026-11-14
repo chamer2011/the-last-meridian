@@ -1,0 +1,17 @@
+# Faded Hooded Top
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 9
+size: 2x2
+weight: 0.7
+defense: 0
+found in: dresser, crew locker
+rarity: common
+
+In a line:
+Its print has washed away to the ghost of a logo. The cuffs are chewed.
+
+Drawing:
+`/~~~~\`
+`|####|`
+`\____/`

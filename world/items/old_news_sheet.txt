@@ -1,0 +1,18 @@
+# Old News Sheet
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 2
+size: 1x1
+weight: 0.1
+found in: desk, crate
+rarity: common
+
+In a line:
+A printed news sheet from before the Fall, the ink smudged.
+
+When read:
+THE CONCORD HERALD. Trade talks open at Vantor. Record harvest on Tessen. Navy exercises go off without a hitch. It's dated eight days before the Concord fell, and nothing on it knows.
+
+Drawing:
+`|==|`
+`|__|`

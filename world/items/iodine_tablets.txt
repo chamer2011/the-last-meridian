@@ -1,0 +1,17 @@
+# Iodine Tablets
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 15
+size: 1x1
+weight: 0.05
+stack: 10
+effect: hp 3
+found in: medicine cabinet, crate
+rarity: common
+
+In a line:
+Tablets against radiation in a foil sheet, every one still in its bubble.
+
+Drawing:
+`[o]`
+`|_|`

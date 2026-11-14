@@ -1,0 +1,18 @@
+# Handwritten Will
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 2
+size: 1x1
+weight: 0.1
+found in: desk, dresser
+rarity: common
+
+In a line:
+A short will, written by hand and signed in front of two witnesses.
+
+When read:
+I leave my boots to whoever needs them. My knife to my brother if he's alive, and to the cook if he isn't. My letters to the recycler, unread. Whatever I owe, I'm sorry. Whatever I'm owed, keep it.
+
+Drawing:
+`|==|`
+`|__|`

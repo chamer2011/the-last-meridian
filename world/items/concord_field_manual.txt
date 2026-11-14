@@ -1,0 +1,18 @@
+# Concord Field Manual
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 8
+size: 1x1
+weight: 0.1
+found in: desk, armory
+rarity: uncommon
+
+In a line:
+Chapter four of a navy manual, On Keeping a Crew, its pages dog-eared.
+
+When read:
+A crew is not kept by orders. A crew is kept by the belief that the orders make sense. When they stop believing it, no amount of shouting will bring it back. Feed them first. Tell them the truth when you can, and when you can't, don't lie about why. Someone has underlined feed them first three times.
+
+Drawing:
+`|##|`
+`|__|`

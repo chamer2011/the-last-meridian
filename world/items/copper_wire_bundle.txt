@@ -1,0 +1,15 @@
+# Copper Wire Bundle
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 10
+size: 1x1
+weight: 0.6
+stack: 5
+found in: crate, tool shelf
+rarity: common
+
+In a line:
+A tangle of stripped copper wire, worth something by weight.
+
+Drawing:
+`(@@)`

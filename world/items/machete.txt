@@ -1,0 +1,17 @@
+# Machete
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 85
+size: 3x1
+weight: 1
+damage: 3 to 7
+stat: agility
+skill: melee
+found in: crate, crew locker
+rarity: uncommon
+
+In a line:
+A long brush blade from a colony world, still dull green with old sap.
+
+Drawing:
+`==}--------->`

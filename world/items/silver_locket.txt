@@ -1,0 +1,14 @@
+# Silver Locket
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 45
+size: 1x1
+weight: 0.05
+found in: dresser, safe
+rarity: uncommon
+
+In a line:
+A locket on a fine chain. Inside, a curl of dark hair.
+
+Drawing:
+`~o~`

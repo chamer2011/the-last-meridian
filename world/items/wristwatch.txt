@@ -1,0 +1,14 @@
+# Wristwatch
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 35
+size: 1x1
+weight: 0.1
+found in: dresser, crew locker
+rarity: uncommon
+
+In a line:
+A steel watch with a cracked face, stopped at twenty past four.
+
+Drawing:
+`(o)-`

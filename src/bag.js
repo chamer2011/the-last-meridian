@@ -296,7 +296,7 @@ export const drawnWeapon = (game) => (game.combat?.drawn && game.equipped?.sidea
 function itemFacts(id, extra = {}) {
   const item = ITEMS[id];
   const { w, h } = sizeOf(item);
-  return { id, name: item.name, type: item.type, w, h, weight: weightOf(item), stack: stackOf(item), desc: item.desc ?? "", price: item.price ?? 0, damage: item.damage ?? null, defense: item.defense ?? null, effect: item.effect ?? null, sidearm: fitsSidearm(item), fight: fightable(item), ...(item.art?.length ? { art: item.art } : {}), ...extra };
+  return { id, name: item.name, type: item.type, w, h, weight: weightOf(item), stack: stackOf(item), desc: item.desc ?? "", price: item.price ?? 0, damage: item.damage ?? null, defense: item.defense ?? null, effect: item.effect ?? null, sidearm: fitsSidearm(item), fight: fightable(item), ...(item.art?.length ? { art: item.art } : {}), ...(item.read ? { read: item.read } : {}), ...extra };
 }
 // Reading this changes nothing in the save.
 export function bagView(game) {
@@ -474,6 +474,24 @@ function useFrom(game, from) {
   return { said: `[ITEM] ${useItem(game, source.id)}` };
 }
 
+// Reading what's written on something, carried or in what's open: the words go in What you know, once, under the
+// item's name (the loot's drafts in world/items have a When read part). The page shows the words; this keeps them.
+function readFrom(game, from) {
+  const source = pick(game, from, openFound(game));
+  if (!source) throw new Error("There's nothing there.");
+  const item = ITEMS[source.id];
+  if (!item.read) throw new Error(`There's nothing written on the ${item.name}.`);
+  return { said: `You read the ${item.name}.${keepWords(game, source.id, item) ? " It's in What you know now." : ""}` };
+}
+function keepWords(game, id, item) {
+  game.lore ??= [];
+  const key = `item:${id}`;
+  if (game.lore.some((entry) => entry.id === key)) return false;
+  const taken = game.lore.some((entry) => entry.name.toLowerCase() === item.name.toLowerCase());
+  game.lore.push({ id: key, name: taken ? `${item.name}, read` : item.name, kind: "concept", text: String(item.read).slice(0, 600) });
+  return true;
+}
+
 function splitAt(game, from) {
   const found = openFound(game);
   const source = pick(game, from, found);
@@ -564,6 +582,7 @@ export function bagCommand(game, body) {
     case "equip": reply = equipFrom(game, body.from); break;
     case "stow": reply = stow(game, body.from); break;
     case "use": reply = useFrom(game, body.from); break;
+    case "read": reply = readFrom(game, body.from); break;
     case "split": reply = splitAt(game, body.from); break;
     case "drop": reply = dropFrom(game, body.from); break;
     case "take": reply = takeFrom(game, body.from); break;

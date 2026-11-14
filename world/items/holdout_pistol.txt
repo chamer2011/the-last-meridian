@@ -1,0 +1,17 @@
+# Holdout Pistol
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 90
+size: 1x1
+weight: 0.4
+damage: 2 to 5
+stat: agility
+skill: firearms
+found in: safe, desk
+rarity: uncommon
+
+In a line:
+Small enough to hide in a boot, and accurate enough to regret.
+
+Drawing:
+`[]=-`

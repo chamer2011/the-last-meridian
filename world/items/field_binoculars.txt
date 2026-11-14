@@ -1,0 +1,14 @@
+# Field Binoculars
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 50
+size: 2x1
+weight: 0.7
+found in: crew locker, desk
+rarity: common
+
+In a line:
+Rubber-armoured binoculars with one cracked lens.
+
+Drawing:
+`(O)=(O)`

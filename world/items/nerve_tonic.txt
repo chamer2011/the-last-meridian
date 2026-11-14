@@ -1,0 +1,17 @@
+# Nerve Tonic
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 40
+size: 1x1
+weight: 0.2
+stack: 5
+effect: stress 8
+found in: medicine cabinet
+rarity: uncommon
+
+In a line:
+A bitter tonic for nerves that are fraying. It works, for a while.
+
+Drawing:
+` n`
+`|_|`

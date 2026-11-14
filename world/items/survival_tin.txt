@@ -1,0 +1,17 @@
+# Survival Tin
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 90
+size: 1x1
+weight: 0.3
+found in: crate, crew locker
+rarity: uncommon
+
+In a line:
+A tin packed with hooks, wire, a lens, a needle and a list of what to do: +1 on Survival checks while carried.
+
+Effects:
+skills: survival 1
+
+Drawing:
+`[==]`

@@ -1,0 +1,18 @@
+# Tactical Slate
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 140
+size: 1x1
+weight: 0.3
+found in: desk, armory
+rarity: rare
+
+In a line:
+A marine sergeant's slate of boarding drills and deck plans: +1 on Tactics checks while carried.
+
+Effects:
+skills: tactics 1
+
+Drawing:
+`[==]`
+`[__]`

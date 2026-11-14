@@ -1,0 +1,17 @@
+# Hunting Rifle
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 220
+size: 4x1
+weight: 3.5
+damage: 4 to 9
+stat: perception
+skill: firearms
+found in: armory, crate
+rarity: uncommon
+
+In a line:
+A bolt-action rifle from a frontier world, its stock carved with tally marks.
+
+Drawing:
+`==[##]========-`

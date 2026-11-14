@@ -1,0 +1,15 @@
+# Folding Solar Panel
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 24
+size: 2x2
+weight: 1.8
+found in: crate
+rarity: uncommon
+
+In a line:
+A solar panel from a colony kit that folds into a square, scratched but whole.
+
+Drawing:
+`[####]`
+`[####]`

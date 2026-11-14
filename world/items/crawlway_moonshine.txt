@@ -1,0 +1,17 @@
+# Crawlway Moonshine
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 12
+size: 1x1
+weight: 0.5
+stack: 5
+effect: stress 8
+found in: crate, crew locker
+rarity: uncommon
+
+In a line:
+Clear spirit from a still nobody admits to running. It burns twice.
+
+Drawing:
+`(=)`
+`|_|`

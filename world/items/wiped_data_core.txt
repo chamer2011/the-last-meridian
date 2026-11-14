@@ -1,0 +1,14 @@
+# Wiped Data Core
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 20
+size: 1x1
+weight: 0.3
+found in: crate, desk
+rarity: uncommon
+
+In a line:
+A memory core with nothing left on it. Or so it says.
+
+Drawing:
+`[::]`

@@ -7,6 +7,8 @@ weight: 4.5
 damage: 5 to 9
 stat: perception
 skill: firearms
+found in: armory
+rarity: uncommon
 
 In a line:
 The old navy's standard long gun, easy to find now that so few are left to carry one: 5 to 9 damage, using Perception and Firearms.

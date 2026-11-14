@@ -1,0 +1,14 @@
+# Hand Mirror
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 8
+size: 1x1
+weight: 0.2
+found in: dresser
+rarity: common
+
+In a line:
+A small mirror in a tortoiseshell frame, with a crack in one corner.
+
+Drawing:
+`(O)-`

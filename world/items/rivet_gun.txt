@@ -1,0 +1,19 @@
+# Rivet Gun
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 130
+size: 2x2
+weight: 3
+damage: 3 to 7
+stat: intellect
+skill: engineering
+found in: tool shelf
+rarity: uncommon
+
+In a line:
+A pneumatic riveter from the yards. Pressed against something, it drives a rivet through it.
+
+Drawing:
+`[###]`
+`[###]=>`
+`  ||`

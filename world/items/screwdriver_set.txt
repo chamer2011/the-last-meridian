@@ -1,0 +1,14 @@
+# Screwdriver Set
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 18
+size: 2x1
+weight: 0.6
+found in: tool shelf, desk
+rarity: common
+
+In a line:
+Six drivers in a cloth roll, their handles colour-coded and chipped.
+
+Drawing:
+`[||||]`

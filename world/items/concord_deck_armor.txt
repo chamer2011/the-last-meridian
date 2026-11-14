@@ -1,0 +1,19 @@
+# Concord Deck Armor
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 320
+size: 2x3
+weight: 7
+defense: 2
+found in: armory
+rarity: uncommon
+
+In a line:
+Navy-grey plate for fighting aboard ship, the Concord crest scraped off the chest.
+
+Drawing:
+` _____`
+`|[###]|`
+`|[###]|`
+` |   |`
+` |___|`

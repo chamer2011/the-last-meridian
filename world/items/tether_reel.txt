@@ -1,0 +1,17 @@
+# Tether Reel
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 110
+size: 1x1
+weight: 0.8
+found in: crate, tool shelf
+rarity: uncommon
+
+In a line:
+A spring reel of safety line with a clip, for working outside the hull: +1 on Void Ops checks while carried.
+
+Effects:
+skills: void_ops 1
+
+Drawing:
+`(@)-`

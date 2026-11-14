@@ -1,0 +1,17 @@
+# Salvager's Hull Plates
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 240
+size: 3x2
+weight: 9
+defense: 2
+found in: crate, armory
+rarity: uncommon
+
+In a line:
+Thick plates cut from a wreck's hull and strapped together. Ugly, heavy, and they work.
+
+Drawing:
+` ________`
+`|[##][##]|`
+`|________|`

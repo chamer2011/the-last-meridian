@@ -1,0 +1,18 @@
+# Ghost Pistol
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 180
+size: 2x1
+weight: 1
+damage: 3 to 7
+stat: agility
+skill: firearms
+restricted: yes
+found in: safe, crew locker
+rarity: uncommon
+
+In a line:
+A pistol with its serial number ground off and its grip taped. Officially, it's never been anywhere.
+
+Drawing:
+`[##]==-`

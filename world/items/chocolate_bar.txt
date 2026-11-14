@@ -1,0 +1,16 @@
+# Chocolate Bar
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 22
+size: 1x1
+weight: 0.1
+stack: 10
+effect: energy 1, stress 6
+found in: crew locker, dresser, desk
+rarity: uncommon
+
+In a line:
+Real chocolate, its wrapper soft from being carried around and not eaten.
+
+Drawing:
+`[==]`

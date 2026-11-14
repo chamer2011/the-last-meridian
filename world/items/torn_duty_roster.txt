@@ -1,0 +1,18 @@
+# Torn Duty Roster
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 1
+size: 1x1
+weight: 0.1
+found in: desk, crew locker
+rarity: common
+
+In a line:
+Half a page of a watch roster, names and hours in three different pens.
+
+When read:
+FIRST WATCH: Varga, Osei, Brook (swapped with Tanaka, see me). SECOND WATCH: Tanaka, Mwangi, Brook again? The rest is torn away. Someone has written in the margin: who keeps putting Brook on everything.
+
+Drawing:
+`|==|`
+`|__|`

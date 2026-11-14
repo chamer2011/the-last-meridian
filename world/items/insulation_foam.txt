@@ -1,0 +1,15 @@
+# Insulation Foam
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 3
+size: 2x2
+weight: 0.5
+found in: crate
+rarity: common
+
+In a line:
+A block of grey foam from inside the walls. Light, useless, and it gets everywhere.
+
+Drawing:
+`[::::]`
+`[::::]`

@@ -1,0 +1,14 @@
+# Gyroscope
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 30
+size: 1x1
+weight: 0.6
+found in: crate, tool shelf
+rarity: uncommon
+
+In a line:
+A spinning-mass gyroscope from an old guidance system, still in its cage.
+
+Drawing:
+`{o}`

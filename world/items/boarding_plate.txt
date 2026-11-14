@@ -1,0 +1,19 @@
+# Boarding Plate
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 600
+size: 3x3
+weight: 11
+defense: 3
+found in: armory
+rarity: rare
+
+In a line:
+Full boarding armor, dented in someone else's war.
+
+Drawing:
+`  _____`
+` /[###]\`
+`|[#####]|`
+` |[###]|`
+` |_____|`

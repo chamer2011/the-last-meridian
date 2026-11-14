@@ -1,0 +1,22 @@
+# Crawlway Coveralls
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 60
+size: 2x3
+weight: 1.6
+defense: 0
+found in: crew locker
+rarity: uncommon
+
+In a line:
+Cut close, with padded knees and elbows, for the techs who live in the ship's narrow places: +1 on checks in confined spaces while carried.
+
+Effects:
+in a setting: confined 1
+
+Drawing:
+` _/\_ `
+`|\  /|`
+`| || |`
+`| || |`
+`|_||_|`

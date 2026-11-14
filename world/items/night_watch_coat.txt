@@ -1,0 +1,22 @@
+# Night Watch Coat
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 55
+size: 2x3
+weight: 2.2
+defense: 0
+found in: crew locker
+rarity: uncommon
+
+In a line:
+Long, dark and quiet, with no buttons to catch the light: +1 on checks in the dark while carried.
+
+Effects:
+in a setting: low_light 1
+
+Drawing:
+` _/\_ `
+`|/  \|`
+`|  . |`
+`|  . |`
+`|_/\_|`

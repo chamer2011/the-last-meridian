@@ -1,0 +1,17 @@
+# Worry Stone
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 70
+size: 1x1
+weight: 0.1
+found in: dresser, crew locker
+rarity: uncommon
+
+In a line:
+A smooth grey stone with a dip worn by someone's thumb: +1 on Composure checks while carried.
+
+Effects:
+skills: composure 1
+
+Drawing:
+`(_)`

@@ -1,0 +1,18 @@
+# Crossword Book
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 2
+size: 1x1
+weight: 0.1
+found in: desk, dresser
+rarity: common
+
+In a line:
+A book of crosswords, half of them done in confident pen.
+
+When read:
+Seven across: a place to rest, six letters. HARBOR, someone has written, then crossed it out, then written again. Twelve down is left empty, though the clue is an easy one.
+
+Drawing:
+`|##|`
+`|__|`

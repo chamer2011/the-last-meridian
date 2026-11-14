@@ -1,0 +1,16 @@
+# Burn Gel
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 20
+size: 1x1
+weight: 0.2
+stack: 5
+effect: hp 6
+found in: medicine cabinet
+rarity: common
+
+In a line:
+A cool blue gel in a tube, for burns from the engines and the galley.
+
+Drawing:
+`[+>`

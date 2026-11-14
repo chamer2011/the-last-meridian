@@ -1,0 +1,17 @@
+# Marine Fatigues
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 25
+size: 2x2
+weight: 1.1
+defense: 0
+found in: crew locker, armory
+rarity: common
+
+In a line:
+Concord marine issue, patterned for a forest war that nobody ever fought.
+
+Drawing:
+`_/\/\_`
+`\ |  /`
+` |__| `

@@ -1,0 +1,16 @@
+# Candied Ginger
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 12
+size: 1x1
+weight: 0.1
+stack: 10
+effect: energy 1, stress 3
+found in: pantry, desk
+rarity: uncommon
+
+In a line:
+Sugared ginger in a paper twist, hot and sweet. Good for jump sickness.
+
+Drawing:
+`>o<`

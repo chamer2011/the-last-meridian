@@ -1,0 +1,17 @@
+# Navy Dog Tags
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 2
+size: 1x1
+weight: 0.05
+found in: crew locker, dresser
+rarity: common
+
+In a line:
+A pair of navy identity tags on a chain.
+
+When read:
+RHEE, I. PETTY OFFICER SECOND CLASS. CONCORD NAVY. BLOOD O NEGATIVE. The chain has been broken and knotted back together.
+
+Drawing:
+`[=]`

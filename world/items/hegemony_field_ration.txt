@@ -1,0 +1,16 @@
+# Hegemony Field Ration
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 15
+size: 1x1
+weight: 0.4
+stack: 5
+effect: hp 5
+found in: crate, pantry
+rarity: uncommon
+
+In a line:
+A neat grey box of food, every part of it labelled in four languages.
+
+Drawing:
+`[_]`

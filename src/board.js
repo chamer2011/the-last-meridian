@@ -496,7 +496,7 @@ function boardLists() {
     arts: [...new Set([...Object.values(WORLD_CHARACTERS).map((one) => one.combat?.art), ...Object.values(WORLD_ENEMIES).map((one) => one.art)].filter(Boolean))].sort(),
     kinds: ["main", "crew", "dilemma", "mystery", "exploration", "survival", "politics", "job", "faction"],
     motives: [...new Set(Object.values(WORLD_ENEMIES).map((one) => one.motive).filter(Boolean))].sort(),
-    itemTypes: ["weapon", "armor", "consumable", "gadget", "story"],
+    itemTypes: ["weapon", "armor", "consumable", "gadget", "goods", "story"],
     perks: named(PERKS),
     abilities: named(ABILITIES),
     goods: ["food", "fuel", "medicine", "parts"],

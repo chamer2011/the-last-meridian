@@ -1,0 +1,16 @@
+# Tea Brick
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 14
+size: 1x1
+weight: 0.2
+stack: 10
+effect: energy 1, stress 4
+found in: pantry
+rarity: common
+
+In a line:
+Pressed tea leaves you shave off with a knife. It makes a strong, dark cup.
+
+Drawing:
+`[##]`

@@ -1,0 +1,17 @@
+# Snub Revolver
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 75
+size: 2x1
+weight: 0.9
+damage: 2 to 6
+stat: agility
+skill: firearms
+found in: safe, crew locker
+rarity: uncommon
+
+In a line:
+A short-barrelled revolver with a cylinder that sticks on every fifth turn.
+
+Drawing:
+`(o)==-`

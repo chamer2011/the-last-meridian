@@ -1,0 +1,21 @@
+# Patched Vacuum Suit
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 180
+size: 3x3
+weight: 10
+defense: 1
+found in: crate
+rarity: uncommon
+
+In a line:
+An old work suit with its helmet ring sealed by hand: +1 on checks in vacuum while carried.
+
+Effects:
+in a setting: vacuum 1
+
+Drawing:
+`  (O)`
+` /|=|\`
+`  | |`
+`  |_|`

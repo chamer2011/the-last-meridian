@@ -1,0 +1,15 @@
+# Pipe Fittings
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 8
+size: 1x1
+weight: 0.7
+stack: 5
+found in: tool shelf, crate
+rarity: common
+
+In a line:
+Elbows, tees and couplers for the ship's pipes, rattling in a bag.
+
+Drawing:
+`L-T`

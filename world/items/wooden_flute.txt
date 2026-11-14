@@ -1,0 +1,14 @@
+# Wooden Flute
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 18
+size: 2x1
+weight: 0.2
+found in: dresser, crew locker
+rarity: common
+
+In a line:
+A simple flute of dark wood, with a crack mended with glue.
+
+Drawing:
+`=o=o=o=`

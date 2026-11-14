@@ -1,0 +1,17 @@
+# Rain Poncho
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 6
+size: 2x2
+weight: 0.4
+defense: 0
+found in: crew locker, crate
+rarity: common
+
+In a line:
+Bought on a world with weather and never needed since. It still smells faintly of rain.
+
+Drawing:
+`  /\  `
+` /  \ `
+`/____\`

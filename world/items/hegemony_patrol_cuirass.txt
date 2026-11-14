@@ -1,0 +1,18 @@
+# Hegemony Patrol Cuirass
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 700
+size: 2x3
+weight: 8
+defense: 3
+restricted: yes
+found in: armory
+rarity: rare
+
+In a line:
+Polished black plate with the Hegemony's crest on the breast.
+
+Drawing:
+` _____`
+`( ### )`
+` \___/`

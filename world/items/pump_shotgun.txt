@@ -1,0 +1,17 @@
+# Pump Shotgun
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 280
+size: 4x1
+weight: 3.8
+damage: 4 to 10
+stat: might
+skill: firearms
+found in: armory
+rarity: uncommon
+
+In a line:
+A shipboard shotgun with a short barrel, made for corridors.
+
+Drawing:
+`=[##]==========`

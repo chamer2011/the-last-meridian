@@ -84,7 +84,13 @@ function cleanCounts(raw, table, min, max) {
 const cleanList = (raw, table, max) =>
   (Array.isArray(raw) ? [...new Set(raw)].filter((id) => known(id, table)).slice(0, max) : []);
 
-const gearAllowed = (item) => ["weapon", "armor", "consumable", "gadget"].includes(item.type) && !item.restricted;
+// Starting gear: weapons, armor, supplies and gadgets anyone may buy, but not the things only found in the rooms'
+// containers (world/items, found in), unless a market somewhere sells them too.
+const soldSomewhere = (id) => Object.values(LOCATIONS).some((place) => (place.market ?? []).includes(id));
+const gearAllowed = (id) => {
+  const item = ITEMS[id];
+  return Boolean(item) && ["weapon", "armor", "consumable", "gadget"].includes(item.type) && !item.restricted && (!item.foundIn?.length || soldSomewhere(id));
+};
 
 export function normalizeDraft(raw) {
   const d = typeof raw === "object" && raw !== null ? raw : {};
@@ -121,7 +127,7 @@ export function normalizeDraft(raw) {
     drive: known(d.drive, DRIVES),
     bond: known(d.bond, BONDS),
     bondName: cleanText(d.bondName, 40),
-    gear: Object.fromEntries(Object.entries(cleanCounts(d.gear, ITEMS, 0, 9)).filter(([id]) => gearAllowed(ITEMS[id]))),
+    gear: Object.fromEntries(Object.entries(cleanCounts(d.gear, ITEMS, 0, 9)).filter(([id]) => gearAllowed(id))),
   };
 }
 
@@ -851,7 +857,7 @@ export function creatorSetup() {
     drives: withEffects(DRIVES, (d) => ({ effects: describeFx(d.fx) })),
     bonds: withEffects(BONDS),
     archetypes: Object.fromEntries(Object.entries(ARCHETYPES).map(([id, a]) => [id, { id, name: a.name, blurb: a.blurb }])),
-    gear: Object.entries(ITEMS).filter(([, item]) => gearAllowed(item)).map(([id, item]) => ({ id, ...item })),
+    gear: Object.entries(ITEMS).filter(([id]) => gearAllowed(id)).map(([id, item]) => ({ id, ...item })),
     items: ITEMS,
     limits: {
       tagCount: TAG_COUNT,

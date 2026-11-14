@@ -1,0 +1,17 @@
+# Blast Apron
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 85
+size: 2x2
+weight: 4.5
+defense: 1
+found in: crew locker, armory
+rarity: common
+
+In a line:
+A lead-lined apron from engineering, for standing too close to things that might go off.
+
+Drawing:
+` .--. `
+` |  | `
+` |__| `

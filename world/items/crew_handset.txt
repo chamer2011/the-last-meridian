@@ -1,0 +1,15 @@
+# Crew Handset
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 35
+size: 1x1
+weight: 0.6
+found in: crew locker, desk
+rarity: common
+
+In a line:
+A handheld comms set tuned to the ship's channels, and now and then to something else.
+
+Drawing:
+`[=]`
+`|:|`

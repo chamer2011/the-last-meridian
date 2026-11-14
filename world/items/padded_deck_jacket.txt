@@ -1,0 +1,17 @@
+# Padded Deck Jacket
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 90
+size: 2x2
+weight: 2
+defense: 1
+found in: crew locker
+rarity: uncommon
+
+In a line:
+Quilted against knocks and cold, the kind deck crews wear on a long watch.
+
+Drawing:
+`_/\_/\_`
+`|  ||  |`
+`|__||__|`

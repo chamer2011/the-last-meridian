@@ -1,0 +1,14 @@
+# Travel Chess Set
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 20
+size: 1x1
+weight: 0.4
+found in: desk, dresser, cooler
+rarity: common
+
+In a line:
+A folding chess set with magnetic pieces, two of the pawns replaced by bolts.
+
+Drawing:
+`[#:]`

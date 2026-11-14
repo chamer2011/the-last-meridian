@@ -1,0 +1,19 @@
+# Salvage Guild Overalls
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 95
+size: 2x3
+weight: 2.5
+defense: 1
+found in: crew locker, crate
+rarity: uncommon
+
+In a line:
+Reinforced at every seam, with the Guild's contract number stitched over the heart.
+
+Drawing:
+` _/\_ `
+`|\  /|`
+`| || |`
+`| || |`
+`|_||_|`

@@ -1,0 +1,17 @@
+# Commendation Letter
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 4
+size: 1x1
+weight: 0.1
+found in: desk, dresser
+rarity: uncommon
+
+In a line:
+A navy letter of commendation on heavy cream paper.
+
+When read:
+For conduct beyond the call of duty during the evacuation of the Calder yards, the Concord Navy commends Petty Officer Imani Rhee, whose quick thinking saved forty-one lives. It's signed by an admiral whose name you know only from the news.
+
+Drawing:
+`[\/]`

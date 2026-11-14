@@ -1,0 +1,17 @@
+# Sleeping Pills
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 20
+size: 1x1
+weight: 0.05
+stack: 10
+effect: stress 6
+found in: medicine cabinet, dresser
+rarity: uncommon
+
+In a line:
+A few blue pills that bring a sleep without dreams.
+
+Drawing:
+`[o]`
+`|_|`

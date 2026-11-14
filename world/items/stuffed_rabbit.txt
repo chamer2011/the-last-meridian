@@ -1,0 +1,15 @@
+# Stuffed Rabbit
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 2
+size: 1x1
+weight: 0.2
+found in: dresser, crew locker
+rarity: common
+
+In a line:
+A threadbare toy rabbit with one ear sewn back on in the wrong colour.
+
+Drawing:
+`(\/)`
+`(..)`

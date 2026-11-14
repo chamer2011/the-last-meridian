@@ -1,0 +1,16 @@
+# Tinned Peaches
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 16
+size: 1x1
+weight: 0.4
+stack: 10
+effect: hp 3, stress 4
+found in: pantry, crate
+rarity: uncommon
+
+In a line:
+Peaches in syrup. Someone was saving these for a special day.
+
+Drawing:
+`(==)`

@@ -1,0 +1,14 @@
+# Fibre Optic Spool
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 20
+size: 1x1
+weight: 0.4
+found in: crate, tool shelf
+rarity: uncommon
+
+In a line:
+A spool of fibre that glows faintly at the end when you hold the other end to a light.
+
+Drawing:
+`(@)`

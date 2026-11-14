@@ -1,0 +1,18 @@
+# Coded Note
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 5
+size: 1x1
+weight: 0.1
+found in: desk, safe
+rarity: uncommon
+
+In a line:
+A slip of paper covered in groups of letters that mean nothing to you.
+
+When read:
+KTRL WWEA MOPN SSTE RVVA LLQE. Then, in plain writing at the bottom: burn this. Whoever had it didn't.
+
+Drawing:
+`|==|`
+`|__|`

@@ -1,0 +1,16 @@
+# Tinned Fish
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 10
+size: 1x1
+weight: 0.3
+stack: 10
+effect: hp 4
+found in: pantry, crate
+rarity: common
+
+In a line:
+Little silver fish packed in oil, from an ocean you'll never see.
+
+Drawing:
+`(==)`

@@ -1,0 +1,19 @@
+# Climbing Line
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 80
+size: 2x2
+weight: 2
+found in: crate, crew locker
+rarity: uncommon
+
+In a line:
+Thirty metres of braided line with a hook at one end: +1 on Athletics checks while carried.
+
+Effects:
+skills: athletics 1
+
+Drawing:
+` @@@`
+`@   @`
+` @@@`

@@ -1,0 +1,19 @@
+# Engine Room Coveralls
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 14
+size: 2x3
+weight: 1.8
+defense: 0
+found in: crew locker, crate
+rarity: common
+
+In a line:
+Fire-retardant once, oil-stained always, with the knees worn through to the lining.
+
+Drawing:
+` _/\_ `
+`|\  /|`
+`| || |`
+`| || |`
+`|_||_|`

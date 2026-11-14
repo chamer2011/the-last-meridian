@@ -1,0 +1,14 @@
+# Magnetic Grapple
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 60
+size: 2x1
+weight: 1.2
+found in: crate, tool shelf
+rarity: uncommon
+
+In a line:
+A magnet on a cable that sticks to anything with iron in it.
+
+Drawing:
+`[U]~~~`

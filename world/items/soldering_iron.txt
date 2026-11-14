@@ -1,0 +1,14 @@
+# Soldering Iron
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 25
+size: 2x1
+weight: 0.4
+found in: tool shelf
+rarity: common
+
+In a line:
+A pencil iron with a frayed cord and a tip worn to a nub.
+
+Drawing:
+`====-`

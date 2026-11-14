@@ -1,0 +1,18 @@
+# Visitor's Map of Haven
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 3
+size: 1x1
+weight: 0.1
+found in: desk
+rarity: common
+
+In a line:
+A fold-out map of Haven Station for visitors, from before the Fall.
+
+When read:
+WELCOME TO HAVEN. The Manifest Docks: forty berths, customs, the dockmaster's office. Consulate Row: the embassies of the Concord's worlds. The Neutral Ground: refreshments, no weapons. Someone has written beside the Concord's consulate: gone. The map is older than the Hook, which isn't on it.
+
+Drawing:
+`/\/\`
+`\/\/`

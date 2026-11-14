@@ -1,0 +1,14 @@
+# Sealant Gun
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 20
+size: 2x1
+weight: 0.8
+found in: tool shelf, crate
+rarity: common
+
+In a line:
+A caulking gun with half a tube of hull sealant still in it.
+
+Drawing:
+`[==]=-`

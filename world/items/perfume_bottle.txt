@@ -1,0 +1,15 @@
+# Perfume Bottle
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 35
+size: 1x1
+weight: 0.1
+found in: dresser
+rarity: uncommon
+
+In a line:
+A cut-glass bottle with an inch of perfume left. It smells of somewhere with flowers.
+
+Drawing:
+` n`
+`(_)`

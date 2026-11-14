@@ -1,0 +1,14 @@
+# Torque Wrench
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 35
+size: 2x1
+weight: 1.2
+found in: tool shelf
+rarity: common
+
+In a line:
+A calibrated wrench that clicks when the bolt is tight enough.
+
+Drawing:
+`C=====`

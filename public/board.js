@@ -338,8 +338,11 @@ function itemGraph() {
   const P = state.item, L = state.links;
   const list = [], ws = [];
   const add = (node) => { list.push(node); return node.id; };
-  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${P.type ?? "an item"}, ${P.price ?? 0} credits.${P.size ? ` ${P.size} squares in the inventory, ${P.weight ?? 0} kg${P.stack > 1 ? `, ${P.stack} to a square` : ""}.` : ""}${P.damage ? ` ${P.damage[0]} to ${P.damage[1]} damage, ${P.stat ?? ""} and ${P.skill ?? ""}.` : ""}${P.defense ? ` Defense ${P.defense}.` : ""}${P.effect ? ` ${Object.entries(P.effect).map(([k, v]) => `${k} ${v}`).join(", ")}.` : ""}${P.restricted ? " Restricted." : ""}${P.foundIn?.length ? ` Found in ${P.foundIn.join(", ")}, ${P.rarity ?? "common"}.` : " Not found in containers."}`, label: "About this item" });
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${P.type ?? "an item"}, ${P.price ?? 0} credits.${P.size ? ` ${P.size} squares in the inventory, ${P.weight ?? 0} kg${P.stack > 1 ? `, ${P.stack} to a square` : ""}.` : ""}${P.damage ? ` ${P.damage[0]} to ${P.damage[1]} damage, ${P.stat ?? ""} and ${P.skill ?? ""}.` : ""}${P.defense ? ` Defense ${P.defense}.` : ""}${P.effect ? ` ${Object.entries(P.effect).map(([k, v]) => `${k} ${v}`).join(", ")}.` : ""}${P.restricted ? " Restricted." : ""}${P.foundIn?.length ? ` Found in ${P.foundIn.join(", ")}, ${P.rarity ?? "common"}.` : " Not found in containers."}${P.draft ? ` Draft: ${P.draft}.` : ""}`, label: "About this item" });
   add({ id: "desc", kind: "lead", col: 1, name: "In a line", text: P.desc ?? "", label: "What the player reads", bind: { path: "desc" } });
+  // What's written on it, which Read in the inventory shows and keeps in What you know; empty, it has nothing to read.
+  add({ id: "read", kind: "beat", col: 1, name: "When read", text: P.read || "Nothing written on it.", label: "Words on it", bind: { path: "read", optional: true } });
+  ws.push({ from: "desc", to: "read" });
   add({ id: "effects", kind: "ending", col: 2, name: "Effects", text: Object.entries(P.fx ?? {}).map(([key, value]) => `${spaced(key)}: ${Object.entries(value).map(([name, amount]) => `${name} ${amount}`).join(", ")}`).join("\n") || "none", label: "While it's worn or carried", bind: { effects: true } });
   ws.push({ from: "desc", to: "effects" });
   // Its little picture in the inventory, its spaces kept (they'd be squeezed together in a box otherwise).
@@ -953,7 +956,7 @@ function textOf(node) {
 function setText(node, value) {
   const story = S(), b = node.bind ?? {};
   const text = value.trim();
-  if (b.path) setPath(state.item, b.path, text);
+  if (b.path) setPath(state.item, b.path, text || (b.optional ? undefined : text));
   else if (b.district !== undefined) state.item.gm.districts[b.district].desc = text;
   else if (b.items) setPath(state.item, b.items, value.split("\n").map((one) => one.trim()).filter(Boolean));
   else if (b.text) story[b.text] = text;
@@ -1294,7 +1297,7 @@ function inspectWorldAbout(inspector) {
     let box;
     if (field.type === "pairs") {
       // Numbers with names, like on hit: stress 2, have an editor of their own, with Keep buttons of its own.
-      const names = field.path === "onHit" ? ["stress", "energy"] : field.path === "loot" ? lists.items.map((one) => one.id) : field.path === "effect" ? ["hp", "energy", "hull", "fuel"] : field.path === "requiresSkill" ? lists.skills : field.path === "requiresStat" ? lists.attributes : lists.axes;
+      const names = field.path === "onHit" ? ["stress", "energy"] : field.path === "loot" ? lists.items.map((one) => one.id) : field.path === "effect" ? ["hp", "energy", "stress", "dress", "hull", "fuel"] : field.path === "requiresSkill" ? lists.skills : field.path === "requiresStat" ? lists.attributes : lists.axes;
       boxes.push({ field, box: pairsEditor(item, field.path, field.key, names), own: true });
       continue;
     }
@@ -1338,7 +1341,7 @@ function inspectWorldAbout(inspector) {
         else if (field.type === "list") value = box.value.split(",").map((one) => one.trim()).filter(Boolean);
         else if (field.type === "name") value = box.value || null;
         else if (box.tagName === "SELECT") value = box.value || undefined;
-        else value = box.value.trim() || (get(item, field.path) === undefined ? undefined : "");
+        else value = box.value.trim() || (get(item, field.path) === undefined || field.path === "draft" ? undefined : "");
         if (field.type === "list" && !value.length && get(item, field.path) === undefined) value = undefined;
         setPath(item, field.path, value);
       }

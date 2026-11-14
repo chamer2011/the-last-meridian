@@ -1,0 +1,19 @@
+# Machine Pistol
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 230
+size: 2x1
+weight: 1.6
+damage: 3 to 8
+stat: agility
+skill: firearms
+restricted: yes
+found in: safe, armory
+rarity: rare
+
+In a line:
+A Kessara-made pistol that empties itself in a second and kicks like a mule.
+
+Drawing:
+`[##]=-`
+` ||`

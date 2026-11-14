@@ -7,6 +7,8 @@ weight: 1.4
 damage: 2 to 6
 stat: agility
 skill: firearms
+found in: crate, safe
+rarity: uncommon
 
 In a line:
 An antique pistol that fires real metal, loud and cheap to feed: 2 to 6 damage, using Agility and Firearms.

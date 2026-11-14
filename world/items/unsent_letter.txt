@@ -1,0 +1,17 @@
+# Unsent Letter
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 2
+size: 1x1
+weight: 0.1
+found in: desk, dresser, crew locker
+rarity: common
+
+In a line:
+A folded letter, never sent, its address crossed out twice.
+
+When read:
+Mara, I keep starting this and stopping. We're safe, or as safe as anyone is now. The food is grey and the air smells of other people, but the children laugh in the mess at night, and I didn't think I'd hear that again. If this ever reaches you, I'm on the Meridian. Come and find me. T.
+
+Drawing:
+`[\/]`

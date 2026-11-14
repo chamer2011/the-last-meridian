@@ -1,0 +1,18 @@
+# Hand-Drawn Deck Plan
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 4
+size: 1x1
+weight: 0.1
+found in: desk, crew locker
+rarity: uncommon
+
+In a line:
+A deck plan sketched in pencil, with a few places marked.
+
+When read:
+It's deck three, drawn by someone who knew it well: the crawlways, the keel passage, the holds. Three spots are marked with a cross. Beside one of them, in tiny letters: loose panel, mind your fingers.
+
+Drawing:
+`/\/\`
+`\/\/`

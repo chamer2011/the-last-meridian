@@ -1,0 +1,17 @@
+# Love Letter
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 3
+size: 1x1
+weight: 0.1
+found in: dresser, crew locker
+rarity: common
+
+In a line:
+A letter on blue paper, read so often it's coming apart at the folds.
+
+When read:
+I don't care what ship you're on or how far it goes. I'll be on the next one. I'll be on every one until I find you. You still owe me a dance, and I don't let debts go. Every line is underlined, as if someone read it with their finger.
+
+Drawing:
+`[\/]`

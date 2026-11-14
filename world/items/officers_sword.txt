@@ -1,0 +1,17 @@
+# Officer's Sword
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 300
+size: 3x1
+weight: 1.5
+damage: 5 to 9
+stat: agility
+skill: melee
+found in: dresser, armory
+rarity: rare
+
+In a line:
+A Concord dress sword with a real edge, which officers were never supposed to need.
+
+Drawing:
+`o=]--------->`

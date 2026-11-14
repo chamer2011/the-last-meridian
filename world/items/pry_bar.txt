@@ -1,0 +1,17 @@
+# Pry Bar
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 60
+size: 3x1
+weight: 2.4
+damage: 3 to 6
+stat: might
+skill: melee
+found in: tool shelf, crate
+rarity: common
+
+In a line:
+Bent steel for opening crates and hatches that have rusted shut.
+
+Drawing:
+`J==========-`

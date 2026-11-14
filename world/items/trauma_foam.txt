@@ -1,0 +1,16 @@
+# Trauma Foam
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 120
+size: 1x1
+weight: 0.6
+stack: 3
+effect: hp 18
+found in: medicine cabinet, armory
+rarity: rare
+
+In a line:
+A canister of foam that fills a wound and sets hard. Marines called it life in a can.
+
+Drawing:
+`|+|`

@@ -1,0 +1,17 @@
+# Thermal Underlayer
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 16
+size: 2x2
+weight: 0.6
+defense: 0
+found in: dresser, crew locker
+rarity: common
+
+In a line:
+A long-sleeved layer that holds body heat when the heating doesn't.
+
+Drawing:
+`_/\/\_`
+`\ |  /`
+` |__| `

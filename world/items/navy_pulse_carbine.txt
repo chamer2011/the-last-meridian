@@ -1,0 +1,17 @@
+# Navy Pulse Carbine
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 400
+size: 4x1
+weight: 3.6
+damage: 5 to 10
+stat: perception
+skill: firearms
+found in: armory
+rarity: rare
+
+In a line:
+A short pulse rifle from the Concord's boarding parties, its safety catch long gone.
+
+Drawing:
+`=[###]=====-`

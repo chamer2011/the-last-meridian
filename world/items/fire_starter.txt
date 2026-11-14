@@ -1,0 +1,14 @@
+# Fire Starter
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 8
+size: 1x1
+weight: 0.1
+found in: crew locker, crate
+rarity: common
+
+In a line:
+A flint and steel on a cord, for a fire you'd better not light aboard.
+
+Drawing:
+`*-`

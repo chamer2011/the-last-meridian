@@ -1,0 +1,18 @@
+# Photo Album
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 4
+size: 1x1
+weight: 0.6
+found in: dresser, desk
+rarity: common
+
+In a line:
+A thick photo album with a cloth cover.
+
+When read:
+Page after page of a family growing up: a wedding, babies, birthdays, a garden that gets bigger every year. The last pages are empty. It was packed in a hurry; one photo is still loose inside, of a house with its door left open.
+
+Drawing:
+`|##|`
+`|##|`

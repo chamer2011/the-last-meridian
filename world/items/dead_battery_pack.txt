@@ -1,0 +1,15 @@
+# Dead Battery Pack
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 4
+size: 1x1
+weight: 1
+stack: 3
+found in: crate
+rarity: common
+
+In a line:
+A battery pack that won't hold a charge, though the case is good.
+
+Drawing:
+`[+-]`

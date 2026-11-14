@@ -125,7 +125,10 @@ const CODEX_GROUPS = { faction: "Factions", place: "Places", ship: "Ships", peop
 function codexMenu() {
   const { ui, loreCatalog } = app;
   const g = ui.game;
-  const inCodex = (e) => e.id.startsWith("custom:") || (e.kind !== "person" && g.seenLore.includes(e.id));
+  // Everything the player has read or been told is theirs (game.lore: things read in the rooms, on computers and in the
+  // inventory), and the rest once the story has mentioned it.
+  const own = new Set(g.lore.map((e) => e.id));
+  const inCodex = (e) => own.has(e.id) || (e.kind !== "person" && g.seenLore.includes(e.id));
   const found = loreCatalog().filter(inCodex);
   const total = ui.setup.lore.filter((e) => e.kind !== "person").length + g.lore.length;
   const results = el("div", { class: "menu-cards" });

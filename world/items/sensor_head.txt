@@ -1,0 +1,14 @@
+# Sensor Head
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 28
+size: 1x1
+weight: 0.4
+found in: crate, tool shelf
+rarity: uncommon
+
+In a line:
+A sensor head from a hull array, its window fogged with age.
+
+Drawing:
+`(o]`

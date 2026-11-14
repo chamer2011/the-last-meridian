@@ -1,0 +1,17 @@
+# Stun Prod
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 70
+size: 2x1
+weight: 0.8
+damage: 2 to 6
+stat: might
+skill: melee
+found in: armory, crew locker
+rarity: uncommon
+
+In a line:
+A security prod with a weak charge left in it and a strong smell of ozone.
+
+Drawing:
+`[==]--*`

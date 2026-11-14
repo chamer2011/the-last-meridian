@@ -1,0 +1,17 @@
+# Spacer's Smock
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 30
+size: 2x2
+weight: 0.7
+defense: 0
+found in: dresser, crew locker
+rarity: uncommon
+
+In a line:
+Loose and many-pocketed, after the way the Veshti deck crews dress, with tethers sewn at the hips.
+
+Drawing:
+` _/\_ `
+`|o  o|`
+`|____|`

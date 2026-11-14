@@ -79,6 +79,9 @@ export function itemsFoundIn(kindName) {
     .map(([id, item]) => ({ id, rarity: item.rarity ?? "common" }));
 }
 
+// How many items turn up in containers at all, for the checker's summary.
+export const lootItemCount = () => Object.values(ITEMS).filter((item) => (item.foundIn ?? []).length).length;
+
 // For the Story board: the kinds' names, and the rarities, to pick from.
 export const lootLists = () => ({ containerKinds: (lootModel()?.kinds ?? []).map((kind) => kind.name), rarities: RARITIES });
 

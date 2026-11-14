@@ -1,0 +1,17 @@
+# Fire Axe
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 80
+size: 2x1
+weight: 1.2
+damage: 3 to 7
+stat: might
+skill: melee
+found in: tool shelf, crate
+rarity: common
+
+In a line:
+A short red axe from an emergency locker, for doors that won't open in a fire.
+
+Drawing:
+`=====[>`

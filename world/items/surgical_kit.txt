@@ -1,0 +1,16 @@
+# Surgical Kit
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 160
+size: 2x1
+weight: 1
+stack: 1
+effect: hp 20, dress 1
+found in: medicine cabinet
+rarity: rare
+
+In a line:
+A doctor's steel instruments in a rolled cloth, every one of them clean.
+
+Drawing:
+`[=+=]`

@@ -1,0 +1,17 @@
+# Postcard from Vantor
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 2
+size: 1x1
+weight: 0.02
+found in: dresser, desk
+rarity: common
+
+In a line:
+A glossy postcard of golden towers at night.
+
+When read:
+Greetings from Vantor Prime! The towers are lit gold every night. The food is wonderful, the people less so. The police watch everyone, and smile while they do it. Wish you were here. Actually, glad you're not. Love, D.
+
+Drawing:
+`[==]`

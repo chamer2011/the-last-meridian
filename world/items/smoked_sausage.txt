@@ -1,0 +1,16 @@
+# Smoked Sausage
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 14
+size: 1x1
+weight: 0.4
+stack: 10
+effect: hp 5
+found in: pantry, cooler
+rarity: common
+
+In a line:
+A ring of smoked sausage, more pepper than meat.
+
+Drawing:
+`(~~)`

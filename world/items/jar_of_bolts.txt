@@ -1,0 +1,15 @@
+# Jar of Bolts
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 5
+size: 1x1
+weight: 0.8
+found in: tool shelf, crate
+rarity: common
+
+In a line:
+Bolts, nuts and washers, sorted by someone with a lot of time on their hands.
+
+Drawing:
+`[-]`
+`|:|`

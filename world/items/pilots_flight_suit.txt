@@ -1,0 +1,19 @@
+# Pilot's Flight Suit
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 80
+size: 2x3
+weight: 1.4
+defense: 0
+found in: crew locker, dresser
+rarity: uncommon
+
+In a line:
+A pressure-ready suit with the gloves missing, worn shiny at the seat.
+
+Drawing:
+` _/\_ `
+`|\  /|`
+`| || |`
+`| || |`
+`|_||_|`

@@ -1,0 +1,18 @@
+# Child's Exercise Book
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 1
+size: 1x1
+weight: 0.1
+found in: desk, dresser
+rarity: common
+
+In a line:
+A school exercise book, its cover decorated with stars.
+
+When read:
+My name is Lio and I am eight. I live on a ship. The ship is called the Meridian and it is very big but it smells. My favourite thing is the garden. My least favourite thing is the alarms. When I grow up I want to fix engines like Mama. The rest is sums, mostly wrong, each marked with a kind red tick.
+
+Drawing:
+`|##|`
+`|__|`

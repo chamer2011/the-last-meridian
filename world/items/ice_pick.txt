@@ -1,0 +1,17 @@
+# Ice Pick
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 35
+size: 2x1
+weight: 0.3
+damage: 2 to 5
+stat: agility
+skill: melee
+found in: cooler, pantry
+rarity: common
+
+In a line:
+A thin steel spike with a wooden handle, from the galley's cold store.
+
+Drawing:
+`=====-`

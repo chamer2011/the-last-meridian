@@ -1,0 +1,18 @@
+# Back-Room Gene Tonic
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 80
+size: 1x1
+weight: 0.2
+stack: 5
+restricted: yes
+effect: hp 10
+found in: safe, medicine cabinet
+rarity: uncommon
+
+In a line:
+A tonic that promises to mend you from the inside, sold out of the back of a cargo hold. It does, mostly.
+
+Drawing:
+` n`
+`|_|`

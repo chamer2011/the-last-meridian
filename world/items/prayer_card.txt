@@ -1,0 +1,17 @@
+# Prayer Card
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 1
+size: 1x1
+weight: 0.1
+found in: dresser, crew locker
+rarity: common
+
+In a line:
+A worn card with a prayer printed on one side.
+
+When read:
+For those in the dark between the stars: may the hull hold, may the air stay sweet, may the ones we left behind forgive us, and may we find a harbor before the hunger finds us.
+
+Drawing:
+`[==]`

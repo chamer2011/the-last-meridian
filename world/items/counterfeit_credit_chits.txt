@@ -1,0 +1,16 @@
+# Counterfeit Credit Chits
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 120
+size: 1x1
+weight: 0.05
+stack: 5
+restricted: yes
+found in: safe
+rarity: uncommon
+
+In a line:
+Credit chits that pass at a glance and fail at a scan.
+
+Drawing:
+`[$]`

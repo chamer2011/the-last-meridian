@@ -1,0 +1,14 @@
+# Pressed Flower
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 2
+size: 1x1
+weight: 0.01
+found in: dresser, desk
+rarity: common
+
+In a line:
+A blue flower pressed flat between two sheets of film.
+
+Drawing:
+`@-`

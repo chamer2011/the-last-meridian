@@ -1,0 +1,16 @@
+# Stolen Customs Stamp
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 200
+size: 1x1
+weight: 0.3
+restricted: yes
+found in: safe, desk
+rarity: rare
+
+In a line:
+A Hegemony customs stamp, worth a great deal to the wrong people, and they're all the wrong people.
+
+Drawing:
+`[#]`
+`_|_`

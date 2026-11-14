@@ -1,0 +1,14 @@
+# Music Box
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 25
+size: 1x1
+weight: 0.3
+found in: dresser
+rarity: uncommon
+
+In a line:
+A little box that plays four bars of a lullaby when you open it, then stops, and waits.
+
+Drawing:
+`[__]`

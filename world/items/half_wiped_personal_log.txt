@@ -1,0 +1,18 @@
+# Half-Wiped Personal Log
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 8
+size: 1x1
+weight: 0.1
+found in: desk, crew locker
+rarity: uncommon
+
+In a line:
+A data slate with someone's personal log on it, most of it erased.
+
+When read:
+Day forty. Couldn't sleep again. Walked the keel passage end to end, twice. Nobody asks what you're doing down there at night. [ERASED] should have told someone about the [ERASED] but who would believe [ERASED]. Day forty-one. Better today. Ate. Slept a little. Going to tell the doctor. Tomorrow.
+
+Drawing:
+`[::]`
+`[__]`

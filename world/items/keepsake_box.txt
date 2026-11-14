@@ -1,0 +1,14 @@
+# Keepsake Box
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 8
+size: 1x1
+weight: 0.3
+found in: dresser
+rarity: common
+
+In a line:
+A small carved box holding a lock of hair, a baby tooth and a ticket stub.
+
+Drawing:
+`[__]`

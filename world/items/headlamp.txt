@@ -1,0 +1,14 @@
+# Headlamp
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 18
+size: 1x1
+weight: 0.2
+found in: crew locker, tool shelf
+rarity: common
+
+In a line:
+A lamp on an elastic strap, for working with both hands in the dark.
+
+Drawing:
+`(O]`

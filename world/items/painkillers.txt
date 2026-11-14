@@ -1,0 +1,16 @@
+# Painkillers
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 15
+size: 1x1
+weight: 0.05
+stack: 10
+effect: hp 2, stress 3
+found in: medicine cabinet, crew locker, desk
+rarity: common
+
+In a line:
+A strip of white tablets that take the edge off.
+
+Drawing:
+`oooo`

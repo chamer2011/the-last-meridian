@@ -1,0 +1,18 @@
+# Maintenance Log Printout
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 3
+size: 1x1
+weight: 0.1
+found in: desk
+rarity: common
+
+In a line:
+A printout of maintenance tickets for one deck, most of them still open.
+
+When read:
+TICKET 2207: Light flickering, deck 2 passage. Open. TICKET 2208: Water tastes of metal, galley. Open. TICKET 2209: Strange noise behind a panel, hot bunks. Open (checked, nothing found, noise continues). TICKET 2210: See 2209. Open.
+
+Drawing:
+`|==|`
+`|__|`

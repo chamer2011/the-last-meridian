@@ -2,6 +2,6 @@
 // item's own drawing is in its file under world/items (its Drawing part), and comes to the page with the item; an item
 // without one gets one for its kind.
 
-const KIND = { weapon: ["=[#]=-"], armor: ["/\\_/\\", "|[ ]|"], consumable: ["[+]"], gadget: ["[*]"], story: ["<*>"] };
+const KIND = { weapon: ["=[#]=-"], armor: ["/\\_/\\", "|[ ]|"], consumable: ["[+]"], gadget: ["[*]"], goods: ["[=]"], story: ["<*>"] };
 
 export const artFor = (item) => (item?.art?.length ? item.art : KIND[item?.type] ?? ["[?]"]);

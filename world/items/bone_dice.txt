@@ -1,0 +1,14 @@
+# Bone Dice
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 6
+size: 1x1
+weight: 0.05
+found in: crew locker, desk
+rarity: common
+
+In a line:
+Five bone dice in a leather cup. Two of them are loaded.
+
+Drawing:
+`[:]`

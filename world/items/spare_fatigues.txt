@@ -1,0 +1,17 @@
+# Spare Fatigues
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 12
+size: 2x2
+weight: 0.9
+defense: 0
+found in: crew locker
+rarity: common
+
+In a line:
+Plain trousers and shirt in a drab that matches nothing and offends no one.
+
+Drawing:
+`_/\/\_`
+`\ |  /`
+` |__| `

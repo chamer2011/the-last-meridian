@@ -1,0 +1,17 @@
+# Militia Breastplate
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 200
+size: 2x2
+weight: 6
+defense: 2
+found in: armory, crate
+rarity: uncommon
+
+In a line:
+Stamped steel from a colony militia, painted with a number and a name.
+
+Drawing:
+` _____`
+`( ### )`
+` \___/`

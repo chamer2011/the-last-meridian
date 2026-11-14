@@ -1,0 +1,17 @@
+# Embroidered Waistcoat
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 35
+size: 2x2
+weight: 0.5
+defense: 0
+found in: dresser
+rarity: uncommon
+
+In a line:
+Green brocade with silver thread, the one good thing someone packed when they ran.
+
+Drawing:
+` /\/\ `
+`|[  ]|`
+`|____|`

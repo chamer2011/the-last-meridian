@@ -1,0 +1,17 @@
+# Cough Syrup
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 6
+size: 1x1
+weight: 0.3
+stack: 5
+effect: hp 2, stress 1
+found in: medicine cabinet
+rarity: common
+
+In a line:
+Sweet brown syrup that tastes of cherries and doesn't do much else.
+
+Drawing:
+` n`
+`|_|`

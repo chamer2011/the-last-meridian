@@ -1,0 +1,17 @@
+# Heavy Spanner
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 45
+size: 2x1
+weight: 1.6
+damage: 2 to 6
+stat: might
+skill: melee
+found in: tool shelf, crate
+rarity: common
+
+In a line:
+A spanner as long as your forearm, heavy enough to do more than turn bolts.
+
+Drawing:
+`<=====>`

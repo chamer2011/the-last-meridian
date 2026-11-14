@@ -1,0 +1,17 @@
+# Bottle of Water
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 3
+size: 1x1
+weight: 0.6
+stack: 5
+effect: energy 1
+found in: cooler, pantry, crate
+rarity: common
+
+In a line:
+Clean water in a reused bottle, the old label half picked off.
+
+Drawing:
+` n`
+`|_|`

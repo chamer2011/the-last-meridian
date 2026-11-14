@@ -1,0 +1,18 @@
+# Book of Poems
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 6
+size: 1x1
+weight: 0.3
+found in: dresser, desk
+rarity: common
+
+In a line:
+A slim book of poems from a world with seas, its spine cracked at one page.
+
+When read:
+The book falls open at a page read more than the others, where a poem about the sea ends: and every shore was home, because you stood on it. In the margin, in pencil: I'll hold you to that.
+
+Drawing:
+`|##|`
+`|__|`

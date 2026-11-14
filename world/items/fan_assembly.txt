@@ -1,0 +1,16 @@
+# Fan Assembly
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 14
+size: 2x2
+weight: 1.5
+found in: crate
+rarity: common
+
+In a line:
+A ventilation fan with one bent blade. It hums when you spin it by hand.
+
+Drawing:
+` \|/`
+`-(o)-`
+` /|\`

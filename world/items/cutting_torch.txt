@@ -1,0 +1,14 @@
+# Cutting Torch
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 75
+size: 2x1
+weight: 2
+found in: tool shelf
+rarity: uncommon
+
+In a line:
+A compact torch for cutting plate. Its fuel gauge says nearly empty.
+
+Drawing:
+`[==]>*`

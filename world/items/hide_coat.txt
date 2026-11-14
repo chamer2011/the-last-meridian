@@ -1,0 +1,19 @@
+# Hide Coat
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 110
+size: 2x3
+weight: 4
+defense: 1
+found in: dresser, crate
+rarity: uncommon
+
+In a line:
+Korrun-tanned hide, stiff as board and almost as tough.
+
+Drawing:
+` _/\_ `
+`|/  \|`
+`|  . |`
+`|  . |`
+`|_/\_|`

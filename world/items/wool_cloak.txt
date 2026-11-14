@@ -1,0 +1,19 @@
+# Wool Cloak
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 30
+size: 2x3
+weight: 2
+defense: 0
+found in: dresser, crate
+rarity: common
+
+In a line:
+A heavy cloak with a hood, for a ship whose heaters can't be trusted.
+
+Drawing:
+`  __  `
+` /  \ `
+`/|  |\`
+` |  | `
+` |__| `

@@ -1,0 +1,17 @@
+# Galley Recipe Card
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 2
+size: 1x1
+weight: 0.1
+found in: pantry, desk
+rarity: common
+
+In a line:
+A stained card with a recipe on it, much amended.
+
+When read:
+SOUP FOR NINE HUNDRED. Ration paste, forty tins. Lentils, all of them. Onions if we have them (we never have them). Salt. Simmer until people stop asking what it is. Underneath, in another hand: added the dried mushrooms from the holds. Nobody complained. Nobody said anything at all, actually.
+
+Drawing:
+`[==]`

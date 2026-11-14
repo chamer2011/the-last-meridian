@@ -1,0 +1,14 @@
+# Fountain Pen
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 30
+size: 1x1
+weight: 0.05
+found in: desk
+rarity: uncommon
+
+In a line:
+A heavy black pen with a gold nib, used for signing things that mattered.
+
+Drawing:
+`--=>`

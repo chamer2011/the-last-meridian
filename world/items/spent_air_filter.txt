@@ -1,0 +1,15 @@
+# Spent Air Filter
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 2
+size: 1x1
+weight: 0.4
+stack: 5
+found in: crate
+rarity: common
+
+In a line:
+A clogged cartridge from the air scrubbers. It smells like the ship.
+
+Drawing:
+`[##]`

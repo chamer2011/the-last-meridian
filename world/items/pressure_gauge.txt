@@ -1,0 +1,14 @@
+# Pressure Gauge
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 14
+size: 1x1
+weight: 0.3
+found in: tool shelf, crate
+rarity: common
+
+In a line:
+A brass gauge on a stub of pipe, for checking what the pipes won't tell you.
+
+Drawing:
+`(/)`

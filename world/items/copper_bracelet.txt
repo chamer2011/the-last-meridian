@@ -1,0 +1,14 @@
+# Copper Bracelet
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 10
+size: 1x1
+weight: 0.05
+found in: dresser, crew locker
+rarity: common
+
+In a line:
+A twisted copper bracelet that's meant to help with aches. It turns your wrist green.
+
+Drawing:
+`(~)`

@@ -1,0 +1,19 @@
+# Fireproof Overcoat
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 120
+size: 2x3
+weight: 4
+defense: 1
+found in: crew locker
+rarity: uncommon
+
+In a line:
+Treated canvas that won't burn, for whoever has to walk into a fire first.
+
+Drawing:
+` _/\_ `
+`|/  \|`
+`|  . |`
+`|  . |`
+`|_/\_|`

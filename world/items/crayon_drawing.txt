@@ -1,0 +1,18 @@
+# Crayon Drawing
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 1
+size: 1x1
+weight: 0.02
+found in: dresser, desk
+rarity: common
+
+In a line:
+A child's drawing in crayon, folded into quarters.
+
+When read:
+A big grey ship with lots of windows, and in every window a face. Under it, in big letters: OUR HOME. One of the faces has been given a very large smile.
+
+Drawing:
+`|==|`
+`|__|`

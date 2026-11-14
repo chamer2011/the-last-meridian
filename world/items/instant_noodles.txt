@@ -1,0 +1,16 @@
+# Instant Noodles
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 6
+size: 1x1
+weight: 0.1
+stack: 10
+effect: hp 3, stress 3
+found in: pantry, crew locker
+rarity: common
+
+In a line:
+A brick of dried noodles with a flavour sachet. Comfort, of a kind.
+
+Drawing:
+`{~~}`

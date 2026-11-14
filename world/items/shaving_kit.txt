@@ -1,0 +1,14 @@
+# Shaving Kit
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 10
+size: 1x1
+weight: 0.3
+found in: dresser, crew locker
+rarity: common
+
+In a line:
+A razor, a brush and a cake of soap in a leather pouch.
+
+Drawing:
+`[==]`

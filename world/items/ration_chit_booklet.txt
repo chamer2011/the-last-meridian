@@ -1,0 +1,17 @@
+# Ration Chit Booklet
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 3
+size: 1x1
+weight: 0.1
+found in: desk, crew locker, dresser
+rarity: common
+
+In a line:
+A booklet of meal chits from the first weeks, most of them torn out.
+
+When read:
+MERIDIAN EMERGENCY RATIONING. One chit, one meal. Lost chits will not be replaced. Do not trade chits. Do not sell chits. Two chits are left, and on the back cover in pencil: traded the rest for a pair of boots. Worth it.
+
+Drawing:
+`[==]`

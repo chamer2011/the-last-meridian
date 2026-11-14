@@ -1,0 +1,16 @@
+# Tinned Lentils
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 8
+size: 1x1
+weight: 0.4
+stack: 10
+effect: hp 4
+found in: pantry, crate
+rarity: common
+
+In a line:
+Lentils in a spiced sauce. The tin is dented but sound.
+
+Drawing:
+`(==)`

@@ -6,6 +6,8 @@ size: 1x1
 weight: 1
 stack: 3
 effect: hp 30
+found in: medicine cabinet
+rarity: rare
 
 In a line:
 Restores 30 health, plus your Medicine rank.

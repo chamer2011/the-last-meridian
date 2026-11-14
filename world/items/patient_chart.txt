@@ -1,0 +1,18 @@
+# Patient Chart
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 4
+size: 1x1
+weight: 0.1
+found in: desk
+rarity: common
+
+In a line:
+A patient's chart from the medbay, the notes in a doctor's scrawl.
+
+When read:
+Patient presents with exhaustion, weight loss, poor sleep. No infection. No injury. Asked what was wrong, said: I keep counting the people we left. Prescribed rest, food and someone to talk to. Note: we have none of the three in any quantity.
+
+Drawing:
+`|==|`
+`|__|`

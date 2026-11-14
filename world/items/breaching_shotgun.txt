@@ -1,0 +1,19 @@
+# Breaching Shotgun
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 600
+size: 4x2
+weight: 6
+damage: 6 to 11
+stat: might
+skill: firearms
+restricted: yes
+found in: armory
+rarity: rare
+
+In a line:
+A heavy automatic shotgun made for blowing hatches open, and the people behind them.
+
+Drawing:
+` ____`
+`=[####]========`

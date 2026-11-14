@@ -1,0 +1,17 @@
+# Dueling Pistol
+draft: Claude's, not yet edited by the owner
+type: weapon
+price: 300
+size: 2x1
+weight: 1.1
+damage: 3 to 7
+stat: agility
+skill: firearms
+found in: safe, dresser
+rarity: rare
+
+In a line:
+One of a pair, chased with silver. Its twin is somewhere else.
+
+Drawing:
+`{~}===-`

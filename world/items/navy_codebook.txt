@@ -1,0 +1,19 @@
+# Navy Codebook
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 250
+size: 1x1
+weight: 0.4
+restricted: yes
+found in: safe
+rarity: rare
+
+In a line:
+A Concord signal book with its covers weighted to sink.
+
+When read:
+Columns of numbers and words: the Concord's signal codes, changed since the Fall, or so everyone hopes. A page near the back lists recognition phrases. One is circled: grey skies, steady wind. Someone was expected to answer it.
+
+Drawing:
+`|##|`
+`|__|`

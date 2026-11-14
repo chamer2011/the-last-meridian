@@ -1,0 +1,22 @@
+# Concord Dress Uniform
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 120
+size: 2x3
+weight: 2
+defense: 0
+found in: dresser
+rarity: rare
+
+In a line:
+Navy blue with silver piping, pressed and kept for a ceremony that never came: +1 on checks facing authority while carried.
+
+Effects:
+in a setting: authority 1
+
+Drawing:
+` _/\_ `
+`|/  \|`
+`|  . |`
+`|  . |`
+`|_/\_|`

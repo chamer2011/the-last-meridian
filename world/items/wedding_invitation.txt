@@ -1,0 +1,17 @@
+# Wedding Invitation
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 2
+size: 1x1
+weight: 0.1
+found in: dresser, desk
+rarity: common
+
+In a line:
+A printed wedding invitation with a pressed flower inside.
+
+When read:
+Together with their families, Noor and Elias invite you to celebrate their marriage in the garden of the Meridian, after the evening sitting. Bring a cup. Bring a song. Bring nothing else; there's nothing left to bring.
+
+Drawing:
+`[==]`

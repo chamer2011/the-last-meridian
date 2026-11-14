@@ -1,0 +1,17 @@
+# Knuckle Duster
+draft: Claude's, not yet edited by the owner
+type: gadget
+price: 80
+size: 1x1
+weight: 0.3
+found in: crew locker, safe
+rarity: uncommon
+
+In a line:
+Brass knuckles, not much of a weapon, but people back off when you put them on: +1 on Intimidation checks while carried.
+
+Effects:
+skills: intimidation 1
+
+Drawing:
+`oooo`

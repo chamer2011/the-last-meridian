@@ -1,0 +1,17 @@
+# Prison Greys
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 2
+size: 2x2
+weight: 0.6
+defense: 0
+found in: crew locker, crate
+rarity: common
+
+In a line:
+Shapeless and numbered. Whoever wore them last didn't want to keep them.
+
+Drawing:
+`_/\/\_`
+`\ |  /`
+` |__| `

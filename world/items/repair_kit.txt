@@ -6,6 +6,8 @@ size: 2x1
 weight: 3
 stack: 2
 effect: hull 20
+found in: tool shelf
+rarity: rare
 
 In a line:
 Restores 20 ship hull, plus twice your Engineering rank.

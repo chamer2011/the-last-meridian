@@ -1,0 +1,19 @@
+# Archivist's Robe
+draft: Claude's, not yet edited by the owner
+type: armor
+price: 50
+size: 2x3
+weight: 1.2
+defense: 0
+found in: dresser
+rarity: uncommon
+
+In a line:
+Undyed Thessan cloth with deep sleeves for carrying slates, and an ink stain on one cuff.
+
+Drawing:
+`  /\  `
+` /  \ `
+`|    |`
+`/    \`
+`\____/`
