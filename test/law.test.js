@@ -57,7 +57,7 @@ test("the file reads, and the game's own is sound", () => {
   assert.deepEqual(model.stores.map((one) => [one.name, one.owners]), [["the pantry", ["the quartermaster", "the cooks"]]]);
   assert.deepEqual(model.taking, { fine: 10, days: 7 });
   assert.equal(model.room, null);
-  assert.match(model.problems[0], /line 6: the two lines are written like/);
+  assert.match(model.problems[0], /line 6: the lines at the end are written like/);
   assert.deepEqual(law.lawProblems(), []);
   const mine = law.lawOf("meridian");
   assert.deepEqual(mine.stores.find((one) => one.name === "pantry").jobs, ["cook"]);

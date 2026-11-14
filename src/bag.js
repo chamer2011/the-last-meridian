@@ -224,6 +224,14 @@ export function storePut(game, key, holds, id, n) {
   keepStore(game, key, items);
   return want - left;
 }
+// Puts up to n of an item back into a container in a room that's been opened, wherever it fits on its grid (src/law.js,
+// when someone saw it taken). Says how many went in.
+export function containerPut(game, key, box, id, n) {
+  const items = [...(game.stores?.[key]?.items ?? [])];
+  const left = pour(items, box, id, n);
+  keepStore(game, key, items);
+  return n - left;
+}
 // What's in a thing, from its map file's holds line the first time it's opened, or for a container in a room what's
 // found in it (src/loot.js); whatever doesn't fit its squares isn't there.
 function contentsOf(game, found) {
@@ -530,6 +538,9 @@ function dropFrom(game, from) {
   const n = before - left;
   if (!n) throw new Error(found ? `There's no room in ${lowerFirst(found.name)}.` : "There's no room to put it down here.");
   removeHeld(game, source, n);
+  // Put into a store or a container, it counts the same as dragging it in: for what someone's asked the player to
+  // bring, and so that taking back what's the player's own isn't taking someone else's (src/law.js).
+  if (found && !found.pile) notePut(game, found.key, source.id, n);
   keepContents(game, into, items);
   return { said: found ? `Put the ${item.name} in ${lowerFirst(found.name)}.` : `Put the ${item.name} down on the floor. It'll be there if you come back for it.` };
 }

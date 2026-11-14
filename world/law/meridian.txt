@@ -5,7 +5,11 @@ draft: the AI's, not yet edited by the owner
 # may take from it: posts and jobs from world/command/meridian.txt, with commas between. The captain may always, and
 # so may anyone for "everyone". A store that isn't here is anyone's.
 #
-# Under Rooms, the rooms that are closed to all but the posts and jobs named.
+# Under Rooms, the rooms that are closed to all but the posts and jobs named. The containers in them are theirs too.
+#
+# Under Containers, whose the lockers, shelves, desks and barrels in each room are (world/loot/containers.txt says which
+# open): posts and jobs, "everyone", "nobody" (the captain's alone), or "whoever sleeps there", and "anywhere else" for
+# every room without a line of its own. The captain may take from any of them.
 #
 # None of it matters unless it's seen: by someone awake in the same room, or by a camera that works, with the room's
 # lights on. Whoever's walking with you looks the other way. The two lines at the end say what being seen costs.
@@ -23,6 +27,19 @@ Stores:
 Rooms:
 - The Armory: the chief of security, the guards
 - The Brig: the chief of security, the guards
+
+Containers:
+- The Galley: the quartermaster, the cooks
+- Medbay: the chief medical officer, the nurses
+- Engineering: the chief engineer, the techs
+- The Repair Bay: the chief engineer, the techs
+- Stores: the quartermaster, the deckhands
+- The Bridge: the first officer
+- The Wardroom: nobody
+- The Officers' Cabins: whoever sleeps there
+- The Hot Bunks: whoever sleeps there
+- The Overflow: whoever sleeps there
+- anywhere else: everyone
 
 seen taking: it goes back; 10 credits docked a second time within 7 days
 seen in a closed room: walked out after 10 minutes

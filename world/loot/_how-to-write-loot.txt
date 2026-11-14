@@ -15,6 +15,11 @@ world/logistics. A name is read for what it's a name of: "A stack of medical cra
 under the desks" is a drawing, not a desk. Each container is filled the first time it's opened, and never again: what's
 taken stays gone. The same game always finds the same in the same container.
 
+Whose a container is isn't written here: world/law/meridian.txt says it for the Meridian's rooms, and
+world/law/elsewhere.txt for every other place (whoever holds the place, or whoever sleeps there in the rooms people live
+in). Taking from one that isn't yours matters only if someone sees: what was taken goes back, and the law files say
+what else it costs.
+
 containers.txt
 --------------
 

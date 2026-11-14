@@ -1,0 +1,30 @@
+# Whose things are whose, at every place without a file of its own
+draft: the AI's, not yet edited by the owner
+
+# This is the law at every port, station and colony that has no file of its own in this folder (only the Meridian has
+# one, meridian.txt). Under Containers, whose the containers in the rooms are (world/loot/containers.txt says which
+# open, and where): "whoever holds the place" is the faction its file in world/places names, or the people who live
+# there where it names none; "everyone" would make them anyone's, and "whoever sleeps there" the people who sleep in the
+# room. A line for one room, by its name, comes before "anywhere"; a room no place has is left alone. A place that
+# should have its own law, a Stores or Rooms part or a container that's someone's in particular, gets a file of its
+# own, named by its id like meridian.txt.
+#
+# None of it matters unless it's seen: by someone awake in the same room, or by a camera that works, with the room's
+# lights on. Whoever's walking with you looks the other way. The lines at the end say what being seen costs: what was
+# taken goes back, standing with whoever holds the place drops, and a second time within the week costs a fine.
+#
+# After changing this file, run "npm run check-story", and close and reopen the game.
+
+Containers:
+- The Hook: whoever sleeps there
+- The Line: whoever sleeps there
+- The Lower Stacks: whoever sleeps there
+- The Empty Cells: whoever sleeps there
+- The Far Homesteads: whoever sleeps there
+- The Hearth Rings: whoever sleeps there
+- The Low Halls: whoever sleeps there
+- The Warm Stair: whoever sleeps there
+- anywhere: whoever holds the place
+
+seen taking: it goes back; 10 credits fined a second time within 7 days
+seen taking costs standing: 3 with whoever holds the place
