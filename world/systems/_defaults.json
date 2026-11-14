@@ -120,6 +120,14 @@
       "break": { "label": "Scramble the alignment", "check": "engineering:moderate", "damage": "scrambled", "done": "The alignment drifts out of true. Every jump will be plotted by hand until someone fixes it.", "failed": "It corrects itself as fast as you can push it." },
       "fix": { "label": "Realign it", "check": "engineering:moderate", "done": "It settles back into true.", "failed": "It won't hold its alignment yet." }
     },
+    "door panel": {
+      "names": ["door panel", "keypad", "door keypad"],
+      "look": "The door's keypad, on the wall beside it: a two-line screen, twelve keys and a slot for a card.",
+      "on": "Its screen shows the door's state.",
+      "off": "Its screen is dark.",
+      "damaged": "Its screen is cracked, and it shows nothing.",
+      "words": { "on": "lit", "off": "dark" }
+    },
     "docking clamps": {
       "names": ["clamps", "docking control", "berth clamps"],
       "look": "The docking clamps' control, a heavy lever behind a cage.",

@@ -18,7 +18,7 @@ import { addChecker, addOrder, addPartActs, addRoomActs } from "./room-hooks.js"
 import { ITEMS } from "./data.js";
 import { RIG_PARTS_DIR, rigPartById } from "./rig-parts.js";
 import { giveRigPart } from "./rig.js";
-import { damagePart, kindOf, ownedBy, partBroken, playerSpot, systemsOf } from "./systems.js";
+import { damagePart, kindOf, ownedBy, partBroken, partInReach, playerSpot, systemsOf } from "./systems.js";
 import { whoSees } from "./law.js";
 import { holderKey, postAndName, postByWords, rememberRequest } from "./command.js";
 import { countAboard, takeAboard } from "./logistics.js";
@@ -118,7 +118,7 @@ addOrder("strip-part", (game, body) => {
   if (!spot) throw new Error("There's nothing like that here.");
   const { place, room } = spot;
   const part = systemsOf(place)?.parts[String(body.key ?? "").replace(/^part:/, "")];
-  if (!part || part.room !== room) throw new Error("That isn't here.");
+  if (!part || !partInReach(game, place, part)) throw new Error("That isn't here.");
   const rule = ruleFor(part.kind);
   if (!rule) throw new Error("There's nothing in that for a rig.");
   if (!ownedBy(game, place)) throw new Error("It isn't yours to take apart.");

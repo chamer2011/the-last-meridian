@@ -110,6 +110,9 @@ The game knows what these do:
                  the alarm, or by the story. A locked door stops anyone walking through, both ways.
                  It can be forced, or its panel hacked. A door only the story opens (closed in the
                  map file) stays the story's, but a computer that runs it can open it.
+                 Every door here gets its keypad by itself, nothing to write: on the wall beside
+                 one of its doorways, outside the room where there's a wall for it, or standing on
+                 the floor beside it where there's none. Using it opens the door's panel there.
     Cameras      A camera in a room watches it. Tampering with anything where a camera can see
                  raises the alarm. A camera on the player makes sneaking harder.
     Alarm        A speaker in a room, and locks the door to, which the alarm locks while it rings.

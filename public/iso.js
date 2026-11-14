@@ -1556,9 +1556,10 @@ const PART_LOOKS = {
   engines: { z0: 0.06, z1: 1.4, inset: 0, color: "#58483a", trim: "#d07038" },
   "nav core": { z0: 0.4, z1: 1.3, inset: 0.06, color: "#283240", trim: "#6aa0e0" },
   "docking clamps": { z0: 0.3, z1: 1.1, inset: 0.06, color: "#5a5840", trim: "#c8b860" },
+  "door panel": { z0: 0.62, z1: 0.98, inset: 0.3, color: "#26292b", trim: "#6fe08a" },
   machine: { z0: 0.4, z1: 1, inset: 0.08, color: "#58584e", trim: "#a0a090" },
 };
-const PART_WORDS = { "junction box": "power", "air plant": "air plant", vent: "vent", "light switch": "lights", camera: "camera", speaker: "alarm", relay: "comms", console: "console", engines: "engines", "nav core": "nav", "docking clamps": "clamps", machine: "machine" };
+const PART_WORDS = { "junction box": "power", "air plant": "air plant", vent: "vent", "light switch": "lights", camera: "camera", speaker: "alarm", relay: "comms", console: "console", engines: "engines", "nav core": "nav", "docking clamps": "clamps", "door panel": "keypad", machine: "machine" };
 const partLook = (thing) => PART_LOOKS[thing.part.kind] ?? PART_LOOKS.machine;
 
 // The face a part is on: the front of its wall facing the room, or the front of the unit it stands on. Corners go
@@ -1650,6 +1651,11 @@ function drawPart(painter, thing) {
       dot(0.5, 0.5, 0.05, "#2a2420");
       dot(0.5, 0.5, 0.03, broken ? "#3a2420" : look.trim);
       if (word === "cut") line(0.1, 0.9, 0.9, 0.1, "#c8c0b0", 1.5);
+      break;
+    case "door panel":
+      // A two-line screen, green while its door is open, red once it's locked, over a pad of keys.
+      patch(0.12, 0.08, 0.88, 0.34, !works ? "#0c0e0e" : thing.part.locked ? "#c84030" : look.trim);
+      for (let row = 0; row < 3; row += 1) for (let col = 0; col < 3; col += 1) dot(0.28 + col * 0.22, 0.5 + row * 0.16, 0.012, works ? "#c8ccc4" : "#3a3c3a");
       break;
     case "relay":
       for (let row = 0; row < 4; row += 1) for (let col = 0; col < 3; col += 1) dot(0.25 + col * 0.25, 0.18 + row * 0.2, 0.012, works ? look.trim : word === "jammed" ? "#d8a040" : "#2a2a26");

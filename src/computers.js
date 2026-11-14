@@ -20,7 +20,7 @@ import { fill } from "./check-games/kit.js";
 import { CHECK_TEXT, COMPUTER_FLAVOR, WORLD_COMPUTERS, WORLD_MAPS } from "./world.js";
 import { controlsFor, controlsView, ownedBy, partWorks, roomPowered, runsSystems } from "./systems.js";
 import { rigFace, rigHeat, rigInComputer } from "./rig.js";
-import { LINK_WORDS, LOOKS, THROUGH_RIG, deviceView, lookOf, reachOf, reachWhy, rigReaches } from "./devices.js";
+import { LINK_WORDS, LOOKS, THROUGH_RIG, deviceView, howOf, leaveOf, lookOf, reachOf, reachWhy, rigReaches } from "./devices.js";
 import { networkView } from "./network.js";
 import { contentHardened, hardenedHints, weakWords, withWeakPoints } from "./weak-points.js";
 import { inSentence, rightsWords, sealedNow, sealedWords, trustLine, trustsOf, withRights } from "./sealed.js";
@@ -282,7 +282,7 @@ export const knowsPassword = (game, id) => Boolean(id && game.passwords?.[id]);
 // at is what the player sat down at, as the room's marks name it, for the window's line to point at. locked is a
 // session still at the computer's logon; practice is one that counts for nothing; story is the scene's check it's for
 // ({ id, reason, source, difficulty }); doorRule is a map file's door that opens when the player gets in.
-export function openSession(game, content, { hacked = false, locked = false, noise = 0, how = "sat down", at = null, practice: practising = false, story = null, doorRule = null, remote = false, from = null, fromName = null, trusted = null, rights = null }) {
+export function openSession(game, content, { hacked = false, locked = false, noise = 0, how = "sat down", at = null, practice: practising = false, story = null, doorRule = null, remote = false, from = null, fromName = null, trusted = null, rights = null, byHand = false }) {
   if (game.combat) throw new Error("Finish the fight first.");
   if (game.computer) throw new Error("Log off the computer you're on first.");
   game.computers ??= {};
@@ -320,6 +320,8 @@ export function openSession(game, content, { hacked = false, locked = false, noi
     at,
     // Reached over the network from another system (src/network.js), not plugged into here.
     remote: Boolean(remote),
+    // Keyed into by hand where it hangs, as a door's keypad is (src/devices.js): it's stepped away from, not unclipped.
+    byHand: Boolean(byHand),
     // Whether the player's rig is plugged into this one: they connect it before they hack (devices.js, plugIn). A hack
     // that got in already went through it, and a practice computer has it plugged in from the start.
     plugged: Boolean(hacked) || Boolean(practising),
@@ -336,7 +338,7 @@ export function openSession(game, content, { hacked = false, locked = false, noi
   const flavor = COMPUTER_FLAVOR?.motd?.[content.flavor] ?? COMPUTER_FLAVOR?.motd?.default ?? [];
   if (session.locked) {
     session.log.push(line(`${LOOKS[session.look].name}. ${content.name} wants ${session.look === "keelworks" || session.look === "navcom" ? "a user name and a password" : session.look === "door" ? "its code" : "a password"}.`, "info"));
-    session.log.push(line(`${session.plugged || THROUGH_RIG.includes(session.look) ? "Run something from your rig" : "Connect your rig and run something from it"} to get past the logon, or ${(LOOKS[session.look].leave ?? "log off").toLowerCase()}. ${watcherOf(game, session).name === "AuditGuard" ? "The watcher" : watcherOf(game, session).name} hears everything from here on.`, "dim"));
+    session.log.push(line(`${session.plugged || THROUGH_RIG.includes(session.look) ? "Run something from your rig" : "Connect your rig and run something from it"} to get past the logon, or ${(leaveOf(session) ?? "log off").toLowerCase()}. ${watcherOf(game, session).name === "AuditGuard" ? "The watcher" : watcherOf(game, session).name} hears everything from here on.`, "dim"));
     return session;
   }
   // In past the logon: the record knows, and the story can ask (src/story-rig.js).
@@ -344,7 +346,7 @@ export function openSession(game, content, { hacked = false, locked = false, noi
   const greeting = how === "trusted" ? `ACCESS GRANTED: it trusts ${inSentence(fromName ?? "where you came from")}.` : hacked && !yours ? "ACCESS GRANTED." : yours ? "Logged in." : "Logged in with the password.";
   session.log.push(line(`${content.name}: ${greeting} Welcome, ${content.user}.`, "good"));
   if (flavor.length) session.log.push(line(flavor[Math.floor(seeded(content.id)() * flavor.length)], "dim"));
-  session.log.push(line(LOOKS[session.look].how, "dim"));
+  session.log.push(line(howOf(session), "dim"));
   if (how === "trusted") session.log.push(line(rights ? `From ${inSentence(fromName ?? "there")} it lets you ${rightsWords(rights)}, and nothing more.` : `From ${inSentence(fromName ?? "there")} it also lets you ${rightsWords(trusted)}.`, "dim"));
   // A password, or the player's own computer, gets them straight in: whatever asked for the hack has its answer now.
   if (story || doorRule) settleHack(game, session, true);
@@ -353,16 +355,16 @@ export function openSession(game, content, { hacked = false, locked = false, noi
 
 // Opening a computer the player wants to get into: straight in when it's theirs or they know its password, else at
 // its logon. A computer to practise on is never theirs.
-export function openLogon(game, content, { at = null, practice: practising = false, story = null, doorRule = null, remote = false, noise = 0, from = null, fromName = null } = {}) {
+export function openLogon(game, content, { at = null, practice: practising = false, story = null, doorRule = null, remote = false, noise = 0, from = null, fromName = null, byHand = false } = {}) {
   // A machine it trusts lets the player straight in, with what that trust allows (src/sealed.js); on a sealed computer
   // that's all, and on another the player's own right or password still gives everything. A sealed one takes nothing else.
   const trust = practising ? null : trustLine(content.place, content, from);
   const sealed = !practising && sealedNow(game, content);
   if (sealed && !trust) throw new Error(sealedWords(content));
   const own = !practising && (content.yours || knowsPassword(game, content.id));
-  if (trust) return openSession(game, content, { how: "trusted", at, story, doorRule, remote, noise, from, fromName, trusted: trust.rights, rights: sealed || !own ? trust.rights : null });
-  if (own) return openSession(game, content, { how: content.yours ? "sat down" : "the password", at, story, doorRule, remote, noise, from });
-  return openSession(game, practising ? { ...content, yours: false } : content, { locked: true, how: "logon", at, practice: practising, story, doorRule, remote, noise, from });
+  if (trust) return openSession(game, content, { how: "trusted", at, story, doorRule, remote, noise, from, fromName, trusted: trust.rights, rights: sealed || !own ? trust.rights : null, byHand });
+  if (own) return openSession(game, content, { how: content.yours ? "sat down" : "the password", at, story, doorRule, remote, noise, from, byHand });
+  return openSession(game, practising ? { ...content, yours: false } : content, { locked: true, how: "logon", at, practice: practising, story, doorRule, remote, noise, from, byHand });
 }
 
 // The player is past the logon: as whom, and how. What asked for the hack hears that it worked.
@@ -372,7 +374,7 @@ export function gotIn(game, session, { user = null, via = null } = {}) {
   if (user) session.user = user;
   session.via = via;
   session.log.push(line(`ACCESS GRANTED. Welcome, ${session.user}.`, "good"));
-  session.log.push(line(LOOKS[session.look ?? "keelworks"]?.how ?? LOOKS.keelworks.how, "dim"));
+  session.log.push(line(howOf(session), "dim"));
   noteGotIn(game, session, { hacked: !session.yours });
   settleHack(game, session, true);
 }

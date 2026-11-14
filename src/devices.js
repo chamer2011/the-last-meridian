@@ -11,15 +11,16 @@
 // src/computer-use.js ask it what a session looks like and what its own buttons do.
 import { addOrder, addPartActs, addRoomActs } from "./room-hooks.js";
 import { rigPartById, rigStats } from "./rig-parts.js";
-import { MAX_LOG, line, openLogon, knowsPassword } from "./computers.js";
-import { cameraFrozen, cameraLooped, cutFeed, doorLocked, endLoop, feedCut, feedsOf, loopCamera, ownedBy, partWorks, playerSpot, setDoor, switchPart, systemsOf } from "./systems.js";
+import { MAX_LOG, computerAtDoor, line, openLogon, knowsPassword, writtenContent } from "./computers.js";
+import { WORLD_COMPUTERS } from "./world.js";
+import { cameraFrozen, cameraLooped, cutFeed, doorLocked, endLoop, feedCut, feedsOf, loopCamera, ownedBy, partInReach, partWorks, playerSpot, setDoor, switchPart, systemsOf } from "./systems.js";
 import { commandOf, holderKey, loyaltyOf, postAndName, rememberRequest, YOU } from "./command.js";
 import { whoSees } from "./law.js";
 import { seenTampering } from "./systems.js";
 import { peopleAboard } from "./life.js";
 import { mapFor } from "./walk.js";
 import { busWeakPoints, learnWeak } from "./weak-points.js";
-import { mayWorkDoor, partOpen, partSealedWords } from "./sealed.js";
+import { mayWorkDoor, partOpen, partSealedWords, sealedNow, sealedWords } from "./sealed.js";
 import { noteCamera, noteRecoded, noteStruck } from "./story-rig.js";
 
 // The looks with no screen of their own: a door's panel, a junction box's service menu, a camera's feed.
@@ -28,7 +29,7 @@ export const PANEL_LOOKS = ["door", "service", "camera"];
 export const THROUGH_RIG = ["service", "camera"];
 export const LOOKS = {
   keelworks: { reach: "cable", watcher: null, name: "Keelworks 4.1", how: "Open a folder on the desktop to read or run what's in it. Log off from the Keel menu, or with Esc." },
-  door: { reach: "optic", watcher: "DoorCtl", name: "DoorCtl 2.1", leave: "Unclip", how: "Open or lock the door from its panel, or give it a new code. Unclip to leave, or press Esc." },
+  door: { reach: "optic", watcher: "DoorCtl", name: "DoorCtl 2.1", leave: "Unclip", how: "Open or lock the door from its panel, or give it a new code. Unclip to leave, or press Esc.", byHand: { leave: "Step away", how: "Open or lock the door from its keypad, or give it a new code. Step away to leave, or press Esc." } },
   service: { reach: "clip", watcher: "The fault board", name: "Halden Yards service menu", leave: "Exit", how: "Pick a line of the menu. 0 EXIT unclips, and so does Esc." },
   camera: { reach: "radio", watcher: "The security desk", name: "A camera's feed", leave: "Switch off the radio", how: "Loop it, blind it, or put it back to live. Switch off the radio to leave, or press Esc." },
   navcom: { reach: "navy", watcher: "SENTRY", name: "NAVCOM 7", leave: "Log off", how: "Pick a program on the desktop. Log off from the NAVCOM menu, or with Esc." },
@@ -48,6 +49,10 @@ const listed = (words) => (words.length < 2 ? words.join("") : `${words.slice(0,
 
 // ---- Looks and reach --------------------------------------------------------------------------------------------
 
+// What leaving a session is called, and the line that says how it's used: a keypad keyed into by hand is stepped away
+// from, not unclipped.
+export const leaveOf = (session) => (session?.byHand && LOOKS[session.look]?.byHand?.leave) || LOOKS[session?.look]?.leave || null;
+export const howOf = (session) => (session?.byHand && LOOKS[session.look]?.byHand?.how) || LOOKS[session?.look ?? "keelworks"]?.how || LOOKS.keelworks.how;
 export const lookOf = (content) => (LOOKS[content?.look] ? content.look : content?.door ? "door" : "keelworks");
 // A computer's file can say what reaches it ("reached by: radio"); otherwise its look decides.
 export const reachOf = (content) => (content?.reach && LINK_WORDS[content.reach] ? content.reach : LOOKS[lookOf(content)].reach);
@@ -97,7 +102,7 @@ function deviceContent(game, place, part, look) {
     user: service ? "service" : "monitor",
     password: null,
     flavor: "default",
-    desc: service ? `The service menu of the junction box in ${inSentence(room)}, on your rig's little screen.` : `What the camera in ${inSentence(room)} sees, on your rig's little screen.`,
+    desc: part.kind === "relay" ? `The comms relay's service menu, in ${inSentence(room)}, on your rig's little screen.` : service ? `The service menu of the junction box in ${inSentence(room)}, on your rig's little screen.` : `What the camera in ${inSentence(room)} sees, on your rig's little screen.`,
     files: [], mail: [], logs: [], programs: [], network: [],
     roomId: part.room,
     controls: [],
@@ -122,8 +127,16 @@ function deviceWhy(game, place, part, look) {
   return rigReaches(game, content) ? null : `needs ${LINK_WORDS[reachOf(content)]} in your rig`;
 }
 
+// A written computer whose thing is one of the place's parts (the navigation core's cabinet): using the part opens it.
+const computerOfPart = (place, part) => Object.entries(WORLD_COMPUTERS).find(([, c]) => c.place === place && c.thing && plainWords(c.thing) === plainWords(part.name) && plainWords(c.room) === plainWords(plainRoom(place, part.room)))?.[0] ?? null;
+const plainWords = (words) => String(words ?? "").toLowerCase().replace(/^the\s+/, "").replace(/\s+/g, " ").trim();
+
 addPartActs((game, place, part) => {
-  const look = part.kind === "junction box" ? "service" : part.kind === "camera" ? "camera" : null;
+  // A door's keypad: always there to use, by right on the player's own, at its logon on anyone else's.
+  if (part.kind === "door panel") return { does: [{ id: "device-door", label: "Use its keypad", detail: partWorks(game, place, part) ? `the door to ${inSentence(plainRoom(place, part.door))}` : "its screen is dark", ...(partWorks(game, place, part) ? {} : { disabled: true }) }] };
+  const body = computerOfPart(place, part);
+  if (body) return { does: [{ id: "device-computer", label: "Use it", detail: WORLD_COMPUTERS[body].name }] };
+  const look = part.kind === "junction box" || part.kind === "relay" ? "service" : part.kind === "camera" ? "camera" : null;
   if (!look) return null;
   const why = deviceWhy(game, place, part, look);
   const label = look === "service" ? "Open its service menu" : "Tap its feed";
@@ -149,15 +162,16 @@ function openDevice(game, body, look) {
   if (!spot) throw new Error("There's nothing like that here.");
   const { place, room } = spot;
   const part = systemsOf(place)?.parts[String(body.key ?? "").replace(/^part:/, "")];
-  const reachable = part && (part.room === room || (look === "camera" && besideRoom(place, room).includes(part.room) && rigLinks(game).includes("radio")));
-  if (!reachable || part.kind !== (look === "service" ? "junction box" : "camera")) throw new Error("That isn't here.");
+  const close = partInReach(game, place, part);
+  const reachable = part && (close || (look === "camera" && besideRoom(place, room).includes(part.room) && rigLinks(game).includes("radio")));
+  if (!reachable || !(look === "service" ? ["junction box", "relay"] : ["camera"]).includes(part.kind)) throw new Error("That isn't here.");
   const why = deviceWhy(game, place, part, look);
   if (why) throw new Error(`You can't: ${why}.`);
   // Plugging into someone else's box or camera in front of people is seen, like any tampering (step 7).
-  const seen = !ownedBy(game, place) && part.room === room ? whoSees(game, place, room) : null;
+  const seen = !ownedBy(game, place) && close ? whoSees(game, place, room) : null;
   const notes = seen ? seenTampering(game, place, seen.camera ? "a camera" : seen.name) : [];
   const content = deviceContent(game, place, part, look);
-  const session = openLogon(game, content, { at: part.room === room ? `thing:part:${part.id}` : null });
+  const session = openLogon(game, content, { at: close ? `thing:part:${part.id}` : null });
   session.plugged = true;
   const what = look === "service" ? `You clip onto ${content.name}'s service port` : `Your radio finds the feed of ${lowerFirst(content.name)} in ${inSentence(content.room)}`;
   return { said: [`${what}${session.locked ? ": it wants a password." : "."}`, ...notes].join("\n"), computer: true };
@@ -203,6 +217,42 @@ export function unplugRig(game, session) {
 
 addOrder("device-service", (game, body) => openDevice(game, body, "service"));
 addOrder("device-camera", (game, body) => openDevice(game, body, "camera"));
+addOrder("device-door", (game, body) => useDoorKeypad(game, body));
+addOrder("device-computer", (game, body) => useComputerPart(game, body));
+
+// The part the player's working, within their reach: in its room or right beside it (src/systems.js).
+function partHere(game, body, kind = null) {
+  const spot = playerSpot(game);
+  if (!spot) throw new Error("There's nothing like that here.");
+  const part = systemsOf(spot.place)?.parts[String(body.key ?? "").replace(/^part:/, "")];
+  // A door's keypad can hang on the far side of its room's wall: it's used from where it hangs.
+  if (!part || !partInReach(game, spot.place, part) || (kind && part.kind !== kind)) throw new Error("That isn't here.");
+  return { ...spot, part };
+}
+// A door's keypad: the door's own panel, opened where it hangs. The player's own doors let them straight in; anyone
+// else's is at its logon, where the rig's breakers work once it's connected; a sealed one answers only to what it trusts.
+function useDoorKeypad(game, body) {
+  if (game.computer) throw new Error("Log off the computer you're on first.");
+  const { place, part } = partHere(game, body, "door panel");
+  if (!partWorks(game, place, part)) return { said: "Its screen is dark: there's no power to it." };
+  const target = computerAtDoor(game, place, part.door);
+  const content = target.id ? writtenContent(target.id) : target.generic;
+  if (sealedNow(game, content)) return { said: sealedWords(content) };
+  const session = openLogon(game, content, { at: `thing:part:${part.id}`, byHand: true });
+  return { said: session.locked ? `${content.name} wants its code.` : `You key into ${inSentence(content.name)}.`, computer: true };
+}
+// A written computer whose body is a part of the place's systems, used where it stands.
+function useComputerPart(game, body) {
+  if (game.computer) throw new Error("Log off the computer you're on first.");
+  const { place, part } = partHere(game, body);
+  const id = computerOfPart(place, part);
+  if (!id) throw new Error("That isn't a computer.");
+  const content = writtenContent(id);
+  if (sealedNow(game, content)) return { said: sealedWords(content) };
+  if (!partWorks(game, place, part)) return { said: `${content.name}'s screen is dark: there's no power to it.` };
+  const session = openLogon(game, content, { at: `thing:part:${part.id}` });
+  return { said: session.locked ? `${content.name} wants a logon.` : `You sit down at ${content.name}.`, computer: true };
+}
 
 // ---- Who a camera sees --------------------------------------------------------------------------------------------
 
@@ -302,7 +352,7 @@ export function deviceView(game, session, content) {
   const look = session.look ?? lookOf(content);
   if (look === "keelworks") return null;
   const view = look === "door" ? doorView(game, session, content) : look === "service" ? serviceView(game, session, content) : look === "camera" ? cameraView(game, session, content) : navcomView(game, session, content);
-  return { ...view, leave: LOOKS[look].leave };
+  return { ...view, leave: leaveOf({ ...session, look }) };
 }
 
 // ---- What their own buttons do ------------------------------------------------------------------------------------

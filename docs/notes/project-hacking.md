@@ -749,3 +749,45 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
 - **Screens** on a test copy at 1400 and 810 wide: the board's picker, KNOCK and GHOST with its "found on", the about
   editor for a program, the yard board's sockets, the optical reader's recipe, the Armory panel's Trusts box.
 - **All ten steps of the plan are built.**
+
+## Every device in its place (built 2026-11-13, untried)
+
+- Asked as "Could you install all of the computer/ electronic device in their place on the ship. Like a door having
+  it's interactions". Read as: every device on the ship's network should be a thing in its room, worked where it
+  stands. Nothing was shown first; it's my reading, built straight away.
+- **A keypad beside every door the systems run** (a new part kind, `door panel`, in `world/systems/_defaults.json`):
+  `compileSystems` places one after every other part, so nothing that was placed moves. `panelSpot` in
+  `src/systems.js` looks for a wall within 3 squares of one of the door's doorways (on a deck, the squares in
+  `level.doorAreas` that touch the room; at a place of levels, the exits that lead into the room from the levels
+  beside it), preferring the outside, so someone locked out can reach it, and then the nearest. Where there's no wall
+  that near (11 of the 68 doors in the world, all at the ports drawn from defaults), it stands on the floor beside
+  the door on a post of its own, against a wall, out of the doorway and the ways out, where everything can still be
+  walked to; with nowhere at all it's left out without a word (none is now). A keypad belongs to its door's room
+  (`part.room`) when it hangs on the same deck, and keeps the room it hangs in as `part.side`; at a place of levels
+  it belongs to the level it hangs on. All 68 doors have one; the Meridian's six all hang on walls.
+- **Using it:** `addPartActs` gives a keypad **Use its keypad** ("the door to the Bridge", or "its screen is dark",
+  disabled, without power), the order `device-door`: `computerAtDoor` gives the door's own panel (a written one, or
+  the generic DoorCtl), a sealed one says what it answers to (`sealedWords`), and anything else opens at
+  `openLogon` there and then, with `byHand`: aboard the player's own ship straight in, anywhere else at its code.
+  A session keyed into by hand says **Step away** and "Step away to leave" instead of "Unclip" (`leaveOf`/`howOf` in
+  `src/devices.js`, read by `src/computers.js` and the device view).
+- **Reach:** `partInReach` in `src/systems.js`: the player is in the part's room or the room it hangs in, or on the
+  same deck within one square of it, never behind the wall it hangs on. Walking up to the Bridge's keypad leaves the
+  captain one square to its side, which is the Names Bulkhead, while the square in front of it is the deck's own
+  corridor; the screen check caught "That isn't here." there. The keypad, the service menu and the camera tap
+  (`partHere`, `openDevice` in `src/devices.js`), working any part by hand (`workOnPart`) and taking one apart
+  (`src/ship-parts.js`) all use it now.
+- **The relay and the core:** the comms relay opens its service menu in the room like a junction box (with a service
+  clip); the navigation core's file says `thing: nav core`, so its cabinet on the bridge is the computer (**Use it**,
+  `device-computer`, through `computerOfPart`) and `src/terminals.js` stands no second thing for it.
+- **Drawn:** `PART_LOOKS["door panel"]` and a case in `drawPart` in `public/iso.js`: a small dark box with a
+  two-line screen, green while the door's open, red once it's locked (`part.locked` on the room view's thing), dark
+  with no power, over a pad of nine keys; "keypad" on its tag.
+- **Tests:** `test/devices-in-place.test.js` (6: every Meridian door's keypad on a wall by a doorway and no two parts
+  on a square; the Bridge's from the corridor, locking and unlocking, Step away; from the square beside it in the next
+  room and not from four squares off; dark without power, and the sealed Armory's; Haven's at its code; the relay's
+  service menu and the core's cabinet); `test/part-sources.test.js` changed, since the relay now has its service
+  menu for a crew member too. 1,184 in all with the loot's first step, `check-story` clean.
+- **Screens** on a test copy at 1400 and 810 wide: the Bridge's keypad on the corridor wall, its right-click menu,
+  walking up and keying in, the keypad window and the rig side by side, locking the door (the screen red in the room,
+  the doorways closed), the Medbay's on its side wall.

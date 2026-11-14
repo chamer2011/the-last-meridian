@@ -4,6 +4,7 @@ owner: fleet
 yours: yes
 place: meridian
 room: The Bridge
+thing: nav core
 login: navigator
 flavor: yours
 sealed: yes

@@ -285,7 +285,8 @@ test("taking apart wants the Engineering, and it's only the captain's", () => {
   assert.throws(() => run(game, "strip-part", `part:${relay.id}`), /needs Engineering 1/);
   game.skills.engineering = 1;
   game.role = { ...game.role, captain: false };
-  assert.equal((walk.walkView(game).things.find((one) => one.id === `part:${relay.id}`).does ?? []).length, 0);
+  // Its service menu is still there for anyone with a clip; taking it apart isn't.
+  assert.equal((walk.walkView(game).things.find((one) => one.id === `part:${relay.id}`).does ?? []).some((one) => one.id === "strip-part"), false);
 });
 
 test("finds: the mutineers' belongings after the mutiny, and Tech Oona's old clip for two parts crates", () => {

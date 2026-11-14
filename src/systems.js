@@ -101,6 +101,73 @@ export function wallSpots(level, claimed = new Set(), area = null) {
   return spots;
 }
 
+// Where a door's keypad goes: on a wall beside one of the doorways into its room, the nearest free one within three
+// squares, outside the room if it can be (whoever's locked out reaches it there), else inside. A room that's a level
+// of its own has the ways into it in the levels around it, and its own ways out. room is the room it's in.
+function panelSpot(place, map, entry, takenOn) {
+  const options = [];
+  const tried = [];
+  const consider = (level, squares, outside) => {
+    if (!squares.length) return;
+    tried.push([level, squares, outside]);
+    const taken = takenOn.get(level.id) ?? new Set();
+    for (const spot of wallSpots(level, claimedSquares(place, map, level))) {
+      if (taken.has(`${spot.x},${spot.y}`)) continue;
+      const near = Math.min(...squares.map(([x, y]) => Math.max(Math.abs(x - spot.x), Math.abs(y - spot.y))));
+      if (near > 3) continue;
+      // The room it's in is the one whose floor is in front of it: a room drawn on a deck, the deck's own floor, or a
+      // room that's a level of its own.
+      const [fx, fy] = spot.face === "side" ? [spot.x + 1, spot.y] : [spot.x, spot.y + 1];
+      const room = level.roomAt?.(fx, fy) ?? level.id;
+      options.push({ ...spot, level, near, room, outside: outside ?? room !== entry.id });
+    }
+  };
+  if (entry.area) {
+    const level = entry.level;
+    const doors = [...(level.doorAreas ?? new Map())].filter(([, touched]) => touched.has(entry.id)).map(([key]) => key.split(",").map(Number));
+    consider(level, doors, null);
+  } else {
+    for (const other of Object.values(map.levels ?? {})) {
+      if (other.id === entry.level?.id) continue;
+      consider(other, (other.exits ?? []).filter((exit) => exit.to === entry.id).map((exit) => [exit.x, exit.y]), true);
+    }
+    if (!options.length && entry.level) consider(entry.level, (entry.level.exits ?? []).map((exit) => [exit.x, exit.y]), false);
+  }
+  // No wall near the door: a unit standing on the floor beside it, against a wall, out of the doorway and the ways
+  // out, where everything can still be walked to.
+  if (!options.length) {
+    for (const [level, squares, outside] of tried) {
+      const taken = takenOn.get(level.id) ?? new Set();
+      const claimed = claimedSquares(place, map, level);
+      const homes = new Set((level.homes ?? []).map((home) => `${home.x},${home.y}`));
+      const seen = new Set();
+      for (const [sx, sy] of squares) {
+        for (let dy = -2; dy <= 2; dy += 1) {
+          for (let dx = -2; dx <= 2; dx += 1) {
+            const x = sx + dx;
+            const y = sy + dy;
+            const key = `${x},${y}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            if (!level.open[y]?.[x] || level.solid.has(key) || level.furnished?.has(key) || taken.has(key) || claimed.has(key) || homes.has(key) || level.doors?.has(key)) continue;
+            if (x === level.start?.x && y === level.start?.y) continue;
+            if ((level.exits ?? []).some((exit) => Math.abs(exit.x - x) + Math.abs(exit.y - y) <= 1)) continue;
+            if (squares.some(([qx, qy]) => Math.abs(qx - x) + Math.abs(qy - y) <= 1)) continue;
+            if (![[0, -1], [-1, 0], [1, 0], [0, 1]].some(([ax, ay]) => !level.open[y + ay]?.[x + ax])) continue;
+            const room = level.roomAt?.(x, y) ?? level.id;
+            const area = (level.areas ?? []).find?.((one) => one.id === room) ?? null;
+            if (!staysConnected(level, taken, { x, y }, area)) continue;
+            const near = Math.min(...squares.map(([qx, qy]) => Math.max(Math.abs(qx - x), Math.abs(qy - y))));
+            options.push({ x, y, face: null, level, near, room, outside: outside ?? room !== entry.id });
+          }
+        }
+      }
+    }
+  }
+  options.sort((a, b) => Number(b.outside) - Number(a.outside) || a.near - b.near || a.y - b.y || a.x - b.x);
+  return options[0] ?? null;
+}
+
 // Rooms with no such walls get a standing unit on the floor instead, at the edge, where it can't block the way.
 export function floorSpot(level, taken, index, count, claimed = new Set(), area = null) {
   const inArea = (x, y) => !area || level.areaAt(x, y) === area.id;
@@ -521,6 +588,25 @@ function compileSystems(place) {
       if (!spot.face) level.solid.add(`${spot.x},${spot.y}`);
     });
   }
+  // Every door the systems run has its keypad on the wall beside it, placed after every other part has its square so
+  // none of theirs moves. Using it opens the door's panel (src/devices.js).
+  const doorsSystem = model.systems.find((one) => one.id === "doors");
+  for (const door of Object.values(model.doors)) {
+    const entry = roomOf(map, door.to);
+    if (!entry?.level) continue;
+    // Nowhere beside the door at all: it's left out, and the door's own panel is still there to hack when it's locked.
+    const spot = panelSpot(place, map, entry, takenOn);
+    if (!spot) continue;
+    // On a deck it's the door's room's (listed there, on that room's power), used from the side of the wall it hangs on;
+    // where rooms are levels of their own, it's the room it hangs in.
+    const owner = spot.level.id === entry.level.id ? entry : roomOf(map, spot.room) ?? entry;
+    const part = addPart("doors", `${String(entry.name).replace(/^The /, "")} door panel`, owner, { kind: "door panel", door: door.to, side: spot.room });
+    doorsSystem?.parts.push(part.id);
+    if (!takenOn.has(spot.level.id)) takenOn.set(spot.level.id, new Set());
+    takenOn.get(spot.level.id).add(`${spot.x},${spot.y}`);
+    Object.assign(part, { x: spot.x, y: spot.y, mount: spot.face ? "wall" : "floor", face: spot.face ?? null });
+    if (!spot.face) spot.level.solid.add(`${spot.x},${spot.y}`);
+  }
   return model;
 }
 
@@ -761,6 +847,22 @@ export function playerSpot(game) {
   if (walk?.room) return null;
   const level = walk?.level ? map.levels[walk.level] : null;
   return { place, room: level ? level.roomAt(walk.x, walk.y) : map.start };
+}
+
+// Whether the player can reach a part to work it: standing in its room (or, for a door's keypad, the room it hangs
+// in), or right beside it on the same deck, which a part on a wall where two rooms meet needs; never from behind the
+// wall it hangs on.
+export function partInReach(game, place, part) {
+  const spot = playerSpot(game);
+  if (!spot || spot.place !== place || !part || part.unplaced) return false;
+  if (part.room === spot.room || (part.side && part.side === spot.room)) return true;
+  const walk = game.walk;
+  const level = roomOf(mapFor(place), part.room)?.level;
+  if (!walk || !level || walk.level !== level.id) return false;
+  const [x, y] = [Math.round(walk.x), Math.round(walk.y)];
+  if (Math.max(Math.abs(x - part.x), Math.abs(y - part.y)) > 1) return false;
+  if (part.mount === "wall") return part.face === "side" ? x >= part.x : y >= part.y;
+  return true;
 }
 
 // ---- Changing things ---------------------------------------------------------------------------------
@@ -1378,15 +1480,15 @@ export function doorLook(game, place, levelId, exit) {
 export function workOnPart(game, key, how) {
   const spot = playerSpot(game);
   if (!spot) throw new Error("There's nothing like that here.");
-  const { place, room } = spot;
+  const { place } = spot;
   const model = systemsOf(place);
   const part = model.parts[String(key).replace(/^part:/, "")];
-  if (!part || part.room !== room) throw new Error("That isn't here.");
+  if (!part || !partInReach(game, place, part)) throw new Error("That isn't here.");
   const action = partActions(game, place, part).find((one) => one.id === how);
   if (!action) throw new Error("That can't be done to it now.");
   if (action.check) {
     const [skill, difficulty] = action.check.split(":");
-    startCheck(game, { skill, difficulty, reason: `${action.label}: the ${part.name} in ${roomNameOf(place, room)}`, scene: lookAt(game, place, part), source: "part", target: `thing:part:${part.id}` });
+    startCheck(game, { skill, difficulty, reason: `${action.label}: the ${part.name} in ${roomNameOf(place, part.room)}`, scene: lookAt(game, place, part), source: "part", target: `thing:part:${part.id}` });
     game.partAsked = { place, part: part.id, how };
     return { check: true };
   }
@@ -1469,6 +1571,8 @@ export function partThings(game, place, room) {
         works,
         word: stateWord(game, place, part),
         ...(part.system === "alarm" && alarmRinging(game, place) && works ? { ringing: true } : {}),
+        // A door's keypad shows whether its door is locked.
+        ...(part.kind === "door panel" ? { locked: doorLocked(game, place, part.door) } : {}),
         ...(SPARKING.has(damage) ? { sparks: true } : {}),
       },
       actions: partActions(game, place, part).map((action) => ({ id: action.id, label: action.label, detail: detailOf(action) })),

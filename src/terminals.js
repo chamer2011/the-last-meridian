@@ -41,6 +41,8 @@ addMapWork((place, map) => {
     const level = room.level;
     const inRoom = (t) => !room.area || level.areaAt?.(t.x, t.y) === room.area.id;
     if (level.things.some((t) => plain(t.name) === plain(c.thing) && inRoom(t))) continue;
+    // A part of the place's systems by that name is its body already (the navigation core's cabinet): src/devices.js.
+    if ((systemsOf(place)?.partsIn?.[room.id] ?? []).some((pid) => plain(systemsOf(place).parts[pid]?.name) === plain(c.thing))) continue;
     const spot = floorSpot(level, new Set(), 0, 1, keptClear(place, map, level), room.area ?? null);
     if (!spot) {
       missing.push(id);
