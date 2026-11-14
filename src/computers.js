@@ -22,7 +22,7 @@ import { controlsFor, controlsView, ownedBy, partWorks, roomPowered, runsSystems
 import { rigFace, rigHeat, rigInComputer } from "./rig.js";
 import { LINK_WORDS, LOOKS, THROUGH_RIG, deviceView, howOf, leaveOf, lookOf, reachOf, reachWhy, rigReaches } from "./devices.js";
 import { networkView } from "./network.js";
-import { contentHardened, hardenedHints, weakWords, withWeakPoints } from "./weak-points.js";
+import { contentHardened, weakWords, withWeakPoints } from "./weak-points.js";
 import { inSentence, rightsWords, sealedNow, sealedWords, trustLine, trustsOf, withRights } from "./sealed.js";
 import { noteGotIn } from "./story-rig.js";
 import "./terminals.js";
@@ -473,84 +473,6 @@ export const programOffered = (game, program) => !program.condition || condition
 // What reading something for the first time costs: nothing, except on a Ministry or Navy server or worse.
 export const readNoise = (session) => (classKeys().indexOf(session.classKey) >= classKeys().indexOf("very_hard") ? 1 : 0);
 
-// The noise left before the watcher's next step, and what that step is.
-function nextStep(session, watch) {
-  if (session.noise < watch.notices && !session.noticed) return { left: watch.notices - session.noise, next: "notices you" };
-  if (session.traceLeft === null && session.noise < watch.traces) return { left: watch.traces - session.noise, next: "starts a trace" };
-  return { left: Math.max(0, watch.cuts - session.noise), next: "cuts you off" };
-}
-
-// What a way in would do to the watcher: the noise after it, and the step that brings.
-function afterWay(session, watch, noise) {
-  const heard = noise > 0 && session.noticed ? noise + 1 : noise;
-  const after = session.noise + heard;
-  const words = after >= watch.cuts ? "it cuts you off" : after >= watch.traces ? "it starts a trace" : after >= watch.notices && !session.noticed ? "it notices you" : session.noticed ? "it's watching already" : "it stays calm";
-  return { after, words };
-}
-
-// The advisor at a logon: each way in off the rig and what it costs, saying more the more training the player has.
-function logonHints(game, session, content, ways, watch) {
-  const tier = tierFor(game, "hacking");
-  const lines = [];
-  // Before the rig's connected, that comes first; the ways in are weighed as they would be once it's plugged in.
-  if (!session.plugged && !session.remote) {
-    const why = reachWhy(game, content);
-    lines.push(why ? `Your rig can't connect to it: ${why}.` : `Connect your rig first: it takes a minute${plugSeen(game, session) ? ", and anyone in the room can see you plug in" : ""}.`);
-  }
-  // A hardened one: what's known of its way in, and where to look for the rest.
-  lines.push(...hardenedHints(game, content, tier));
-  const whyOf = (way) => ("whyIn" in way ? way.whyIn : way.why);
-  const working = ways.filter((way) => !whyOf(way) && way.kind === "in");
-  if (!working.length) lines.push(`Nothing on your rig gets into ${contentHardened(content) ? "it" : `a ${String(session.className).toLowerCase()}`} as things stand.`);
-  for (const way of ways) {
-    if (whyOf(way)) {
-      lines.push(`${way.name} won't: ${whyOf(way)}.`);
-      continue;
-    }
-    const cost = tier >= 1 ? `, ${way.noise} noise and ${way.minutes} ${way.minutes === 1 ? "minute" : "minutes"}` : way.noise >= 3 ? ", and it's loud" : way.noise ? "" : ", and it's quiet";
-    const then = tier >= 3 ? `: after it ${afterWay(session, watch, way.noise).words}` : "";
-    lines.push(`${way.name} ${way.kind === "in" ? "gets you in" : "runs here"}${cost}${then}.`);
-  }
-  lines.push("The watcher hears everything from the first try. A found password gets you straight in, with nothing to hear.");
-  if (tier >= 2) lines.push(`${watch.name} notices you at ${watch.notices} noise, starts a trace at ${watch.traces} that finds you in ${watch.finds} minutes, and cuts you off at ${watch.cuts}. You're at ${session.noise}.`);
-  if (tier >= 4 && working.length) lines.push(`The quietest way in you have is ${[...working].sort((a, b) => a.noise - b.noise || a.minutes - b.minutes)[0].name}.`);
-  if (!working.length && tier >= 1 && !contentHardened(content)) lines.push("KNOCK gets into door panels; DICTIONARY into anything up to a crew terminal; SKELETON into a ship's main system, once Scope has read the logon; MIMIC with a lifted keycard in your pockets.");
-  return lines;
-}
-
-function hintsFor(game, session, content, view) {
-  if (session.locked) return logonHints(game, session, content, view.logon?.ways ?? [], view.watch);
-  const texts = COMPUTER_FLAVOR?.hints ?? {};
-  const tier = tierFor(game, "hacking");
-  const unread = view.files.filter((one) => !one.read).length;
-  const unreadMail = view.mail.filter((one) => !one.read).length;
-  const watch = view.watch;
-  const step = watch ? nextStep(session, watch) : { left: 0, next: "" };
-  const values = {
-    unread,
-    unreadMail,
-    programs: view.programs.length ? view.programs.map((one) => `${one.name}${one.ran ? " (done)" : ""}`).join(", ") : "none",
-    read: readNoise(session),
-    noise: session.noise ?? 0,
-    notices: watch?.notices ?? 0,
-    traces: watch?.traces ?? 0,
-    cuts: watch?.cuts ?? 0,
-    finds: watch?.finds ?? 0,
-    left: step.left,
-    next: step.next,
-    network: view.network.length ? view.network.map((one) => `${one.name} (${one.className.toLowerCase()})`).join(", ") : "nothing reachable from here",
-  };
-  const lines = [];
-  for (let level = 0; level <= tier; level += 1) {
-    for (const text of texts[level] ?? texts[String(level)] ?? []) {
-      // Nobody watches the player's own computers.
-      if (!watch && /noise|watcher|AuditGuard|trace/i.test(text)) continue;
-      lines.push(fill(text, values));
-    }
-  }
-  return lines;
-}
-
 export function computerView(game) {
   const session = game.computer;
   if (!session) return null;
@@ -561,7 +483,7 @@ export function computerView(game) {
   const inside = !session.locked;
   const watch = session.yours ? null : watcherOf(game, session);
   const rig = rigInComputer(game, session, content);
-  const view = {
+  return {
     id: session.id,
     name: session.name,
     className: session.className,
@@ -586,8 +508,6 @@ export function computerView(game) {
     log: session.log,
     actions: session.actions,
     minutes: session.minutes ?? 0,
-    tier: tierFor(game, "hacking"),
-    tierName: (CHECK_TEXT.tierNames ?? ["untrained", "novice", "trained", "expert", "master"])[tierFor(game, "hacking")],
     // The place's systems this computer runs, each with what can be done about it from here.
     systems: inside ? controlsView(game, session.place, content.controls ?? [], { room: session.roomId }) : [],
     // The player's rig: what's loaded on it to run here, and what this computer has to copy onto it.
@@ -611,7 +531,6 @@ export function computerView(game) {
     // Reached through a machine it trusts, and what that lets the player do here (src/sealed.js).
     through: session.trusted ? { name: inSentence(session.fromName ?? "another machine"), words: rightsWords(session.trusted), sealed: Boolean(content.sealed) } : null,
   };
-  view.hints = hintsFor(game, session, content, view);
   return view;
 }
 

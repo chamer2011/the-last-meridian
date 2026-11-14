@@ -158,7 +158,6 @@ test("the first officer's terminal, the security desk and the ledger are private
   assert.equal(view(game).hardened, true);
   // Aboard the captain's own ship plugging in isn't tampering, even at a private terminal, and nothing says it is.
   assert.equal(view(game).reach.seen, false);
-  assert.ok(!view(game).hints.some((text) => /can see you plug in/.test(text)));
   computerCommand(game, { action: "logoff" });
   // Her session left open at the watch change is in the captain's own log, and SHADOW rides it then.
   enterComputer(game, { id: "meridian_plot_table" });

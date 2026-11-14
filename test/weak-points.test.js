@@ -83,7 +83,6 @@ test("the harbor master's machine is hardened: no breaker works from the front, 
   assert.equal(v.hardened, true);
   assert.deepEqual(v.weak, []);
   for (const id of ["knock", "dictionary", "skeleton"]) assert.match(why(game, id), /hardened/, `${id} is refused`);
-  assert.ok(v.hints.some((text) => /It's hardened/.test(text)), "the advisor says why");
   run(game, "scope");
   assert.match(game.computer.log.at(-1).text, /hardened: every known flaw is closed/);
   run(game, "dictionary");

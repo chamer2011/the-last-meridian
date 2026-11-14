@@ -10,7 +10,6 @@
 //   - session 06:00-08:00 in logs on haven_berth_board: The harbor master leaves his session open at the shift change.
 // A console in a place's systems file says ", hardened" after what it runs.
 
-import { LOCATIONS } from "./data.js";
 import { WORLD_COMPUTERS, WORLD_SYSTEMS } from "./world.js";
 import { systemsOf } from "./systems.js";
 import { addChecker } from "./room-hooks.js";
@@ -102,11 +101,6 @@ export function busWeakPoints(place) {
   return hardenedAt(place).flatMap((target) => target.lines.filter((wp) => wp.where.kind === "bus").map((wp) => ({ text: wp.text, reveals: revealsOf(target, wp) })));
 }
 
-const WHERE_WORDS = { mail: "the letters", files: "the files", logs: "the logs" };
-const computerCalled = (id) => WORLD_COMPUTERS[id]?.name ?? id;
-// Where a weak point is written, in words: "the letters on Haven berth board", "the junction boxes' service log".
-export const whereWords = (wp) => (wp.where.kind === "bus" ? "the junction boxes' service log" : `${WHERE_WORDS[wp.where.kind]} on ${computerCalled(wp.where.computer)}`);
-
 // ---- Knowing them -------------------------------------------------------------------------------------------------
 
 export const weakKnown = (game, id) => game.weak?.[id] ?? {};
@@ -152,22 +146,6 @@ export function weakWay(game, content, p) {
   }
   return { why: HARDENED_WHY };
 }
-// What the advisor says at a hardened computer's logon, more with more training: that it's hardened, what's known of
-// its way in, and from the trained up, where to look for what isn't.
-export function hardenedHints(game, content, tier) {
-  if (!contentHardened(content)) return [];
-  const target = hardenedAt(content.place).find((one) => one.id === content.id);
-  const known = weakKnown(game, content.id);
-  const lines = [`It's hardened: no breaker works on it from the front. Its way in is written somewhere else at ${LOCATIONS[content.place]?.name ?? content.place}: a password in someone's letters, files or logs, a session left open, or a service account the junction boxes still share.`];
-  if (known.password) lines.push("You know its password: log off and come back, and it lets you straight in.");
-  if (known.service) lines.push("You know the service account it still shares: KNOCK gets in with it.");
-  if (known.session) lines.push(`You know it leaves a session open${known.session.hours ? ` from ${known.session.hours[0]} to ${known.session.hours[1]}` : ""}: SHADOW can ride it then.`);
-  const next = target?.lines.find((wp) => !known[wp.kind]);
-  if (next && tier >= 3) lines.push(`Your training says to look in ${whereWords(next)}.`);
-  else if (next && tier >= 1) lines.push("Look on the other computers here, and in the junction boxes' service log.");
-  return lines;
-}
-
 // ---- Checking the files -------------------------------------------------------------------------------------------
 
 addChecker(() => {

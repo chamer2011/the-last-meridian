@@ -115,21 +115,7 @@
 .os .balloon::after { content: ""; position: absolute; right: 52px; bottom: -9px; border: 9px solid transparent; border-top-color: #000; border-bottom: 0; }
 .os .balloon b { display: flex; gap: 5px; align-items: center; margin-bottom: 2px; color: #b40000; }
 .os .balloon svg { width: 16px; height: 16px; flex: none; }
-/* The advisor beside the monitor: the game's own hints, not part of the computer */
-.desk-advisor { flex: none; width: 30ch; align-self: stretch; display: flex; flex-direction: column; border: 1px solid #33507f; background: rgba(9, 20, 42, .92); color: #e6f0ff; font: 12.5px/1.4 var(--mono); }
-.desk-advisor header { display: flex; justify-content: space-between; gap: 6px; padding: 3px 8px; background: #8ab8ff; color: #040a17; font-weight: 700; letter-spacing: .05em; }
-.desk-advisor .lines { padding: 6px 8px; display: grid; gap: 6px; overflow-y: auto; min-height: 0; }
-.desk-advisor button { color: #040a17; font-weight: 700; }
-.desk-advisor button::before, .desk-advisor button::after { content: none; }
-.desk-hints { flex: none; align-self: flex-start; writing-mode: vertical-rl; padding: 8px 3px; border: 1px solid #33507f; background: rgba(9, 20, 42, .92); color: #8ab8ff; font: 700 11px/1 var(--mono); letter-spacing: .1em; }
-.desk-hints::before, .desk-hints::after { content: none !important; }
 .desk-note { position: absolute; left: 18px; right: 18px; top: 4px; color: #ff9b8f; font: 12px/1.3 var(--mono); }
-/* Narrower than this, the advisor goes under the monitor, so the desktop keeps its size. */
-@media (max-width: 980px) {
-  .check-float > .desk { flex-direction: column; align-items: stretch; width: min(100%, 860px, calc((100vh - 16em) * 1.3)); }
-  .desk-advisor { width: auto; max-height: 8em; }
-  .desk-hints { writing-mode: horizontal-tb; align-self: flex-end; }
-}
 
 /* The Rig page, under Gear: its memory as a row of blocks, and a lit card for each program loaded. */
 .rig-memory { display: inline-flex; gap: 3px; margin: 0 6px; vertical-align: middle; }
@@ -173,7 +159,6 @@
 .desk.device .device-frame { flex: 0 0 380px; min-width: 0; position: relative; }
 .desk.device.narrow .device-frame { flex-basis: 300px; }
 .desk.device .device-frame .desk-note { position: static; }
-.desk.device .desk-advisor { align-self: flex-start; }
 .desk .device-frame { flex: 1 1 auto; min-width: 0; display: grid; gap: 8px; padding: 10px 12px 12px; background: linear-gradient(#2b2f2c, #1c1f1d); border-radius: 12px; box-shadow: inset 0 2px 0 #3d423e, inset 0 -3px 0 #121412, 0 12px 34px #000a; cursor: grab; color: #d6dcd7; }
 .desk .device-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; font: 12px/1.3 var(--mono); }
 .desk .device-head strong { color: #f0f4f1; font-weight: 600; }
@@ -260,14 +245,17 @@
    computer with its board and casing on it, its link and heat lights, wired to the panel the way it's plugged in, and
    on its green screen the place's network (NET), what's loaded (D:) and the session (LOG). */
 .desk .device-row { display: flex; align-items: flex-start; flex: none; max-width: 100%; position: relative; }
-.desk.device > .desk-advisor, .desk.device > .desk-hints { margin-left: 10px; }
-@media (max-width: 980px) {
-  .desk.device > .desk-advisor { flex: 1 1 100%; margin: 10px 0 0; }
-  .desk.device > .desk-hints { margin: 10px 0 0 auto; }
-}
-.desk .rig-lead { position: relative; flex: 0 0 56px; align-self: stretch; pointer-events: none; }
-.desk.device.narrow .rig-lead { flex-basis: 26px; }
-.desk .rig-lead svg { position: absolute; left: 0; top: 0; width: 100%; height: 180px; overflow: visible; }
+/* The computer and the rig are two windows, each dragged by its frame and left where it's let go. They start side by
+   side; the desk round them lets clicks through to the room, and the lead between them is drawn under both, wherever
+   they are. */
+.check-float > .desk.computer, .check-float > .desk.device { position: relative; z-index: 1; pointer-events: none; }
+.check-float .desk .movable { pointer-events: auto; }
+.desk .rig-gap { flex: 0 0 56px; }
+.desk.device.narrow .rig-gap { flex-basis: 26px; }
+.desk .rig-case { flex: none; }
+.desk .rig-folded { flex: none; align-self: stretch; display: flex; position: relative; }
+.desk .rig-folded.moved .rig-strip { border-left: 1px solid #111; border-radius: 14px; }
+.check-float > .rig-lead { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 0; }
 .desk .pocket { flex: none; position: relative; display: grid; gap: 8px; padding: 12px 14px 10px; background: linear-gradient(#3a3d40, #26282a); border: 1px solid #111; border-radius: 16px; box-shadow: inset 0 1px 0 #5a5e62, inset 0 -3px 0 #151618, 0 14px 30px #000b; color: #b9bec2; font: 12px/1.35 var(--mono); cursor: grab; }
 .desk .pocket::before, .desk .pocket::after { content: ""; position: absolute; top: 8px; width: 6px; height: 6px; border-radius: 50%; background: radial-gradient(#777, #333); }
 .desk .pocket::before { left: 8px; }
@@ -311,8 +299,6 @@
    strip down the monitor's side with its pages sliding out over the monitor. Nothing gets hacked until it's connected. */
 .check-float > .desk.computer { width: auto; max-width: 100%; flex-direction: row; flex-wrap: wrap; align-items: flex-start; gap: 0; }
 .desk.computer .monitor { flex: none; }
-.desk.computer > .desk-advisor { flex: 1 1 100%; width: auto; max-height: 8em; margin: 10px 0 0; }
-.desk.computer > .desk-hints { writing-mode: horizontal-tb; margin: 10px 0 0 auto; }
 .desk .rig-strip { flex: none; width: 64px; align-self: stretch; display: flex; flex-direction: column; gap: 6px; padding: 14px 7px; background: linear-gradient(90deg, #3a3d40, #26282a); border: 1px solid #111; border-left: 0; border-radius: 0 14px 14px 0; box-shadow: inset 0 1px 0 #5a5e62, 0 12px 34px #000a; color: #b9bec2; font: 12px/1.35 var(--mono); cursor: grab; }
 .desk .rig-strip .strip-lights { display: grid; gap: 8px; justify-items: center; font-size: 9px; letter-spacing: .1em; padding-bottom: 8px; border-bottom: 1px solid #44484c; }
 .desk .rig-strip .pocket-light { flex-direction: column; gap: 3px; }

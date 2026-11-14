@@ -3,31 +3,27 @@
 // draws what it says and sends what's clicked. What's on the computer are folders on the desktop (Systems, Files, Mail,
 // Logs, Programs, Network) that open in a window; what's opened shows in a second window; a third keeps the session's
 // log; the taskbar has the menu, the windows, the watcher's eye on a hacked computer, and the clock. Windows are dragged
-// by their title bars; the monitor's frame pulls the whole thing aside. The advisor's hints sit beside the monitor.
+// by their title bars. The monitor and the player's rig beside it are two windows of their own, each dragged by its
+// frame and left where it's let go, with the lead between them following.
 // Skin and the old screen's strength are Settings choices (desktop.css). Nothing here needs typing. Since step 6 a
 // computer can look like something else: a door's panel with its keypad, a junction box's service menu and a camera's
 // feed on the rig's little screen, and NAVCOM 7, the Navy's desktop, for the ship's main system.
 
-import { api, el } from "./dom.js";
-import { leaderNode, pullable } from "./float.js";
+import { api, el, zoom } from "./dom.js";
+import { leaderNode } from "./float.js";
+import { makePullable, pulledBy } from "./pull.js";
 import { NET_MAP, layOutNetMap } from "./net-layout.js";
 
-const comp = { id: null, view: null, sending: false, message: null, seen: 0, advisor: true };
+const comp = { id: null, view: null, sending: false, message: null, seen: 0 };
 
 // What the window needs from the main screen. Set once, when the page loads.
 let app;
 
-const ADVISOR_KEY = "meridian-advisor";
 
 export function initComputer(hooks) {
   app = hooks;
   // This listens first, so that Esc closes a menu over the window before it logs off.
   document.addEventListener("keydown", onKey, true);
-  try {
-    comp.advisor = localStorage.getItem(ADVISOR_KEY) !== "off";
-  } catch {
-    comp.advisor = true;
-  }
 }
 
 export const computerOpen = () => Boolean(app?.ui.game?.computer);
@@ -53,9 +49,13 @@ function sync() {
   const live = app.ui.game?.computer ?? null;
   if (!live) {
     resetComputer();
+    forgetMoves();
     return;
   }
   if (live.id !== comp.id) {
+    // Where the computer and the rig were moved to is kept while going along the network, and forgotten at a computer
+    // come to afresh.
+    if (!live.reach?.remote) forgetMoves();
     // Going along the network keeps the rig's page out where it was folded away, to go on from there.
     const slid = Boolean(comp.rigSlide) && Boolean(live.reach?.remote);
     resetComputer();
@@ -104,16 +104,6 @@ async function send(body) {
 }
 
 const logOff = () => send({ action: "logoff" });
-
-function toggleAdvisor() {
-  comp.advisor = !comp.advisor;
-  try {
-    localStorage.setItem(ADVISOR_KEY, comp.advisor ? "on" : "off");
-  } catch {
-    // It still works, it just won't remember.
-  }
-  draw();
-}
 
 // ---- Little pictures, sixteen squares a side ------------------------------
 
@@ -255,7 +245,7 @@ function screenNode(view) {
 // ---- The logon ------------------------------------------------------------------
 
 // A computer the player isn't past yet: Keelworks' logon box, and a line for whether a rig is on its port. What gets in
-// is on the rig beside it, under D:, once it's connected; the advisor beside the monitor says what each way costs.
+// is on the rig beside it, under D:, once it's connected.
 function logonNode(view) {
   const reach = view.reach ?? {};
   const port = view.look === "navcom" ? "Navy port" : "cable port";
@@ -439,14 +429,6 @@ const fitter = typeof ResizeObserver === "undefined" ? null : new ResizeObserver
   }
 });
 
-function advisorNode(view) {
-  if (!view.hints?.length) return null;
-  if (!comp.advisor) return el("button", { class: "desk-hints", title: "Bring the hints back", onclick: (event) => { event.stopPropagation(); toggleAdvisor(); } }, "HINTS");
-  return el("aside", { class: "desk-advisor", id: "computer-advisor", "aria-label": "Hints" },
-    el("header", {}, el("span", {}, `ADVISOR: ${view.tierName.toUpperCase()}`), el("button", { title: "Put the hints away", onclick: (event) => { event.stopPropagation(); toggleAdvisor(); } }, "x")),
-    el("div", { class: "lines", id: "computer-hints" }, view.hints.map((text) => el("div", {}, text))));
-}
-
 // ---- The place's network, as a map (step 7) ------------------------------------------------------------------
 
 const NET_KIND = { terminal: "TERM", door: "DOOR", junction: "BUS", camera: "CAM", relay: "RELAY" };
@@ -525,7 +507,7 @@ function deviceWindow(view) {
     watch && el("span", { class: `device-watch ${watch.stage}`, title: `${watch.name}: ${watchWords(watch).toLowerCase()}` }, `${watch.name}: ${watchWords(watch)}`),
     el("span", { title: "The ship's time" }, clockText())));
   const log = view.log.slice(-4);
-  const frame = el("div", { class: `device-frame device-${look}`, title: "Pull the frame to move it aside" },
+  const frame = el("div", { class: `device-frame device-${look}`, id: "computer-window", title: "Drag the frame to move it" },
     comp.message && el("div", { class: "desk-note" }, comp.message),
     head, face, seen,
     // At its logon, what gets past it is on the rig beside it; inside, the panel's own buttons (a junction box's are its menu).
@@ -534,9 +516,8 @@ function deviceWindow(view) {
     el("div", { class: "device-foot" },
       el("button", { disabled: comp.sending, onclick: (event) => { event.stopPropagation(); logOff(); } }, d.leave ?? "Log off")));
   const narrow = pocketRoom() < 960;
-  return el("div", { class: `desk device${narrow ? " narrow" : ""}`, id: "computer-window", role: "dialog", "aria-label": view.name, tabindex: "-1" },
-    el("div", { class: "device-row" }, frame, leadNode(view), pocketNode(view, pocketMapWidth(narrow))),
-    advisorNode(view));
+  return el("div", { class: `desk device${narrow ? " narrow" : ""}`, id: "computer-desk", role: "dialog", "aria-label": view.name, tabindex: "-1" },
+    el("div", { class: "device-row" }, movable(frame, "window"), el("div", { class: "rig-gap", "aria-hidden": "true" }), movable(el("div", { class: "rig-case", id: "computer-rig" }, pocketNode(view, pocketMapWidth(narrow))), "rig")));
 }
 
 // ---- Your rig, beside a panel with no screen of its own ----------------------------------------------------------
@@ -548,7 +529,10 @@ function deviceWindow(view) {
 let pocketResize = 0;
 if (typeof window !== "undefined") window.addEventListener("resize", () => {
   cancelAnimationFrame(pocketResize);
-  pocketResize = requestAnimationFrame(() => { if (comp.view && document.getElementById("computer")) draw(); });
+  pocketResize = requestAnimationFrame(() => {
+    forgetMoves();
+    if (comp.view && document.getElementById("computer")) draw();
+  });
 });
 function pocketRoom() {
   const game = document.querySelector(".game");
@@ -559,26 +543,139 @@ function pocketRoom() {
 }
 
 // How wide the rig's map can be: the panel's window, the lead and the rig's case take their room first, and the map has
-// the rest, from 300 to its own width. The hints stand beside them where there's room, and under them where there isn't.
+// the rest, from 300 to its own width.
 function pocketMapWidth(narrow) {
   return Math.round(Math.max(300, Math.min(NET_MAP.width, pocketRoom() - (narrow ? 300 : 380) - (narrow ? 26 : 56) - 52)));
 }
 
-// The lead from the rig to the panel, by how it's plugged in: a clip lead to a junction box, the optical reader's red
-// beam to a keypad, radio to a camera. Over the network it's the network, a dashed line; not plugged in, nothing.
-const LEADS = {
-  clip: '<svg viewBox="0 0 56 180" preserveAspectRatio="none"><path d="M56 96 C 40 96, 34 70, 22 74 S 8 92, 2 92" fill="none" stroke="#c8352c" stroke-width="3"/><path d="M56 104 C 42 104, 30 120, 18 112 S 6 98, 2 98" fill="none" stroke="#222" stroke-width="3"/><rect x="0" y="86" width="9" height="18" rx="2" fill="#9aa09b" stroke="#333"/></svg>',
-  optic: '<svg viewBox="0 0 56 180" preserveAspectRatio="none"><line x1="54" y1="96" x2="4" y2="96" stroke="#ff5a4a" stroke-width="2" stroke-dasharray="3 4"/><circle cx="4" cy="96" r="4" fill="#ff5a4a" opacity=".85"/><rect x="44" y="88" width="12" height="16" rx="2" fill="#4a4d50" stroke="#111"/></svg>',
-  radio: '<svg viewBox="0 0 56 180" preserveAspectRatio="none"><g fill="none" stroke="#8ff0a8" stroke-width="2" opacity=".85"><path d="M44 84 Q 36 96 44 108"/><path d="M34 78 Q 22 96 34 114"/><path d="M24 72 Q 8 96 24 120"/></g><rect x="48" y="90" width="8" height="12" rx="2" fill="#4a4d50" stroke="#111"/></svg>',
-  cable: '<svg viewBox="0 0 56 180" preserveAspectRatio="none"><path d="M56 96 C 36 96, 30 110, 16 104 S 6 96, 2 96" fill="none" stroke="#6a706c" stroke-width="6"/><path d="M56 96 C 36 96, 30 110, 16 104 S 6 96, 2 96" fill="none" stroke="#26292a" stroke-width="3"/><rect x="0" y="90" width="8" height="12" rx="1" fill="#9aa09b" stroke="#333"/></svg>',
-  navy: '<svg viewBox="0 0 56 180" preserveAspectRatio="none"><path d="M56 96 C 36 96, 30 110, 16 104 S 6 96, 2 96" fill="none" stroke="#2d3f5c" stroke-width="6"/><rect x="0" y="88" width="10" height="16" rx="2" fill="#8ab8ff" stroke="#1d2b38"/></svg>',
-  net: '<svg viewBox="0 0 56 180" preserveAspectRatio="none"><line x1="54" y1="96" x2="2" y2="96" stroke="#4fa3d9" stroke-width="2" stroke-dasharray="5 4"/></svg>',
+// ---- The computer and the rig, each moved on its own ----------------------------------------------------------------
+// The computer (its monitor, or a panel's own window) and the rig beside it start side by side, and each is dragged by
+// its frame and stays where it's let go, kept on the screen. Where they were moved to lasts while going along the
+// network and is forgotten at a computer come to afresh, when the computer closes, and when the screen changes size.
+
+const moved = { window: null, rig: null };
+function forgetMoves() {
+  moved.window = null;
+  moved.rig = null;
+}
+
+function movable(node, key) {
+  const at = () => moved[key] ?? { x: 0, y: 0 };
+  const put = (win, x, y) => {
+    win.style.transform = x || y ? `translate(${x}px, ${y}px)` : "";
+  };
+  // How far the pull under way has gone: its last move, read when it's let go.
+  let last = null;
+  node.classList.add("movable");
+  makePullable(node, {
+    follow: (win, dx, dy) => {
+      last = { dx, dy };
+      put(win, at().x + dx, at().y + dy);
+      drawLead();
+    },
+    back: (win) => {
+      win.classList.remove("springing");
+      if (last) moved[key] = keptOnScreen(win, { x: at().x + last.dx, y: at().y + last.dy });
+      last = null;
+      put(win, at().x, at().y);
+      win.classList.toggle("moved", Boolean(at().x || at().y));
+      drawLead();
+    },
+  });
+  const pulled = pulledBy(node.id);
+  put(node, at().x + (pulled?.x ?? 0), at().y + (pulled?.y ?? 0));
+  node.classList.toggle("moved", Boolean(at().x || at().y));
+  return node;
+}
+
+// Where a window let go would sit, moved back far enough that its top and a good piece of it stay on the screen.
+function keptOnScreen(win, at) {
+  const layer = document.getElementById("computer");
+  if (!layer) return at;
+  const z = zoom();
+  const box = win.getBoundingClientRect();
+  const room = layer.getBoundingClientRect();
+  const keep = 80;
+  let { x, y } = at;
+  const left = (box.left - room.left) / z;
+  const right = (box.right - room.left) / z;
+  const top = (box.top - room.top) / z;
+  const width = room.width / z;
+  const height = room.height / z;
+  if (right < keep) x += keep - right;
+  else if (left > width - keep) x -= left - (width - keep);
+  if (top < 0) y -= top;
+  else if (top > height - 48) y -= top - (height - 48);
+  return { x: Math.round(x), y: Math.round(y) };
+}
+
+// The lead from the rig to what it's plugged into, drawn between the two wherever they are: a cable to a computer, a
+// clip lead to a junction box, the optical reader's red beam to a keypad, radio to a camera, a dashed line over the
+// network, and nothing when it isn't plugged in or the two are touching. It plugs in a little below the top of each.
+const leadPoints = (rig, desk) => {
+  const gapX = Math.max(rig.l - desk.r, desk.l - rig.r);
+  const gapY = Math.max(rig.t - desk.b, desk.t - rig.b);
+  if (gapX < 6 && gapY < 6) return null;
+  const socket = (box, side) => (side === "x" ? box.t + Math.min(96, (box.b - box.t) / 2) : (box.l + box.r) / 2);
+  if (gapX >= gapY) {
+    const right = rig.l >= desk.r;
+    return { across: "x", rig: { x: right ? rig.l : rig.r, y: socket(rig, "x") }, desk: { x: right ? desk.r : desk.l, y: socket(desk, "x") } };
+  }
+  const below = rig.t >= desk.b;
+  return { across: "y", rig: { x: socket(rig, "y"), y: below ? rig.t : rig.b }, desk: { x: socket(desk, "y"), y: below ? desk.b : desk.t } };
 };
-function leadNode(view) {
-  const kind = view.reach?.remote ? "net" : view.reach?.ok ? view.reach.link : null;
-  const box = document.createElement("template");
-  box.innerHTML = (kind && LEADS[kind]) || "";
-  return el("div", { class: "rig-lead", "aria-hidden": "true" }, box.content.firstChild);
+const n = (v) => Math.round(v * 10) / 10;
+// A cable hanging between them, its ends leaving each square on.
+function hanging(a, b, across, shift = 0) {
+  const span = Math.hypot(b.x - a.x, b.y - a.y);
+  const reach = Math.max(18, (across === "x" ? Math.abs(b.x - a.x) : Math.abs(b.y - a.y)) * 0.42);
+  const sag = Math.min(60, span * 0.18);
+  const ox = across === "x" ? 0 : shift;
+  const oy = across === "x" ? shift : 0;
+  if (across === "x") {
+    const dir = Math.sign(b.x - a.x) || 1;
+    return `M${n(a.x + ox)} ${n(a.y + oy)} C${n(a.x + dir * reach + ox)} ${n(a.y + sag + oy)}, ${n(b.x - dir * reach + ox)} ${n(b.y + sag + oy)}, ${n(b.x + ox)} ${n(b.y + oy)}`;
+  }
+  const dir = Math.sign(b.y - a.y) || 1;
+  return `M${n(a.x + ox)} ${n(a.y + oy)} C${n(a.x + sag * 0.4 + ox)} ${n(a.y + dir * reach + oy)}, ${n(b.x + sag * 0.4 + ox)} ${n(b.y - dir * reach + oy)}, ${n(b.x + ox)} ${n(b.y + oy)}`;
+}
+const plugAt = (p, across, fill, long = 14, thin = 9) => (across === "x"
+  ? `<rect x="${n(p.x - thin / 2)}" y="${n(p.y - long / 2)}" width="${thin}" height="${long}" rx="2" fill="${fill}" stroke="#222"/>`
+  : `<rect x="${n(p.x - long / 2)}" y="${n(p.y - thin / 2)}" width="${long}" height="${thin}" rx="2" fill="${fill}" stroke="#222"/>`);
+const straight = (a, b) => `M${n(a.x)} ${n(a.y)} L${n(b.x)} ${n(b.y)}`;
+function radioArcs(at, to) {
+  const angle = Math.atan2(to.y - at.y, to.x - at.x);
+  const point = (r, a) => `${n(at.x + r * Math.cos(a))} ${n(at.y + r * Math.sin(a))}`;
+  return [9, 16, 23].map((r) => `<path d="M${point(r, angle - 0.6)} A${r} ${r} 0 0 1 ${point(r, angle + 0.6)}" fill="none" stroke="#8ff0a8" stroke-width="2" opacity=".85"/>`).join("");
+}
+const LEADS = {
+  cable: ({ rig, desk, across }) => `<path d="${hanging(rig, desk, across)}" fill="none" stroke="#6a706c" stroke-width="6" stroke-linecap="round"/><path d="${hanging(rig, desk, across)}" fill="none" stroke="#26292a" stroke-width="3" stroke-linecap="round"/>${plugAt(desk, across, "#9aa09b")}${plugAt(rig, across, "#4a4d50", 12, 8)}`,
+  navy: ({ rig, desk, across }) => `<path d="${hanging(rig, desk, across)}" fill="none" stroke="#2d3f5c" stroke-width="6" stroke-linecap="round"/>${plugAt(desk, across, "#8ab8ff", 16, 10)}${plugAt(rig, across, "#4a4d50", 12, 8)}`,
+  clip: ({ rig, desk, across }) => `<path d="${hanging(rig, desk, across, -3)}" fill="none" stroke="#c8352c" stroke-width="3"/><path d="${hanging(rig, desk, across, 3)}" fill="none" stroke="#222" stroke-width="3"/>${plugAt(desk, across, "#9aa09b", 18, 9)}`,
+  optic: ({ rig, desk, across }) => `<path d="${straight(rig, desk)}" fill="none" stroke="#ff5a4a" stroke-width="2" stroke-dasharray="3 4"/><circle cx="${n(desk.x)}" cy="${n(desk.y)}" r="4" fill="#ff5a4a" opacity=".85"/>${plugAt(rig, across, "#4a4d50", 16, 12)}`,
+  radio: ({ rig, desk, across }) => `<path d="${straight(rig, desk)}" fill="none" stroke="#8ff0a8" stroke-width="1.5" stroke-dasharray="2 7" opacity=".45"/>${radioArcs(rig, desk)}${plugAt(rig, across, "#4a4d50", 12, 8)}`,
+  net: ({ rig, desk }) => `<path d="${straight(rig, desk)}" fill="none" stroke="#4fa3d9" stroke-width="2" stroke-dasharray="5 4"/>`,
+};
+function drawLead() {
+  const svg = document.getElementById("rig-lead");
+  if (!svg) return;
+  const reach = comp.view?.reach;
+  const kind = reach?.remote ? "net" : reach?.ok ? reach.link : null;
+  const desk = document.getElementById("computer-window");
+  const rig = document.querySelector("#computer-rig > .rig-strip") ?? document.getElementById("computer-rig");
+  const layer = svg.parentElement;
+  if (!kind || !LEADS[kind] || !desk || !rig || !layer) {
+    svg.innerHTML = "";
+    return;
+  }
+  const z = zoom();
+  const base = layer.getBoundingClientRect();
+  const boxOf = (node) => {
+    const r = node.getBoundingClientRect();
+    return { l: (r.left - base.left) / z, t: (r.top - base.top) / z, r: (r.right - base.left) / z, b: (r.bottom - base.top) / z };
+  };
+  const points = leadPoints(boxOf(rig), boxOf(desk));
+  svg.innerHTML = points ? LEADS[kind](points) : "";
 }
 
 const POCKET_TABS = [["net", "NET", "The place's network: go along it from here"], ["prog", "D:", "What's loaded on your rig, to run here"], ["log", "LOG", "What's happened at this one"]];
@@ -625,7 +722,7 @@ function pocketNode(view, width, { closeable = false } = {}) {
   else if (tab === "prog") page = pocketPrograms(view);
   else page = el("div", { class: "pocket-log", id: "rig-log", role: "log" }, view.log.slice(-14).map((entry) => lineNode(entry)));
   const where = reach.remote ? "OVER THE NETWORK" : reach.ok ? `ON THE ${linkName(reach.words)}` : "NOT CONNECTED";
-  return el("div", { class: "pocket", role: "group", "aria-label": "Your rig", title: "Pull the frame to move it aside" },
+  return el("div", { class: "pocket", role: "group", "aria-label": "Your rig", title: "Drag the rig's case to move it" },
     closeable && el("button", { class: "pocket-close", title: "Fold the rig away", "aria-label": "Fold the rig away", onclick: (event) => { event.stopPropagation(); comp.rigSlide = null; draw(); } }, "×"),
     el("div", { class: "pocket-top" },
       el("span", {}, [face.board, face.casing].filter(Boolean).join(" · ").toUpperCase() || "YOUR RIG"),
@@ -691,7 +788,7 @@ function stripNode(view) {
   const reach = view.reach ?? {};
   const open = comp.rigSlide;
   const tab = comp.rigTab ?? (view.locked ? "prog" : "net");
-  return el("div", { class: "rig-strip", role: "group", "aria-label": "Your rig, folded", title: "Pull the frame to move it aside" },
+  return el("div", { class: "rig-strip", role: "group", "aria-label": "Your rig, folded", title: "Drag the rig to move it" },
     el("div", { class: "strip-lights" }, linkLight(reach), heatLight(view.rigHeat)),
     POCKET_TABS.map(([id, label, about]) => el("button", { "aria-pressed": String(open === id), title: about, onclick: (event) => { event.stopPropagation(); comp.rigSlide = open === id ? null : id; comp.rigTab = id; draw(); } }, label, id === "log" && unseenLog(view, open ? tab : null) && el("i", { class: "pocket-dot", title: "Something new" }))),
     !reach.ok && el("button", { class: "go", disabled: comp.sending || !reach.fits, title: reach.fits ? `Connect by ${reach.words}: a minute` : `${capital(reach.why ?? "")}`, onclick: plug }, "PLUG IN"));
@@ -715,16 +812,16 @@ function windowNode() {
   const glass = el("div", lastScale ? { class: "glass", style: `--s:${lastScale}` } : { class: "glass" }, el("div", { class: "desk-screen" }, osNode(view, watch)), el("div", { class: "fx scan" }), el("div", { class: "fx vig" }), el("div", { class: "fx glare" }), el("div", { class: "fx band" }));
   if (fitter) fitter.observe(glass);
   const lay = computerLayout();
-  const monitor = el("div", { class: "monitor", title: "Pull the frame to move it aside", style: `width:min(${lay.monitor}px, calc((100vh - 16em) * 1.3))` },
+  const monitor = el("div", { class: "monitor", id: "computer-window", title: "Drag the frame to move it", style: `width:min(${lay.monitor}px, calc((100vh - 16em) * 1.3))` },
     comp.message && el("div", { class: "desk-note" }, comp.message),
     glass,
     el("div", { class: "plate" }, el("span", {}, "VARNE 15SX"), el("span", { class: `led${watch?.stage === "tracing" ? " bad" : watch?.stage === "noticed" ? " warn" : ""}` })));
+  // Folded, the rig is the strip down the monitor's side, and the page that slides out of it goes where it goes.
   const rig = lay.strip
-    ? [stripNode(view), comp.rigSlide && el("div", { class: "rig-slide" }, pocketNode(view, lay.map, { closeable: true }))]
-    : [leadNode(view), pocketNode(view, lay.map)];
-  return el("div", { class: `desk computer${lay.strip ? " folded" : ""}`, id: "computer-window", role: "dialog", "aria-label": view.name, tabindex: "-1" },
-    el("div", { class: "device-row" }, monitor, rig),
-    advisorNode(view));
+    ? [movable(el("div", { class: "rig-folded", id: "computer-rig" }, stripNode(view), comp.rigSlide && el("div", { class: "rig-slide" }, pocketNode(view, lay.map, { closeable: true }))), "rig")]
+    : [el("div", { class: "rig-gap", "aria-hidden": "true" }), movable(el("div", { class: "rig-case", id: "computer-rig" }, pocketNode(view, lay.map)), "rig")];
+  return el("div", { class: `desk computer${lay.strip ? " folded" : ""}`, id: "computer-desk", role: "dialog", "aria-label": view.name, tabindex: "-1" },
+    el("div", { class: "device-row" }, movable(monitor, "window"), rig));
 }
 
 // How a computer and the rig share the room: side by side where the monitor keeps 600 or more beside the rig at its
@@ -740,13 +837,18 @@ function computerLayout() {
   return { strip: true, map: Math.round(Math.max(300, Math.min(400, monitor - 140))), monitor };
 }
 
-// It floats over the room the way the check window does, with nothing dimmed behind it and the clock running on, can be
-// pulled aside by the monitor's frame and slides back, and a line runs from it to what the player sat down at.
+// It floats over the room the way the check window does, with nothing dimmed behind it and the clock running on, and a
+// line runs from it to what the player sat down at. The lead between the computer and the rig is drawn under both.
 export function computerNode() {
   sync();
   if (!computerOpen()) return null;
   fitter?.disconnect();
-  const node = el("div", { class: "check-float", id: "computer" }, leaderNode(comp.view?.at), pullable(windowNode()));
+  const lead = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  lead.setAttribute("class", "rig-lead");
+  lead.setAttribute("id", "rig-lead");
+  lead.setAttribute("aria-hidden", "true");
+  const node = el("div", { class: "check-float", id: "computer" }, leaderNode(comp.view?.at), lead, windowNode());
+  requestAnimationFrame(drawLead);
   // The lines that came with the last answer type out once: drawing the desktop again for a click doesn't retype them.
   comp.seen = comp.view?.log?.length ?? 0;
   return node;

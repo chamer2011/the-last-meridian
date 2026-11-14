@@ -197,21 +197,16 @@ test("a door's panel opens at its logon, and a map file's door opens once the pl
   assert.match(game.transcript.at(-1).text, /\[DOOR\] The door swings in\./);
 });
 
-test("the advisor at a logon says more the more training there is", () => {
-  const hints = (hacking) => {
+test("no hints when hacking, whatever the training: what each way in costs is on the rig's D: page", () => {
+  for (const hacking of [0, 10]) {
     const game = newGame(hacking);
     logonAt(game);
-    return computerView(game).hints;
-  };
-  const untrained = hints(0);
-  const master = hints(10);
-  assert.ok(untrained.some((line) => /DICTIONARY\.EXE gets you in, and it's loud/.test(line)), untrained.join(" | "));
-  assert.ok(!untrained.some((line) => /noise and/.test(line)), "no numbers untrained");
-  assert.ok(hints(2).some((line) => /3 noise and 6 minutes/.test(line)));
-  assert.ok(hints(5).some((line) => /notices you at \d+ noise/.test(line)));
-  assert.ok(master.some((line) => /after it it stays calm|after it it notices you/.test(line)), master.join(" | "));
-  assert.ok(master.some((line) => /quietest way in you have is DICTIONARY/.test(line)));
-  assert.ok(master.length > untrained.length);
+    const v = computerView(game);
+    assert.equal(v.locked, true);
+    assert.ok(!("hints" in v) && !("tierName" in v), `nothing by training at Hacking ${hacking}`);
+    const way = v.logon.ways.find((one) => one.id === "dictionary");
+    assert.deepEqual([way.noise, way.minutes], [3, 6]);
+  }
 });
 
 test("a pocket picked clean now and then brings a keycard", () => {

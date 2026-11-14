@@ -478,9 +478,8 @@ export function rigInComputer(game, session, content) {
   const mine = programsNow().list.filter((p) => p.builtIn || game.rig.loaded.includes(p.id));
   const loaded = mine.map((p) => ({ id: p.id, name: p.name, about: p.what, why: cantRun(game, session, content, p), noise: p.noise ?? 0, minutes: p.minutes ?? 1 }));
   const copies = programsNow().list.filter((p) => (p.foundOn ?? []).includes(session.id) && !game.rig.programs.includes(p.id)).map((p) => ({ id: p.id, name: p.name, about: p.what, why: !session.remote && !session.plugged ? (reachWhy(game, content) ? `your rig can't reach it: ${reachWhy(game, content)}` : "your rig isn't connected") : null }));
-  // Each way in, with why it won't run now and why it wouldn't once the rig is plugged in, for the advisor's advice.
-  const plugged = session.remote || session.plugged ? session : { ...session, plugged: true };
-  const ways = session.locked ? mine.filter((p) => p.kind === "in" || p.id === "scope").map((p) => ({ id: p.id, name: p.name, about: p.what, kind: p.kind, power: p.power ?? null, noise: p.noise ?? 0, minutes: p.minutes ?? 1, why: cantRun(game, session, content, p), whyIn: cantRun(game, plugged, content, p) })) : [];
+  // Each way in, with why it won't run now, if it won't.
+  const ways = session.locked ? mine.filter((p) => p.kind === "in" || p.id === "scope").map((p) => ({ id: p.id, name: p.name, about: p.what, kind: p.kind, power: p.power ?? null, noise: p.noise ?? 0, minutes: p.minutes ?? 1, why: cantRun(game, session, content, p) })) : [];
   return { loaded, copies, ways, memory: memoryOf(game), used: usedMemory(game.rig) };
 }
 

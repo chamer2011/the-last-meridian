@@ -201,8 +201,7 @@ test("the rig is connected before anything is hacked: a minute, seen in front of
   assert.equal(v.locked, true);
   assert.deepEqual([v.reach.fits, v.reach.ok], [true, false]);
   assert.ok(v.logon.ways.every((way) => way.why === "your rig isn't connected"));
-  assert.match(v.hints[0], /^Connect your rig first: it takes a minute, and anyone in the room can see you plug in/);
-  assert.ok(v.hints.some((line) => /^DICTIONARY\.EXE gets you in/.test(line)), "the advisor weighs the ways as they'd be once plugged in");
+  assert.equal(v.reach.seen, true, "plugging in here is seen by anyone in the room");
   assert.equal(v.rigHeat, null, "an unplugged rig isn't working");
   assert.match(computerCommand(game, { action: "rig", id: "dictionary" }).said ?? view(game).screen?.lines?.map((one) => one.text).join(" ") ?? "", /isn't connected/);
   // The docks are busy in the morning: plugging in there is seen.

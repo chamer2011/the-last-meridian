@@ -132,7 +132,7 @@ test("the player's own computers open with no hack, and reading, running and log
   assert.ok(view.logs.some((one) => one.id === "berths"));
   assert.ok(view.programs.some((one) => one.name === "Log the day's orders"));
   assert.ok(!JSON.stringify(view).includes("\"password\""));
-  assert.ok(view.hints.length >= 1);
+  assert.ok(!("hints" in view), "no hints when hacking");
   // Reading a file puts it in What you know, once.
   computerCommand(game, { action: "file", id: "course_txt" });
   assert.equal(game.computer.screen.kind, "file");

@@ -791,3 +791,33 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
 - **Screens** on a test copy at 1400 and 810 wide: the Bridge's keypad on the corridor wall, its right-click menu,
   walking up and keying in, the keypad window and the rig side by side, locking the door (the screen red in the room,
   the doorways closed), the Medbay's on its side wall.
+
+## No hints, and the computer and the rig apart (built 2026-11-13, untried)
+
+- Asked as "Remove the Hints windows when hacking and make the your rig and the thing your hacking not freeze together,
+  they should be able to move on their own". Built straight away; nothing was shown first.
+- **No hints:** the advisor's window beside the monitor (ADVISOR: <training>, with its x and the HINTS button that
+  brought it back) is gone from the page, and the game no longer works out what it said: `logonHints`, `hintsFor`,
+  `nextStep` and `afterWay` in `src/computers.js`, `hardenedHints` and `whereWords` in `src/weak-points.js`, the ways'
+  `whyIn` in `src/rig.js`, the computer view's `hints`, `tier` and `tierName`, and the `hints` part of
+  `world/computers/_flavor.json` (its help line too). What a way in costs and why it won't run are on the rig's D:
+  page, the plug page says why the rig can't connect, and the tray shows the watcher. The skill check window keeps its
+  own advisor for the other skills; hacking never opens it since step 3.
+- **Two windows:** the computer (the monitor, or a panel's own window: `#computer-window`) and the rig (`#computer-rig`:
+  its case, `.rig-case`, or the folded strip with the page that slides out of it, `.rig-folded`) sit in
+  `#computer-desk`, which lets clicks through to the room between them. Each is `movable` in `public/computer.js`:
+  `makePullable` from `public/pull.js` with a `back` that keeps the last offset instead of sliding home, kept on the
+  screen by `keptOnScreen` (80 px across and its top). They start side by side as before (a `.rig-gap` where the fixed
+  lead was). Where they were moved (`moved`) lasts while going along the network (a session reached remotely) and is
+  forgotten (`forgetMoves`) at a computer come to afresh, when the computer closes, and when the window changes size,
+  since the starting places change with it. A strip moved off the monitor gets its own rounded case (`.moved`).
+- **The lead between them** is an SVG in the float under both windows (`#rig-lead`, `drawLead`, redrawn after every
+  draw and on every move): from a socket a little below the top of each (`leadPoints`: across when they're side by
+  side, up and down when one's above the other, nothing when they touch), a hanging cable (`hanging`) to a desk, the
+  Navy's blue cable, a red and black clip lead, the optical reader's red beam, radio arcs, a dashed line over the
+  network (`LEADS`).
+- **Tests:** the five that read the hints now check there are none and keep what the hints stood for (the D: page's
+  noise and minutes, `reach.seen`); 1,184 in all, `check-story` clean.
+- **Screens** on a test copy at 1400 and 810 wide: Haven's berth board with the rig dragged down and the monitor up and
+  left, connected with the cable following; at 810 the strip moved off the monitor with its D: page sliding out of it;
+  the Bridge keypad's beam with the rig dragged away, and with the keypad dragged under the rig.
