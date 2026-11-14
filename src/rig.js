@@ -26,6 +26,7 @@ import { countAboard, takeAboard } from "./logistics.js";
 import { addItem, passTime, removeItem, skillRank } from "./rules.js";
 import { roomHere } from "./walk.js";
 import { WORLD_COMPUTERS } from "./world.js";
+import { contentHardened, weakWay } from "./weak-points.js";
 
 export const BENCH = { place: "meridian", room: "repair", name: "the Repair Bay's bench" };
 export const STARTING_PROGRAMS = ["dictionary", "doorkey", "mask"];
@@ -442,11 +443,15 @@ function cantRun(game, session, content, p) {
     if (p.id === "scope") return session.scanned ? "it's read the logon already" : null;
     if (p.kind !== "in") return "log on first";
   } else if (p.kind === "in") return "you're already in";
+  // A hardened computer takes no breaker from the front (step 8): only a weak point the player has found lets KNOCK or
+  // SHADOW in, and then whatever the class or the hour would say.
+  const weak = session.locked ? weakWay(game, content, p) : null;
+  if (weak?.why) return weak.why;
   // A program's power, and the rig's own from its build, against the computer's class.
-  if (p.power && p.power + stats.power < classNumber(session.classKey)) return `it's too weak for a ${String(session.className).toLowerCase()}`;
+  if (!weak?.ok && p.power && p.power + stats.power < classNumber(session.classKey)) return `it's too weak for a ${String(session.className).toLowerCase()}`;
   if (p.id === "mimic" && !game.inventory?.keycard) return "it needs a lifted keycard in your pockets";
   if (p.id === "skeleton" && !session.scanned) return "Scope has to read the logon first";
-  if (p.id === "shadow" && !onShift(game)) return "nobody has a session open at this hour";
+  if (p.id === "shadow" && !weak?.ok && !onShift(game)) return "nobody has a session open at this hour";
   if (session.practice && p.kind === "leave") return "in practice nothing's left behind";
   const needsDoors = ["doorkey", "masterkey", "sleeper"].includes(p.id);
   if (needsDoors && !doorRows(game, session, content).length) return "this computer runs no doors";
@@ -471,9 +476,11 @@ export function rigInComputer(game, session, content) {
   return { loaded, copies, ways, memory: memoryOf(game), used: usedMemory(game.rig) };
 }
 
-// Who a breaker gets the player in as, and what it says.
-function breakIn(p, session) {
+// Who a breaker gets the player in as, and what it says. weak is the weak point it went through on a hardened one.
+function breakIn(p, session, weak = null) {
   const user = { knock: "service", skeleton: "service", mimic: "keycard" }[p.id] ?? session.user;
+  if (weak?.kind === "service") return { user, said: "The service account the junction boxes still share opens it from the back. You're in as service." };
+  if (weak?.kind === "session") return { user, said: `You ride the session ${session.user} leaves open. Everything you do is in their name, and they might notice.` };
   const said = {
     knock: "Nobody ever changed the service account's password. You're in as service.",
     dictionary: `The word list finds ${session.user}'s password. People choose the same words.`,
@@ -503,14 +510,14 @@ export function runRigProgram(game, session, content, id, helpers) {
     if (p.id === "scope") {
       session.scanned = true;
       const logon = { door: "the panel: DoorCtl 2.1, an admin lock", service: "the box's service logon", camera: "the feed's logon", navcom: "the logon: NAVCOM 7" }[session.look] ?? "the logon: Keelworks Logon 3.2";
-      const lines = [line(`Scope reads ${logon} on a ${String(session.className).toLowerCase()}, with ${watcherOf(game, session).name} watching. Its version has a known flaw.`, "info")];
+      const lines = [line(contentHardened(content) ? `Scope reads ${logon} on a ${String(session.className).toLowerCase()}, with ${watcherOf(game, session).name} watching. It's hardened: every known flaw is closed, and its way in is written somewhere else.` : `Scope reads ${logon} on a ${String(session.className).toLowerCase()}, with ${watcherOf(game, session).name} watching. Its version has a known flaw.`, "info")];
       session.log.push(...lines);
       show([line(p.what, "dim"), ...lines]);
       return helpers.act(game, session, cost) ?? { over: false };
     }
     const out = helpers.act(game, session, cost);
     if (out) return out;
-    const { user, said } = breakIn(p, session);
+    const { user, said } = breakIn(p, session, weakWay(game, content, p));
     if (p.id === "shadow") session.shadow = true;
     session.log.push(line(said, "good"));
     if (!session.ran.includes(p.name)) session.ran.push(p.name);

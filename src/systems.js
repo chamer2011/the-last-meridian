@@ -452,6 +452,7 @@ function compileSystems(place) {
     for (const sid of c.systems) if (sid !== "everything" && !model.systems.some((one) => one.id === sid)) at(line, `${name} has no system called ${sid}`);
     const systems = c.systems.includes("everything") ? model.systems.map((one) => one.id) : c.systems.filter((sid) => model.systems.some((one) => one.id === sid));
     const rooms = c.rooms ? roomsFor(c.rooms, line).map((one) => one.id) : null;
+    if (c.hardened && !c.room) at(line, `only a console the file puts in a room is hardened here: a written computer says "hardened: yes" in its own file`);
     if (c.classKey && !["easy", "moderate", ...BIG_CLASSES].includes(c.classKey)) at(line, `a console's class is easy, moderate, hard, very hard or nearly impossible, not ${c.classKey}`);
     let ref = null;
     if (c.room) {
@@ -463,7 +464,7 @@ function compileSystems(place) {
       const thing = thingsIn(level).find((one) => plain(one.name) === plain(c.ref));
       if (thing) ref = { kind: "thing", thing: thing.id, room: level.id, name: thing.name };
       else {
-        const part = addPart("computers", c.ref, level, { kind: "console", classKey: c.classKey ?? "moderate" });
+        const part = addPart("computers", c.ref, level, { kind: "console", classKey: c.classKey ?? "moderate", ...(c.hardened ? { hardened: true } : {}) });
         ref = { kind: "console", part: part.id, room: level.id, name: part.name };
       }
     } else if (WORLD_COMPUTERS[c.ref]) ref = { kind: "written", id: c.ref, room: null, name: WORLD_COMPUTERS[c.ref].name };

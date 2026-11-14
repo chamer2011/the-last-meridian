@@ -173,12 +173,13 @@ export const COMPUTER = {
     { path: "class", key: "class", type: "string" }, { path: "owner", key: "owner", type: "name" }, { path: "yours", key: "yours", type: "flag" },
     { path: "place", key: "place", type: "name" }, { path: "room", key: "room", type: "string" }, { path: "thing", key: "thing", type: "string" }, { path: "door", key: "door", type: "string" },
     { path: "user", key: "login", type: "string" }, { path: "password", key: "password", type: "string" }, { path: "flavor", key: "flavor", type: "string" },
-    { path: "look", key: "look", type: "string" }, { path: "reach", key: "reached by", type: "string" },
+    { path: "look", key: "look", type: "string" }, { path: "reach", key: "reached by", type: "string" }, { path: "hardened", key: "hardened", type: "flag" },
   ],
   sections: [
     { path: "desc", phrase: "What the player sees", type: "text" },
     { path: "files", phrase: "Files", type: "named" }, { path: "mail", phrase: "Mail", type: "named" }, { path: "logs", phrase: "Logs", type: "items" },
     { path: "programs", phrase: "Programs", type: "named" }, { path: "network", phrase: "Network", type: "named" },
+    { path: "weakPoints", phrase: "Weak points", type: "items" },
   ],
 };
 

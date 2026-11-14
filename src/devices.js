@@ -18,6 +18,7 @@ import { whoSees } from "./law.js";
 import { seenTampering } from "./systems.js";
 import { peopleAboard } from "./life.js";
 import { mapFor } from "./walk.js";
+import { busWeakPoints, learnWeak } from "./weak-points.js";
 
 // The looks with no screen of their own: a door's panel, a junction box's service menu, a camera's feed.
 export const PANEL_LOOKS = ["door", "service", "camera"];
@@ -243,7 +244,9 @@ function serviceView(game, session, content) {
   const device = session.device ?? {};
   const feeds = feedsOf(place, content.part).map((room) => ({ room, name: plainRoom(place, room), on: !feedCut(game, place, room) }));
   const cleaner = (game.rig?.loaded ?? []).includes("cleaner") || knowsPassword(game, content.id);
-  return { kind: "service", code: content.code, screen: device.screen ?? "menu", feeds, faults: device.faults ?? 0, lines: device.lines ?? [], cleared: Boolean(device.cleared), canClear: cleaner };
+  // The log keeps the service accounts the place's hardened computers still share with the bus, until it's cleared.
+  const shared = device.cleared ? [] : busWeakPoints(place).map((one) => `SVC  ${one.text}`);
+  return { kind: "service", code: content.code, screen: device.screen ?? "menu", feeds, faults: device.faults ?? 0, lines: [...shared, ...(device.lines ?? [])], cleared: Boolean(device.cleared), canClear: cleaner };
 }
 
 function cameraView(game, session, content) {
@@ -338,6 +341,11 @@ export function deviceCommand(game, session, content, id, { act, finish }) {
     const [verb, arg] = id.split(":");
     if (["svc-menu", "svc-status", "svc-breakers", "svc-log"].includes(verb)) {
       session.device.screen = verb.slice(4);
+      // Reading the log: a service account a hardened computer still shares is a way into it (src/weak-points.js).
+      if (verb === "svc-log" && !session.device.cleared) for (const one of busWeakPoints(place)) {
+        const found = learnWeak(game, one.reveals, session.name);
+        if (found) say(session, found);
+      }
       return { over: false };
     }
     if (verb === "svc-toggle") {

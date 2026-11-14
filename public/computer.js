@@ -227,6 +227,11 @@ function registerScreen(screen) {
 
 function screenNode(view) {
   const { screen } = view;
+  // What's opened (a file, a letter, a log, a program's words): its title and its lines.
+  const opened = () => [
+    el("div", { class: "computer-screen-title" }, screen.title ?? ""),
+    (screen.lines ?? []).map((entry) => el("div", { class: `check-line tone-${entry.tone ?? "info"}` }, entry.text)),
+  ];
   switch (screen.kind) {
     case "home":
       return [
@@ -235,16 +240,13 @@ function screenNode(view) {
         el("div", { class: "tone-dim" }, `${view.files.length} files, ${view.mail.length} letters, ${view.logs.length} logs, ${view.programs.length} programs. Open a folder on the desktop.`),
         view.systems?.length > 0 && el("div", { class: "tone-dim" }, `It runs ${view.systems.map((one) => one.title.toLowerCase()).join(", ")} here.`),
       ];
-    case "mail": return listScreen("Mail", view.mail, "mail", "No letters.");
+    // The list of letters, or one letter opened, which has its id and its lines.
+    case "mail": return screen.id ? opened() : listScreen("Mail", view.mail, "mail", "No letters.");
     case "logs": return listScreen("Logs", view.logs, "log", "No logs.");
     case "network": return listScreen("Network", view.network, "connect", "Nothing reachable from here.");
     case "system": return systemScreen(view, screen);
     case "register": return registerScreen(screen);
-    default:
-      return [
-        el("div", { class: "computer-screen-title" }, screen.title ?? ""),
-        (screen.lines ?? []).map((entry) => el("div", { class: `check-line tone-${entry.tone ?? "info"}` }, entry.text)),
-      ];
+    default: return opened();
   }
 }
 
@@ -267,6 +269,8 @@ function logonNode(view) {
         el("span", {}, "Password:"), el("span", { class: "field sunk" }),
         el("span", {}, "Log on to:"), el("span", { class: "field sunk" }, view.name)),
       el("div", { class: `logon-rig sunk${reach.ok ? " on" : ""}` }, el("i", { class: "plugdot" }), el("span", {}, rigWords)),
+      view.hardened && el("div", { class: `logon-hard sunk${view.weak?.length ? " found" : ""}` }, el("b", {}, "HARDENED"),
+        el("span", {}, view.weak?.length ? `No breaker works on it from the front. You know ${view.weak.join("; ")}.` : "No breaker works on it from the front. Its way in is written somewhere else here.")),
       el("div", { class: "logon-buttons" }, el("button", { disabled: comp.sending, onclick: (event) => { event.stopPropagation(); logOff(); } }, "Log off"))));
 }
 
@@ -452,15 +456,15 @@ function netMapNode(map, width = NET_MAP.width) {
     bands.map((band) => el("div", { class: "net-band", style: `top:${band.y}px;height:${band.height}px` }, el("span", {}, band.name))),
     box.content.firstChild,
     map.nodes.map((node) => el("button", {
-      class: `net-node net-${node.kind}${node.here ? " here" : ""}${node.linked ? " near" : ""}${node.visited ? " seen" : ""}`,
+      class: `net-node net-${node.kind}${node.here ? " here" : ""}${node.linked ? " near" : ""}${node.visited ? " seen" : ""}${node.hardened ? " hard" : ""}${node.weak ? " weak" : ""}`,
       style: `left:${at[node.id].x}px;top:${at[node.id].y}px;max-width:${NET_MAP.box}px;max-height:${NET_MAP.boxHeight}px`,
       disabled: comp.sending || !node.linked,
-      title: node.here ? `${node.name}: you're on this one` : node.linked ? `Go to ${node.name}: ${map.hop.minutes} min, heard here and there` : `${node.name}: not linked to where you are`,
+      title: `${node.here ? `${node.name}: you're on this one` : node.linked ? `Go to ${node.name}: ${map.hop.minutes} min, heard here and there` : `${node.name}: not linked to where you are`}${node.hardened ? `. Hardened: no breaker works on it from the front${node.weak ? ", and you've found a way in" : ""}` : ""}`,
       onclick: (event) => {
         event.stopPropagation();
         send({ action: "hop", id: node.id });
       },
-    }, el("small", {}, NET_KIND[node.kind] ?? ""), el("span", { class: "nm" }, node.name))));
+    }, el("small", {}, `${NET_KIND[node.kind] ?? ""}${node.hardened ? (node.weak ? " · WAY IN" : " · HARD") : ""}`), el("span", { class: "nm" }, node.name))));
 }
 
 // How hot the rig is, in the tray: nothing's plugged into the player's own computers.

@@ -82,6 +82,10 @@ The first line is the name, written # The Name. Then, before the first part, one
                 the look: a cable for keelworks, an optical reader for a door, a Navy coupler for navcom.
                 The rig is needed for the rig's own programs and for copying; using it by right or with
                 a password isn't.
+    hardened    yes when no breaker works on it from the front. Its way in is written somewhere else
+                at its place, under Weak points below; with none written, the game makes one up (a
+                note on another computer here, a session left open at the shift change, or a service
+                account the junction boxes still share).
 
 Every one of them can be left out.
 
@@ -109,6 +113,19 @@ The parts, each under its heading with a colon:
     Network                 Each is "another_computer_id: what it's called from here". Connecting
                             to one opens it at its own logon, unless it's yours or you know its
                             password.
+    Weak points             For a hardened computer, each line starting with - is one way into it,
+                            written on another computer at the same place or on the junction
+                            boxes, and found by reading it there:
+                                - password in mail on <id>: From someone to someone: the letter
+                                - password in files on <id>: the file's text
+                                - session 06:00-08:00 in logs on <id>: the log's words
+                                - service on the junction boxes: what their service log shows
+                            A password lets the player straight in once they've read it. A session,
+                            with the hours it's left open, lets SHADOW ride it in those hours. A
+                            service account lets KNOCK in, however weak it is. Mail, files and logs
+                            are added to that other computer's own; the junction boxes' line is in
+                            their service log. The map on the player's rig marks a hardened
+                            computer, and marks it again once a way in is found.
 
 A computer can also run a place's systems: its power, lights, cameras, doors and the rest. That's
 written in the place's file in world/systems, under Computers, and the computer's screen gets a

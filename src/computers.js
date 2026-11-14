@@ -22,6 +22,7 @@ import { controlsFor, controlsView, partWorks, roomPowered, runsSystems } from "
 import { rigFace, rigHeat, rigInComputer } from "./rig.js";
 import { LINK_WORDS, LOOKS, THROUGH_RIG, deviceView, lookOf, reachOf, reachWhy, rigReaches } from "./devices.js";
 import { networkView } from "./network.js";
+import { contentHardened, hardenedHints, weakWords, withWeakPoints } from "./weak-points.js";
 
 
 export const slug = (words) => String(words).toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40);
@@ -126,6 +127,8 @@ export function writtenContent(id) {
     controls: c.place ? controlsFor(c.place, { written: id }) : [],
     look: c.look ? String(c.look).trim().toLowerCase() : null,
     reach: c.reach ? String(c.reach).trim().toLowerCase() : null,
+    // No breaker works on it from the front: its way in is written somewhere else at its place (src/weak-points.js).
+    hardened: Boolean(c.hardened),
   };
 }
 
@@ -235,7 +238,7 @@ export function computerAtDoor(game, place, to, classKey = "easy") {
 // A console the place's systems file puts in a room: it runs what the file says, at the class it gives.
 export function consoleContent(game, place, part) {
   const name = part.name.charAt(0).toUpperCase() + part.name.slice(1);
-  return genericContent(game, { key: `${place}:part:${part.id}`, name, kind: "console", place, room: roomOf(place, part.room), roomId: part.room, classKey: classKeyOf(part.classKey ?? "moderate"), ref: { console: part.id } });
+  return { ...genericContent(game, { key: `${place}:part:${part.id}`, name, kind: "console", place, room: roomOf(place, part.room), roomId: part.room, classKey: classKeyOf(part.classKey ?? "moderate"), ref: { console: part.id } }), hardened: Boolean(part.hardened) };
 }
 
 // Using one of those consoles: straight in when it's the player's own, else its logon. No power, no screen.
@@ -255,10 +258,10 @@ export function openDoorPanel(game, place, to, { classKey = "easy", at = null, d
 }
 
 // The computer a hack at this place lands on when nothing says which: a written one of that class here,
-// or a generic one of the class.
+// or a generic one of the class. Never a hardened one (src/weak-points.js): a scene that wants one names it.
 export function computerForPlace(game, classKey) {
   const place = game.location;
-  const written = Object.entries(WORLD_COMPUTERS).find(([, c]) => c.place === place && classKeyOf(c.class) === classKey && !c.yours)?.[0];
+  const written = Object.entries(WORLD_COMPUTERS).find(([, c]) => c.place === place && classKeyOf(c.class) === classKey && !c.yours && !c.hardened)?.[0];
   if (written) return { id: written };
   const kind = classKey === "easy" ? "panel" : classKey === "moderate" ? "console" : "server";
   return { generic: genericContent(game, { key: `${place}:${classKey}`, name: classNameOf(classKey), kind, place, room: roomOf(place, game.walk?.level), classKey }) };
@@ -420,7 +423,8 @@ setHackHandler(hackFromCheck);
 
 // ---- What a session is looking at --------------------------------------------------------------
 
-export const contentOf = (game, session) => (session.generic ? session.generic : writtenContent(session.id));
+// What's on it, with the letters, files and logs it holds of other computers' weak points (src/weak-points.js).
+export const contentOf = (game, session) => withWeakPoints(session.generic ? session.generic : writtenContent(session.id));
 export const memoryOf = (game, session) => {
   game.computers ??= {};
   game.computers[session.id] ??= { read: [], ran: [], visits: 1 };
@@ -459,9 +463,11 @@ function logonHints(game, session, content, ways, watch) {
     const why = reachWhy(game, content);
     lines.push(why ? `Your rig can't connect to it: ${why}.` : `Connect your rig first: it takes a minute${session.yours ? "" : ", and anyone in the room can see you plug in"}.`);
   }
+  // A hardened one: what's known of its way in, and where to look for the rest.
+  lines.push(...hardenedHints(game, content, tier));
   const whyOf = (way) => ("whyIn" in way ? way.whyIn : way.why);
   const working = ways.filter((way) => !whyOf(way) && way.kind === "in");
-  if (!working.length) lines.push(`Nothing on your rig gets into a ${String(session.className).toLowerCase()} as things stand.`);
+  if (!working.length) lines.push(`Nothing on your rig gets into ${contentHardened(content) ? "it" : `a ${String(session.className).toLowerCase()}`} as things stand.`);
   for (const way of ways) {
     if (whyOf(way)) {
       lines.push(`${way.name} won't: ${whyOf(way)}.`);
@@ -474,7 +480,7 @@ function logonHints(game, session, content, ways, watch) {
   lines.push("The watcher hears everything from the first try. A found password gets you straight in, with nothing to hear.");
   if (tier >= 2) lines.push(`${watch.name} notices you at ${watch.notices} noise, starts a trace at ${watch.traces} that finds you in ${watch.finds} minutes, and cuts you off at ${watch.cuts}. You're at ${session.noise}.`);
   if (tier >= 4 && working.length) lines.push(`The quietest way in you have is ${[...working].sort((a, b) => a.noise - b.noise || a.minutes - b.minutes)[0].name}.`);
-  if (!working.length && tier >= 1) lines.push("KNOCK gets into door panels; DICTIONARY into anything up to a crew terminal; SKELETON into a ship's main system, once Scope has read the logon; MIMIC with a lifted keycard in your pockets.");
+  if (!working.length && tier >= 1 && !contentHardened(content)) lines.push("KNOCK gets into door panels; DICTIONARY into anything up to a crew terminal; SKELETON into a ship's main system, once Scope has read the logon; MIMIC with a lifted keycard in your pockets.");
   return lines;
 }
 
@@ -565,6 +571,9 @@ export function computerView(game) {
     device: deviceView(game, session, content),
     // The place's network as a map, once past the logon (src/network.js).
     netmap: inside ? networkView(game, session) : null,
+    // Hardened: no breaker works on it from the front (src/weak-points.js). weak is what's known of its way in.
+    hardened: contentHardened(content),
+    weak: contentHardened(content) ? weakWords(game, session.id) : [],
   };
   view.hints = hintsFor(game, session, content, view);
   return view;

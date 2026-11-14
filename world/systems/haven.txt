@@ -37,4 +37,4 @@ Docking:
 Computers:
 - haven_berth_board: docking, cameras in The Manifest Docks
 - haven_harbor_office: everything
-- a watch console in The Neutral Ground: cameras, alarm, doors, class moderate
+- a watch console in The Neutral Ground: cameras, alarm, doors, class moderate, hardened

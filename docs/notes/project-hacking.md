@@ -623,3 +623,45 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
   rig. A click on the screen skips it; `sync` starts it for a junction box or a camera that opened plugged and stops
   it when a plug comes back refused; `resetComputer` clears it. On the folded strip only LINK blinks unless a page is
   out. Checked at 1400 wide on a test copy (Haven's berth board).
+
+## Step 8, weak points elsewhere (built 2026-11-13, untried)
+
+- Asked as "Do the rig wakes up and start the next step". The plan page's step 8: hardened systems where no breaker
+  works from the front, each with a weak point written into another system, found by reading, marked on the map.
+- **The rules** (`src/weak-points.js`): a hardened computer refuses every breaker (`weakWay` from `cantRun`) except
+  KNOCK once its service account on the bus is known, and SHADOW once its open session is known and it's within the
+  session's hours; those two skip the power and working-hours checks. A password found is an ordinary password
+  (`game.passwords[id] = "found"`), so `openLogon` lets the player straight in, from the room or over the network.
+  What's known is `game.weak[id][kind] = { from, hours }` (no save version: missing means nothing known).
+- **Where they're written:** a computer file's `hardened: yes` and `Weak points:` lines (`readWeakLine`), or
+  `, hardened` on a console line of a systems file. With none written, `madeUp` picks one of three patterns by a hash
+  of the id: a note.txt password on another unhardened written computer at the place, a session 06:00 to 08:00 in that
+  computer's logs, or a maint/maint service account on the bus. With nowhere to put one, the computer isn't hardened
+  (`hardenedAt` leaves it out) and `npm run check-story` says so. The checker also names a line it can't read, a
+  computer that isn't there, one at another place, the computer itself, and weak points on a computer that isn't
+  hardened.
+- **Finding them:** `contentOf` in `src/computers.js` adds the items another computer holds (`withWeakPoints`;
+  the content isn't changed, the items carry `reveals`); `openFile`, `openMail`, `openLog` and DIGGER call
+  `weakFound`; a junction box's service view lists `busWeakPoints` as SVC lines until its log is cleared, and
+  opening 3 LOG learns them.
+- **On screen:** the logon's HARDENED line (what's known, or that its way in is written somewhere else here), each
+  breaker's reason on the D: page, the advisor's `hardenedHints` (tier 1 says to look on the other computers and the
+  junction boxes' log, tier 3 names where), Scope's own line, and on the map a dashed amber box with `TERM · HARD`,
+  then `TERM · WAY IN` in green.
+- **Content:** `haven_harbor_office` hardened, with a letter from the harbor master to Mott (BRINEWATER) and a log of
+  his session left open 06:00 to 08:00 on the berth board, and `SERVICE ACCT harbor/harbor STILL OPENS THE HARBOR
+  OFFICE` on the junction boxes. Haven's watch console in The Neutral Ground hardened in `world/systems/haven.txt`,
+  its way in made up (a note on the berth board with the word BULKHEAD).
+- **Calls of mine:** the pick of hand-written weak points for the Meridian's key systems (the security desk, the
+  ledger, Voss's terminal, the Armory) waits for step 9: as the captain, the only life offered, every Meridian system
+  is the player's own and opens by right, and those private terminals come with the sealed systems. A hack a scene
+  asks for without naming a computer (`computerForPlace`) never lands on a hardened one, which the logon test caught.
+- **Fixed on the way:** opening any letter showed the list of letters again (`screenNode` in `public/computer.js`
+  treated every `mail` screen as the list); a letter with its id now shows its words, like a file. Older than this
+  step, so a letter has never been readable on screen since the Keelworks screen.
+- **Tests:** `test/weak-points.test.js` (8: the line's grammar and the file round trip, the office refusing every
+  breaker, the letter's password, the session's hours, the bus's account and KNOCK, the made-up console, a scene's
+  hack avoiding hardened ones, the checker), 1,156 in all, `check-story` clean.
+- **Screens** on a test copy at 1400 and 810 wide: the berth board's three letters, the opened letter, the log line
+  and the map turning to WAY IN, the hop straight in over the network; the office's logon with HARDENED, its D: page
+  and the advisor; a junction box's 3 LOG with the service account; the folded strip's slide-outs at 810.

@@ -15,6 +15,7 @@ import { computerAtDoor, computerAtThing, consoleContent, openLogon, writtenCont
 import { cameraContent, codeOf, reachWhy, serviceContent } from "./devices.js";
 import { systemsOf } from "./systems.js";
 import { addChecker } from "./room-hooks.js";
+import { hardenedAt, weakKnown } from "./weak-points.js";
 import { LOCATIONS } from "./data.js";
 import { mapFor } from "./walk.js";
 
@@ -202,10 +203,14 @@ export function networkView(game, session) {
     const list = Object.values(net.nodes).filter((node) => node.band === band.id).sort((p, q) => p.x - q.x || p.kind.localeCompare(q.kind) || p.name.localeCompare(q.name));
     list.forEach((node, i) => { order[node.id] = i; });
   }
+  // Hardened ones are marked, and those whose way in the player has found (src/weak-points.js).
+  const hard = new Set(hardenedAt(session.place).map((one) => one.id));
+  const hardOf = (node) => hard.has(nodeContentId(session.place, node));
+  const weakOf = (node) => hardOf(node) && Object.keys(weakKnown(game, nodeContentId(session.place, node))).length > 0;
   return {
     here,
     bands,
-    nodes: Object.values(net.nodes).map((node) => ({ id: node.id, name: node.name, kind: node.kind, band: node.band, i: order[node.id], here: node.id === here, linked: near.has(node.id), visited: Boolean(game.computers?.[nodeContentId(session.place, node)]) })),
+    nodes: Object.values(net.nodes).map((node) => ({ id: node.id, name: node.name, kind: node.kind, band: node.band, i: order[node.id], here: node.id === here, linked: near.has(node.id), visited: Boolean(game.computers?.[nodeContentId(session.place, node)]), hardened: hardOf(node), weak: weakOf(node) })),
     links: net.links,
     hop: HOP,
   };

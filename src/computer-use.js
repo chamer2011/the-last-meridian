@@ -21,6 +21,7 @@ import { HEAT, rigMinutes, rigNoise, sessionHeat } from "./rig-parts.js";
 import { MAX_LOG, MINUTES_PER_ACTION, contentOf, knowsPassword, levelNamed, line, memoryOf, openLogon, openSession, peopleAt, programOffered, readNoise, sameName, settleHack, slug, watcherOf, watchStage, writtenContent } from "./computers.js";
 import { deviceCommand, plugIn, unplugRig } from "./devices.js";
 import { hop } from "./network.js";
+import { learnWeak } from "./weak-points.js";
 
 // Found by the trace, or cut off: out at once. On a ship's main system or worse that leaves a mark on the record.
 function thrownOut(game, session, why = "traced") {
@@ -114,6 +115,13 @@ function learn(game, session, name, text) {
   game.lore.push({ id, name, kind: "concept", text: `On ${session.name}: ${String(text).slice(0, 240)}` });
 }
 
+// Something read that holds another computer's weak point: the player knows that way in now, and the log says so.
+function weakFound(game, session, item) {
+  const said = item?.reveals ? learnWeak(game, item.reveals, session.name) : null;
+  if (said) session.log.push(line(said, "good"));
+  return said;
+}
+
 function showScreen(session, screen) {
   session.screen = screen;
   session.log.push(line(`> ${screen.title}`, "bright"));
@@ -129,6 +137,7 @@ function openFile(game, session, content, id) {
   if (!session.read.includes(file.name)) session.read.push(file.name);
   learn(game, session, file.name, file.text);
   showScreen(session, { kind: "file", id, title: file.name, lines: [line(file.text, "bright")] });
+  weakFound(game, session, file);
   const out = act(game, session, { noise: first ? readNoise(session) : 0 });
   return out ?? { over: false };
 }
@@ -142,6 +151,7 @@ function readEverything(game, session, content) {
     memory.read.push(`file:${file.id}`);
     if (!session.read.includes(file.name)) session.read.push(file.name);
     learn(game, session, file.name, file.text);
+    weakFound(game, session, file);
     count += 1;
   }
   for (const entry of content.mail) {
@@ -150,8 +160,10 @@ function readEverything(game, session, content) {
     const title = entry.to ? `From ${entry.from} to ${entry.to}` : entry.subject ?? entry.from;
     if (!session.read.includes(title)) session.read.push(title);
     learn(game, session, title, entry.text);
+    weakFound(game, session, entry);
     count += 1;
   }
+  for (const log of content.logs) if (log.reveals) weakFound(game, session, log);
   return count;
 }
 
@@ -165,6 +177,7 @@ function openMail(game, session, content, id) {
   if (!session.read.includes(title)) session.read.push(title);
   learn(game, session, title, entry.text);
   showScreen(session, { kind: "mail", id, title, lines: [line(entry.to ? `From: ${entry.from}\nTo: ${entry.to}` : `Subject: ${entry.subject}`, "dim"), line(entry.text, "bright")] });
+  weakFound(game, session, entry);
   const out = act(game, session, { noise: first ? readNoise(session) : 0 });
   return out ?? { over: false };
 }
@@ -226,6 +239,7 @@ function openLog(game, session, content, id) {
     return act(game, session) ?? { over: false };
   }
   showScreen(session, { kind: "log", id, title: log.name, lines: logLines(game, session, content, log) });
+  weakFound(game, session, log);
   const out = act(game, session);
   return out ?? { over: false };
 }

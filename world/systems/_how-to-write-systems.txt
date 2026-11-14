@@ -148,7 +148,10 @@ The computer is one of the files in world/computers by its id, or a thing in one
 rooms by its name (with in and the room if two rooms have one), or a new console the game puts in
 the room you name, at the class you give it (easy, moderate, hard, very hard or nearly impossible).
 After the colon, the systems by their headings, or everything, and in and rooms to run them only
-there. A computer's screen gets a Systems list, with each part's state and buttons to switch it, and
+there. A new console can also say hardened (after the systems, either side of its class): then no
+breaker works on it from the front, and the game writes a way into it somewhere else at the place,
+on another computer here or in the junction boxes' service log (see world/computers, Weak points).
+A computer with a file of its own says hardened in that file instead. A computer's screen gets a Systems list, with each part's state and buttons to switch it, and
 on a hacked computer each switch costs a point of trace, like a program. A computer that cuts its
 own room's power goes dark with it.
 

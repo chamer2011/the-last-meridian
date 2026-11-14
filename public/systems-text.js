@@ -163,13 +163,19 @@ export function readLocksLine(text) {
 
 // "haven_berth_board: cameras, alarm", "the plot table: navigation, doors in The Bridge", "a watch console in The
 // Consulate Row: cameras, alarm, class hard". The computer, the systems it runs (or everything), the rooms it runs
-// them in if not all of them, and for a console the game puts there, its class.
+// them in if not all of them, and for a console the game puts there, its class, and "hardened" if no breaker works on
+// it from the front (src/weak-points.js).
 export function readComputerLine(text) {
   const colon = String(text).indexOf(":");
   if (colon < 0) return { problem: `"${text}" is written the computer, a colon, and the systems it runs, such as haven_berth_board: cameras, alarm` };
   const ref = text.slice(0, colon).trim();
   let what = text.slice(colon + 1).trim();
   let classKey = null;
+  let hardened = false;
+  what = what.replace(/(^|,)\s*hardened\s*(?=,|$)/i, () => {
+    hardened = true;
+    return "";
+  }).trim();
   what = what.replace(/,?\s*class\s+([a-z _]+)$/i, (_, word) => {
     classKey = word.trim().toLowerCase().replace(/\s+/g, "_");
     return "";
@@ -185,7 +191,7 @@ export function readComputerLine(text) {
   if (!systems.length) return { problem: `"${text}" needs the systems it runs after the colon, or everything` };
   // "a watch console in The Watch Room" puts a new console there; anything else is a computer or a thing already there.
   const placed = ref.match(/^(.+?)\s+in\s+(.+)$/i);
-  return { ref: placed ? placed[1].trim() : ref, room: placed ? placed[2].trim() : null, systems, rooms, classKey };
+  return { ref: placed ? placed[1].trim() : ref, room: placed ? placed[2].trim() : null, systems, rooms, classKey, ...(hardened ? { hardened } : {}) };
 }
 
 // ---- Writing a file ----------------------------------------------------------------------------

@@ -3,6 +3,7 @@ class: hard
 owner: haven
 place: haven
 login: harbormaster
+hardened: yes
 
 What the player sees:
 A machine that was expensive once, in an office that smells of the water the pipe is leaking. The harbor master's whole trade is in it: who owes, who paid, and who's allowed to forget.
@@ -21,3 +22,8 @@ Logs:
 Programs:
 Forgive the fleet's berth debts: The lines go grey one by one, forty-one of them, and the total at the bottom reads zero for the first time in a year. -> * faction fleet 2: The fleet's berth debts at Haven were forgiven; * flag haven_debts_forgiven: The fleet's berth debts at Haven were forgiven ? not flag haven_debts_forgiven
 Read what the pipe is for: Not water. The contract says water, and the deliveries say something heavier, and the three names on it are not people who deal in water. -> * flag haven_pipe_secret: The harbor master's water pipe at Haven carries something that isn't water
+
+Weak points:
+- password in mail on haven_berth_board: From the harbor master to Mott: The office machine locked me out again. If it does it while I'm ashore, the word is BRINEWATER. Don't write it on the board.
+- session 06:00-08:00 in logs on haven_berth_board: The harbor master's session upstairs stays open through the morning change, from 06:00 to 08:00, while he walks the berths.
+- service on the junction boxes: SERVICE ACCT harbor/harbor STILL OPENS THE HARBOR OFFICE
