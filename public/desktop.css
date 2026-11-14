@@ -333,3 +333,10 @@
 .desk .pocket-plug small.why { color: #f2c14e; text-shadow: none; }
 .desk .pocket-dot { display: inline-block; width: 5px; height: 5px; margin-left: 5px; border-radius: 50%; background: #c9ffd8; box-shadow: 0 0 4px #c9ffd8; vertical-align: middle; }
 .desk .pocket-bottom button { font-size: 10px; padding: 2px 6px; color: #8b9196; border-color: #44484c; }
+
+/* The rig waking up as it connects: three seconds of its boot on its screen, LINK blinking amber. */
+.desk .lamp.busy { background: #f2c14e; box-shadow: 0 0 6px #f2c14e; animation: desk-blink .32s steps(2) infinite; }
+.desk .pocket-boot { display: grid; gap: 2px; align-content: start; min-height: 100%; padding-top: 4px; cursor: pointer; font-size: 11px; }
+.desk .pocket-boot .head { color: #c9ffd8; letter-spacing: .1em; }
+.desk .pocket-boot .boot-cursor { display: inline-block; width: 7px; height: 11px; background: #8ff0a8; animation: desk-blink .6s steps(2) infinite; }
+@media (prefers-reduced-motion: reduce) { .desk .lamp.busy, .desk .pocket-boot .boot-cursor { animation: none; } }

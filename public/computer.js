@@ -40,7 +40,7 @@ const startWindows = () => ({
 });
 
 export function resetComputer() {
-  Object.assign(comp, { id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1, rigTab: null, rigSlide: null, wasLocked: null, logSeen: 0 });
+  Object.assign(comp, { id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1, rigTab: null, rigSlide: null, wasLocked: null, logSeen: 0, boot: null });
 }
 resetComputer();
 
@@ -63,7 +63,9 @@ function sync() {
     comp.screenKey = screenKey(live.screen);
     comp.logSeen = live.log?.length ?? 0;
     if (slid) comp.rigSlide = live.locked ? "prog" : "net";
+    if (live.reach?.plugged && !live.reach?.remote && THROUGH_RIG.includes(live.look)) startBoot();
   }
+  if (comp.boot && !comp.sending && !live.reach?.ok) comp.boot = null;
   // Getting past a logon turns the rig to what it shows best: the programs at a logon, the map once inside.
   if (live.locked !== comp.wasLocked) {
     comp.wasLocked = live.locked;
@@ -575,12 +577,13 @@ const THROUGH_RIG = ["service", "camera"];
 const linkName = (words) => String(words ?? "").replace(/^(an?|the) /i, "").toUpperCase();
 const capital = (text) => (text ? `${text[0].toUpperCase()}${text.slice(1)}` : "");
 const rigLight = (cls, label, title) => el("span", { class: "pocket-light", title }, el("i", { class: `lamp${cls ? ` ${cls}` : ""}` }), label);
-const linkLight = (reach) => rigLight(reach.remote ? "net" : reach.ok ? "on" : "", "LINK", reach.remote ? "Over the network, from where it's plugged in" : reach.ok ? `Plugged in by ${reach.words}` : `Not connected: this takes ${reach.words}`);
+const linkLight = (reach) => (booting() ? rigLight("busy", "LINK", "Connecting: the rig is waking up") : rigLight(reach.remote ? "net" : reach.ok ? "on" : "", "LINK", reach.remote ? "Over the network, from where it's plugged in" : reach.ok ? `Plugged in by ${reach.words}` : `Not connected: this takes ${reach.words}`));
 const heatLight = (heat) => rigLight(!heat || heat.dead ? "" : heat.overheating ? "hot" : heat.fan ? "warm" : "cool", "HEAT", heat ? `Your rig: ${heat.dead ? `it won't start, ${heat.dead}` : heat.words}` : "Not working: it warms while it works someone else's computer");
 // New lines in the session since the player last looked at LOG.
 const unseenLog = (view, tab) => tab !== "log" && (view.log?.length ?? 0) > (comp.logSeen ?? 0);
 const plug = (event) => {
   event.stopPropagation();
+  startBoot();
   send({ action: "plug" });
 };
 
@@ -606,7 +609,8 @@ function pocketNode(view, width, { closeable = false } = {}) {
   const note = (text) => el("div", { class: "pocket-note" }, text);
   if (tab === "log") comp.logSeen = view.log?.length ?? 0;
   let page;
-  if (heat?.dead) page = note(`It won't start: ${heat.dead}.`);
+  if (booting()) page = bootPage(view);
+  else if (heat?.dead) page = note(`It won't start: ${heat.dead}.`);
   else if (!reach.ok && tab !== "log") page = plugPage(view);
   else if (tab === "net") page = view.locked ? note("Get past its logon first: the map shows here once you're in.") : view.netmap ? netMapNode(view.netmap, width) : note("This isn't on the place's network.");
   else if (tab === "prog") page = pocketPrograms(view);
@@ -626,6 +630,50 @@ function pocketNode(view, width, { closeable = false } = {}) {
       el("span", {}, `${view.rig?.used ?? 0} OF ${view.rig?.memory ?? 0} BLOCKS`),
       reach.plugged && !reach.remote && !THROUGH_RIG.includes(view.look) && el("button", { disabled: comp.sending, title: "Take your rig off this one", onclick: (event) => { event.stopPropagation(); send({ action: "unplug" }); } }, "UNPLUG"),
       el("span", {}, view.netmap && reach.ok && !view.locked ? `${view.netmap.hop.minutes} MIN A HOP` : "")));
+}
+
+// ---- The rig waking up as it connects ----------------------------------------------------------------------------
+// Connecting takes the rig three seconds to wake: its board, a memory count, the link, then D:. It plays when Connect is
+// pressed, and as a junction box or a camera opens, which connects the rig as it opens. A click on its screen skips it.
+const BOOT_MS = 3000;
+let bootTimer = 0;
+const booting = () => Boolean(comp.boot) && comp.boot.id === comp.id && performance.now() - comp.boot.at < BOOT_MS;
+function startBoot() {
+  comp.boot = { at: performance.now(), id: comp.id };
+  clearInterval(bootTimer);
+  bootTimer = setInterval(() => {
+    if (!booting()) {
+      clearInterval(bootTimer);
+      comp.boot = null;
+      if (document.getElementById("computer")) draw();
+      return;
+    }
+    const box = document.getElementById("rig-boot");
+    if (box && comp.view) box.replaceChildren(...bootLines(comp.view, performance.now() - comp.boot.at));
+  }, 100);
+}
+// What's on the screen so many milliseconds in.
+function bootLines(view, ms) {
+  const board = String(view.rigFace?.board ?? "Yard board").toUpperCase();
+  const maker = /navy/i.test(board) ? "NAVAL ARSENAL" : "HALDEN YARDS";
+  const blocks = view.rig?.memory ?? 4;
+  const link = linkName(view.reach?.words) || "LINK";
+  const lines = [];
+  const row = (text, cls = "") => lines.push(el("div", { class: cls }, text));
+  if (ms >= 150) row(`${board}  BIOS 2.1`, "head");
+  if (ms >= 400) row(`(C) ${maker}`);
+  if (ms >= 650) {
+    const counted = Math.min(blocks, Math.floor(((ms - 650) / 900) * blocks));
+    row(`MEMORY: ${counted} OF ${blocks} BLOCKS${counted >= blocks ? "  OK" : ""}`);
+  }
+  if (ms >= 1750) row(`LINK: ${link} ...... OK`);
+  if (ms >= 2200) row("D: MOUNTED");
+  if (ms >= 2550) row("READY", "head");
+  lines.push(el("span", { class: "boot-cursor" }));
+  return lines;
+}
+function bootPage(view) {
+  return el("div", { class: "pocket-boot", id: "rig-boot", title: "Click to skip", onclick: (event) => { event.stopPropagation(); comp.boot = null; clearInterval(bootTimer); draw(); } }, bootLines(view, performance.now() - comp.boot.at));
 }
 
 // Where there isn't room beside the monitor, the rig folds to a strip down its side: its lights, its pages, and PLUG IN

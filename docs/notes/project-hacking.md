@@ -615,3 +615,11 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
   them. In the game the words would follow the link (OPTICAL READER, NAVY COUPLER), a junction box or a camera would
   play it as it opens, and on the folded strip its LINK light would blink for the three seconds.
 - Build only what they pick.
+- **Built: number 6, "Do the rig wakes up"** (2026-11-13), untried by them. Page only (`public/computer.js`): `plug`
+  calls `startBoot` (`comp.boot = { at, id }`) as it sends the order; while `booting()` (3 seconds, `BOOT_MS`) the
+  pocket's page is `bootPage` (`#rig-boot`, refreshed every 100 ms by `bootLines`: the board's name and BIOS 2.1, the
+  maker (Halden Yards, or the Naval Arsenal for a Navy board), MEMORY counting to the rig's blocks, LINK: <link> OK,
+  D: MOUNTED, READY, and a blinking cursor) and LINK is `.lamp.busy`, amber and blinking; then it draws the connected
+  rig. A click on the screen skips it; `sync` starts it for a junction box or a camera that opened plugged and stops
+  it when a plug comes back refused; `resetComputer` clears it. On the folded strip only LINK blinks unless a page is
+  out. Checked at 1400 wide on a test copy (Haven's berth board).
