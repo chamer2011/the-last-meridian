@@ -6,6 +6,7 @@ import http from "node:http";
 import path from "node:path";
 import { boardScene, boardStories, boardStory, boardWorldItem, boardWorldList, checkBoardScene, saveBoardScene, saveBoardStory, saveBoardWorldItem, saveLayout } from "./src/board.js";
 import { deckForEditing, editableMaps, tryDeck } from "./src/map-editor.js";
+import { catalogue, licensedDir, setPieces } from "./src/pieces.js";
 import { isOrder } from "./src/room-hooks.js";
 import { startIsOff } from "./src/role.js";
 import { ensureContactFiles, newCampaignId, saveCaptainSheet } from "./src/campaign.js";
@@ -286,9 +287,21 @@ async function mapApi(req, res, route) {
   return json(res, 404, { error: "Not found." });
 }
 
+// The catalogue of the packs' pieces, for the Map editor's Pieces window: all of it, or what the window changed
+// (src/pieces.js).
+async function piecesApi(req, res) {
+  if (req.method === "GET") return json(res, 200, catalogue());
+  if (req.method === "POST") {
+    const body = await readBody(req);
+    return json(res, 200, setPieces(body.set));
+  }
+  return json(res, 404, { error: "Not found." });
+}
+
 async function handleApi(req, res, route) {
   if (route.startsWith("/api/board/")) return boardApi(req, res, route);
   if (route === "/api/map" || route.startsWith("/api/map/")) return mapApi(req, res, route);
+  if (route === "/api/pieces") return piecesApi(req, res);
   if (req.method === "GET" && route === "/api/state") {
     let shown = null;
     try {
@@ -560,7 +573,6 @@ const MIME = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=u
 
 // Art bought for this computer alone (public/pixel-art.js): its pictures, from licensed/, which git leaves out and
 // nothing public copies, since the licence lets the game use them but not give the files away.
-const licensedDir = path.join(projectDir, "licensed");
 function serveLicensed(res, route) {
   // A pack's folders can have spaces and brackets in their names, which arrive made safe for a link.
   let asked = "";
@@ -569,8 +581,9 @@ function serveLicensed(res, route) {
   } catch {
     asked = "";
   }
-  const file = path.resolve(licensedDir, asked);
-  if (!asked || !file.startsWith(licensedDir + path.sep) || path.extname(file) !== ".png" || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
+  const folder = path.resolve(licensedDir());
+  const file = path.resolve(folder, asked);
+  if (!asked || !file.startsWith(folder + path.sep) || path.extname(file) !== ".png" || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
     res.writeHead(404);
     return res.end("Not found");
   }

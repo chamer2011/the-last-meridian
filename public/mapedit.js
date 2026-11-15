@@ -12,6 +12,7 @@
 
 import { el } from "./dom.js";
 import { FACINGS, FACING_WORDS, FURNITURE, FURNITURE_BY_ID, footprintOf, looksOf, squaresOf } from "./furniture.js";
+import { openPieces } from "./pieces.js";
 
 const state = {
   maps: [], place: null, level: null, doc: null, cells: [],
@@ -767,7 +768,8 @@ function frame() {
         button("Undo", { id: "mapedit-undo", title: "Take the last change back", onclick: () => step(state.undo, state.redo) }),
         button("Redo", { id: "mapedit-redo", title: "Put it back again", onclick: () => step(state.redo, state.undo) }),
         button("-", { title: "Smaller", onclick: () => zoomBy(-1) }),
-        button("+", { title: "Bigger", onclick: () => zoomBy(1) })),
+        button("+", { title: "Bigger", onclick: () => zoomBy(1) }),
+        button("Pieces", { id: "mapedit-pieces", title: "Every picture in the two bought packs, and which of them go on the ship", onclick: () => openPieces() })),
       el("div", { class: "mapedit-row mapedit-end" },
         button("Check", { title: "See whether anything in the game would go wrong, without saving", onclick: () => send(false) }),
         button("Save", { id: "mapedit-save", class: "mapedit-save", title: "Keep the deck as it is here. The one before is kept in your data folder", onclick: () => send(true) }),
