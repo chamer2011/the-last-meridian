@@ -319,6 +319,17 @@
 .desk .pocket-plug small.why { color: #f2c14e; text-shadow: none; }
 .desk .pocket-dot { display: inline-block; width: 5px; height: 5px; margin-left: 5px; border-radius: 50%; background: #c9ffd8; box-shadow: 0 0 4px #c9ffd8; vertical-align: middle; }
 .desk .pocket-bottom button { font-size: 10px; padding: 2px 6px; color: #8b9196; border-color: #44484c; }
+/* The rig in the pocket: a tab down the computer's side that takes it out (H does the same), with its lights while it's
+   still plugged in; AWAY on the rig puts it back. */
+.desk .rig-pocket { flex: none; align-self: flex-start; margin-top: 22px; width: 50px; display: grid; justify-items: center; gap: 6px; padding: 10px 4px 12px; pointer-events: auto; background: linear-gradient(90deg, #3a3d40, #26282a); border: 1px solid #111; border-left: 0; border-radius: 0 12px 12px 0; box-shadow: inset 0 1px 0 #5a5e62, 0 10px 24px #000a; color: #b9bec2; font: 10px/1.2 var(--mono); letter-spacing: .14em; text-shadow: none; min-height: 0; cursor: pointer; }
+.desk .rig-pocket::before, .desk .rig-pocket::after { content: none; }
+.desk .rig-pocket svg { width: 28px; height: 28px; }
+.desk .rig-pocket kbd { font: 10px/1 var(--mono); letter-spacing: 0; padding: 2px 5px; border: 1px solid #5a5e62; border-bottom-width: 2px; border-radius: 3px; color: #c9ffd8; background: #1b1d1f; }
+.desk .rig-pocket:hover, .desk .rig-pocket:focus-visible { background: linear-gradient(90deg, #474b4f, #303336); color: #c9ffd8; outline: 0; }
+.desk .rig-pocket-lights { display: grid; gap: 6px; justify-items: center; padding-top: 6px; border-top: 1px solid #44484c; font-size: 8px; letter-spacing: .08em; }
+.desk .rig-pocket-lights .pocket-light { flex-direction: column; gap: 3px; }
+.desk .pocket button.pocket-away { font-size: 9px; padding: 2px 6px; color: #8b9196; border-color: #44484c; letter-spacing: .12em; }
+.desk .rig-strip button.away { margin-top: auto; color: #8b9196; border-color: #44484c; background: none; font-size: 9px; }
 
 /* The rig waking up as it connects: three seconds of its boot on its screen, LINK blinking amber. */
 .desk .lamp.busy { background: #f2c14e; box-shadow: 0 0 6px #f2c14e; animation: desk-blink .32s steps(2) infinite; }

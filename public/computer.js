@@ -5,7 +5,8 @@
 // log; the taskbar has the menu, the windows, the watcher's eye on a hacked computer, and the clock. Windows are dragged
 // by their title bars. The monitor and the player's rig beside it are two windows of their own, each dragged by its
 // frame: the monitor slides back when it's let go, like the game's other floating windows, and the rig stays where it's
-// put, with the lead between them following.
+// put, with the lead between them following. The rig starts in the player's pocket: H, or the tab down the computer's
+// side, takes it out, and H again, or AWAY on it, puts it back.
 // Skin and the old screen's strength are Settings choices (desktop.css). Nothing here needs typing. Since step 6 a
 // computer can look like something else: a door's panel with its keypad, a junction box's service menu and a camera's
 // feed on the rig's little screen, and NAVCOM 7, the Navy's desktop, for the ship's main system.
@@ -37,7 +38,7 @@ const startWindows = () => ({
 });
 
 export function resetComputer() {
-  Object.assign(comp, { id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1, rigTab: null, rigSlide: null, wasLocked: null, logSeen: 0, boot: null });
+  Object.assign(comp, { id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1, rigTab: null, rigSlide: null, wasLocked: null, logSeen: 0, boot: null, rigOut: false, woke: false });
 }
 resetComputer();
 
@@ -57,14 +58,17 @@ function sync() {
     // Where the computer and the rig were moved to is kept while going along the network, and forgotten at a computer
     // come to afresh.
     if (!live.reach?.remote) forgetMoves();
-    // Going along the network keeps the rig's page out where it was folded away, to go on from there.
+    // Going along the network keeps the rig out of the pocket, and its page out where it was folded away, to go on from
+    // there. At a computer come to afresh the rig is in the pocket until the player takes it out (H), except for
+    // practice, which is only there to be hacked.
     const slid = Boolean(comp.rigSlide) && Boolean(live.reach?.remote);
+    const out = (comp.rigOut && Boolean(live.reach?.remote)) || Boolean(live.practice);
     resetComputer();
     comp.id = live.id;
     comp.screenKey = screenKey(live.screen);
     comp.logSeen = live.log?.length ?? 0;
+    comp.rigOut = out;
     if (slid) comp.rigSlide = live.locked ? "prog" : "net";
-    if (live.reach?.plugged && !live.reach?.remote && THROUGH_RIG.includes(live.look)) startBoot();
   }
   if (comp.boot && !comp.sending && !live.reach?.ok) comp.boot = null;
   // Getting past a logon turns the rig to what it shows best: the programs at a logon, the map once inside.
@@ -250,9 +254,10 @@ function screenNode(view) {
 function logonNode(view) {
   const reach = view.reach ?? {};
   const port = view.look === "navcom" ? "Navy port" : "cable port";
+  const away = !comp.rigOut;
   const rigWords = reach.remote ? "Your rig reaches it over the network: what gets you in is on its D: page."
-    : reach.ok ? `Your rig is on the ${port}: what gets you in is on its D: page.`
-    : reach.fits ? `No rig on the ${port}. Connect your rig to work on this logon.`
+    : reach.ok ? `Your rig is on the ${port}: what gets you in is on its D: page${away ? ", once you take it out (H)" : ""}.`
+    : reach.fits ? `No rig on the ${port}. ${away ? "Take out your rig (H) and connect it" : "Connect your rig"} to work on this logon.`
     : `No rig on the ${port}: ${reach.why}.`;
   return el("div", { class: "logon bev", role: "dialog", "aria-label": `Log on to ${view.name}` },
     el("div", { class: "banner" }, picture("keel"), el("div", {}, "Keelworks 4.1", el("small", {}, `${String(view.className).toUpperCase()} · ${view.practice ? "PRACTICE" : "LOGON"}`))),
@@ -512,13 +517,16 @@ function deviceWindow(view) {
     comp.message && el("div", { class: "desk-note" }, comp.message),
     head, face, seen,
     // At its logon, what gets past it is on the rig beside it; inside, the panel's own buttons (a junction box's are its menu).
-    view.locked ? el("div", { class: "device-note" }, view.reach?.ok ? "Locked: what gets you past it is on your rig, under D:." : "Locked: connect your rig to work on it.") : look === "service" ? null : actsNode(d.actions),
+    view.locked ? el("div", { class: "device-note" }, view.reach?.ok ? `Locked: what gets you past it is on your rig, under D:${comp.rigOut ? "" : " (take it out with H)"}.` : comp.rigOut ? "Locked: connect your rig to work on it." : "Locked: take out your rig (H) and connect it to work on it.") : look === "service" ? null : actsNode(d.actions),
     el("div", { class: "device-log", id: "computer-console", role: "log" }, log.map((entry, i) => lineNode(entry, view.log.length - log.length + i >= comp.seen))),
     el("div", { class: "device-foot" },
       el("button", { disabled: comp.sending, onclick: (event) => { event.stopPropagation(); logOff(); } }, d.leave ?? "Log off")));
   const narrow = pocketRoom() < 960;
+  const rig = comp.rigOut
+    ? [el("div", { class: "rig-gap", "aria-hidden": "true" }), movable(el("div", { class: "rig-case", id: "computer-rig" }, pocketNode(view, pocketMapWidth(narrow))), "rig", { stays: true })]
+    : [rigPocketTab(view)];
   return el("div", { class: `desk device${narrow ? " narrow" : ""}`, id: "computer-desk", role: "dialog", "aria-label": view.name, tabindex: "-1" },
-    el("div", { class: "device-row" }, movable(frame, "window"), el("div", { class: "rig-gap", "aria-hidden": "true" }), movable(el("div", { class: "rig-case", id: "computer-rig" }, pocketNode(view, pocketMapWidth(narrow))), "rig", { stays: true })));
+    el("div", { class: "device-row" }, movable(frame, "window"), rig));
 }
 
 // ---- Your rig, beside a panel with no screen of its own ----------------------------------------------------------
@@ -701,6 +709,33 @@ function drawLead() {
   svg.innerHTML = points ? LEADS[kind](points) : "";
 }
 
+// ---- The rig in the pocket ----------------------------------------------------------------------------------------
+// The rig stays in the player's pocket until it's taken out: H, or the tab down the computer's side. H again, or AWAY on
+// the rig, puts it back. Putting it away only puts its window away: a rig that's plugged in stays plugged in (UNPLUG
+// takes it off), and the tab's lights say so. At a junction box or a camera, which the rig connects to as they open, it
+// wakes up the first time it's taken out.
+function toggleRig() {
+  const view = comp.view;
+  if (!view) return;
+  comp.rigOut = !comp.rigOut;
+  if (comp.rigOut && !comp.woke && view.reach?.plugged && !view.reach?.remote && THROUGH_RIG.includes(view.look)) startBoot();
+  if (comp.rigOut) comp.woke = true;
+  else comp.rigSlide = null;
+  draw();
+}
+const rigToggle = (event) => {
+  event.stopPropagation();
+  toggleRig();
+};
+const AWAY = "Put your rig back in your pocket (H)";
+function rigPocketTab(view) {
+  const reach = view.reach ?? {};
+  const on = reach.ok || reach.remote;
+  return el("button", { class: "rig-pocket", title: on ? "Take out your rig (H): it's still plugged in" : "Take out your rig (H)", "aria-label": "Take out your rig (H)", onclick: rigToggle },
+    picture("rig"), el("span", {}, "RIG"), el("kbd", {}, "H"),
+    on && el("span", { class: "rig-pocket-lights" }, linkLight(reach), heatLight(view.rigHeat)));
+}
+
 const POCKET_TABS = [["net", "NET", "The place's network: go along it from here"], ["prog", "D:", "What's loaded on your rig, to run here"], ["log", "LOG", "What's happened at this one"]];
 const THROUGH_RIG = ["service", "camera"];
 const linkName = (words) => String(words ?? "").replace(/^(an?|the) /i, "").toUpperCase();
@@ -749,7 +784,7 @@ function pocketNode(view, width, { closeable = false } = {}) {
     closeable && el("button", { class: "pocket-close", title: "Fold the rig away", "aria-label": "Fold the rig away", onclick: (event) => { event.stopPropagation(); comp.rigSlide = null; draw(); } }, "×"),
     el("div", { class: "pocket-top" },
       el("span", {}, [face.board, face.casing].filter(Boolean).join(" · ").toUpperCase() || "YOUR RIG"),
-      el("span", { class: "pocket-lights" }, linkLight(reach), heatLight(heat))),
+      el("span", { class: "pocket-lights" }, linkLight(reach), heatLight(heat), el("button", { class: "pocket-away", title: AWAY, "aria-label": AWAY, onclick: rigToggle }, "AWAY"))),
     el("div", { class: "pocket-screen" },
       el("div", { class: "pocket-tabs", role: "tablist", "aria-label": "Your rig's pages" },
         POCKET_TABS.map(([id, label, about]) => el("button", { role: "tab", "aria-selected": String(tab === id), title: about, onclick: (event) => { event.stopPropagation(); comp.rigTab = id; if (comp.rigSlide) comp.rigSlide = id; draw(); } }, label, id === "log" && unseenLog(view, tab) && el("i", { class: "pocket-dot", title: "Something new" }))),
@@ -763,7 +798,8 @@ function pocketNode(view, width, { closeable = false } = {}) {
 
 // ---- The rig waking up as it connects ----------------------------------------------------------------------------
 // Connecting takes the rig three seconds to wake: its board, a memory count, the link, then D:. It plays when Connect is
-// pressed, and as a junction box or a camera opens, which connects the rig as it opens. A click on its screen skips it.
+// pressed, and at a junction box or a camera, which connect the rig as they open, the first time it's taken out of the
+// pocket there. A click on its screen skips it.
 const BOOT_MS = 3000;
 let bootTimer = 0;
 const booting = () => Boolean(comp.boot) && comp.boot.id === comp.id && performance.now() - comp.boot.at < BOOT_MS;
@@ -814,7 +850,8 @@ function stripNode(view) {
   return el("div", { class: "rig-strip", role: "group", "aria-label": "Your rig, folded", title: "Drag the rig to move it" },
     el("div", { class: "strip-lights" }, linkLight(reach), heatLight(view.rigHeat)),
     POCKET_TABS.map(([id, label, about]) => el("button", { "aria-pressed": String(open === id), title: about, onclick: (event) => { event.stopPropagation(); comp.rigSlide = open === id ? null : id; comp.rigTab = id; draw(); } }, label, id === "log" && unseenLog(view, open ? tab : null) && el("i", { class: "pocket-dot", title: "Something new" }))),
-    !reach.ok && el("button", { class: "go", disabled: comp.sending || !reach.fits, title: reach.fits ? `Connect by ${reach.words}: a minute` : `${capital(reach.why ?? "")}`, onclick: plug }, "PLUG IN"));
+    !reach.ok && el("button", { class: "go", disabled: comp.sending || !reach.fits, title: reach.fits ? `Connect by ${reach.words}: a minute` : `${capital(reach.why ?? "")}`, onclick: plug }, "PLUG IN"),
+    el("button", { class: "away", title: AWAY, "aria-label": AWAY, onclick: rigToggle }, "AWAY"));
 }
 
 // D: on the rig: at a logon, what gets past it; inside, what's loaded; each with why it won't run here, if it won't.
@@ -839,11 +876,13 @@ function windowNode() {
     comp.message && el("div", { class: "desk-note" }, comp.message),
     glass,
     el("div", { class: "plate" }, el("span", {}, "VARNE 15SX"), el("span", { class: `led${watch?.stage === "tracing" ? " bad" : watch?.stage === "noticed" ? " warn" : ""}` })));
-  // Folded, the rig is the strip down the monitor's side, and the page that slides out of it goes where it goes.
-  const rig = lay.strip
-    ? [movable(el("div", { class: "rig-folded", id: "computer-rig" }, stripNode(view), comp.rigSlide && el("div", { class: "rig-slide" }, pocketNode(view, lay.map, { closeable: true }))), "rig", { stays: true })]
-    : [el("div", { class: "rig-gap", "aria-hidden": "true" }), movable(el("div", { class: "rig-case", id: "computer-rig" }, pocketNode(view, lay.map)), "rig", { stays: true })];
-  return el("div", { class: `desk computer${lay.strip ? " folded" : ""}`, id: "computer-desk", role: "dialog", "aria-label": view.name, tabindex: "-1" },
+  // In the pocket, the rig is a tab down the monitor's side. Out and folded, it's the strip down the monitor's side, and
+  // the page that slides out of it goes where it goes.
+  const rig = !comp.rigOut ? [rigPocketTab(view)]
+    : lay.strip
+      ? [movable(el("div", { class: "rig-folded", id: "computer-rig" }, stripNode(view), comp.rigSlide && el("div", { class: "rig-slide" }, pocketNode(view, lay.map, { closeable: true }))), "rig", { stays: true })]
+      : [el("div", { class: "rig-gap", "aria-hidden": "true" }), movable(el("div", { class: "rig-case", id: "computer-rig" }, pocketNode(view, lay.map)), "rig", { stays: true })];
+  return el("div", { class: `desk computer${lay.strip && comp.rigOut ? " folded" : ""}`, id: "computer-desk", role: "dialog", "aria-label": view.name, tabindex: "-1" },
     el("div", { class: "device-row" }, movable(monitor, "window"), rig));
 }
 
@@ -895,6 +934,14 @@ export function focusComputer() {
 function onKey(event) {
   if (app.ui.screen !== "game" || !computerOpen() || app.ui.sideOpen || event.ctrlKey || event.metaKey || event.altKey) return;
   if (app.ui.game.combat || app.ui.game.check) return;
+  // H takes the rig out of the pocket and puts it back, unless something's being typed into.
+  if ((event.key === "h" || event.key === "H") && !event.repeat) {
+    if (event.target?.closest?.("input, textarea, select, [contenteditable='true']")) return;
+    event.preventDefault();
+    event.stopPropagation();
+    toggleRig();
+    return;
+  }
   if (event.key === "Escape") {
     if (comp.menu) {
       comp.menu = false;

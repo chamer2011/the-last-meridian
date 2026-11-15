@@ -828,3 +828,20 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
   Checked on a test copy at 1400 and 810 wide: the monitor pulled away slides home with the cable following it, and
   the rig, and the folded strip, stay where they were dropped. (In the browser pane while it's hidden, a slide only
   moves when a frame is drawn, so it looked stuck halfway until a few pictures were taken: that's the pane, not the game.)
+- **The rig in the pocket (2026-11-15),** at their "When you open the screen of a thing you can hack, the rig shouldn't
+  appear automaticaly but if you press H to get it out and H again to put it back in your pocket", built straight
+  away and untried by them. Page only (`public/computer.js`, `public/desktop.css`): `comp.rigOut` starts false at every
+  computer come to afresh (kept when going along the network, since the map is on the rig, and true for a practice
+  session, which is only there to be hacked: my call); while it's false the computer's window has a **RIG** tab down
+  its side instead of the rig (`rigPocketTab`: the rig's little picture, RIG, an H key, and the LINK and HEAT lamps while
+  it's still plugged in), and `toggleRig` (H in `onKey`, not while something's typed into, or a click on the tab, or
+  **AWAY** at the rig's top and at the foot of the folded strip) takes it out and puts it back. Putting it away only
+  puts its window away: it doesn't unplug (my call, told to them: UNPLUG stays the way to take it off, and a reconnect
+  would cost a minute and the boot every time it's put away), and no lead is drawn while it's away. At a junction box or
+  a camera, which the rig connects to as they open, the boot no longer plays as they open but the first time the rig's
+  taken out there (`comp.woke`). The logon's rig line and a panel's locked note say "Take out your rig (H)" while it's
+  away. The folded layout's `folded` class only applies with the rig out. Checked on test copies at 1400 and 810 wide
+  (Haven's berth board at its logon; the keypad of the door to the Hook, which the captain's rig can't reach without an
+  optical reader; a junction box opened with the test save's every-link rig): opened with the tab, H out, H away, the
+  tab out, CONNECT, AWAY with the tab's lamps lit, the box waking the first time only; nothing overlapping, nothing past
+  the edges, no console errors. Not checked: a camera, going along the network with the rig out, and practice.
