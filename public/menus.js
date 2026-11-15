@@ -8,7 +8,7 @@ import { shipMenu } from "./ship.js";
 import { commandMenu } from "./command.js";
 import { dealerSections, rigMenu } from "./rig.js";
 import { oddsFor } from "./story.js";
-import { pixelArtFound } from "./pixel-art.js";
+import { pixelArtFound, pixelFurnitureFound } from "./pixel-art.js";
 
 // What the menus need from the main screen. Set once, when the page loads.
 let app;
@@ -276,6 +276,7 @@ function settingsMenu() {
       reading.view === "top" && pickRow("Top-down art:", "tiles", [["techlab", "Tech Lab"], ["interior", "Sci-fi Interior"]]),
       reading.view === "iso" && reading.isoArt === "pixel" && pickRow("Pixel art look:", "pixelLook", [["dark", "Dark"], ["light", "Light"]]),
       reading.view === "iso" && reading.isoArt === "pixel" && pixelArtFound() === false && muted("The pixel-art pack isn't in the game's folder (licensed/isospace), so the room is drawn as usual."),
+      reading.view === "iso" && reading.isoArt === "pixel" && pixelArtFound() && pixelFurnitureFound() === false && muted("The furniture pack isn't in the game's folder (licensed/interiors), so most of the furniture is drawn as usual."),
       folded("settings-views", "What the story views mean",
         muted("Isometric shows the room you're in, seen from an angle, wherever you are, and you can walk around and click on people and things. The story comes up over the room a piece at a time: click anywhere to go on. Walking is free. The clock runs while you explore, because everyone lives their own day, and the buttons at the top of the room pause it or speed it up. The clock stops while you talk to someone."),
         muted("Top-down is a test of how the game would look seen from above in ready-made pictures: the walk-around view with its plan drawn in a free tileset, Tech Lab or Sci-fi Interior. The furniture is drawn in simple shapes, since the free packs have none, and fights open in their own window."),

@@ -13,24 +13,51 @@
 // so that nothing else in the room has to move.
 //
 // The doors between rooms are the pack's: a door is a slab like a wall, with sixteen pictures of it sliding open and
-// shut, stood in the front of its doorway. Some of the furniture is the pack's too, where it has a piece like the
-// game's and nobody sits or lies in it: the plot table, desks, lockers, barrels and crates. Chairs, benches, bunks and
-// cots stay the game's own, since people are drawn sitting and lying in them, and the pack's pieces are drawn from one
-// side only.
+// shut, stood in the front of its doorway.
+//
+// Most of the furniture is drawn from a second pack by the same artist, Isometric Interiors
+// (https://pixel-salvaje.itch.io/isometric-interiors), in licensed/interiors, under the same licence: a file to a
+// picture, drawn at the same size as the first pack's (a floor tile 128 pixels wide), some of them from four sides.
+// The first pack's own few pieces fill in (the plot table, desks with their terminals, barrels, crates), and stand in
+// for the second pack's where that one isn't in the folder. Bunks and cots stay the game's own, since people are drawn
+// lying in them under their blankets, and so do the wall's windows and screens, which show the ship's power.
 
 const BASE = "licensed/isospace/";
 const SHEETS = { level: "IsoSpace_Level.png", assets: "IsoSpace_Assets.png", doors: "IsoSpace_Doors.png" };
+const INTERIORS = "licensed/interiors/";
 // The doors sheet: four rows of eight a door, sixteen pictures from shut to open and back, by look and by the way the
 // door's face looks. Picture 0 is shut with an amber light, 1 shut and green, 2 shut and red (locked), 3 to 8 sliding
 // open, 9 open, 10 to 15 sliding shut.
 const DOOR_ROWS = { dark: { downLeft: 0, downRight: 2 }, light: { downRight: 4, downLeft: 6 } };
 const OPENING = [3, 4, 5, 6, 7, 8];
-// The game's furniture the pack has a piece for, by look: the cell of the assets sheet, across and down. A crate is a
-// crate on the plan, not one of the pieces.
-const ITEMS = {
-  dark: { "plot-table": [0, 0], desk: [5, 0], locker: [7, 0], barrel: [1, 0], crate: [3, 0] },
-  light: { "plot-table": [0, 0], desk: [7, 1], locker: [4, 1], barrel: [1, 0], crate: [5, 1] },
+// A picture of a piece of furniture: a cell of the first pack's assets sheet, or a file of the second pack.
+const cell = (cx, cy) => ({ id: `assets:${cx},${cy}`, sheet: "assets", x: cx * 128, y: cy * 128, w: 128, h: 128 });
+const from = (path) => ({ id: path, file: path });
+const fourWays = (stem, tail = "") => ({ s: from(`${stem}A${tail}.png`), e: from(`${stem}B${tail}.png`), w: from(`${stem}C${tail}.png`), n: from(`${stem}D${tail}.png`) });
+// The game's furniture the packs have a piece for (public/furniture.js names them), each with the ways it can be drawn,
+// the first whose pictures are in the folder winning. A way is one picture (picture), one by look (dark, light), one
+// for each way the piece faces (faces: the pack's A looks toward the player, B to the right, C to the left, D away),
+// or any of a few, the same one every time for the same piece (any). times: the piece is long, so the picture is drawn
+// so many times along it. on: another picture stood on top of it, lift tiles up. A picture drawn from one side only is turned
+// round for a piece facing east or west. A crate is a crate on the plan, not one of the pieces.
+const PIECES = {
+  "plot-table": [{ picture: cell(0, 0) }],
+  desk: [{ dark: cell(5, 0), light: cell(7, 1) }],
+  barrel: [{ picture: cell(1, 0) }],
+  crate: [{ dark: cell(3, 0), light: cell(5, 1) }],
+  locker: [{ picture: from("Office/Office_Metallic_Closet_Ani/Metallic_Closet_Base.png") }, { dark: cell(7, 0), light: cell(4, 1) }],
+  chair: [{ faces: fourWays("Chairs/Chair_4_", "_Tile") }],
+  "command-chair": [{ faces: fourWays("Chairs/GChair_9_") }],
+  bench: [{ picture: from("Tables/Table_Corridor.png"), times: 2 }],
+  table: [{ picture: from("Tables/Office_Kitchen_Table.png") }],
+  "long-table": [{ picture: from("Tables/Office_Kitchen_Table.png"), times: 3 }],
+  shelf: [{ picture: from("Office/Rack.png") }],
+  screen: [{ picture: from("Computer/Vertical_Screen.png") }],
+  kettle: [{ picture: from("Kitchen/Oven.png"), on: from("Kitchen/Pot_Full.png"), lift: 0.86 }],
+  plant: [{ any: [from("Plants/Plant_3.png"), from("Plants/Plant_2.png"), from("Plants/Plant_5.png"), from("Plants/Plant_1.png")] }],
+  basin: [{ picture: from("Bathroom/WC_Tap_Ani/Wc_Tap_1.png") }],
 };
+const picturesOf = (way) => [way.picture, way.dark, way.light, way.on, ...Object.values(way.faces ?? {}), ...(way.any ?? [])].filter(Boolean);
 // How much bigger the pack's furniture is drawn than its own size: as much as its walls are stood up, so they keep to
 // each other and to the game's people.
 const WALL_PACK_HEIGHT = 1.375;
@@ -54,7 +81,7 @@ const WALL_DOWN_RIGHT = { cells: [0, 1, 2], corners: [[40, 124], [104, 92], [40,
 // end's foot and the left end's top. Cells 5 to 7 of the wall row.
 const WALL_DOWN_LEFT = { cells: [5, 6, 7], corners: [[24, 92], [88, 124], [24, 4]] };
 
-const state = { on: false, look: "dark", images: null, loaded: false, failed: false, tops: {}, boxes: {}, listeners: new Set() };
+const state = { on: false, look: "dark", images: null, files: {}, loaded: false, failed: false, second: null, tops: {}, boxes: {}, listeners: new Set() };
 
 // Asked for by Settings: whether the test is on, and in which of the pack's two looks. The sheets are fetched the
 // first time it's turned on.
@@ -78,6 +105,11 @@ export function pixelArtFound() {
   return state.loaded ? true : null;
 }
 
+// Whether the second pack, with most of the furniture, is in the game's folder: null until the page knows.
+export function pixelFurnitureFound() {
+  return state.loaded ? state.second : null;
+}
+
 // What the pictures of the room are drawn with, as one short string: part of every picture's name, so turning the test
 // on or off, or the sheets arriving, draws the room again.
 export function pixelKey() {
@@ -99,14 +131,21 @@ function changed() {
 
 function loadSheets() {
   state.images = {};
-  const waiting = Object.entries(SHEETS).map(([name, file]) => new Promise((resolve, reject) => {
+  const load = (src) => new Promise((resolve, reject) => {
     const image = new Image();
-    image.onload = () => resolve([name, image]);
-    image.onerror = () => reject(new Error(file));
-    image.src = BASE + file;
-  }));
-  Promise.all(waiting).then((pairs) => {
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(src));
+    image.src = src;
+  });
+  const sheets = Promise.all(Object.entries(SHEETS).map(([name, file]) => load(BASE + file).then((image) => [name, image])));
+  // A file of the second pack: its folders' names have spaces and brackets in them, so each part is made safe for a link.
+  const paths = [...new Set(Object.values(PIECES).flat().flatMap(picturesOf).filter((picture) => picture.file).map((picture) => picture.file))];
+  const link = (path) => INTERIORS + path.split("/").map(encodeURIComponent).join("/");
+  const files = Promise.all(paths.map((path) => load(link(path)).then((image) => [path, image], () => null)));
+  Promise.all([sheets, files]).then(([pairs, found]) => {
     for (const [name, image] of pairs) state.images[name] = image;
+    for (const one of found) if (one) state.files[one[0]] = one[1];
+    state.second = found.some(Boolean);
     readTops();
     readBoxes();
     state.loaded = true;
@@ -132,31 +171,39 @@ function readTops() {
   }
 }
 
-// Where each piece of furniture is in its cell of the assets sheet, so it can be stood in the middle of the game's piece:
-// the box its pixels fill, read from the sheet once.
+// Where each piece of furniture is in its picture, so it can be stood in the middle of the game's piece: the box its
+// solid pixels fill, read once. The second pack draws a soft shadow under its pieces, half see-through, which isn't
+// part of the piece.
 function readBoxes() {
-  const image = state.images.assets;
   const canvas = document.createElement("canvas");
-  canvas.width = image.width;
-  canvas.height = image.height;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  ctx.drawImage(image, 0, 0);
-  const cells = new Set(Object.values(ITEMS).flatMap((look) => Object.values(look).map(([cx, cy]) => `${cx},${cy}`)));
-  for (const key of cells) {
-    const [cx, cy] = key.split(",").map(Number);
-    const { data } = ctx.getImageData(cx * 128, cy * 128, 128, 128);
-    const box = { x0: 128, y0: 128, x1: -1, y1: -1 };
-    for (let y = 0; y < 128; y += 1) {
-      for (let x = 0; x < 128; x += 1) {
-        if (!data[(y * 128 + x) * 4 + 3]) continue;
-        box.x0 = Math.min(box.x0, x);
-        box.x1 = Math.max(box.x1, x);
-        box.y0 = Math.min(box.y0, y);
-        box.y1 = Math.max(box.y1, y);
-      }
-    }
-    if (box.x1 >= 0) state.boxes[key] = box;
+  for (const picture of new Map(Object.values(PIECES).flat().flatMap(picturesOf).map((one) => [one.id, one])).values()) {
+    const image = picture.file ? state.files[picture.file] : state.images[picture.sheet];
+    if (!image) continue;
+    const { x = 0, y = 0, w = image.naturalWidth, h = image.naturalHeight } = picture;
+    canvas.width = w;
+    canvas.height = h;
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(image, x, y, w, h, 0, 0, w, h);
+    const { data } = ctx.getImageData(0, 0, w, h);
+    const box = solidBox(data, w, h);
+    if (box) state.boxes[picture.id] = { ...box, w, h };
   }
+}
+
+// The box the solid pixels of a picture fill, from its pixels as a canvas gives them (four numbers a pixel).
+export function solidBox(data, w, h) {
+  const box = { x0: w, y0: h, x1: -1, y1: -1 };
+  for (let y = 0; y < h; y += 1) {
+    for (let x = 0; x < w; x += 1) {
+      if (data[(y * w + x) * 4 + 3] < 250) continue;
+      box.x0 = Math.min(box.x0, x);
+      box.x1 = Math.max(box.x1, x);
+      box.y0 = Math.min(box.y0, y);
+      box.y1 = Math.max(box.y1, y);
+    }
+  }
+  return box.x1 < 0 ? null : box;
 }
 
 // The point of a piece's picture that stands on the middle of its place on the floor: halfway across, and up from its
@@ -321,35 +368,59 @@ export function pixelDoorDepth({ x, y, along }, cellWidth) {
   return along === "x" ? (x + 0.5) * cellWidth + y + 1 - 0.02 : (x + 1) * cellWidth + y + 0.5 - 0.02;
 }
 
-// One of the pack's pieces of furniture, stood on the middle of a place on the floor (cx, cy, in tiles), as big as the
-// pack's walls are stood up, turned to face across the screen for a piece facing east or west.
-function drawItem(painter, kind, cx, cy, facing, wallHeight) {
-  const cell = ITEMS[state.look][kind];
-  const box = cell && state.boxes[`${cell[0]},${cell[1]}`];
-  if (!box) return false;
-  const { ctx, ratio, at, unit } = painter;
-  const scale = (unit / 128) * (wallHeight / WALL_PACK_HEIGHT);
-  const flip = facing === "e" || facing === "w" ? -1 : 1;
-  const [ax, ay] = standingPoint(box);
-  const [px, py] = at(cx, cy, 0);
-  ctx.save();
-  ctx.setTransform(ratio * scale * flip, 0, 0, ratio * scale, ratio * (px - scale * flip * ax), ratio * (py - scale * ay));
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(state.images.assets, cell[0] * 128, cell[1] * 128, 128, 128, 0, 0, 128, 128);
-  ctx.restore();
-  return true;
+// How a piece of the game's furniture is drawn from the packs: which picture, whether it's turned round, and what goes
+// with it. Null if the packs have nothing for it, or the pictures it would take aren't in the folder.
+export function pieceWay(kind, facing = "s", seed = 0, { look = state.look, has = (picture) => !!state.boxes[picture.id] } = {}) {
+  for (const way of PIECES[kind] ?? []) {
+    const picture = way.faces ? way.faces[facing] ?? way.faces.s : way.any ? way.any[Math.min(way.any.length - 1, Math.floor(seed * way.any.length))] : way[look] ?? way.picture;
+    if (!picture || !has(picture) || (way.on && !has(way.on))) continue;
+    return { picture, flip: !way.faces && (facing === "e" || facing === "w"), times: way.times ?? 1, on: way.on ?? null, lift: way.lift ?? 0 };
+  }
+  return null;
 }
 
-// A piece of the game's furniture, if the pack has one like it: drawn in its place, and true; else false, and the game
-// draws its own.
+// One picture of a piece, stood with its middle on a point of the floor (cx, cy, in tiles) or so far above it, as much
+// bigger than its own size as the pack's walls are stood up, so they keep to each other and to the game's people.
+function drawPicture(painter, picture, cx, cy, { flip = false, lift = 0, wallHeight }) {
+  const box = state.boxes[picture.id];
+  const { ctx, ratio, at, unit } = painter;
+  const scale = (unit / 128) * (wallHeight / WALL_PACK_HEIGHT);
+  const turn = flip ? -1 : 1;
+  const [ax, ay] = standingPoint(box);
+  const [px, py] = at(cx, cy, lift);
+  const image = picture.file ? state.files[picture.file] : state.images[picture.sheet];
+  ctx.save();
+  ctx.setTransform(ratio * scale * turn, 0, 0, ratio * scale, ratio * (px - scale * turn * ax), ratio * (py - scale * ay));
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(image, picture.x ?? 0, picture.y ?? 0, box.w, box.h, 0, 0, box.w, box.h);
+  ctx.restore();
+}
+
+// A piece of the game's furniture, if the packs have one like it: drawn in its place, and true; else false, and the
+// game draws its own. A long piece's picture is drawn several times along it, the far one first.
 export function drawPixelPiece(painter, piece, { wallHeight }) {
-  if (!pixelArtOn() || !ITEMS[state.look][piece.kind] || piece.kind === "crate") return false;
-  return drawItem(painter, piece.kind, (piece.x0 + piece.x1) / 2, (piece.y0 + piece.y1) / 2, piece.facing, wallHeight);
+  if (!pixelArtOn() || piece.kind === "crate") return false;
+  const way = pieceWay(piece.kind, piece.facing ?? "s", piece.seed ?? 0);
+  if (!way) return false;
+  const cx = (piece.x0 + piece.x1) / 2;
+  const cy = (piece.y0 + piece.y1) / 2;
+  const across = piece.x1 - piece.x0 >= piece.y1 - piece.y0;
+  // Evenly along the piece's length, each in the middle of its share of it.
+  const along = (from, to) => Array.from({ length: way.times }, (_, i) => from + ((i + 0.5) * (to - from)) / way.times);
+  const spots = across ? along(piece.x0, piece.x1).map((x) => [x, cy]) : along(piece.y0, piece.y1).map((y) => [cx, y]);
+  for (const [x, y] of spots) {
+    drawPicture(painter, way.picture, x, y, { flip: way.flip, wallHeight });
+    if (way.on) drawPicture(painter, way.on, x, y, { lift: way.lift, wallHeight });
+  }
+  return true;
 }
 
 // A crate on the plan, on its square.
 export function drawPixelCrate(painter, { x, y }, { cellWidth, wallHeight }) {
   if (!pixelArtOn()) return false;
-  return drawItem(painter, "crate", (x + 0.5) * cellWidth, y + 0.5, "s", wallHeight);
+  const way = pieceWay("crate");
+  if (!way) return false;
+  drawPicture(painter, way.picture, (x + 0.5) * cellWidth, y + 0.5, { wallHeight });
+  return true;
 }

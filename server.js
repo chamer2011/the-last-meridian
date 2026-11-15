@@ -562,8 +562,15 @@ const MIME = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=u
 // nothing public copies, since the licence lets the game use them but not give the files away.
 const licensedDir = path.join(projectDir, "licensed");
 function serveLicensed(res, route) {
-  const file = path.resolve(licensedDir, route.slice("/licensed/".length));
-  if (!file.startsWith(licensedDir + path.sep) || path.extname(file) !== ".png" || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
+  // A pack's folders can have spaces and brackets in their names, which arrive made safe for a link.
+  let asked = "";
+  try {
+    asked = decodeURIComponent(route.slice("/licensed/".length));
+  } catch {
+    asked = "";
+  }
+  const file = path.resolve(licensedDir, asked);
+  if (!asked || !file.startsWith(licensedDir + path.sep) || path.extname(file) !== ".png" || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
     res.writeHead(404);
     return res.end("Not found");
   }

@@ -3389,7 +3389,10 @@ function draw(now, dt) {
   const hoverKey = iso.hover?.key;
   for (const item of order) {
     if (item.type === "block") drawBlock(painter, item, iso.materials);
-    else if (item.type === "seatback") drawPiece(painter, item.block, { only: item.tag ?? "back", sleepers: beds.get(item.block) ?? null });
+    else if (item.type === "seatback") {
+      // In the pixel-art test a chair seen from behind is one picture, so all of it goes over whoever's sitting in it.
+      if (!drawPixelPiece(painter, item.block, { wallHeight: WALL_HEIGHT })) drawPiece(painter, item.block, { only: item.tag ?? "back", sleepers: beds.get(item.block) ?? null });
+    }
     else if (item.type === "prop") item.draw();
     else if (item.type === "bed") {
       for (const one of item.sleepers) one.ring = hoverKey === `person:${one.person.key}` ? "rgba(255,250,220,.9)" : null;

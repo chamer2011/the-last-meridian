@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { doorPicture, mapping, pixelArtOn, pixelDoorDepth, pixelKey, standingPoint } from "../public/pixel-art.js";
+import { doorPicture, mapping, pieceWay, pixelArtOn, pixelDoorDepth, pixelKey, solidBox, standingPoint } from "../public/pixel-art.js";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const apply = (m, [x, y]) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
@@ -42,6 +42,59 @@ test("a door stands in the front of its doorway, so whoever's in the doorway is 
 test("a piece of furniture stands on the middle of the diamond under it", () => {
   // A piece 40 pixels wide whose lowest pixel is row 99 stands 10 pixels up from its foot.
   assert.deepEqual(standingPoint({ x0: 20, x1: 59, y0: 10, y1: 99 }), [40, 90]);
+});
+
+// As if every picture of both packs were in the folder, or only the first pack's.
+const both = { look: "dark", has: () => true };
+const firstOnly = { look: "dark", has: (picture) => !picture.file };
+
+test("a chair is drawn from the side it's seen from, and a piece with one picture is turned round to face east or west", () => {
+  assert.match(pieceWay("chair", "s", 0, both).picture.file, /Chair_4_A_Tile/);
+  assert.match(pieceWay("chair", "e", 0, both).picture.file, /Chair_4_B_Tile/);
+  assert.match(pieceWay("chair", "w", 0, both).picture.file, /Chair_4_C_Tile/);
+  assert.match(pieceWay("chair", "n", 0, both).picture.file, /Chair_4_D_Tile/);
+  assert.equal(pieceWay("chair", "w", 0, both).flip, false);
+  assert.equal(pieceWay("locker", "s", 0, both).flip, false);
+  assert.equal(pieceWay("locker", "e", 0, both).flip, true);
+});
+
+test("a long table is its picture three times along it, and the kettle is a pot stood on a stove", () => {
+  assert.equal(pieceWay("long-table", "s", 0, both).times, 3);
+  assert.equal(pieceWay("table", "s", 0, both).times, 1);
+  const kettle = pieceWay("kettle", "s", 0, both);
+  assert.match(kettle.picture.file, /Oven/);
+  assert.match(kettle.on.file, /Pot/);
+  assert.ok(kettle.lift > 0);
+  // Without the pot's picture, there's no kettle from the packs at all.
+  assert.equal(pieceWay("kettle", "s", 0, { look: "dark", has: (picture) => !/Pot/.test(picture.file ?? "") }), null);
+});
+
+test("without the second pack the first pack's own pieces stand in, and the rest are the game's", () => {
+  assert.equal(pieceWay("locker", "s", 0, firstOnly).picture.sheet, "assets");
+  assert.equal(pieceWay("plot-table", "s", 0, firstOnly).picture.sheet, "assets");
+  assert.equal(pieceWay("chair", "s", 0, firstOnly), null);
+  assert.equal(pieceWay("long-table", "s", 0, firstOnly), null);
+  // A desk's terminal is the dark one or the light one, by look.
+  assert.notEqual(pieceWay("desk", "s", 0, { look: "dark", has: () => true }).picture.id, pieceWay("desk", "s", 0, { look: "light", has: () => true }).picture.id);
+  // Bunks and cots are never the packs': people lie in them.
+  assert.equal(pieceWay("bunk", "s", 0, both), null);
+  assert.equal(pieceWay("cot", "s", 0, both), null);
+});
+
+test("a plant is one of a few, the same one every time for the same piece", () => {
+  const seen = new Set(Array.from({ length: 40 }, (_, i) => pieceWay("plant", "s", i / 40, both).picture.file));
+  assert.ok(seen.size >= 3);
+  assert.equal(pieceWay("plant", "s", 0.37, both).picture.file, pieceWay("plant", "s", 0.37, both).picture.file);
+  assert.ok(pieceWay("plant", "s", 1, both).picture);
+});
+
+test("a picture's soft shadow isn't part of the piece it's stood by", () => {
+  // Four pixels across, two down: a solid pixel at (1,0), a half see-through shadow at (3,1).
+  const data = new Uint8ClampedArray(4 * 2 * 4);
+  data[(0 * 4 + 1) * 4 + 3] = 255;
+  data[(1 * 4 + 3) * 4 + 3] = 128;
+  assert.deepEqual(solidBox(data, 4, 2), { x0: 1, y0: 0, x1: 1, y1: 0 });
+  assert.equal(solidBox(new Uint8ClampedArray(16), 2, 2), null);
 });
 
 test("the view draws as it always has until Settings turns the test on", () => {
