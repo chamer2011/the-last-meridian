@@ -5,7 +5,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { boardScene, boardStories, boardStory, boardWorldItem, boardWorldList, checkBoardScene, saveBoardScene, saveBoardStory, saveBoardWorldItem, saveLayout } from "./src/board.js";
-import { deckForEditing, editableMaps, tryDeck } from "./src/map-editor.js";
+import { deckForEditing, deckLook, editableMaps, tryDeck } from "./src/map-editor.js";
 import { catalogue, licensedDir, setPieces } from "./src/pieces.js";
 import { furnitureForPage, setFurniture, withFurniture } from "./src/pack-furniture.js";
 import { isOrder } from "./src/room-hooks.js";
@@ -309,6 +309,13 @@ async function piecesApi(req, res) {
 
 async function handleApi(req, res, route) {
   if (route.startsWith("/api/board/")) return boardApi(req, res, route);
+  // The deck as the map editor has it now, described for its picture, with nothing saved or tried out. It has a
+  // route of its own, apart from the editor's, so that a game started before the picture existed says it has none
+  // (asked under /api/map/, it would take the deck to be tried out, which is slow, every time something was drawn).
+  if (route.startsWith("/api/maplook/") && req.method === "POST") {
+    const [, , , place, level] = route.split("/");
+    return json(res, 200, { look: deckLook(place, level, (await readBody(req)).doc) });
+  }
   if (route === "/api/map" || route.startsWith("/api/map/")) return mapApi(req, res, route);
   if (route === "/api/pieces") return piecesApi(req, res);
   // The packs' pieces as furniture, for the page's own list of it (public/furniture.js) and its pictures.

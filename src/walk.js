@@ -1584,6 +1584,29 @@ function levelLook(game, map, level, { roomNow, offPlan = false, inner = [], pil
   };
 }
 
+// A level as its picture needs it (levelLook) when it isn't the game's own yet: the deck the map editor is changing,
+// drawn beside its plan (src/map-editor.js, deckLook). No game stands behind it, so nothing in it is dark, locked,
+// worn or without power, and what the game stands in rooms by itself (the systems' parts, the stores, what opens)
+// isn't there: only what the deck's own file would have.
+export function draftLook(place, level) {
+  return {
+    place: { id: place, name: LOCATIONS[place]?.name ?? place, drawn: 0 },
+    cols: level.width,
+    lines: level.height,
+    layers: level.layers,
+    labels: level.labels,
+    colors: level.colors,
+    look: lookOf(place, level.name),
+    here: { id: level.id, name: level.name, desc: "", ...(level.areas.length ? { deck: { id: level.id, name: level.name } } : {}) },
+    things: level.things.map((thing) => ({ id: thing.id, name: thing.name, x: thing.x, y: thing.y, ...thingLooks(level, thing) })),
+    furniture: level.furniture ?? [],
+    exits: level.exits.map(({ key, x, y, label, glyph, side }) => ({ key, x, y, label, glyph, side })),
+    areas: level.areas.map((area) => ({ id: area.id, name: area.name, x: area.x, y: area.y, w: area.w, h: area.h, dark: false })),
+    // Where each of the people drawn on the deck stands at their post, so the picture can show someone there.
+    posts: level.homes.map((home) => ({ id: home.id, x: home.x, y: home.y })),
+  };
+}
+
 // Which place the player's at, and how many times its rooms have been read from their files (a deck saved in the map
 // editor or in Tiled reads them again): the page loads a place once, and again only when either changes.
 const placeOf = (game, map) => ({ id: game.location, name: LOCATIONS[game.location]?.name ?? map.name, drawn: Math.max(0, ...Object.values(map.levels).map((level) => level.drawn ?? 0)) });

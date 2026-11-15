@@ -4597,3 +4597,126 @@ function drawChatter(ctx, now, view, hits, clip, unit) {
   // Someone mid-sentence wants the room drawn often enough to fade in and out.
   if (talk.shown.length) iso.lively = true;
 }
+
+// ---- The map editor's picture of the deck it's changing -------------------------------------------------------------
+// The deck as the map editor has it, unsaved, drawn the way the room view would draw it (public/mapedit.js shows it
+// beside its plan). The game describes the deck as it would any level (src/map-editor.js, deckLook), and this makes
+// the same still picture from that, only the tiles in sight; shuts every door between rooms; stands someone at each
+// post; and lays the room's light over it. Nothing moves. It keeps what it made for one description (told apart by
+// `version`), so looking somewhere else on the same deck only draws the tiles that weren't drawn yet.
+const previewOf = { sceneKey: null, scene: null, key: null, picture: null };
+
+// Draws it into a canvas with a square of the deck (focus: { x, y }) in the middle, and a ring round another (ring),
+// where the mouse is on the plan. Draws new tiles for at most `budget` milliseconds, and says whether the picture is
+// whole where it shows: if it isn't, call again.
+export function drawPreview(canvas, view, { version = 0, focus = null, ring = null, budget = 28 } = {}) {
+  const ratio = Math.min(2, window.devicePixelRatio || 1);
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  if (!width || !height) return true;
+  const sceneKey = `${version}|${pixelKey()}|${packKey()}`;
+  if (previewOf.sceneKey !== sceneKey) Object.assign(previewOf, { sceneKey, scene: buildScene(view), key: null, picture: null });
+  const { scene } = previewOf;
+  // The size the game shows a deck at with the wheel at rest, in a window of this one's size.
+  const unit = wholeUnitFor(scene, ratio, restUnitFor(scene, window.innerWidth, window.innerHeight));
+  const key = `${sceneKey}|${unit}|${ratio}`;
+  if (previewOf.key !== key) Object.assign(previewOf, { key, picture: newPicture(view, unit, ratio, TILE, key, { scene, sceneId: key }) });
+  const { picture } = previewOf;
+  if (canvas.width !== Math.round(width * ratio) || canvas.height !== Math.round(height * ratio)) {
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(height * ratio);
+  }
+  const ctx = canvas.getContext("2d");
+  const middle = focus ?? { x: Math.floor(view.cols / 2), y: Math.floor(view.lines / 2) };
+  const looked = project((middle.x + 0.5) * CELL_WIDTH, middle.y + 0.5, 0.5);
+  const ox = Math.round(width / 2 - looked.u * unit);
+  const oy = Math.round(height / 2 - looked.v * unit);
+  previewOf.last = { ox, oy, unit, cols: view.cols, lines: view.lines };
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = BACKGROUND;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const { step, baseX, baseY, firstX, lastX, firstY, lastY } = layoutOf(picture, 1, ox, oy, ratio, canvas.width, canvas.height);
+  const until = performance.now() + budget;
+  let whole = true;
+  let made = 0;
+  for (let ty = firstY; ty <= lastY; ty += 1) {
+    for (let tx = firstX; tx <= lastX; tx += 1) {
+      let tile = picture.tiles.get(`${tx},${ty}`);
+      if (!tile && (made === 0 || performance.now() < until)) {
+        tile = tileOf(picture, tx, ty);
+        made += 1;
+      }
+      if (tile) ctx.drawImage(tile, baseX + tx * step, baseY + ty * step);
+      else whole = false;
+    }
+  }
+  const painter = painterFor(ctx, ratio, unit, ox, oy);
+  const { at } = painter;
+  painter.seen = (point, margin = unit) => point[0] > -margin && point[0] < width + margin && point[1] > -margin && point[1] < height + margin;
+  // Whatever's drawn here reads the scene and its materials from where the room view keeps its own.
+  const shown = { scene: iso.scene, materials: iso.materials };
+  Object.assign(iso, { scene, materials: picture.materials });
+  try {
+    painter.flat();
+    const props = [];
+    for (const door of scene.doorways ?? []) {
+      const { wx, wy } = cellCentre(door.x, door.y);
+      if (!painter.seen(at(wx, wy, 0.8), unit * 2.5)) continue;
+      if (pixelArtOn()) props.push({ depth: pixelDoorDepth(door, CELL_WIDTH), span: uvBox(door.x - 1, door.y, door.x + 2, door.y + 1, WALL_HEIGHT), draw: () => drawPixelDoor(painter, { ...door, kinds: scene.kinds }, 0, { cellWidth: CELL_WIDTH, wallHeight: WALL_HEIGHT }) });
+      else props.push({ depth: wx + wy - 0.39, span: uvBox(door.x, door.y, door.x + 1, door.y + 1, WALL_HEIGHT), draw: () => drawDoorPanels(painter, door, 0, scene.style) });
+    }
+    for (const post of view.posts ?? []) {
+      const { wx, wy } = cellCentre(post.x, post.y);
+      const [x, y] = at(wx, wy);
+      if (!painter.seen([x, y], unit * 2)) continue;
+      const { u, v } = project(wx, wy);
+      props.push({ depth: wx + wy, span: { minU: u - 0.25, maxU: u + 0.25, minV: v - 0.95, maxV: v + 0.05 }, draw: () => drawPerson(ctx, x, y, unit, { look: lookFor(post.id, null, false) }) });
+    }
+    // What stands nearer the camera than a door or a person, and over them on the screen, is drawn again over them.
+    const covering = new Set();
+    for (const prop of props) {
+      for (const block of scene.blocks) {
+        if (block.depth <= prop.depth || block.style === "plants") continue;
+        const { span } = block;
+        if (span.maxU > prop.span.minU && span.minU < prop.span.maxU && span.maxV > prop.span.minV && span.minV < prop.span.maxV) covering.add(block);
+      }
+    }
+    for (const item of [...props, ...covering].sort((a, b) => a.depth - b.depth)) {
+      if (item.draw) item.draw();
+      else drawBlock(painter, item, picture.materials);
+      painter.flat();
+    }
+  } finally {
+    Object.assign(iso, shown);
+  }
+  if (picture.lightmap) {
+    painter.flat();
+    ctx.globalCompositeOperation = "multiply";
+    ctx.drawImage(picture.lightmap.canvas, ox + picture.left, oy + picture.top, picture.width, picture.height);
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.14;
+    ctx.drawImage(picture.lightmap.haze, ox + picture.left, oy + picture.top, picture.width, picture.height);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+  }
+  // Where the mouse is on the plan: the outline of that square on the floor.
+  if (ring) {
+    painter.flat();
+    const [x0, x1, y0, y1] = [ring.x * CELL_WIDTH, (ring.x + 1) * CELL_WIDTH, ring.y, ring.y + 1];
+    stroke(painter, [[x0, y0, 0.02], [x1, y0, 0.02], [x1, y1, 0.02], [x0, y1, 0.02], [x0, y0, 0.02]], "rgba(255,246,220,.95)", 1.5);
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  return whole;
+}
+
+// The square of the deck under a point of the editor's picture as it was last drawn, for a click on it (the point by
+// the window's own measure, as a click gives it). Null before anything's drawn, or off the deck.
+export function previewSquare(canvas, clientX, clientY) {
+  const { last } = previewOf;
+  if (!last) return null;
+  const box = canvas.getBoundingClientRect();
+  const { x, y } = cellAt((clientX - box.left - last.ox) / last.unit, (clientY - box.top - last.oy) / last.unit);
+  return x >= 0 && y >= 0 && x < last.cols && y < last.lines ? { x, y } : null;
+}

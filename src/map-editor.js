@@ -22,7 +22,7 @@ import { dataDir, projectDir } from "./paths.js";
 import { FIGURES, PIECE, figureImage, pieceImage, pieceWords } from "./stand-in-art.js";
 import { pieceKey, readMapFile, roomFromMap, roomToMap } from "./tiled.js";
 import { FACINGS, FURNITURE_BY_ID, isFurniture, squaresOf } from "../public/furniture.js";
-import { compileLevel } from "./walk.js";
+import { compileLevel, draftLook } from "./walk.js";
 import { LIFE_DIR, MAPS_DIR, WORLD_CHARACTERS, WORLD_LIFE } from "./world.js";
 
 const START = "@";
@@ -487,6 +487,15 @@ function trial(place, level, map, tiles, life) {
   }
   if (life) fs.writeFileSync(path.join(lives, `${place}.json`), life);
   return { dir, maps, lives };
+}
+
+// The deck as it's drawn in the editor now, described for its picture the way the game describes any level
+// (src/walk.js, draftLook), with nothing saved and nothing tried out: the editor draws the room from it beside its
+// plan, afresh after each change, so it has to be quick. What can't be a deck at all is refused in plain words.
+export function deckLook(place, level, doc) {
+  need(place, level);
+  const { read } = levelOf(place, level);
+  return draftLook(place, compileLevel(level, together(doc, read)));
 }
 
 // Tries a change out, and keeps it if `keep` says so and nothing new is wrong (or `anyway` says to keep it all the

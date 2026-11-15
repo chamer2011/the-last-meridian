@@ -13,7 +13,8 @@
 import { el } from "./dom.js";
 import { FACINGS, FACING_WORDS, FURNITURE, FURNITURE_BY_ID, footprintOf, looksOf, squaresOf } from "./furniture.js";
 import { openPieces, pieceThumb } from "./pieces.js";
-import { loadPack } from "./pixel-art.js";
+import { asPixelArt, loadPack, onPixelArt, pixelArtFound } from "./pixel-art.js";
+import { drawPreview, previewSquare } from "./iso.js";
 
 const state = {
   maps: [], place: null, level: null, doc: null, cells: [],
@@ -22,6 +23,10 @@ const state = {
   zoom: 7, show: { rooms: true, spots: false },
   undo: [], redo: [], dirty: false, busy: false,
   result: null, flash: null, onClose: null,
+  // The picture of the room beside the plan: whether it's shown, the deck as the game last described it (view) and
+  // which telling that was (version), the square it looks at, what went wrong if the game couldn't describe the deck,
+  // and whether the game that's running is too old to.
+  look: { on: true, view: null, version: 0, asked: 0, timer: 0, frame: 0, again: 0, at: null, wrong: null, old: false, unhear: null },
 };
 const $ = (id) => document.getElementById(id);
 const clamp = (n, low, high) => Math.max(low, Math.min(high, n));
@@ -50,13 +55,142 @@ async function call(route, body) {
   return data;
 }
 
+// ---- The picture of the room, beside the plan --------------------------------------------------------------------
+// The deck as it is here, unsaved, drawn the way the game will show it (public/iso.js, drawPreview), in the bought
+// packs' pictures whatever view the game is in. A moment after each change the game is asked to describe the deck
+// afresh (src/map-editor.js, deckLook), which saves nothing, and the picture is drawn from that, looking at the square
+// last clicked on the plan, with a ring round the square the mouse is over.
+
+const LOOK_KEPT = "meridian-mapedit-look";
+
+// Asks for the deck's description soon: once for however many changes come before it's sent.
+function lookSoon(wait = 160) {
+  const { look } = state;
+  if (!state.doc || !look.on || look.old || look.timer) return;
+  look.timer = setTimeout(askLook, wait);
+}
+
+async function askLook() {
+  const { look } = state;
+  look.timer = 0;
+  if (!state.doc || !look.on || !$("mapedit")) return;
+  look.asked += 1;
+  const asked = look.asked;
+  try {
+    const response = await fetch(`/api/maplook/${state.place}/${state.level}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ doc: parcel() }) });
+    if (asked !== look.asked) return;
+    if (response.status === 404) {
+      // A game started before the picture existed: it stays the plan alone until the game's opened again.
+      look.old = true;
+      drawLook();
+      return;
+    }
+    const data = await response.json();
+    if (asked !== look.asked) return;
+    if (!response.ok || !data.look) throw new Error(data.error ?? "Something went wrong.");
+    Object.assign(look, { view: data.look, version: look.version + 1, wrong: null });
+  } catch (err) {
+    if (asked !== look.asked) return;
+    look.wrong = err.message;
+  }
+  drawLook();
+}
+
+// What's said under the picture: only when something's amiss.
+function lookWords() {
+  const { look } = state;
+  if (look.old) return "The game that's running was started before this picture existed. Close the game and open it again, and the room will be drawn here.";
+  if (look.wrong) return `${look.wrong} The picture is of the deck as it was before that.`;
+  if (pixelArtFound() === false) return "The bought packs aren't on this computer, so this is the game's own drawing.";
+  return "";
+}
+
+// Draws the picture from the description in hand. The tiles of it that aren't drawn yet take a few frames.
+function drawLook() {
+  const { look } = state;
+  cancelAnimationFrame(look.frame);
+  look.frame = 0;
+  const box = $("mapedit-look");
+  const canvas = $("mapedit-look-canvas");
+  if (!box || !canvas) return;
+  box.hidden = !look.on;
+  $("mapedit-middle")?.classList.toggle("with-look", look.on);
+  const toggle = $("mapedit-look-toggle");
+  if (toggle) toggle.setAttribute("aria-pressed", look.on ? "true" : "false");
+  if (!look.on) return;
+  $("mapedit-look-says").textContent = lookWords();
+  if (!look.view || look.old) return;
+  const ring = state.hover && inDeck(state.hover.x, state.hover.y) ? state.hover : null;
+  const whole = asPixelArt(() => drawPreview(canvas, look.view, { version: look.version, focus: look.at, ring }));
+  if (!whole) look.frame = requestAnimationFrame(drawLook);
+}
+
+// Draws it again at the next frame: for the ring following the mouse, which changes nothing else.
+function lookAgain() {
+  const { look } = state;
+  if (!look.on || !look.view || look.again) return;
+  look.again = requestAnimationFrame(() => {
+    look.again = 0;
+    drawLook();
+  });
+}
+
+// A click in the picture looks there, and shows the square on the plan for a moment.
+function lookClicked(event) {
+  const at = previewSquare(event.currentTarget, event.clientX, event.clientY);
+  if (!at || !state.doc) return;
+  state.look.at = at;
+  state.flash = at;
+  drawDeck();
+  drawLook();
+  clearTimeout(state.look.flashed);
+  state.look.flashed = setTimeout(() => {
+    state.flash = null;
+    if (state.doc) drawDeck();
+  }, 1500);
+}
+
+function toggleLook() {
+  const { look } = state;
+  look.on = !look.on;
+  try {
+    localStorage.setItem(LOOK_KEPT, look.on ? "on" : "off");
+  } catch {
+    // It's only for this visit, then.
+  }
+  drawLook();
+  // The plan has more room, or less: it's fitted again.
+  if (state.doc) {
+    fitZoom();
+    drawDeck();
+  }
+  if (look.on) lookSoon(0);
+}
+
+function onResize() {
+  if (!state.doc) return;
+  fitZoom();
+  drawDeck();
+  drawLook();
+}
+
 // ---- Opening, closing, and the deck in hand ---------------------------------------------------------------------
 
 export async function openMapEditor({ onClose = null } = {}) {
   if ($("mapedit")) return;
   state.onClose = onClose;
+  try {
+    state.look.on = localStorage.getItem(LOOK_KEPT) !== "off";
+  } catch {
+    state.look.on = true;
+  }
+  Object.assign(state.look, { view: null, wrong: null, old: false, asked: state.look.asked + 1 });
   document.body.append(frame());
   document.addEventListener("keydown", onKey);
+  window.addEventListener("resize", onResize);
+  // The picture is drawn again when a picture of the packs that it was waiting for has come.
+  state.look.unhear = onPixelArt(() => lookAgain());
+  drawLook();
   // For the browser checks, which look at the editor's state from outside.
   window.__mapedit = state;
   try {
@@ -77,6 +211,12 @@ export function closeMapEditor() {
   }
   $("mapedit")?.remove();
   document.removeEventListener("keydown", onKey);
+  window.removeEventListener("resize", onResize);
+  state.look.unhear?.();
+  clearTimeout(state.look.timer);
+  cancelAnimationFrame(state.look.frame);
+  cancelAnimationFrame(state.look.again);
+  Object.assign(state.look, { timer: 0, frame: 0, again: 0, unhear: null, view: null });
   state.doc = null;
   state.onClose?.();
 }
@@ -89,8 +229,13 @@ async function load(place, level) {
   const doc = await call(`/api/map/${place}/${level}`);
   Object.assign(state, { place, level, doc, cells: doc.grid.map((row) => [...row]), selected: null, drag: null, undo: [], redo: [], dirty: false, result: null });
   if (!doc.paints.some((paint) => paint.id === state.paint)) state.paint = "wall";
+  // The picture starts where someone arriving on the deck stands, and is asked for at once.
+  Object.assign(state.look, { view: null, wrong: null, at: doc.start ? { x: doc.start.x, y: doc.start.y } : null });
+  clearTimeout(state.look.timer);
+  state.look.timer = 0;
   fitZoom();
   drawAll();
+  lookSoon(0);
 }
 
 function fitZoom() {
@@ -132,6 +277,7 @@ function remember() {
   state.redo = [];
   state.dirty = true;
   state.result = null;
+  lookSoon();
 }
 function step(from, to) {
   if (!from.length) return;
@@ -139,6 +285,7 @@ function step(from, to) {
   restore(from.pop());
   state.dirty = true;
   drawAll();
+  lookSoon();
 }
 
 // ---- The squares -------------------------------------------------------------------------------------------------
@@ -397,6 +544,9 @@ function pressed(event) {
   if (event.button !== 0 || !state.doc || state.busy) return;
   const at = squareAt(event);
   if (!inDeck(at.x, at.y)) return;
+  // The picture beside the plan looks at whatever square is clicked.
+  state.look.at = { x: at.x, y: at.y };
+  lookAgain();
   // So a drag that leaves the deck still ends on it. A pointer that can't be held (some pens) just isn't.
   try {
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -437,6 +587,9 @@ function movedOver(event) {
   const at = squareAt(event);
   state.hover = at;
   const drag = state.drag;
+  // The picture's ring follows the mouse, and what's being painted or dragged shows in it as it goes.
+  if (drag) lookSoon();
+  lookAgain();
   if (drag?.brush) setCell(at.x, at.y, paintNow());
   else if (drag?.box) drag.box.to = { x: clamp(at.x, 0, state.doc.width - 1), y: clamp(at.y, 0, state.doc.height - 1) };
   else if (drag?.move || drag?.resize) {
@@ -479,6 +632,7 @@ function free(sel, x, y) {
 function released() {
   const drag = state.drag;
   state.drag = null;
+  if (drag) lookSoon();
   if (drag?.box) {
     const { from, to } = drag.box;
     if (drag.room) {
@@ -671,6 +825,8 @@ function edit(change) {
   typing = key;
   state.dirty = true;
   change();
+  // A thing's name can change what it's drawn as, so the picture is asked for again.
+  lookSoon();
 }
 
 function drawSide() {
@@ -815,7 +971,8 @@ function frame() {
         button("Redo", { id: "mapedit-redo", title: "Put it back again", onclick: () => step(state.redo, state.undo) }),
         button("-", { title: "Smaller", onclick: () => zoomBy(-1) }),
         button("+", { title: "Bigger", onclick: () => zoomBy(1) }),
-        button("Pieces", { id: "mapedit-pieces", title: "Every picture in the two bought packs, and which of them go on the ship", onclick: () => openPieces() })),
+        button("Pieces", { id: "mapedit-pieces", title: "Every picture in the two bought packs, and which of them go on the ship", onclick: () => openPieces() }),
+        button("Picture", { id: "mapedit-look-toggle", title: "The room as the game will draw it, beside the plan, drawn again as you change the deck", onclick: toggleLook }, state.look.on)),
       el("div", { class: "mapedit-row mapedit-end" },
         button("Check", { title: "See whether anything in the game would go wrong, without saving", onclick: () => send(false) }),
         button("Save", { id: "mapedit-save", class: "mapedit-save", title: "Keep the deck as it is here. The one before is kept in your data folder", onclick: () => send(true) }),
@@ -823,8 +980,11 @@ function frame() {
     el("div", { class: "mapedit-says", id: "mapedit-says", role: "status" }),
     el("div", { class: "mapedit-body" },
       el("aside", { class: "mapedit-tools", id: "mapedit-tools" }),
-      el("div", { class: "mapedit-view", id: "mapedit-view" },
-        el("canvas", { id: "mapedit-canvas", onpointerdown: pressed, onpointermove: movedOver, onpointerup: released, onpointercancel: released, onpointerleave: () => { state.hover = null; if (!state.drag) drawDeck(); } })),
+      el("div", { class: "mapedit-middle", id: "mapedit-middle" }, el("div", { class: "mapedit-view", id: "mapedit-view" },
+        el("canvas", { id: "mapedit-canvas", onpointerdown: pressed, onpointermove: movedOver, onpointerup: released, onpointercancel: released, onpointerleave: () => { state.hover = null; lookAgain(); if (!state.drag) drawDeck(); } })),
+        el("div", { class: "mapedit-look", id: "mapedit-look", hidden: "" },
+          el("canvas", { id: "mapedit-look-canvas", role: "img", "aria-label": "The room as the game will draw it", title: "The room as the game will draw it, with what you've changed. Click the plan, or here, to look somewhere else", onclick: lookClicked }),
+          el("div", { class: "mapedit-look-says", id: "mapedit-look-says", role: "status" }))),
       el("aside", { class: "mapedit-side", id: "mapedit-side" })),
     el("footer", { class: "mapedit-where", id: "mapedit-where" }));
 }

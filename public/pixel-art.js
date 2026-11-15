@@ -83,7 +83,7 @@ const WALL_DOWN_RIGHT = { cells: [0, 1, 2], corners: [[40, 124], [104, 92], [40,
 // end's foot and the left end's top. Cells 5 to 7 of the wall row.
 const WALL_DOWN_LEFT = { cells: [5, 6, 7], corners: [[24, 92], [88, 124], [24, 4]] };
 
-const state = { on: false, look: "dark", images: null, files: {}, loaded: false, failed: false, second: null, tops: {}, boxes: {}, listeners: new Set(), pack: {}, wanted: new Set(), loading: {}, version: 0, settle: 0, scratch: null };
+const state = { on: false, look: "dark", images: null, files: {}, loaded: false, failed: false, second: null, tops: {}, boxes: {}, listeners: new Set(), pack: {}, wanted: new Set(), loading: {}, version: 0, settle: 0, scratch: null, forced: false };
 
 // ---- Any piece of the packs, as furniture ---------------------------------------------------------------------------
 // The game says what each piece of the packs is (src/pack-furniture.js, world/furniture.txt), and the page's list of
@@ -205,7 +205,21 @@ export function pixelKey() {
 
 // Whether the room should be drawn in the pack's pictures now.
 export function pixelArtOn() {
-  return state.on && state.loaded;
+  return (state.on || state.forced) && state.loaded;
+}
+
+// For the map editor's picture of the deck it's changing, which is in the packs' pictures whatever view the game is
+// in: everything drawn while `draw` runs is drawn with them, and the sheets are fetched the first time it's asked.
+// (Until they've come, or if they aren't on this computer, it's the game's own drawing.)
+export function asPixelArt(draw) {
+  if (!state.images && !state.failed && typeof Image !== "undefined") loadSheets();
+  const was = state.forced;
+  state.forced = true;
+  try {
+    return draw();
+  } finally {
+    state.forced = was;
+  }
 }
 
 // The size of a tile the room is drawn at, with the wheel at rest, while the test is on: half the pack's own, so its
