@@ -240,6 +240,26 @@ function drawPiece(ctx, piece, cw, ch, pal) {
     if (facing === "e") box(pal.edge, x + pad, y + pad, t, h - 2 * pad);
     if (facing === "w") box(pal.edge, x + w - pad - t, y + pad, t, h - 2 * pad);
   };
+  // A piece of the bought packs: a plain shape by what it is (a seat with its back, a table's top, a patch for what
+  // lies on the floor, a mark for what hangs on a wall or is small), since this view has no pictures of furniture.
+  if (kind.pack) {
+    if (kind.wall) box(kind.lit ?? pal.accent, x + w * 0.2, y + h * 0.36, w * 0.6, h * 0.28, 2);
+    else if (kind.what === "small") box(kind.lit ?? pal.sheet, x + w * 0.3, y + h * 0.38, w * 0.4, h * 0.24, 2);
+    else if (kind.what === "rug") {
+      ctx.save();
+      ctx.globalAlpha = 0.5;
+      box(pal.cloth, x + pad, y + pad, w - 2 * pad, h - 2 * pad, 4);
+      ctx.restore();
+    } else if (kind.what === "seat") {
+      box(pal.metal, x + pad, y + pad, w - 2 * pad, h - 2 * pad, 4);
+      outline();
+      back(0.28);
+    } else {
+      box(pal.edge, x + pad, y + pad, w - 2 * pad, h - 2 * pad, 3);
+      box(kind.what === "table" ? pal.top : pal.metal, x + pad * 1.8, y + pad * 1.8, w - 3.6 * pad, h - 3.6 * pad, 2);
+    }
+    return;
+  }
   switch (piece.kind) {
     case "chair":
     case "bench":

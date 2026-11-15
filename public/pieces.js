@@ -219,8 +219,9 @@ function setFacts(piece, facts) {
     one.furniture = next;
   });
   if (!done) return;
-  drawOpen();
   if (state.pick) draw();
+  else drawCounts();
+  drawOpen();
   say(`${piece.name}: ${factsWords(piece.furniture)}.`);
 }
 
