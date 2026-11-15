@@ -11,9 +11,29 @@
 // the game's own tiles, so a tile of the pack is one tile of the view, two of the game's squares side by side. A wall
 // is a thin slab along one edge of a tile, 88 pixels high (1.375 tiles); it's stood up to the game's own wall height,
 // so that nothing else in the room has to move.
+//
+// The doors between rooms are the pack's: a door is a slab like a wall, with sixteen pictures of it sliding open and
+// shut, stood in the front of its doorway. Some of the furniture is the pack's too, where it has a piece like the
+// game's and nobody sits or lies in it: the plot table, desks, lockers, barrels and crates. Chairs, benches, bunks and
+// cots stay the game's own, since people are drawn sitting and lying in them, and the pack's pieces are drawn from one
+// side only.
 
 const BASE = "licensed/isospace/";
-const SHEETS = { level: "IsoSpace_Level.png" };
+const SHEETS = { level: "IsoSpace_Level.png", assets: "IsoSpace_Assets.png", doors: "IsoSpace_Doors.png" };
+// The doors sheet: four rows of eight a door, sixteen pictures from shut to open and back, by look and by the way the
+// door's face looks. Picture 0 is shut with an amber light, 1 shut and green, 2 shut and red (locked), 3 to 8 sliding
+// open, 9 open, 10 to 15 sliding shut.
+const DOOR_ROWS = { dark: { downLeft: 0, downRight: 2 }, light: { downRight: 4, downLeft: 6 } };
+const OPENING = [3, 4, 5, 6, 7, 8];
+// The game's furniture the pack has a piece for, by look: the cell of the assets sheet, across and down. A crate is a
+// crate on the plan, not one of the pieces.
+const ITEMS = {
+  dark: { "plot-table": [0, 0], desk: [5, 0], locker: [7, 0], barrel: [1, 0], crate: [3, 0] },
+  light: { "plot-table": [0, 0], desk: [7, 1], locker: [4, 1], barrel: [1, 0], crate: [5, 1] },
+};
+// How much bigger the pack's furniture is drawn than its own size: as much as its walls are stood up, so they keep to
+// each other and to the game's people.
+const WALL_PACK_HEIGHT = 1.375;
 // The two looks of the pack: where each one's floors and walls are on the level sheet, in cells across and down.
 const LOOKS = {
   dark: { floors: [0, 1, 2, 3, 4, 5, 6, 7], floorRow: 0, wallRow: 1 },
@@ -34,7 +54,7 @@ const WALL_DOWN_RIGHT = { cells: [0, 1, 2], corners: [[40, 124], [104, 92], [40,
 // end's foot and the left end's top. Cells 5 to 7 of the wall row.
 const WALL_DOWN_LEFT = { cells: [5, 6, 7], corners: [[24, 92], [88, 124], [24, 4]] };
 
-const state = { on: false, look: "dark", images: null, loaded: false, failed: false, tops: {}, listeners: new Set() };
+const state = { on: false, look: "dark", images: null, loaded: false, failed: false, tops: {}, boxes: {}, listeners: new Set() };
 
 // Asked for by Settings: whether the test is on, and in which of the pack's two looks. The sheets are fetched the
 // first time it's turned on.
@@ -88,6 +108,7 @@ function loadSheets() {
   Promise.all(waiting).then((pairs) => {
     for (const [name, image] of pairs) state.images[name] = image;
     readTops();
+    readBoxes();
     state.loaded = true;
     changed();
   }).catch(() => {
@@ -111,6 +132,40 @@ function readTops() {
   }
 }
 
+// Where each piece of furniture is in its cell of the assets sheet, so it can be stood in the middle of the game's piece:
+// the box its pixels fill, read from the sheet once.
+function readBoxes() {
+  const image = state.images.assets;
+  const canvas = document.createElement("canvas");
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(image, 0, 0);
+  const cells = new Set(Object.values(ITEMS).flatMap((look) => Object.values(look).map(([cx, cy]) => `${cx},${cy}`)));
+  for (const key of cells) {
+    const [cx, cy] = key.split(",").map(Number);
+    const { data } = ctx.getImageData(cx * 128, cy * 128, 128, 128);
+    const box = { x0: 128, y0: 128, x1: -1, y1: -1 };
+    for (let y = 0; y < 128; y += 1) {
+      for (let x = 0; x < 128; x += 1) {
+        if (!data[(y * 128 + x) * 4 + 3]) continue;
+        box.x0 = Math.min(box.x0, x);
+        box.x1 = Math.max(box.x1, x);
+        box.y0 = Math.min(box.y0, y);
+        box.y1 = Math.max(box.y1, y);
+      }
+    }
+    if (box.x1 >= 0) state.boxes[key] = box;
+  }
+}
+
+// The point of a piece's picture that stands on the middle of its place on the floor: halfway across, and up from its
+// lowest pixel by a quarter of its width, which is the middle of the diamond it stands on.
+export function standingPoint(box) {
+  const width = box.x1 - box.x0 + 1;
+  return [box.x0 + width / 2, box.y1 + 1 - width / 4];
+}
+
 // The transform that takes three points of a cell of a sheet to three points on the canvas, as the six numbers a
 // canvas's setTransform takes.
 export function mapping(from, to) {
@@ -129,15 +184,15 @@ export function mapping(from, to) {
   return [a, b, c, d, q0[0] - a * p0[0] - c * p0[1], q0[1] - b * p0[0] - d * p0[1]];
 }
 
-// A cell of the level sheet onto the canvas, with three of its points on three of the view's.
-function drawCell(painter, cx, cy, from, to) {
+// A cell of a sheet onto the canvas, with three of its points on three of the view's.
+function drawCell(painter, cx, cy, from, to, sheet = "level") {
   const { ctx, ratio } = painter;
   const [a, b, c, d, e, f] = mapping(from, to);
   ctx.save();
   ctx.setTransform(a * ratio, b * ratio, c * ratio, d * ratio, e * ratio, f * ratio);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(state.images.level, cx * 128, cy * 128, 128, 128, 0, 0, 128, 128);
+  ctx.drawImage(state.images[sheet], cx * 128, cy * 128, 128, 128, 0, 0, 128, 128);
   ctx.restore();
 }
 
@@ -228,4 +283,73 @@ export function drawPixelWall(painter, block, { cellWidth, sameWallRight, sameWa
     drawCell(painter, cell, look.wallRow, WALL_DOWN_RIGHT.corners, [at(x1, y + 1, 0), at(x1, y, 0), at(x1, y + 1, h)]);
   }
   return true;
+}
+
+// Which of a door's sixteen pictures it shows: shut and red when locked, shut and green when shut, then one of the six
+// sliding open by how far open it is.
+export function doorPicture(open, locked = false) {
+  if (locked) return 2;
+  if (open < 0.06) return 1;
+  return OPENING[Math.min(OPENING.length - 1, Math.floor(open * OPENING.length))];
+}
+
+// A door between rooms, in the front of its doorway, in the line of the walls beside it. A doorway along the plan's
+// row is half a tile wide and the pack's door a whole tile, so a door on its own is centred on it, over the edges of
+// the walls either side (as a frame is wider than its opening), and two doorways side by side share one door. Returns
+// false if the test isn't on, or for the second of two doorways side by side, which has nothing to draw.
+export function drawPixelDoor(painter, { x, y, along, kinds }, open, { cellWidth, wallHeight, locked = false }) {
+  if (!pixelArtOn()) return false;
+  const { at } = painter;
+  const picture = doorPicture(open, locked);
+  const rows = DOOR_ROWS[state.look];
+  const column = picture % 8;
+  const x0 = x * cellWidth;
+  if (along === "x") {
+    if (kinds?.[y]?.[x - 1] === "door") return true;
+    const pair = kinds?.[y]?.[x + 1] === "door";
+    const a = pair ? x0 : x0 + cellWidth / 2 - 0.5;
+    drawCell(painter, column, rows.downLeft + Math.floor(picture / 8), WALL_DOWN_LEFT.corners, [at(a, y + 1, 0), at(a + 1, y + 1, 0), at(a, y + 1, wallHeight)], "doors");
+  } else {
+    const face = x0 + cellWidth;
+    drawCell(painter, column, rows.downRight + Math.floor(picture / 8), WALL_DOWN_RIGHT.corners, [at(face, y + 1, 0), at(face, y, 0), at(face, y + 1, wallHeight)], "doors");
+  }
+  return true;
+}
+
+// Where a door drawn by drawPixelDoor stands, for putting it in order with the people round it: the line of its front.
+export function pixelDoorDepth({ x, y, along }, cellWidth) {
+  return along === "x" ? (x + 0.5) * cellWidth + y + 1 - 0.02 : (x + 1) * cellWidth + y + 0.5 - 0.02;
+}
+
+// One of the pack's pieces of furniture, stood on the middle of a place on the floor (cx, cy, in tiles), as big as the
+// pack's walls are stood up, turned to face across the screen for a piece facing east or west.
+function drawItem(painter, kind, cx, cy, facing, wallHeight) {
+  const cell = ITEMS[state.look][kind];
+  const box = cell && state.boxes[`${cell[0]},${cell[1]}`];
+  if (!box) return false;
+  const { ctx, ratio, at, unit } = painter;
+  const scale = (unit / 128) * (wallHeight / WALL_PACK_HEIGHT);
+  const flip = facing === "e" || facing === "w" ? -1 : 1;
+  const [ax, ay] = standingPoint(box);
+  const [px, py] = at(cx, cy, 0);
+  ctx.save();
+  ctx.setTransform(ratio * scale * flip, 0, 0, ratio * scale, ratio * (px - scale * flip * ax), ratio * (py - scale * ay));
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(state.images.assets, cell[0] * 128, cell[1] * 128, 128, 128, 0, 0, 128, 128);
+  ctx.restore();
+  return true;
+}
+
+// A piece of the game's furniture, if the pack has one like it: drawn in its place, and true; else false, and the game
+// draws its own.
+export function drawPixelPiece(painter, piece, { wallHeight }) {
+  if (!pixelArtOn() || !ITEMS[state.look][piece.kind] || piece.kind === "crate") return false;
+  return drawItem(painter, piece.kind, (piece.x0 + piece.x1) / 2, (piece.y0 + piece.y1) / 2, piece.facing, wallHeight);
+}
+
+// A crate on the plan, on its square.
+export function drawPixelCrate(painter, { x, y }, { cellWidth, wallHeight }) {
+  if (!pixelArtOn()) return false;
+  return drawItem(painter, "crate", (x + 0.5) * cellWidth, y + 0.5, "s", wallHeight);
 }

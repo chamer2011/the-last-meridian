@@ -7,7 +7,7 @@
 import { el } from "./dom.js";
 import { FURNITURE_BY_ID, footprintOf } from "./furniture.js";
 import { hideLoading, showLoading } from "./loading.js";
-import { PIXEL_UNIT, drawPixelFloors, drawPixelWall, pixelArtOn, pixelKey } from "./pixel-art.js";
+import { PIXEL_UNIT, drawPixelCrate, drawPixelDoor, drawPixelFloors, drawPixelPiece, drawPixelWall, pixelArtOn, pixelDoorDepth, pixelKey } from "./pixel-art.js";
 
 // A console square is about twice as tall as it's wide, so two columns make one tile.
 export const CELL_WIDTH = 0.5;
@@ -1358,7 +1358,8 @@ function drawBlock(painter, block, materials) {
   const x0 = x * CELL_WIDTH;
   const x1 = x0 + CELL_WIDTH;
   if (style === "piece") {
-    drawPiece(painter, block);
+    // The pixel-art test draws the pack's piece where it has one like it (public/pixel-art.js).
+    if (!drawPixelPiece(painter, block, { wallHeight: WALL_HEIGHT })) drawPiece(painter, block);
     return;
   }
   if (style === "plants") {
@@ -1419,6 +1420,7 @@ function drawBlock(painter, block, materials) {
     ctx.fill();
     return;
   }
+  if (style === "crate" && drawPixelCrate(painter, block, { cellWidth: CELL_WIDTH, wallHeight: WALL_HEIGHT })) return;
   const side = { crate: materials.crate, rock: materials.rock, ice: materials.ice, scrap: materials.scrap, body: materials.body[Math.floor(block.seed * 2)], bench: materials.body[Math.floor(block.seed * 2)], dais: materials.body[0] }[style] ?? materials.steel;
   const top = { crate: materials.crateTop, machine: block.off ? materials.consoleOff : materials.console, rock: materials.rockTop, ice: materials.iceTop, scrap: materials.scrap, body: materials.roof, bench: materials.roof, dais: materials.roof }[style] ?? materials.steelTop;
   if (block.left < h) leftFace(painter, side, x, y, h, block.left, 0.08);
@@ -1435,6 +1437,8 @@ function drawDoor(painter, item) {
   const y0 = exit.y;
   const y1 = y0 + 1;
   const high = tall ? WALL_HEIGHT * 0.86 : 0;
+  // A way out in a wall, in the pixel-art test, is the pack's door, shut and red when it's locked.
+  if (tall && drawPixelDoor(painter, { x: exit.x, y: exit.y, along, kinds: iso.scene?.kinds }, exit.closed ? 0 : 1, { cellWidth: CELL_WIDTH, wallHeight: WALL_HEIGHT, locked: !!exit.closed })) return;
   if (!tall) {
     if (exit.closed) {
       polygon(ctx, [at(x0, y0 + 0.42, 0.75), at(x1, y0 + 0.42, 0.75), at(x1, y0 + 0.58, 0.75), at(x0, y0 + 0.58, 0.75)], "#6e3a2c");
@@ -2383,7 +2387,10 @@ function drawTile(room, tx, ty) {
     else if (item.type === "fixture") drawFixture(painter, item.fixture);
     else if (item.type === "thing") drawThing(painter, item.thing);
     else if (item.type === "door") drawDoor(painter, item);
-    else if (item.type === "frame") drawFrame(painter, item, scene.style);
+    // In the pixel-art test the pack's door, drawn every frame, is its own frame.
+    else if (item.type === "frame") {
+      if (!pixelArtOn()) drawFrame(painter, item, scene.style);
+    }
     else if (item.type === "words") {
       const { run } = item;
       const h = scene.heights[run.y][run.x];
@@ -3333,6 +3340,14 @@ function draw(now, dt) {
     const open = iso.calm ? target : was + (target - was) * (1 - Math.exp(-dt / 90));
     iso.doors.set(key, Math.abs(open - target) < 0.01 ? target : open);
     if (open !== target) lively = true;
+    // The pixel-art test's door is drawn open as well as shut, since it's the doorway's frame too, in the front of the
+    // doorway (public/pixel-art.js).
+    if (pixelArtOn()) {
+      if (!painter.seen(at(wx, wy, 0.8), unit * 2.5)) continue;
+      const pixelDoor = { ...door, kinds: scene.kinds };
+      props.push({ type: "prop", draw: () => drawPixelDoor(painter, pixelDoor, open, { cellWidth: CELL_WIDTH, wallHeight: WALL_HEIGHT }), depth: pixelDoorDepth(door, CELL_WIDTH), span: uvBox(door.x - 1, door.y, door.x + 2, door.y + 1, WALL_HEIGHT) });
+      continue;
+    }
     if (open > 0.97 || !painter.seen(at(wx, wy, 0.8), unit * 2)) continue;
     props.push({ type: "prop", draw: () => drawDoorPanels(painter, door, open, scene.style), depth: wx + wy - 0.39, span: uvBox(door.x, door.y, door.x + 1, door.y + 1, WALL_HEIGHT) });
   }
