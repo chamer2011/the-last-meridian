@@ -6,9 +6,11 @@
 // The pictures come from licensed/, which only the owner's computer has, so anywhere else the window says so.
 
 import { el } from "./dom.js";
+import { loadPack } from "./pixel-art.js";
 
 const state = {
-  data: null, place: "bridge", show: "all", pack: "both",
+  // pick: what to do with a piece that's clicked, when the window was opened to choose one to put on a deck.
+  data: null, place: "bridge", show: "all", pack: "both", pick: null,
   open: null, // the piece whose pictures are laid out along the bottom
   waiting: new Map(), timer: 0, sending: false, undo: [], watcher: null,
 };
@@ -142,6 +144,8 @@ async function send() {
     if (!response.ok || result.error) throw new Error(result.error ?? "Something went wrong.");
     state.data.saved = true;
     say(`Saved. ${result.on} of ${result.of} pieces are on the ship.`);
+    // What a piece is has changed: the page's own list of furniture hears of it.
+    if (set.some((change) => "furniture" in change)) loadPack();
   } catch (err) {
     say(`That wasn't saved: ${err.message}`, false);
     try {
@@ -156,8 +160,10 @@ async function send() {
   if (state.waiting.size) send();
 }
 
-function later(piece) {
-  state.waiting.set(piece.id, { id: piece.id, on: piece.on, place: piece.place });
+const factsOf = (piece) => (piece.furniture ? { what: piece.furniture.what, like: piece.furniture.like, across: piece.furniture.across, down: piece.furniture.down, high: piece.furniture.high, blocks: piece.furniture.blocks, lit: piece.furniture.lit } : null);
+function later(piece, facts = false) {
+  const waiting = state.waiting.get(piece.id);
+  state.waiting.set(piece.id, { id: piece.id, on: piece.on, place: piece.place, ...(facts || (waiting && "furniture" in waiting) ? { furniture: factsOf(piece) } : {}) });
   clearTimeout(state.timer);
   state.timer = setTimeout(send, SAVE_AFTER);
 }
@@ -165,21 +171,64 @@ function later(piece) {
 // ---- What's shown, and changing it --------------------------------------------------------------------------------
 
 const inPack = (piece) => state.pack === "both" || piece.pack === state.pack;
-const shown = (piece) => inPack(piece) && (state.show === "all" || (state.show === "on") === piece.on);
-const piecesOf = (place) => state.data.pieces.filter((piece) => (place === "all" || piece.place === place) && inPack(piece));
+// To choose from, a piece has to be on the ship and be something the game knows as furniture.
+const forPicking = (piece) => piece.on && Boolean(piece.furniture?.known);
+const shown = (piece) => inPack(piece) && (state.pick ? forPicking(piece) : state.show === "all" || (state.show === "on") === piece.on);
+const piecesOf = (place) => state.data.pieces.filter((piece) => (place === "all" || piece.place === place) && inPack(piece) && (!state.pick || forPicking(piece)));
 const tally = (list) => `${list.filter((piece) => piece.on).length} of ${list.length}`;
 const placeName = (id) => state.data.places.find((place) => place.id === id)?.name ?? id;
 
 // Changes pieces, remembers how they were for Undo, and has the change sent.
 function change(pieces, how) {
-  const before = pieces.map((piece) => ({ id: piece.id, on: piece.on, place: piece.place }));
+  const before = pieces.map((piece) => ({ id: piece.id, on: piece.on, place: piece.place, furniture: piece.furniture ? { ...piece.furniture } : null }));
   for (const piece of pieces) how(piece);
-  const moved = pieces.filter((piece, i) => piece.on !== before[i].on || piece.place !== before[i].place);
+  const facts = (piece, i) => JSON.stringify(factsOf(piece)) !== JSON.stringify(factsOf(before[i]));
+  const moved = pieces.filter((piece, i) => piece.on !== before[i].on || piece.place !== before[i].place || facts(piece, i));
   if (!moved.length) return false;
   state.undo.push(before);
   if (state.undo.length > 60) state.undo.shift();
-  for (const piece of moved) later(piece);
+  pieces.forEach((piece, i) => { if (moved.includes(piece)) later(piece, facts(piece, i)); });
   return true;
+}
+
+// What a piece can be on a deck, in words; whether each kind is in the way unless told otherwise, and how high it
+// stands (the same as the game's own list, src/pack-furniture.js).
+const WHAT_WORDS = { seat: "a seat", bed: "a bed", table: "a table", stand: "stands on the floor", opens: "something to open", wall: "hangs on a wall", rug: "lies on the floor", small: "a small thing" };
+const LIKE_WORDS = { locker: "a locker", shelf: "shelves", desk: "a desk", barrel: "a barrel" };
+const IN_THE_WAY = { seat: false, bed: true, table: true, stand: true, opens: true, wall: false, rug: false, small: false };
+const HIGH = { seat: 0.5, bed: 0.5, table: 0.75, stand: 1, opens: 1.3, wall: 0.95, rug: 0, small: 0.2 };
+const FLAT = ["wall", "rug", "small"];
+function factsWords(facts) {
+  const parts = [facts.what === "opens" ? `something to open like ${LIKE_WORDS[facts.like] ?? LIKE_WORDS.barrel}` : WHAT_WORDS[facts.what]];
+  if (facts.what !== "wall" && facts.what !== "small") parts.push(`${facts.across} by ${facts.down}`);
+  parts.push(facts.blocks ? "in the way" : "not in the way");
+  return parts.join(", ");
+}
+
+// What a piece is to the game once it's on a deck, changed from the rows of buttons under it. Another kind of thing
+// is in the way or not as that kind is.
+function setFacts(piece, facts) {
+  const done = change([piece], (one) => {
+    const was = one.furniture;
+    const next = { ...was, ...facts, known: true };
+    if (facts.what && facts.what !== was.what) {
+      next.blocks = IN_THE_WAY[facts.what];
+      if (FLAT.includes(facts.what) || FLAT.includes(was.what)) next.high = HIGH[facts.what];
+    }
+    next.like = next.what === "opens" ? next.like ?? "barrel" : null;
+    one.furniture = next;
+  });
+  if (!done) return;
+  drawOpen();
+  if (state.pick) draw();
+  say(`${piece.name}: ${factsWords(piece.furniture)}.`);
+}
+
+// A piece chosen to put on a deck: the window shuts, and whoever opened it is told which.
+function choose(piece) {
+  const pick = state.pick;
+  closePieces();
+  pick?.(piece);
 }
 
 function toggle(piece) {
@@ -210,9 +259,11 @@ function undo() {
   for (const was of before) {
     const piece = byId.get(was.id);
     if (!piece) continue;
+    const facts = JSON.stringify(factsOf(piece)) !== JSON.stringify(factsOf(was));
     piece.on = was.on;
     piece.place = was.place;
-    later(piece);
+    piece.furniture = was.furniture;
+    later(piece, facts);
   }
   draw();
   say(before.length === 1 ? "Taken back." : `Taken back: ${before.length} pieces are as they were.`);
@@ -231,12 +282,12 @@ function say(words, ok = true) {
   line.className = `pieces-says ${ok ? "ok" : "bad"}`;
 }
 
-const countWords = (piece) => (piece.missing ? "" : piece.pictures.length > 1 ? `${piece.pictures.length} pictures` : "");
+const countWords = (piece) => (state.pick ? WHAT_WORDS[piece.furniture?.what] ?? "" : piece.missing ? "" : piece.pictures.length > 1 ? `${piece.pictures.length} pictures` : "");
 
 function card(piece) {
   const first = piece.pictures[0];
   return el("div", { class: `pieces-card ${piece.on ? "on" : "off"}`, "data-piece": piece.id },
-    el("button", { type: "button", class: "pieces-pick", "aria-pressed": piece.on ? "true" : "false", title: piece.on ? "On the ship. Click to leave it out" : "Left out. Click to put it on the ship", onclick: () => toggle(piece) },
+    el("button", { type: "button", class: "pieces-pick", "aria-pressed": piece.on ? "true" : "false", title: state.pick ? "Click to put this on the deck" : piece.on ? "On the ship. Click to leave it out" : "Left out. Click to put it on the ship", onclick: () => (state.pick ? choose(piece) : toggle(piece)) },
       first ? pictureBox(first, piece.name) : el("span", { class: "pieces-picture pieces-none" }, "Its pictures aren't on this computer"),
       el("span", { class: "pieces-tick", "aria-hidden": "true" }, piece.on ? "[x]" : "[ ]"),
       el("span", { class: "pieces-name" }, piece.name),
@@ -262,9 +313,9 @@ function section(place) {
   return el("section", { class: "pieces-section", "data-place": place.id },
     el("header", { class: "pieces-section-head" },
       el("h3", {}, place.name),
-      el("span", { class: "pieces-tally" }, `${tally(all)} on the ship`),
-      button("All on", { title: "Put everything shown here on the ship", disabled: !list.some((piece) => !piece.on), onclick: () => setAll(place.id, true) }),
-      button("All off", { title: "Leave out everything shown here", disabled: !list.some((piece) => piece.on), onclick: () => setAll(place.id, false) })),
+      el("span", { class: "pieces-tally" }, state.pick ? `${all.length} to choose from` : `${tally(all)} on the ship`),
+      state.pick ? null : button("All on", { title: "Put everything shown here on the ship", disabled: !list.some((piece) => !piece.on), onclick: () => setAll(place.id, true) }),
+      state.pick ? null : button("All off", { title: "Leave out everything shown here", disabled: !list.some((piece) => piece.on), onclick: () => setAll(place.id, false) })),
     list.length ? el("div", { class: "pieces-cards" }, list.map(card)) : el("p", { class: "pieces-empty" }, state.show === "on" ? "Nothing here is on the ship." : "Nothing here is left out."));
 }
 
@@ -288,27 +339,28 @@ function nothingWords() {
 
 function drawCounts() {
   if (!state.data) return;
-  const all = state.data.pieces.filter(inPack);
-  $("pieces-total").textContent = `${tally(all)} pieces on the ship`;
+  const all = piecesOf("all");
+  const count = (list) => (state.pick ? String(list.length) : tally(list));
+  $("pieces-total").textContent = state.pick ? `${all.length} pieces to choose from` : `${tally(all)} pieces on the ship`;
   $("pieces-undo").disabled = !state.undo.length;
   $("pieces-places").replaceChildren(
-    button(["Everything ", el("span", { class: "pieces-n" }, tally(all))], { onclick: () => choosePlace("all") }, state.place === "all"),
+    button(["Everything ", el("span", { class: "pieces-n" }, count(all))], { onclick: () => choosePlace("all") }, state.place === "all"),
     ...state.data.places.map((place) => {
       const here = piecesOf(place.id);
-      return button([`${place.name} `, el("span", { class: "pieces-n" }, tally(here))], { onclick: () => choosePlace(place.id), disabled: !here.length }, state.place === place.id);
+      return button([`${place.name} `, el("span", { class: "pieces-n" }, count(here))], { onclick: () => choosePlace(place.id), disabled: !here.length }, state.place === place.id);
     }));
   for (const head of document.querySelectorAll("#pieces-grid .pieces-section")) {
     const here = piecesOf(head.dataset.place);
     const list = here.filter(shown);
-    head.querySelector(".pieces-tally").textContent = `${tally(here)} on the ship`;
+    head.querySelector(".pieces-tally").textContent = state.pick ? `${here.length} to choose from` : `${tally(here)} on the ship`;
     const [allOn, allOff] = head.querySelectorAll(".pieces-section-head button");
-    allOn.disabled = !list.some((piece) => !piece.on);
-    allOff.disabled = !list.some((piece) => piece.on);
+    if (allOn) allOn.disabled = !list.some((piece) => !piece.on);
+    if (allOff) allOff.disabled = !list.some((piece) => piece.on);
   }
 }
 
 function drawFilters() {
-  $("pieces-show").replaceChildren(...SHOWS.map(([id, words]) => button(words, { onclick: () => { state.show = id; draw(); } }, state.show === id)));
+  $("pieces-show").replaceChildren(...(state.pick ? [] : SHOWS.map(([id, words]) => button(words, { onclick: () => { state.show = id; draw(); } }, state.show === id))));
   $("pieces-packs").replaceChildren(...Object.entries(PACK_WORDS).map(([id, words]) => button(words, { onclick: () => { state.pack = id; draw(); } }, state.pack === id)));
 }
 
@@ -345,9 +397,33 @@ function drawOpen() {
     el("div", { class: "pieces-belongs" },
       el("span", { class: "pieces-label" }, "Belongs under:"),
       state.data.places.map((place) => button(place.name, { onclick: () => move(piece, place.id) }, piece.place === place.id))),
+    ...[factsRows(piece)].flat(Infinity).filter(Boolean),
     piece.pictures.length
       ? el("div", { class: "pieces-all", id: "pieces-all" }, piece.pictures.map((picture, i) => pictureBox(picture, `${piece.name}, picture ${i + 1}`)))
       : el("p", { class: "pieces-empty" }, "Its pictures aren't on this computer."));
+}
+
+// What the piece is once it stands on a deck, as rows of buttons: its kind, what it opens like, how many squares it
+// takes, and whether people walk round it. (The game's own guess until one of them is clicked.)
+function factsRows(piece) {
+  const facts = piece.furniture;
+  if (facts === undefined) return null;
+  if (!facts) return el("p", { class: "pieces-empty" }, "A deck is built of this (a floor, a wall, a door or stairs), so it isn't furniture.");
+  const sized = facts.what !== "wall" && facts.what !== "small";
+  const step = (words, key, by, most) => button(words, { class: "pieces-step", title: by < 0 ? "One square fewer" : "One square more", disabled: facts[key] + by < 1 || facts[key] + by > most, onclick: () => setFacts(piece, { [key]: facts[key] + by }) });
+  return [
+    el("div", { class: "pieces-belongs" },
+      el("span", { class: "pieces-label" }, "On a deck it's:"),
+      Object.entries(WHAT_WORDS).map(([id, words]) => button(words, { onclick: () => setFacts(piece, { what: id }) }, facts.what === id))),
+    facts.what === "opens" ? el("div", { class: "pieces-belongs" },
+      el("span", { class: "pieces-label" }, "It opens like:"),
+      Object.entries(LIKE_WORDS).map(([id, words]) => button(words, { onclick: () => setFacts(piece, { like: id }) }, facts.like === id))) : null,
+    el("div", { class: "pieces-belongs" },
+      sized ? [el("span", { class: "pieces-label" }, "It takes:"), step("-", "across", -1, 8), el("span", { class: "pieces-size" }, `${facts.across} across`), step("+", "across", 1, 8), step("-", "down", -1, 4), el("span", { class: "pieces-size" }, `${facts.down} deep`), step("+", "down", 1, 4)] : null,
+      el("span", { class: "pieces-label" }, "People walk round it:"),
+      button("Yes", { onclick: () => setFacts(piece, { blocks: true }) }, facts.blocks),
+      button("No", { onclick: () => setFacts(piece, { blocks: false }) }, !facts.blocks)),
+  ];
 }
 
 function draw() {
@@ -359,9 +435,9 @@ function draw() {
 }
 
 function frame() {
-  return el("div", { class: "pieces", id: "pieces", role: "dialog", "aria-label": "Pieces" },
+  return el("div", { class: `pieces${state.pick ? " picking" : ""}`, id: "pieces", role: "dialog", "aria-label": state.pick ? "Choose a piece" : "Pieces" },
     el("header", { class: "pieces-head" },
-      el("h2", {}, "Pieces"),
+      el("h2", {}, state.pick ? "Choose a piece" : "Pieces"),
       el("span", { class: "pieces-total", id: "pieces-total" }),
       el("div", { class: "pieces-row", id: "pieces-show" }),
       el("div", { class: "pieces-row", id: "pieces-packs" }),
@@ -385,8 +461,12 @@ function onKey(event) {
   else closePieces();
 }
 
-export async function openPieces() {
+// Opened plainly, the window is the catalogue with its ticks. Opened with pick, it's for choosing one piece to put on
+// a deck: only the pieces that are on the ship and that the game knows as furniture are there, a click on one shuts
+// the window and hands the piece to pick, and no tick is changed.
+export async function openPieces({ pick = null } = {}) {
   if ($("pieces")) return;
+  state.pick = pick;
   document.body.append(frame());
   // Before the Map editor's own, which would close the editor underneath.
   document.addEventListener("keydown", onKey, true);
@@ -401,6 +481,8 @@ export async function openPieces() {
     draw();
     const problems = state.data.problems.length ? ` ${state.data.problems.length === 1 ? "One line" : `${state.data.problems.length} lines`} of world/pieces.txt couldn't be read.` : "";
     if (!state.data.pieces.length) say("");
+    else if (state.pick && !state.data.pieces.some((piece) => piece.furniture !== undefined)) say("The game that's running doesn't know the packs' pieces as furniture yet. Close the game and open it again, and they'll be here to choose from.", false);
+    else if (state.pick) say("A click on a piece chooses it to put on the deck. These are the pieces that are on the ship.");
     else if (state.data.saved) say(`A click on a piece puts it on the ship or leaves it out.${problems}`, !problems);
     else say("The first ticks are a guess at what suits the ship. A click on a piece puts it on the ship or leaves it out.");
   } catch (err) {
@@ -414,4 +496,13 @@ export function closePieces() {
   state.watcher = null;
   $("pieces")?.remove();
   document.removeEventListener("keydown", onKey, true);
+  state.pick = null;
+}
+
+// A small picture of a piece, for somewhere else on the page (the Map editor's list of pieces chosen lately).
+export function pieceThumb(picture, words) {
+  const canvas = el("canvas", { class: "pieces-thumb", role: "img", "aria-label": words });
+  // It's drawn once it has its size on the page.
+  requestAnimationFrame(() => paint(canvas, picture));
+  return canvas;
 }

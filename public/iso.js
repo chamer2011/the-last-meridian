@@ -7,7 +7,7 @@
 import { el } from "./dom.js";
 import { FURNITURE_BY_ID, footprintOf } from "./furniture.js";
 import { hideLoading, showLoading } from "./loading.js";
-import { PIXEL_UNIT, drawPixelCrate, drawPixelDoor, drawPixelFloors, drawPixelPiece, drawPixelWall, pixelArtOn, pixelDoorDepth, pixelKey } from "./pixel-art.js";
+import { PIXEL_UNIT, drawPixelCrate, drawPixelDoor, drawPixelFloors, drawPixelPiece, drawPixelWall, packKey, pixelArtOn, pixelDoorDepth, pixelKey } from "./pixel-art.js";
 
 // A console square is about twice as tall as it's wide, so two columns make one tile.
 export const CELL_WIDTH = 0.5;
@@ -2791,7 +2791,7 @@ function sceneIdOf(view) {
   ].join("/");
   const dark = view.areas?.length ? "deck" : view.room?.dark ? "dark" : "lit";
   // And what it's drawn with: the game's own drawing, or the pixel-art test's pictures (public/pixel-art.js).
-  return `${levelKeyOf(view)}|${view.here.drawn ?? 0}|${view.cols}x${view.lines}|${closedKey(view)}|${dark}|${darkRooms}|${parts}|${state}|${pixelKey()}`;
+  return `${levelKeyOf(view)}|${view.here.drawn ?? 0}|${view.cols}x${view.lines}|${closedKey(view)}|${dark}|${darkRooms}|${parts}|${state}|${pixelKey()}|${packKey()}`;
 }
 
 function useScene(view) {
@@ -2849,7 +2849,7 @@ function addLevel(view) {
 // A level's picture as it should be now: at the size it's shown at with the wheel at rest in a view of this size.
 function wantedPicture(entry, { width, height, ratio }) {
   const unit = wholeUnitFor(entry.scene, ratio, restUnitFor(entry.scene, width, height));
-  const key = `${entry.sceneId}|${unit}|${ratio}|${pixelKey()}`;
+  const key = `${entry.sceneId}|${unit}|${ratio}|${pixelKey()}|${packKey()}`;
   let picture = entry.pictures.find((one) => one.key === key);
   if (!picture) {
     picture = newPicture(entry.view, unit, ratio, TILE, key, { scene: entry.scene, sceneId: entry.sceneId });
@@ -3791,6 +3791,17 @@ function partRect(piece, a0, a1, b0, b1) {
   return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
 }
 
+// How high the top of each of the game's own tables is, for a small thing of the packs put on one.
+const TABLE_TOP = { table: 0.76, "long-table": 0.76, desk: 0.62, "plot-table": 0.7 };
+// Whether a piece is a table (or something no taller than one) with this square under it.
+function tableUnder(piece, x, y) {
+  const kind = FURNITURE_BY_ID[piece.kind];
+  if (!kind || kind.wall) return false;
+  if (kind.pack ? !(kind.what === "table" || ((kind.what === "opens" || kind.what === "stand") && kind.high <= 1.1)) : !TABLE_TOP[piece.kind]) return false;
+  const { across, down } = footprintOf({ kind: piece.kind, facing: piece.facing ?? "s" });
+  return x >= piece.x && x < piece.x + across && y >= piece.y && y < piece.y + down;
+}
+
 // The furniture in a scene: what's drawn on the level, and the things that look like a piece of it.
 function furnish(view, { kinds, heights, blocks, painted, unpowered = () => false }) {
   const lights = [];
@@ -3830,14 +3841,23 @@ function furnish(view, { kinds, heights, blocks, painted, unpowered = () => fals
       const window = piece.kind === "window";
       const off = !window && unpowered(face === "s" ? x : x + 1, face === "s" ? y + 1 : y);
       add({ kind: piece.kind, face, x0: x * CELL_WIDTH, x1: (x + 1) * CELL_WIDTH, y0: y, y1: y + 1, top: WALL_HEIGHT, wallX: x, wallY: y, bias: face === "s" ? 0.51 : 0.3, ...(off ? { off: true } : {}) });
-      if (!off) lights.push({ x: face === "s" ? x : x + 1, y: face === "s" ? y + 1 : y, color: kind.lit, radius: window ? 3.2 : 1.3, power: window ? 0.55 : 0.35 });
+      if (!off && kind.lit) lights.push({ x: face === "s" ? x : x + 1, y: face === "s" ? y + 1 : y, color: kind.lit, radius: window ? 3.2 : 1.3, power: window ? 0.55 : 0.35 });
       continue;
     }
     const facing = piece.facing ?? "s";
     const { across, down } = footprintOf({ kind: piece.kind, facing });
-    const placed = { kind: piece.kind, facing, x0: piece.x * CELL_WIDTH, x1: (piece.x + across) * CELL_WIDTH, y0: piece.y, y1: piece.y + down, top: PIECE_TOP[piece.kind] ?? 1 };
-    const [ha, hb] = PIECE_SHADOW[piece.kind] ?? [0.2, 0.2];
+    const placed = { kind: piece.kind, facing, x0: piece.x * CELL_WIDTH, x1: (piece.x + across) * CELL_WIDTH, y0: piece.y, y1: piece.y + down, top: kind.pack ? Math.max(0.05, kind.high ?? 1) : PIECE_TOP[piece.kind] ?? 1 };
     const off = Boolean(kind.lit) && unpowered(piece.x, piece.y);
+    if (kind.pack && (kind.what === "rug" || kind.what === "small")) {
+      // A piece of the packs that isn't in the way. What lies on the floor goes down before anyone who might stand on
+      // it; a small thing sits on the table that has its square, if one has, and goes on after it.
+      const under = kind.what === "small" ? pieces.find((other) => other !== piece && tableUnder(other, piece.x, piece.y)) : null;
+      const lift = under ? (FURNITURE_BY_ID[under.kind].pack ? FURNITURE_BY_ID[under.kind].high : TABLE_TOP[under.kind]) ?? 0.75 : 0;
+      add({ ...placed, lift, top: lift + placed.top, bias: kind.what === "rug" ? -(across * CELL_WIDTH + down) / 2 - 0.05 : under ? 0.6 : 0, ...(off ? { off: true } : {}) });
+      if (kind.lit && !off) lights.push({ x: piece.x, y: piece.y, color: kind.lit, radius: 1.1, power: 0.32 });
+      continue;
+    }
+    const [ha, hb] = PIECE_SHADOW[piece.kind] ?? (kind.pack ? [Math.max(0.1, across * CELL_WIDTH * 0.42), Math.max(0.1, down * 0.42)] : [0.2, 0.2]);
     add({ ...placed, shadow: partRect(placed, -ha, ha, -hb, hb), ...(off ? { off: true } : {}) });
     if (kind.lit && !off) {
       const big = piece.kind === "plot-table";
@@ -3908,8 +3928,52 @@ function wallFace(painter, piece, inset) {
 
 // only: draw just the parts with that tag (a chair's back, drawn again in front of whoever's sitting in it).
 // sleepers: who's lying in a bed, lowest first, each { look, ring, mark }; where their head was drawn is left on them.
+// A piece of the bought packs where its picture isn't shown: in this view's own drawing, and in the pixel-art test for
+// the moment before its picture has come. A plain shape of its size: a box as high as the piece, a seat with a back, a
+// flat patch for what lies on the floor, a panel for what hangs on a wall, a little box for a small thing.
+function drawPlainPiece(painter, piece, kind, only) {
+  const { ctx, at } = painter;
+  const glow = kind.lit && !piece.off ? scaled(kind.lit, 0.6) : null;
+  if (kind.wall) {
+    if (only) return;
+    const face = wallFace(painter, piece, 0.04);
+    const middle = Math.min(WALL_HEIGHT - 0.35, Math.max(0.35, kind.high ?? 0.95));
+    polygon(ctx, face.corners(middle - 0.24, middle + 0.24), glow ?? "#56616b");
+    stroke(painter, [face.along(0, middle - 0.24), face.along(0, middle + 0.24), face.along(1, middle + 0.24)], "rgba(190,205,220,.4)");
+    return;
+  }
+  const edge = 0.05;
+  const rect = [piece.x0 + edge, piece.y0 + edge, piece.x1 - edge, piece.y1 - edge];
+  if (kind.what === "rug") {
+    if (!only) polygon(ctx, [at(rect[0], rect[1], 0.012), at(rect[2], rect[1], 0.012), at(rect[2], rect[3], 0.012), at(rect[0], rect[3], 0.012)], "#4d4658");
+    return;
+  }
+  if (kind.what === "small") {
+    if (only) return;
+    const cx = (piece.x0 + piece.x1) / 2;
+    const cy = (piece.y0 + piece.y1) / 2;
+    const z = piece.lift ?? 0;
+    box(painter, [cx - 0.09, cy - 0.09, cx + 0.09, cy + 0.09], z, z + 0.16, ...shades(glow ?? "#8a8f96"));
+    return;
+  }
+  if (kind.what === "seat") {
+    const turned = piece.facing === "e" || piece.facing === "w";
+    const wide = (turned ? piece.y1 - piece.y0 : piece.x1 - piece.x0) / 2 - edge;
+    const deep = Math.min(0.25, (turned ? piece.x1 - piece.x0 : piece.y1 - piece.y0) / 2 - 0.02);
+    if (!only) box(painter, partRect(piece, -wide, wide, -deep, deep), 0, 0.45, ...shades(KIT.seat));
+    if (!only || only === "back") box(painter, partRect(piece, -wide, wide, -deep, -deep + 0.07), 0.45, 0.95, ...shades(KIT.seat));
+    return;
+  }
+  if (only) return;
+  box(painter, rect, 0, Math.max(0.1, kind.high ?? 1), ...shades(glow ?? (kind.what === "table" ? KIT.laminate : kind.what === "bed" ? "#5a6a78" : KIT.steel)));
+}
+
 function drawPiece(painter, piece, { only = null, sleepers = null } = {}) {
   const { ctx, at, unit } = painter;
+  if (FURNITURE_BY_ID[piece.kind]?.pack) {
+    drawPlainPiece(painter, piece, FURNITURE_BY_ID[piece.kind], only);
+    return;
+  }
   const part = (a0, a1, b0, b1) => partRect(piece, a0, a1, b0, b1);
   const random = randomFrom(`piece${piece.x0},${piece.y0}`);
   // A piece's parts go on from the back of the room to the front, so whichever way it's turned the near ones cover;

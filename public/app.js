@@ -23,7 +23,7 @@ import { focusThing, initWalk, keepClear, mapLoading, markPoint, newsBehindMenu,
 import { bringIntoRoom, fightInRoom, initLive, liveElsewhereNode, liveOn, liveSettled, resetLive } from "./live-fight.js";
 import { aimWith } from "./float.js";
 import { WRITING_SPEEDS } from "./writer.js";
-import { onPixelArt, setPixelArt } from "./pixel-art.js";
+import { loadPack, onPixelArt, setPixelArt } from "./pixel-art.js";
 
 const app = document.getElementById("app");
 
@@ -595,7 +595,7 @@ function openMenu(id, focus = null) {
   // So is the map editor. The room behind it may have been redrawn by the time it's closed.
   if (MENUS[id]?.editor) {
     closeMenu();
-    openMapEditor({ onClose: () => refreshAll() });
+    openMapEditor({ onClose: () => { loadPack(); refreshAll(); } });
     return;
   }
   // The inventory is a window over the room, not a drawer. (The quest log is the tracker in the corner, grown, and the
@@ -737,6 +737,8 @@ window.addEventListener("resize", applyInterface);
 document.addEventListener("fullscreenchange", () => renderMenus());
 // Settings says whether the pixel-art test's pack was found, once the page knows.
 onPixelArt(() => renderMenus());
+// The pieces of the bought packs that can stand on a deck (world/furniture.txt): asked for once the page is up.
+loadPack();
 
 initStory({
   // Clicking a highlighted word opens more about it in a menu.

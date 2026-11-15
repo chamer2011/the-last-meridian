@@ -53,3 +53,12 @@
   .mapedit-view { max-height: 62vh; }
   .mapedit-side { overflow: visible; }
 }
+
+/* Pieces of the bought packs chosen lately: a small picture and a name each, one to a line. */
+.mapedit-packs { display: flex; flex-direction: column; gap: 3px; }
+.mapedit button.mapedit-pack { display: flex; align-items: center; gap: 6px; padding: 2px 6px; font-size: 12.5px; line-height: 1.25; }
+.mapedit button.mapedit-pack::before, .mapedit button.mapedit-pack::after { content: none; }
+.mapedit button.mapedit-pack[aria-pressed="true"] .pieces-thumb { outline: 1px solid var(--bg); }
+@media (max-width: 1000px) {
+  .mapedit-packs { flex-direction: row; flex-wrap: wrap; align-items: center; }
+}

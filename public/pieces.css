@@ -68,3 +68,13 @@ span.pieces-none { display: flex; align-items: center; justify-content: center; 
   .pieces-grid { flex: 1 1 0; min-height: 0; }
   .pieces-open { max-height: 52vh; }
 }
+
+/* What a piece is on a deck: its size, with a button either side of each number. */
+.pieces-size { color: var(--bright); padding: 0 3px; font-size: 12.5px; }
+.pieces button.pieces-step { padding: 1px 8px; text-align: center; }
+.pieces-belongs .pieces-label:not(:first-child) { margin-left: 14px; }
+/* Opened to choose a piece for a deck: no ticks, every card as bright as the next. */
+.pieces.picking .pieces-tick, .pieces.picking #pieces-undo { display: none; }
+.pieces.picking button.pieces-pick { border-style: solid; }
+/* A piece's picture, small, outside the window (the Map editor's list). */
+.pieces-thumb { display: block; flex: 0 0 auto; width: 30px; height: 30px; background: #4b545d; }

@@ -12,7 +12,8 @@
 
 import { el } from "./dom.js";
 import { FACINGS, FACING_WORDS, FURNITURE, FURNITURE_BY_ID, footprintOf, looksOf, squaresOf } from "./furniture.js";
-import { openPieces } from "./pieces.js";
+import { openPieces, pieceThumb } from "./pieces.js";
+import { loadPack } from "./pixel-art.js";
 
 const state = {
   maps: [], place: null, level: null, doc: null, cells: [],
@@ -527,10 +528,49 @@ function addAt(kind, at) {
 // A seat put down beside a console, a desk or a table faces it; anything else faces the camera, until it's turned.
 const MACHINES = "=^<>(){}&[]";
 function facingFor(kind, at) {
-  if (kind !== "chair" && kind !== "command-chair") return "s";
-  const toward = (x, y) => MACHINES.includes(state.cells[y]?.[x] ?? " ") || (state.doc.furniture ?? []).some((one) => ["table", "long-table", "desk", "plot-table"].includes(one.kind) && squaresOf(one).some(([sx, sy]) => sx === x && sy === y));
+  // A chair turns to the console or the table it's put beside, and so does a seat of the packs.
+  if (kind !== "chair" && kind !== "command-chair" && !(FURNITURE_BY_ID[kind]?.pack && FURNITURE_BY_ID[kind].seat)) return "s";
+  const toward = (x, y) => MACHINES.includes(state.cells[y]?.[x] ?? " ") || (state.doc.furniture ?? []).some((one) => (["table", "long-table", "desk", "plot-table"].includes(one.kind) || FURNITURE_BY_ID[one.kind]?.what === "table") && squaresOf(one).some(([sx, sy]) => sx === x && sy === y));
   for (const [facing, dx, dy] of [["n", 0, -1], ["s", 0, 1], ["e", 1, 0], ["w", -1, 0]]) if (toward(at.x + dx, at.y + dy)) return facing;
   return "n";
+}
+
+// The pieces of the bought packs chosen lately, newest first, kept from one visit to the next: the ones the game
+// still knows as furniture.
+const RECENT = "meridian-mapedit-pieces";
+function recentPieces() {
+  if (!state.recent) {
+    try {
+      state.recent = JSON.parse(localStorage.getItem(RECENT) ?? "[]").filter((id) => typeof id === "string").slice(0, 8);
+    } catch {
+      state.recent = [];
+    }
+  }
+  return state.recent.map((id) => FURNITURE_BY_ID[id]).filter((kind) => kind?.pack);
+}
+
+// Opens the Pieces window to choose one of the packs' pieces that are on the ship, and makes it the furniture that a
+// click on the deck puts down.
+function choosePackPiece() {
+  openPieces({
+    pick: async (piece) => {
+      if (!FURNITURE_BY_ID[piece.id]) await loadPack();
+      const kind = FURNITURE_BY_ID[piece.id];
+      if (!kind) {
+        say("The game doesn't know that piece as furniture yet. Close the game and open it again, then choose it.", false);
+        return;
+      }
+      state.recent = [piece.id, ...(state.recent ?? []).filter((id) => id !== piece.id)].slice(0, 8);
+      try {
+        localStorage.setItem(RECENT, JSON.stringify(state.recent));
+      } catch {
+        // It's only remembered for this visit, then.
+      }
+      state.piece = piece.id;
+      setTool("furniture");
+      say(`${kind.name} chosen. Click a ${kind.wall ? "wall" : "square"} of the deck to put one there.`);
+    },
+  });
 }
 
 // Puts a piece of the furniture chosen on the left down where it's clicked, and keeps the tool, so a row of chairs is a
@@ -600,6 +640,12 @@ function drawTools() {
     tool("thing", "A thing", "Click a square to put down something to look at and use"),
     tool("writing", "Words on a wall", "Click where the words begin"),
     tool("label", "A name on the deck", "Click where the name begins"),
+    el("h3", {}, "From the packs"),
+    el("div", { class: "mapedit-packs" },
+      button("Choose a piece...", { id: "mapedit-choose", title: "Any piece of the two packs that's on the ship, to put down like the furniture above", onclick: choosePackPiece }),
+      recentPieces().map((kind) => el("button", { type: "button", class: "mapedit-pack", title: `${kind.about}. Click a ${kind.wall ? "wall" : "square"} to put one there`, "aria-pressed": state.tool === "furniture" && state.piece === kind.id ? "true" : "false", onclick: () => { state.piece = kind.id; setTool("furniture"); } },
+        kind.faces?.s ?? kind.picture ? pieceThumb(kind.faces?.s ?? kind.picture, kind.name) : el("span", { class: "mapedit-swatch", style: `background:${kind.wall ? "#86dcff" : kind.blocks ? "#c4a06e" : "#8ca5cd"}` }),
+        el("span", {}, kind.name)))),
     el("h3", {}, "Furniture"),
     el("div", { class: "mapedit-paints" }, FURNITURE.map((kind) => el("button", { type: "button", class: "mapedit-paint", title: `${kind.about}. Click a ${kind.wall ? "wall" : "square"} to put one there`, "aria-pressed": state.tool === "furniture" && state.piece === kind.id ? "true" : "false", onclick: () => { state.piece = kind.id; setTool("furniture"); } },
       el("span", { class: "mapedit-swatch", style: `background:${kind.wall ? "#86dcff" : kind.blocks ? "#c4a06e" : "#8ca5cd"}` }), kind.name))),

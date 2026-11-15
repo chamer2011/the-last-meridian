@@ -278,7 +278,10 @@ function picturesIn(root, file) {
   const inPack = path.relative(root, file).split(path.sep).join("/");
   const size = sizeOf(file);
   const sheet = SHEETS.find((one) => one.of.test(inPack));
-  if (!sheet || !size.w) return [{ file: `interiors/${inPack}`, ...size }];
+  // A picture whose name ends in a letter from A to D is one side of its piece: A is the side it shows facing the
+  // camera, and B, C and D the others.
+  const side = path.basename(file).replace(/\.png$/i, "").replace(/\([^)]*\)/g, "").replace(/_Tile$/i, "").match(/_([A-D])$/)?.[1];
+  if (!sheet || !size.w) return [{ file: `interiors/${inPack}`, ...size, ...(side ? { side } : {}) }];
   const w = Math.floor(size.w / sheet.across);
   const h = Math.floor(size.h / sheet.down);
   return Array.from({ length: sheet.frames ?? sheet.across * sheet.down }, (_, i) => ({ file: `interiors/${inPack}`, x: (i % sheet.across) * w, y: Math.floor(i / sheet.across) * h, w, h }));

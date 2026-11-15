@@ -196,9 +196,12 @@ addMapWork((place, map) => {
     const standing = new Set((level.things ?? []).map((one) => `${one.x},${one.y}`));
     for (const piece of level.furniture ?? []) {
       const room = roomNameAt(map, level, piece.x, piece.y);
-      const kind = furnitureKindOf(piece.kind, room);
+      // A piece of the packs that opens does it like one of the game's own (public/furniture.js): a steel cabinet
+      // like a locker, a fridge like shelves.
+      const like = FURNITURE_BY_ID[piece.kind]?.pack ? FURNITURE_BY_ID[piece.kind].opens : piece.kind;
+      const kind = like ? furnitureKindOf(like, room) : null;
       if (!kind || squaresOf(piece).some(([x, y]) => standing.has(`${x},${y}`))) continue;
-      const name = pieceName(piece.kind, kind);
+      const name = pieceName(like, kind);
       level.things.push({ id: `loot:${level.id}:${piece.x},${piece.y}`, name, look: kind.look ?? `${name}.`, x: piece.x, y: piece.y, holds: {}, loot: { kind: kind.name }, onPiece: piece.kind });
     }
   }

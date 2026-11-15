@@ -7,6 +7,7 @@ import path from "node:path";
 import { boardScene, boardStories, boardStory, boardWorldItem, boardWorldList, checkBoardScene, saveBoardScene, saveBoardStory, saveBoardWorldItem, saveLayout } from "./src/board.js";
 import { deckForEditing, editableMaps, tryDeck } from "./src/map-editor.js";
 import { catalogue, licensedDir, setPieces } from "./src/pieces.js";
+import { furnitureForPage, setFurniture, withFurniture } from "./src/pack-furniture.js";
 import { isOrder } from "./src/room-hooks.js";
 import { startIsOff } from "./src/role.js";
 import { ensureContactFiles, newCampaignId, saveCaptainSheet } from "./src/campaign.js";
@@ -290,10 +291,18 @@ async function mapApi(req, res, route) {
 // The catalogue of the packs' pieces, for the Map editor's Pieces window: all of it, or what the window changed
 // (src/pieces.js).
 async function piecesApi(req, res) {
-  if (req.method === "GET") return json(res, 200, catalogue());
+  if (req.method === "GET") return json(res, 200, withFurniture(catalogue()));
   if (req.method === "POST") {
+    // A change can be to a piece's tick or place (the catalogue's), to what it is as furniture, or to both.
     const body = await readBody(req);
-    return json(res, 200, setPieces(body.set));
+    const set = Array.isArray(body.set) ? body.set : [];
+    const ticks = set.filter((change) => change && (change.on !== undefined || change.place !== undefined));
+    const facts = set.filter((change) => change && "furniture" in change);
+    if (!ticks.length && !facts.length) throw new Error("Nothing to change.");
+    if (ticks.length) setPieces(ticks);
+    if (facts.length) setFurniture(facts);
+    const pieces = catalogue().pieces;
+    return json(res, 200, { on: pieces.filter((piece) => piece.on).length, of: pieces.length });
   }
   return json(res, 404, { error: "Not found." });
 }
@@ -302,6 +311,8 @@ async function handleApi(req, res, route) {
   if (route.startsWith("/api/board/")) return boardApi(req, res, route);
   if (route === "/api/map" || route.startsWith("/api/map/")) return mapApi(req, res, route);
   if (route === "/api/pieces") return piecesApi(req, res);
+  // The packs' pieces as furniture, for the page's own list of it (public/furniture.js) and its pictures.
+  if (route === "/api/furniture" && req.method === "GET") return json(res, 200, { furniture: furnitureForPage() });
   if (req.method === "GET" && route === "/api/state") {
     let shown = null;
     try {

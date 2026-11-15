@@ -22,6 +22,8 @@
 // for the second pack's where that one isn't in the folder. Bunks and cots stay the game's own, since people are drawn
 // lying in them under their blankets, and so do the wall's windows and screens, which show the ship's power.
 
+import { FURNITURE_BY_ID, furnitureVersion, setPackFurniture } from "./furniture.js";
+
 const BASE = "licensed/isospace/";
 const SHEETS = { level: "IsoSpace_Level.png", assets: "IsoSpace_Assets.png", doors: "IsoSpace_Doors.png" };
 const INTERIORS = "licensed/interiors/";
@@ -81,7 +83,92 @@ const WALL_DOWN_RIGHT = { cells: [0, 1, 2], corners: [[40, 124], [104, 92], [40,
 // end's foot and the left end's top. Cells 5 to 7 of the wall row.
 const WALL_DOWN_LEFT = { cells: [5, 6, 7], corners: [[24, 92], [88, 124], [24, 4]] };
 
-const state = { on: false, look: "dark", images: null, files: {}, loaded: false, failed: false, second: null, tops: {}, boxes: {}, listeners: new Set() };
+const state = { on: false, look: "dark", images: null, files: {}, loaded: false, failed: false, second: null, tops: {}, boxes: {}, listeners: new Set(), pack: {}, wanted: new Set(), loading: {}, version: 0, settle: 0, scratch: null };
+
+// ---- Any piece of the packs, as furniture ---------------------------------------------------------------------------
+// The game says what each piece of the packs is (src/pack-furniture.js, world/furniture.txt), and the page's list of
+// furniture takes them in (public/furniture.js). Each is drawn from its own picture, or from the one of its four
+// sides that faces the camera, and a picture is only fetched once a piece that needs it is on a deck being drawn:
+// until it has come, the game draws a plain shape, and then the room is drawn again.
+
+// Asks the game for the packs' pieces. True if it has them; false for a game started before it knew them.
+export async function loadPack() {
+  try {
+    const response = await fetch("/api/furniture");
+    if (!response.ok) return false;
+    const { furniture } = await response.json();
+    setPackFurniture(furniture);
+    const made = (picture) => (picture ? { id: `pk:${picture.file}|${picture.x ?? ""},${picture.y ?? ""}`, file: `pk:${picture.file}`, path: picture.file, ...(picture.x === undefined ? {} : { x: picture.x, y: picture.y, w: picture.w, h: picture.h }) } : null);
+    state.pack = {};
+    for (const one of furniture) {
+      if (one.faces) state.pack[one.id] = { faces: Object.fromEntries(Object.entries(one.faces).map(([facing, picture]) => [facing, made(picture)])) };
+      else if (one.picture) state.pack[one.id] = { picture: made(one.picture) };
+    }
+    changed();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Part of every picture's name, with pixelKey: it changes when the packs' pieces are told afresh and when a picture
+// one of them was waiting for has come, so the room is drawn again with it.
+export const packKey = () => `${furnitureVersion()}.${state.version}`;
+
+// Which way a flat thing's picture leans: "s" if its top runs down to the right, as on a wall seen from the room below
+// it on the plan, "e" if it runs down to the left, as on a wall seen from the room to its right, null if it does
+// neither (a round clock). From its pixels as a canvas gives them, and the box its solid ones fill.
+export function slantOf(data, w, box) {
+  const wide = box.x1 - box.x0 + 1;
+  if (wide < 6) return null;
+  const top = (from, to) => {
+    let best = Infinity;
+    for (let x = from; x <= to; x += 1) {
+      for (let y = box.y0; y <= box.y1 && y < best; y += 1) {
+        if (data[(y * w + x) * 4 + 3] >= 250) best = y;
+      }
+    }
+    return best;
+  };
+  const third = Math.max(1, Math.floor(wide / 3));
+  const left = top(box.x0, box.x0 + third - 1);
+  const right = top(box.x1 - third + 1, box.x1);
+  if (Math.abs(left - right) < 3) return null;
+  return left < right ? "s" : "e";
+}
+
+// Fetches a picture a piece on the deck needs, and measures it. The room is drawn again a moment after the last of a
+// batch has come.
+function want(picture) {
+  if (state.wanted.has(picture.id) || typeof Image === "undefined") return;
+  state.wanted.add(picture.id);
+  state.loading[picture.file] ??= new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => resolve(null);
+    image.src = `licensed/${picture.path.split("/").map(encodeURIComponent).join("/")}`;
+  });
+  state.loading[picture.file].then((image) => {
+    if (image) {
+      state.files[picture.file] = image;
+      state.scratch ??= document.createElement("canvas");
+      const ctx = state.scratch.getContext("2d", { willReadFrequently: true });
+      const { x = 0, y = 0, w = image.naturalWidth, h = image.naturalHeight } = picture;
+      state.scratch.width = w;
+      state.scratch.height = h;
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(image, x, y, w, h, 0, 0, w, h);
+      const { data } = ctx.getImageData(0, 0, w, h);
+      const box = solidBox(data, w, h);
+      if (box) state.boxes[picture.id] = { ...box, w, h, slant: slantOf(data, w, box) };
+    }
+    clearTimeout(state.settle);
+    state.settle = setTimeout(() => {
+      state.version += 1;
+      changed();
+    }, 120);
+  });
+}
 
 // Asked for by Settings: whether the test is on, and in which of the pack's two looks. The sheets are fetched the
 // first time it's turned on.
@@ -371,6 +458,17 @@ export function pixelDoorDepth({ x, y, along }, cellWidth) {
 // How a piece of the game's furniture is drawn from the packs: which picture, whether it's turned round, and what goes
 // with it. Null if the packs have nothing for it, or the pictures it would take aren't in the folder.
 export function pieceWay(kind, facing = "s", seed = 0, { look = state.look, has = (picture) => !!state.boxes[picture.id] } = {}) {
+  // A piece of the packs put on a deck as itself: its own picture, fetched the first time it's needed.
+  const own = state.pack[kind];
+  if (own) {
+    const picture = own.faces ? own.faces[facing] ?? own.faces.s : own.picture;
+    if (!picture) return null;
+    if (!has(picture)) {
+      want(picture);
+      return null;
+    }
+    return { picture, flip: !own.faces && (facing === "e" || facing === "w"), times: 1, on: null, lift: 0 };
+  }
   for (const way of PIECES[kind] ?? []) {
     const picture = way.faces ? way.faces[facing] ?? way.faces.s : way.any ? way.any[Math.min(way.any.length - 1, Math.floor(seed * way.any.length))] : way[look] ?? way.picture;
     if (!picture || !has(picture) || (way.on && !has(way.on))) continue;
@@ -381,12 +479,13 @@ export function pieceWay(kind, facing = "s", seed = 0, { look = state.look, has 
 
 // One picture of a piece, stood with its middle on a point of the floor (cx, cy, in tiles) or so far above it, as much
 // bigger than its own size as the pack's walls are stood up, so they keep to each other and to the game's people.
-function drawPicture(painter, picture, cx, cy, { flip = false, lift = 0, wallHeight }) {
+function drawPicture(painter, picture, cx, cy, { flip = false, lift = 0, wallHeight, middle = false }) {
   const box = state.boxes[picture.id];
   const { ctx, ratio, at, unit } = painter;
   const scale = (unit / 128) * (wallHeight / WALL_PACK_HEIGHT);
   const turn = flip ? -1 : 1;
-  const [ax, ay] = standingPoint(box);
+  // What's hung on a wall is placed by its middle; anything else by where it stands.
+  const [ax, ay] = middle ? [(box.x0 + box.x1 + 1) / 2, (box.y0 + box.y1 + 1) / 2] : standingPoint(box);
   const [px, py] = at(cx, cy, lift);
   const image = picture.file ? state.files[picture.file] : state.images[picture.sheet];
   ctx.save();
@@ -401,6 +500,17 @@ function drawPicture(painter, picture, cx, cy, { flip = false, lift = 0, wallHei
 // game draws its own. A long piece's picture is drawn several times along it, the far one first.
 export function drawPixelPiece(painter, piece, { wallHeight }) {
   if (!pixelArtOn() || piece.kind === "crate") return false;
+  const kind = FURNITURE_BY_ID[piece.kind];
+  if (kind?.pack && kind.wall) {
+    // A fitting of the packs on a wall: its picture by its middle, on the face of the wall the room sees, turned
+    // round if it was drawn for the other kind of wall.
+    const hung = pieceWay(piece.kind, "s");
+    if (!hung) return false;
+    const [wx, wy] = piece.face === "s" ? [(piece.x0 + piece.x1) / 2, piece.y1 + 0.04] : [piece.x1 + 0.04, (piece.y0 + piece.y1) / 2];
+    const lean = state.boxes[hung.picture.id].slant;
+    drawPicture(painter, hung.picture, wx, wy, { flip: Boolean(lean) && lean !== piece.face, lift: kind.high ?? 0.95, wallHeight, middle: true });
+    return true;
+  }
   const way = pieceWay(piece.kind, piece.facing ?? "s", piece.seed ?? 0);
   if (!way) return false;
   const cx = (piece.x0 + piece.x1) / 2;
@@ -410,7 +520,7 @@ export function drawPixelPiece(painter, piece, { wallHeight }) {
   const along = (from, to) => Array.from({ length: way.times }, (_, i) => from + ((i + 0.5) * (to - from)) / way.times);
   const spots = across ? along(piece.x0, piece.x1).map((x) => [x, cy]) : along(piece.y0, piece.y1).map((y) => [cx, y]);
   for (const [x, y] of spots) {
-    drawPicture(painter, way.picture, x, y, { flip: way.flip, wallHeight });
+    drawPicture(painter, way.picture, x, y, { flip: way.flip, lift: piece.lift ?? 0, wallHeight });
     if (way.on) drawPicture(painter, way.on, x, y, { lift: way.lift, wallHeight });
   }
   return true;

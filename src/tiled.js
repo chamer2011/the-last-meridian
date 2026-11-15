@@ -17,6 +17,9 @@ import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { FACINGS, FURNITURE_BY_ID, isFurniture, looksOf, squaresOf } from "../public/furniture.js";
+// The pieces of the bought packs join the furniture (world/furniture.txt) before any deck is read, since a deck can
+// have them on it.
+import "./pack-furniture.js";
 
 const TILE_WIDTH = 128;
 const TILE_HEIGHT = 64;
@@ -417,9 +420,11 @@ export function roomFromMap(map, { personId = (text) => text, rooms = null } = {
     // Furniture (public/furniture.js) stands on squares the plan already has, so it takes no letter: an object of the
     // class Furniture, named for its kind, with a facing property, on its back left square.
     if (role === "furniture") {
-      const kind = (words(props.kind).trim() || object.name.trim()).toLowerCase();
+      // A piece of the packs goes by its own id, capitals and all; the game's own are in small letters however written.
+      const said = words(props.kind).trim() || object.name.trim();
+      const kind = isFurniture(said) ? said : said.toLowerCase();
       if (!isFurniture(kind)) {
-        say(`a piece of furniture called ${kind || "nothing"} isn't one the game knows, so it's left out: it can be ${Object.keys(FURNITURE_BY_ID).join(", ")}`);
+        say(`a piece of furniture called ${kind || "nothing"} isn't one the game knows, so it's left out: it can be ${Object.values(FURNITURE_BY_ID).filter((one) => !one.pack).map((one) => one.id).join(", ")}, or a piece of the packs that world/furniture.txt has a line for`);
         continue;
       }
       let facing = words(props.facing).trim().toLowerCase() || "s";
@@ -570,9 +575,12 @@ export function roomFromMap(map, { personId = (text) => text, rooms = null } = {
     }
     const squares = squaresOf(piece);
     if (squares.some(([x, y]) => !standable(plan[y]?.[x] ?? VOID))) say(`${where} stands on something that isn't floor`);
-    const shared = squares.map(([x, y]) => under.get(`${x},${y}`)).find(Boolean);
+    // What lies on the floor goes under whatever stands there, and a small thing sits on a table: neither takes the
+    // square for itself.
+    const shares = kind.pack && (kind.what === "rug" || kind.what === "small");
+    const shared = shares ? null : squares.map(([x, y]) => under.get(`${x},${y}`)).find(Boolean);
     if (shared) say(`${where} is on top of the ${shared}`);
-    for (const [x, y] of squares) under.set(`${x},${y}`, `${kind.name.toLowerCase()} at ${piece.x},${piece.y}`);
+    if (!shares) for (const [x, y] of squares) under.set(`${x},${y}`, `${kind.name.toLowerCase()} at ${piece.x},${piece.y}`);
   }
   // A room whose last tiles have nothing on their front halves ends half a tile sooner, as the game's squares can.
   if (plan.length && plan[0].length > 1 && plan.every((row) => row.at(-1) === VOID)) for (const row of plan) row.pop();

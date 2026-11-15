@@ -37,6 +37,27 @@ export const FURNITURE = [
 export const FURNITURE_BY_ID = Object.fromEntries(FURNITURE.map((one) => [one.id, one]));
 export const isFurniture = (kind) => Object.hasOwn(FURNITURE_BY_ID, kind);
 
+// Pieces from the bought pixel-art packs join the list here, under their own ids ("interiors/Chairs/GChair_9"), once
+// the game has read what each is from world/furniture.txt (src/pack-furniture.js on the game's side; the page asks
+// the game for them). They have the same facts as the pieces above, and besides: pack (true), what (seat, bed, table,
+// stand, opens, wall, rug or small), high (how tall, in tiles), and opens (the piece of the game's own whose
+// containers something to open has). FURNITURE stays the game's own pieces; these are only found by id.
+const packIds = new Set();
+let packVersion = 0;
+export function setPackFurniture(list) {
+  for (const id of packIds) delete FURNITURE_BY_ID[id];
+  packIds.clear();
+  for (const one of list ?? []) {
+    if (!one?.id || Object.hasOwn(FURNITURE_BY_ID, one.id)) continue;
+    FURNITURE_BY_ID[one.id] = one;
+    packIds.add(one.id);
+  }
+  packVersion += 1;
+}
+export const packFurniture = () => [...packIds].map((id) => FURNITURE_BY_ID[id]);
+// Goes up whenever the packs' pieces are told afresh, so a picture drawn with the old ones can be told from a new one.
+export const furnitureVersion = () => packVersion;
+
 // How many squares across and down a piece takes, facing the way it faces.
 export function footprintOf(piece) {
   const kind = FURNITURE_BY_ID[piece?.kind];

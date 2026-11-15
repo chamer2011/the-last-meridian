@@ -359,9 +359,12 @@ export function deckProblems(level, id = "deck") {
     }
     const squares = squaresOf(piece);
     if (squares.some(([x, y]) => !standable(x, y))) out.push({ words: `The ${name} is standing on something that isn't floor.`, ...at });
-    const on = squares.map(([x, y]) => under.get(`${x},${y}`)).find(Boolean);
+    // What lies on the floor goes under whatever stands there, and a small thing sits on a table: neither takes the
+    // square for itself.
+    const shares = kind.pack && (kind.what === "rug" || kind.what === "small");
+    const on = shares ? null : squares.map(([x, y]) => under.get(`${x},${y}`)).find(Boolean);
     if (on) out.push({ words: `The ${name} is on top of the ${on}.`, ...at });
-    for (const [x, y] of squares) under.set(`${x},${y}`, name);
+    if (!shares) for (const [x, y] of squares) under.set(`${x},${y}`, name);
     const post = kind.blocks && compiled.homes.find((home) => squares.some(([x, y]) => x === home.x && y === home.y));
     if (post) out.push({ words: `The ${name} is on ${WORLD_CHARACTERS[post.id]?.name ?? post.label ?? post.id}'s post, and they'd stand inside it.`, ...at });
   }
