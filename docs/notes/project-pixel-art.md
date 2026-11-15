@@ -87,6 +87,45 @@ At their "Start step 3". Built, and untried by them.
 - **The roadmap page** (version 6 of it) marks step 3 "Ready to try", and says the picture is under the plan and why. Its tick is left for them.
 - **Known**: the first picture of a deck takes a moment (its tiles are drawn as they come into sight); the picture can't be zoomed or dragged; on a short window the plan and picture share little height.
 
+## How things are placed (2026-11-15, asked before step 4)
+
+Before step 4 the owner asked: "Yes, start step 4 but first could you check on the internet how rooms are design for spaceship and how object are placed in regards of each other so that the objects don't feel weirdly placed". This is what was read and the rules taken from it. Every room of the rework is laid out by them, in this order, and the roadmap page has them in plain words ("How things are placed").
+
+What was read:
+
+- The IMO's guidelines on the layout of a ship's bridge (MSC/Circ.982, https://puc.overheid.nl/nsi/doc/PUC_2142_14/1): workstations by task, steering on the centre line, consoles low enough to see over (1.2 m), a clear way of 1.2 m from one side of the bridge to the other and 0.7 m between stations, 0.8 to 1 m between the front wall and the consoles, the floor in front of a station belonging to it and not to the passage, dim interiors without strong colours.
+- NASA's habitability work, as far as search results give it, since the standards' own PDFs couldn't be read here (https://www.nasa.gov/reference/8-0-architecture-vol-2, https://ntrs.nasa.gov/citations/20220013669): private kept from public, noisy from quiet, dirty from clean; rooms grouped by what's done in them; stowage never in a path.
+- Clearances from interior design (https://www.studiomatrx.org/students/interior-design-foundations/activity-space-clearances-interiors, https://www.officefurniture2go.com/tips/desk-space-planning.html): 75 to 90 cm behind a chair someone uses, 90 to 105 cm for a way people walk.
+- Set dressing as artists for games and films teach it (https://morphic.com/3d-glossary/set-dressing, https://80.lv/articles/creating-a-gritty-industrial-cyberpunk-2077-inspired-room-in-ue5): the layout first and the dressing last, small things in clusters where someone would leave them, perfect lines broken a little, wear where hands and feet go, never the same prop twice side by side, light and contrast to lead the eye.
+- Studies of control rooms (https://link.springer.com/article/10.1007/s10111-020-00654-9): the operators at the edge facing their screens, and whoever commands in the middle, where they see everyone.
+
+The rules, in the game's own measures. A square is half a tile across and a whole tile down, about a metre by two. The camera looks from the south-east, so the far walls are the top one and the west one, and a near wall (bottom, east) hides about a tile of floor behind it.
+
+1. **What the room is for comes first.** Every post is a station: a surface, a seat, and what the person looks at, facing it. Whoever commands sees every station. Stations that work together stand together.
+2. **Then how people move.** A clear way two squares wide from every door to the middle of the room, a square free behind every seat and between neighbouring stations, nothing within a square of a doorway.
+3. **Tall things against walls.** In rows, and on the far walls, where they hide nothing. Nothing taller than a table in the middle of a room or along a near wall. Nothing in front of a window or of a screen someone reads. Fittings of one kind hang at one height: cables and pipes at 1.4 to 1.45, signs and screens at 1.05, first aid at 0.95, an extinguisher at 0.6.
+4. **Order.** Things line up with the room. A room that's commanded from is the same either side of its middle line. A module repeated (terminal and seat, cabinet and rack) reads as built on purpose. Bare floor is left bare: a room is full when its walls are, not its floor.
+5. **Dressing last.** Small things in twos and threes where their user would leave them, personal things only at someone's own place (which is where the owner's Japanese pieces and game consoles go), the room's light cold and a station's light warm. A piece with four sides for anything that has to face a way.
+
+## Step 4 of the roadmap, begun: the bridge laid out by the rules, on a copy (2026-11-15)
+
+At their "Yes, start step 4". The roadmap page promises the bridge "as a picture first and then in the game", so nothing of the owner's is changed yet: the layout exists as two pictures, before and after, sent to them and shown under step 4 on the page, and as a scratch script that runs the Map editor's own save on copies of the maps, the life file and the furniture file. It's set down here so that it can be made again.
+
+Deck 1's bridge is squares x 3 to 44, y 2 to 29. Its main space is y 2 to 18, with the sensor pit and the ready room aft of it (not touched so far); the windows are in the top wall (y 1) at x 20 to 28, the door at (45, 15 to 16), the start at (25, 15).
+
+- **Out:** the three console banks (the plan's `[`, `]` and `=` in rows 2 to 18, 26 squares, made floor), the furniture that stood in the main space, the three chairs left behind in row 19, and the wall screens at (35,1) and (40,1). **Kept:** the windows, and the owner's own swivel chair at (32,12).
+- **The helm row** faces the windows on the room's middle line (x 24): `isospace/terminal` at (21,7), (24,7) and (27,7), `interiors/Chairs/GChair_9` facing north at (21,8), (24,8) and (27,8). Pell's post, (24,8), didn't move.
+- **Two watch desks**, the same distance either side of the line: `interiors/Desks/Office_Main_Table_Desk` at (31,11) with `Computer/BendedScreen` (31,11), `Computer/NewKeyboard` (32,11) and `Kitchen/Mug_Red` (33,11), and Sorel's post on the owner's chair, (32,12); the same desk at (15,11) with `Computer/OldPC` (15,11), `Computer/OldKeyboard` (16,11) and `Consoles/SNES` (17,11), and a chair at (16,12) facing north.
+- **On the line:** the plot table at (24,11) with `Office/Rolled_Papers` at (25,11), `Carpets/Carpet_Modern` at (24,13), the captain's chair at (24,14), the cracked repeater at (22,14), and Voss's post at (27,11).
+- **The far wall,** starboard of the windows: `interiors/Lab/Server_2` at (36,2) and (40,2), `isospace/rack-dark` at (38,2) and (42,2); above them on the wall `Lab/Cable_Horizontal_1` at (36,1) and (40,1), `Lab/Cable_Horizontal_2` at (38,1) and (42,1); `wall-screen` at (30,1) and (32,1); `Office/Fire_Extinguisher` at (34,1), `Wall_Decoration/Poster_6` at (44,1), `Office/Medical_Kit_Ani` at (19,1).
+- **The bow:** an `isospace/terminal` at (8,17) for Vey (post (8,18)); `isospace/cases`, `crate-dark`, `drums` and `crate-dark` on the first square of floor inside the hull on rows 3 to 6; `Lab/Pipe_Vertical` up the hull wall of rows 10 and 12.
+- **Moved with them:** the forward viewport's marker to (29,2), since under a window it hides the window; the data chip to (34,11); the spots helm-night (21,8), comms-night (32,12) and plot-table (26,12).
+- **Heights,** in the copy of `world/furniture.txt` only: the cables 1.4, the horizontal pipes 1.45, `Poster_6` and `Poster_1` 1.05, `Fire_Extinguisher` 0.6, `Medical_Kit_Ani` 0.95, `Screen_Small` and `BigTv_Ani` 1.05.
+
+The deck's own check passes with it (nothing out of reach). **To settle before it goes into the game:** a fight counts anything in the way as cover (`lowAt` in `src/live-fight.js` reads the level's solid squares, furniture among them), but there are fewer such squares than the banks had, and the opening battle is won by holding the bridge, so it wants playing through a few dozen times; the tests that describe today's bridge; and Voss, who in the picture still stands by the captain's chair, so a spot of his day isn't moved yet.
+
+**What the pictures show that placing alone can't mend:** the main space is far bigger than its stations need, about 42 squares by 17, so most of the floor stays bare however well things stand. The owner's choice for room shapes is to keep each room where it is and refit its walls and size to the pieces, so tightening it is the next part of step 4, with the rest: the straight bow (their choice), the wall height (their one unanswered choice; my pick is the packs' own), doors a tile wide, floors by room, cold light with warm lamps at the stations, a worn path, the wood and orange pieces recoloured one at a time (dark Japanese wood stays as it is), the sensor pit and the ready room, and the medbay at two or three strengths of light for them to pick from.
+
 ## Known
 
 - The bow's stepped walls read as a row of separate units, since every step shows its own slab.
