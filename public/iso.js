@@ -7,6 +7,7 @@
 import { el } from "./dom.js";
 import { FURNITURE_BY_ID, footprintOf } from "./furniture.js";
 import { hideLoading, showLoading } from "./loading.js";
+import { PIXEL_UNIT, drawPixelFloors, drawPixelWall, pixelArtOn, pixelKey } from "./pixel-art.js";
 
 // A console square is about twice as tall as it's wide, so two columns make one tile.
 export const CELL_WIDTH = 0.5;
@@ -1369,6 +1370,13 @@ function drawBlock(painter, block, materials) {
     return;
   }
   if (style === "wall") {
+    // A wall its full height, in the pixel-art test, is the pack's: whether the squares beside it show the same face
+    // says whether a tile's two halves are drawn as one (public/pixel-art.js).
+    if (h === WALL_HEIGHT && pixelArtOn()) {
+      const { heights, styles } = iso.scene;
+      const fullWall = (wx) => styles[y]?.[wx] === "wall" && heights[y]?.[wx] === WALL_HEIGHT && (heights[y + 1]?.[wx] ?? 0) < WALL_HEIGHT;
+      if (drawPixelWall(painter, block, { cellWidth: CELL_WIDTH, sameWallRight: fullWall(x + 1), sameWallLeft: fullWall(x - 1) })) return;
+    }
     const image = materials.wall[Math.floor(hashOf(Math.floor(x / 2), y) * 3)];
     if (block.left < h) leftFace(painter, image, x, y, h, block.left, 0.05);
     if (block.right < h) rightFace(painter, image, x, y, h, block.right, 0.42);
@@ -2037,6 +2045,8 @@ function wholeUnitFor(scene, ratio, rest = iso.restUnit) {
 // The size a level is shown at with the wheel at rest: as big as it fits the view, between the smallest and the largest
 // the room is drawn at. A deck never fits, so it's the smallest.
 function restUnitFor(scene, width, height) {
+  // The pixel-art test draws at half its pack's size, wherever it is, so the pictures' pixels are halved evenly.
+  if (pixelArtOn()) return PIXEL_UNIT;
   const { bounds } = scene;
   const fit = Math.min(width / (bounds.maxU - bounds.minU + 1), height / (bounds.maxV - bounds.minV + 1));
   return Math.round(Math.min(SIZES.largest, Math.max(SIZES.smallest, fit)));
@@ -2260,6 +2270,11 @@ function drawTile(room, tx, ty) {
     for (const cell of dim) quad(cell);
     ctx.fillStyle = scaled(materials.floorColor, 0.28);
     ctx.fill();
+  }
+  // The pixel-art test lays its own floor tiles in place of the game's (public/pixel-art.js).
+  if (pixelArtOn()) {
+    drawPixelFloors(painter, [...byLook.values()].flat().map((cell) => ({ x: cell.x, y: cell.y, passage: !!cell.passage, second: cell.kind === "floor" && cell.mark !== " " && cell.mark !== mainFloor })), CELL_WIDTH);
+    byLook.clear();
   }
   for (const [image, cells] of byLook) {
     ctx.beginPath();
@@ -2768,7 +2783,8 @@ function sceneIdOf(view) {
     (view.marks ?? []).map((mark) => `${mark.kind[0]}${mark.x},${mark.y}:${mark.left}`).join(","),
   ].join("/");
   const dark = view.areas?.length ? "deck" : view.room?.dark ? "dark" : "lit";
-  return `${levelKeyOf(view)}|${view.here.drawn ?? 0}|${view.cols}x${view.lines}|${closedKey(view)}|${dark}|${darkRooms}|${parts}|${state}`;
+  // And what it's drawn with: the game's own drawing, or the pixel-art test's pictures (public/pixel-art.js).
+  return `${levelKeyOf(view)}|${view.here.drawn ?? 0}|${view.cols}x${view.lines}|${closedKey(view)}|${dark}|${darkRooms}|${parts}|${state}|${pixelKey()}`;
 }
 
 function useScene(view) {
@@ -2826,7 +2842,7 @@ function addLevel(view) {
 // A level's picture as it should be now: at the size it's shown at with the wheel at rest in a view of this size.
 function wantedPicture(entry, { width, height, ratio }) {
   const unit = wholeUnitFor(entry.scene, ratio, restUnitFor(entry.scene, width, height));
-  const key = `${entry.sceneId}|${unit}|${ratio}`;
+  const key = `${entry.sceneId}|${unit}|${ratio}|${pixelKey()}`;
   let picture = entry.pictures.find((one) => one.key === key);
   if (!picture) {
     picture = newPicture(entry.view, unit, ratio, TILE, key, { scene: entry.scene, sceneId: entry.sceneId });

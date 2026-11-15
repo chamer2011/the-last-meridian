@@ -23,6 +23,7 @@ import { focusThing, initWalk, keepClear, mapLoading, markPoint, newsBehindMenu,
 import { bringIntoRoom, fightInRoom, initLive, liveElsewhereNode, liveOn, liveSettled, resetLive } from "./live-fight.js";
 import { aimWith } from "./float.js";
 import { WRITING_SPEEDS } from "./writer.js";
+import { onPixelArt, setPixelArt } from "./pixel-art.js";
 
 const app = document.getElementById("app");
 
@@ -51,7 +52,7 @@ const ui = {
 // ---- Reading preferences ------------------------------------------------
 
 const READING_KEY = "meridian-reading";
-const reading = { font: "book", size: 17, view: "iso", tiles: "techlab", chosen: true, story: "popups", popFont: "terminal", writing: "normal", interface: "auto", deskSkin: "grey", deskCrt: "light" };
+const reading = { font: "book", size: 17, view: "iso", tiles: "techlab", isoArt: "drawn", pixelLook: "dark", chosen: true, story: "popups", popFont: "terminal", writing: "normal", interface: "auto", deskSkin: "grey", deskCrt: "light" };
 const textSizes = { min: 13, max: 26 };
 
 function applyReading() {
@@ -61,6 +62,8 @@ function applyReading() {
   document.documentElement.dataset.deskSkin = reading.deskSkin;
   document.documentElement.dataset.deskCrt = reading.deskCrt;
   document.documentElement.style.setProperty("--story-size", `${reading.size}px`);
+  // The pixel-art test draws the isometric room in a bought pack's pictures (public/pixel-art.js).
+  setPixelArt({ on: reading.view === "iso" && reading.isoArt === "pixel", look: reading.pixelLook });
   applyInterface();
 }
 
@@ -78,6 +81,8 @@ function loadReading() {
     // A view picked before the game went isometric doesn't count. One picked since then does.
     if (saved?.chosen && (saved.view === "classic" || saved.view === "walk" || saved.view === "iso" || saved.view === "top")) reading.view = saved.view;
     if (saved?.tiles === "techlab" || saved?.tiles === "interior") reading.tiles = saved.tiles;
+    if (saved?.isoArt === "drawn" || saved?.isoArt === "pixel") reading.isoArt = saved.isoArt;
+    if (saved?.pixelLook === "dark" || saved?.pixelLook === "light") reading.pixelLook = saved.pixelLook;
     if (saved?.story === "popups" || saved?.story === "box" || saved?.story === "panel") reading.story = saved.story;
     if (saved?.popFont === "terminal" || saved?.popFont === "book") reading.popFont = saved.popFont;
     if (saved?.writing in WRITING_SPEEDS) reading.writing = saved.writing;
@@ -99,7 +104,7 @@ function changeReading(change) {
   }
   applyReading();
   // Switching the story view changes the whole screen, not just the menu it's in.
-  if (change.view || change.story || change.tiles) render();
+  if (change.view || change.story || change.tiles || change.isoArt) render();
   else renderMenus();
 }
 
@@ -730,6 +735,8 @@ document.addEventListener("keydown", (e) => {
 });
 window.addEventListener("resize", applyInterface);
 document.addEventListener("fullscreenchange", () => renderMenus());
+// Settings says whether the pixel-art test's pack was found, once the page knows.
+onPixelArt(() => renderMenus());
 
 initStory({
   // Clicking a highlighted word opens more about it in a menu.

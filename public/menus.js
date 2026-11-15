@@ -8,6 +8,7 @@ import { shipMenu } from "./ship.js";
 import { commandMenu } from "./command.js";
 import { dealerSections, rigMenu } from "./rig.js";
 import { oddsFor } from "./story.js";
+import { pixelArtFound } from "./pixel-art.js";
 
 // What the menus need from the main screen. Set once, when the page loads.
 let app;
@@ -267,14 +268,18 @@ function settingsMenu() {
         String(reading.size),
         el("button", { "aria-label": "Larger story text", disabled: reading.size >= textSizes.max, onclick: () => changeReading({ size: reading.size + 1 }) }, "+")),
       el("div", { class: "row small" }, "Story view:",
-        el("button", { class: reading.view === "iso" ? "primary" : "", "aria-pressed": String(reading.view === "iso"), onclick: () => changeReading({ view: "iso" }) }, "Isometric"),
+        el("button", { class: reading.view === "iso" && reading.isoArt !== "pixel" ? "primary" : "", "aria-pressed": String(reading.view === "iso" && reading.isoArt !== "pixel"), onclick: () => changeReading({ view: "iso", isoArt: "drawn" }) }, "Isometric"),
+        el("button", { class: reading.view === "iso" && reading.isoArt === "pixel" ? "primary" : "", "aria-pressed": String(reading.view === "iso" && reading.isoArt === "pixel"), title: "A test: the isometric room with its floors and walls in a pixel-art pack", onclick: () => changeReading({ view: "iso", isoArt: "pixel" }) }, "Pixel art"),
         el("button", { class: reading.view === "walk" ? "primary" : "", "aria-pressed": String(reading.view === "walk"), onclick: () => changeReading({ view: "walk" }) }, "Walk-around"),
         el("button", { class: reading.view === "top" ? "primary" : "", "aria-pressed": String(reading.view === "top"), title: "A test: the room seen from above, in pictures from a free tileset", onclick: () => changeReading({ view: "top" }) }, "Top-down"),
         el("button", { class: reading.view === "classic" ? "primary" : "", "aria-pressed": String(reading.view === "classic"), onclick: () => changeReading({ view: "classic" }) }, "Classic")),
       reading.view === "top" && pickRow("Top-down art:", "tiles", [["techlab", "Tech Lab"], ["interior", "Sci-fi Interior"]]),
+      reading.view === "iso" && reading.isoArt === "pixel" && pickRow("Pixel art look:", "pixelLook", [["dark", "Dark"], ["light", "Light"]]),
+      reading.view === "iso" && reading.isoArt === "pixel" && pixelArtFound() === false && muted("The pixel-art pack isn't in the game's folder (licensed/isospace), so the room is drawn as usual."),
       folded("settings-views", "What the story views mean",
         muted("Isometric shows the room you're in, seen from an angle, wherever you are, and you can walk around and click on people and things. The story comes up over the room a piece at a time: click anywhere to go on. Walking is free. The clock runs while you explore, because everyone lives their own day, and the buttons at the top of the room pause it or speed it up. The clock stops while you talk to someone."),
         muted("Top-down is a test of how the game would look seen from above in ready-made pictures: the walk-around view with its plan drawn in a free tileset, Tech Lab or Sci-fi Interior. The furniture is drawn in simple shapes, since the free packs have none, and fights open in their own window."),
+        muted("Pixel art is a test too: the isometric view with its floors and walls drawn in the Isometric Space Station pack, dark or light, and everything else as usual. The room is shown a little bigger, so the pack's pixels stay even."),
         muted("Walk-around is the same thing, drawn in console art, with the story under it. Classic gives the story the whole window, and only the story moves the clock. Popup font is for the story over the room, and Story font is for the whole story, Classic and the panel under the room."))),
     folded("settings-display", "Display",
       pickRow("Interface size:", "interface", [

@@ -7,3 +7,6 @@ data/
 backups/
 # Claude's own settings for this computer
 .claude/settings.local.json
+
+# Art bought for this computer only: its licence forbids giving the files away, so it never goes to GitHub
+licensed/
