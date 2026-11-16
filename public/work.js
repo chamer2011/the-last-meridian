@@ -43,7 +43,7 @@ function orders(board) {
   return el("div", { class: "work-orders" },
     first && el("div", { class: "work-first" },
       el("strong", { class: first.part ? "work-part" : "" }, `${first.title}.`),
-      el("span", { class: "small" }, first.by ? ` ${first.by}'s order since ${first.since}: ${first.why}.` : ` ${upperFirst(first.why)}, so nobody decides what comes first.`)),
+      el("span", { class: "small" }, first.by ? ` ${first.by}'s order since ${first.since}: ${first.why}.` : first.story ? ` Since ${first.since}: ${first.why}${/[.!?]$/.test(first.why) ? "" : "."}` : ` ${upperFirst(first.why)}, so nobody decides what comes first.`)),
     levels && el("div", { class: "small" },
       el("span", { class: "post-label" }, "What stores want "),
       levels.by ? `is set by ${levels.by}, who raises it after a store has run low.` : `stays as it is: ${levels.why}.`));
@@ -70,7 +70,7 @@ function jobRow(job) {
     el("span", { class: "work-what" }, job.what, job.why ? el("span", { class: "tone-bad" }, `, ${job.why}`) : null),
     el("span", { class: `work-status small${job.stuck ? " tone-bad" : job.busy || job.mine ? "" : " muted"}` }, job.status),
     job.canTake ? el("button", { class: "small", title: "The crew leaves it to you for a while, and it's shown in the corner", onclick: () => order({ action: "mine", id: job.id }) }, "I'll do it")
-      : job.mine ? el("button", { class: "small", title: "Give it back to the crew", onclick: () => order({ action: "leave", id: job.id }) }, "Leave it to the crew")
+      : job.mine && !job.promised ? el("button", { class: "small", title: "Give it back to the crew", onclick: () => order({ action: "leave", id: job.id }) }, "Leave it to the crew")
         : null);
 }
 
@@ -83,5 +83,5 @@ export function workMenu() {
     section("Stores, has / wants", board.stores.map(storeRow),
       muted("A filled square is something in the store, and an empty one something it still wants. A job comes up whenever a store has fewer than it wants, and it's fetched from the nearest store that can spare it.")),
     section("Jobs, the most urgent first", board.jobs.length ? board.jobs.map(jobRow) : muted("Every store has what it wants, and nothing's waiting to be mended."),
-      muted("!! is urgent, and ! is in the part of the ship that's been put first. Point at a job for who does that kind of work. I'll do it holds a job for you: carry the things into the store yourself, or walk up to what's broken and mend it by hand, and the crew takes it back if you don't get to it.")));
+      muted("!! is urgent, and ! is in the part of the ship that's been put first. Point at a job for who does that kind of work. I'll do it holds a job for you: carry the things into the store yourself, or walk up to what's broken and mend it by hand, and the crew takes it back if you don't get to it. A job left waiting too long, with nobody able to do it or nothing aboard to do it with, is brought to you by the officer that part of the ship belongs to.")));
 }

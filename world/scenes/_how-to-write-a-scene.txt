@@ -184,6 +184,19 @@ Lines starting with * happen when the part begins, and the player sees each as a
     * request medicine: The reason              (someone has that request to ask now: see THE WRITTEN STORY, under
     * request medicine off: The reason           REQUESTS; off keeps it from being asked, so a scene of yours can
     * request medicine on: The reason            take that trouble over, and on lets it be asked again)
+    * work first engines: The reactor comes before everything   (the Meridian's work board, as the story orders it:
+                                                that part of the ship first, medbay, engines, galley or repairs, or
+                                                none for as it comes. The words after the colon are what the Work page
+                                                says for why. It stands a day, and then the first officer looks again)
+    * work job sweep_bay in The Lighter Bay, 2 hours, by the deckhands: Sweep the Lighter Bay
+                                                (a job of the story's own on the work board: a name of its own, the
+                                                room, how long it takes (minutes or hours, a day at most) and who does
+                                                it, first to last: jobs, posts, the spare hands or someone by name.
+                                                Add urgent after the people if it can't wait. The words after the
+                                                colon are the job as the Work page says it. Someone walks there and
+                                                does it; the player can do it there themselves, under You can. Done,
+                                                it leaves the fact work_sweep_bay_done)
+    * work job sweep_bay off: The reason        (taken off the board, done or not)
     * mutiny give ground: The reason      (the ship's chain of command, for the scenes it plays: give ground,
                                           calmed, arrest, crushed, step down, refused, taken, released, join,
                                           stay out or warn; world/command/_how-to-write-command.txt says what each does)
@@ -277,6 +290,17 @@ and join several with "and":
                                      with a leg to stand on (one broken leg is a hobble; two aren't) and the
                                      blood to stand. can't walk for the opposite. A limb lost in a fight or to
                                      rot leaves a fact, tarrow_lost_a_limb, for flag to ask about.
+    work waiting                     A job on the Meridian's work board has been left waiting: it's asking for
+                                     a hand, or for goods, and has had neither for as long as her logistics
+                                     file says (its left waiting line: half an hour if it's urgent, three
+                                     hours if it isn't). work waiting hands for want of hands, work waiting
+                                     goods for want of goods, and work waiting medbay, engines, galley or
+                                     repairs for that part of the ship.
+    work first engines               What's been put first on the work board: medbay, engines, galley or
+                                     repairs, or none for as it comes.
+    work job sweep_bay done          How a job the story gave the board stands, by its name: waiting (nobody's
+                                     on it yet), taken (someone is), done, or none (never given, or taken
+                                     off). A job done also leaves a fact, work_sweep_bay_done.
     rig program mapper               The program is on the player's rig. rig loaded for loaded now, rig part
                                      with a part's id (fitted or spare), rig link and cable, clip, optic,
                                      radio or navy (what the fitted link reaches by), rig tool for the bench.
@@ -521,6 +545,12 @@ needs:      what's wanted, one of these:
                                                   coming)
                 give 1 {thing} to {asker}         a keepsake given back to its owner (about: a
                                                   keepsake you took, which says what {thing} is)
+                see to it yourself                a job the work board has nobody for, done by the
+                                                  player (about: a job nobody can do, which says
+                                                  which job)
+                bring what's wanted               goods the work board has none of, brought aboard
+                                                  (about: a job with nothing to do it with, which
+                                                  says how many of what)
             Only what the player does counts. Taking something back out of a store takes it off.
 by:         how long they give, once the player says yes: 5 days, or 12 hours.
 gone when:  a condition that means it's been put right without the player. If it holds while the
@@ -611,6 +641,26 @@ hasn't done it yet) once the trouble isn't there any more.
                                     {room} where. It needs give 1 {thing} to {asker}. It's gone if
                                     the player puts it back where it was, and failed if they said
                                     yes and never gave it back.
+    a job nobody can do             a job on the work board that's been left waiting with nobody able
+                                    to do it (world/logistics/_how-to-write-logistics.txt, LEFT
+                                    WAITING, says when and who brings it). asks: them is whoever that
+                                    part of the ship belongs to. {trouble} is what's wrong, as a
+                                    sentence without its full stop ("There's nobody to carry for the
+                                    pantry"), and {task} what there is to do about it ("carry 4 ration
+                                    crates to the pantry"). It needs see to it yourself: yes makes
+                                    the job the player's on the Work page until it's due. It's done
+                                    once the job is over and they had a hand in it (the crates carried
+                                    in, the thing mended by hand, the fire fought, the hull patched,
+                                    a job of the story's done in its room), gone if someone got free
+                                    and did it first, and failed if the time ran out.
+    a job with nothing to do it     a job that's been left waiting for goods there are none of aboard,
+    with                            and that the ship can buy: ration crates, medicine crates, parts
+                                    crates. asks: them is whoever that part of the ship belongs to,
+                                    {trouble} what's wrong and {wanted} how many of what ("2 medicine
+                                    crates"). It needs bring what's wanted, counted like any request
+                                    to bring something aboard. It's gone if the job stops waiting
+                                    some other way. Neither of the two can be handed to a post: it
+                                    came from whoever would have been handed it.
 
 A request can take a side: what the yes and no parts' * lines do is the side taken, as when the
 rival's file has a no that the rival remembers kindly (* remember {about} you 4). {post} in a

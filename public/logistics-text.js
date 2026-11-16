@@ -44,7 +44,45 @@ export const LOGISTICS_HEADER = [
   { key: "a trip carries", path: "trip", type: "trip" },
   { key: "what comes first", path: "first", type: "decider" },
   { key: "what stores want", path: "levels", type: "decider" },
+  { key: "left waiting", path: "waiting", type: "waiting" },
+  { key: "who asks", path: "askers", type: "askers" },
 ];
+
+// "30 minutes if it's urgent, 3 hours if it isn't": how long a job stands with nobody able to do it, or nothing to
+// do it with, before whoever it belongs to brings it to the player as something to ask.
+const spanMinutes = (n, unit) => Number(n) * (/^hour/i.test(unit) ? 60 : /^day/i.test(unit) ? 1440 : 1);
+const spanWords = (minutes) => (minutes % 1440 === 0 ? `${minutes / 1440} day${minutes === 1440 ? "" : "s"}` : minutes % 60 === 0 ? `${minutes / 60} hour${minutes === 60 ? "" : "s"}` : `${minutes} minute${minutes === 1 ? "" : "s"}`);
+export function readWaiting(words) {
+  const text = String(words ?? "").trim().replace(/\.$/, "");
+  const urgent = text.match(/(\d+)\s*(minutes?|hours?|days?)\s+(?:if|when)\s+it[\u2019']?s\s+urgent/i);
+  const other = text.match(/(\d+)\s*(minutes?|hours?|days?)\s+(?:(?:if|when)\s+it\s+isn[\u2019']?t|otherwise)/i);
+  if (!urgent || !other || !Number(urgent[1]) || !Number(other[1])) return { problem: `"${words}" should say how long for urgent work and how long for the rest, such as 30 minutes if it's urgent, 3 hours if it isn't` };
+  return { urgent: spanMinutes(urgent[1], urgent[2]), other: spanMinutes(other[1], other[2]) };
+}
+export const writeWaiting = (one) => `${spanWords(one.urgent)} if it's urgent, ${spanWords(one.other)} if it isn't`;
+
+// "the chief medical officer for the medbay, the chief engineer for the engines and repairs, the quartermaster for
+// the galley, the deck chief for the rest": which post brings a job left waiting to the player, by the part of the
+// ship the job belongs to.
+export const ASK_PARTS = ["medbay", "engines", "galley", "repairs", "rest"];
+const askPart = (words) => {
+  const plain = String(words ?? "").trim().toLowerCase().replace(/^the\s+/, "");
+  return plain === "everything else" ? "rest" : plain;
+};
+export function readAskers(words) {
+  const list = [];
+  for (const piece of String(words ?? "").replace(/\.$/, "").split(/\s*[,;]\s*/).map((one) => one.trim()).filter(Boolean)) {
+    const found = piece.match(/^(.+?)\s+for\s+(.+)$/i);
+    if (!found) return { problem: `"${piece}" should be a post, then for, then a part of the ship, such as the quartermaster for the galley` };
+    const parts = found[2].split(/\s+and\s+/i).map(askPart);
+    const bad = parts.find((one) => !ASK_PARTS.includes(one));
+    if (bad) return { problem: `"${bad}" isn't a part of the ship an ask can be for: they are the medbay, the engines, the galley, repairs and the rest` };
+    list.push({ who: found[1].trim(), parts });
+  }
+  if (!list.length) return { problem: "who asks names a post for each part of the ship, such as the quartermaster for the galley, the deck chief for the rest" };
+  return { list };
+}
+export const writeAskers = (one) => one.list.map((entry) => `${entry.who} for ${entry.parts.map((part) => (part === "rest" ? "the rest" : part === "repairs" ? "repairs" : `the ${part}`)).join(" and ")}`).join(", ");
 
 // "the first officer, every hour": the post that decides something on the work board, and how often whoever holds
 // it looks at how the ship stands (sooner or later by their skill).
@@ -169,6 +207,10 @@ export function parseLogisticsText(text, id = "it") {
         else set(value, known.path, { ...read, line: n });
       } else if (known.type === "decider") {
         const read = readDecider(words);
+        if (read.problem) problem(n, read.problem);
+        else set(value, known.path, { ...read, line: n });
+      } else if (known.type === "waiting" || known.type === "askers") {
+        const read = known.type === "waiting" ? readWaiting(words) : readAskers(words);
         if (read.problem) problem(n, read.problem);
         else set(value, known.path, { ...read, line: n });
       } else set(value, known.path, words);
@@ -467,7 +509,7 @@ export function writeLogisticsText(value) {
   for (const field of LOGISTICS_HEADER) {
     const one = get(value, field.path);
     if (one === undefined || one === null || one === "") continue;
-    out.push(`${field.key}: ${field.type === "sittings" ? writeSittings(one) : field.type === "repair" ? writeRepair(one) : field.type === "making" ? writeMaking(one) : field.type === "carriers" ? one.list.join(", ") : field.type === "trip" ? writeTrip(one) : field.type === "decider" ? writeDecider(one) : one}${field.type === "number" ? ` ${field.unit}` : ""}`);
+    out.push(`${field.key}: ${field.type === "sittings" ? writeSittings(one) : field.type === "repair" ? writeRepair(one) : field.type === "making" ? writeMaking(one) : field.type === "carriers" ? one.list.join(", ") : field.type === "trip" ? writeTrip(one) : field.type === "decider" ? writeDecider(one) : field.type === "waiting" ? writeWaiting(one) : field.type === "askers" ? writeAskers(one) : one}${field.type === "number" ? ` ${field.unit}` : ""}`);
   }
   for (const part of LOGISTICS_PARTS) {
     const lines = value[part] ?? [];

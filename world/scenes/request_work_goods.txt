@@ -1,0 +1,38 @@
+# What the ship has run out of
+// Draft by the AI (Claude), 2026-11-16, not yet edited by the owner. When a job on the ship's work board has waited
+// too long for goods there are none of aboard (ration crates, medicine crates or parts crates: what the ship can
+// buy), whoever that part of the ship belongs to brings it to the captain, since only the captain buys for the ship.
+// The ship's logistics file says after how long (its "left waiting" line) and who brings what (its "who asks" line).
+// It's done when that many have come aboard by the captain's doing (bought from the Ship menu at a port, or handed in
+// at the store they're used from), and gone if the job stops waiting some other way.
+// {trouble} is what's wrong, as a sentence without its full stop, and {wanted} how many of what.
+for: the captain
+about: a job with nothing to do it with
+asks: them
+needs: bring what's wanted
+by: 5 days
+
+== ask
+@{asker}: "A word, Captain. {trouble}. We need {wanted}, and that has to come from off the ship. Any port with a market should have some."
+> I'll see to it -> yes
+> Not now -> later
+> We'll have to manage without -> no
+
+== yes
+@{asker}: "Then {wanted} it is. The work waits till then."
+
+== later
+@{asker}: "Soon, then. The work's standing still meanwhile."
+
+== no
+@{asker}: "Then it stays undone, and I'll say so to whoever asks why."
+
+== done
+@{asker}: "That's what we were short of. The work's moving again."
+* xp 15: What the ship has run out of
+
+== failed
+@{asker}: "We're still without. You said you'd see to it."
+
+== gone
+@{asker}: "Never mind. What we were short of turned up some other way."

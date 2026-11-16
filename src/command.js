@@ -21,6 +21,7 @@ import { COMMAND_FILE_PROBLEMS, ROOM_TALK, WORLD_CHARACTERS, WORLD_COMMAND, WORL
 import { BODIES, SPARE, THE_CHAIR, readHolderLine, readJobLine, readPostLine, readWorkersLine, slugOf } from "../public/command-text.js";
 import { storyHealth } from "./story-health.js";
 import { storyRig } from "./story-rig.js";
+import { storyWork } from "./work-hook.js";
 import { giveRigPart, loadIfRoom } from "./rig.js";
 import { learnWeak } from "./weak-points.js";
 
@@ -1435,6 +1436,8 @@ export function storyCommand(game, step, place = SHIP_PLACE) {
   if (step.command === "wound" || step.command === "heal" || step.command === "dies") return storyHealth(game, step);
   // The player's rig and what they know of computers, as the story changes them: src/story-rig.js.
   if (["rig_program", "rig_part", "rig_tool", "weak", "seal", "unseal"].includes(step.command)) return storyRig(game, step, { giveRigPart, learnWeak, loadIfRoom });
+  // The ship's work board, as the story changes it: src/work.js, through src/work-hook.js.
+  if (String(step.command).startsWith("work_")) return storyWork(game, step);
   const notes = [];
   const model = commandOf(place);
   if (!model) return notes;

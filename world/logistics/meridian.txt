@@ -9,6 +9,8 @@ carried by: the deckhands, the spare hands
 a trip carries: 2 ration crates, 2 fuel cells, 4 produce, 1 parts crate, 1 medicine crate
 what comes first: the first officer, every hour
 what stores want: the quartermaster, every 4 hours
+left waiting: 30 minutes if it's urgent, 3 hours if it isn't
+who asks: the chief medical officer for the medbay, the chief engineer for the engines and repairs, the quartermaster for the galley, the deck chief for the rest
 
 Stores:
 - shuttle stores in The Lighter Bay: holds 20 ration crates, 12 fuel cells, 6 parts crates: Crates strapped down where the lighter unloads them, with the manifest on a clip.

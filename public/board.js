@@ -9,7 +9,7 @@ import { el } from "./dom.js";
 import { writeStoryText } from "./story-text.js";
 import { LINE_PHRASES, PERK_NUMBERS, SPECS, writeWorldText } from "./world-text.js";
 import { KNOWN_SYSTEMS, readComputerLine, systemIdOf, writeSystemsText } from "./systems-text.js";
-import { LOGISTICS_PARTS, PART_TITLES, WORK_KINDS, readCarriers, readDecider, readLoadsLine, readMachineLine, readMaking, readRefillLine, readRepair, readSittings, readStoreLine, readTrip, readUrgencyLine, workKindWords, writeLogisticsText, writeMaking, writeRepair, writeDecider, writeSittings, writeStoreLine, writeTrip } from "./logistics-text.js";
+import { LOGISTICS_PARTS, PART_TITLES, WORK_KINDS, readAskers, readCarriers, readDecider, readLoadsLine, readMachineLine, readMaking, readRefillLine, readRepair, readSittings, readStoreLine, readTrip, readUrgencyLine, readWaiting, workKindWords, writeAskers, writeLogisticsText, writeMaking, writeRepair, writeDecider, writeSittings, writeStoreLine, writeTrip, writeWaiting } from "./logistics-text.js";
 import { COMMAND_HEADER, SPARE, readHolderLine, readJobLine, readPostLine, readWorkersLine, slugOf, writeCommandText, writeJobLine, writePostLine } from "./command-text.js";
 import { CARE, MEDBAY_KEYS, PARTS, readAccidentLine, readAccidents, readHitLine, readKindLine, readMendingLine, readOldMarks, readQueue, readShare, readStartLine, readTreatmentLine, readWeaponLine, writeHealthText, writeWoundsText } from "./health-text.js";
 
@@ -473,7 +473,7 @@ function logisticsGraph() {
   const list = [], ws = [];
   const add = (node) => { list.push(node); return node.id; };
   const numbers = P.numbers ?? {};
-  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${numbers.eats ? `Everyone aboard eats ${numbers.eats} sittings a day. ` : ""}${numbers.crateFeeds ? `A crate feeds ${numbers.crateFeeds} sittings. ` : ""}${P.sittings ? `Sittings at ${writeSittings(P.sittings)}. ` : "Four sittings a day unless this says otherwise. "}${P.repair?.n ? `A repair takes ${writeRepair(P.repair)}.` : "A repair takes nothing."}${P.making?.n ? ` Salvage makes ${writeMaking(P.making)}.` : ""}${P.carriers?.list?.length ? ` A store that doesn't say is carried for by ${P.carriers.list.join(", then ")}.` : ""}${P.trip?.list?.length ? ` A trip carries ${writeTrip(P.trip)}.` : ""}${P.first ? ` What comes first is decided by ${writeDecider(P.first)}.` : ""}${P.levels ? ` What the stores want is set by ${writeDecider(P.levels)}.` : ""}`, label: "The numbers at the top" });
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${numbers.eats ? `Everyone aboard eats ${numbers.eats} sittings a day. ` : ""}${numbers.crateFeeds ? `A crate feeds ${numbers.crateFeeds} sittings. ` : ""}${P.sittings ? `Sittings at ${writeSittings(P.sittings)}. ` : "Four sittings a day unless this says otherwise. "}${P.repair?.n ? `A repair takes ${writeRepair(P.repair)}.` : "A repair takes nothing."}${P.making?.n ? ` Salvage makes ${writeMaking(P.making)}.` : ""}${P.carriers?.list?.length ? ` A store that doesn't say is carried for by ${P.carriers.list.join(", then ")}.` : ""}${P.trip?.list?.length ? ` A trip carries ${writeTrip(P.trip)}.` : ""}${P.first ? ` What comes first is decided by ${writeDecider(P.first)}.` : ""}${P.levels ? ` What the stores want is set by ${writeDecider(P.levels)}.` : ""}${P.waiting && P.askers ? ` A job left waiting ${writeWaiting(P.waiting)}, is brought to the player: by ${writeAskers(P.askers)}.` : ""}`, label: "The numbers at the top" });
   const stores = (P.stores ?? []).map((one, i) => {
     const read = readStoreLine(one.text ?? one);
     const placed = (L.stores ?? []).find((s) => s.name === read.name);
@@ -1444,6 +1444,8 @@ function inspectLogisticsAbout(inspector) {
   const trip = textBox("edit-trip", P.trip ? writeTrip(P.trip) : "");
   const first = textBox("edit-first", P.first ? writeDecider(P.first) : "");
   const levels = textBox("edit-levels", P.levels ? writeDecider(P.levels) : "");
+  const waits = textBox("edit-waiting", P.waiting ? writeWaiting(P.waiting) : "");
+  const askers = textBox("edit-askers", P.askers ? writeAskers(P.askers) : "");
   const trouble = el("div", { class: "hint tone-bad" });
   fill(inspector, h2("The numbers at the top"),
     el("label", { for: "edit-title" }, "The place's name"), name,
@@ -1457,6 +1459,8 @@ function inspectLogisticsAbout(inspector) {
     el("label", { for: "edit-trip" }, "a trip carries: how many of each thing one person carries at a time (anything not named goes one at a time)"), trip,
     el("label", { for: "edit-first" }, "what comes first: the post that decides which part of the ship the work board sees to first, and how often they look (empty for nobody: jobs go as they come)"), first,
     el("label", { for: "edit-levels" }, "what stores want: the post that raises what a store wants after it has run low, and how often they look (empty for nobody: stores want what their lines say)"), levels,
+    el("label", { for: "edit-waiting" }, "left waiting: how long a job stands with nobody able to do it, or nothing aboard to do it with, before it's brought to the player, for urgent work and for the rest (empty, with the next line empty too, for never)"), waits,
+    el("label", { for: "edit-askers" }, "who asks: the post that brings such a job to the player, for each part of the ship: the medbay, the engines, the galley, repairs, and the rest"), askers,
     trouble,
     row(button("Keep", () => {
       const read = sittings.value.trim() ? readSittings(sittings.value) : null;
@@ -1486,6 +1490,16 @@ function inspectLogisticsAbout(inspector) {
         trouble.textContent = leads?.problem ?? sets.problem;
         return;
       }
+      const left = waits.value.trim() ? readWaiting(waits.value) : null;
+      const bring = askers.value.trim() ? readAskers(askers.value) : null;
+      if (left?.problem || bring?.problem) {
+        trouble.textContent = left?.problem ?? bring.problem;
+        return;
+      }
+      if (Boolean(left) !== Boolean(bring)) {
+        trouble.textContent = "left waiting and who asks go together: one says after how long a job is brought to the player, the other who brings it. Fill in both, or neither.";
+        return;
+      }
       P.name = name.value.trim() || P.name;
       if (draft.value.trim()) P.draft = draft.value.trim();
       else delete P.draft;
@@ -1506,6 +1520,10 @@ function inspectLogisticsAbout(inspector) {
       else delete P.first;
       if (sets) P.levels = sets;
       else delete P.levels;
+      if (left) P.waiting = left;
+      else delete P.waiting;
+      if (bring) P.askers = bring;
+      else delete P.askers;
       changed();
     }), button("Undo", () => inspect())),
     hint(`The file is world/logistics/${state.id}.txt. Every part of it is played: the stores and what they want, the machines, the sittings, the loads, the refills, the repairs, what salvage makes and the order of urgency. The how-to there says how each is written.`));
@@ -2255,9 +2273,9 @@ const REQUEST_LINES = [
   ["for", "For", "Which lives it's for: the captain, crew, outsiders, anyone aboard, anyone, or lives by name, like engine hand or dock hand. Several with commas. Without it, anyone aboard."],
   ["as", "As", "an order, for one that crew are ordered to do by the officer over them. Without it, it's a request."],
   ["when", "When", "A condition, as in a scene: while it holds, they ask. Without it, the life and the trouble decide."],
-  ["about", "About", "Whose trouble it is: a rival, someone relieved, someone in the brig, the least loyal officer, a post left empty, someone down with nobody coming, or a keepsake you took."],
+  ["about", "About", "Whose trouble it is: a rival, someone relieved, someone in the brig, the least loyal officer, a post left empty, someone down with nobody coming, a keepsake you took, or a job the work board has left waiting: a job nobody can do, or a job with nothing to do it with."],
   ["asks", "Asks", "Who asks: a post (the chief medical officer), a job (a cook), someone by name, your officer, your boss, someone here, or them (with about:)."],
-  ["needs", "Needs", "What's wanted: medicine crates aboard +2, ration crates in the pantry +2, fix a part waiting for repairs, give 1 medkit to {asker} (or give 1 {thing} to {asker}, for a keepsake you took), sell 3 ration packs to {asker}, at half again the market price, talk to the quartermaster, go to haven, pass engineering, work a shift, your word, or carry {about} to the medbay."],
+  ["needs", "Needs", "What's wanted: medicine crates aboard +2, ration crates in the pantry +2, fix a part waiting for repairs, give 1 medkit to {asker} (or give 1 {thing} to {asker}, for a keepsake you took), sell 3 ration packs to {asker}, at half again the market price, talk to the quartermaster, go to haven, pass engineering, work a shift, your word, carry {about} to the medbay, see to it yourself (for a job nobody can do), or bring what's wanted (for a job with nothing to do it with)."],
   ["by", "By", "How long they give once the player says yes: 5 days, or 12 hours."],
   ["gone when", "Gone when", "A condition that means it's been put right without the player: supply food >= 100 at {place}, or stock medicine_crate >= 4."],
   ["handed to", "Handed to", "A post the captain can leave it to instead, like the chief engineer. It needs a part called handed."],
@@ -2328,7 +2346,7 @@ const firstUp = (text) => String(text ?? "").replace(/^./, (ch) => ch.toUpperCas
 const REQUEST_PICKS = {
   for: ["the captain", "crew", "outsiders", "anyone aboard", "anyone"],
   as: ["an order"],
-  about: ["a rival", "someone relieved", "someone in the brig", "the least loyal officer", "a post left empty", "someone down with nobody coming", "a keepsake you took"],
+  about: ["a rival", "someone relieved", "someone in the brig", "the least loyal officer", "a post left empty", "someone down with nobody coming", "a keepsake you took", "a job nobody can do", "a job with nothing to do it with"],
   by: ["3 hours", "12 hours", "1 day", "2 days", "3 days", "5 days", "7 days"],
 };
 function inspectRequestNode(inspector, node) {

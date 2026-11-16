@@ -32,6 +32,7 @@ import { systemIdOf } from "../public/systems-text.js";
 import { REQUEST_STATES } from "./request-hook.js";
 import { healthHolds, readHealthAsk, readHealthEffect } from "./story-health.js";
 import { readRigAsk, readRigEffect, rigHolds } from "./story-rig.js";
+import { readWorkAsk, readWorkEffect, workHolds } from "./work-hook.js";
 
 // The place's systems, in conditions and effects: "power off in The Docks", "alarm ringing at haven", "door locked
 // The Hook". What each one's state can be, asked about and made so.
@@ -319,6 +320,14 @@ export function parseCondition(text) {
         else Object.assign(term, read);
         break;
       }
+      case "work": {
+        // The ship's work board: whether a job's left waiting, what comes first, and a job the story gave it
+        // (src/work-hook.js).
+        const read = readWorkAsk(rest);
+        if (read.problem) problems.push(`${read.problem}: "${raw.trim()}"`);
+        else Object.assign(term, read);
+        break;
+      }
       case "hurt":
       case "badly":
       case "ill":
@@ -425,6 +434,7 @@ function termHolds(game, term, helpers) {
     case "rig":
     case "computer":
     case "recoded": result = rigHolds(game, term); break;
+    case "work": result = workHolds(game, term); break;
     case "short": result = shortHolds(game, term.id); break;
     case "down": {
       // Lying where they fell, not yet in the medbay or on the way: game.down, kept by src/medbay.js.
@@ -594,6 +604,9 @@ export function parseEffect(text) {
     case "unseal":
       // The player's rig, a way into a computer, a computer sealed or opened again (src/story-rig.js).
       return readRigEffect(verb, words.slice(1), after, line);
+    case "work":
+      // The ship's work board: what comes first, and a job of the story's own (src/work-hook.js).
+      return readWorkEffect(words.slice(1), after);
     case "release": {
       // Someone let out of the brig before their days are done: * release tarrow: reason.
       const who = words.slice(1).join(" ");

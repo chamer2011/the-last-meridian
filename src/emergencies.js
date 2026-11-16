@@ -20,6 +20,7 @@ import path from "node:path";
 import { addAirSpoiler, addAreaState, addChecker, addClockWork, addDetour, addOrder, addRoomActs } from "./room-hooks.js";
 import { addMark } from "./wear.js";
 import { addWounds, keyAt, newWound, woundKindsByName } from "./body.js";
+import { notePut } from "./puts.js";
 import { SKILLS } from "./character-data.js";
 import { calledBy, rememberRequest } from "./command.js";
 import { ITEMS, LOCATIONS } from "./data.js";
@@ -387,6 +388,8 @@ addOrder("fight-fire", (game, body, { room }) => {
   // Better at it, more of it out at a go.
   fire.size -= skillRank(game, rules.skill) >= 4 ? 2 : 1;
   fire.fought = nowOf(game);
+  // A go at it with their own hands, counted for whoever asked them to see to it (src/requests.js).
+  notePut(game, "fire", fire.room, 1);
   const lines = [];
   if (fire.size <= 0) lines.push(...fireOut(game, fire, "you put it out"));
   else lines.push(`[FIRE] You beat it back: it's ${SIZES[Math.min(fire.size, SIZES.length - 1)]} now.`);
@@ -407,6 +410,7 @@ addOrder("patch-breach", (game, body, { room }) => {
   if (!patch) throw new Error("You need an emergency hull patch or a parts crate to patch it with.");
   removeItem(game, patch, 1);
   delete game.emergencies.breaches[keyOf(breach.place, breach.room)];
+  notePut(game, "breach", breach.room, 1);
   const notes = passTime(game, rules.hand / 60, "work");
   return { said: [`[BREACH] You patch the hull in ${roomName(breach.place, breach.room)} with the ${ITEMS[patch].name.toLowerCase()}. The air will come back.`, ...practice(game, "engineering", 1), ...notes].join("\n") };
 });

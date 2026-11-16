@@ -39,6 +39,8 @@ THE FILE
     a trip carries: 2 ration crates, 2 fuel cells, 4 produce    (how many of a thing one person carries at a time)
     what comes first: the first officer, every hour  (who decides which part of the ship is seen to first, and
     what stores want: the quartermaster, every 4 hours   who raises what a store wants: see THE OFFICERS' ORDERS)
+    left waiting: 30 minutes if it's urgent, 3 hours if it isn't   (how long a job stands before it's brought to
+    who asks: the quartermaster for the galley, the deck chief for the rest   the player, and by whom: see LEFT WAITING)
 
     Stores:
     - shuttle stores in The Lighter Bay: holds 20 ration crates, 12 fuel cells
@@ -218,6 +220,41 @@ page says whose order stands, since when and why.
 
 The player can take any job nobody's on, from the Work page (I'll do it): the crew leaves it alone for two
 hours, or three quarters of an hour if it's urgent, and takes it back after that.
+
+LEFT WAITING
+------------
+
+Two more lines at the top say when a job the board can't get done is brought to the player, and by whom:
+
+    left waiting: 30 minutes if it's urgent, 3 hours if it isn't
+    who asks: the chief medical officer for the medbay, the chief engineer for the engines and repairs, the quartermaster for the galley, the deck chief for the rest
+
+A job is waiting when it's asking for a hand and nobody who does that work could come, even if they were woken
+(they're laid up, called away, or on work that can't be left), or when it's asking for goods and there are none
+aboard: a store that's short with nothing to bring, a repair or a breach with no parts crate. Someone who's only
+asleep will see to it in the morning, so that isn't waiting; nor is the pantry short of produce, which the
+garden is growing.
+
+left waiting: how long that has to go on, for urgent work (a fire, a breach, a repair the ship can't do
+without, and carrying that's urgent: a store under its urgent mark, or with whatever uses it standing idle) and
+for everything else. Minutes, hours or days.
+
+who asks: the post that brings it, for each part of the ship: the medbay, the engines, the galley, repairs, and
+the rest. A job belongs to the part that uses what it's for, as for what comes first; a fire, a breach and a
+repair belong to repairs. With nobody in the post, or its holder laid up, nobody brings that part's work.
+
+Then whoever holds that post has something to ask, like any other request (world/scenes, REQUESTS in its
+how-to). For a job with no hands, anyone who lives aboard is asked to do it themselves, and yes makes it theirs
+on the Work page until it's due: request_work_hands.txt has the words. For a job with no goods, the captain is
+asked to bring them aboard, and only for what the ship can buy (ration crates, medicine crates, parts crates):
+request_work_goods.txt. Change what's said in those two files.
+
+Where a request written by hand already asks about the same shortage (medicine for the medbay, a bare pantry,
+something broken), that one asks and the board's keeps quiet; delete or turn off the one written by hand and the
+board's takes over. The same job isn't brought twice within the time any request rests.
+
+Both lines go together. Leave them out and nobody is ever brought anything, though the Work page still says why
+each job is stuck.
 
 URGENCY
 -------

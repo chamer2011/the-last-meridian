@@ -1,0 +1,39 @@
+# A job left waiting
+// Draft by the AI (Claude), 2026-11-16, not yet edited by the owner. When a job on the ship's work board has waited
+// too long with nobody able to do it (everyone who would is laid up, called away or on work that can't be left),
+// whoever that part of the ship belongs to brings it to anyone who lives aboard. The ship's logistics file says after
+// how long (its "left waiting" line) and who brings what (its "who asks" line). Yes makes the job yours until it's
+// due, and the crew keeps off it: carry the things into the store, mend the thing by hand, fight the fire, patch
+// the hull, or do a job of the story's in its room, under You can. It's done once the job is over and you had a hand
+// in it, and gone if someone got free and did it first.
+// {trouble} is what's wrong, as a sentence without its full stop, and {task} what there is to do about it.
+for: anyone aboard
+about: a job nobody can do
+asks: them
+needs: see to it yourself
+by: 3 hours
+
+== ask
+@{asker}: "{trouble}. Everyone I'd send is laid up, called away or on something that can't be left. Would you {task} yourself?"
+> I'll do it -> yes
+> Not now -> later
+> It'll have to wait -> no
+
+== yes
+@{asker}: "Then it's yours, and I'll keep the others off it. Thank you."
+
+== later
+@{asker}: "Soon, then. It isn't getting done by itself."
+
+== no
+@{asker}: "Then it waits till I've someone to send."
+
+== done
+@{asker}: "That's done, and by your own hands. I won't forget it."
+* xp 10: A job left waiting
+
+== failed
+@{asker}: "It's still waiting. You said you'd see to it."
+
+== gone
+@{asker}: "Never mind. Someone got free and saw to it."

@@ -1192,6 +1192,16 @@ export function anyWaitingForParts(game, place) {
   for (const room in state.doors) if (state.doors[room].noParts) return true;
   return false;
 }
+// What's waiting for parts before it can be mended, by what the board knows each as. Cheap: it builds nothing while
+// nothing's waiting.
+export function partsWaitingRefs(game, place) {
+  const state = game.systems?.[place];
+  if (!state) return NONE_DUE;
+  let refs = null;
+  for (const id in state.parts) if (state.parts[id].noParts && state.parts[id].damage) (refs ??= []).push(id);
+  for (const room in state.doors) if (state.doors[room].noParts && state.doors[room].forced) (refs ??= []).push(doorRef(room));
+  return refs ?? NONE_DUE;
+}
 // A repair nobody's on can't be finished in under an hour from now: the hour starts when an engineer takes it.
 export function holdRepair(game, place, ref, hours) {
   const model = systemsOf(place);

@@ -177,6 +177,24 @@ function compileLogistics(place) {
     if (!post) at(said.line ?? null, `${said.who} isn't a post in world/command, to decide ${words}`);
     else model.deciders[what] = { post, every: said.every, words: said.who };
   }
+  // A job left waiting is brought to the player as an ask (src/work.js, src/requests.js): after how long, and by
+  // whichever post each part of the ship belongs to. Without both lines nobody brings anything.
+  model.asks = null;
+  if (file.waiting && file.askers) {
+    const by = {};
+    for (const entry of file.askers.list) {
+      const post = postByWords(place, entry.who) ?? postByWords(place, String(entry.who).replace(/^the\s+/i, ""));
+      if (!post) at(file.askers.line ?? null, `${entry.who} isn't a post in world/command, to ask for ${entry.parts.join(" and ")}`);
+      else for (const part of entry.parts) {
+        if (by[part]) at(file.askers.line ?? null, `who asks names two posts for ${part === "rest" ? "the rest" : part}`);
+        by[part] = post;
+      }
+    }
+    model.asks = { after: { urgent: file.waiting.urgent, other: file.waiting.other }, by };
+  } else if (file.waiting || file.askers) at((file.waiting ?? file.askers).line ?? null, "left waiting and who asks go together: one says after how long a job is brought to the player, the other who brings it");
+  // For a job the written story gives the board (src/work.js): a room and a carrier by their words.
+  model.findRoom = findRoom;
+  model.findCarrier = findCarrier;
   const taken = new Map();
   for (const raw of file.stores ?? []) {
     const line = raw.line ?? null;

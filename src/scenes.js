@@ -24,6 +24,7 @@ import { heldUp } from "./quests.js";
 import { parseNarration } from "../public/story.js";
 import { computerFacts, computerProblems, enterComputer } from "./computers.js";
 import { hackFacts } from "./story-rig.js";
+import { workFacts } from "./work-hook.js";
 import { applySystemsEffect, placesWithSystems, systemsOf, systemsProblems } from "./systems.js";
 import { logisticsProblems, placesWithLogistics } from "./logistics.js";
 import { healthFiles, healthProblems } from "./body.js";
@@ -739,7 +740,7 @@ export function sceneProblems(scene, id = "the scene", { talk = false } = {}) {
   // were; whose trouble it is, as if Kara Tarrow had lost the post of chief medical officer to Dr. Aduro; and the
   // player's boss, as if they were a dock hand under Mott Jessup; and the place it's asked at, and whoever holds it, as if
   // it were Haven Station under the Kessara Syndicate.
-  const samples = { ...sampleStandIns(), ...(String(id).startsWith("request_") ? { asker: { id: "aduro", name: "Dr. Sen Aduro" }, part: { id: "speaker", name: "speaker" }, room: { id: "galley", name: "the Galley" }, about: { id: "tarrow", name: "Kara Tarrow" }, post: { id: "chief_medical_officer", name: "chief medical officer" }, holder: { id: "aduro", name: "Dr. Sen Aduro" }, boss: { id: "mott", name: "Mott Jessup" }, place: { id: "haven", name: "Haven Station" }, port: { id: "drift", name: "the Kessara Syndicate" }, deputy: { id: "pell", name: "Ensign Pell Asante" }, damage: { id: "damage", name: "the nav core and the relay in The Bridge" }, thing: { id: "harmonica", name: "harmonica" }, container: { id: "container", name: "locker" } } : {}) };
+  const samples = { ...sampleStandIns(), ...(String(id).startsWith("request_") ? { asker: { id: "aduro", name: "Dr. Sen Aduro" }, part: { id: "speaker", name: "speaker" }, room: { id: "galley", name: "the Galley" }, about: { id: "tarrow", name: "Kara Tarrow" }, trouble: { id: "pantry:ration_crate", name: "There's nobody to carry for the pantry" }, task: { id: "pantry:ration_crate", name: "carry 4 ration crates to the pantry" }, wanted: { id: "goods:medicine_crate", name: "2 medicine crates" }, post: { id: "chief_medical_officer", name: "chief medical officer" }, holder: { id: "aduro", name: "Dr. Sen Aduro" }, boss: { id: "mott", name: "Mott Jessup" }, place: { id: "haven", name: "Haven Station" }, port: { id: "drift", name: "the Kessara Syndicate" }, deputy: { id: "pell", name: "Ensign Pell Asante" }, damage: { id: "damage", name: "the nav core and the relay in The Bridge" }, thing: { id: "harmonica", name: "harmonica" }, container: { id: "container", name: "locker" } } : {}) };
   const unknown = [...new Set([...JSON.stringify(scene ?? {}).matchAll(/\{([a-z_]+)\}/g)].map((one) => one[1]).filter((name) => !samples[name]))];
   for (const name of unknown) problems.push(`${id}: {${name}} isn't a stand-in the game fills in: the stand-ins are ${Object.keys(samples).map((one) => `{${one}}`).join(", ")}`);
   scene = fillStandIns(scene, samples);
@@ -849,7 +850,7 @@ export function allSceneProblems(dir = SCENES_DIR) {
 // Every fact something in the world can leave on the record: a story's notes name it, a scene sets it with * flag,
 // or a door sets it when the player goes through.
 export function factsLeft(scenes) {
-  const names = new Set([...Object.keys(FACT_LINES), ...clockFacts(), ...commandFacts(), ...deathFacts(), ...requestFacts(scenes), ...hackFacts((place) => Object.keys(systemsOf(place)?.doors ?? {})), ...computerFacts()]);
+  const names = new Set([...Object.keys(FACT_LINES), ...clockFacts(), ...commandFacts(), ...deathFacts(), ...requestFacts(scenes), ...workFacts(scenes), ...hackFacts((place) => Object.keys(systemsOf(place)?.doors ?? {})), ...computerFacts()]);
   for (const scene of Object.values(scenes)) for (const part of Object.values(scene.parts ?? {})) for (const step of part.do ?? []) if (step.set) names.add(step.set);
   const walk = (node) => {
     if (!node || typeof node !== "object") return;

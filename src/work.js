@@ -39,7 +39,14 @@
 // is called away, or can't go on, hands the job back, with whatever they'd loaded, for the next free hand. A walk
 // takes as long as the way through the decks is, at the pace of whoever's walking, whether or not anyone is watching.
 //
-// This is steps 1, 3, 4 and 5 of the logistics rework (docs/notes/project-logistics.md, "The rework"). What's kept in
+// Left waiting. A job that's asking for a hand and getting none, or for goods there are none of aboard, is kept
+// (game.logistics[place].waiting, by the id the Work page knows it by: since when, and which of the two it wants).
+// After the time the file's left waiting line gives, whoever that part of the ship belongs to (its who asks line)
+// has it to bring to the player, through the requests (src/requests.js): yes takes it on, and the board then leaves
+// the job to them. The written story can ask whether anything's waiting and what comes first, put a part of the ship
+// first itself, and give the board a job of its own (src/work-hook.js has the words).
+//
+// This is steps 1, 3, 4, 5 and 6 of the logistics rework (docs/notes/project-logistics.md, "The rework"). What's kept in
 // the save is game.logistics[place].jobs, a list. A carrying job is { id, kind, to, item, from, n, phase, since, load,
 // by, took, walk }, and one set down with its load has nobody (by: null, phase "down"); a repair is { id, kind, ref,
 // what, by, took, since }. Work nobody has taken up yet isn't kept at all: it's there whenever the store is short or
@@ -58,9 +65,13 @@ import { burnOn, patchBreach, troublesAt } from "./emergencies.js";
 import { countAboard, countOf, itemWords, logisticsOf, machineStarved, putAboard, storeById, tripOf } from "./logistics.js";
 import { downAt, downRecord, medbayCalled, medbayHands, medbayOf, medbayRows, medbayWork } from "./medbay.js";
 import { workshopHands, workshopRows, workshopWork } from "./workshop.js";
-import { detourExtras } from "./room-hooks.js";
-import { alarmWork, anyWaitingForParts, dutyDetour, engineersOf, finishRepair, holdRepair, repairNow, repairsDue, repairsWaiting, waitingForParts } from "./systems.js";
+import { addOrder, addRoomActs, detourExtras } from "./room-hooks.js";
+import { passTime } from "./rules.js";
+import { alarmWork, anyWaitingForParts, dutyDetour, engineersOf, finishRepair, holdRepair, partsWaitingRefs, repairNow, repairsDue, repairsWaiting, waitingForParts } from "./systems.js";
 import { worthOf } from "./worth.js";
+import { notePut, putsOf } from "./puts.js";
+import { recordFact } from "./record.js";
+import { storyJobFact, tellWork } from "./work-hook.js";
 
 // How long a walk is taken to be when there's no telling how far it is.
 const WALK_MINUTES = 15;
@@ -134,6 +145,7 @@ const whereOf = (j) => `store:${j.phase === "carrying" || j.phase === "unloading
 function doingWords(model, j) {
   if (j.doing) return j.doing;
   if (j.ref) return `mending ${j.what ?? "what's broken"}`;
+  if (j.story) return `at work in ${j.roomName}`;
   if (j.room) return j.kind === "fire" ? `fighting the fire in ${j.what}` : `patching the hull in ${j.what}`;
   const from = storeById(model, j.from);
   const to = storeById(model, j.to);
@@ -415,7 +427,8 @@ function setLevels(model, state, t, by) {
 // and is asked again a quarter of an hour on. Between looks the last order stands.
 function officersLook(game, place, model, state, t) {
   const orders = (state.orders ??= {});
-  const due = (decider, was) => !was || t >= was.next || (holderKey(game, place, decider.post) ?? null) !== was.holder;
+  // An order the written story gave stands until its time is up, whoever holds the post.
+  const due = (decider, was) => !was || t >= was.next || (!was.story && (holderKey(game, place, decider.post) ?? null) !== was.holder);
   const first = model.deciders.first;
   if (first && due(first, orders.first)) {
     const holder = holderKey(game, place, first.post) ?? null;
@@ -477,6 +490,12 @@ function tendMine(game, place, model, state, t, notes) {
       dropQuest(game, key);
       if (line && notes && game.location === place) notes.push(line);
     };
+    // Taken through an ask (src/requests.js): the request says how it ended, and the board only keeps the crew off
+    // the job until its time is up or it's done.
+    if (held.ask) {
+      if (t >= held.until || !jobAt(game, place, model, state, key)) delete mine[key];
+      continue;
+    }
     if (key.startsWith("repair:")) {
       const repair = (waiting ??= repairsWaiting(game, place)).find((one) => repairKey(one.ref) === key);
       if (!repair) over(`[WORK] ${upperFirst(held.what ?? "what was broken")} is mended. That job was yours.`);
@@ -519,6 +538,7 @@ export function workCommand(game, place, { action, id } = {}) {
   const want = mending ? null : model.wants.find((one) => wantKey(one) === id);
   if (action === "leave") {
     if (!orders.mine?.[id]) throw new Error("That one isn't yours.");
+    if (orders.mine[id].ask) throw new Error("You gave your word on that one: it's in your quests (J), under Requests.");
     const what = orders.mine[id].what;
     delete orders.mine[id];
     if (!Object.keys(orders.mine).length) delete orders.mine;
@@ -631,10 +651,19 @@ function carryAsks(ctx) {
           const coming = comingTo(jobs, store.id, want.item);
           if (have + coming >= wants) return 0;
           const source = sourceFor(game, place, model, state, jobs, store, want.item);
-          if (!source) return 0;
-          const who = handFor(ctx, carriersFor(game, place, store), kind)?.key ?? null;
+          if (!source) {
+            // Nothing aboard to bring, and nothing on its way: it waits for goods. What the ship makes herself (the
+            // garden's produce) is only the next picking away, which is nothing to bring to anyone.
+            if (!coming && !madeAboard(model, want.item)) ctx.stuck(wantKey(want), "goods");
+            return 0;
+          }
+          const people = carriersFor(game, place, store);
+          const who = handFor(ctx, people, kind)?.key ?? null;
           // An urgent want nobody can carry, though something aboard could be brought, is what the duty counts.
-          if (!who) return why ? 1 : 0;
+          if (!who) {
+            if (!coming && nobodyEven(ctx, people)) ctx.stuck(wantKey(want), "hands");
+            return why ? 1 : 0;
+          }
           // A trip's worth, or what there's room for, or what can be spared: whichever is least.
           const n = Math.min(tripOf(model, want.item), store.holds[want.item] - have - coming, source.spare);
           jobs.push({ id: ctx.next(), kind, to: store.id, item: want.item, from: source.store.id, n, phase: "going", since: t, load: null, by: who, took: t, walk: walkFor(game, place, who, null, `store:${source.store.id}`, hours) });
@@ -688,7 +717,10 @@ function repairAsks(ctx, waiting) {
       raise() {
         const who = handFor(ctx, (people ??= menders(game, place)), kind)?.key ?? null;
         if (who) jobs.push({ id: ctx.next(), kind, ref: repair.ref, what: repair.what, by: who, took: t, since: t });
-        else holdRepair(game, place, repair.ref, hours);
+        else {
+          holdRepair(game, place, repair.ref, hours);
+          if (nobodyEven(ctx, people)) ctx.stuck(repairKey(repair.ref), "hands");
+        }
         // A repair the ship can't do without, with nobody to send to it, is what the duty counts.
         return !who && kind === "repair_critical" ? 1 : 0;
       },
@@ -713,7 +745,7 @@ export function troubleCrew(game, place, kind, room, hours) {
 function tendTroubles(ctx, troubles) {
   const { game, place, t, chunk, jobs, notes } = ctx;
   const end = t + chunk;
-  for (const j of jobs.filter((one) => one.room)) {
+  for (const j of jobs.filter(isTrouble)) {
     const trouble = troubles.find((one) => one.kind === j.kind && one.room === j.room);
     if (!trouble) ctx.over(j);
     else if (j.kind === "breach" && end >= j.took + (j.walk ?? WALK_MINUTES) && end >= trouble.since * 60 + trouble.minutes) {
@@ -733,7 +765,10 @@ function troubleAsks(ctx, troubles) {
   const asks = [];
   troubles.forEach((trouble, order) => {
     if (jobs.some((j) => j.room === trouble.room && j.kind === trouble.kind)) return;
-    if (trouble.waiting && !((crates ??= countAboard(game, place, ["parts_crate"])?.n ?? 0) > 0)) return;
+    if (trouble.waiting && !((crates ??= countAboard(game, place, ["parts_crate"])?.n ?? 0) > 0)) {
+      ctx.stuck(`${trouble.kind}:${trouble.room}`, "goods");
+      return;
+    }
     asks.push({
       rank: rankOf(model, trouble.kind),
       order: 3000 + order,
@@ -741,13 +776,316 @@ function troubleAsks(ctx, troubles) {
       raise() {
         const who = handFor(ctx, (people ??= menders(game, place)), trouble.kind)?.key ?? null;
         // A fire or a breach with nobody to send to it is what the duty counts.
-        if (!who) return 1;
+        if (!who) {
+          ctx.stuck(`${trouble.kind}:${trouble.room}`, "hands");
+          return 1;
+        }
         jobs.push({ id: ctx.next(), kind: trouble.kind, room: trouble.room, what: trouble.name, by: who, took: t, since: t, walk: walkFor(game, place, who, null, `@${trouble.room}`, hours) });
         return 0;
       },
     });
   });
   return asks;
+}
+
+// ---- A job of the written story's own ----------------------------------------------------------------------
+
+// A story's job (* work job, src/work-hook.js) is someone going to a room and working there for a while. It's kept
+// with the board's own jobs as { id, kind, story, what, room, roomName, minutes, carriers, by, took, since, walk },
+// counts as carrying, urgent or not, in the order of urgency, and leaves a fact on the record when it's done.
+const storyJobs = (jobs) => jobs.filter((j) => j.story);
+// A story's job is done: it's off the board, the story can ask about it, and it's on the record.
+function storyDone(game, state, j, at, who) {
+  const jobs = state.jobs ?? [];
+  if (jobs.includes(j)) jobs.splice(jobs.indexOf(j), 1);
+  ((state.orders ??= {}).story ??= {})[j.story] = { state: "done", what: j.what, at };
+  try {
+    recordFact(game, { id: storyJobFact(j.story), text: `${j.what}: done on day ${Math.floor(at / 1440) + 1}, by ${who}.`, from: "the work board" });
+  } catch {
+    // The record is full: the work was still done.
+  }
+}
+function tendStory(ctx) {
+  const { game, place, state, t, chunk, jobs, notes } = ctx;
+  for (const j of storyJobs(jobs)) {
+    if (!j.by || t + chunk < j.took + (j.walk ?? WALK_MINUTES) + j.minutes) continue;
+    storyDone(game, state, j, t + chunk, calledBy(game, place, j.by));
+    if (notes && game.location === place) notes.push(`[WORK] Done: ${j.what}. ${nameAt(game, place, j.by)} saw to it.`);
+  }
+}
+function storyAsks(ctx) {
+  const { game, place, model, t, hours, jobs } = ctx;
+  // One the player is at with their own hands is left to them.
+  return storyJobs(jobs).filter((j) => !j.by && !j.yours).map((j, order) => ({
+    rank: rankOf(model, j.kind),
+    order: 5000 + order,
+    counts: "carrying",
+    raise() {
+      const people = carriersFor(game, place, j);
+      const who = handFor(ctx, people, j.kind)?.key ?? null;
+      if (who) Object.assign(j, { by: who, took: t, since: t, walk: walkFor(game, place, who, null, `@${j.room}`, hours) });
+      else if (nobodyEven(ctx, people)) ctx.stuck(`story:${j.story}`, "hands");
+      return 0;
+    },
+  }));
+}
+
+// ---- Jobs left waiting -------------------------------------------------------------------------------------
+
+// What the two kinds of ask are about, in the words a request's about: line uses (src/requests.js).
+export const WORK_ABOUTS = { hands: "a job nobody can do", goods: "a job with nothing to do it with" };
+// What the ship can buy when there's none aboard: the only goods an ask can be for.
+const BOUGHT = new Set(["ration_crate", "medicine_crate", "parts_crate"]);
+const isTrouble = (j) => j.kind === "fire" || j.kind === "breach";
+// What one of the place's own machines makes, as the garden grows produce: there's more of it coming without anyone
+// bringing it aboard.
+const madeAboard = (model, item) => model.machines.some((m) => m.gives && !m.gives.count && m.gives.item === item);
+// How long a job stands before it counts as left waiting, in minutes: what the file's left waiting line says, or
+// half an hour for urgent work and three hours for the rest.
+const AFTER = Object.freeze({ urgent: 30, other: 180 });
+const afterOf = (model) => model.asks?.after ?? AFTER;
+// Whether nobody of the people who'd do a job could come even if they were woken: someone who's only asleep will
+// see to it in the morning, which is no reason to bring it to the captain.
+const nobodyEven = (at, people) => !people.some((key) => !whyNot(at, key, true));
+
+// A job by the id the Work page knows it by, as it stands: what kind of work it is, whether it's urgent, the part of
+// the ship it belongs to, and what it's of. Null once there's nothing left of it to do.
+function jobAt(game, place, model, state, id) {
+  if (id.startsWith("repair:")) {
+    const repair = repairNow(game, place, id.slice(7));
+    return repair ? { id, kind: "repair", urgent: repairKind(repair) === "repair_critical", part: "repairs", repair, item: model.repair?.item ?? null, n: model.repair?.n ?? 1 } : null;
+  }
+  if (id.startsWith("fire:") || id.startsWith("breach:")) {
+    const kind = id.slice(0, id.indexOf(":"));
+    const room = id.slice(kind.length + 1);
+    const trouble = troublesAt(game, place).find((one) => one.kind === kind && one.room === room);
+    return trouble ? { id, kind, urgent: true, part: "repairs", trouble, item: kind === "breach" ? "parts_crate" : null, n: 1 } : null;
+  }
+  if (id.startsWith("story:")) {
+    const j = jobsAt(game, place).find((one) => one.story === id.slice(6));
+    return j ? { id, kind: "story", urgent: j.kind === "carry_urgent", part: "rest", job: j, item: null, n: 0 } : null;
+  }
+  const want = model.wants.find((one) => wantKey(one) === id);
+  if (!want) return null;
+  const store = storeById(model, want.store);
+  const have = haveOf(game, store, want.item);
+  const wants = wantsNow(state, want);
+  if (have >= wants) return null;
+  return { id, kind: "carry", urgent: Boolean(urgentWhy(game, place, model, store, want.item, have)), part: partOf(model, place, want) ?? "rest", want, store, have, wants, item: want.item, n: wants - have };
+}
+// Whoever brings a part of the ship's work to the player: the holder of the post the file's who asks line gives it,
+// if they're there to ask.
+function askerFor(game, place, model, part) {
+  const post = model.asks?.by?.[part] ?? model.asks?.by?.rest ?? null;
+  const key = post ? holderKey(game, place, post) : null;
+  return key && key !== YOU && !lostReason(game, place, key) ? { post, key } : null;
+}
+// The jobs that have waited long enough, for one of the two reasons or for either, the urgent ones first, then the
+// longest waiting.
+function waitedLong(game, place, model, state, why = null) {
+  const now = Math.floor(game.clock.hours * 60 + 1e-6);
+  const after = afterOf(model);
+  const out = [];
+  for (const [id, w] of Object.entries(state.waiting ?? {})) {
+    if (why && w.why !== why) continue;
+    const job = jobAt(game, place, model, state, id);
+    if (job && now - w.since >= (job.urgent ? after.urgent : after.other)) out.push({ ...job, since: w.since, why: w.why });
+  }
+  return out.sort((a, b) => Number(b.urgent) - Number(a.urgent) || a.since - b.since);
+}
+// What's wanted when goods are, as a request counts it: so many of a thing, aboard.
+const wantOf = (item, n) => ({ item, n, where: "aboard", label: itemWords(item, 2), into: "aboard" });
+
+// The troubles the requests can ask about (src/requests.js): for hands, each job that's waited long enough with
+// nobody able to do it; for goods, each thing the ship can buy that some job has waited long enough for, with how
+// many. Each names who'd bring it to the player. Reading this changes nothing.
+export function workTroubles(game, about, place) {
+  const model = logisticsOf(place);
+  const state = game.logistics?.[place];
+  const why = about === WORK_ABOUTS.hands ? "hands" : about === WORK_ABOUTS.goods ? "goods" : null;
+  if (!why || !model?.asks || !state?.waiting) return [];
+  const due = waitedLong(game, place, model, state, why);
+  const out = [];
+  if (why === "hands") {
+    for (const job of due) {
+      const asker = askerFor(game, place, model, job.part);
+      if (asker) out.push({ about: null, work: job.id, post: asker.post, asker: asker.key });
+    }
+    return out;
+  }
+  const byItem = new Map();
+  for (const job of due) {
+    if (!BOUGHT.has(job.item)) continue;
+    const entry = byItem.get(job.item) ?? byItem.set(job.item, { lead: job, n: 0 }).get(job.item);
+    entry.n += job.n;
+  }
+  for (const [item, { lead, n }] of byItem) {
+    const asker = askerFor(game, place, model, lead.part);
+    if (asker) out.push({ about: null, work: `goods:${item}`, post: asker.post, asker: asker.key, want: wantOf(item, Math.max(1, Math.min(6, n))) });
+  }
+  return out;
+}
+
+// Whether a job that was brought to the player is over: the store has what it wants, the thing's mended, the fire's
+// out, the hull's patched; and for goods, nothing's waiting for them any more.
+export function jobOver(game, place, id) {
+  const model = logisticsOf(place);
+  const state = game.logistics?.[place];
+  if (!model || !state) return true;
+  if (id.startsWith("goods:")) {
+    const item = id.slice(6);
+    return !Object.entries(state.waiting ?? {}).some(([one, w]) => w.why === "goods" && jobAt(game, place, model, state, one)?.item === item);
+  }
+  return !jobAt(game, place, model, state, id);
+}
+// What the player has done toward a job with their own hands, as a running count (src/puts.js): what they've put in
+// the store, the part they fixed, the goes they had at the fire, the patch they put on.
+export function jobDeed(game, place, id) {
+  if (id.startsWith("repair:")) return putsOf(game, `fixed:${place}`, id.slice(7));
+  if (id.startsWith("fire:")) return putsOf(game, "fire", id.slice(5));
+  if (id.startsWith("breach:")) return putsOf(game, "breach", id.slice(7));
+  if (id.startsWith("story:")) return putsOf(game, "story", id.slice(6));
+  const model = logisticsOf(place);
+  const want = model?.wants.find((one) => wantKey(one) === id) ?? null;
+  const store = want ? storeById(model, want.store) : null;
+  return store ? putsOf(game, store.key, want.item) : 0;
+}
+// The player has said yes to a job brought to them: the board leaves it to them until the hour given (carrying and
+// repairs; a fire or a breach is anyone's who can get there). And the same given back.
+export function takeJob(game, place, id, untilHours) {
+  const state = game.logistics?.[place];
+  if (!state || /^(fire|breach|goods|story):/.test(id)) return;
+  const now = Math.floor(game.clock.hours * 60 + 1e-6);
+  const repair = id.startsWith("repair:") ? repairNow(game, place, id.slice(7)) : null;
+  ((state.orders ??= {}).mine ??= {})[id] = { since: now, until: Math.round(untilHours * 60), ask: true, ...(repair ? { what: repair.what } : {}) };
+}
+export function leaveJob(game, place, id) {
+  const orders = game.logistics?.[place]?.orders;
+  if (!orders?.mine?.[id]?.ask) return;
+  delete orders.mine[id];
+  if (!Object.keys(orders.mine).length) delete orders.mine;
+}
+// A job brought to the player, in words for whoever asks: what's wrong (a sentence, without its full stop), what
+// they'd do about it (to follow "I'll" or "Could you"), and for goods how many of what.
+export function jobWords(game, place, id, want = null) {
+  const model = logisticsOf(place);
+  const state = game.logistics?.[place];
+  const some = (item, n) => (n === 1 ? `${/^[aeiou]/i.test(itemWords(item, 1)) ? "an" : "a"} ${itemWords(item, 1)}` : `${n} ${itemWords(item, n)}`);
+  const lowerFirst = (text) => (text ? text[0].toLowerCase() + text.slice(1) : "");
+  if (id.startsWith("goods:")) {
+    const item = id.slice(6);
+    const wanted = some(item, want?.n ?? 1);
+    const none = `there isn't ${some(item, 1)} aboard`;
+    const lead = model && state ? Object.entries(state.waiting ?? {}).filter(([, w]) => w.why === "goods").map(([one, w]) => ({ job: jobAt(game, place, model, state, one), since: w.since }))
+      .filter((one) => one.job?.item === item).sort((a, b) => Number(b.job.urgent) - Number(a.job.urgent) || a.since - b.since)[0]?.job ?? null : null;
+    const trouble = !lead ? `We're out of ${itemWords(item, 2)}`
+      : lead.kind === "carry" ? `The ${lead.store.name} ${/s$/i.test(lead.store.name) ? "are" : "is"} down to ${lead.have ? loadWords(item, lead.have) : `no ${itemWords(item, 2)}`}, and there are none aboard to bring`
+        : lead.kind === "repair" ? `${upperFirst(lead.repair.what)} can't be mended: ${none}`
+          : `The hull's open in ${lead.trouble.name}, and ${none} to patch it with`;
+    return { trouble, task: `bring ${wanted} aboard`, wanted };
+  }
+  const job = model && state ? jobAt(game, place, model, state, id) : null;
+  if (!job) return { trouble: "There's work nobody can get to", task: "see to it", wanted: "" };
+  if (job.kind === "carry") return { trouble: `There's nobody to carry for the ${job.store.name}`, task: `carry ${loadWords(job.item, job.n)} to the ${job.store.name}`, wanted: loadWords(job.item, job.n) };
+  if (job.kind === "repair") return { trouble: `There's nobody to mend ${job.repair.what}`, task: `mend ${job.repair.what}`, wanted: "" };
+  if (job.kind === "fire") return { trouble: `There's a fire in ${job.trouble.name} and nobody to send to it`, task: `fight the fire in ${job.trouble.name}`, wanted: "" };
+  if (job.kind === "breach") return { trouble: `The hull's open in ${job.trouble.name} and there's nobody to send`, task: `patch the hull in ${job.trouble.name}`, wanted: "" };
+  return { trouble: `There's nobody for this: ${lowerFirst(job.job.what)}`, task: lowerFirst(job.job.what), wanted: "" };
+}
+
+// ---- What the written story asks and changes (src/work-hook.js has the words) ------------------------------
+
+// ? work waiting [hands|goods|<part of the ship>], ? work first <part>|none, ? work job <name> waiting|taken|done|none.
+function workHolds(game, term, place = "meridian") {
+  const model = logisticsOf(place);
+  const state = game.logistics?.[place];
+  if (!model || !state) return term.what === "job" ? term.state === "none" : term.what === "first" ? term.part === "none" : false;
+  if (term.what === "first") return (state.orders?.first?.part ?? null) === (term.part === "none" ? null : term.part);
+  if (term.what === "job") {
+    const j = jobsAt(game, place).find((one) => one.story === term.name);
+    const now = j ? (j.by ? "taken" : "waiting") : state.orders?.story?.[term.name]?.state === "done" ? "done" : "none";
+    return now === term.state;
+  }
+  // Left waiting: asking for a hand or for goods, and getting neither for as long as the file says.
+  if (!state.waiting) return false;
+  const waiting = waitedLong(game, place, model, state);
+  if (!term.of) return waiting.length > 0;
+  if (term.of === "hands" || term.of === "goods") return waiting.some((job) => job.why === term.of);
+  return waiting.some((job) => job.part === term.of);
+}
+// * work first <part>|none, * work job <name> ..., * work job <name> off. Gives what the player should hear.
+const STORY_STANDS = 24 * 60;
+function storyWork(game, step, place = "meridian") {
+  const model = logisticsOf(place);
+  const state = game.logistics?.[place];
+  if (!model || !state) return [];
+  const orders = (state.orders ??= {});
+  const now = Math.floor(game.clock.hours * 60 + 1e-6);
+  const here = game.location === place;
+  if (step.command === "work_first") {
+    const part = step.part === "none" ? null : step.part;
+    const holder = model.deciders?.first ? holderKey(game, place, model.deciders.first.post) ?? null : null;
+    orders.first = { part, why: step.reason, by: null, story: true, holder, since: now, looked: now, next: now + STORY_STANDS };
+    return here ? [`[WORK] ${part ? `${upperFirst(PART_WORDS[part])} first` : "As it comes"}: ${step.reason}`] : [];
+  }
+  const jobs = (state.jobs ??= []);
+  const there = jobs.find((one) => one.story === step.name) ?? null;
+  if (step.command === "work_job_off") {
+    if (there) jobs.splice(jobs.indexOf(there), 1);
+    if (orders.story?.[step.name]) delete orders.story[step.name];
+    return [];
+  }
+  if (step.command !== "work_job" || there) return [];
+  const room = model.findRoom(step.room);
+  const carriers = step.carriers.map((words) => model.findCarrier(words)).filter(Boolean);
+  if (!room || !carriers.length) return [];
+  jobs.push({ id: (state.jobSeq = (state.jobSeq ?? 0) + 1), kind: step.urgent ? "carry_urgent" : "carry", story: step.name, what: step.reason, room: room.id, roomName: room.name.replace(/^The /, "the "), minutes: step.minutes, carriers, by: null, since: now });
+  (orders.story ??= {})[step.name] = { state: "waiting", what: step.reason, at: now };
+  return here ? [`[WORK] On the board: ${step.reason}.`] : [];
+}
+tellWork({ holds: workHolds, step: storyWork, problem: storyJobProblem });
+
+// A job the story gave the board can be done by the player while nobody's on it: in its room, under You can, for as
+// long as it takes anyone. Nobody's sent to it while they're at it.
+const spanOf = (minutes) => (minutes % 60 === 0 ? `${minutes / 60} hour${minutes === 60 ? "" : "s"}` : `${minutes} minutes`);
+const storyJobsIn = (game, place, room) => jobsAt(game, place).filter((j) => j.story && j.room === room);
+const noHandsWhy = (game, place) => (handsFree(game, place, YOU) ? null : "you can't work with a hand that's no use");
+addRoomActs((game, { place, room }) => {
+  if (!room || !game.logistics?.[place]?.jobs?.length) return null;
+  return storyJobsIn(game, place, room).map((j) => {
+    const why = j.by ? `${nameAt(game, place, j.by)} is on it` : noHandsWhy(game, place);
+    return { id: "work-story", key: j.story, label: `${j.what} (${spanOf(j.minutes)})`, detail: why ?? "a job on the work board, with your own hands", ...(why ? { disabled: true } : {}) };
+  });
+});
+addOrder("work-story", (game, body, { room }) => {
+  const place = game.location;
+  const state = game.logistics?.[place];
+  const j = storyJobsIn(game, place, room).find((one) => one.story === String(body.key ?? ""));
+  if (!state || !j) throw new Error("There's no job of that kind in this room.");
+  if (j.by) throw new Error(`${nameAt(game, place, j.by)} is already on it.`);
+  const why = noHandsWhy(game, place);
+  if (why) throw new Error(`${upperFirst(why)}. Let it heal first.`);
+  j.yours = true;
+  let notes = [];
+  try {
+    notes = passTime(game, j.minutes / 60, "work");
+  } finally {
+    delete j.yours;
+  }
+  // Taken off the board while they were at it: there's nothing to finish.
+  if (!(state.jobs ?? []).includes(j)) return { said: notes.join("\n") };
+  storyDone(game, state, j, Math.floor(game.clock.hours * 60 + 1e-6), "you");
+  // Their own doing, counted for whoever asked them to see to it (src/requests.js).
+  notePut(game, "story", j.story, 1);
+  return { said: [`[WORK] Done: ${j.what}. You saw to it yourself.`, ...notes].join("\n") };
+});
+// What's wrong with a story's job, for the checker: a room the ship hasn't got, or people the board can't send.
+export function storyJobProblem(step, place = "meridian") {
+  const model = logisticsOf(place);
+  if (!model) return null;
+  if (!model.findRoom(step.room)) return `the Meridian has no room called ${step.room}`;
+  const unknown = step.carriers.find((words) => !model.findCarrier(words));
+  return unknown ? `nobody called ${unknown} is a job or a post aboard, or has a day there, to do it` : null;
 }
 
 // ---- The board's clock ------------------------------------------------------------------------------------
@@ -775,13 +1113,31 @@ function acting(game, place, model, state, t, chunk, notes) {
         ctx.stale();
         return;
       }
+      // A job of the story's stays on the board, for whoever's free next.
+      if (j.story) {
+        Object.assign(j, { by: null, since: t });
+        return;
+      }
       if (j.load) Object.assign(j, { phase: "down", since: t, by: null });
       else ctx.over(j);
       if (j.ref) holdRepair(game, place, j.ref, hours);
     },
     next: () => (state.jobSeq = (state.jobSeq ?? 0) + 1),
+    // A job that's asking for a hand or for goods and getting neither: kept, with since when.
+    seen: null,
+    stuck: (id, why) => {
+      const waiting = (state.waiting ??= {});
+      if (waiting[id]?.why !== why) waiting[id] = { since: t, why };
+      (ctx.seen ??= new Set()).add(id);
+    },
   });
   return ctx;
+}
+// What's no longer stuck is forgotten, once everything that asks has had its turn.
+function settleWaiting(state, ctx) {
+  if (!state.waiting) return;
+  for (const id of Object.keys(state.waiting)) if (!ctx.seen?.has(id)) delete state.waiting[id];
+  if (!Object.keys(state.waiting).length) delete state.waiting;
 }
 export function runBoard(game, place, model, state, t, chunk, notes = null) {
   settleOld(game, place, state);
@@ -800,7 +1156,10 @@ export function runBoard(game, place, model, state, t, chunk, notes = null) {
     if (notes) notes.push(...lines);
   }
   let troubles = burning ? troublesAt(game, place) : [];
-  if (!jobs.length && !model.wants.length && !systems && !troubles.length) return NOTHING_LEFT;
+  if (!jobs.length && !model.wants.length && !systems && !troubles.length) {
+    settleWaiting(state, ctx);
+    return NOTHING_LEFT;
+  }
   const deciding = Boolean(model.deciders?.first || model.deciders?.levels);
   if (deciding && Math.floor(t / LOOK_EVERY) !== Math.floor((t - chunk) / LOOK_EVERY)) officersLook(game, place, model, state, t);
   tendMine(game, place, model, state, t, notes);
@@ -809,20 +1168,24 @@ export function runBoard(game, place, model, state, t, chunk, notes = null) {
   for (const j of [...jobs]) if (j.by && (lostReason(game, place, j.by) || !handsFree(game, place, j.by) || ctx.held(j.by) || ctx.others().some((o) => o.by === j.by))) ctx.release(j);
   for (const j of [...jobs]) if (j.to) tendCarry(ctx, j);
   if (jobs.some((j) => j.ref)) tendRepairs(ctx);
-  if (troubles.length || jobs.some((j) => j.room)) {
+  if (troubles.length || jobs.some(isTrouble)) {
     tendTroubles(ctx, troubles);
     if (burning) troubles = troublesAt(game, place);
   }
+  const stories = jobs.some((j) => j.story);
+  if (stories) tendStory(ctx);
   // What's broken and due within the hour, once whatever was finished just now is out of the way.
   const due = systems ? repairsDue(game, place, hours + 1) : [];
-  const asks = [...loadAsks(ctx), ...carryAsks(ctx), ...(due.length ? repairAsks(ctx, due) : []), ...(troubles.length ? troubleAsks(ctx, troubles) : [])];
-  if (!asks.length) return NOTHING_LEFT;
+  const asks = [...loadAsks(ctx), ...carryAsks(ctx), ...(due.length ? repairAsks(ctx, due) : []), ...(troubles.length ? troubleAsks(ctx, troubles) : []), ...(stories ? storyAsks(ctx) : [])];
   if (asks.length > 1) asks.sort((a, b) => a.rank - b.rank || a.order - b.order);
   let left = null;
   for (const ask of asks) {
     const n = ask.raise();
     if (n) (left ??= { carrying: 0, repairs: 0 })[ask.counts] += n;
   }
+  // What's broken with no spare aboard to mend it with waits for goods.
+  if (systems) for (const ref of partsWaitingRefs(game, place)) ctx.stuck(repairKey(ref), "goods");
+  settleWaiting(state, ctx);
   return left ?? NOTHING_LEFT;
 }
 
@@ -895,7 +1258,7 @@ export function workView(game, place) {
     const said = [
       ...carried.map((j) => `${nameAt(game, place, j.by)} is ${doingWords(model, j)}, since ${clockWords(j.took ?? j.since)}`),
       ...down.map((j) => `${loadWords(j.load.item, j.load.n)} set down`),
-      ...(short && yours ? [`yours since ${clockWords(yours.since)}`] : []),
+      ...(short && yours ? [`yours since ${clockWords(yours.since)}${yours.ask ? ", as you said you'd see to it" : ""}`] : []),
       ...(short && !source && !yours ? [carried.length || down.length ? "nothing more aboard to bring" : "nothing aboard to bring"] : []),
       ...(open ? [nobody ?? "about to be taken up"] : []),
     ];
@@ -915,6 +1278,8 @@ export function workView(game, place) {
       stuck: Boolean(nobody) || (short && !source && !yours),
       short,
       mine: Boolean(yours),
+      // Taken on through an ask (src/requests.js): the request holds it, so it isn't handed back from the board.
+      promised: Boolean(yours?.ask),
       // The player can take it while it's short and nobody's carrying for it, and give it back once it's theirs.
       canTake: short && !yours && !carried.length && game.location === place,
     };
@@ -956,6 +1321,22 @@ function troubleRows(at, engineers) {
       status: j ? `${nameAt(game, place, j.by)} is ${doingWords(model, j)}, since ${clockWords(j.took)}` : noCrate ? "waiting for a parts crate: there's none aboard" : nobody ?? "about to be taken up",
       by: "the engineers", tip: "Seen to by the engineers, the first of them who's free; anyone's woken for it.",
       busy: Boolean(j), stuck: !j && Boolean(noCrate || nobody), mine: false, canTake: false,
+    };
+  });
+}
+// The written story's own jobs as the Work page's rows.
+function storyRows(at) {
+  const { game, place, model, jobs } = at;
+  return storyJobs(jobs).map((j, order) => {
+    const people = carriersFor(game, place, j);
+    const nobody = j.by ? null : whyNobodyOf(at, people, { wake: WAKES.has(j.kind), nobody: "there's nobody to do it" });
+    return {
+      rank: rankOf(model, j.kind), order: 5000 + order,
+      id: `story:${j.story}`, mark: WAKES.has(j.kind) ? "!!" : "",
+      what: j.what, why: j.kind === "carry_urgent" ? "urgent" : null,
+      status: j.by ? `${nameAt(game, place, j.by)} is ${doingWords(model, j)}, since ${clockWords(j.took)}` : nobody ?? "about to be taken up",
+      by: carriersWords(j), tip: `Done by ${carriersWords(j)}. You can do it yourself in ${j.roomName}, while nobody's on it.`,
+      busy: Boolean(j.by), stuck: Boolean(nobody), mine: false, canTake: false,
     };
   });
 }
@@ -1005,9 +1386,11 @@ export function boardView(game, place) {
     if (order) return { post: decider.words, by: order.by ? calledBy(game, place, order.by) : null, nobody: order.by ? null : order.why };
     return { post: decider.words, by: null, nobody: deciderNow(game, place, decider).why ?? "nobody has looked yet" };
   };
-  const first = decided(model.deciders?.first, orders.first);
+  // An order the written story gave stands as the first officer's would, with its own words for why.
+  const storyFirst = Boolean(orders.first?.story);
+  const first = decided(model.deciders?.first, orders.first) ?? (storyFirst ? { post: null, by: null, nobody: null } : null);
   const levels = decided(model.deciders?.levels, orders.levels);
-  const firstPart = first?.by ? orders.first.part : null;
+  const firstPart = first?.by || storyFirst ? orders.first.part : null;
   const sittings = model.sittings;
   const minute = now % 1440;
   const sittingOn = sittings.at.some((start) => minute >= start && minute < start + sittings.minutes);
@@ -1023,7 +1406,7 @@ export function boardView(game, place) {
         rank: rankOf(model, kind) - (inFirst ? 0.5 : 0), order,
         id: line.id, mark: mark(kind, inFirst),
         what: `${line.store}: ${loadWords(want.item, Math.max(0, line.wants - line.has))} short of the ${line.wants} it wants`,
-        why: line.urgent, status: line.status, by: line.by, tip: `Carried by ${line.by}.`, busy: line.busy, stuck: line.stuck, mine: line.mine, canTake: line.canTake,
+        why: line.urgent, status: line.status, by: line.by, tip: `Carried by ${line.by}.`, busy: line.busy, stuck: line.stuck, mine: line.mine, promised: line.promised, canTake: line.canTake,
       };
     });
   // The repairs: what's being mended, what's waiting for an engineer or a spare, and what they'll get to later.
@@ -1041,11 +1424,11 @@ export function boardView(game, place) {
       what: `Mend ${repair.what}`,
       why: kind === "repair_critical" ? "the ship can't do without it" : null,
       status: j ? `${nameAt(game, place, j.by)} is ${duty?.(j.by)?.doing ?? `mending ${repair.what}`}, since ${clockWords(j.took)}`
-        : yours ? `yours since ${clockWords(yours.since)}`
+        : yours ? `yours since ${clockWords(yours.since)}${yours.ask ? ", as you said you'd see to it" : ""}`
           : repair.noParts ? "waiting for a spare: there's none aboard"
             : due ? nobody ?? "about to be taken up"
               : `the engineers start on it at ${clockWords(repair.fixAt * 60 - 60)}`,
-      by: "the engineers", tip: "Mended by the engineers, the first of them who's free.", busy: Boolean(j), stuck: Boolean(nobody) || (repair.noParts && !yours), mine: Boolean(yours),
+      by: "the engineers", tip: "Mended by the engineers, the first of them who's free.", busy: Boolean(j), stuck: Boolean(nobody) || (repair.noParts && !yours), mine: Boolean(yours), promised: Boolean(yours?.ask),
       canTake: !j && !yours && game.location === place,
     };
   });
@@ -1057,8 +1440,9 @@ export function boardView(game, place) {
       by: first.by,
       part: firstPart,
       title: firstPart ? `${upperFirst(PART_WORDS[firstPart])} first` : "As it comes",
-      why: first.by ? orders.first.why : first.nobody,
-      since: first.by ? whenWords(orders.first.since, now) : null,
+      story: storyFirst,
+      why: first.by || storyFirst ? orders.first.why : first.nobody,
+      since: first.by || storyFirst ? whenWords(orders.first.since, now) : null,
     },
     levels: levels && { post: levels.post, by: levels.by, why: levels.by ? null : levels.nobody },
     stores: model.stores.map((store) => {
@@ -1087,6 +1471,6 @@ export function boardView(game, place) {
         }),
       };
     }),
-    jobs: [...carrying, ...mending, ...keptRows(at, kept, firstPart, now), ...troubleRows(at, engineers), ...alarmRows(at)].sort((a, b) => a.rank - b.rank || a.order - b.order).map(({ rank, order, ...job }) => job),
+    jobs: [...carrying, ...mending, ...keptRows(at, kept, firstPart, now), ...troubleRows(at, engineers), ...alarmRows(at), ...storyRows(at)].sort((a, b) => a.rank - b.rank || a.order - b.order).map(({ rank, order, ...job }) => job),
   };
 }
