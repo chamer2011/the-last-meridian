@@ -1,5 +1,5 @@
 // The ship's chain of command, step 2: the watch bill. Everyone named aboard without a post has a job (or is a spare
-// hand), written in world/command/meridian.txt and kept in the save; their day is their job's; the machines, errands
+// hand), written in world/command/meridian.txt and kept in the save; their day is their job's; the machines, the carrying
 // and systems count people by job; the captain moves people with two clicks; and Commander Voss covers for anyone lost
 // from their job with a spare hand. Crew aboard are on it too, and their shifts follow it. None of this calls an AI.
 
@@ -140,30 +140,38 @@ test("a spare hand put on as a cook takes the cooks' day, and the galley works w
   assert.notEqual(lg.machinesView(game, "meridian").find((one) => one.id === "galley").status, "waiting for a cook there");
 });
 
-test("an errand that names a job is carried by whoever does it and is free, and nobody carries when nobody does it", () => {
-  const errands = lg.logisticsOf("meridian").errands;
-  assert.deepEqual(errands.filter((one) => one.job).map((one) => [one.id, one.job]), [["tech:fuel_cell", "tech"], ["cook:produce", "cook"], ["tech:parts_crate", "tech"]]);
-  const game = newGame();
-  at(game, 10);
+test("a store carried for by a job is carried for by whoever does it and is free, and nobody carries when nobody does it", () => {
   const store = (id) => lg.logisticsOf("meridian").stores.find((one) => one.id === id);
-  bag.storeTake(game, store("fuel_rack").key, store("fuel_rack").holds, "fuel_cell", 5);
-  bag.storeTake(game, store("parts_lockers").key, store("parts_lockers").holds, "parts_crate", 5);
-  minutes(game, 5);
-  const fuel = game.logistics.meridian.errands["tech:fuel_cell"];
-  const parts = game.logistics.meridian.errands["tech:parts_crate"];
-  assert.ok(fuel && parts, "both errands begun");
-  assert.notEqual(fuel.by, parts.by, "by two different techs");
-  assert.ok(cmd.onJob(game, "meridian", "tech").includes(fuel.by));
-  assert.equal(wk.workView(game, "meridian").find((one) => one.id === "tech:fuel_cell").who, fuel.by);
-  assert.ok(wk.workDetour(game, "meridian")(fuel.by));
-  // With every tech moved to the deckhands, a new errand finds nobody to carry it.
-  const empty = newGame();
-  at(empty, 10);
-  for (const key of ["Tech Sami", "Tech Oona", "Tech Goran"]) cmd.assignJob(empty, "meridian", key, "deckhand");
-  bag.storeTake(empty, store("fuel_rack").key, store("fuel_rack").holds, "fuel_cell", 5);
-  minutes(empty, 15);
-  assert.equal(empty.logistics.meridian.errands?.["tech:fuel_cell"], undefined);
-  assert.equal(wk.workView(empty, "meridian").find((one) => one.id === "tech:fuel_cell").who, "A tech");
+  assert.deepEqual(store("fuel_rack").carriers.map((one) => one.job ?? one.post ?? "spare"), ["deckhand", "tech", "spare"], "the deckhands first, then the techs, then the spare hands");
+  // With only the techs left to carry for the rack and the lockers, two different techs go.
+  const named = [store("fuel_rack").carriers, store("parts_lockers").carriers];
+  store("fuel_rack").carriers = named[0].filter((one) => one.job === "tech");
+  store("parts_lockers").carriers = named[1].filter((one) => one.job === "tech");
+  try {
+    const game = newGame();
+    at(game, 10);
+    bag.storeTake(game, store("fuel_rack").key, store("fuel_rack").holds, "fuel_cell", 5);
+    bag.storeTake(game, store("parts_lockers").key, store("parts_lockers").holds, "parts_crate", 5);
+    minutes(game, 5);
+    const fuel = game.logistics.meridian.jobs.find((one) => one.to === "fuel_rack");
+    const parts = game.logistics.meridian.jobs.find((one) => one.to === "parts_lockers");
+    assert.ok(fuel && parts, "both jobs begun");
+    assert.notEqual(fuel.by, parts.by, "by two different techs");
+    assert.ok(cmd.onJob(game, "meridian", "tech").includes(fuel.by));
+    assert.deepEqual(wk.workView(game, "meridian").find((one) => one.id === "fuel_rack:fuel_cell").carriers, [fuel.by]);
+    assert.ok(wk.workDetour(game, "meridian")(fuel.by));
+    // With every tech moved to the deckhands, the job finds nobody to carry it.
+    const empty = newGame();
+    at(empty, 10);
+    for (const key of ["Tech Sami", "Tech Oona", "Tech Goran"]) cmd.assignJob(empty, "meridian", key, "deckhand");
+    bag.storeTake(empty, store("fuel_rack").key, store("fuel_rack").holds, "fuel_cell", 5);
+    minutes(empty, 15);
+    assert.deepEqual(empty.logistics.meridian.jobs, []);
+    assert.equal(wk.workView(empty, "meridian").find((one) => one.id === "fuel_rack:fuel_cell").status, "there's nobody to carry for it");
+  } finally {
+    store("fuel_rack").carriers = named[0];
+    store("parts_lockers").carriers = named[1];
+  }
 });
 
 test("the techs are the engineers and the guards are whoever guards, as the watch bill has them", () => {

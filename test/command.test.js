@@ -1,6 +1,6 @@
 // The ship's chain of command, step 1: who holds which post, who chose them and since when, read from
 // world/command/meridian.txt and kept in the save, shown on the Command menu, and asked by everything that names
-// someone for a post: the council's decisions, the systems' guards and engineers, the errands and the captain's chair.
+// someone for a post: the council's decisions, the systems' guards and engineers, the stores' carriers and the captain's chair.
 // Nothing changes hands by itself yet. None of this calls an AI.
 
 import assert from "node:assert/strict";
@@ -215,31 +215,35 @@ test("the guards and engineers the systems file names by post are whoever holds 
   assert.deepEqual(sys.staffOf(game, "meridian", model.guards), [], "nobody in the post means no guards");
 });
 
-test("the quartermaster's errand is carried by whoever holds the post", () => {
-  const errand = logisticsOf("meridian").errands.find((one) => one.post === "quartermaster");
-  assert.deepEqual([errand.id, errand.key, errand.item, errand.from, errand.to], ["quartermaster:ration_crate", null, "ration_crate", "shuttle_stores", "pantry"]);
-  const game = newGame();
-  const shown = () => workView(game, "meridian").find((one) => one.id === "quartermaster:ration_crate");
-  assert.equal(shown().who, "Quartermaster Brandt");
-  cmd.setHolder(game, "meridian", "quartermaster", "tobin");
-  assert.equal(shown().who, "Quartermaster Hask");
+test("a store that names a post among its carriers is carried for by whoever holds it", () => {
   const pantry = logisticsOf("meridian").stores.find((one) => one.id === "pantry");
-  game.clock.hours = 9;
-  passTime(game, 0.1);
-  bag.storeTake(game, pantry.key, pantry.holds, "ration_crate", 12);
-  passTime(game, 0.2);
-  assert.ok(game.logistics.meridian.errands["quartermaster:ration_crate"], "the errand's begun");
-  assert.ok(workDetour(game, "meridian")("tobin"), "and it's Hask who goes");
-  assert.equal(workDetour(game, "meridian")("odessa"), null, "not Brandt");
-  // With nobody in the post, nobody goes.
-  const empty = newGame();
-  cmd.setHolder(empty, "meridian", "quartermaster", null);
-  empty.clock.hours = 9;
-  passTime(empty, 0.1);
-  bag.storeTake(empty, pantry.key, pantry.holds, "ration_crate", 12);
-  passTime(empty, 0.5);
-  assert.equal(empty.logistics.meridian.errands?.["quartermaster:ration_crate"], undefined);
-  assert.match(workView(empty, "meridian").find((one) => one.id === "quartermaster:ration_crate").who, /^Nobody/);
+  const named = pantry.carriers;
+  assert.ok(named.some((one) => one.post === "quartermaster"), "the pantry names the quartermaster");
+  const carrying = (game) => (game.logistics.meridian.jobs ?? []).filter((one) => one.to === "pantry");
+  // With only the post left to carry for it, it's whoever holds the post who goes.
+  pantry.carriers = named.filter((one) => one.post);
+  try {
+    const game = newGame();
+    cmd.setHolder(game, "meridian", "quartermaster", "tobin");
+    game.clock.hours = 9;
+    passTime(game, 0.1);
+    bag.storeTake(game, pantry.key, pantry.holds, "ration_crate", 12);
+    passTime(game, 0.2);
+    assert.deepEqual(carrying(game).map((one) => one.by), ["tobin"], "the job's begun, and it's Hask who goes");
+    assert.ok(workDetour(game, "meridian")("tobin"));
+    assert.equal(workDetour(game, "meridian")("odessa"), null, "not Brandt");
+    // With nobody in the post, nobody goes.
+    const empty = newGame();
+    cmd.setHolder(empty, "meridian", "quartermaster", null);
+    empty.clock.hours = 9;
+    passTime(empty, 0.1);
+    bag.storeTake(empty, pantry.key, pantry.holds, "ration_crate", 12);
+    passTime(empty, 0.5);
+    assert.deepEqual(carrying(empty), []);
+    assert.equal(workView(empty, "meridian").find((one) => one.id === "pantry:ration_crate").status, "there's nobody to carry for it");
+  } finally {
+    pantry.carriers = named;
+  }
 });
 
 test("the story giving command away or taking it moves the captain's post, and the chair asks the post", () => {

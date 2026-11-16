@@ -2,8 +2,8 @@ HOW TO WRITE A PLACE'S LOGISTICS
 ================================
 
 Nothing aboard comes from nothing. The ship's logistics say where every stock is kept, what machines turn one
-thing into another, what each system draws from the generator, who carries what from where, and what gets
-refilled from outside. It's one plain text file in this folder, world/logistics/<place>.txt, named after the
+thing into another, what each system draws from the generator, what each store wants kept in it and who
+carries for it, and what gets refilled from outside. It's one plain text file in this folder, world/logistics/<place>.txt, named after the
 place (the file name of its map in world/maps). The Story board shows it under Logistics, as boxes and arrows,
 and saving one there writes its file here.
 
@@ -14,8 +14,9 @@ checks these files too.
 It's built in steps, each tried by the owner before the next. The game plays every part of the file now:
 every store is a real thing in a room, full to start with, that the player can walk to and open beside their
 pack; every machine takes from one store and puts into another on the clock; the generator burns fuel cells
-and gives the power the systems draw, and lets them go in a written order when it hasn't enough; people carry
-from one store to another when the second runs short; the whole ship eats from the kettle at its sittings;
+and gives the power the systems draw, and lets them go in a written order when it hasn't enough; whenever a
+store has fewer of something than it wants, whoever carries for it fetches some from the nearest store that
+can spare it; the whole ship eats from the kettle at its sittings;
 the refills top a store up from nothing on the hour, the one place anything still comes from nowhere; the
 engineers' repairs use up spare parts from the stores; and the Ship menu's count of food, medicine and parts is
 the count of these stores, nothing else. Trade off the ship, which will replace the refills, is a later step.
@@ -34,10 +35,13 @@ THE FILE
     salvage makes: 1 parts crate from 10 salvage, in The Repair Bay, in 2 hours, into the parts lockers
                                                      (what the engineers use up each time they fix something:
                                                      see REPAIRS)
+    carried by: the deckhands, the spare hands       (who carries for a store that doesn't say: see CARRYING)
+    a trip carries: 2 ration crates, 2 fuel cells, 4 produce    (how many of a thing one person carries at a time)
 
     Stores:
-    - pantry in The Galley: holds 12 ration crates, 12 produce: Shelves behind a wire door.
-    - fuel rack in Engineering: holds 6 fuel cells
+    - shuttle stores in The Lighter Bay: holds 20 ration crates, 12 fuel cells
+    - pantry in The Galley: holds 12 ration crates, 12 produce; wants 4 of each; carried by the deckhands, the cooks: Shelves behind a wire door.
+    - fuel rack in Engineering: holds 6 fuel cells; wants 3; urgent under 2
     - soup kettle in The Long Mess: holds 400 sittings
 
     Machines:
@@ -45,9 +49,6 @@ THE FILE
 
     Loads:
     - air plant 20, engines 30 while under way, lights 2 a room
-
-    Errands:
-    - the quartermaster: ration crates from the shuttle stores to the pantry when under 4, two at a time
 
     Refills:
     - the shuttle stores: ration crates and fuel cells from nothing for now, every 6 hours, up to full
@@ -63,6 +64,11 @@ A store is a thing in a room. Each line is the store's name, in, the room it's i
 holds, and, if you like, another colon and how it looks:
 
     - pantry in The Galley: holds 12 ration crates, 12 produce: Shelves behind a wire door.
+
+After what it holds, with a semicolon before each, a store can say what it wants kept in it, when that's
+urgent, and who carries for it (see CARRYING):
+
+    - pantry in The Galley: holds 12 ration crates, 12 produce; wants 4 of each; urgent under 2; carried by the deckhands, the cooks: Shelves behind a wire door.
 
 The room is one from the place's map, by its name (The Galley, Engineering, Medbay). What it holds is a
 number and an item from world/items each, by the item's name or its id, plural or not: ration crates,
@@ -109,6 +115,13 @@ puts into, and something to make it from, it goes. Otherwise it waits, and the S
 waiting for a cook there, the soup kettle is full, the pantry has no produce or ration crates. Nothing
 happens while the clock is paused.
 
+A machine that makes sittings can also take any food: write it as one more choice, after the things it takes by
+name, as the galley does (cooks 1 produce or 1 ration crate or any food from the pantry into 200 sittings in the
+soup kettle every hour). The things named are taken first, in the order written. With none of them in the store, it
+takes whatever else there is worth something at the kettle (an item's feeds line), up to one pot's worth, and makes
+as many sittings as that was worth. What a thing named is worth is its own file's to say too: a ration crate that
+feeds 150 makes 150 sittings, whatever the line's number, which is then only the size of the pot.
+
 THE SITTINGS
 ------------
 
@@ -118,44 +131,51 @@ anyone you can see eating finds it empty instead, and at midnight the ship's mor
 who went hungry, the way a food shortage does. The Ship menu shows the sittings, and what the kettle gave
 today and yesterday.
 
-ERRANDS
--------
+CARRYING
+--------
 
-An errand is someone carrying from one store to another when the second runs short. Each line is who
-carries, a colon, what they carry, from a store, to a store, when the store it goes to is under so many,
-and how many they carry a trip (a number, or a number in words):
+Nobody writes the routes. A store says what it wants kept in it, and the ship's work board does the rest:
 
-    - the quartermaster: ration crates from the shuttle stores to the pantry when under 4, two at a time
-    - a tech: fuel cells from the shuttle stores to the fuel rack when under 3, two at a time
-    - a cook: produce from the garden bins to the pantry when under 4, four at a time
-    - a tech: parts crates from the shuttle stores to the parts lockers when under 2, one at a time
+    - fuel rack in Engineering: holds 6 fuel cells; wants 3; urgent under 2; carried by the deckhands, the techs, the spare hands
+    - pantry in The Galley: holds 12 ration crates, 12 produce; wants 4 of each; carried by the deckhands, the cooks, the quartermaster, the spare hands
+    - parts lockers in Stores: holds 6 parts crates; wants 2
 
-Who carries is someone with a day in the place's file in world/life: a crowd name as written there (Tech
-Oona, Cook Imre), or the name of someone the game knows (Odessa Brandt), or a post in the place's chain of
-command (world/command), written with the: the quartermaster is whoever holds that post at the time, or a job on
-its watch bill, written with a: a tech is whichever tech is awake and free when it's needed. Both stores
-have to keep the item on their holds lines, and the store it goes to has to keep at least as many as the
-number after under, or they'd never stop.
+wants is a number of one of the things the store holds (wants 4 ration crates, 2 produce), or a number alone
+or with of each, for everything it holds. It can't be more than the store holds. Whenever the store has fewer
+than it wants, counting what's already on its way, a job of carrying comes up. A store that wants nothing is
+only ever taken from: the shuttle stores, the garden's bins.
 
-When the store they keep up is under that number and they're awake, they leave what they were doing, walk to
-the store they fetch from, stand there a minute, take as many as they carry (or as many as there are, or as
-the other store has room for), walk back, put them in, and go back to their day; and again, while it's still
-short. If there's nothing to fetch, they stand at the store and wait, and their line says so. The Ship menu
-lists every errand with where its person has got to.
+Where it's fetched from isn't written: any other store that holds the same thing can supply it, as long as it
+has more than it wants itself, and the nearest one is used. What a carrier has gone for is set aside for
+them, so two people never go for the same crates, and as many go at once as the want needs. If nothing aboard
+can be spared, nobody is sent, and the Ship menu says there's nothing aboard to bring.
 
-A machine that makes sittings can also take any food: write it as one more choice, after the things it takes by
-name, as the galley does (cooks 1 produce or 1 ration crate or any food from the pantry into 200 sittings in the
-soup kettle every hour). The things named are taken first, in the order written. With none of them in the store, it
-takes whatever else there is worth something at the kettle (an item's feeds line), up to one pot's worth, and makes
-as many sittings as that was worth. What a thing named is worth is its own file's to say too: a ration crate that
-feeds 150 makes 150 sittings, whatever the line's number, which is then only the size of the pot.
+urgent under is the smaller number at which the want jumps the queue: urgent jobs are given out before the
+others, and one wakes a sleeper if nobody else is up. A want is also urgent, whatever its line says, when
+whatever uses the thing up is asking: a machine with nothing left in the store to work from (the generator on
+its last cell, the galley with a bare pantry), the medbay with someone waiting and no doses left, a repair
+waiting for its spare.
 
-Carrying is given out by the ship's work board, which sends nobody who's already taken by something more
-pressing: someone in the last hour of a repair, answering an alarm, down or carrying the fallen, or walking
-with the captain. The next of their job goes instead, and with nobody free the job waits. A carrier who's
-called away hands the job back: whatever they'd loaded is set down, and the next free hand carries it on.
-A walk takes as long as the way through the decks is. The Ship menu's Work lines say who's on each job and
-since when, or why nobody is.
+carried by is who's asked, first to last: the people doing a job on the watch bill (the deckhands, the techs,
+the cooks), whoever holds a post (the quartermaster), the spare hands, or someone by name (a crowd name from
+the place's file in world/life, such as Tech Oona, or the name of someone the game knows). Everyone in the
+first group is asked before anyone in the second. A store that wants something but names nobody is carried
+for by the carried by line at the top of the file.
+
+a trip carries, at the top, is how many of each thing one person carries at a time (2 ration crates, 2 fuel
+cells, 4 produce). Anything it doesn't name goes one at a time. A carrier takes a trip's worth, or as many as
+the store they're filling has room for, or as many as can be spared, whichever is least.
+
+Whoever takes a job leaves what they were doing, walks to the store they fetch from, stands there a minute,
+takes their load, walks it over, puts it in, and goes back to their day. The board sends nobody who's already
+taken by something more pressing: someone in the last hour of a repair, answering an alarm, down or carrying
+the fallen, or walking with the captain. The next of the carriers goes instead, and with nobody free the job
+waits. A carrier who's called away hands the job back: whatever they'd loaded is set down, and the next free
+hand carries it on. A walk takes as long as the way through the decks is. The Ship menu's Work lines say what
+each store has against what it wants, who's carrying for it and since when, or why nobody is.
+
+An older file's Errands part (who carries what from which store to which) isn't read any more, and the
+checker says so.
 
 LOADS
 -----

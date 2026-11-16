@@ -5,14 +5,16 @@ a crate feeds: 200 sittings
 sittings at: 06:00, 07:30, 18:00, 19:30, each 90 minutes
 a repair takes: 1 parts crate, from the parts lockers or the shuttle stores, for what's broken, cut, crippled or forced
 salvage makes: 1 parts crate from 10 salvage, in The Repair Bay, in 2 hours, into the parts lockers
+carried by: the deckhands, the spare hands
+a trip carries: 2 ration crates, 2 fuel cells, 4 produce, 1 parts crate, 1 medicine crate
 
 Stores:
 - shuttle stores in The Lighter Bay: holds 20 ration crates, 12 fuel cells, 6 parts crates: Crates strapped down where the lighter unloads them, with the manifest on a clip.
-- fuel rack in Engineering: holds 6 fuel cells: A rack of cells by the reactor, each one tagged with the day it came aboard.
-- pantry in The Galley: holds 12 ration crates, 12 produce: Shelves behind a wire door, and the smell of whatever's nearest to going off.
+- fuel rack in Engineering: holds 6 fuel cells; wants 3; urgent under 2; carried by the deckhands, the techs, the spare hands: A rack of cells by the reactor, each one tagged with the day it came aboard.
+- pantry in The Galley: holds 12 ration crates, 12 produce; wants 4 of each; carried by the deckhands, the cooks, the quartermaster, the spare hands: Shelves behind a wire door, and the smell of whatever's nearest to going off.
 - garden bins in The Garden: holds 12 produce: Bins at the end of the beds, with today's picking in them.
-- medicine cabinet in Medbay: holds 5 medicine crates: A locked cabinet with a list on its door of what's left.
-- parts lockers in Stores: holds 6 parts crates: Lockers of spares, sorted by someone who's since given up.
+- medicine cabinet in Medbay: holds 5 medicine crates; wants 2; carried by the deckhands, the nurses, the spare hands: A locked cabinet with a list on its door of what's left.
+- parts lockers in Stores: holds 6 parts crates; wants 2; carried by the deckhands, the techs, the spare hands: Lockers of spares, sorted by someone who's since given up.
 - soup kettle in The Long Mess: holds 400 sittings
 
 Machines:
@@ -23,12 +25,6 @@ Machines:
 Loads:
 - air plant 20, engines 30 while under way, doors 6, comms 6, navigation 6, cameras 4, lights 1 a room, computers 2 each
 - when short, drop: cameras, comms, lights, doors, navigation, air
-
-Errands:
-- a tech: fuel cells from the shuttle stores to the fuel rack when under 3, two at a time
-- the quartermaster: ration crates from the shuttle stores to the pantry when under 4, two at a time
-- a cook: produce from the garden bins to the pantry when under 4, four at a time
-- a tech: parts crates from the shuttle stores to the parts lockers when under 2, one at a time
 
 Refills:
 - the shuttle stores: ration crates and fuel cells from nothing for now, every 6 hours, up to full

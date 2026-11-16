@@ -346,7 +346,11 @@ function logisticsItem(id) {
       place: { id, name: LOCATIONS[id]?.name ?? id },
       stores: (model?.stores ?? []).map((store) => ({ id: store.id, name: store.name, room: store.roomName, placed: store.placed, holds: store.holds, count: store.count })),
     },
-    lists: { ...boardLists(), rooms, items: Object.entries(WORLD_ITEMS).map(([itemId, one]) => ({ id: itemId, name: one.name })) },
+    lists: {
+      ...boardLists(), rooms, items: Object.entries(WORLD_ITEMS).map(([itemId, one]) => ({ id: itemId, name: one.name })),
+      // Who a store's line can name to carry for it: the people doing a job, whoever holds a post, the spare hands.
+      carriers: [...(commandOf(id)?.jobs ?? []).map((job) => `the ${job.title}s`), ...(commandOf(id)?.posts ?? []).map((post) => `the ${post.title}`), "the spare hands"],
+    },
     layout: readLayout()[`logistics/${id}`] ?? {},
     problems: logisticsFileProblems(id),
   };

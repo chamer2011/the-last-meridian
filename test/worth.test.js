@@ -69,16 +69,16 @@ function handIn(game, room, storeId, item, n) {
 function stillShip(run) {
   const model = lg.logisticsOf(SHIP);
   const garden = model.machines.find((one) => one.id === "garden");
-  const { refills, errands } = model;
+  const { refills, wants } = model;
   garden.runs = false;
   model.refills = [];
-  model.errands = [];
+  model.wants = [];
   try {
     return run();
   } finally {
     garden.runs = true;
     model.refills = refills;
-    model.errands = errands;
+    model.wants = wants;
   }
 }
 const kettle = (game) => lg.countOf(game, storeOf("soup_kettle"));

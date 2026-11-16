@@ -1,11 +1,13 @@
 // A place's logistics as plain text: world/logistics/<place>.txt. The file names the place, has a few numbers at
-// the top, and one part each for Stores, Machines, Loads, Errands and Refills, every line of them starting with -
-// and a space. This only reads and writes the words, and reads a store's line into its pieces; which rooms, things
-// and items they name is worked out by src/logistics.js, which knows the maps. It runs in the browser too, for the
-// Story board. world/logistics/_how-to-write-logistics.txt explains the format.
+// the top, and one part each for Stores, Machines, Loads and Refills, every line of them starting with - and a
+// space. This only reads and writes the words, and reads a store's line into its pieces; which rooms, things,
+// items and people they name is worked out by src/logistics.js, which knows the maps. It runs in the browser too,
+// for the Story board. world/logistics/_how-to-write-logistics.txt explains the format.
 
-export const LOGISTICS_PARTS = ["stores", "machines", "loads", "errands", "refills"];
-export const PART_TITLES = { stores: "Stores", machines: "Machines", loads: "Loads", errands: "Errands", refills: "Refills" };
+export const LOGISTICS_PARTS = ["stores", "machines", "loads", "refills"];
+export const PART_TITLES = { stores: "Stores", machines: "Machines", loads: "Loads", refills: "Refills" };
+// A part the file had until the stores said what they want themselves: who carried what from where to where.
+const OLD_PARTS = { errands: "the Errands part isn't written any more: a store says what it wants kept in it and who carries for it on its own line, such as - pantry in The Galley: holds 12 ration crates; wants 4; carried by the deckhands" };
 
 // The lines at the top of the file.
 export const LOGISTICS_HEADER = [
@@ -15,6 +17,8 @@ export const LOGISTICS_HEADER = [
   { key: "sittings at", path: "sittings", type: "sittings" },
   { key: "a repair takes", path: "repair", type: "repair" },
   { key: "salvage makes", path: "making", type: "making" },
+  { key: "carried by", path: "carriers", type: "carriers" },
+  { key: "a trip carries", path: "trip", type: "trip" },
 ];
 
 // "06:00, 12:00, 18:00, 22:00, each 90 minutes": when the whole ship eats, and how long each sitting lasts.
@@ -48,12 +52,12 @@ export const slugOf = (words) => String(words ?? "").toLowerCase().replace(/['â€
 
 // ---- Reading a file ---------------------------------------------------------------------------
 
-// The file into { name, draft, numbers, stores: [{ text, line }], machines: [...], loads: [...], errands: [...],
+// The file into { name, draft, numbers, carriers, trip, stores: [{ text, line }], machines: [...], loads: [...],
 // refills: [...] }, with every line kept as words for src/logistics.js to make sense of.
 export function parseLogisticsText(text, id = "it") {
   const problems = [];
   const problem = (line, message) => problems.push({ line, message });
-  const value = { name: id, numbers: {}, stores: [], machines: [], loads: [], errands: [], refills: [] };
+  const value = { name: id, numbers: {}, stores: [], machines: [], loads: [], refills: [] };
   const lines = String(text ?? "").replace(/\r\n?/g, "\n").split("\n");
   const header = new Map(LOGISTICS_HEADER.map((field) => [field.key, field]));
   let titled = false;
@@ -75,6 +79,11 @@ export function parseLogisticsText(text, id = "it") {
     const heading = line.match(/^([A-Za-z][A-Za-z ]{0,30}):$/);
     if (heading) {
       const part = heading[1].trim().toLowerCase();
+      if (OLD_PARTS[part]) {
+        problem(n, OLD_PARTS[part]);
+        section = "unknown";
+        continue;
+      }
       if (!LOGISTICS_PARTS.includes(part)) {
         problem(n, `"${heading[1].trim()}" isn't a part of a place's logistics: the parts are ${LOGISTICS_PARTS.map((one) => PART_TITLES[one]).join(", ")}`);
         section = "unknown";
@@ -109,6 +118,14 @@ export function parseLogisticsText(text, id = "it") {
         const read = readMaking(words);
         if (read.problem) problem(n, read.problem);
         else set(value, known.path, { ...read, line: n });
+      } else if (known.type === "carriers") {
+        const list = readCarriers(words);
+        if (!list.length) problem(n, "carried by names who carries for a store that doesn't say, first to last, such as carried by: the deckhands, the spare hands");
+        else set(value, known.path, { list, line: n });
+      } else if (known.type === "trip") {
+        const read = readTrip(words);
+        if (read.problem) problem(n, read.problem);
+        else set(value, known.path, { ...read, line: n });
       } else set(value, known.path, words);
       continue;
     }
@@ -126,9 +143,39 @@ export function parseLogisticsText(text, id = "it") {
 
 // ---- The words of a store's line --------------------------------------------------------------
 
-// "pantry in The Galley: holds 12 ration crates, 12 produce: Shelves behind a wire door." The store, the room it's
-// in, what it holds (a number and the item's words each, or a count of something that isn't an item, such as
-// sittings), and after the last colon how it looks.
+// "the deckhands, then the cooks, then the spare hands": who carries, first to last.
+export const readCarriers = (words) => String(words ?? "").split(/\s*[,;]\s*|\s+then\s+/i).map((one) => one.trim().replace(/^(?:and\s+)?(?:then\s+)?/i, "").replace(/\.$/, "").trim()).filter(Boolean);
+
+// "2 ration crates, 2 fuel cells, 4 produce": how many of each thing one person carries in a trip. Anything the
+// line doesn't name is carried one at a time.
+export function readTrip(words) {
+  const list = [];
+  for (const piece of String(words ?? "").split(/\s*[,;]\s*|\s+and\s+/i).map((one) => one.trim()).filter(Boolean)) {
+    const found = piece.match(/^(\d+)\s+(.+)$/);
+    if (!found || !(Number(found[1]) > 0)) return { problem: `"${piece}" should be a number and what it is, such as a trip carries: 2 ration crates, 4 produce` };
+    list.push({ n: Number(found[1]), what: found[2].trim() });
+  }
+  return list.length ? { list } : { problem: "a trip carries needs a number and what it is, such as a trip carries: 2 ration crates, 4 produce" };
+}
+export const writeTrip = (trip) => (trip?.list ?? []).map((one) => `${one.n} ${one.what}`).join(", ");
+
+// What comes after the first colon of a store's line is cut into its clauses: "holds 12 ration crates, 12 produce;
+// wants 4 of each; urgent under 2; carried by the deckhands, the cooks". A clause starts with its own words, and what
+// follows a comma or a semicolon without them goes on with the clause before.
+const CLAUSES = [["holds", /^holds\s+/i], ["wants", /^wants\s+/i], ["urgent", /^urgent(?:\s+when)?\s+under\s+/i], ["carriers", /^carried\s+by\s+/i]];
+// "4 ration crates", or "4" and "4 of each" for everything the store holds.
+function readMark(piece) {
+  const found = piece.match(/^(\d+)(?:\s+(.+))?$/);
+  if (!found) return null;
+  const what = (found[2] ?? "").trim().replace(/^of\s+(each|them|everything)$/i, "");
+  return { n: Number(found[1]), what: what || null };
+}
+
+// "pantry in The Galley: holds 12 ration crates, 12 produce; wants 4 of each; urgent under 2; carried by the
+// deckhands, the cooks: Shelves behind a wire door." The store, the room it's in, what it holds (a number and the
+// item's words each, or a count of something that isn't an item, such as sittings), what it wants kept in it (a job
+// of carrying comes up whenever it has fewer), when that's urgent, who carries for it, first to last, and after the
+// last colon how it looks. Only holds has to be there.
 export function readStoreLine(text) {
   const pieces = String(text).split(":");
   const head = pieces[0].trim();
@@ -139,17 +186,44 @@ export function readStoreLine(text) {
   if (!name) return { problem: `"${text}" needs the store's name before in` };
   if (!room) return { problem: `"${text}" needs the room after in` };
   const holdsText = (pieces[1] ?? "").trim();
-  const holdsAt = holdsText.match(/^holds\s+(.+)$/i);
-  if (!holdsAt) return { problem: `"${text}" needs holds after the colon, with what the store holds: holds 12 ration crates, 12 produce` };
+  if (!/^holds\s+\S/i.test(holdsText)) return { problem: `"${text}" needs holds after the colon, with what the store holds: holds 12 ration crates, 12 produce` };
   const holds = [];
-  for (const piece of holdsAt[1].split(",").map((one) => one.trim()).filter(Boolean)) {
-    const found = piece.match(/^(\d+)\s+(.+)$/);
-    if (!found) return { problem: `"${piece}" should be a number and what it is, such as 12 ration crates` };
-    holds.push({ n: Number(found[1]), what: found[2].trim() });
+  const wants = [];
+  const urgent = [];
+  const carriers = [];
+  let clause = null;
+  for (let piece of holdsText.split(/\s*[,;]\s*/).map((one) => one.trim()).filter(Boolean)) {
+    const starts = CLAUSES.find(([, words]) => words.test(piece));
+    if (starts) {
+      clause = starts[0];
+      piece = piece.replace(starts[1], "").trim();
+    }
+    if (clause === "carriers") {
+      carriers.push(...readCarriers(piece));
+      continue;
+    }
+    if (clause === "holds") {
+      const found = piece.match(/^(\d+)\s+(.+)$/);
+      if (!found) return { problem: `"${piece}" should be a number and what it is, such as 12 ration crates` };
+      holds.push({ n: Number(found[1]), what: found[2].trim() });
+      continue;
+    }
+    const mark = readMark(piece);
+    if (!mark) return { problem: `"${piece}" should be a number, and what it's a number of if the store holds more than one thing: ${clause === "urgent" ? "urgent under 2" : "wants 4 ration crates, 4 produce"}` };
+    (clause === "urgent" ? urgent : wants).push(mark);
   }
   if (!holds.length) return { problem: `"${text}" holds nothing: write what it holds after holds` };
   const look = pieces.slice(2).join(":").trim() || null;
-  return { name, room, holds, look };
+  return { name, room, holds, wants, urgent, carriers, look };
+}
+// A store's line from its pieces, for the Story board: the clauses with semicolons between them.
+export function writeStoreLine(store) {
+  const marks = (list) => list.map((one) => (one.what ? `${one.n} ${one.what}` : `${one.n}`)).join(", ");
+  const clauses = [`holds ${(store.holds ?? []).map((one) => `${one.n} ${one.what}`).join(", ")}`];
+  if (store.wants?.length) clauses.push(`wants ${marks(store.wants)}`);
+  if (store.urgent?.length) clauses.push(`urgent under ${marks(store.urgent)}`);
+  if (store.carriers?.length) clauses.push(`carried by ${store.carriers.join(", ")}`);
+  return `${store.name} in ${store.room}: ${clauses.join("; ")}${store.look ? `: ${store.look}` : ""}`;
 }
 
 // ---- The words of a machine's line ------------------------------------------------------------
@@ -231,7 +305,7 @@ export function readMachineLine(text) {
   return { name, room, verb, takes, from, gives, into, every, needs, power };
 }
 
-// ---- The words of an errand's line -------------------------------------------------------------
+// ---- Numbers in words --------------------------------------------------------------------------
 
 const NUMBER_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
 const numberOf = (words) => (/^\d+$/.test(words) ? Number(words) : NUMBER_WORDS[String(words).toLowerCase()] ?? null);
@@ -297,30 +371,6 @@ export const writeMaking = (m) => (!m?.n ? "nothing" : `${m.n} ${m.what} from ${
 const listWords = (list) => (list.length > 1 ? `${list.slice(0, -1).join(", ")} or ${list.at(-1)}` : list[0] ?? "");
 export const writeRepair =(r) => (!r?.n ? "nothing" : `${r.n} ${r.what}${r.from?.length ? `, from the ${r.from.join(" or the ")}` : ""}${r.damage?.length ? `, for what's ${listWords(r.damage)}` : ""}`);
 
-// "Quartermaster Brandt: ration crates from the shuttle stores to the pantry when under 4, two at a time": who
-// carries, what, from which store to which, when the store it goes to is short of how many, and how many a trip.
-export function readErrandLine(text) {
-  const colon = String(text).indexOf(":");
-  if (colon < 0) return { problem: `"${text}" needs a colon after who carries, then what they carry` };
-  const who = String(text).slice(0, colon).trim();
-  let body = String(text).slice(colon + 1).trim();
-  if (!who) return { problem: `"${text}" needs to say who carries, before the colon` };
-  let each = 1;
-  body = body.replace(/,?\s*(\w+)\s+at\s+a\s+time\s*$/i, (_, n) => { each = numberOf(n); return ""; }).trim();
-  if (each === null || each < 1) return { problem: `"${text}": how many at a time should be a number, such as two at a time` };
-  let under = null;
-  body = body.replace(/,?\s*when\s+(?:it'?s\s+|they'?re\s+)?under\s+(\w+)\s*$/i, (_, n) => { under = numberOf(n); return ""; }).trim();
-  if (under === null || under < 1) return { problem: `"${text}" needs to say when they go: when under 4, counting what the store it goes to has` };
-  const fromAt = body.search(/\s+from\s+/i);
-  const toAt = body.search(/\s+to\s+/i);
-  if (fromAt < 0 || toAt < 0 || toAt < fromAt) return { problem: `"${text}" needs what they carry, from a store, to a store: ration crates from the shuttle stores to the pantry` };
-  const what = body.slice(0, fromAt).trim();
-  const from = body.slice(fromAt, toAt).replace(/^\s+from\s+(?:the\s+)?/i, "").trim();
-  const to = body.slice(toAt).replace(/^\s+to\s+(?:the\s+)?/i, "").trim();
-  if (!what || !from || !to) return { problem: `"${text}" needs what they carry, from a store, to a store: ration crates from the shuttle stores to the pantry` };
-  return { who, what, from, to, under, each };
-}
-
 // ---- The words of a loads line ---------------------------------------------------------------
 
 // "air plant 20, engines 30 while under way, doors 6, comms 6, navigation 6, cameras 4, lights 1 a room, computers 2
@@ -372,7 +422,7 @@ export function writeLogisticsText(value) {
   for (const field of LOGISTICS_HEADER) {
     const one = get(value, field.path);
     if (one === undefined || one === null || one === "") continue;
-    out.push(`${field.key}: ${field.type === "sittings" ? writeSittings(one) : field.type === "repair" ? writeRepair(one) : field.type === "making" ? writeMaking(one) : one}${field.type === "number" ? ` ${field.unit}` : ""}`);
+    out.push(`${field.key}: ${field.type === "sittings" ? writeSittings(one) : field.type === "repair" ? writeRepair(one) : field.type === "making" ? writeMaking(one) : field.type === "carriers" ? one.list.join(", ") : field.type === "trip" ? writeTrip(one) : one}${field.type === "number" ? ` ${field.unit}` : ""}`);
   }
   for (const part of LOGISTICS_PARTS) {
     const lines = value[part] ?? [];

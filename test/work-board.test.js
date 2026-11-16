@@ -1,7 +1,8 @@
-// The ship's work board, step 1 of the logistics rework: the board does what the errands did (test/logistics-errands
-// has that), and nobody is counted in two places. Someone at a repair, laid up or called away is given no job, a
-// carrier who's called away hands the job back with whatever they'd loaded, and a walk takes as long as the way
-// through the decks is, watched or not. None of this calls an AI.
+// The ship's work board, and nobody counted in two places: someone at a repair, laid up or called away is given no
+// job, a carrier who's called away hands the job back with whatever they'd loaded, and a walk takes as long as the
+// way through the decks is, watched or not. (What raises the jobs, a store wanting something, is in
+// test/store-wants.) The ship's file is a copy here with one group of carriers to a store, the techs for the fuel
+// rack and the quartermaster for the pantry, so that it's plain who's meant to go. None of this calls an AI.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -10,6 +11,14 @@ import path from "node:path";
 import { test } from "node:test";
 
 process.env.GAME_DATA_DIR ??= fs.mkdtempSync(path.join(os.tmpdir(), "meridian-work-board-"));
+const logisticsDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-work-board-files-"));
+const OWN = fs.readFileSync(new URL("../world/logistics/meridian.txt", import.meta.url), "utf8");
+const FILE = OWN
+  .replace("carried by the deckhands, the techs, the spare hands: A rack", "carried by the techs: A rack")
+  .replace("carried by the deckhands, the cooks, the quartermaster, the spare hands", "carried by the quartermaster");
+assert.ok(FILE.includes("carried by the techs: A rack") && FILE.includes("wants 4 of each; carried by the quartermaster:"), "the ship's file is written as this test expects");
+fs.writeFileSync(path.join(logisticsDir, "meridian.txt"), FILE);
+process.env.GAME_LOGISTICS_DIR = logisticsDir;
 
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const bag = await import("../src/bag.js");
@@ -32,9 +41,13 @@ const at = (game, hours) => {
 const minutes = (game, n) => {
   for (let gone = 0; gone < n; gone += 5) clockRuns(game, 5);
 };
-const FUEL = "tech:fuel_cell";
-const BRANDT = "quartermaster:ration_crate";
-const job = (game, id) => game.logistics.meridian.errands?.[id];
+// The stores the jobs here carry to, and the Ship menu's lines for what they want.
+const FUEL = "fuel_rack";
+const PANTRY = "pantry";
+const FUEL_LINE = "fuel_rack:fuel_cell";
+const CRATES_LINE = "pantry:ration_crate";
+const jobs = (game) => game.logistics.meridian.jobs ?? [];
+const job = (game, store) => jobs(game).find((one) => one.to === store);
 const shown = (game, id) => workView(game, "meridian").find((one) => one.id === id);
 const techs = (game) => cmd.onJob(game, "meridian", "tech");
 // Parts that take a repair, of rooms nothing else in these tests stands on.
@@ -63,10 +76,10 @@ function withoutRefills(run) {
   }
 }
 // Runs the clock five minutes at a time until a job is where the test wants it.
-function until(game, id, phase, most = 60) {
-  for (let gone = 0; gone < most && job(game, id)?.phase !== phase; gone += 5) clockRuns(game, 5);
-  assert.equal(job(game, id)?.phase, phase, `the job got to ${phase}`);
-  return job(game, id);
+function until(game, store, phase, most = 60) {
+  for (let gone = 0; gone < most && job(game, store)?.phase !== phase; gone += 5) clockRuns(game, 5);
+  assert.equal(job(game, store)?.phase, phase, `the job got to ${phase}`);
+  return job(game, store);
 }
 
 test("a tech at a repair is given nothing to carry, and the next tech goes", () => {
@@ -74,15 +87,15 @@ test("a tech at a repair is given nothing to carry, and the next tech goes", () 
   at(game, 10);
   const [first, second] = techs(game);
   callToRepair(game, first);
-  take(game, "fuel_rack", "fuel_cell", 5);
+  take(game, FUEL, "fuel_cell", 5);
   minutes(game, 5);
   assert.equal(job(game, FUEL)?.by, second, "the second tech on the watch bill takes the fuel");
   assert.equal(workDetour(game, "meridian")(first), null, "and the first has no job");
   assert.match(whereNow(game, first), /fetching .* for the|fixing the/, "they're at the repair");
   assert.doesNotMatch(whereNow(game, first), /fuel cells/);
-  assert.equal(shown(game, FUEL).who, second);
-  assert.match(shown(game, FUEL).since, /^\d\d:\d\d$/, "the Ship menu says since when");
-  assert.equal(shown(game, FUEL).busy, true);
+  assert.deepEqual(shown(game, FUEL_LINE).carriers, [second]);
+  assert.match(shown(game, FUEL_LINE).status, new RegExp(`^${second} is fetching fuel cells from the shuttle stores, since \\d\\d:\\d\\d$`), "the Ship menu says who and since when");
+  assert.equal(shown(game, FUEL_LINE).busy, true);
 });
 
 test("with every tech taken the job waits, the Ship menu says why, and it's taken up when one comes free", () => {
@@ -91,34 +104,35 @@ test("with every tech taken the job waits, the Ship menu says why, and it's take
   const [only, ...others] = techs(game);
   for (const key of others) cmd.assignJob(game, "meridian", key, "deckhand");
   callToRepair(game, only);
-  take(game, "fuel_rack", "fuel_cell", 5);
+  take(game, FUEL, "fuel_cell", 5);
   minutes(game, 15);
   assert.equal(job(game, FUEL), undefined, "nobody's carrying");
-  assert.equal(count(game, "fuel_rack", "fuel_cell"), 1);
-  const stuck = shown(game, FUEL);
+  assert.equal(count(game, FUEL, "fuel_cell"), 1);
+  const stuck = shown(game, FUEL_LINE);
   assert.match(stuck.status, new RegExp(`^nobody free: ${only} is (fetching|fixing)`));
-  assert.deepEqual([stuck.busy, stuck.stuck, stuck.who], [false, true, "A tech"]);
+  assert.deepEqual([stuck.busy, stuck.stuck, stuck.carriers, stuck.by], [false, true, [], "the techs"]);
   // The repairs are done within the hour, and then the fuel is fetched.
   minutes(game, 120);
   assert.equal(sys.dutyDetour(game, "meridian"), null, "the repairs are done");
-  assert.equal(count(game, "fuel_rack", "fuel_cell"), 3, "one trip of two brings the rack to three, which is enough");
-  assert.equal(shown(game, FUEL).status, "nothing to carry");
+  assert.equal(count(game, FUEL, "fuel_cell"), 3, "one trip of two brings the rack to three, which is enough");
+  assert.equal(shown(game, FUEL_LINE).status, "nothing to carry");
 });
 
 test("a carrier called away before loading hands the job to the next free hand", () => {
   const game = newGame();
   at(game, 10);
-  take(game, "fuel_rack", "fuel_cell", 5);
+  take(game, FUEL, "fuel_cell", 5);
   minutes(game, 5);
   const carrier = job(game, FUEL).by;
   assert.equal(job(game, FUEL).phase, "going");
   callToRepair(game, carrier);
   minutes(game, 5);
   const next = job(game, FUEL);
-  assert.ok(next, "the job's still on the board");
+  assert.ok(next, "there's still a job for the rack");
   assert.notEqual(next.by, carrier, "with someone else on it");
   assert.ok(techs(game).includes(next.by));
   assert.equal(next.phase, "going");
+  assert.equal(jobs(game).length, 1, "and only the one");
   assert.equal(workDetour(game, "meridian")(carrier), null);
 });
 
@@ -127,8 +141,8 @@ test("called away with a load, it's set down, and the next free hand carries it 
   at(game, 10);
   const [only, ...others] = techs(game);
   for (const key of others) cmd.assignJob(game, "meridian", key, "deckhand");
-  take(game, "fuel_rack", "fuel_cell", 5);
-  const cells = () => count(game, "fuel_rack", "fuel_cell") + count(game, "shuttle_stores", "fuel_cell") + (job(game, FUEL)?.load?.n ?? 0);
+  take(game, FUEL, "fuel_cell", 5);
+  const cells = () => count(game, FUEL, "fuel_cell") + count(game, "shuttle_stores", "fuel_cell") + (job(game, FUEL)?.load?.n ?? 0);
   const all = cells();
   const carrying = until(game, FUEL, "carrying");
   assert.deepEqual([carrying.by, carrying.load], [only, { item: "fuel_cell", n: 2 }]);
@@ -137,12 +151,13 @@ test("called away with a load, it's set down, and the next free hand carries it 
   minutes(game, 5);
   assert.deepEqual([job(game, FUEL).phase, job(game, FUEL).by, job(game, FUEL).load], ["down", null, { item: "fuel_cell", n: 2 }], "set down, with nobody on it");
   assert.equal(cells(), all, "the cells are with the job, not gone");
-  assert.match(shown(game, FUEL).status, new RegExp(`^2 fuel cells set down, nobody free: ${only} is (fetching|fixing)`));
+  assert.equal(jobs(game).length, 1, "and no second job is raised for cells that are already on their way");
+  assert.match(shown(game, FUEL_LINE).status, new RegExp(`^2 fuel cells set down; nobody free: ${only} is (fetching|fixing)`));
   assert.equal(workDetour(game, "meridian"), null, "and nobody is walked anywhere for it");
   // Once the repair's done the same tech picks them up and carries them on.
   minutes(game, 120);
   assert.equal(job(game, FUEL), undefined);
-  assert.equal(count(game, "fuel_rack", "fuel_cell"), 3);
+  assert.equal(count(game, FUEL, "fuel_cell"), 3);
   assert.equal(cells(), all);
 }));
 
@@ -151,19 +166,19 @@ test("someone laid up carries nothing, and the Ship menu says who's down", () =>
   at(game, 10);
   const spot = standsAt(game, "meridian", "odessa");
   assert.ok(medbay.fallDown(game, { who: "odessa", place: "meridian", ...spot, why: "out cold", hours: 8 }));
-  take(game, "pantry", "ration_crate", 12);
+  take(game, PANTRY, "ration_crate", 12);
   minutes(game, 30);
-  assert.equal(job(game, BRANDT), undefined, "Brandt isn't sent for crates while she's down");
-  assert.equal(count(game, "pantry", "ration_crate"), 0);
-  assert.match(shown(game, BRANDT).status, /^nobody free: Quartermaster Brandt is (down|laid up in the medbay|being patched up)$/);
-  assert.equal(shown(game, BRANDT).stuck, true);
+  assert.equal(job(game, PANTRY), undefined, "Brandt isn't sent for crates while she's down");
+  assert.equal(count(game, PANTRY, "ration_crate"), 0);
+  assert.match(shown(game, CRATES_LINE).status, /^nobody free: Quartermaster Brandt is (down|laid up in the medbay|being patched up)$/);
+  assert.equal(shown(game, CRATES_LINE).stuck, true);
   assert.doesNotMatch(whereNow(game, "odessa"), /ration crates/);
 });
 
 test("bad air doesn't turn a carrier aside, though it would anyone else headed there", () => {
   const game = newGame();
   at(game, 10);
-  take(game, "fuel_rack", "fuel_cell", 5);
+  take(game, FUEL, "fuel_cell", 5);
   minutes(game, 5);
   const carrier = job(game, FUEL).by;
   // The systems' own shape for a place, as they make it the first time something there changes.
@@ -182,19 +197,19 @@ test("a walk takes the minutes of the way through the decks, watched or not, and
   assert.ok(Math.abs(there - back) < 1, "about as far back as there");
   assert.ok(walkMinutes(game, "meridian", "odessa", null, "store:shuttle_stores", 10) > there, "Brandt has further to go, from the deck above");
   assert.equal(walkMinutes(game, "meridian", "odessa", null, "store:nowhere", 10), null, "and nobody can say how far it is to a store that isn't there");
-  // With the captain ashore, a trip is no longer made in no time: about ten minutes down, five to load, ten back,
-  // counted in the clock's five-minute pieces. (The pace is Brandt's own: a made-up body can have a bad knee.)
+  // With the captain ashore, a trip isn't made in no time: about ten minutes down, five to load, ten back, counted
+  // in the clock's five-minute pieces. (The pace is Brandt's own: a made-up body can have a bad knee.)
   const away = newGame();
   at(away, 10);
   away.location = "haven";
-  take(away, "pantry", "ration_crate", 12);
+  take(away, PANTRY, "ration_crate", 12);
   const inPieces = (walk) => Math.ceil(walk / 5) * 5;
   const trip = inPieces(walkMinutes(away, "meridian", "odessa", null, "store:shuttle_stores")) + 5 + inPieces(walkMinutes(away, "meridian", "odessa", "store:shuttle_stores", "store:pantry"));
   assert.ok(trip >= 25, `a trip is ${trip} minutes`);
   passTime(away, (trip - 5) / 60);
-  assert.equal(count(away, "pantry", "ration_crate"), 0, `no crates before the ${trip} minutes of the trip are up`);
+  assert.equal(count(away, PANTRY, "ration_crate"), 0, `no crates before the ${trip} minutes of the trip are up`);
   passTime(away, 15 / 60);
-  assert.equal(count(away, "pantry", "ration_crate"), 2, "and two once they are");
+  assert.equal(count(away, PANTRY, "ration_crate"), 2, "and two once they are");
   // The same two hours, in one go and in five-minute pieces, leave the same crates in the same stores.
   const once = newGame(7);
   const pieces = newGame(7);
@@ -202,28 +217,35 @@ test("a walk takes the minutes of the way through the decks, watched or not, and
   for (const one of [once, pieces]) {
     at(one, 9);
     one.location = "haven";
-    take(one, "pantry", "ration_crate", 12);
-    take(one, "fuel_rack", "fuel_cell", 5);
+    take(one, PANTRY, "ration_crate", 12);
+    take(one, FUEL, "fuel_cell", 5);
   }
   passTime(once, 2);
   for (let gone = 0; gone < 120; gone += 5) passTime(pieces, 5 / 60);
-  for (const [store, item] of [["pantry", "ration_crate"], ["shuttle_stores", "ration_crate"], ["fuel_rack", "fuel_cell"], ["shuttle_stores", "fuel_cell"]]) {
+  for (const [store, item] of [[PANTRY, "ration_crate"], ["shuttle_stores", "ration_crate"], [FUEL, "fuel_cell"], ["shuttle_stores", "fuel_cell"]]) {
     assert.equal(count(pieces, store, item), count(once, store, item), `${item} in the ${store}`);
   }
 });
 
-test("a job from a save of before the board is carried on, and reading the board writes nothing", () => {
+test("a job kept by a save of before the stores said what they want is settled, and reading the board writes nothing", () => withoutRefills(() => {
   const game = newGame();
   at(game, 10);
-  take(game, "pantry", "ration_crate", 12);
-  // As the errands kept it: no walk worked out, and nobody named for a post's errand.
-  game.logistics.meridian.errands[BRANDT] = { phase: "going", since: game.logistics.meridian.at, load: null };
+  take(game, PANTRY, "ration_crate", 12);
+  take(game, "shuttle_stores", "ration_crate", 2);
+  // As the errands kept it: by the errand's own name, with two crates on someone's shoulder.
+  delete game.logistics.meridian.jobs;
+  game.logistics.meridian.errands = { "quartermaster:ration_crate": { phase: "carrying", since: game.logistics.meridian.at, load: { item: "ration_crate", n: 2 }, by: "odessa" } };
+  const crates = () => count(game, PANTRY, "ration_crate") + count(game, "shuttle_stores", "ration_crate") + jobs(game).reduce((sum, one) => sum + (one.load?.n ?? 0), 0);
   const before = JSON.stringify(game);
   const work = publicState(game).ship.work;
   assert.equal(JSON.stringify(game), before, "reading the board writes nothing");
-  assert.deepEqual(work.map((one) => one.id), [FUEL, BRANDT, "cook:produce", "tech:parts_crate"]);
-  minutes(game, 60);
-  assert.ok(count(game, "pantry", "ration_crate") >= 2, "Brandt brought the crates");
+  assert.deepEqual(work.map((one) => one.id), [FUEL_LINE, CRATES_LINE, "pantry:produce", "medicine_cabinet:medicine_crate", "parts_lockers:parts_crate"], "a line for everything a store wants");
+  minutes(game, 5);
+  assert.equal(game.logistics.meridian.errands, undefined, "the old job is gone");
+  assert.equal(crates(), 20, "and its two crates are back in the stores, none lost and none doubled");
+  minutes(game, 90);
+  assert.equal(count(game, PANTRY, "ration_crate"), 4, "Brandt brought the pantry up to what it wants");
+  assert.equal(crates(), 20);
   // And when nothing's due and nobody's called, the systems say so at once.
   assert.equal(sys.dutyDetour(newGame(), "meridian"), null);
-});
+}));

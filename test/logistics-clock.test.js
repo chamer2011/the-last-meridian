@@ -32,7 +32,7 @@ const storeOf = (id) => logisticsOf("meridian").stores.find((one) => one.id === 
 const kettleCount = (game) => storesView(game, "meridian").find((one) => one.id === "soup_kettle").count.n;
 const setKettle = (game, n) => { game.stores ??= {}; game.stores[storeOf("soup_kettle").key] = { count: n }; };
 const emptyPantry = (game) => { const pantry = storeOf("pantry"); for (const id of Object.keys(pantry.holds)) bag.storeTake(game, pantry.key, pantry.holds, id, 99); };
-// And the stores the errands would refill it from, so that it stays empty.
+// And the stores it would be refilled from, so that it stays empty.
 const emptySources = (game) => { for (const [id, item] of [["shuttle_stores", "ration_crate"], ["garden_bins", "produce"]]) bag.storeTake(game, storeOf(id).key, storeOf(id).holds, item, 99); };
 // The garden makes food from nothing, and the refills bring crates from nothing, so a test that wants the pantry to
 // stay empty stops both for a while.
@@ -260,6 +260,6 @@ test("the kettle says how much is left in it, an emptied pantry says it's empty,
   const before = JSON.stringify(fresh);
   publicState(fresh);
   assert.equal(JSON.stringify(fresh), before, "the Ship menu's machines and sittings are read without writing");
-  assert.deepEqual(fresh.logistics, { meridian: { at: 8 * 60, machines: {}, meals: { days: {}, carry: 0, dry: false }, errands: {} } }, "a new game's logistics start with its clock");
+  assert.deepEqual(fresh.logistics, { meridian: { at: 8 * 60, machines: {}, meals: { days: {}, carry: 0, dry: false }, jobs: [] } }, "a new game's logistics start with its clock");
   assert.deepEqual(advanceLogistics(fresh), [], "and with the clock where it was, there's nothing to catch up");
 });

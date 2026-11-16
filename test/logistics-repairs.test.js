@@ -103,11 +103,11 @@ test("a cut junction box is fixed with a parts crate from the parts lockers, whi
   assert.equal(shown.does, "a parts crate, from the parts lockers or the shuttle stores, for what's broken, cut, crippled or forced");
   assert.deepEqual(shown.waiting, []);
   assert.match(shown.last, /^Day 1, \d\d:\d\d: A parts crate from the parts lockers, for the junction box in Engineering\.$/);
-  // With the lockers empty, the shuttle stores give it, and the engineer goes there for it. (Tech Sami is kept to his
-  // day for this, or he'd have carried a crate down to the lockers first.)
+  // With the lockers empty, the shuttle stores give it, and the engineer goes there for it. (The lockers want nothing
+  // for this, or a deckhand would have carried a crate down to them first.)
   const model = logisticsOf("meridian");
-  const errands = model.errands;
-  model.errands = errands.filter((one) => one.id !== "tech:parts_crate");
+  const wants = model.wants;
+  model.wants = wants.filter((one) => one.store !== "parts_lockers");
   try {
     take(game, "parts_lockers", "parts_crate", 6);
     sys.damagePart(game, "meridian", box.id, "broken", { by: "story" });
@@ -116,7 +116,7 @@ test("a cut junction box is fixed with a parts crate from the parts lockers, whi
     assert.match(said(passTime(game, 1))[0], /with a parts crate from the shuttle stores\.$/);
     assert.equal(count(game, "shuttle_stores"), 5);
   } finally {
-    model.errands = errands;
+    model.wants = wants;
   }
 });
 
@@ -181,15 +181,16 @@ test("fixing something yourself takes nothing, and a file without the line fixes
   assert.equal(repairsView(newGame(), "haven"), null, "and a place with no logistics has no repairs to show");
 });
 
-test("Tech Sami keeps the parts lockers up from the shuttle stores, one crate at a time", () => {
+test("the parts lockers are kept up from the shuttle stores, one crate at a time", () => {
   const game = newGame();
   game.clock.hours = 9;
   clockRuns(game, 1);
   take(game, "parts_lockers", "parts_crate", 5);
-  const errand = workView(game, "meridian").find((one) => one.id === "tech:parts_crate");
-  assert.equal(errand.does, "parts crates from the shuttle stores to the parts lockers when under 2, 1 at a time");
+  const want = () => workView(game, "meridian").find((one) => one.id === "parts_lockers:parts_crate");
+  assert.deepEqual([want().does, want().wants], ["1 parts crate, wants 2", 2]);
   for (let gone = 0; gone < 90; gone += 5) clockRuns(game, 5);
   assert.equal(count(game, "parts_lockers"), 2, "one trip brings the lockers to two, which is enough");
   assert.equal(count(game, "shuttle_stores"), 5);
   assert.equal(parts(game), 7, "nothing came from nowhere");
+  assert.equal(want().status, "nothing to carry");
 });

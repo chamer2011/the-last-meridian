@@ -9,7 +9,7 @@ import { el } from "./dom.js";
 import { writeStoryText } from "./story-text.js";
 import { LINE_PHRASES, PERK_NUMBERS, SPECS, writeWorldText } from "./world-text.js";
 import { KNOWN_SYSTEMS, readComputerLine, systemIdOf, writeSystemsText } from "./systems-text.js";
-import { LOGISTICS_PARTS, PART_TITLES, readErrandLine, readLoadsLine, readMachineLine, readMaking, readRefillLine, readRepair, readSittings, readStoreLine, writeLogisticsText, writeMaking, writeRepair, writeSittings } from "./logistics-text.js";
+import { LOGISTICS_PARTS, PART_TITLES, readCarriers, readLoadsLine, readMachineLine, readMaking, readRefillLine, readRepair, readSittings, readStoreLine, readTrip, writeLogisticsText, writeMaking, writeRepair, writeSittings, writeStoreLine, writeTrip } from "./logistics-text.js";
 import { COMMAND_HEADER, SPARE, readHolderLine, readJobLine, readPostLine, readWorkersLine, slugOf, writeCommandText, writeJobLine, writePostLine } from "./command-text.js";
 import { CARE, MEDBAY_KEYS, PARTS, readAccidentLine, readAccidents, readHitLine, readKindLine, readMendingLine, readOldMarks, readQueue, readShare, readStartLine, readTreatmentLine, readWeaponLine, writeHealthText, writeWoundsText } from "./health-text.js";
 
@@ -462,27 +462,39 @@ function systemsGraph() {
   if (L.place) add(linkNode(`link_place_${L.place.id}`, "place", L.place.name, "The place itself.", "The place"));
   return { list, ws };
 }
-// A place's logistics: each store a box with what it holds, and the machines, errands, loads and refills as boxes
-// with arrows to the stores their words name: from a store into the box, out of the box into a store.
+// A place's logistics: each store a box with what it holds, what it wants kept in it and who carries for it, with an
+// arrow from every store that could supply it; and the machines, loads and refills as boxes with arrows to the stores
+// their words name: from a store into the box, out of the box into a store.
+const sameThing = (a, b) => plainWords(a).replace(/s$/, "") === plainWords(b).replace(/s$/, "");
+const marksWords = (list, holds) => list.map((one) => (one.what ? `${one.n} ${one.what}` : holds.length === 1 ? `${one.n} ${holds[0].what}` : `${one.n} of each`)).join(", ");
 const plainWords = (words) => String(words ?? "").toLowerCase().replace(/['’]/g, "").replace(/^the\s+/, "").replace(/\s+/g, " ").trim();
 function logisticsGraph() {
   const P = state.item, L = state.links;
   const list = [], ws = [];
   const add = (node) => { list.push(node); return node.id; };
   const numbers = P.numbers ?? {};
-  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${numbers.eats ? `Everyone aboard eats ${numbers.eats} sittings a day. ` : ""}${numbers.crateFeeds ? `A crate feeds ${numbers.crateFeeds} sittings. ` : ""}${P.sittings ? `Sittings at ${writeSittings(P.sittings)}. ` : "Four sittings a day unless this says otherwise. "}${P.repair?.n ? `A repair takes ${writeRepair(P.repair)}.` : "A repair takes nothing."}${P.making?.n ? ` Salvage makes ${writeMaking(P.making)}.` : ""}`, label: "The numbers at the top" });
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${numbers.eats ? `Everyone aboard eats ${numbers.eats} sittings a day. ` : ""}${numbers.crateFeeds ? `A crate feeds ${numbers.crateFeeds} sittings. ` : ""}${P.sittings ? `Sittings at ${writeSittings(P.sittings)}. ` : "Four sittings a day unless this says otherwise. "}${P.repair?.n ? `A repair takes ${writeRepair(P.repair)}.` : "A repair takes nothing."}${P.making?.n ? ` Salvage makes ${writeMaking(P.making)}.` : ""}${P.carriers?.list?.length ? ` A store that doesn't say is carried for by ${P.carriers.list.join(", then ")}.` : ""}${P.trip?.list?.length ? ` A trip carries ${writeTrip(P.trip)}.` : ""}`, label: "The numbers at the top" });
   const stores = (P.stores ?? []).map((one, i) => {
     const read = readStoreLine(one.text ?? one);
     const placed = (L.stores ?? []).find((s) => s.name === read.name);
-    return { i, read, id: add({ id: `store${i}`, kind: "beat", col: 1, name: read.problem ? "A store" : `${read.name}, in ${read.room}`, text: read.problem ? read.problem : `Holds ${read.holds.map((h) => `${h.n} ${h.what}`).join(", ")}.${placed ? placed.placed ? " The game puts it in the room, since the map hasn't drawn one." : " It's the thing of that name in the room." : ""}${read.look ? ` ${read.look}` : ""}`, label: "A store", bind: { store: i }, problem: Boolean(read.problem) }) };
+    return { i, read, id: add({ id: `store${i}`, kind: "beat", col: 1, name: read.problem ? "A store" : `${read.name}, in ${read.room}`, text: read.problem ? read.problem : `Holds ${read.holds.map((h) => `${h.n} ${h.what}`).join(", ")}.${read.wants.length ? ` Wants ${marksWords(read.wants, read.holds)}${read.urgent.length ? `, urgent under ${marksWords(read.urgent, read.holds)}` : ""}, carried by ${(read.carriers.length ? read.carriers : P.carriers?.list ?? ["nobody yet"]).join(", then ")}.` : ""}${placed ? placed.placed ? " The game puts it in the room, since the map hasn't drawn one." : " It's the thing of that name in the room." : ""}${read.look ? ` ${read.look}` : ""}`, label: "A store", bind: { store: i }, problem: Boolean(read.problem) }) };
   });
-  const cols = { machines: 2, errands: 3, loads: 4, refills: 2 };
-  const kinds = { machines: "route", errands: "fact", loads: "clock", refills: "consequence" };
-  const labels = { machines: "A machine", errands: "An errand", loads: "What draws power", refills: "A refill, from nothing" };
-  for (const part of ["machines", "errands", "loads", "refills"]) {
+  // What a store wants can come from any other store that holds the same thing: the board works the route out.
+  for (const store of stores) {
+    if (store.read.problem || !store.read.wants.length) continue;
+    const wanted = store.read.wants.some((one) => !one.what) ? store.read.holds.map((h) => h.what) : store.read.wants.map((one) => one.what);
+    for (const other of stores) {
+      if (other === store || other.read.problem) continue;
+      if (other.read.holds.some((h) => wanted.some((what) => sameThing(h.what, what)))) ws.push({ from: other.id, to: store.id });
+    }
+  }
+  const cols = { machines: 2, loads: 3, refills: 2 };
+  const kinds = { machines: "route", loads: "clock", refills: "consequence" };
+  const labels = { machines: "A machine", loads: "What draws power", refills: "A refill, from nothing" };
+  for (const part of ["machines", "loads", "refills"]) {
     (P[part] ?? []).forEach((one, i) => {
       const words = one.text ?? one;
-      const read = part === "machines" ? readMachineLine(words) : part === "errands" ? readErrandLine(words) : part === "loads" ? readLoadsLine(words) : part === "refills" ? readRefillLine(words) : null;
+      const read = part === "machines" ? readMachineLine(words) : part === "loads" ? readLoadsLine(words) : part === "refills" ? readRefillLine(words) : null;
       const id = add({ id: `${part}${i}`, kind: kinds[part], col: cols[part], name: read?.drop ? "When short, drop" : words.split(":")[0].trim().slice(0, 40), text: read?.problem ?? words, label: read && !read.gives && read.power ? "The generator" : read?.drop ? "The order they're let go in" : labels[part], bind: { logLine: [part, i] }, problem: Boolean(read?.problem) });
       const lower = plainWords(words);
       for (const store of stores) {
@@ -1166,7 +1178,7 @@ function inspectNothing(inspector) {
                   : state.kind === "faction" ? "The faction as a board: what the player reads, what they believe, and their people, places, enemies and stories, each a box that opens."
                     : state.kind === "perk" ? "The perk as a board: what the player reads, what it changes, and the perks it needs or leads to. What it needs is in the box on the left."
                       : state.kind === "systems" ? "A place's systems as a board: who keeps it running, each system with its parts and the rooms they're in, each computer with arrows to what it runs, and the rooms with what's in each. Click any box to read it and change it."
-                      : state.kind === "logistics" ? "The ship's logistics as a board: each store with what it holds and the room it's in, and the machines, errands, loads and refills, each with arrows to the stores its words name. Click any box to read it and change it."
+                      : state.kind === "logistics" ? "The ship's logistics as a board: each store with what it holds, what it wants kept in it and who carries for it, with an arrow from every store that could supply it, and the machines, loads and refills, each with arrows to the stores its words name. Click any box to read it and change it."
                       : state.kind === "health" && state.id === "wounds" ? "The kinds of wound and old mark as a board: the lines at the top that say how blood, healing, walking and pain go, every wound and old mark, the weapons and the hits, with arrows from a weapon to the hits it makes and from a hit or an accident to the wounds it leaves, and the species, whose Body parts say how often each part is hit. Click any box to read it and change it."
                       : state.kind === "health" ? "A place's medbay as a board: the lines at the top that say where it is and how it works, each treatment and each kind of mending, and who starts the game hurt. Click any box to read it and change it."
                       : state.kind === "request" && state.item?.overview ? "Every kind of request as a box, in a column for the lives it's for, with who asks, what's wanted and how long they give. An order is in its own colour. Click one to open it."
@@ -1178,7 +1190,7 @@ function inspectNothing(inspector) {
     el("div", { class: "legend" }, ...(state.tab === "scene" ? [["beat", "parts"], ["ending", "checks and fights"], ["end", "ends"], ["clock", "missing"]]
       : state.kind === "story" ? [["lead", "the lead"], ["beat", "beats"], ["route", "ways through"], ["ending", "endings"], ["fact", "facts"], ["consequence", "consequences"], ["clock", "the clock"], ["next", "other stories"]]
         : state.kind === "systems" ? [["beat", "systems"], ["route", "its own systems"], ["fact", "computers"], ["clock", "rooms"], ["next", "links to open"]]
-        : state.kind === "logistics" ? [["beat", "stores"], ["route", "machines"], ["fact", "errands"], ["clock", "loads"], ["consequence", "refills"], ["next", "links to open"]]
+        : state.kind === "logistics" ? [["beat", "stores"], ["route", "machines"], ["clock", "loads"], ["consequence", "refills"], ["next", "links to open"]]
         : state.kind === "request" && state.item?.overview ? [["beat", "requests"], ["route", "orders"]]
         : state.kind === "request" ? [["lead", "lines on top"], ["beat", "what they ask"], ["route", "the answers"], ["ending", "how it ends"], ["clock", "not written"]]
         : state.kind === "command" ? [["lead", "who chooses"], ["beat", "posts"], ["route", "jobs"], ["fact", "spare hands"]]
@@ -1189,7 +1201,7 @@ function inspectNothing(inspector) {
     state.tab === "notes" && state.kind === "story" ? row(button("+ an ending", addEnding), button("+ a fact", () => addFact()), button("+ something days later", () => addConsequence()), button("+ a stage of the clock", addStage), button("+ what changes this story", addReaction)) : null,
     state.tab === "notes" && state.kind === "place" ? row(button("+ a district", addDistrict)) : null,
     state.tab === "notes" && state.kind === "systems" ? row(button("+ a system", addSystem), button("+ a computer", addComputerLine)) : null,
-    state.tab === "notes" && state.kind === "logistics" ? row(button("+ a store", addStore), ...["machines", "errands", "loads", "refills"].map((part) => button(`+ ${PART_TITLES[part].toLowerCase().replace(/s$/, "")}`, () => addLogisticsLine(part)))) : null,
+    state.tab === "notes" && state.kind === "logistics" ? row(button("+ a store", addStore), ...["machines", "loads", "refills"].map((part) => button(`+ ${PART_TITLES[part].toLowerCase().replace(/s$/, "")}`, () => addLogisticsLine(part)))) : null,
     state.tab === "notes" && state.kind === "command" ? row(button("+ a post", addPost), button("+ a job", addJob)) : null,
     state.tab === "notes" && state.kind === "health" ? row(...healthParts().map(([part, , label]) => button(`+ ${label.toLowerCase()}`, () => addHealthLine(part)))) : null,
     state.tab === "notes" && state.kind === "computer" ? row(button("+ a file", () => addEntry("files")), button("+ a letter", () => addEntry("mail")), button("+ a program", () => addEntry("programs"))) : null,
@@ -1412,6 +1424,8 @@ function inspectLogisticsAbout(inspector) {
   const sittings = textBox("edit-sittings", P.sittings ? writeSittings(P.sittings) : "");
   const repair = textBox("edit-repair", P.repair ? writeRepair(P.repair) : "");
   const making = textBox("edit-making", P.making ? writeMaking(P.making) : "");
+  const carriers = textBox("edit-carriers", P.carriers?.list?.join(", ") ?? "");
+  const trip = textBox("edit-trip", P.trip ? writeTrip(P.trip) : "");
   const trouble = el("div", { class: "hint tone-bad" });
   fill(inspector, h2("The numbers at the top"),
     el("label", { for: "edit-title" }, "The place's name"), name,
@@ -1421,6 +1435,8 @@ function inspectLogisticsAbout(inspector) {
     el("label", { for: "edit-sittings" }, "sittings at: the times the whole ship eats, and how long each lasts (empty for four of 90 minutes, at 06:00, 07:30, 18:00 and 19:30)"), sittings,
     el("label", { for: "edit-repair" }, "a repair takes: what the engineers use up each time they fix something, the stores they fetch it from, and the kinds of damage that need it (empty for nothing)"), repair,
     el("label", { for: "edit-making" }, "salvage makes: what the bench makes from how much salvage, the room it's made in, how long it takes, and the store it goes into (empty for nothing)"), making,
+    el("label", { for: "edit-carriers" }, "carried by: who carries for a store whose own line doesn't say, first to last (jobs, posts, the spare hands)"), carriers,
+    el("label", { for: "edit-trip" }, "a trip carries: how many of each thing one person carries at a time (anything not named goes one at a time)"), trip,
     trouble,
     row(button("Keep", () => {
       const read = sittings.value.trim() ? readSittings(sittings.value) : null;
@@ -1438,6 +1454,12 @@ function inspectLogisticsAbout(inspector) {
         trouble.textContent = made.problem;
         return;
       }
+      const load = trip.value.trim() ? readTrip(trip.value) : null;
+      if (load?.problem) {
+        trouble.textContent = load.problem;
+        return;
+      }
+      const who = readCarriers(carriers.value);
       P.name = name.value.trim() || P.name;
       if (draft.value.trim()) P.draft = draft.value.trim();
       else delete P.draft;
@@ -1450,11 +1472,15 @@ function inspectLogisticsAbout(inspector) {
       else delete P.repair;
       if (made?.n) P.making = made;
       else delete P.making;
+      if (who.length) P.carriers = { list: who };
+      else delete P.carriers;
+      if (load) P.trip = load;
+      else delete P.trip;
       changed();
     }), button("Undo", () => inspect())),
-    hint(`The file is world/logistics/${state.id}.txt. Every part of it is played: the stores, the machines, the sittings, the loads, the errands, the refills, the repairs and what salvage makes. The how-to there says how each is written.`));
+    hint(`The file is world/logistics/${state.id}.txt. Every part of it is played: the stores and what they want, the machines, the sittings, the loads, the refills, the repairs and what salvage makes. The how-to there says how each is written.`));
 }
-// A store: its line, with the room and what it holds picked from lists to write it.
+// A store: its line, with the room, what it holds, what it wants and who carries for it picked from lists to write it.
 function inspectStoreLine(inspector, node) {
   const P = state.item, lists = state.lists;
   const entry = P.stores[node.bind.store];
@@ -1467,20 +1493,39 @@ function inspectStoreLine(inspector, node) {
   const held = (lists.items ?? []).find((one) => one.name.toLowerCase().replace(/s$/, "") === firstHeld || one.id === firstHeld.replace(/ /g, "_"));
   const item = picker("edit-item", [...(lists.items ?? []).map((one) => [one.name, one.name]), ["sittings", "sittings (a count, not things)"]], held?.name ?? (firstHeld === "sitting" ? "sittings" : (lists.items ?? [])[0]?.name ?? "sittings"));
   const count = numberBox("edit-count", 6);
-  fill(inspector, h2(node.label), el("label", { for: "edit-line" }, "The store, in, its room, a colon, holds and what it holds, and after another colon how it looks"), box,
-    row(el("span", {}, "in"), room, button("Put it there", () => {
-      const now = readStoreLine(box.value);
-      if (now.problem) return;
-      box.value = `${now.name} in ${room.value}: holds ${now.holds.map((h) => `${h.n} ${h.what}`).join(", ")}${now.look ? `: ${now.look}` : ""}`;
-    })),
+  // What it wants, and when that's urgent: a number for one of the things it holds, or for all of them.
+  const heldNow = () => { const now = readStoreLine(box.value); return now.problem ? [] : now.holds.map((h) => h.what); };
+  const things = () => [["", "everything it holds"], ...heldNow().map((what) => [what, what])];
+  const wantOf = picker("edit-want-of", things(), "");
+  const wantN = numberBox("edit-want-n", read.problem ? 2 : read.wants[0]?.n ?? 2);
+  const urgentOf = picker("edit-urgent-of", things(), "");
+  const urgentN = numberBox("edit-urgent-n", read.problem ? 1 : read.urgent[0]?.n ?? 1);
+  const carrier = picker("edit-carrier", (lists.carriers ?? []).map((one) => [one, one]), (lists.carriers ?? [])[0] ?? "");
+  // One mark set in a list of them: for one thing, or for everything (which takes the place of the rest); none at 0.
+  const marked = (list, what, n) => {
+    const rest = what ? list.filter((one) => one.what && !sameThing(one.what, what)) : [];
+    const spelt = what ? list.filter((one) => !one.what).flatMap((one) => heldNow().filter((each) => !sameThing(each, what)).map((each) => ({ n: one.n, what: each }))) : [];
+    return n > 0 ? [...spelt, ...rest, { n, what: what || null }] : [...spelt, ...rest];
+  };
+  const rewrite = (change) => {
+    const now = readStoreLine(box.value);
+    if (now.problem) return;
+    change(now);
+    box.value = writeStoreLine(now);
+  };
+  fill(inspector, h2(node.label), el("label", { for: "edit-line" }, "The store, in, its room, a colon, holds and what it holds; then wants, urgent under and carried by, each after a semicolon; and after another colon how it looks"), box,
+    row(el("span", {}, "in"), room, button("Put it there", () => rewrite((now) => { now.room = room.value; }))),
     row(count, item, button("+ add to what it holds", () => {
-      const now = readStoreLine(box.value);
       const n = Math.max(1, Number(count.value) || 1);
       const words = item.value === "sittings" ? "sittings" : item.value.toLowerCase();
-      if (now.problem) box.value = `new store in ${room.value}: holds ${n} ${words}`;
-      else box.value = `${now.name} in ${now.room}: holds ${[...now.holds.map((h) => `${h.n} ${h.what}`), `${n} ${words}`].join(", ")}${now.look ? `: ${now.look}` : ""}`;
+      if (readStoreLine(box.value).problem) box.value = `new store in ${room.value}: holds ${n} ${words}`;
+      else rewrite((now) => { now.holds.push({ n, what: words }); });
     })),
     hint("Items are named the way their files name them, plural or not; the plural with an s is written in the file. The store starts full, with this much, and never holds more."),
+    row(el("span", {}, "wants"), wantN, el("span", {}, "of"), wantOf, button("Set what it wants", () => rewrite((now) => { now.wants = marked(now.wants, wantOf.value, Number(wantN.value) || 0); }))),
+    row(el("span", {}, "urgent under"), urgentN, el("span", {}, "of"), urgentOf, button("Set when it's urgent", () => rewrite((now) => { now.urgent = marked(now.urgent, urgentOf.value, Number(urgentN.value) || 0); }))),
+    row(el("span", {}, "carried by"), carrier, button("+ add a carrier", () => rewrite((now) => { if (carrier.value && !now.carriers.includes(carrier.value)) now.carriers.push(carrier.value); })), button("Start the carriers again", () => rewrite((now) => { now.carriers = []; }))),
+    hint("A job of carrying comes up whenever the store has fewer of a thing than it wants, and is fetched from the nearest store that can spare it. Under the urgent mark the job comes before the others, and wakes someone if nobody's up. Carriers are asked in the order written, and a store that names none uses the carried by line at the top. Set a number to 0 to take it away."),
     row(button("Keep", () => { P.stores[node.bind.store] = { text: box.value.trim() }; changed(); }), button("Undo", () => inspect())),
     row(button("+ another store", addStore), button("Remove", () => remove(node), { class: "danger" })));
 }
@@ -1494,9 +1539,7 @@ function inspectLogisticsLine(inspector, node) {
   fill(inspector, h2(node.label), el("label", { for: "edit-line" }, `The line, under ${PART_TITLES[part]}`), box,
     part === "machines"
       ? hint("A machine: its name, in and its room if the room isn't named like it, a colon, then what it does. It takes so many of an item (or one of two, with or between them) from a store, and puts so many of an item or of sittings into a store, every so long, with power and someone there if it needs them: galley: cooks 1 produce or 1 ration crate from the pantry into 200 sittings in the soup kettle every hour, with power and a cook there. One that only gives power waits for step 4.")
-      : part === "errands"
-        ? hint("An errand: who carries, by their name in the place's life file (a crowd name, or someone's name), a colon, what they carry, from a store, to a store, when the store it goes to is under so many, and how many a trip: Quartermaster Brandt: ration crates from the shuttle stores to the pantry when under 4, two at a time.")
-        : part === "loads"
+      : part === "loads"
           ? hint("The loads: each system and what it draws from the generator, with a room or each to count them, and while under way for what only draws on a jump: air plant 20, engines 30 while under way, lights 1 a room, computers 2 each. Another line says the order they're let go in when the generator hasn't enough: when short, drop: cameras, comms, lights, doors, navigation, air.")
           : hint("A refill: the store, a colon, what comes into it, from nothing (the one source left until trade off the ship is built), how often, and how far it's filled: the shuttle stores: ration crates and fuel cells from nothing for now, every 6 hours, up to full. Each refill is written in the manifest."),
     row(button("Keep", () => { P[part][i] = { text: box.value.trim().replace(/\n+/g, " ") }; changed(); }), button("Undo", () => inspect())),

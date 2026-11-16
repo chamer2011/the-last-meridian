@@ -3,8 +3,8 @@
 // pack; the Ship menu reads the same count. Its machines run on the clock, at the same beat as everyone's days: each
 // takes from one store and puts into another so often, while its room has power and someone's at it. The whole ship
 // eats from the kettle at its sittings, and whoever finds it empty goes without, which the ship's morale feels at
-// midnight. The file's other parts (loads, errands, refills) are read and checked for their shape, and come to life
-// step by step. Everything here runs on this computer. public/logistics-text.js
+// midnight. A store's line also says what it wants kept in it, when that's urgent and who carries for it, and the
+// ship's work board (src/work.js) sends them. Everything here runs on this computer. public/logistics-text.js
 // reads the words; this knows the maps, the items, the systems and everyone's days.
 
 import { handsFree } from "./body.js";
@@ -17,7 +17,7 @@ import { claimedSquares, damageKinds, floorSpot, powerBalance, roomPowered, syst
 import { YOU, jobById, jobByWords, mutinyStage, postByWords, speedOf, tallyDuty } from "./command.js";
 import { mapFor, roomHere, roomsOf, roomsOn, thingsIn } from "./walk.js";
 import { LOGISTICS_FILE_PROBLEMS, WORLD_LOGISTICS } from "./world.js";
-import { everyWords, readErrandLine, readLoadsLine, readMachineLine, readRefillLine, readStoreLine, slugOf } from "../public/logistics-text.js";
+import { everyWords, readLoadsLine, readMachineLine, readRefillLine, readStoreLine, slugOf } from "../public/logistics-text.js";
 import { KNOWN_SYSTEMS, SYSTEM_TITLES } from "../public/systems-text.js";
 import { SHIP_DATA } from "./world.js";
 import { refillsHeld } from "./room-hooks.js";
@@ -126,7 +126,38 @@ function compileLogistics(place) {
     const key = plain(want);
     return rooms.find((room) => plain(room.name) === key || room.id === key || (room.aliases ?? []).some((alias) => plain(alias) === key)) ?? null;
   };
-  const model = { place, name, file, numbers: file.numbers ?? {}, stores: [], storesIn: {}, machines: [], kettles: [], sittings: file.sittings ?? DEFAULT_SITTINGS, eats: Number(file.numbers?.eats) || 2, problems };
+  const model = { place, name, file, numbers: file.numbers ?? {}, stores: [], storesIn: {}, wants: [], trip: {}, machines: [], kettles: [], sittings: file.sittings ?? DEFAULT_SITTINGS, eats: Number(file.numbers?.eats) || 2, problems };
+  // Who a store's line can name to carry for it: the people doing a job ("the deckhands"), whoever holds a post ("the
+  // quartermaster"), the watch bill's spare hands, or someone by name. Whoever of them is free at the time goes.
+  const roster = rosterOf(place);
+  const findCarrier = (words) => {
+    const said = String(words).trim();
+    if (/^(the\s+)?spare\s+hands?$/i.test(said)) return { spare: true, words: "the spare hands" };
+    const job = jobByWords(place, said);
+    if (job) return { job, words: said };
+    const post = postByWords(place, said) ?? postByWords(place, said.replace(/^the\s+/i, ""));
+    if (post) return { post, words: said };
+    const crowd = roster.find((one) => one.name && plain(one.name) === plain(said));
+    if (crowd) return { key: crowd.key, words: said };
+    const person = findCharacter(null, said);
+    const known = person ? roster.find((one) => one.id === person.id) : null;
+    return known ? { key: known.key, words: said } : null;
+  };
+  const nobodyCalled = (words, forWhat) => `nobody called ${words} is a job or a post in world/command, or has a day at ${name} in world/life, to carry ${forWhat}`;
+  // The file's own carried by line, for every store that doesn't say.
+  const usualCarriers = [];
+  for (const words of file.carriers?.list ?? []) {
+    const one = findCarrier(words);
+    if (one) usualCarriers.push(one);
+    else at(file.carriers.line ?? null, nobodyCalled(words, "for the stores"));
+  }
+  // How many of a thing one person carries in a trip: one, unless the file's a trip carries line says more.
+  model.trip = {};
+  for (const { n, what } of file.trip?.list ?? []) {
+    const item = itemByWords(what);
+    if (!item) at(file.trip.line ?? null, `there's no item called ${what} in world/items, for a trip to carry`);
+    else model.trip[item] = n;
+  }
   const taken = new Map();
   for (const raw of file.stores ?? []) {
     const line = raw.line ?? null;
@@ -167,6 +198,48 @@ function compileLogistics(place) {
       at(line, `the ${s.name} holds ${count.unit} and things both: a store is one or the other`);
       continue;
     }
+    if (count && (s.wants.length || s.urgent.length || s.carriers.length)) {
+      at(line, `the ${s.name} holds ${count.unit}, which nobody carries: only a store of things says what it wants and who carries for it`);
+      continue;
+    }
+    // What it wants kept in it, when that's urgent, and who carries for it. A number alone is for everything it holds.
+    const wants = {};
+    const urgent = {};
+    const mark = (list, into, saying) => {
+      for (const { n, what } of list) {
+        const item = what === null ? null : itemByWords(what);
+        if (what !== null && (!item || !(item in holds))) {
+          at(line, `the ${s.name} ${saying} ${n} ${what}, which it doesn't hold: add it to its holds first`);
+          sound = false;
+        } else for (const one of item ? [item] : Object.keys(holds)) into[one] = n;
+      }
+    };
+    mark(s.wants, wants, "wants");
+    mark(s.urgent, urgent, "is urgent under");
+    for (const [item, n] of Object.entries(wants)) {
+      if (n >= 1 && n <= holds[item]) continue;
+      at(line, n < 1 ? `the ${s.name} wants ${n} ${itemWords(item, 2)}, which is nothing to want: leave wants out, or write a number it can be short of` : `the ${s.name} holds only ${holds[item]} ${itemWords(item, 2)}, so it can't want ${n}: it would always be short`);
+      sound = false;
+    }
+    for (const [item, n] of Object.entries(urgent)) {
+      if (item in wants && n <= wants[item]) continue;
+      at(line, item in wants ? `the ${s.name} wants ${wants[item]} ${itemWords(item, 2)}, so being urgent under ${n} would make it urgent whenever it's short: urgent under is the smaller number` : `the ${s.name} says when ${itemWords(item, 2)} are urgent, but not how many it wants: write wants first`);
+      sound = false;
+    }
+    const carriers = [];
+    for (const words of s.carriers) {
+      const one = findCarrier(words);
+      if (one) carriers.push(one);
+      else {
+        at(line, nobodyCalled(words, `for the ${s.name}`));
+        sound = false;
+      }
+    }
+    if (sound && Object.keys(wants).length && !carriers.length && !usualCarriers.length) {
+      at(line, `the ${s.name} wants things kept in it, but nobody's named to carry them: add carried by the deckhands to its line, or a carried by line at the top of the file`);
+      sound = false;
+    }
+    if (!sound) continue;
     const level = room.level;
     const existing = thingsIn(room).find((one) => plain(one.name) === plain(s.name));
     let thing = existing;
@@ -190,11 +263,13 @@ function compileLogistics(place) {
       thing.holds = { ...holds };
       thing.look = `${existing ? `${thing.look ?? ""} `.trimStart() : s.look ? `${s.look} ` : ""}The ship keeps ${kept} here.`.trim();
     }
-    const entry = { id, name: s.name, room: room.id, roomName: room.name, level: level.id, thing: thing.id, key: `thing:${place}:${thing.id}`, holds, count, look: s.look, placed: !existing, line };
+    const entry = { id, name: s.name, room: room.id, roomName: room.name, level: level.id, thing: thing.id, key: `thing:${place}:${thing.id}`, holds, count, wants, urgent, carriers: carriers.length ? carriers : usualCarriers, look: s.look, placed: !existing, line };
     model.stores.push(entry);
     (model.storesIn[room.id] ??= []).push(id);
     if (count) model.kettles.push(entry);
   }
+  // Everything the stores want, in the file's order: what the work board keeps up (src/work.js).
+  model.wants = model.stores.flatMap((store) => Object.keys(store.wants).map((item) => ({ store: store.id, item, wants: store.wants[item], urgent: store.urgent[item] ?? 0, line: store.line })));
   // The machines: what each takes, from where, what it makes, where that goes, how often, and what it needs.
   const findStore = (words) => {
     const key = plain(words);
@@ -427,67 +502,6 @@ function compileLogistics(place) {
     }
     if (sound) model.making = { item, n: mk.n, per: mk.per, room: room.id, roomName: room.name, hours: mk.hours, into, line };
   }
-  // The errands: who carries what from which store to which, when the store it goes to is short, so many a trip.
-  model.errands = [];
-  const roster = rosterOf(place);
-  const findPerson = (who) => {
-    const key = plain(who);
-    // A post in the place's chain of command ("the quartermaster"): whoever holds it does the carrying. A job ("a
-    // tech"): whoever does it and is free at the time.
-    const post = /^the\s/i.test(String(who).trim()) ? postByWords(place, who) : null;
-    if (post) return { key: null, post };
-    const job = /^an?\s/i.test(String(who).trim()) ? jobByWords(place, who) : null;
-    if (job) return { key: null, job };
-    const crowd = roster.find((one) => one.name && plain(one.name) === key);
-    if (crowd) return crowd;
-    const person = findCharacter(null, who);
-    return person ? roster.find((one) => one.id === person.id) ?? null : null;
-  };
-  for (const raw of file.errands ?? []) {
-    const line = raw.line ?? null;
-    const e = readErrandLine(raw.text);
-    if (e.problem) {
-      at(line, e.problem);
-      continue;
-    }
-    let sound = true;
-    const person = findPerson(e.who);
-    if (!person) {
-      at(line, `nobody called ${e.who} has a day at ${name} in world/life, or is a post in world/command, and an errand needs someone who does`);
-      sound = false;
-    }
-    const item = itemByWords(e.what);
-    if (!item) {
-      at(line, `there's no item called ${e.what} in world/items for ${e.who} to carry`);
-      sound = false;
-    }
-    const from = findStore(e.from);
-    const to = findStore(e.to);
-    if (!from) {
-      at(line, `there's no store called ${e.from} for ${e.who} to carry from: the stores are ${storeNames()}`);
-      sound = false;
-    } else if (item && !(item in from.holds)) {
-      at(line, `the ${from.name} doesn't keep ${e.what}: add it to the ${from.name}'s holds line`);
-      sound = false;
-    }
-    if (!to) {
-      at(line, `there's no store called ${e.to} for ${e.who} to carry to: the stores are ${storeNames()}`);
-      sound = false;
-    } else if (item && !(item in to.holds)) {
-      at(line, `the ${to.name} doesn't keep ${e.what}: add it to the ${to.name}'s holds line`);
-      sound = false;
-    } else if (item && e.under > to.holds[item]) {
-      at(line, `the ${to.name} keeps only ${to.holds[item]} ${e.what}, so it's always under ${e.under}, and ${e.who} would never stop`);
-      sound = false;
-    }
-    if (!sound) continue;
-    const id = `${person.post ?? person.job ?? slugOf(e.who)}:${item}`;
-    if (model.errands.some((one) => one.id === id)) {
-      at(line, `${e.who} is given ${e.what} to carry twice`);
-      continue;
-    }
-    model.errands.push({ id, who: e.who, key: person.key, post: person.post ?? null, job: person.job ?? null, item, from: from.id, to: to.id, under: e.under, each: e.each, line, text: raw.text });
-  }
   return model;
 }
 
@@ -699,12 +713,18 @@ export function foodADay(game, place, factor = rationsFactor(game)) {
 // The state of a place's logistics in the save: when it was last run, each machine's progress, and the day's meals.
 function stateOf(game, place) {
   game.logistics ??= {};
-  return game.logistics[place] ??= { at: null, machines: {}, meals: { days: {}, carry: 0, dry: false }, errands: {} };
+  return game.logistics[place] ??= { at: null, machines: {}, meals: { days: {}, carry: 0, dry: false }, jobs: [] };
 }
 
-// ---- The errands ----------------------------------------------------------------------------------
-// Who carries what between the stores, and when, is the work board's (src/work.js): this file reads the Errands
-// lines, and its clock runs the board with everything else.
+// ---- The carrying ---------------------------------------------------------------------------------
+// Who carries what between the stores, and when, is the work board's (src/work.js): this file reads what each store
+// wants and who carries for it, and its clock runs the board with everything else.
+
+// How many of a thing one person carries in a trip.
+export const tripOf = (model, item) => model.trip?.[item] ?? 1;
+// Whether a machine has nothing left in its store to work from: the generator on its last cell, the galley with a
+// bare pantry. That's when it asks the board for more, however the store's own line counts it.
+export const machineStarved = (game, model, m) => Boolean(m.from) && m.takes.length > 0 && !pickTake(game, storeById(model, m.from), m.takes, aGo(m));
 
 const loadWords = (item, n) => `${n} ${itemWords(item, n)}`;
 
@@ -1020,7 +1040,7 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
   const until = minutesOf(untilHours);
   for (const place of Object.keys(WORLD_LOGISTICS)) {
     const model = logisticsOf(place);
-    if (!model || (!model.kettles.length && !model.machines.some((m) => m.runs) && !model.errands.length && !model.refills.length)) continue;
+    if (!model || (!model.kettles.length && !model.machines.some((m) => m.runs) && !model.wants.length && !model.refills.length)) continue;
     const state = stateOf(game, place);
     if (state.at === null) {
       state.at = until;
@@ -1037,11 +1057,6 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
     // What the posts' duty counts is added up through each day here, and handed over when the day turns or this ends.
     let counted = { day: Math.floor(t / 1440), powerShort: 0, errandsWaiting: 0 };
     const handOver = () => tallyDuty(game, place, counted.day, { powerShort: counted.powerShort, errandsWaiting: counted.errandsWaiting });
-    // An errand standing at an empty store counts against whoever's duty the errands are, unless that store is one a
-    // machine aboard fills by itself, like the garden's bins: a cook waiting for the garden to grow hasn't been left
-    // waiting by anyone. (Without this the deck chief was warned and relieved in the second week of every game.)
-    const grown = new Set(model.machines.map((m) => m.into).filter(Boolean));
-    const countedErrands = model.errands.filter((e) => !grown.has(e.from));
     while (t + CHUNK <= until) {
       for (const m of model.machines) {
         if (m.generator) runGenerator(game, model, m, state, CHUNK);
@@ -1049,16 +1064,17 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
       }
       serveMeals(game, place, model, state, t, CHUNK, notes);
       runRefills(game, place, model, state, t);
-      runBoard(game, place, model, state, t, CHUNK);
-      // What the posts' duty counts: the minutes the generator was short of the loads, and the minutes errands stood
-      // waiting at an empty store.
+      // The board says how many urgent jobs it couldn't give to anyone: something a store is badly short of, that
+      // some other store could spare, with nobody able to carry it. That's what counts as an errand left waiting.
+      const waiting = runBoard(game, place, model, state, t, CHUNK);
+      // What the posts' duty counts: the minutes the generator was short of the loads, and the minutes urgent jobs
+      // stood with nobody on them.
       const supply = powerSupply(game, place);
       if (supply !== supplyWas || t - balanceAt >= 60) {
         dropping = Boolean(powerBalance(game, place)?.dropped.length);
         supplyWas = supply;
         balanceAt = t;
       }
-      const waiting = countedErrands.filter((e) => state.errands?.[e.id]?.phase === "waiting").length;
       if (Math.floor(t / 1440) !== counted.day) {
         handOver();
         counted = { day: Math.floor(t / 1440), powerShort: 0, errandsWaiting: 0 };

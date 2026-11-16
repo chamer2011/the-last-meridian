@@ -1,6 +1,6 @@
 // Living with wounds (health step 3): wounds bleed until they're dressed, minor ones dressed by whoever has them,
 // blood comes back, wounds left undressed go bad, each heals at its own pace, a medkit dresses the player's worst, a limp
-// slows anyone's walking, a hand that's no use keeps them off errands and work, a knock on the head and low blood make
+// slows anyone's walking, a hand that's no use keeps them off carrying and work, a knock on the head and low blood make
 // checks harder, pain adds to stress, the hurt queue at the medbay in the morning, and now and then someone has an
 // accident at work.
 import assert from "node:assert/strict";
@@ -88,7 +88,7 @@ test("a limp slows anyone's walking, and a leg they can't stand on more", () => 
   assert.equal(body.woundsPace([{ ...wound("cut", "left_leg") }]), 0.6, "a fighter with a cut leg limps too");
 });
 
-test("a hand that's no use keeps someone off errands and the player off work", () => {
+test("a hand that's no use keeps someone off carrying and the player off work", () => {
   const game = newGame();
   assert.equal(body.handsFree(game, "meridian", "Tech Oona"), true);
   body.addWounds(game, "crowd:meridian:tech oona", [wound("broken bone", "right_arm")]);

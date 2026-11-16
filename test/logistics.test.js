@@ -45,16 +45,18 @@ test("the Meridian's logistics file reads into its parts, and writes back the sa
   assert.equal(value.numbers.crateFeeds, 200);
   assert.ok(value.stores.length >= 6);
   for (const part of LOGISTICS_PARTS) assert.ok(Array.isArray(value[part]), part);
-  assert.ok(value.machines.length && value.errands.length && value.loads.length && value.refills.length, "the later steps' parts are kept too");
+  assert.ok(value.machines.length && value.loads.length && value.refills.length, "the other parts are kept too");
+  assert.deepEqual([value.carriers.list, value.trip.list.length], [["the deckhands", "the spare hands"], 5], "and the two lines at the top that say who carries and how much");
+  assert.equal(value.errands, undefined, "there's no Errands part any more");
   const again = parseLogisticsText(writeLogisticsText(value), "meridian");
   assert.deepEqual(again.problems, []);
-  const bare = (one) => ({ ...one, stores: one.stores.map((s) => s.text), machines: one.machines.map((s) => s.text), loads: one.loads.map((s) => s.text), errands: one.errands.map((s) => s.text), refills: one.refills.map((s) => s.text) });
+  const bare = (one) => ({ ...one, stores: one.stores.map((s) => s.text), machines: one.machines.map((s) => s.text), loads: one.loads.map((s) => s.text), refills: one.refills.map((s) => s.text) });
   assert.deepEqual(bare(again.value), bare(value));
 });
 
 test("a store's line is read into its pieces, and a bad one says what's wrong", () => {
   const read = readStoreLine("pantry in The Galley: holds 12 ration crates, 12 produce: Shelves behind a wire door.");
-  assert.deepEqual(read, { name: "pantry", room: "The Galley", holds: [{ n: 12, what: "ration crates" }, { n: 12, what: "produce" }], look: "Shelves behind a wire door." });
+  assert.deepEqual(read, { name: "pantry", room: "The Galley", holds: [{ n: 12, what: "ration crates" }, { n: 12, what: "produce" }], wants: [], urgent: [], carriers: [], look: "Shelves behind a wire door." });
   assert.equal(readStoreLine("the soup kettle in The Long Mess: holds 400 sittings").look, null);
   assert.match(readStoreLine("pantry: holds 12 ration crates").problem, /needs to say where it is/);
   assert.match(readStoreLine("pantry in The Galley").problem, /needs holds after the colon/);

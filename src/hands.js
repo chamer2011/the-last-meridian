@@ -20,7 +20,7 @@ import { dressWounds, handsFree, keyAt, waitingTreatment } from "./body.js";
 import { findCharacter } from "./campaign.js";
 import { YOU, commandOf, jobById, jobOf, rememberRequest } from "./command.js";
 import { ITEMS } from "./data.js";
-import { logisticsOf, stockOf } from "./logistics.js";
+import { logisticsOf, stockOf, tripOf } from "./logistics.js";
 import { treatByHand, treatableByHand } from "./medbay.js";
 import { putsOf } from "./puts.js";
 import { jobHere } from "./role.js";
@@ -173,7 +173,7 @@ function piece(game, jobId, what = null) {
 export const piecesToday = (game) => (game.pieces?.day === dayOf(game) ? game.pieces.n : 0);
 
 // What the player has done with their own hands that the game counts elsewhere (src/puts.js): repairs, for a tech,
-// and loads carried into the stores the errands of their job keep up.
+// and loads carried into the stores their job is named to carry for (a store's carried by, in world/logistics).
 function countedWork(game, jobId) {
   const totals = {};
   if (jobId === "tech") {
@@ -181,16 +181,15 @@ function countedWork(game, jobId) {
     totals.repairs = Object.entries(game.puts ?? {}).reduce((sum, [key, n]) => (key.startsWith(prefix) ? sum + n : sum), 0);
   }
   const model = logisticsOf(SHIP);
-  for (const errand of model?.errands ?? []) {
-    if (errand.job !== jobId) continue;
-    const store = model.stores.find((one) => one.id === errand.to);
-    if (store) totals[`errand:${errand.id}`] = putsOf(game, store.key, errand.item);
+  for (const want of model?.wants ?? []) {
+    const store = model.stores.find((one) => one.id === want.store);
+    if (store?.carriers.some((one) => one.job === jobId)) totals[`want:${want.store}:${want.item}`] = putsOf(game, store.key, want.item);
   }
   return totals;
 }
 
 // Each time the clock moves: anything of that kind done since last time is a piece. A load only counts if the store
-// was short of it, as the errand's own line says, so nobody's paid for filling what's full.
+// had fewer than it wants, as its own line says, so nobody's paid for filling what's full.
 addClockWork((game) => {
   const mine = myJob(game);
   if (!mine) return [];
@@ -200,17 +199,19 @@ addClockWork((game) => {
   if (seen) {
     const model = logisticsOf(SHIP);
     for (const [key, total] of Object.entries(totals)) {
-      const more = total - (seen[key] ?? 0);
+      // Something counted for the first time (a store the file has only now given a want) starts from here.
+      if (!(key in seen)) continue;
+      const more = total - seen[key];
       if (more <= 0) continue;
       if (key === "repairs") {
         for (let i = 0; i < more; i += 1) notes.push(...piece(game, mine.id, "A repair by your own hands."));
         continue;
       }
-      const errand = model.errands.find((one) => `errand:${one.id}` === key);
-      const store = model.stores.find((one) => one.id === errand.to);
-      // It was under its mark before this load went in.
-      if ((stockOf(game, SHIP, errand.item, store.name) ?? 0) - more >= errand.under) continue;
-      for (let i = 0; i < Math.min(3, Math.ceil(more / errand.each)); i += 1) notes.push(...piece(game, mine.id, `${counted(errand.item, more)} carried to the ${store.name}.`));
+      const want = model.wants.find((one) => `want:${one.store}:${one.item}` === key);
+      const store = model.stores.find((one) => one.id === want.store);
+      // It had fewer than it wants before this load went in.
+      if ((stockOf(game, SHIP, want.item, store.name) ?? 0) - more >= want.wants) continue;
+      for (let i = 0; i < Math.min(3, Math.ceil(more / tripOf(model, want.item))); i += 1) notes.push(...piece(game, mine.id, `${counted(want.item, more)} carried to the ${store.name}.`));
     }
   }
   if (!seen || Object.keys(totals).some((key) => totals[key] !== seen[key])) game.pieces = { day: dayOf(game), n: 0, ...(game.pieces ?? {}), seen: totals };
