@@ -12,7 +12,7 @@
  "infinite": false,
  "compressionlevel": -1,
  "nextlayerid": 7,
- "nextobjectid": 223,
+ "nextobjectid": 229,
  "properties": [
   {
    "name": "name",
@@ -27,7 +27,7 @@
   {
    "name": "floor",
    "type": "string",
-   "value": "."
+   "value": ".,"
   },
   {
    "name": "floor color",
@@ -881,7 +881,7 @@
     0,
     0,
     12,
-    0,
+    12,
     0,
     12,
     12,
@@ -937,21 +937,23 @@
     0,
     0,
     0,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
     12,
     12,
     12,
@@ -1001,32 +1003,30 @@
     12,
     12,
     12,
-    12,
-    12,
     0,
     0,
     0,
     0,
     0,
     0,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
     12,
-    12,
     0,
     0,
     0,
@@ -1081,22 +1081,23 @@
     0,
     0,
     0,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    118,
+    32,
+    32,
+    32,
+    32,
+    32,
     12,
     12,
     12,
@@ -1146,30 +1147,29 @@
     12,
     12,
     12,
-    12,
     0,
     0,
     0,
     0,
     0,
     0,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
+    32,
+    32,
+    118,
+    32,
+    32,
+    32,
+    32,
+    119,
+    32,
+    32,
+    32,
+    119,
+    32,
+    32,
+    32,
+    32,
+    32,
     12,
     12,
     12,
@@ -1225,6 +1225,23 @@
     0,
     0,
     0,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    118,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
     12,
     12,
     12,
@@ -1274,29 +1291,29 @@
     12,
     12,
     12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
     0,
     0,
     0,
     0,
     0,
     0,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    118,
+    32,
+    32,
+    32,
+    32,
+    32,
     12,
     12,
     12,
@@ -1346,47 +1363,30 @@
     12,
     12,
     12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
     0,
     0,
     0,
     0,
     0,
     0,
-    12,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
     12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
     0,
     0,
     0,
@@ -1441,7 +1441,23 @@
     0,
     0,
     0,
-    12,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
+    32,
     12,
     12,
     12,
@@ -1454,22 +1470,6 @@
     12,
     12,
     12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
     0,
     12,
     12,
@@ -1529,7 +1529,7 @@
     0,
     0,
     12,
-    0,
+    12,
     0,
     12,
     12,
@@ -3198,7 +3198,7 @@
     6,
     6,
     92,
-    6,
+    90,
     6,
     16,
     0,
@@ -3271,7 +3271,7 @@
     0,
     0,
     0,
-    17,
+    34,
     16,
     0,
     0,
@@ -3343,7 +3343,7 @@
     0,
     0,
     0,
-    17,
+    34,
     6,
     6,
     6,
@@ -3415,7 +3415,7 @@
     0,
     0,
     0,
-    17,
+    34,
     0,
     0,
     0,
@@ -3487,7 +3487,7 @@
     0,
     0,
     0,
-    97,
+    108,
     0,
     0,
     0,
@@ -3559,7 +3559,7 @@
     0,
     0,
     0,
-    97,
+    108,
     0,
     0,
     0,
@@ -3631,7 +3631,7 @@
     0,
     0,
     0,
-    17,
+    34,
     0,
     0,
     0,
@@ -3703,7 +3703,7 @@
     0,
     0,
     0,
-    17,
+    34,
     6,
     6,
     6,
@@ -3775,7 +3775,7 @@
     0,
     0,
     0,
-    17,
+    34,
     16,
     0,
     0,
@@ -3846,7 +3846,7 @@
     6,
     6,
     92,
-    6,
+    90,
     6,
     16,
     0,
@@ -6655,25 +6655,6 @@
     },
     {
      "id": 90,
-     "name": "interiors/Computer/MacBook_Ani",
-     "type": "Furniture",
-     "x": 1264,
-     "y": 224,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "s"
-      }
-     ]
-    },
-    {
-     "id": 91,
      "name": "interiors/Desks/Office_Main_Table_Desk",
      "type": "Furniture",
      "x": 1264,
@@ -6692,7 +6673,45 @@
      ]
     },
     {
+     "id": 91,
+     "name": "interiors/Lamps/Lamp_11",
+     "type": "Furniture",
+     "x": 1264,
+     "y": 224,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
      "id": 92,
+     "name": "interiors/Computer/MacBook_Ani",
+     "type": "Furniture",
+     "x": 1296,
+     "y": 224,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 93,
      "name": "interiors/Kitchen/Mug_Red",
      "type": "Furniture",
      "x": 1328,
@@ -6711,7 +6730,7 @@
      ]
     },
     {
-     "id": 93,
+     "id": 94,
      "name": "plot-table",
      "type": "Furniture",
      "x": 1808,
@@ -6730,7 +6749,7 @@
      ]
     },
     {
-     "id": 94,
+     "id": 95,
      "name": "shelf",
      "type": "Furniture",
      "x": 3952,
@@ -6749,7 +6768,7 @@
      ]
     },
     {
-     "id": 95,
+     "id": 96,
      "name": "locker",
      "type": "Furniture",
      "x": 4144,
@@ -6768,7 +6787,7 @@
      ]
     },
     {
-     "id": 96,
+     "id": 97,
      "name": "wall-screen",
      "type": "Furniture",
      "x": 560,
@@ -6787,7 +6806,7 @@
      ]
     },
     {
-     "id": 97,
+     "id": 98,
      "name": "isospace/console",
      "type": "Furniture",
      "x": 656,
@@ -6806,7 +6825,7 @@
      ]
     },
     {
-     "id": 98,
+     "id": 99,
      "name": "interiors/Chairs/GChair_9",
      "type": "Furniture",
      "x": 720,
@@ -6825,7 +6844,7 @@
      ]
     },
     {
-     "id": 99,
+     "id": 100,
      "name": "bunk",
      "type": "Furniture",
      "x": 2736,
@@ -6844,7 +6863,7 @@
      ]
     },
     {
-     "id": 100,
+     "id": 101,
      "name": "locker",
      "type": "Furniture",
      "x": 2864,
@@ -6863,7 +6882,7 @@
      ]
     },
     {
-     "id": 101,
+     "id": 102,
      "name": "bunk",
      "type": "Furniture",
      "x": 2928,
@@ -6882,7 +6901,7 @@
      ]
     },
     {
-     "id": 102,
+     "id": 103,
      "name": "locker",
      "type": "Furniture",
      "x": 3056,
@@ -6901,7 +6920,7 @@
      ]
     },
     {
-     "id": 103,
+     "id": 104,
      "name": "bunk",
      "type": "Furniture",
      "x": 3120,
@@ -6920,7 +6939,7 @@
      ]
     },
     {
-     "id": 104,
+     "id": 105,
      "name": "locker",
      "type": "Furniture",
      "x": 3248,
@@ -6939,7 +6958,7 @@
      ]
     },
     {
-     "id": 105,
+     "id": 106,
      "name": "bunk",
      "type": "Furniture",
      "x": 3312,
@@ -6958,7 +6977,7 @@
      ]
     },
     {
-     "id": 106,
+     "id": 107,
      "name": "locker",
      "type": "Furniture",
      "x": 3440,
@@ -6977,7 +6996,7 @@
      ]
     },
     {
-     "id": 107,
+     "id": 108,
      "name": "bunk",
      "type": "Furniture",
      "x": 3504,
@@ -6996,7 +7015,7 @@
      ]
     },
     {
-     "id": 108,
+     "id": 109,
      "name": "locker",
      "type": "Furniture",
      "x": 3632,
@@ -7015,7 +7034,7 @@
      ]
     },
     {
-     "id": 109,
+     "id": 110,
      "name": "bunk",
      "type": "Furniture",
      "x": 3696,
@@ -7034,7 +7053,7 @@
      ]
     },
     {
-     "id": 110,
+     "id": 111,
      "name": "locker",
      "type": "Furniture",
      "x": 3824,
@@ -7053,29 +7072,10 @@
      ]
     },
     {
-     "id": 111,
+     "id": 112,
      "name": "wall-screen",
      "type": "Furniture",
      "x": 560,
-     "y": 416,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "e"
-      }
-     ]
-    },
-    {
-     "id": 112,
-     "name": "isospace/console",
-     "type": "Furniture",
-     "x": 656,
      "y": 416,
      "width": 0,
      "height": 0,
@@ -7092,6 +7092,44 @@
     },
     {
      "id": 113,
+     "name": "interiors/Lamps/Lamp_8",
+     "type": "Furniture",
+     "x": 656,
+     "y": 416,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 114,
+     "name": "isospace/console",
+     "type": "Furniture",
+     "x": 656,
+     "y": 416,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 115,
      "name": "interiors/Chairs/GChair_9",
      "type": "Furniture",
      "x": 720,
@@ -7110,7 +7148,7 @@
      ]
     },
     {
-     "id": 114,
+     "id": 116,
      "name": "wall-screen",
      "type": "Furniture",
      "x": 560,
@@ -7129,7 +7167,7 @@
      ]
     },
     {
-     "id": 115,
+     "id": 117,
      "name": "isospace/console",
      "type": "Furniture",
      "x": 656,
@@ -7148,7 +7186,7 @@
      ]
     },
     {
-     "id": 116,
+     "id": 118,
      "name": "interiors/Chairs/GChair_9",
      "type": "Furniture",
      "x": 720,
@@ -7167,7 +7205,7 @@
      ]
     },
     {
-     "id": 117,
+     "id": 119,
      "name": "chair",
      "type": "Furniture",
      "x": 3984,
@@ -7186,7 +7224,7 @@
      ]
     },
     {
-     "id": 118,
+     "id": 120,
      "name": "chair",
      "type": "Furniture",
      "x": 4048,
@@ -7205,48 +7243,10 @@
      ]
     },
     {
-     "id": 119,
-     "name": "chair",
-     "type": "Furniture",
-     "x": 1712,
-     "y": 544,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "n"
-      }
-     ]
-    },
-    {
-     "id": 120,
-     "name": "chair",
-     "type": "Furniture",
-     "x": 1776,
-     "y": 544,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "n"
-      }
-     ]
-    },
-    {
      "id": 121,
      "name": "chair",
      "type": "Furniture",
-     "x": 1840,
+     "x": 1712,
      "y": 544,
      "width": 0,
      "height": 0,
@@ -7265,7 +7265,7 @@
      "id": 122,
      "name": "chair",
      "type": "Furniture",
-     "x": 2288,
+     "x": 1776,
      "y": 544,
      "width": 0,
      "height": 0,
@@ -7284,7 +7284,7 @@
      "id": 123,
      "name": "chair",
      "type": "Furniture",
-     "x": 2352,
+     "x": 1840,
      "y": 544,
      "width": 0,
      "height": 0,
@@ -7303,7 +7303,7 @@
      "id": 124,
      "name": "chair",
      "type": "Furniture",
-     "x": 2512,
+     "x": 2288,
      "y": 544,
      "width": 0,
      "height": 0,
@@ -7322,7 +7322,7 @@
      "id": 125,
      "name": "chair",
      "type": "Furniture",
-     "x": 2576,
+     "x": 2352,
      "y": 544,
      "width": 0,
      "height": 0,
@@ -7341,6 +7341,44 @@
      "id": 126,
      "name": "chair",
      "type": "Furniture",
+     "x": 2512,
+     "y": 544,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "n"
+      }
+     ]
+    },
+    {
+     "id": 127,
+     "name": "chair",
+     "type": "Furniture",
+     "x": 2576,
+     "y": 544,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "n"
+      }
+     ]
+    },
+    {
+     "id": 128,
+     "name": "chair",
+     "type": "Furniture",
      "x": 2800,
      "y": 608,
      "width": 0,
@@ -7357,7 +7395,7 @@
      ]
     },
     {
-     "id": 127,
+     "id": 129,
      "name": "chair",
      "type": "Furniture",
      "x": 3184,
@@ -7376,7 +7414,7 @@
      ]
     },
     {
-     "id": 128,
+     "id": 130,
      "name": "chair",
      "type": "Furniture",
      "x": 3568,
@@ -7395,7 +7433,7 @@
      ]
     },
     {
-     "id": 129,
+     "id": 131,
      "name": "plant",
      "type": "Furniture",
      "x": 1232,
@@ -7414,48 +7452,10 @@
      ]
     },
     {
-     "id": 130,
-     "name": "chair",
-     "type": "Furniture",
-     "x": 1616,
-     "y": 736,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "n"
-      }
-     ]
-    },
-    {
-     "id": 131,
-     "name": "chair",
-     "type": "Furniture",
-     "x": 1968,
-     "y": 736,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "n"
-      }
-     ]
-    },
-    {
      "id": 132,
      "name": "chair",
      "type": "Furniture",
-     "x": 2992,
+     "x": 1616,
      "y": 736,
      "width": 0,
      "height": 0,
@@ -7474,7 +7474,7 @@
      "id": 133,
      "name": "chair",
      "type": "Furniture",
-     "x": 3376,
+     "x": 1968,
      "y": 736,
      "width": 0,
      "height": 0,
@@ -7493,7 +7493,7 @@
      "id": 134,
      "name": "chair",
      "type": "Furniture",
-     "x": 3760,
+     "x": 2992,
      "y": 736,
      "width": 0,
      "height": 0,
@@ -7510,6 +7510,44 @@
     },
     {
      "id": 135,
+     "name": "chair",
+     "type": "Furniture",
+     "x": 3376,
+     "y": 736,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "n"
+      }
+     ]
+    },
+    {
+     "id": 136,
+     "name": "chair",
+     "type": "Furniture",
+     "x": 3760,
+     "y": 736,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "n"
+      }
+     ]
+    },
+    {
+     "id": 137,
      "name": "window",
      "type": "Furniture",
      "x": 304,
@@ -7528,7 +7566,7 @@
      ]
     },
     {
-     "id": 136,
+     "id": 138,
      "name": "plant",
      "type": "Furniture",
      "x": 1232,
@@ -7547,7 +7585,7 @@
      ]
     },
     {
-     "id": 137,
+     "id": 139,
      "name": "chair",
      "type": "Furniture",
      "x": 2288,
@@ -7566,7 +7604,7 @@
      ]
     },
     {
-     "id": 138,
+     "id": 140,
      "name": "chair",
      "type": "Furniture",
      "x": 2352,
@@ -7585,7 +7623,7 @@
      ]
     },
     {
-     "id": 139,
+     "id": 141,
      "name": "chair",
      "type": "Furniture",
      "x": 2416,
@@ -7604,7 +7642,7 @@
      ]
     },
     {
-     "id": 140,
+     "id": 142,
      "name": "chair",
      "type": "Furniture",
      "x": 2480,
@@ -7623,7 +7661,7 @@
      ]
     },
     {
-     "id": 141,
+     "id": 143,
      "name": "chair",
      "type": "Furniture",
      "x": 2544,
@@ -7642,7 +7680,7 @@
      ]
     },
     {
-     "id": 142,
+     "id": 144,
      "name": "window",
      "type": "Furniture",
      "x": 304,
@@ -7661,48 +7699,10 @@
      ]
     },
     {
-     "id": 143,
-     "name": "wall-screen",
-     "type": "Furniture",
-     "x": 1680,
-     "y": 864,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "s"
-      }
-     ]
-    },
-    {
-     "id": 144,
-     "name": "wall-screen",
-     "type": "Furniture",
-     "x": 2128,
-     "y": 864,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "s"
-      }
-     ]
-    },
-    {
      "id": 145,
      "name": "wall-screen",
      "type": "Furniture",
-     "x": 2704,
+     "x": 1680,
      "y": 864,
      "width": 0,
      "height": 0,
@@ -7721,7 +7721,7 @@
      "id": 146,
      "name": "wall-screen",
      "type": "Furniture",
-     "x": 3280,
+     "x": 2128,
      "y": 864,
      "width": 0,
      "height": 0,
@@ -7740,7 +7740,7 @@
      "id": 147,
      "name": "wall-screen",
      "type": "Furniture",
-     "x": 3728,
+     "x": 2704,
      "y": 864,
      "width": 0,
      "height": 0,
@@ -7757,6 +7757,44 @@
     },
     {
      "id": 148,
+     "name": "wall-screen",
+     "type": "Furniture",
+     "x": 3280,
+     "y": 864,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 149,
+     "name": "wall-screen",
+     "type": "Furniture",
+     "x": 3728,
+     "y": 864,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 150,
      "name": "window",
      "type": "Furniture",
      "x": 304,
@@ -7775,7 +7813,26 @@
      ]
     },
     {
-     "id": 149,
+     "id": 151,
+     "name": "interiors/Lamps/Lamp_8",
+     "type": "Furniture",
+     "x": 400,
+     "y": 928,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 152,
      "name": "isospace/console",
      "type": "Furniture",
      "x": 400,
@@ -7794,7 +7851,7 @@
      ]
     },
     {
-     "id": 150,
+     "id": 153,
      "name": "interiors/Chairs/GChair_9",
      "type": "Furniture",
      "x": 464,
@@ -7813,7 +7870,7 @@
      ]
     },
     {
-     "id": 151,
+     "id": 154,
      "name": "plant",
      "type": "Furniture",
      "x": 1520,
@@ -7832,7 +7889,7 @@
      ]
     },
     {
-     "id": 152,
+     "id": 155,
      "name": "window",
      "type": "Furniture",
      "x": 304,
@@ -7851,7 +7908,7 @@
      ]
     },
     {
-     "id": 153,
+     "id": 156,
      "name": "isospace/console",
      "type": "Furniture",
      "x": 400,
@@ -7870,7 +7927,7 @@
      ]
     },
     {
-     "id": 154,
+     "id": 157,
      "name": "interiors/Chairs/GChair_9",
      "type": "Furniture",
      "x": 464,
@@ -7889,7 +7946,7 @@
      ]
     },
     {
-     "id": 155,
+     "id": 158,
      "name": "interiors/Carpets/Carpet_Modern",
      "type": "Furniture",
      "x": 752,
@@ -7908,7 +7965,7 @@
      ]
     },
     {
-     "id": 156,
+     "id": 159,
      "name": "window",
      "type": "Furniture",
      "x": 304,
@@ -7927,7 +7984,7 @@
      ]
     },
     {
-     "id": 157,
+     "id": 160,
      "name": "isospace/console",
      "type": "Furniture",
      "x": 400,
@@ -7946,7 +8003,7 @@
      ]
     },
     {
-     "id": 158,
+     "id": 161,
      "name": "interiors/Chairs/GChair_9",
      "type": "Furniture",
      "x": 464,
@@ -7965,7 +8022,7 @@
      ]
     },
     {
-     "id": 159,
+     "id": 162,
      "name": "plot-table",
      "type": "Furniture",
      "x": 656,
@@ -7984,7 +8041,7 @@
      ]
     },
     {
-     "id": 160,
+     "id": 163,
      "name": "interiors/Carpets/Carpet_Modern",
      "type": "Furniture",
      "x": 752,
@@ -8003,7 +8060,7 @@
      ]
     },
     {
-     "id": 161,
+     "id": 164,
      "name": "screen",
      "type": "Furniture",
      "x": 848,
@@ -8022,7 +8079,7 @@
      ]
     },
     {
-     "id": 162,
+     "id": 165,
      "name": "command-chair",
      "type": "Furniture",
      "x": 912,
@@ -8041,7 +8098,7 @@
      ]
     },
     {
-     "id": 163,
+     "id": 166,
      "name": "window",
      "type": "Furniture",
      "x": 304,
@@ -8060,7 +8117,26 @@
      ]
     },
     {
-     "id": 164,
+     "id": 167,
+     "name": "interiors/Lamps/Lamp_8",
+     "type": "Furniture",
+     "x": 400,
+     "y": 1120,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 168,
      "name": "isospace/console",
      "type": "Furniture",
      "x": 400,
@@ -8079,7 +8155,7 @@
      ]
     },
     {
-     "id": 165,
+     "id": 169,
      "name": "interiors/Chairs/GChair_9",
      "type": "Furniture",
      "x": 464,
@@ -8098,7 +8174,7 @@
      ]
     },
     {
-     "id": 166,
+     "id": 170,
      "name": "plant",
      "type": "Furniture",
      "x": 3792,
@@ -8117,7 +8193,7 @@
      ]
     },
     {
-     "id": 167,
+     "id": 171,
      "name": "window",
      "type": "Furniture",
      "x": 304,
@@ -8136,7 +8212,7 @@
      ]
     },
     {
-     "id": 168,
+     "id": 172,
      "name": "wall-screen",
      "type": "Furniture",
      "x": 1712,
@@ -8155,7 +8231,7 @@
      ]
     },
     {
-     "id": 169,
+     "id": 173,
      "name": "window",
      "type": "Furniture",
      "x": 304,
@@ -8174,7 +8250,7 @@
      ]
     },
     {
-     "id": 170,
+     "id": 174,
      "name": "plant",
      "type": "Furniture",
      "x": 1232,
@@ -8193,7 +8269,7 @@
      ]
     },
     {
-     "id": 171,
+     "id": 175,
      "name": "shelf",
      "type": "Furniture",
      "x": 1584,
@@ -8212,7 +8288,7 @@
      ]
     },
     {
-     "id": 172,
+     "id": 176,
      "name": "shelf",
      "type": "Furniture",
      "x": 2032,
@@ -8231,7 +8307,7 @@
      ]
     },
     {
-     "id": 173,
+     "id": 177,
      "name": "plant",
      "type": "Furniture",
      "x": 2608,
@@ -8250,7 +8326,7 @@
      ]
     },
     {
-     "id": 174,
+     "id": 178,
      "name": "plant",
      "type": "Furniture",
      "x": 2960,
@@ -8269,7 +8345,7 @@
      ]
     },
     {
-     "id": 175,
+     "id": 179,
      "name": "basin",
      "type": "Furniture",
      "x": 3120,
@@ -8288,7 +8364,7 @@
      ]
     },
     {
-     "id": 176,
+     "id": 180,
      "name": "basin",
      "type": "Furniture",
      "x": 3152,
@@ -8307,7 +8383,7 @@
      ]
     },
     {
-     "id": 177,
+     "id": 181,
      "name": "basin",
      "type": "Furniture",
      "x": 3280,
@@ -8326,7 +8402,7 @@
      ]
     },
     {
-     "id": 178,
+     "id": 182,
      "name": "basin",
      "type": "Furniture",
      "x": 3312,
@@ -8345,7 +8421,7 @@
      ]
     },
     {
-     "id": 179,
+     "id": 183,
      "name": "basin",
      "type": "Furniture",
      "x": 3344,
@@ -8364,7 +8440,7 @@
      ]
     },
     {
-     "id": 180,
+     "id": 184,
      "name": "plant",
      "type": "Furniture",
      "x": 1232,
@@ -8383,7 +8459,7 @@
      ]
     },
     {
-     "id": 181,
+     "id": 185,
      "name": "chair",
      "type": "Furniture",
      "x": 1616,
@@ -8402,7 +8478,7 @@
      ]
     },
     {
-     "id": 182,
+     "id": 186,
      "name": "chair",
      "type": "Furniture",
      "x": 1680,
@@ -8421,7 +8497,7 @@
      ]
     },
     {
-     "id": 183,
+     "id": 187,
      "name": "chair",
      "type": "Furniture",
      "x": 1744,
@@ -8440,7 +8516,7 @@
      ]
     },
     {
-     "id": 184,
+     "id": 188,
      "name": "chair",
      "type": "Furniture",
      "x": 1808,
@@ -8459,7 +8535,7 @@
      ]
     },
     {
-     "id": 185,
+     "id": 189,
      "name": "chair",
      "type": "Furniture",
      "x": 1872,
@@ -8478,7 +8554,7 @@
      ]
     },
     {
-     "id": 186,
+     "id": 190,
      "name": "wall-screen",
      "type": "Furniture",
      "x": 560,
@@ -8497,7 +8573,7 @@
      ]
     },
     {
-     "id": 187,
+     "id": 191,
      "name": "isospace/console",
      "type": "Furniture",
      "x": 656,
@@ -8516,7 +8592,7 @@
      ]
     },
     {
-     "id": 188,
+     "id": 192,
      "name": "interiors/Chairs/GChair_9",
      "type": "Furniture",
      "x": 720,
@@ -8535,7 +8611,7 @@
      ]
     },
     {
-     "id": 189,
+     "id": 193,
      "name": "long-table",
      "type": "Furniture",
      "x": 1616,
@@ -8554,7 +8630,7 @@
      ]
     },
     {
-     "id": 190,
+     "id": 194,
      "name": "long-table",
      "type": "Furniture",
      "x": 1744,
@@ -8573,7 +8649,7 @@
      ]
     },
     {
-     "id": 191,
+     "id": 195,
      "name": "table",
      "type": "Furniture",
      "x": 1872,
@@ -8592,7 +8668,7 @@
      ]
     },
     {
-     "id": 192,
+     "id": 196,
      "name": "bench",
      "type": "Furniture",
      "x": 2640,
@@ -8611,7 +8687,7 @@
      ]
     },
     {
-     "id": 193,
+     "id": 197,
      "name": "bench",
      "type": "Furniture",
      "x": 2832,
@@ -8630,7 +8706,7 @@
      ]
     },
     {
-     "id": 194,
+     "id": 198,
      "name": "wall-screen",
      "type": "Furniture",
      "x": 560,
@@ -8649,7 +8725,26 @@
      ]
     },
     {
-     "id": 195,
+     "id": 199,
+     "name": "interiors/Lamps/Lamp_8",
+     "type": "Furniture",
+     "x": 656,
+     "y": 1632,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 200,
      "name": "isospace/console",
      "type": "Furniture",
      "x": 656,
@@ -8668,7 +8763,7 @@
      ]
     },
     {
-     "id": 196,
+     "id": 201,
      "name": "interiors/Chairs/GChair_9",
      "type": "Furniture",
      "x": 720,
@@ -8687,7 +8782,7 @@
      ]
     },
     {
-     "id": 197,
+     "id": 202,
      "name": "chair",
      "type": "Furniture",
      "x": 1648,
@@ -8706,7 +8801,7 @@
      ]
     },
     {
-     "id": 198,
+     "id": 203,
      "name": "chair",
      "type": "Furniture",
      "x": 1712,
@@ -8725,7 +8820,7 @@
      ]
     },
     {
-     "id": 199,
+     "id": 204,
      "name": "chair",
      "type": "Furniture",
      "x": 1776,
@@ -8744,7 +8839,7 @@
      ]
     },
     {
-     "id": 200,
+     "id": 205,
      "name": "chair",
      "type": "Furniture",
      "x": 1840,
@@ -8763,7 +8858,7 @@
      ]
     },
     {
-     "id": 201,
+     "id": 206,
      "name": "chair",
      "type": "Furniture",
      "x": 1904,
@@ -8782,7 +8877,7 @@
      ]
     },
     {
-     "id": 202,
+     "id": 207,
      "name": "wall-screen",
      "type": "Furniture",
      "x": 560,
@@ -8801,7 +8896,7 @@
      ]
     },
     {
-     "id": 203,
+     "id": 208,
      "name": "isospace/console",
      "type": "Furniture",
      "x": 656,
@@ -8820,7 +8915,7 @@
      ]
     },
     {
-     "id": 204,
+     "id": 209,
      "name": "interiors/Chairs/GChair_9",
      "type": "Furniture",
      "x": 720,
@@ -8839,7 +8934,7 @@
      ]
     },
     {
-     "id": 205,
+     "id": 210,
      "name": "cot",
      "type": "Furniture",
      "x": 1264,
@@ -8858,7 +8953,26 @@
      ]
     },
     {
-     "id": 206,
+     "id": 211,
+     "name": "interiors/Japanese_Room/Japanese_Lamp",
+     "type": "Furniture",
+     "x": 1328,
+     "y": 1760,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 212,
      "name": "bench",
      "type": "Furniture",
      "x": 2640,
@@ -8877,7 +8991,7 @@
      ]
     },
     {
-     "id": 207,
+     "id": 213,
      "name": "bench",
      "type": "Furniture",
      "x": 2832,
@@ -8896,7 +9010,7 @@
      ]
     },
     {
-     "id": 208,
+     "id": 214,
      "name": "barrel",
      "type": "Furniture",
      "x": 4304,
@@ -8915,7 +9029,7 @@
      ]
     },
     {
-     "id": 209,
+     "id": 215,
      "name": "barrel",
      "type": "Furniture",
      "x": 4336,
@@ -8934,7 +9048,7 @@
      ]
     },
     {
-     "id": 210,
+     "id": 216,
      "name": "barrel",
      "type": "Furniture",
      "x": 4432,
@@ -8953,7 +9067,7 @@
      ]
     },
     {
-     "id": 211,
+     "id": 217,
      "name": "chair",
      "type": "Furniture",
      "x": 1360,
@@ -8972,7 +9086,7 @@
      ]
     },
     {
-     "id": 212,
+     "id": 218,
      "name": "barrel",
      "type": "Furniture",
      "x": 4304,
@@ -8991,7 +9105,7 @@
      ]
     },
     {
-     "id": 213,
+     "id": 219,
      "name": "barrel",
      "type": "Furniture",
      "x": 4432,
@@ -9010,7 +9124,7 @@
      ]
     },
     {
-     "id": 214,
+     "id": 220,
      "name": "isospace/cases",
      "type": "Furniture",
      "x": 912,
@@ -9029,7 +9143,7 @@
      ]
     },
     {
-     "id": 215,
+     "id": 221,
      "name": "isospace/crate-dark",
      "type": "Furniture",
      "x": 976,
@@ -9048,7 +9162,7 @@
      ]
     },
     {
-     "id": 216,
+     "id": 222,
      "name": "isospace/drums",
      "type": "Furniture",
      "x": 1040,
@@ -9067,7 +9181,7 @@
      ]
     },
     {
-     "id": 217,
+     "id": 223,
      "name": "isospace/crate-dark",
      "type": "Furniture",
      "x": 1104,
@@ -9086,7 +9200,7 @@
      ]
     },
     {
-     "id": 218,
+     "id": 224,
      "name": "table",
      "type": "Furniture",
      "x": 1360,
@@ -9105,7 +9219,7 @@
      ]
     },
     {
-     "id": 219,
+     "id": 225,
      "name": "plant",
      "type": "Furniture",
      "x": 1552,
@@ -9124,7 +9238,7 @@
      ]
     },
     {
-     "id": 220,
+     "id": 226,
      "name": "plant",
      "type": "Furniture",
      "x": 2096,
@@ -9143,7 +9257,7 @@
      ]
     },
     {
-     "id": 221,
+     "id": 227,
      "name": "plant",
      "type": "Furniture",
      "x": 2608,
@@ -9162,7 +9276,7 @@
      ]
     },
     {
-     "id": 222,
+     "id": 228,
      "name": "plant",
      "type": "Furniture",
      "x": 2960,

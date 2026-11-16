@@ -3855,7 +3855,9 @@ function furnish(view, { kinds, heights, blocks, painted, unpowered = () => fals
       const under = kind.what === "small" ? pieces.find((other) => other !== piece && tableUnder(other, piece.x, piece.y)) : null;
       const lift = under ? (FURNITURE_BY_ID[under.kind].pack ? FURNITURE_BY_ID[under.kind].high : TABLE_TOP[under.kind]) ?? 0.75 : 0;
       add({ ...placed, lift, top: lift + placed.top, bias: kind.what === "rug" ? -(across * CELL_WIDTH + down) / 2 - 0.05 : under ? 0.6 : 0, ...(off ? { off: true } : {}) });
-      if (kind.lit && !off) lights.push({ x: piece.x, y: piece.y, color: kind.lit, radius: 1.1, power: 0.32 });
+      // A small thing with a warm light is a lamp, and throws it further than a screen's glow: the pool of warm light
+      // at a station, in a room whose own light is cold.
+      if (kind.lit && !off) lights.push({ x: piece.x, y: piece.y, color: kind.lit, ...(warmLight(kind.lit) ? { radius: 2.1, power: 0.62 } : { radius: 1.1, power: 0.32 }) });
       continue;
     }
     const [ha, hb] = PIECE_SHADOW[piece.kind] ?? (kind.pack ? [Math.max(0.1, across * CELL_WIDTH * 0.42), Math.max(0.1, down * 0.42)] : [0.2, 0.2]);
@@ -3932,6 +3934,12 @@ function wallFace(painter, piece, inset) {
 // A piece of the bought packs where its picture isn't shown: in this view's own drawing, and in the pixel-art test for
 // the moment before its picture has come. A plain shape of its size: a box as high as the piece, a seat with a back, a
 // flat patch for what lies on the floor, a panel for what hangs on a wall, a little box for a small thing.
+// Whether a light's colour is a warm one: a good deal more red in it than blue.
+export function warmLight(hex) {
+  const found = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex ?? ""));
+  return Boolean(found) && parseInt(found[1], 16) > parseInt(found[3], 16) + 48;
+}
+
 function drawPlainPiece(painter, piece, kind, only) {
   const { ctx, at } = painter;
   const glow = kind.lit && !piece.off ? scaled(kind.lit, 0.6) : null;

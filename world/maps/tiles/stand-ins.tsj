@@ -5,7 +5,7 @@
  "name": "Stand-ins",
  "tilewidth": 128,
  "tileheight": 160,
- "tilecount": 117,
+ "tilecount": 119,
  "columns": 0,
  "margin": 0,
  "spacing": 0,
@@ -2647,6 +2647,52 @@
      "name": "what",
      "type": "string",
      "value": "floor (.) at the back, machine (() at the front"
+    }
+   ]
+  },
+  {
+   "id": 117,
+   "image": "stand-ins/piece-117.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ".,"
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": ".,"
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "floor (.) at the back, floor (,) at the front"
+    }
+   ]
+  },
+  {
+   "id": 118,
+   "image": "stand-ins/piece-118.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ",."
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": ",."
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "floor (,) at the back, floor (.) at the front"
     }
    ]
   }
