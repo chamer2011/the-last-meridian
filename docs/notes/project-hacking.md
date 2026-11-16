@@ -845,3 +845,89 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
   optical reader; a junction box opened with the test save's every-link rig): opened with the tab, H out, H away, the
   tab out, CONNECT, AWAY with the tab's lamps lit, the box waking the first time only; nothing overlapping, nothing past
   the edges, no console errors. Not checked: a camera, going along the network with the rig out, and practice.
+
+## The rig out and away: a loading screen, a power-off and an animation (examples and a plan, 2026-11-16, not built)
+
+- Asked as "Could you show me a possible loading screen for when you get the rig out and a power off effect when you
+  put it back in your pocket. Plus, when you get your rig out and in, there should be a animation. Show me multiple
+  exemple for each and draw a plan for the implementation". **Nothing is built:** examples and a plan only.
+- **The page:** https://claude.ai/artifact/VyEXJmQf9KRt12sRDdHYWe ("Rig Out and Away"; its source lives only there and
+  in a scratchpad, so read it back with the Artifact tool before changing it). A stage with the game's own rig (YARD
+  BOARD · PLAIN CASE, the starting build) beside a monitor at Haven's berth board logon, drawn from the game's own
+  styles. **Take it out / Put it away** (the button, H, the RIG tab, AWAY), **Slow motion** and **Rig plugged in**. A
+  click on an example plays it; the big button plays the three being looked at one after the other.
+  - **How it comes out and goes back** (`motion`): `tab`, out of the tab (my pick: it slides out from behind the
+    computer where the tab is, and back in, the tab being the rig's edge showing; 0.4 s out, 0.45 s back with the
+    tab's own return); `pocket`, up from the bottom of the screen at a tilt; `unfold`, swinging open on a hinge at the
+    computer's edge; `grow`, growing from the tab; `none`, as today.
+  - **The loading screen** (`boot`): `parts`, a parts check (my pick: each part of the rig's own build with OK, WORN
+    or BROKEN, then READY, 1.7 s; the fin sink is shown worn as an example); `selftest` (the board's BIOS line, the
+    maker, a memory count, the link, READY: the first half of today's connecting screen, 1.6 s); `tube` (no words: a
+    bright line opens into the picture, blurred then sharp, 0.9 s); `plate` (Halden Yards' mark, the board's name, a
+    bar that fills, 1.4 s); `flicker` (the picture drops in with one flicker, 0.35 s); `none`.
+  - **The power-off** (`off`): `collapse` (my pick: the picture squeezes to a bright line, then a dot that fades,
+    0.6 s); `afterglow` (dims to a green ghost and fades, 0.8 s); `lines` (D: PARKED, LINK: HELD ON THE CABLE JACK or
+    LINK: NONE, SCREEN OFF, then black, 1 s); `roll` (rolls, tears, snaps off, 0.5 s); `none`.
+  - **Keep these three** saves the three being looked at.
+- **The plan as drawn on the page:** two timelines made from the three being looked at. Out: H or the tab, the rig
+  comes out, the loading screen, ready. Away: H or AWAY, the screen goes off, the rig goes back, the tab. With my
+  picks that's 2.1 s the first time at a computer and 0.75 s after, and 1.05 s away.
+- **Said on the page as true whatever they pick:** a click on the rig's screen skips the loading screen; H in the
+  middle turns the rig round at once; none of it takes time on the game's clock; the computer beside it stays usable;
+  with Windows set to show no animations nothing plays; logging off closes everything at once.
+- **Four questions, with my picks:**
+  - `often`, how often the full loading screen plays: `first` at each computer, then the quick flicker (pick);
+    `always`; `quick`, never the full one.
+  - `connect`, what CONNECT shows now that the rig starts up on the way out: `link`, only the connecting (the link by
+    name, the handshake, D:, READY), still three seconds, which was their own ask (pick); `short`, the same in about a
+    second; `same`, left as it is, so the rig wakes twice.
+  - `plugged`, whether putting it away unplugs it: `stays`, only the screen goes off, the tab's LINK lamp stays lit,
+    UNPLUG is still how it comes off (pick, as today); `unplugs`, a minute to connect again each time.
+  - `settings`, a line under Computers in Settings (Rig animations: Full, Quick, Off): `yes` (pick); `no`.
+- **Four steps, each after their test:** (1) the rig comes out and goes back, at every computer, keypad, junction box
+  and camera, and as the folded strip in a narrow window; the cable drawn once it's out and gone before it leaves; a
+  rig that was dragged comes out to where it was left; (2) the loading screen, as often as `often` says; in a narrow
+  window the rig's page comes out with it, so there's a screen to show it on (my call); CONNECT by `connect`; at a
+  junction box or a camera, which connect as they open, the loading screen takes the place of the connecting screen
+  (my call); (3) the power-off, then the rig goes back, with `plugged`; (4) the Settings line if wanted, the README,
+  screens at 1400 and 810. Left out unless asked: sound (the game has none), the computer's own monitor switching on
+  and off, a different animation for each casing.
+- **Their answers live in the page's database** (ArtifactData, collection `plan`, document `state`: `choices` by id
+  (`motion`, `boot`, `off`, `often`, `connect`, `plugged`, `settings`), `steps` (`s1` to `s4`) and `at`). It was empty
+  when published. **Read it before building anything: their clicks stand over a chat "your picks".**
+- **For whoever builds it, from the code as it is** (`public/computer.js`, `public/desktop.css`):
+  - `toggleRig` flips `comp.rigOut` and calls `draw()`, and `draw()` makes the whole `#computer` node again
+    (`computerNode`, `replaceWith`), as does every answer from the server. So an animation can't simply be started on
+    a node and left: it has to be worked from the time it began on every draw, the way `bootLines(view, ms)` already
+    is (a Web Animation given `currentTime = now - at` after each draw does it), or the rig's node has to be carried
+    over from one draw to the next.
+  - Going away needs a phase of its own (say `comp.rigLeaving = { at }`) while the rig is still drawn, with the
+    power-off on its screen and then the motion, and only then `comp.rigOut = false`. Today the rig is gone the moment
+    the flag flips. H in the middle of either way has to drop the phase and start the other.
+  - The rig's window `#computer-rig` carries where it was dragged to (`movable`, `makePullable`), so animate the case
+    inside it (`.pocket`, or `.rig-strip` when folded), not the window, or add the motion on top (`composite: "add"`).
+  - Out of the tab without a clipping box (the page uses one): animate `transform: translateX(-D)` to `0` together
+    with `clip-path: inset(-40px -40px -40px Xpx)`, X going from `D - 56` (the gap) down past zero, both with the same
+    easing, so the edge it appears from stays at the monitor's right side. A rig dragged away from the computer's side
+    has no edge to come from: let it grow from the tab there.
+  - `drawLead` reads both windows with `getBoundingClientRect`, so the cable would follow a moving rig; the plan hides
+    it until the rig has arrived, and before it leaves.
+  - In a narrow window the rig is `.rig-folded`: the strip (64 wide, against the monitor's right side) and the page
+    that slides out of it over the monitor (`.rig-slide`, `comp.rigSlide`). Taking it out would set `comp.rigSlide`
+    to the page last used, so there's a screen for the loading screen.
+  - "The first time at each computer" wants a set of the computers the rig has been out at since the player sat down
+    (kept along the network the way `rigOut` is; `comp.woke` does this today for a junction box or a camera only).
+  - `connect: link` is `bootLines` showing only the connecting, over the same `BOOT_MS`; `plugged: unplugs` would
+    send `unplug` as the rig goes away, except at a junction box or a camera (`THROUGH_RIG`), which can't be unplugged.
+  - Reduced motion is `matchMedia("(prefers-reduced-motion: reduce)")`; the Settings line would sit with `deskSkin`
+    and `deskCrt` in the Computers fold.
+  - What plays when (out or away, first time here or not, the setting, reduced motion) can be one small pure
+    function in a file of its own, so `npm test` checks it without a screen, the way `public/net-layout.js` is checked.
+- **How the page was checked:** wrapped in the publisher's skeleton and opened in a headless Edge at 1400, 810 and
+  400 wide, in light and in dark. All sixteen examples were played to their end, twice, and each left what it should
+  (the rig or the tab showing, no animation still running, nothing left on the screen); the big button both ways;
+  plugged in (the tab's lamps, the cable); three quick presses; a click skipping the loading screen; Keep, an answer
+  and a tick with no store behind the page; the drawn plan's words for three sets of picks; no errors, no sideways
+  scroll. Pictures were taken in the middle of four of them in slow motion. After publishing, the page's `plan`
+  collection was listed once (empty). Saving a click couldn't be tried on this computer, since only the published
+  page has the store, and nobody has watched the animations at full speed on a real screen but through those pictures.
