@@ -12,7 +12,7 @@ reached by: navy
 charts: yes
 
 What the player sees:
-Forty-one green dots on a scratched glass table, and the course Pell keeps for you drawn through them in chalk, because the table's own line stopped working years ago.
+NAVCOM 7, the ship's main system, under the scratched glass of the plot table. It keeps the Navy's chart and the ship's log, and it's the captain's alone. Charts, on its desktop, opens the chart: every place you know of, the Meridian among them, and the course you plot drawn between.
 
 Files:
 course.txt: The course as the bridge keeps it: where the fleet is, where it's going, and how many jumps of fuel are in the tanks. Pell updates it when he remembers, which is most days.

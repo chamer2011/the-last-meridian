@@ -114,8 +114,19 @@
   - "Full screen" is the whole of the computer's screen under the RESTRICTED bar. The bar stays because SENTRY's meter
     is in it, and the taskbar is covered.
   - The captain's own computer closes without the usual "[COMPUTER] On The plot table: read nothing." after a jump.
-- **Offered, not done:** new words for the plot table's "What the player sees", which still speaks of forty-one dots
-  and a chalk line.
+- **The plot table's words, rewritten at their "Yes, rewrite it" the same day.** It had two descriptions, and both
+  spoke of forty-one green dots: what's read looking at it in the room (the `look` of The plot table on
+  `world/maps/meridian/deck1.tmj`, which also spoke of the Beacon's bearing) and its computer's "What the player
+  sees", which is on its welcome screen. The room's now says "The Navy's chart, lit from under scratched glass: a mark
+  for each place you know of, and one for the Meridian. A stub of chalk sits on the rim, for the days a course has to
+  be plotted by hand." The computer's says "NAVCOM 7, the ship's main system, under the scratched glass of the plot
+  table. It keeps the Navy's chart and the ship's log, and it's the captain's alone. Charts, on its desktop, opens the
+  chart: every place you know of, the Meridian among them, and the course you plot drawn between." Both are my drafts,
+  theirs to change. Nobody is named in them, since the helm can change hands. Left as they were, and told to them: the
+  thing's `use` and `used` lines on the deck, which nothing shows since Use opens the computer, and the computer's two
+  files (course.txt, fleet_manifest.txt), Voss's letter and its sensor sweep, which still speak of the fleet and the
+  signal. The deck was changed by swapping that one line of its file, nothing else in it; the tests' kept copy of the
+  ship still has the old words, which no test reads.
 - **Not in step 1:** staying aboard after a jump and the boat (step 2); the menu's removal and passage at the ports
   (step 3); a dark bridge, the helm jumping her by hand, and saying why Engage is refused before it's pressed when the
   engines are down or the clamps locked (step 4; until then the refusal comes back as a line when Engage is pressed).
