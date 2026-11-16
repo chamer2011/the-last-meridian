@@ -184,6 +184,17 @@ export function lootRoomOf(place, levelId, thing) {
   return level && thing ? roomNameAt(map, level, thing.x, thing.y) : "";
 }
 
+// What a piece of the packs that opens is called as a thing in a room, from its name in the catalogue: "Tool box" is
+// "A tool box", "Fridge, red" "A fridge", "Pile of cases" "A pile of cases", and what's already more than one
+// ("Kitchen units, black", "Wire shelving") is left as it is.
+export function packPieceName(name) {
+  const short = String(name ?? "").split(",")[0].trim();
+  if (!short) return "Something to open";
+  const head = short.split(/ with | of /)[0];
+  if (/(s|ing)$/.test(head)) return short;
+  return `${/^[aeiou]/i.test(short) ? "An" : "A"} ${short[0].toLowerCase()}${short.slice(1)}`;
+}
+
 // Once for each map, after the place's parts and stores stand in it: a thing named like a container opens (src/bag.js
 // opens anything with a holds line); each piece of storage furniture on the decks opens, as a thing of its own standing
 // on it, unless something drawn on the map stands there already; and each room the file gives a container that has
@@ -201,7 +212,8 @@ addMapWork((place, map) => {
       const like = FURNITURE_BY_ID[piece.kind]?.pack ? FURNITURE_BY_ID[piece.kind].opens : piece.kind;
       const kind = like ? furnitureKindOf(like, room) : null;
       if (!kind || squaresOf(piece).some(([x, y]) => standing.has(`${x},${y}`))) continue;
-      const name = pieceName(like, kind);
+      // A piece of the packs is called what it is (a tool box, a fridge), not what it opens like.
+      const name = FURNITURE_BY_ID[piece.kind]?.pack ? packPieceName(FURNITURE_BY_ID[piece.kind].name) : pieceName(like, kind);
       level.things.push({ id: `loot:${level.id}:${piece.x},${piece.y}`, name, look: kind.look ?? `${name}.`, x: piece.x, y: piece.y, holds: {}, loot: { kind: kind.name }, onPiece: piece.kind });
     }
   }

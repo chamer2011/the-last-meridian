@@ -128,6 +128,7 @@ const { buildScene } = await import("../public/iso.js");
 const { slantOf } = await import("../public/pixel-art.js");
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const { walkView } = await import("../src/walk.js");
+const { packPieceName } = await import("../src/loot.js");
 
 test.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
@@ -294,8 +295,17 @@ test("a cabinet of the packs opens like the game's own lockers", () => {
   const cabinet = level.things.find((thing) => thing.onPiece === "testpack/Cabinet");
   assert.ok(cabinet, "the cabinet is something to open");
   assert.deepEqual([cabinet.x, cabinet.y], [34, 9]);
-  assert.match(cabinet.name, /locker/);
+  // It's called what it is, from its name in the catalogue, and holds what a locker in that room would.
+  assert.equal(cabinet.name, "A test cabinet");
+  assert.match(cabinet.loot.kind, /locker/);
   assert.ok(cabinet.holds);
+  assert.equal(packPieceName("Tool box"), "A tool box");
+  assert.equal(packPieceName("Fridge, red"), "A fridge");
+  assert.equal(packPieceName("Office cabinet"), "An office cabinet");
+  assert.equal(packPieceName("Pile of cases"), "A pile of cases");
+  // What's already more than one keeps its name.
+  assert.equal(packPieceName("Kitchen units, black"), "Kitchen units");
+  assert.equal(packPieceName("Wire shelving"), "Wire shelving");
   // The table doesn't open, nor the rug.
   assert.equal(level.things.filter((thing) => String(thing.onPiece ?? "").startsWith("testpack/")).length, 1);
 });
