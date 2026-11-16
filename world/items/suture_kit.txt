@@ -8,6 +8,7 @@ stack: 5
 effect: hp 5, dress 1
 found in: medicine cabinet
 rarity: uncommon
+doses: 2
 
 In a line:
 Curved needles, thread and a pair of clamps, for closing what shouldn't be open.

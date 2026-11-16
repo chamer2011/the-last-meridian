@@ -8,6 +8,7 @@ stack: 10
 effect: hp 4
 found in: pantry
 rarity: common
+feeds: 6
 
 In a line:
 A cube of brown concentrate. Add hot water and hope.

@@ -17,7 +17,8 @@ import { dosesADay, medbayDoses, medbayOf, medbayView } from "./medbay.js";
 import { illnessPenalty, registerStarves } from "./register.js";
 import { illnessKinds } from "./body.js";
 import { workshopView } from "./workshop.js";
-import { countAboard, foodADay, machinesView, mealsOfDay, mealsView, putAboard, refilledADay, refillsView, repairsView, storesView, takeAboard } from "./logistics.js";
+import { countAboard, foodADay, machinesView, mealsOfDay, mealsView, putAboard, refilledADay, refillsView, repairsView, storesView, takeAboard, usedFrom, worthAboard } from "./logistics.js";
+import { worthOf } from "./worth.js";
 import { SHIP_DATA, STAR_MAP } from "./world.js";
 import { workView } from "./work.js";
 import { notePut } from "./puts.js";
@@ -36,7 +37,18 @@ const STORE_ITEMS = { food: ["ration_crate", "produce"], medicine: ["medicine_cr
 const FIRST = { food: ["shuttle_stores", "pantry"], medicine: ["medicine_cabinet"], parts: ["parts_lockers", "shuttle_stores"] };
 // A story's unit of food is about a day's eating, ten crates; its medicine and parts are crates already.
 const STORY_FOOD_CRATES = 10;
-const aboardCount = (game, id) => (id === "fuel" ? null : countAboard(game, SHIP_ID, STORE_ITEMS[id]));
+// What's aboard of a supply, and how much the stores hold of it: the items above, counted one each, and anything
+// else that's worth some of it in the store it's used from, for its share of a crate (src/worth.js). A medkit in the
+// medicine cabinet is four doses, a fifth of a crate; a tin in the pantry is one sitting, a two-hundredth of one.
+function aboardCount(game, id) {
+  if (id === "fuel") return null;
+  const counted = countAboard(game, SHIP_ID, STORE_ITEMS[id]);
+  const unit = counted ? worthOf(STORE_ITEMS[id][0], id) : 0;
+  if (!unit) return counted;
+  const from = id === "medicine" ? [medbayOf(SHIP_ID)?.medicine?.store].filter(Boolean) : usedFrom(SHIP_ID, id);
+  const extra = worthAboard(game, SHIP_ID, id, from, STORE_ITEMS[id]) / unit;
+  return extra ? { n: Math.round((counted.n + extra) * 100) / 100, of: counted.of } : counted;
+}
 const MAX_LOG = 40;
 
 const round1 = (n) => Math.round(n * 10) / 10;
@@ -237,6 +249,8 @@ function payForDay(game, ledger) {
     }
     ship.owed[id] = round2((ship.owed[id] ?? 0) - ledger.net[id]);
     while (ship.owed[id] >= 1 && takeAboard(game, SHIP_ID, STORE_ITEMS[id][0], 1, FIRST[id])) ship.owed[id] = round2(ship.owed[id] - 1);
+    // With no whole crate to take, only odds and ends that are worth a little, nothing more is owed either.
+    if (ship.owed[id] >= 1) ship.owed[id] = 0;
   }
   // The tank holds whole units, and the fractions wait here until they add up to one.
   ship.fuelBurn = round2(ship.fuelBurn + ledger.net.fuel);
@@ -716,7 +730,8 @@ function roomFor(game, id) {
   return counted ? counted.of - counted.n : Infinity;
 }
 function sellable(game, id) {
-  const counted = id === "food" ? countAboard(game, SHIP_ID, ["ration_crate"]) : aboardCount(game, id);
+  // Whole crates only: what's worth a little of a supply counts toward it, and isn't sold by the lot.
+  const counted = countAboard(game, SHIP_ID, id === "food" ? ["ration_crate"] : STORE_ITEMS[id]);
   return counted ? counted.n : game.ship[id] ?? 0;
 }
 function stow(game, id, n, onPut = null) {

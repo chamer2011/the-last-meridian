@@ -8,6 +8,7 @@ stack: 10
 effect: hp 2, stress 2
 found in: pantry, cooler
 rarity: common
+feeds: 1
 
 In a line:
 Three small tomatoes from the garden, warm and red and real.

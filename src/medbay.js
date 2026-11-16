@@ -17,6 +17,8 @@ import { findCharacter, fullName } from "./campaign.js";
 import { calledBy, deposedStart, holderKey, jobByWords, lostReason, onJob, postByWords, speedOf, tallyDuty } from "./command.js";
 import { hasReached, isAbout, whoIsIn } from "./life.js";
 import { logisticsOf, takeAboard } from "./logistics.js";
+import { storeCounts, storeTake } from "./bag.js";
+import { worthIn, worthOf } from "./worth.js";
 import { passTime } from "./rules.js";
 import { canStand, mapFor, roomOf, roomsOf, walkCommand, walkOf } from "./walk.js";
 import { doorLocked, roomPowered } from "./systems.js";
@@ -438,23 +440,31 @@ function medicsAt(game, place, medbay, hours) {
   const keys = medbay.treaters.flatMap((one) => (one.post ? [holderKey(game, place, one.post)] : one.who ? [one.who] : onJob(game, place, one.job)));
   return [...new Set(keys)].filter((key) => key && key !== YOU && there.has(key) && !busy.has(key) && !isDown(game, place, key) && !lostReason(game, place, key));
 }
-// Doses from the open crate, opening another from the medicine's store when it runs out. False when there aren't enough.
+// Doses from what's open, opening more from the medicine's store when it runs out. False when there aren't enough.
 function takeDoses(game, place, medbay, state, n, at = nowOf(game)) {
   while (state.doses < n) {
-    if (!openCrate(game, place, medbay)) return false;
-    state.doses += medbay.medicine.doses;
+    const got = openMedicine(game, place, medbay);
+    if (!got) return false;
+    state.doses += got;
   }
   state.doses -= n;
   countUsed(state, at, n);
   return true;
 }
-// A crate of medicine for the medbay: from its store, or at a port from the place's own, which it uses up as buying one
-// would (src/daily.js), and none when there's none left.
-function openCrate(game, place, medbay) {
-  if (!medbay.medicine.own) return takeAboard(game, place, "medicine_crate", 1, [medbay.medicine.store]) >= 1;
-  if (noneLeft(game, place, "medicine")) return false;
-  tradedAt(game, place, "medicine");
-  return true;
+// More medicine for the medbay, in doses, or none when there's none left: a crate from its store, or with no crate
+// there, whatever else in it is medicine, the most doses first (src/worth.js: a medkit handed in at the cabinet is
+// four doses); or at a port from the place's own, which it uses up as buying a crate would (src/daily.js).
+function openMedicine(game, place, medbay) {
+  if (medbay.medicine.own) {
+    if (noneLeft(game, place, "medicine")) return 0;
+    tradedAt(game, place, "medicine");
+    return medbay.medicine.doses;
+  }
+  // What a crate is worth is its own file's to say, where it does; otherwise the health file's doses to a crate.
+  if (takeAboard(game, place, "medicine_crate", 1, [medbay.medicine.store]) >= 1) return worthOf("medicine_crate", "medicine") || medbay.medicine.doses;
+  const store = logisticsOf(place)?.stores.find((one) => one.id === medbay.medicine.store);
+  const [most] = store ? worthIn(storeCounts(game, store.key, store.holds), "medicine", ["medicine_crate"]) : [];
+  return most && storeTake(game, store.key, store.holds, most.item, 1) ? most.worth : 0;
 }
 // The player's bill for the doses a treatment took, at a place that charges: as much as they have, if that's less.
 function billFor(game, place, medbay, doses, by) {
@@ -478,8 +488,9 @@ export function roundsDose(game, place, at = nowOf(game)) {
   const n = medbay.rounds ?? 1;
   const state = stateFor(game, place);
   while ((state.rounds ?? 0) < n) {
-    if (!openCrate(game, place, medbay)) return false;
-    state.rounds = (state.rounds ?? 0) + medbay.medicine.doses;
+    const got = openMedicine(game, place, medbay);
+    if (!got) return false;
+    state.rounds = (state.rounds ?? 0) + got;
   }
   state.rounds -= n;
   countUsed(state, at, n);

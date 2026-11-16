@@ -8,6 +8,7 @@ stack: 10
 effect: hp 2, stress 4
 found in: pantry, cooler
 rarity: rare
+feeds: 1
 
 In a line:
 Thick and golden, from bees kept somewhere with flowers.

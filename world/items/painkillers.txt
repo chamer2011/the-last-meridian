@@ -8,6 +8,7 @@ stack: 10
 effect: hp 2, stress 3
 found in: medicine cabinet, crew locker, desk
 rarity: common
+doses: 1
 
 In a line:
 A strip of white tablets that take the edge off.

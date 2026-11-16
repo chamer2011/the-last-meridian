@@ -8,6 +8,7 @@ stack: 1
 effect: hp 20, dress 1
 found in: medicine cabinet
 rarity: rare
+doses: 6
 
 In a line:
 A doctor's steel instruments in a rolled cloth, every one of them clean.

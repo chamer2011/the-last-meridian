@@ -8,6 +8,7 @@ stack: 3
 effect: hp 30
 found in: medicine cabinet
 rarity: rare
+doses: 5
 
 In a line:
 Restores 30 health, plus your Medicine rank.

@@ -8,6 +8,7 @@ stack: 5
 effect: hp 3
 found in: medicine cabinet, cooler
 rarity: common
+doses: 1
 
 In a line:
 Squeeze it and it goes cold, for swelling and bruises.

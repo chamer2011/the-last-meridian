@@ -8,6 +8,7 @@ stack: 5
 effect: hp 5
 found in: medicine cabinet
 rarity: uncommon
+doses: 2
 
 In a line:
 A full course of antibiotics, hard to come by and worth more than they weigh.

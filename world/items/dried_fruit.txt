@@ -8,6 +8,7 @@ stack: 10
 effect: hp 3, energy 1
 found in: pantry
 rarity: uncommon
+feeds: 1
 
 In a line:
 Sticky and sweet, and gone far too fast.

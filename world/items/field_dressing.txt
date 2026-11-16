@@ -8,6 +8,7 @@ stack: 5
 effect: hp 4, dress 1
 found in: medicine cabinet, armory
 rarity: common
+doses: 1
 
 In a line:
 A marine's field dressing in a sealed pouch, with instructions on the back in big letters.

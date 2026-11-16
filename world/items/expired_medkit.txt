@@ -8,6 +8,7 @@ stack: 5
 effect: hp 10, dress 1
 found in: medicine cabinet, crew locker, crate
 rarity: common
+doses: 2
 
 In a line:
 An old navy medkit three years past its date. Most of it still works.

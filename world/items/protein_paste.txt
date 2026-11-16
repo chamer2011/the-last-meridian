@@ -8,6 +8,7 @@ stack: 10
 effect: hp 4
 found in: pantry, crate
 rarity: common
+feeds: 2
 
 In a line:
 A squeeze tube of grey paste that claims to be chicken.

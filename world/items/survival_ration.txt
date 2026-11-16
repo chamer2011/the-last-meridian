@@ -8,6 +8,7 @@ stack: 5
 effect: hp 6, energy 1
 found in: crate, crew locker
 rarity: uncommon
+feeds: 1
 
 In a line:
 A sealed lifeboat ration, dated and stamped. It tastes of the date.

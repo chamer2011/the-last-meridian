@@ -8,6 +8,7 @@ stack: 5
 effect: dress 1
 found in: medicine cabinet, crew locker
 rarity: common
+doses: 1
 
 In a line:
 A roll of clean bandage, enough for one bad wound.

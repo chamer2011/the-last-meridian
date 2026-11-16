@@ -8,6 +8,7 @@ stack: 10
 effect: dress 1
 found in: medicine cabinet
 rarity: common
+doses: 1
 
 In a line:
 Sterile pads in paper sleeves, to press on a wound and tape down.

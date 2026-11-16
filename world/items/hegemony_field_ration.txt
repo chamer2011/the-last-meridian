@@ -8,6 +8,7 @@ stack: 5
 effect: hp 5
 found in: crate, pantry
 rarity: uncommon
+feeds: 1
 
 In a line:
 A neat grey box of food, every part of it labelled in four languages.

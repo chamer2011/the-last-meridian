@@ -8,6 +8,7 @@ stack: 10
 effect: hp 2
 found in: pantry
 rarity: common
+feeds: 4
 
 In a line:
 A packet of white powder that makes something almost like milk.

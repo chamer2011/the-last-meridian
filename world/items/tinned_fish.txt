@@ -8,6 +8,7 @@ stack: 10
 effect: hp 4
 found in: pantry, crate
 rarity: common
+feeds: 1
 
 In a line:
 Little silver fish packed in oil, from an ocean you'll never see.

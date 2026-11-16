@@ -8,6 +8,7 @@ stack: 10
 effect: hp 3
 found in: pantry, crew locker, crate
 rarity: common
+feeds: 1
 
 In a line:
 A dense brown bar that tastes of nothing in particular, and keeps forever.

@@ -4,6 +4,7 @@ price: 12
 size: 1x1
 weight: 40
 stack: 1
+feeds: 200
 
 In a line:
 Two hundred sittings of pressed rations, packed for a ship's pantry. Heavy, and nobody's glad to see it opened.

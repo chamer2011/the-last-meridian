@@ -131,6 +131,9 @@ export const ITEM = {
     // Someone's own: whoever it was taken from asks after it (src/keepsakes.js). And how much a piece of salvage counts
     // for, toward the parts crates the bench makes (the logistics file's salvage makes line, src/making.js).
     { path: "keepsake", key: "keepsake", type: "flag" }, { path: "salvage", key: "salvage", type: "number" },
+    // What one of it is worth to the ship, in the store that uses it: so many sittings at the kettle, so many doses in
+    // the medbay, so many repairs (src/worth.js).
+    { path: "feeds", key: "feeds", type: "number" }, { path: "doses", key: "doses", type: "number" }, { path: "spares", key: "spares", type: "number" },
   ],
   sections: [
     { path: "desc", phrase: "In a line", type: "text" },

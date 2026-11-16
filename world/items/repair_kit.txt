@@ -8,6 +8,7 @@ stack: 2
 effect: hull 20
 found in: tool shelf
 rarity: rare
+spares: 1
 
 In a line:
 Restores 20 ship hull, plus twice your Engineering rank.

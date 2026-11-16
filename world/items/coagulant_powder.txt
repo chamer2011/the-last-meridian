@@ -8,6 +8,7 @@ stack: 5
 effect: hp 8, dress 1
 found in: medicine cabinet, armory
 rarity: uncommon
+doses: 1
 
 In a line:
 A sachet of powder that stops bleeding when it's poured in a wound. It hurts more than the wound.

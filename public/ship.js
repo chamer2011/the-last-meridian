@@ -42,12 +42,13 @@ function supplyLine(s) {
   const left = s.out ? "OUT" : s.days === null ? "holding" : `${s.days} ${s.days === 1 ? "day" : "days"} left`;
   return el("div", { class: `ship-supply${s.out || s.low ? " low" : ""}` },
     el("div", { class: "ship-supply-line" },
-      el("span", {}, `${s.name.toUpperCase().padEnd(8)} [${bar}] ${s.stock}${s.unit ? ` ${s.unit}` : ""}`),
+      // To a tenth: a few tins or a medkit handed in count for their share of a crate, and anything smaller isn't shown.
+      el("span", {}, `${s.name.toUpperCase().padEnd(8)} [${bar}] ${Math.round(s.stock * 10) / 10}${s.unit ? ` ${s.unit}` : ""}`),
       el("strong", {}, left)),
     muted(`Makes ${s.made}, uses ${s.used}, so ${signed(s.net)} a day.`));
 }
 
-const suppliesSection = (s) => section("Stores", s.supplies.map(supplyLine), muted("Food, medicine and parts are what's in the rooms' stores below, counted together, and fuel is the tank. The ship's daily needs and the engineers take a crate when they've used one up, at midnight, the medbay opens one from its cabinet when its doses run out, and the kettle feeds everyone through the day. With parts aboard the engineers mend the hull a little each day; without them, she wears."));
+const suppliesSection = (s) => section("Stores", s.supplies.map(supplyLine), muted("Food, medicine and parts are what's in the rooms' stores below, counted together, and fuel is the tank. Anything else that's food in the pantry, medicine in the cabinet or a spare in the lockers counts for its share of a crate. The ship's daily needs and the engineers take a crate when they've used one up, at midnight, the medbay opens one from its cabinet when its doses run out, and the kettle feeds everyone through the day. With parts aboard the engineers mend the hull a little each day; without them, she wears."));
 
 // What's kept where, room by room, from world/logistics: each store is a thing in a room you can walk to and open,
 // each machine takes from one and puts into another on the clock, and the whole ship eats from the kettle.
@@ -55,7 +56,10 @@ function storesSection(s) {
   if (!s.stores?.length) return null;
   const count = (n) => n.toLocaleString("en-US");
   const line = (store) => {
-    const what = store.count ? `${store.count.n} of ${store.count.of} ${store.count.unit}` : store.items.map((one) => `${one.n}${one.of && one.n !== one.of ? ` of ${one.of}` : ""} ${one.name.toLowerCase()}${one.n === 1 || /produce$/i.test(one.name) ? "" : "s"}`).join(", ") || "empty";
+    // What a store keeps is counted in its own words, "12 ration crates". Anything else that's been put in it, a tin or
+    // a medkit handed in, is listed as it's named, "100 × tinned fish", since not every name takes an s.
+    const kept = (one) => `${one.n}${one.of && one.n !== one.of ? ` of ${one.of}` : ""} ${one.name.toLowerCase()}${one.n === 1 || /produce$/i.test(one.name) ? "" : "s"}`;
+    const what = store.count ? `${store.count.n} of ${store.count.of} ${store.count.unit}` : store.items.filter((one) => one.of || one.n > 0).map((one) => (one.of ? kept(one) : `${one.n} × ${one.name.toLowerCase()}`)).join(", ") || "empty";
     return el("div", { class: "menu-row small" },
       el("span", {}, store.name, el("span", { class: "muted" }, `, ${store.room}`)),
       el("span", { class: store.empty || store.items?.some((one) => one.of && one.n <= 0) ? "tone-bad" : "" }, what));

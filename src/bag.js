@@ -13,6 +13,10 @@ import { standingAt } from "./walk.js";
 import { notePut } from "./puts.js";
 import { rigWeight } from "./rig-parts.js";
 import { lootBox, lootOf, lootRoomOf, rollLoot } from "./loot.js";
+import { worthLine } from "./logistics.js";
+
+// The place whose stores an item's worth is told by: the player's own ship.
+const SHIP_STORES = "meridian";
 
 const R = () => INVENTORY;
 const round1 = (n) => Math.round(n * 10) / 10;
@@ -313,7 +317,9 @@ export const drawnWeapon = (game) => (game.combat?.drawn && game.equipped?.sidea
 function itemFacts(id, extra = {}) {
   const item = ITEMS[id];
   const { w, h } = sizeOf(item);
-  return { id, name: item.name, type: item.type, w, h, weight: weightOf(item), stack: stackOf(item), desc: item.desc ?? "", price: item.price ?? 0, damage: item.damage ?? null, defense: item.defense ?? null, effect: item.effect ?? null, sidearm: fitsSidearm(item), fight: fightable(item), ...(item.art?.length ? { art: item.art } : {}), ...(item.read ? { read: item.read } : {}), ...extra };
+  // What it's worth to the ship, and the store it has to be in for that (src/worth.js): a tin, a medkit, a parts crate.
+  const worth = worthLine(SHIP_STORES, id);
+  return { id, name: item.name, type: item.type, w, h, weight: weightOf(item), stack: stackOf(item), desc: item.desc ?? "", price: item.price ?? 0, damage: item.damage ?? null, defense: item.defense ?? null, effect: item.effect ?? null, sidearm: fitsSidearm(item), fight: fightable(item), ...(item.art?.length ? { art: item.art } : {}), ...(item.read ? { read: item.read } : {}), ...(worth ? { worth } : {}), ...extra };
 }
 // Reading this changes nothing in the save.
 export function bagView(game) {

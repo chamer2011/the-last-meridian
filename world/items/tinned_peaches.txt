@@ -8,6 +8,7 @@ stack: 10
 effect: hp 3, stress 4
 found in: pantry, crate
 rarity: uncommon
+feeds: 1
 
 In a line:
 Peaches in syrup. Someone was saving these for a special day.

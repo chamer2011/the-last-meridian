@@ -241,6 +241,8 @@ function showTip(node, item) {
     el("div", { class: "bag-tip-name" }, `${item.name}${item.n > 1 ? ` x${item.n}` : ""}`),
     el("div", { class: "check-hint" }, `${kindWord(item)}, ${item.w}x${item.h}, ${item.id === "rig" ? app.ui.game?.rig?.build?.stats?.weight ?? item.weight : item.weight} kg${item.stack > 1 ? `, ${item.stack} to a square` : ""}${item.price ? `, worth ${item.price} cr` : ""}`),
     facts && el("div", { class: "bag-tip-facts" }, facts),
+    // What it's worth to the ship, and the store it has to be in for that: a tin in the pantry, a medkit in the cabinet.
+    item.worth && el("div", { class: "bag-tip-facts" }, item.worth),
     item.desc && el("div", { class: "bag-tip-line" }, item.desc));
   win.append(state.tip);
 }

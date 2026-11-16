@@ -8,6 +8,7 @@ stack: 5
 effect: hp 2, stress 1
 found in: medicine cabinet
 rarity: common
+doses: 1
 
 In a line:
 Sweet brown syrup that tastes of cherries and doesn't do much else.

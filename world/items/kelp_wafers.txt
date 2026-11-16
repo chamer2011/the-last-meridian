@@ -8,6 +8,7 @@ stack: 10
 effect: hp 3
 found in: pantry
 rarity: common
+feeds: 1
 
 In a line:
 Tank-grown kelp pressed into thin green sheets, the Veshti way.

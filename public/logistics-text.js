@@ -202,12 +202,16 @@ export function readMachineLine(text) {
     from = rest.slice(fromAt).replace(/^\s+from\s+/i, "").replace(/^the\s+/i, "").trim();
     rest = rest.slice(0, fromAt).trim();
   }
+  // A choice is a number and what it is, or "any food": whatever else in the store is worth something of that kind
+  // (an item's feeds line, src/worth.js), for a machine that takes what it's given.
   const amount = (piece) => {
+    const any = piece.match(/^any\s+(?:other\s+)?(.+)$/i);
+    if (any) return { any: any[1].trim().toLowerCase(), what: `any ${any[1].trim()}` };
     const found = piece.match(/^(\d+)\s+(.+)$/);
     return found ? { n: Number(found[1]), what: found[2].trim() } : null;
   };
   const objects = rest.split(/\s+or\s+/i).map((one) => one.trim()).filter(Boolean).map(amount);
-  if (objects.some((one) => !one)) return { problem: `"${rest}" should be a number and what it is, such as 1 ration crate, or two choices with or between them` };
+  if (objects.some((one) => !one)) return { problem: `"${rest}" should be a number and what it is, such as 1 ration crate, or two choices with or between them, or any food` };
   let gives = null;
   if (intoWords) {
     const placed = intoWords.match(/^(\d+)\s+(.+?)\s+in\s+(?:the\s+)?(.+)$/i);
@@ -219,10 +223,10 @@ export function readMachineLine(text) {
   let takes = [];
   if (from) takes = objects;
   else if (into && !gives) {
-    if (objects.length !== 1) return { problem: `"${text}" makes more than one thing: a machine makes one thing, into one store` };
+    if (objects.length !== 1 || objects[0].any) return { problem: `"${text}" makes more than one thing: a machine makes one thing, into one store` };
     gives = objects[0];
   } else takes = objects;
-  if (takes.length && !from) return { problem: `"${text}" uses ${takes.map((one) => `${one.n} ${one.what}`).join(" or ")} but doesn't say from which store: write from the pantry` };
+  if (takes.length && !from) return { problem: `"${text}" uses ${takes.map((one) => (one.any ? one.what : `${one.n} ${one.what}`)).join(" or ")} but doesn't say from which store: write from the pantry` };
   if (!takes.length && !gives && !power) return { problem: `"${text}" neither uses nor makes anything: write what it takes from a store, or what it puts into one` };
   return { name, room, verb, takes, from, gives, into, every, needs, power };
 }

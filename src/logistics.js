@@ -8,6 +8,7 @@
 // reads the words; this knows the maps, the items, the systems and everyone's days.
 
 import { handsFree } from "./body.js";
+import { medbayOf } from "./medbay.js";
 import { ITEMS, LOCATIONS } from "./data.js";
 import { storeCounts, storePut, storeTake } from "./bag.js";
 import { findCharacter } from "./campaign.js";
@@ -21,6 +22,7 @@ import { KNOWN_SYSTEMS, SYSTEM_TITLES } from "../public/systems-text.js";
 import { SHIP_DATA } from "./world.js";
 import { refillsHeld } from "./room-hooks.js";
 import { runBoard } from "./work.js";
+import { KINDS, WORTH, pickWorth, worthIn, worthOf, worthTotal } from "./worth.js";
 
 const plain = (words) => String(words ?? "").toLowerCase().replace(/['’]/g, "").replace(/^the\s+/, "").replace(/\s+/g, " ").trim();
 const upperFirst = (text) => (text ? text[0].toUpperCase() + text.slice(1) : "");
@@ -223,7 +225,16 @@ function compileLogistics(place) {
       sound = false;
     }
     const takes = [];
-    for (const { n, what } of m.takes) {
+    for (const { n, what, any } of m.takes) {
+      // "any food": whatever else in the store is worth something of that kind (src/worth.js).
+      if (any) {
+        const kind = KINDS.find((one) => one === any || WORTH[one] === any) ?? null;
+        if (kind !== "food") {
+          at(line, `the ${m.name} can take any food, and nothing else by its kind: ${what} isn't something a machine works from`);
+          sound = false;
+        } else takes.push({ kind });
+        continue;
+      }
       const item = itemByWords(what);
       if (!item) {
         at(line, `there's no item called ${what} in world/items for the ${m.name} to use`);
@@ -496,16 +507,65 @@ function roomFor(game, store, gives) {
   const counts = storeCounts(game, store.key, store.holds);
   return (store.holds[gives.item] ?? 0) - (counts[gives.item] ?? 0);
 }
-// The first of a machine's choices that the store has enough of.
-function pickTake(game, store, takes) {
+// The first of a machine's choices that the store has enough of. A choice by kind ("any food") is whatever else in
+// the store is worth something of that kind, as much as one go of the machine makes and no more: the biggest that
+// fit first (src/worth.js). Null when the store has none of them.
+function pickTake(game, store, takes, most = Infinity) {
   const counts = storeCounts(game, store.key, store.holds);
-  return takes.find((one) => (counts[one.item] ?? 0) >= one.n) ?? null;
+  const named = takes.filter((one) => one.item).map((one) => one.item);
+  for (const one of takes) {
+    if (one.item && (counts[one.item] ?? 0) >= one.n) return one;
+    if (one.kind) {
+      const picked = pickWorth(counts, one.kind, most, named);
+      if (picked.length) return { kind: one.kind, picked, worth: picked.reduce((sum, each) => sum + each.n * each.worth, 0) };
+    }
+  }
+  return null;
 }
-const takesWords = (takes) => takes.map((one) => itemWords(one.item, 2)).join(" or ");
+const takesWords = (takes) => takes.map((one) => (one.kind ? `other ${one.kind}` : itemWords(one.item, 2))).join(" or ");
 // "the pantry is full", "the garden bins are full".
 const isFull = (store) => `the ${store.name} ${/s$/i.test(store.name) ? "are" : "is"} full`;
 
 // ---- Everything aboard of a kind -----------------------------------------------------------------------
+
+// The stores a kind of goods is used up from at a place: the ones the kettle's machines cook from, for food, and the
+// ones a repair's line names, for parts. (The medbay says where its medicine is kept: src/medbay.js.)
+export function usedFrom(place, kind) {
+  const model = logisticsOf(place);
+  if (!model) return [];
+  if (kind === "food") return [...new Set(model.machines.filter((m) => m.gives?.count && m.from).map((m) => m.from))];
+  if (kind === "parts") return model.repair?.from ?? [];
+  return [];
+}
+// What everything else of a kind comes to, in the stores it's used from, besides the items the ship counts by name:
+// a tin in the pantry is a sitting toward the food aboard, a medkit in the cabinet four doses toward the medicine
+// (src/worth.js). Nothing where the place has no logistics.
+export function worthAboard(game, place, kind, storeIds, skip = []) {
+  const model = logisticsOf(place);
+  if (!model) return 0;
+  let worth = 0;
+  for (const id of storeIds) {
+    const store = storeById(model, id);
+    if (store && !store.count) worth += worthTotal(storeCounts(game, store.key, store.holds), kind, skip);
+  }
+  return worth;
+}
+
+// What an item is worth to a place's ship, and the store it has to be in for that, in a line for the inventory:
+// "Feeds 1 at the kettle, once it's in the pantry." Null for an item that's worth nothing there.
+export function worthLine(place, id) {
+  const model = logisticsOf(place);
+  const kind = model ? KINDS.find((one) => worthOf(id, one) > 0) : null;
+  if (!kind) return null;
+  const n = worthOf(id, kind);
+  const ids = kind === "medicine" ? [medbayOf(place)?.medicine?.store] : usedFrom(place, kind);
+  const names = ids.map((one) => storeById(model, one)?.name).filter(Boolean);
+  if (!names.length) return null;
+  const where = `the ${names.length > 1 ? `${names.slice(0, -1).join(", the ")} or the ${names.at(-1)}` : names[0]}`;
+  if (kind === "food") return `Feeds ${n} at the kettle, once it's in ${where}.`;
+  if (kind === "medicine") return `${n} dose${n === 1 ? "" : "s"} for the medbay, once it's in ${where}.`;
+  return `${n === 1 ? "One repair's" : `${n} repairs'`} worth of spares, in ${where}.`;
+}
 
 // How many of some items are aboard a place, over every store that keeps them, and how many those stores hold in
 // all: for the Ship menu's count of food, medicine and parts, which is the same count as the stores. Null where the
@@ -664,9 +724,11 @@ function whyWaiting(game, place, m, from, into, minute, you, workers = null) {
     const room = roomFor(game, into, m.gives);
     if (room < m.gives.n) return room > 0 ? `no room in the ${into.name} for ${m.gives.n} ${m.gives.count ? "sittings" : itemWords(m.gives.item, m.gives.n)} yet` : isFull(into);
   }
-  if (from && !pickTake(game, from, m.takes)) return `the ${from.name} ${/s$/i.test(from.name) ? "have" : "has"} no ${takesWords(m.takes)}`;
+  if (from && !pickTake(game, from, m.takes, aGo(m))) return `the ${from.name} ${/s$/i.test(from.name) ? "have" : "has"} no ${takesWords(m.takes)}`;
   return null;
 }
+// How much one go of a machine makes at most, for a machine that takes whatever it's given: a pot of so many sittings.
+const aGo = (m) => (m.gives?.count ? m.gives.n : Infinity);
 
 // One machine over one piece of the clock. It's at work while it has power and someone there, and its progress
 // builds up to one go, so that what's ready goes in as soon as there's room for it, or something to make it from.
@@ -684,10 +746,19 @@ function runMachine(game, place, model, m, state, minute, minutes, you) {
   if (atWork) s.progress = Math.min(m.every, s.progress + minutes * speed);
   s.waiting = why;
   while (why === null && s.progress >= m.every) {
-    const take = from ? pickTake(game, from, m.takes) : null;
+    const take = from ? pickTake(game, from, m.takes, aGo(m)) : null;
     if ((from && !take) || (into && roomFor(game, into, m.gives) < m.gives.n)) break;
-    if (from) storeTake(game, from.key, from.holds, take.item, take.n);
-    if (m.gives.count) setCount(game, into, countOf(game, into) + m.gives.n);
+    // What a go gives: what its line says, unless what went in says what it feeds (src/worth.js). A pot of tins makes
+    // as many sittings as the tins were worth, and a crate makes what a crate is worth.
+    let gives = m.gives.n;
+    if (take?.kind) {
+      for (const each of take.picked) storeTake(game, from.key, from.holds, each.item, each.n);
+      gives = take.worth;
+    } else if (from) {
+      storeTake(game, from.key, from.holds, take.item, take.n);
+      if (m.gives.count) gives = worthOf(take.item, "food") * take.n || m.gives.n;
+    }
+    if (m.gives.count) setCount(game, into, countOf(game, into) + gives);
     else storePut(game, into.key, into.holds, m.gives.item, m.gives.n);
     s.progress -= m.every;
     s.made += 1;
@@ -835,10 +906,34 @@ export function repairNeeds(place, damage = "broken") {
 }
 const partsWords = (r) => (r.n === 1 ? `a ${itemWords(r.item, 1)}` : loadWords(r.item, r.n));
 const listWords = (list) => (list.length > 1 ? `${list.slice(0, -1).join(", ")} or ${list.at(-1)}` : list[0] ?? "");
-const inStores = (game, model, r) => r.from.reduce((sum, id) => {
-  const store = storeById(model, id);
-  return sum + (storeCounts(game, store.key, store.holds)[r.item] ?? 0);
-}, 0);
+// What one of an item is worth toward a repair: what its file says (src/worth.js), or one, as it always was.
+const spareOf = (id) => worthOf(id, "parts") || 1;
+// What a repair's line asks for, in that worth: one parts crate is one repair's worth of spares.
+const sparesWanted = (r) => r.n * spareOf(r.item);
+// What a store has toward a repair: the line's own item, and anything else in it that's worth a repair.
+function sparesIn(game, store, r) {
+  const counts = storeCounts(game, store.key, store.holds);
+  return (counts[r.item] ?? 0) * spareOf(r.item) + worthTotal(counts, "parts", [r.item]);
+}
+const inStores = (game, model, r) => r.from.reduce((sum, id) => sum + sparesIn(game, storeById(model, id), r), 0);
+// Takes up to so much worth of spares out of a store: the line's own item first, then whatever else there is worth a
+// repair, the least first, so nothing big goes on a small need. Says how much came out, and what.
+function takeSpares(game, store, r, want) {
+  let got = 0;
+  const what = [];
+  const take = (item, each) => {
+    const n = storeTake(game, store.key, store.holds, item, Math.ceil((want - got) / each));
+    if (n <= 0) return;
+    got += n * each;
+    what.push({ item, n });
+  };
+  take(r.item, spareOf(r.item));
+  for (const one of worthIn(storeCounts(game, store.key, store.holds), "parts", [r.item]).reverse()) {
+    if (got >= want) break;
+    take(one.item, one.worth);
+  }
+  return { got, what };
+}
 // "a parts crate", or "" for a repair that takes nothing.
 export const repairPartsWords = (place, damage) => {
   const r = repairNeeds(place, damage);
@@ -853,7 +948,7 @@ export const noPartsWords = (place, damage) => {
 // Whether there's enough in the stores for a repair now. A repair that takes nothing always has what it needs.
 export function repairPartsAboard(game, place, damage) {
   const r = repairNeeds(place, damage);
-  return !r || inStores(game, logisticsOf(place), r) >= r.n;
+  return !r || inStores(game, logisticsOf(place), r) >= sparesWanted(r);
 }
 // The store an engineer goes to for a repair: the first of the line's with enough in it, or else the first, where
 // they'll find out there isn't any. Null for a repair that takes nothing.
@@ -862,7 +957,7 @@ export function repairStore(game, place, damage) {
   if (!r) return null;
   const model = logisticsOf(place);
   const stores = r.from.map((id) => storeById(model, id));
-  return stores.find((store) => (storeCounts(game, store.key, store.holds)[r.item] ?? 0) >= r.n) ?? stores[0];
+  return stores.find((store) => sparesIn(game, store, r) >= sparesWanted(r)) ?? stores[0];
 }
 // Takes what a repair needs from the stores, first to last, and writes it in the repairs' log. Gives the words for
 // the line that says it's fixed, "a parts crate from the parts lockers", or "" for a repair that takes nothing. Null,
@@ -871,17 +966,21 @@ export function takeRepairParts(game, place, damage, what) {
   const r = repairNeeds(place, damage);
   if (!r) return "";
   const model = logisticsOf(place);
-  if (inStores(game, model, r) < r.n) return null;
-  let left = r.n;
+  if (inStores(game, model, r) < sparesWanted(r)) return null;
+  let left = sparesWanted(r);
   const from = [];
+  const used = [];
   for (const id of r.from) {
     if (left <= 0) break;
     const store = storeById(model, id);
-    const took = storeTake(game, store.key, store.holds, r.item, left);
-    if (took > 0) from.push(store.name);
-    left -= took;
+    const took = takeSpares(game, store, r, left);
+    if (took.got > 0) from.push(store.name);
+    used.push(...took.what);
+    left -= took.got;
   }
-  const words = `${partsWords(r)} from the ${from.join(" and the ")}`;
+  // "a parts crate", as the line has it, unless something else that's worth a repair went into it.
+  const asAsked = used.every((one) => one.item === r.item);
+  const words = `${asAsked ? partsWords(r) : listWords(used.map((one) => (one.n === 1 ? `a ${itemWords(one.item, 1)}` : loadWords(one.item, one.n)))).replace(/ or ([^,]+)$/, " and $1")} from the ${from.join(" and the ")}`;
   const state = stateOf(game, place);
   state.repairs ??= { log: [] };
   state.repairs.log.push({ at: minutesOf(game.clock.hours), text: `${upperFirst(words)}, for ${what}.` });
@@ -1023,7 +1122,7 @@ export function machinesView(game, place) {
     const s = state?.machines?.[m.id] ?? null;
     const from = m.from ? storeById(model, m.from) : null;
     const into = m.into ? storeById(model, m.into) : null;
-    const does = [m.verb, m.takes.map((one) => `${one.n} ${itemWords(one.item, one.n)}`).join(" or "), from ? `from the ${from.name}` : "", m.gives ? `into ${m.gives.n} ${m.gives.count ? m.gives.unit : itemWords(m.gives.item, m.gives.n)} in the ${into.name}` : "", `every ${everyWords(m.every)}`, m.power ? `, ${m.power} power` : ""].filter(Boolean).join(" ").replace(" ,", ",");
+    const does = [m.verb, m.takes.map((one) => (one.kind ? `any ${one.kind}` : `${one.n} ${itemWords(one.item, one.n)}`)).join(" or "), from ? `from the ${from.name}` : "", m.gives ? `into ${m.gives.n} ${m.gives.count ? m.gives.unit : itemWords(m.gives.item, m.gives.n)} in the ${into.name}` : "", `every ${everyWords(m.every)}`, m.power ? `, ${m.power} power` : ""].filter(Boolean).join(" ").replace(" ,", ",");
     const left = (minutes) => `${Math.floor(minutes / 60) ? `${Math.floor(minutes / 60)} h ` : ""}${Math.round(minutes % 60)} min`;
     const status = m.generator
       ? ((s?.burning ?? m.every) > 0 ? `running, ${left(s?.burning ?? m.every)} on this ${m.takes[0] ? itemWords(m.takes[0].item, 1) : "charge"}, giving ${m.power} power` : `stopped: ${s.waiting}, and nothing aboard has power`)

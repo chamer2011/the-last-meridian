@@ -8,6 +8,7 @@ stack: 3
 effect: hp 12
 found in: medicine cabinet
 rarity: uncommon
+doses: 2
 
 In a line:
 A pouch of fluid that stands in for lost blood until there's real blood to give.

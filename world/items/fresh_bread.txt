@@ -8,6 +8,7 @@ stack: 10
 effect: hp 3, stress 3
 found in: pantry
 rarity: common
+feeds: 2
 
 In a line:
 A loaf from the galley's last bake, still soft in the middle.

@@ -8,6 +8,7 @@ stack: 10
 effect: hp 5
 found in: pantry, crate
 rarity: common
+feeds: 3
 
 In a line:
 A slab of pork cured in salt, for when there's nothing else.

@@ -8,6 +8,7 @@ stack: 10
 effect: hp 4
 found in: pantry, crate
 rarity: common
+feeds: 1
 
 In a line:
 Lentils in a spiced sauce. The tin is dented but sound.

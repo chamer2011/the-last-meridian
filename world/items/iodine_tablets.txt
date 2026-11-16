@@ -8,6 +8,7 @@ stack: 10
 effect: hp 3
 found in: medicine cabinet, crate
 rarity: common
+doses: 1
 
 In a line:
 Tablets against radiation in a foil sheet, every one still in its bubble.

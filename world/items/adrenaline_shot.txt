@@ -8,6 +8,7 @@ stack: 5
 effect: hp 2, energy 5
 found in: medicine cabinet, armory
 rarity: uncommon
+doses: 1
 
 In a line:
 A spring-loaded injector that kicks your heart awake. Don't use two in a row.

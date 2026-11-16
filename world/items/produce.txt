@@ -4,6 +4,7 @@ price: 3
 size: 1x1
 weight: 5
 stack: 4
+feeds: 200
 
 In a line:
 A basket of what the garden gave today: beans, greens and something that was meant to be a tomato.

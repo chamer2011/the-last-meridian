@@ -8,6 +8,7 @@ stack: 10
 effect: hp 2, energy 1
 found in: cooler, pantry
 rarity: common
+feeds: 1
 
 In a line:
 A bag of roasted nuts in a hot red dust. A bar's best friend.

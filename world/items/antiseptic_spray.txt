@@ -8,6 +8,7 @@ stack: 5
 effect: hp 3
 found in: medicine cabinet
 rarity: common
+doses: 1
 
 In a line:
 A can of stinging spray that kills whatever gets into cuts.

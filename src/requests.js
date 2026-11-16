@@ -44,7 +44,9 @@ import { dueWords, heldUp } from "./quests.js";
 import { START_LIST, aboardShip, isCaptain, startOf } from "./role.js";
 import { conditionHolds, parseCondition } from "./scene-text.js";
 import { loadScenes, scenesUnderWay, withStandIns } from "./scenes.js";
-import { itemByWords, logisticsOf, storeByWords, storeNames } from "./logistics.js";
+import { itemByWords, logisticsOf, storeByWords, storeNames, usedFrom } from "./logistics.js";
+import { medbayOf } from "./medbay.js";
+import { kindOf, worthOf } from "./worth.js";
 import { notePut, putsOf } from "./puts.js";
 import { removeItem, tellRequests } from "./rules.js";
 import { applySystemsEffect, battleDamageWords, partBroken, partByWords, partWords, partsWaitingIds } from "./systems.js";
@@ -637,8 +639,27 @@ function totalOf(game, need, open) {
     case "carry": return 0;
     case "shift": return putsOf(game, "shift", "any");
     case "pass": return putsOf(game, `check:${need.skill}`, need.at ? `at:thing:part:${need.at}` : need.with ? `with:${open.to}` : "any");
-    default: return putsOf(game, need.where, need.item);
+    default: return broughtOf(game, need);
   }
+}
+// What's been brought toward something asked for, counted in the thing asked for. Anything else that's the same
+// kind of goods counts for its share (src/worth.js): a medkit handed in at the medicine cabinet is four doses toward
+// a medicine crate's twenty, and a basket of produce in the pantry is as good as a ration crate. Asked for aboard,
+// that's what was bought for the ship, and whatever else of the kind has been handed in at the stores it's used from.
+function broughtOf(game, need) {
+  const own = putsOf(game, need.where, need.item);
+  const kind = need.item === "fuel" ? null : kindOf(need.item);
+  if (!kind) return own;
+  const stores = logisticsOf(SHIP)?.stores ?? [];
+  const used = kind === "medicine" ? [medbayOf(SHIP)?.medicine?.store] : usedFrom(SHIP, kind);
+  const places = need.where === "aboard" ? ["aboard", ...used.map((id) => stores.find((store) => store.id === id)?.key).filter(Boolean)] : [need.where];
+  let other = 0;
+  for (const [key, n] of Object.entries(game.puts ?? {})) {
+    const cut = key.lastIndexOf("|");
+    const item = key.slice(cut + 1);
+    if (item !== need.item && places.includes(key.slice(0, cut))) other += n * worthOf(item, kind);
+  }
+  return other ? Math.round((own + other / worthOf(need.item, kind)) * 100) / 100 : own;
 }
 function progressOf(game, model, open) {
   if (model.need.kind === "go") return game.location === model.need.place ? 1 : 0;

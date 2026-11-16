@@ -8,6 +8,7 @@ stack: 3
 effect: hp 18
 found in: medicine cabinet, armory
 rarity: rare
+doses: 3
 
 In a line:
 A canister of foam that fills a wound and sets hard. Marines called it life in a can.

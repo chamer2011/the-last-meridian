@@ -73,7 +73,7 @@ test("the Meridian's machines know their stores, rooms and needs, and the genera
   const byId = Object.fromEntries(model.machines.map((m) => [m.id, m]));
   assert.deepEqual(Object.keys(byId).sort(), ["galley", "garden", "generator"]);
   assert.deepEqual([byId.galley.room, byId.galley.takes, byId.galley.from, byId.galley.gives, byId.galley.into, byId.galley.every, byId.galley.needs, byId.galley.runs],
-    ["galley", [{ item: "produce", n: 1 }, { item: "ration_crate", n: 1 }], "pantry", { count: true, unit: "sittings", n: 200 }, "soup_kettle", 60, { power: true, worker: "a cook there", job: "cook" }, true]);
+    ["galley", [{ item: "produce", n: 1 }, { item: "ration_crate", n: 1 }, { kind: "food" }], "pantry", { count: true, unit: "sittings", n: 200 }, "soup_kettle", 60, { power: true, worker: "a cook there", job: "cook" }, true]);
   assert.deepEqual([byId.garden.room, byId.garden.takes, byId.garden.gives, byId.garden.into, byId.garden.every, byId.garden.runs], ["garden", [], { count: false, item: "produce", n: 1 }, "garden_bins", 120, true]);
   assert.deepEqual([byId.generator.room, byId.generator.from, byId.generator.power, byId.generator.runs, byId.generator.generator], ["engineering", "fuel_rack", 100, true, true]);
   assert.deepEqual(model.sittings, { at: [360, 450, 1080, 1170], minutes: 90 });
@@ -141,7 +141,7 @@ test("the galley cooks the pantry into the kettle while a cook's there, and says
     emptySources(game);
     setKettle(game, 0);
     clockRuns(game, 60);
-    assert.equal(status(game, "galley"), "the pantry has no produce or ration crates");
+    assert.equal(status(game, "galley"), "the pantry has no produce or ration crates or other food");
     assert.equal(kettleCount(game), 0);
     // No power in the galley.
     bag.storePut(game, storeOf("pantry").key, storeOf("pantry").holds, "produce", 2);

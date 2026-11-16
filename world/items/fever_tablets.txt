@@ -8,6 +8,7 @@ stack: 10
 effect: hp 3
 found in: medicine cabinet
 rarity: common
+doses: 2
 
 In a line:
 Tablets that bring a fever down, at least for the night.
