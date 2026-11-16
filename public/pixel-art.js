@@ -180,7 +180,7 @@ const WALL_DOWN_RIGHT = { cells: [0, 1, 2], corners: [[40, 124], [104, 92], [40,
 // end's foot and the left end's top. Cells 5 to 7 of the wall row.
 const WALL_DOWN_LEFT = { cells: [5, 6, 7], corners: [[24, 92], [88, 124], [24, 4]] };
 
-const state = { on: false, look: "dark", images: null, files: {}, loaded: false, failed: false, second: null, tops: {}, boxes: {}, listeners: new Set(), pack: {}, wanted: new Set(), loading: {}, version: 0, settle: 0, scratch: null, forced: false, lightDim: 1, dimmed: {} };
+const state = { on: false, look: "dark", people: "drawn", images: null, files: {}, loaded: false, failed: false, second: null, tops: {}, boxes: {}, listeners: new Set(), pack: {}, wanted: new Set(), loading: {}, version: 0, settle: 0, scratch: null, forced: false, lightDim: 1, dimmed: {} };
 
 // ---- Any piece of the packs, as furniture ---------------------------------------------------------------------------
 // The game says what each piece of the packs is (src/pack-furniture.js, world/furniture.txt), and the page's list of
@@ -270,13 +270,18 @@ function want(picture) {
 
 // Asked for by Settings: whether the test is on, and in which of the pack's two looks. The sheets are fetched the
 // first time it's turned on.
-export function setPixelArt({ on, look }) {
-  const was = pixelKey();
+export function setPixelArt({ on, look, people }) {
+  const was = `${pixelKey()}/${state.people}`;
   state.on = !!on;
   state.look = LOOKS[look] ? look : "dark";
+  state.people = people === "pixel" ? "pixel" : "drawn";
   if (state.on && !state.images) loadSheets();
-  if (pixelKey() !== was) changed();
+  if (`${pixelKey()}/${state.people}` !== was) changed();
 }
+
+// How people are drawn in this view: false for the game's own figures as they are, true for the pixel style the
+// owner is trying (public/pixel-people.js).
+export const pixelPeople = () => pixelArtOn() && state.people === "pixel";
 
 // Told whenever what the view should draw changes (turned on or off, another look, the sheets arrived).
 export function onPixelArt(listener) {

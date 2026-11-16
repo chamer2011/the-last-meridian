@@ -276,6 +276,7 @@ function settingsMenu() {
         el("button", { class: reading.view === "classic" ? "primary" : "", "aria-pressed": String(reading.view === "classic"), onclick: () => changeReading({ view: "classic" }) }, "Classic")),
       reading.view === "top" && pickRow("Top-down art:", "tiles", [["techlab", "Tech Lab"], ["interior", "Sci-fi Interior"]]),
       reading.view === "iso" && reading.isoArt === "pixel" && pickRow("Pixel art look:", "pixelLook", [["dark", "Dark"], ["light", "Light"]]),
+      reading.view === "iso" && reading.isoArt === "pixel" && pickRow("People:", "pixelPeople", [["drawn", "As drawn", "The game's own figures, as they've always been drawn"], ["pixel", "Pixel", "A test: the same figures made pixel art, with flat colours and a dark line round them"]]),
       reading.view === "iso" && reading.isoArt === "pixel" && pixelArtFound() === false && muted("The pixel-art pack isn't in the game's folder (licensed/isospace), so the room is drawn as usual."),
       reading.view === "iso" && reading.isoArt === "pixel" && pixelArtFound() && pixelFurnitureFound() === false && muted("The furniture pack isn't in the game's folder (licensed/interiors), so most of the furniture is drawn as usual."),
       folded("settings-views", "What the story views mean",

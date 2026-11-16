@@ -7,7 +7,8 @@
 import { el } from "./dom.js";
 import { FURNITURE_BY_ID, footprintOf, squaresOf } from "./furniture.js";
 import { hideLoading, showLoading } from "./loading.js";
-import { PACK_FIGURE, PIXEL_UNIT, cameraTurns, drawPixelBigMachine, drawPixelCrate, drawPixelDoor, drawPixelFixture, drawPixelFloors, drawPixelLowWall, drawPixelMachine, drawPixelPart, drawPixelPiece, drawPixelPost, drawPixelRail, drawPixelScrap, drawPixelStairs, drawPixelStood, drawPixelTank, drawPixelThing, drawPixelWall, drawPixelWallRun, machineAt, packBed, packKey, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim, stairsUp } from "./pixel-art.js";
+import { drawFigureSprite, figureSprite, setFigureRest, stepOfFrame, walkFrame } from "./pixel-people.js";
+import { PACK_FIGURE, PIXEL_UNIT, cameraTurns, drawPixelBigMachine, drawPixelCrate, drawPixelDoor, drawPixelFixture, drawPixelFloors, drawPixelLowWall, drawPixelMachine, drawPixelPart, drawPixelPiece, drawPixelPost, drawPixelRail, drawPixelScrap, drawPixelStairs, drawPixelStood, drawPixelTank, drawPixelThing, drawPixelWall, drawPixelWallRun, machineAt, packBed, packKey, pixelArtOn, pixelDoorDepth, pixelKey, pixelPeople, setLightDim, stairsUp } from "./pixel-art.js";
 
 // A console square is about twice as tall as it's wide, so two columns make one tile.
 export const CELL_WIDTH = 0.5;
@@ -2839,10 +2840,19 @@ const limb = (ctx, x0, y0, x1, y1, width, color) => {
 // own size, smaller than the game's, and people are as much smaller, so a chair still fits whoever sits in it.
 export const figureUnit = (unit) => (pixelArtOn() ? unit * PACK_FIGURE : unit);
 
+// How much of the screen one of a figure's thirty units takes in the pixel-art view with the wheel at rest.
+const FIGURE_REST = (PIXEL_UNIT * PACK_FIGURE * 0.86) / 30;
+
 function drawPerson(ctx, x, y, unit, person) {
   const scale = (unit * 0.86) / 30;
+  // The pixel-art view's trial: the figure as a small picture of itself, made pixel art (public/pixel-people.js). Its
+  // dots are set down on the screen's own, of which a sharp screen has more to one of the page's.
+  const pixels = pixelPeople();
+  const ratio = pixels ? Math.abs(ctx.getTransform().a) || 1 : 1;
+  const snap = (value) => Math.round(value * ratio) / ratio;
   ctx.save();
-  ctx.translate(x, y);
+  if (pixels) ctx.translate(snap(x), snap(y));
+  else ctx.translate(x, y);
   ctx.fillStyle = "rgba(0,0,0,.55)";
   ctx.beginPath();
   if (person.asleep) ctx.ellipse(0, 0, unit * 0.3, unit * 0.1, 0, 0, Math.PI * 2);
@@ -2856,9 +2866,39 @@ function drawPerson(ctx, x, y, unit, person) {
     ctx.stroke();
   }
   // A seat higher than a chair's lifts whoever's in it.
-  if (person.raise) ctx.translate(0, (-person.raise * unit) / 2);
+  if (person.raise) ctx.translate(0, pixels ? snap((-person.raise * unit) / 2) : (-person.raise * unit) / 2);
+  if (pixels) {
+    setFigureRest(FIGURE_REST, ratio);
+    const posed = { ...person, walking: Boolean(person.walking && !iso.calm && !person.seated && !person.asleep) };
+    const sprite = figureSprite(posed, (to, dots) => {
+      to.scale(dots, dots);
+      to.lineCap = "round";
+      drawFigure(to, { ...posed, step: posed.walking ? stepOfFrame(walkFrame(person.step)) : 0 });
+    });
+    drawFigureSprite(ctx, sprite, scale, person.flip, ratio);
+  }
   ctx.scale(person.flip ? -scale : scale, scale);
   ctx.lineCap = "round";
+  if (!pixels) drawFigure(ctx, person);
+  // Someone lying where they fell has a mark over them: a red cross, for anyone to see from across the room.
+  if (person.asleep && person.mark) {
+    ctx.lineWidth = 3.6;
+    ctx.strokeStyle = "rgba(20,6,4,.85)";
+    ctx.beginPath();
+    ctx.moveTo(0, -16);
+    ctx.lineTo(0, -8);
+    ctx.moveTo(-4, -12);
+    ctx.lineTo(4, -12);
+    ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#ff6b5b";
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// The figure itself, thirty units tall with the point between its feet at 0, 0, in whatever pose the person is in.
+function drawFigure(ctx, person) {
   const { look } = person;
   if (person.asleep) {
     ctx.fillStyle = look.coat;
@@ -2869,21 +2909,6 @@ function drawPerson(ctx, x, y, unit, person) {
     ctx.beginPath();
     ctx.arc(7, -2, 2.4, 0, Math.PI * 2);
     ctx.fill();
-    // Someone lying where they fell has a mark over them: a red cross, for anyone to see from across the room.
-    if (person.mark) {
-      ctx.lineWidth = 3.6;
-      ctx.strokeStyle = "rgba(20,6,4,.85)";
-      ctx.beginPath();
-      ctx.moveTo(0, -16);
-      ctx.lineTo(0, -8);
-      ctx.moveTo(-4, -12);
-      ctx.lineTo(4, -12);
-      ctx.stroke();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = "#ff6b5b";
-      ctx.stroke();
-    }
-    ctx.restore();
     return;
   }
   // Someone sitting has their legs out in front along the seat and down to the floor, and the rest of them lower.
@@ -2987,7 +3012,6 @@ function drawPerson(ctx, x, y, unit, person) {
     ctx.fillRect(1, -27.4, 0.9, 0.7);
     ctx.fillRect(2.3, -27.4, 0.5, 0.7);
   }
-  ctx.restore();
 }
 
 // Which way someone's facing: towards where they've just been going, and otherwise the way they last were.
