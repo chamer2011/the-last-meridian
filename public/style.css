@@ -824,6 +824,7 @@ body:has(#computer) .pop-notes { visibility: hidden; }
 .map-short { min-width: 0; }
 .map-going { color: var(--warn); }
 /* Why a port is short of something, and where a good comes from: a quieter line under its row. */
+.map-work { margin: 4px 0 2px; line-height: 1.35; }
 .map-why { padding: 0 0 3px; line-height: 1.35; }
 .map-tree { margin-top: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
 .map-holds .menu-row, .map-goods .menu-row { gap: 12px; }

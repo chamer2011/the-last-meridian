@@ -17,7 +17,8 @@ const body = await import("../src/body.js");
 const medbay = await import("../src/medbay.js");
 const { combatAction, passTime, startCombat } = await import("../src/rules.js");
 const { walkOf, walkView } = await import("../src/walk.js");
-const { DAILY, WORLD_HEALTH } = await import("../src/world.js");
+const { WORLD_HEALTH } = await import("../src/world.js");
+const { usualOf } = await import("../src/ports.js");
 const { MEDBAY_KEYS, parseHealthText, writeHealthText } = await import("../public/health-text.js");
 
 const newGame = (start = "captain") => {
@@ -104,18 +105,19 @@ test("knocked down at Anselm's Mercy, you wake in the Long Ward, and pay for you
   assert.equal(poor.credits, 0);
 });
 
-test("a port's own medicine runs out, and then nobody can be treated there until there's more", (t) => {
-  // Anselm's supplies aren't one of the world's, so its medicine never runs out; here the world keeps them, as it does
-  // Haven's, with enough for one crate.
-  DAILY.places.anselm = structuredClone(DAILY.places.haven);
-  t.after(() => delete DAILY.places.anselm);
+test("a port's own medicine runs out, and then nobody can be treated there until there's more", () => {
+  // Anselm's Mercy is a port: the ward's doses come out of the medicine crates it holds, a crate at a time. Here it's
+  // down to one crate and a half.
   const game = newGame();
   goTo(game, "anselm");
   passTime(game, 0.2, "routine");
-  game.world.places.anselm.goods.medicine = 11;
+  const usual = usualOf("anselm", "medicine");
+  assert.ok(usual > 20, "it usually holds a good many crates");
+  const crates = () => (game.world.places.anselm.goods.medicine / 100) * usual;
+  game.world.places.anselm.goods.medicine = (1.5 / usual) * 100;
   body.addWounds(game, TOLU, [wound("broken bone", "right_leg"), wound("broken bone", "left_leg")]);
   for (let i = 0; i < 12; i += 1) passTime(game, 0.25, "routine");
-  assert.equal(game.world.places.anselm.goods.medicine, 7, "a crate taken, as buying one would, and under 8 there's none left");
+  assert.ok(Math.abs(crates() - 0.5) < 0.01, `a crate taken, as buying one would, and with half a crate there's none left: ${crates()}`);
   // The crate's doses go; then there's none left for another.
   game.medbay.anselm.doses = 0;
   body.addWounds(game, "you", [wound("deep cut", "chest")]);

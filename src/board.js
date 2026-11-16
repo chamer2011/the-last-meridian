@@ -546,13 +546,15 @@ function goodsItem(id) {
       makers: ports.filter((port) => port.made[good]).map((port) => ({ id: port.id, name: port.name, n: port.made[good] })),
       holders: ports.filter((port) => port.holds[good]).length,
       used: Math.round(ports.reduce((sum, port) => sum + (port.use[good] ?? 0), 0) * 100) / 100,
+      // What the ports' makers take of it in a day to make other things, when things are as usual.
+      taken: Math.round(ports.reduce((sum, port) => sum + (port.eat[good] ?? 0), 0) * 100) / 100,
       made: Math.round(ports.reduce((sum, port) => sum + (port.made[good] ?? 0), 0) * 100) / 100,
     };
   }
   return {
     id, kind: "goods", text, value,
     links: { where },
-    lists: { ...boardLists(), items: Object.entries(WORLD_ITEMS).map(([itemId, one]) => ({ id: itemId, name: one.name })) },
+    lists: { ...boardLists(), items: Object.entries(WORLD_ITEMS).map(([itemId, one]) => ({ id: itemId, name: one.name })), goods: model.order.map((good) => model.goods[good].name) },
     layout: readLayout()[`goods/${id}`] ?? {},
     problems: portsFileProblems("goods", id),
   };

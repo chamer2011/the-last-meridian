@@ -1,10 +1,15 @@
 # Comforts
 draft: the AI's, not yet edited by the owner
 
+Refined:
+- mash, by the vat: Fruit, grain or honey set to work in a vat.
+- cloth, by the roll: Wool and kelp thread, woven.
+- cured leaf, by the brick: Tea and tobacco leaf, dried and pressed into bricks.
+
 Developed:
-- beer and spirits, by the keg: Stone ale, ship's beer and worse. A crew with something to drink holds together.
-- clothes, by the bale: What people wear and mend, by the bale.
-- tea and tobacco, by the chest: Tea, coffee and tobacco, for a hard day.
+- beer and spirits, by the keg, made from mash: Stone ale, ship's beer and worse. A crew with something to drink holds together.
+- clothes, by the bale, made from cloth: What people wear and mend, by the bale.
+- tea and tobacco, by the chest, made from cured leaf: Tea, coffee and tobacco, for a hard day.
 
 Advanced:
-- fine things, by the case: Vantor red, an evening gown: what people pay dear for, and give as gifts.
+- fine things, by the case, made from beer and spirits, clothes: Vantor red, an evening gown: what people pay dear for, and give as gifts.

@@ -1,0 +1,26 @@
+# The Sundial
+draft: the AI's, not yet edited by the owner
+people: 4,000
+
+Holds:
+- meal: usually 550
+- ration crates: usually 1,100
+- fuel cells: usually 600, from Cinder Reach
+- medicine crates: usually 20, from Anselm's Mercy
+- parts crates: usually 30, from Haven Station
+- water: usually 80
+- drinking water: usually 400
+- clothes: usually 20, from Haven Station
+- tea and tobacco: usually 30, from Haven Station
+
+Makes:
+- the threshing floor: 55 meal a day
+- the pump tower: 8 water a day
+- the packing tables on Steward's Row: 110 ration crates a day, from 55 meal
+- the Water Table: 40 drinking water a day, from 8 water
+
+Uses:
+- the families: 40 ration crates, 20 drinking water, 0.8 clothes, 1.2 tea and tobacco a day
+- the great lamp on the Sun Rail: 24 fuel cells a day
+- its sick: 0.8 medicine crates a day
+- its docks and workshops: 1.2 parts crates a day

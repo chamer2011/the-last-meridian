@@ -6,6 +6,12 @@
 // and nothing once it's down to what it keeps back, so a shortage at a maker reaches the ports it supplies some days
 // later, and is over when the hauls arrive again.
 //
+// A maker needs what it makes things from (part 2): its line says what goes into a day's making, it makes no more
+// than it has the goods for, and it takes them from what the port holds. It needs hands and power too: a port short
+// of what its people eat and drink has fewer hands at its makers, one short of medicine has more of them laid up,
+// and one that's run out of what its makers run on does a part of its work, by hand. The trees say which goods those
+// are (hands need, the sick need, power is). So a shortage travels down a tree as well as across the map.
+//
 // The word every port already has for each of its supplies (plenty, normal, short, scarce) stays where it was, as a
 // level where 100 is what the port usually holds: game.world.places[id].goods[supply]. A tree's "stands for" line says
 // which good that is (food is the ration crates), so the amount is the level's share of the usual, and whatever sets
@@ -19,7 +25,7 @@
 
 import { ITEMS, LOCATIONS } from "./data.js";
 import { DAILY, PORTS_FILE_PROBLEMS, STAR_MAP, WORLD_GOODS, WORLD_PORTS } from "./world.js";
-import { STEPS, numberWords, readGoodLine, readHoldLine, readMakeLine, readUseLine, slugOf } from "../public/ports-text.js";
+import { NEEDS, NEED_KEYS, STEPS, numberWords, readGoodLine, readHoldLine, readMakeLine, readUseLine, slugOf } from "../public/ports-text.js";
 
 // A haul carries what the port brings in over the days the trip takes, and half again: but never more than a day and
 // a half's worth over, so that a long trip doesn't empty the port before it's back.
@@ -45,7 +51,13 @@ const MOST = 200;
 const GLUT = 1.6;
 // A haul takes a day to load and unload, and a day for every so far on the chart, between two days and six.
 const CHART_A_DAY = 15;
+// What a port's makers do of their work when it's short of what they need besides the goods themselves. Each is whole
+// while the good is at its level or better, and falls in a line from there to its least, with none left.
+//   hands: what its people eat and drink; sick: its medicine; power: what its makers run on.
+const WORK = { hands: { full: 80, least: 0.75 }, sick: { full: 50, least: 0.85 }, power: { full: 50, least: 0.4 } };
 
+// The goods on a port's market: the finished ones, not what they're made from.
+const onMarket = (good) => good.step === "developed" || good.step === "advanced";
 const round2 = (n) => Math.round(n * 100) / 100;
 // A level is kept fine enough that a single crate shows in the biggest store.
 const fine = (n) => Math.round(n * 10000) / 10000;
@@ -96,7 +108,7 @@ export function portsModel() {
           continue;
         }
         if (read.item && !ITEMS[read.item]) at("goods", treeId, raw.line, `there's no item called ${read.item} in world/items for ${read.name} to be`);
-        goods[id] = { id, name: read.name, unit: read.unit, item: read.item && ITEMS[read.item] ? read.item : null, tree: treeId, step, words: read.words };
+        goods[id] = { id, name: read.name, unit: read.unit, item: read.item && ITEMS[read.item] ? read.item : null, tree: treeId, step, words: read.words, from: read.from ?? [], line: raw.line };
         tree.goods.push(id);
         order.push(id);
       }
@@ -107,6 +119,30 @@ export function portsModel() {
     const id = slugOf(words);
     return goods[id] ?? goods[`${id}s`] ?? (id.endsWith("s") ? goods[id.slice(0, -1)] : null) ?? null;
   };
+  // What each good is made from, now that every good is known.
+  for (const good of Object.values(goods)) {
+    good.from = good.from.map((words) => {
+      const one = goodByWords(words);
+      if (!one) at("goods", good.tree, good.line, `${good.name}: made from ${words}, which isn't a good in world/goods`);
+      else if (one.id === good.id) at("goods", good.tree, good.line, `${good.name} can't be made from itself`);
+      return one && one.id !== good.id ? one.id : null;
+    }).filter(Boolean);
+  }
+  // What a port's makers need besides the goods themselves: the goods its hands, its sick and its power go by.
+  const work = Object.fromEntries(NEEDS.map((need) => [need, []]));
+  for (const [treeId, file] of files) {
+    for (const need of NEEDS) {
+      const told = file.needs?.[need];
+      if (!told) continue;
+      const good = goodByWords(told.good);
+      if (!good || good.tree !== treeId) at("goods", treeId, told.line, `${NEED_KEYS[need]}: ${told.good}, which isn't one of this tree's goods`);
+      else {
+        work[need].push(good.id);
+        // The makers of the tree a port's power comes from run on what they make.
+        if (need === "power") trees[treeId].power = true;
+      }
+    }
+  }
   for (const [treeId, file] of Object.entries(WORLD_GOODS)) {
     if (!file.stands) continue;
     const { supply, good: words, line } = file.stands;
@@ -128,7 +164,7 @@ export function portsModel() {
       at("ports", id, null, `there's no place called ${id} on the star map: a port's file is named for its place, like haven.txt`);
       continue;
     }
-    const port = (ports[id] = { id, name: LOCATIONS[id].name, people: file.people ?? null, holds: {}, makes: [], uses: [], use: {}, made: {} });
+    const port = (ports[id] = { id, name: LOCATIONS[id].name, people: file.people ?? null, holds: {}, makes: [], uses: [], use: {}, made: {}, eat: {} });
     for (const raw of file.holds ?? []) {
       const read = readHoldLine(raw.text);
       if (read.problem) continue;
@@ -157,7 +193,19 @@ export function portsModel() {
       if (!good) at("ports", id, raw.line, `there's no good called ${read.good} in world/goods`);
       else if (!port.holds[good.id]) at("ports", id, raw.line, `${read.name} makes ${good.name}, and the port holds none: add a line for it under Holds`);
       else {
-        port.makes.push({ name: read.name, good: good.id, rate: read.n, line: raw.line });
+        // What goes into a day's making: goods the port holds, and ones the tree says this good is made from.
+        const from = [];
+        const madeFrom = () => good.from.map((one) => goods[one].name).join(", ");
+        for (const entry of read.from) {
+          const input = goodByWords(entry.good);
+          if (!input) at("ports", id, raw.line, `there's no good called ${entry.good} in world/goods, for ${read.name} to make ${good.name} from`);
+          else if (input.id === good.id || from.some((one) => one.good === input.id)) at("ports", id, raw.line, `${read.name} can take ${input.name} once, and not to make ${input.id === good.id ? "itself" : "the same thing twice"}`);
+          else if (good.from.length && !good.from.includes(input.id)) at("ports", id, raw.line, `there's no making ${good.name} from ${input.name}, by world/goods/${good.tree}.txt: it says ${madeFrom()}`);
+          else if (!port.holds[input.id]) at("ports", id, raw.line, `${read.name}: ${good.name} from ${input.name}, and the port holds no ${input.name}: add a line for it under Holds`);
+          else from.push({ good: input.id, n: entry.n });
+        }
+        if (!read.from.length && good.from.length) at("ports", id, raw.line, `${read.name}: ${good.name} from nothing. Say from how many of what (${madeFrom()}), as in 72 ration packs a day, from 36 meal`);
+        port.makes.push({ name: read.name, good: good.id, rate: read.n, from, line: raw.line });
         port.made[good.id] = (port.made[good.id] ?? 0) + read.n;
       }
     }
@@ -185,11 +233,35 @@ export function portsModel() {
         at("ports", port.id, hold.line, `${goods[good].name} comes from ${LOCATIONS[other]?.name ?? other}, which ${ports[other] ? "holds none" : "has no file in world/ports"}`);
         return false;
       });
-      if (!hold.from.length && !port.made[good] && port.use[good]) at("ports", port.id, hold.line, `${goods[good].name} is used here and never comes: say where it's from, or who makes it`);
     }
   }
-  // What goes through each port in a day when things are as usual: what it uses itself, and what the ports that
-  // send to it for a good take. What it has to bring in is that, less what it makes.
+  // The order things are made in: a good after everything any maker makes it from, so that what's made today can go
+  // into what's made of it today. Makers of the same good, or of goods that don't depend on each other, keep the
+  // order they're written in, and the first written is the first served.
+  const madeOf = {};
+  for (const port of Object.values(ports)) for (const maker of port.makes) for (const input of maker.from) (madeOf[maker.good] ??= new Set()).add(input.good);
+  const rank = {};
+  const rankOf = (good, on = new Set()) => {
+    if (rank[good] !== undefined) return rank[good];
+    if (on.has(good)) return null;
+    on.add(good);
+    let deepest = 0;
+    for (const input of madeOf[good] ?? []) {
+      const below = rankOf(input, on);
+      if (below === null) {
+        at("goods", goods[good].tree, goods[good].line, `making ${goods[good].name} takes ${goods[input].name}, and making ${goods[input].name} takes ${goods[good].name} in the end: one of the ports' makers has to give way`);
+        continue;
+      }
+      deepest = Math.max(deepest, below + 1);
+    }
+    on.delete(good);
+    return (rank[good] = deepest);
+  };
+  for (const good of order) rankOf(good);
+  for (const port of Object.values(ports)) port.makes = port.makes.map((maker, i) => ({ maker, i })).sort((a, b) => (rank[a.maker.good] ?? 0) - (rank[b.maker.good] ?? 0) || a.i - b.i).map((one) => one.maker);
+  // What goes through each port in a day when things are as usual: what it uses itself, what its makers take to make
+  // what's wanted of them, and what the ports that send to it for a good take. What it has to bring in is that, less
+  // what it makes.
   const flow = {};
   const need = {};
   for (const port of Object.values(ports)) {
@@ -197,10 +269,17 @@ export function portsModel() {
     need[port.id] = {};
   }
   const needOf = (id, good) => Math.max(0, flow[id][good] - (ports[id].made[good] ?? 0));
-  for (let round = 0; round < 40; round += 1) {
+  for (let round = 0; round < 60; round += 1) {
     for (const port of Object.values(ports)) {
+      // Its makers work as hard as it takes to make what goes out, and take that share of what they're written to.
+      const eat = {};
+      for (const maker of port.makes) {
+        const share = Math.min(1, flow[port.id][maker.good] / port.made[maker.good]);
+        for (const input of maker.from) eat[input.good] = (eat[input.good] ?? 0) + input.n * share;
+      }
+      port.eat = eat;
       for (const good of Object.keys(port.holds)) {
-        let out = port.use[good] ?? 0;
+        let out = (port.use[good] ?? 0) + (eat[good] ?? 0);
         for (const other of Object.values(ports)) {
           const from = other.holds[good]?.from;
           if (other !== port && from?.includes(port.id)) out += needOf(other.id, good) / from.length;
@@ -213,13 +292,46 @@ export function portsModel() {
     for (const [good, hold] of Object.entries(port.holds)) {
       need[port.id][good] = hold.from.length ? needOf(port.id, good) : 0;
       const made = port.made[good] ?? 0;
-      if (!hold.from.length && made > 0 && made < flow[port.id][good] - 1e-9) at("ports", port.id, hold.line, `${numberWords(flow[port.id][good])} ${goods[good].name} a day are used here or sent for from here, and ${numberWords(made)} are made: it'll run down`);
+      const taken = port.use[good] || port.eat[good];
+      if (!hold.from.length && !made && taken) at("ports", port.id, hold.line, `${goods[good].name} ${port.use[good] ? "is used here" : "goes into what's made here"} and never comes: say where it's from, or who makes it`);
+      if (!hold.from.length && made > 0 && made < flow[port.id][good] - 1e-9) at("ports", port.id, hold.line, `${numberWords(flow[port.id][good])} ${goods[good].name} a day are used here, taken by its makers or sent for from here, and ${numberWords(made)} are made: it'll run down`);
     }
   }
   const spot = (id) => STAR_MAP.places[id];
   const days = (a, b) => clamp(1 + Math.ceil(Math.hypot(spot(a).x - spot(b).x, (spot(a).y - spot(b).y) * 2) / CHART_A_DAY), 2, 6);
-  kept = { goods, order, trees, stands, supplyOf, ports, flow, need, days, goodByWords, placeByWords, problems };
+  kept = { goods, order, trees, stands, supplyOf, work, ports, flow, need, days, goodByWords, placeByWords, problems };
   return kept;
+}
+
+// What a port's makers do of their work, going by how it stands for what its hands, its sick and its power need:
+// each a share, 1 for all of it, and what it's short of. level gives a good's level there, or nothing if it holds none.
+function workOf(model, level) {
+  const out = { hands: 1, power: 1, short: [] };
+  for (const need of NEEDS) {
+    const { full, least } = WORK[need];
+    let worst = 1;
+    let which = null;
+    for (const good of model.work[need]) {
+      const now = level(good);
+      if (now === null || now === undefined || now >= full) continue;
+      const share = least + (1 - least) * (Math.max(0, now) / full);
+      if (share < worst) {
+        worst = share;
+        which = good;
+      }
+    }
+    if (!which) continue;
+    out.short.push({ need, good: which, share: worst });
+    if (need === "power") out.power *= worst;
+    else out.hands *= worst;
+  }
+  return out;
+}
+// The same for a port as the save has it today.
+export function workAt(world, id, model = portsModel()) {
+  const port = model.ports[id];
+  if (!port) return null;
+  return workOf(model, (good) => (port.holds[good] ? levelOf(world, id, good, model) : null));
 }
 
 // What's wrong in the goods' and the ports' files, for npm run check-story.
@@ -355,9 +467,11 @@ export function portsDay(world, roll) {
   }
   world.hauls = still;
 
-  // Each port makes what it makes, up to what it usually holds, and uses what it uses.
+  // Each port makes what it makes, up to what it usually holds and no more than it has the goods, the hands and the
+  // power for, and uses what it uses.
   for (const id of ids) {
     const port = model.ports[id];
+    const work = workOf(model, (good) => (port.holds[good] ? (amount[id][good] / usual(id, good)) * 100 : null));
     const leans = world.places?.[id] ? (world.places[id].lean ??= {}) : null;
     const lean = {};
     for (const tree of Object.values(model.trees)) {
@@ -371,15 +485,22 @@ export function portsDay(world, roll) {
       // Up to what it usually holds; and past it, while something has them making more than usual.
       const more = effect(id, maker.good).makes;
       const room = Math.max(0, usual(id, maker.good) * clamp(more, 1, GLUT) - amount[id][maker.good]);
-      amount[id][maker.good] += Math.min(room, maker.rate * more);
+      const share = work.hands * (model.trees[model.goods[maker.good].tree].power ? 1 : work.power);
+      let make = Math.min(room, maker.rate * more * share);
+      // And no more than there are goods for: what's written goes into a full day's making.
+      for (const input of maker.from) make = Math.min(make, (amount[id][input.good] / input.n) * maker.rate);
+      if (!(make > 0)) continue;
+      for (const input of maker.from) amount[id][input.good] = Math.max(0, amount[id][input.good] - (input.n / maker.rate) * make);
+      amount[id][maker.good] += make;
     }
     for (const [good, n] of Object.entries(port.use)) {
       const wanted = n * effect(id, good).uses * Math.max(0.5, 1 + (lean[model.goods[good].tree] ?? 0) * LEAN_SHARE);
       amount[id][good] = Math.max(0, amount[id][good] - wanted);
     }
+    // What's taken off its market or brought to it is finished goods: nobody hoards meal, or requisitions scrap.
     for (const good of Object.keys(port.holds)) {
       const now = effect(id, good);
-      if (now.takes || now.brings) amount[id][good] = clamp(amount[id][good] + ((now.brings - now.takes) / 100) * usual(id, good), 0, (MOST / 100) * usual(id, good));
+      if ((now.takes || now.brings) && onMarket(model.goods[good])) amount[id][good] = clamp(amount[id][good] + ((now.brings - now.takes) / 100) * usual(id, good), 0, (MOST / 100) * usual(id, good));
     }
   }
 
@@ -443,14 +564,43 @@ export function counted(good, n, { least = 0 } = {}) {
   return `${numberWords(shown)} ${shown === 1 ? good.name.replace(/s$/, "") : good.name}`;
 }
 const daysWords = (n) => (n <= 1 ? "tomorrow" : `in ${n} days`);
-const lowerFirst = (text) => (text ? text[0].toLowerCase() + text.slice(1) : "");
+const capital = (text) => (text ? text[0].toUpperCase() + text.slice(1) : text);
+// "a", "a and b", "a, b and c".
+const listed = (list) => (list.length > 1 ? `${list.slice(0, -1).join(", ")} and ${list.at(-1)}` : list[0] ?? "");
+// The game's own word for a level: plenty, normal, short, scarce, almost gone.
+const levelWord = (level) => (DAILY.levels ?? []).find((band) => level >= band.from)?.name ?? "normal";
+// What a port's makers are short of besides the goods themselves: its hands ("hands (ration crates scarce)") and
+// its power, and whether more of its people are laid up. Not its power for a good of the tree its power comes
+// from, whose makers run on what they make.
+function workWords(world, id, model, tree = null) {
+  const short = [];
+  let sick = null;
+  for (const one of workAt(world, id, model)?.short ?? []) {
+    if (one.need === "power" && tree && model.trees[tree].power) continue;
+    const what = `${model.goods[one.good].name} ${levelWord(levelOf(world, id, one.good, model))}`;
+    if (one.need === "sick") sick = `more of its people are laid up (${what})`;
+    else short.push(`${one.need} (${what})`);
+  }
+  return { short, sick };
+}
+// How much of their work a port's makers are doing today, and why it isn't all of it: a line, or nothing.
+export function workLine(world, id) {
+  const model = portsModel();
+  const work = workAt(world, id, model);
+  if (!work?.short.length || !model.ports[id].makes.length) return null;
+  const { short, sick } = workWords(world, id, model);
+  const why = [short.length ? `its makers are short of ${listed(short)}` : null, sick].filter(Boolean).join(", and ");
+  const tenths = (share) => (share >= 0.95 ? "nearly all" : `about ${["a tenth", "two tenths", "three tenths", "four tenths", "half", "six tenths", "seven tenths", "eight tenths", "nine tenths"][Math.max(1, Math.round(share * 10)) - 1]}`);
+  return capital(`${why}: ${short.length ? "they're" : "its makers are"} doing ${tenths(work.hands * work.power)} of their work`);
+}
 
-// Why a port is short of a good, in a line, or nothing when it isn't. name gives a place's name, or nothing for a
-// place the player doesn't know of.
-export function whyShort(world, id, good, name = (place) => LOCATIONS[place]?.name ?? null, deep = true) {
+// Why a port is short of a good, as the reasons one after another, or none when it isn't short. deep is for the port
+// itself: said of the port it sends to, things are "there" and only what's wrong at it is told. bare is for something
+// its own makers lack: what's wrong with the whole port has been said, and "it's just short" isn't worth a bracket.
+function reasonsFor(world, id, good, name, deep = true, bare = false) {
   const model = portsModel();
   const hold = model.ports[id]?.holds[good];
-  if (!hold || levelOf(world, id, good, model) >= FULL_ABOVE) return null;
+  if (!hold || levelOf(world, id, good, model) >= FULL_ABOVE) return [];
   const tree = model.goods[good].tree;
   const now = effectsAt(world, model, id)?.[tree] ?? NOTHING;
   const called = (place) => name(place)?.replace(/^The /, "the ") ?? "a port you don't know of";
@@ -458,8 +608,25 @@ export function whyShort(world, id, good, name = (place) => LOCATIONS[place]?.na
   const here = deep ? "here" : "there";
   const reasons = [];
   if (now.makes < 1 && model.ports[id].made[good]) reasons.push(now.makes <= 0 ? `nothing's being made ${here}` : `less is being made ${here} than usual`);
+  // Its makers are held back: there isn't a day's worth of something they make it from, or they're short of hands
+  // or of power, or more of its people are laid up.
+  if (model.ports[id].made[good] && now.makes > 0) {
+    const short = [];
+    for (const maker of model.ports[id].makes) {
+      if (maker.good !== good) continue;
+      for (const input of maker.from) {
+        if (amountOf(world, id, input.good, model) >= input.n || short.some((one) => one.good === input.good)) continue;
+        const why = deep ? reasonsFor(world, id, input.good, name, true, true) : [];
+        short.push({ good: input.good, text: `${model.goods[input.good].name}${why.length ? ` (${why.join(", and ")})` : ""}` });
+      }
+    }
+    const work = bare ? { short: [], sick: null } : workWords(world, id, model, tree);
+    const all = [...short.map((one) => one.text), ...work.short];
+    if (all.length) reasons.push(`its makers are short of ${listed(all)}`);
+    if (work.sick) reasons.push(work.sick);
+  }
   if (now.uses > 1) reasons.push("it's being used up faster than usual");
-  if (now.takes > 0) reasons.push("it's being taken off the market");
+  if (now.takes > 0 && onMarket(model.goods[good])) reasons.push("it's being taken off the market");
   if (now.blocks) reasons.push("nothing's getting in or out");
   if (now.loses) reasons.push(`what was sent ${here} never arrived`);
   if (hold.from.length && deep) {
@@ -477,16 +644,21 @@ export function whyShort(world, id, good, name = (place) => LOCATIONS[place]?.na
         const level = levelOf(world, other, good, model);
         if (theirs.blocks) told.push(`nothing's leaving ${called(other)}`);
         else if (level < FULL_ABOVE) {
-          const reason = whyShort(world, other, good, name, false);
-          told.push(`${called(other)} has ${level <= KEEPS_BACK ? "none" : "little"} to spare${reason ? ` (${lowerFirst(reason)})` : ""}`);
+          const why = reasonsFor(world, other, good, name, false);
+          told.push(`${called(other)} has ${level <= KEEPS_BACK ? "none" : "little"} to spare${why.length ? ` (${why.join(", and ")})` : ""}`);
         }
       }
       reasons.push(...(told.length ? told : [`more has been sent for from ${hold.from.map(called).join(" and ")}`]));
     }
   }
-  if (!reasons.length) reasons.push(model.ports[id].made[good] ? `more is being taken from ${here} than is made` : `it's being used faster than it comes`);
-  const text = reasons.join(", and ");
-  return text[0].toUpperCase() + text.slice(1);
+  if (!reasons.length && !bare) reasons.push(model.ports[id].made[good] ? `more is being taken from ${here} than is made` : `it's being used faster than it comes`);
+  return reasons;
+}
+// Why a port is short of a good, in a line, or nothing when it isn't. name gives a place's name, or nothing for a
+// place the player doesn't know of.
+export function whyShort(world, id, good, name = (place) => LOCATIONS[place]?.name ?? null, deep = true) {
+  const reasons = reasonsFor(world, id, good, name, deep);
+  return reasons.length ? capital(reasons.join(", and ")) : null;
 }
 
 // Everything a port holds today, a tree at a time, for whoever wants the whole of it: how many, the word for it,
@@ -510,6 +682,9 @@ export function portHolds(world, id, levelName, name = (place) => LOCATIONS[plac
         low: level < FULL_ABOVE,
         high: level >= 125,
         made: port.made[good] ?? 0,
+        // What its makers here make it from, and what they take of it in a day to make other things, as a rule.
+        madeFrom: [...new Set(port.makes.filter((maker) => maker.good === good).flatMap((maker) => maker.from.map((input) => model.goods[input.good].name)))],
+        taken: port.eat[good] ?? 0,
         used: port.use[good] ?? 0,
         from: port.holds[good].from.map(called),
         coming: coming ? counted(model.goods[good], coming, { least: 1 }) : null,

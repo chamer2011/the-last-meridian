@@ -4,7 +4,7 @@
     "places: each place's goods say which supplies it deals in. A port with a file in world/ports holds real amounts of them, and its file says what it makes, what it uses and where it sends for more (world/ports/_how-to-write-a-port.txt). A place without one keeps the older rule: the list says where it gets each supply from, an empty list means it makes its own, and if what it depends on runs short, it runs short too, a few days later. A place with no goods has no daily supplies at all.",
     "hold is how much of a say each side has at that place, adding up to 100. A side can be a faction's id or one of the place's own sides, with its name under sides. Whoever has the most holds the place. locked means that never changes. push is how much a side gains there each day, all else being equal, and it's usually very small.",
     "items says which supply each thing in a market's price follows. Weapons, armor and the like follow parts by half as much, and anything else doesn't change.",
-    "events are the things that can happen. chance is how likely it is on any one day at any one of its places, when nothing else is going on there. days is how long it lasts, at the least and at the most. goods says what it does to a supply there, each day it lasts: makes is how much of the usual its makers make meanwhile (0 for nothing, 0.5 for half, 2 for twice as much, which lets them fill up past what they usually hold); uses is how many times as much its people use; takes is how many hundredths of what it usually holds are taken off its market each day, and brings how many are brought to it; blocks: true means nothing of that supply gets in or out, and what arrives waits; loses: true means what was sent there never arrives. A plain number is the same as takes (below nothing) or brings (above). It goes for every good of that supply's tree in world/goods. sides are added to that side's share every day. trouble makes the place one step more dangerous while it lasts. big means the captain hears about it wherever they are, as long as they know of the place. news is what people say, and done is what they say when it's over. {place} is the place's name."
+    "events are the things that can happen. chance is how likely it is on any one day at any one of its places, when nothing else is going on there. days is how long it lasts, at the least and at the most. goods says what it does to a supply there, each day it lasts: makes is how much of the usual its makers make meanwhile (0 for nothing, 0.5 for half, 2 for twice as much, which lets them fill up past what they usually hold); uses is how many times as much its people use; takes is how many hundredths of what it usually holds are taken off its market each day, and brings how many are brought to it (of its finished goods: what its makers make things from isn't on the market); blocks: true means nothing of that supply gets in or out, and what arrives waits; loses: true means what was sent there never arrives. A plain number is the same as takes (below nothing) or brings (above). It goes for every good of that supply's tree in world/goods. sides are added to that side's share every day. trouble makes the place one step more dangerous while it lasts. big means the captain hears about it wherever they are, as long as they know of the place. news is what people say, and done is what they say when it's over. {place} is the place's name."
   ],
 
   "goods": {
@@ -110,6 +110,16 @@
       "goods": { "food": ["haven"], "fuel": ["kessara"], "medicine": ["haven"], "parts": ["haven"] },
       "sides": { "house": "Madame Ao-Dess's house" },
       "hold": { "drift": 60, "house": 30, "families": 10 }
+    },
+    "sundial": {
+      "goods": { "food": [], "medicine": ["anselm"], "parts": ["haven"] },
+      "hold": { "fleet": 100 },
+      "locked": true
+    },
+    "anselm": {
+      "goods": { "food": ["sundial", "haven"], "medicine": [], "parts": ["haven"] },
+      "hold": { "fleet": 100 },
+      "locked": true
     }
   },
 

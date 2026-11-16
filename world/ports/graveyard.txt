@@ -5,14 +5,17 @@ people: 2,000
 Holds:
 - ration crates: usually 500, from Haven Station
 - ration packs: usually 25, from Haven Station
+- refined fuel: usually 80
 - fuel cells: usually 150, from Cinder Reach or the Veshti Deepyards
 - jump fuel: usually 40
 - hot cells: usually 2.5, from the Veshti Deepyards
 - medicine crates: usually 10, from Haven Station
 - medkits: usually 2.5, from Lumen Sanctuary
-- parts crates: usually 110
+- scrap: usually 140
+- parts crates: usually 140
 - circuit boards: usually 2.5, from Kessara Drift
 - machines: usually 0.5, from the Veshti Deepyards
+- water: usually 40
 - drinking water: usually 200
 - air bottles: usually 50, from Tessen Colony
 - reserve tanks: usually 2, from the Veshti Deepyards
@@ -21,9 +24,12 @@ Holds:
 - tea and tobacco: usually 15, from Haven Station
 
 Makes:
-- the Guild's stills: 4 jump fuel a day
-- Claim Row: 11 parts crates a day
-- the Guild's melters: 20 drinking water a day
+- the tank drainers: 8 refined fuel a day
+- the Guild barges: 14 scrap a day
+- the Guild's melters: 4 water a day
+- the breakers on Claim Row: 14 parts crates a day, from 14 scrap
+- the barge galleys: 20 drinking water a day, from 4 water
+- the Guild's stills: 4 jump fuel a day, from 8 refined fuel
 
 Uses:
 - its people: 20 ration crates, 1 ration packs, 10 drinking water, 2 beer and spirits, 0.4 clothes, 0.6 tea and tobacco a day

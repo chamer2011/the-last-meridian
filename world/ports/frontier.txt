@@ -3,23 +3,29 @@ draft: the AI's, not yet edited by the owner
 people: 2,000
 
 Holds:
-- ration crates: usually 5,500
+- meal: usually 3,300
+- ration crates: usually 5,800
 - ration packs: usually 25, from Haven Station
 - fuel cells: usually 150, from Cinder Reach
 - jump fuel: usually 50, from Cinder Reach
 - medicine crates: usually 10, from Haven Station
 - medkits: usually 2.5, from Lumen Sanctuary
 - parts crates: usually 15, from Haven Station
+- water: usually 140
 - drinking water: usually 200
-- air bottles: usually 680
+- air bottles: usually 880
+- cured leaf: usually 1,200
 - beer and spirits: usually 50, from Korrath Forge
 - clothes: usually 10, from Haven Station or Bastion Nine
 - tea and tobacco: usually 15, from Haven Station
 
 Makes:
-- the homesteads: 550 ration crates a day
-- the wells: 20 drinking water a day
-- the workshop: 68 air bottles a day
+- the drying sheds: 330 meal a day
+- the wells: 15 water a day
+- the leaf barns: 75 cured leaf a day
+- the homesteads: 580 ration crates a day, from 290 meal
+- the well-houses: 20 drinking water a day, from 4 water
+- the workshop: 88 air bottles a day, from 4.4 water
 
 Uses:
 - the colonists: 20 ration crates, 1 ration packs, 10 drinking water, 2 beer and spirits, 0.4 clothes, 0.6 tea and tobacco a day

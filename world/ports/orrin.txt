@@ -6,13 +6,15 @@ Holds:
 - ration crates: usually 50, from Lumen Sanctuary
 - fuel cells: usually 15, from the Veshti Deepyards or Cinder Reach
 - medicine crates: usually 1, from Lumen Sanctuary
+- water: usually 4
 - drinking water: usually 20
 - air bottles: usually 2.5, from Tessen Colony
 - clothes: usually 1, from Haven Station or Bastion Nine
 - tea and tobacco: usually 1.5, from Haven Station
 
 Makes:
-- the comet's melt: 2 drinking water a day
+- the comet's melt: 0.4 water a day
+- the cloister's cistern: 2 drinking water a day, from 0.4 water
 
 Uses:
 - the hermits: 2 ration crates, 1 drinking water, 0.04 clothes, 0.06 tea and tobacco a day

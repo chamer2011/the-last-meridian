@@ -1,10 +1,15 @@
 # Food
 draft: the AI's, not yet edited by the owner
 stands for: food, by its ration crates
+hands need: ration crates
+
+Refined:
+- meal, by the sack: Grain dried and milled: what crates and packs are packed from.
+- kelp cake, by the block: Kelp pressed and dried on the rafts. It keeps for years, and tastes like it.
 
 Developed:
-- ration crates [ration_crate]: The crates a pantry holds: two hundred sittings each, a day's food for a hundred people.
-- ration packs, by the case [ration_pack]: Packs and tins for one person, a case of them at a time.
+- ration crates [ration_crate], made from meal, kelp cake: The crates a pantry holds: two hundred sittings each, a day's food for a hundred people.
+- ration packs, by the case [ration_pack], made from meal: Packs and tins for one person, a case of them at a time.
 
 Advanced:
-- provisions, by the hamper: Fresh bread, honey, sausage: a table worth sitting at.
+- provisions, by the hamper, made from ration crates: Fresh bread, honey, sausage: a table worth sitting at.

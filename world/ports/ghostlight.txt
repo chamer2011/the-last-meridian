@@ -5,6 +5,7 @@ people: 1,500
 Holds:
 - ration crates: usually 380, from Kessara Drift
 - ration packs: usually 19, from Haven Station
+- refined fuel: usually 60
 - fuel cells: usually 110, from Cinder Reach
 - jump fuel: usually 30
 - hot cells: usually 3.8, from the Veshti Deepyards
@@ -12,6 +13,7 @@ Holds:
 - medkits: usually 1.9, from Lumen Sanctuary
 - parts crates: usually 11, from the Graveyard
 - circuit boards: usually 1.9, from Kessara Drift
+- water: usually 30
 - drinking water: usually 150
 - air bottles: usually 38, from Tessen Colony
 - reserve tanks: usually 0.75, from the Veshti Deepyards
@@ -20,8 +22,10 @@ Holds:
 - tea and tobacco: usually 11, from Haven Station
 
 Makes:
-- the Cold Market's stills: 3 jump fuel a day
-- the cloud-traps: 15 drinking water a day
+- the gas skimmers: 6 refined fuel a day
+- the cloud-traps: 3 water a day
+- the Cold Market's water sellers: 15 drinking water a day, from 3 water
+- the Cold Market's stills: 3 jump fuel a day, from 6 refined fuel
 
 Uses:
 - its people: 15 ration crates, 0.75 ration packs, 7.5 drinking water, 2.3 beer and spirits, 0.3 clothes, 0.45 tea and tobacco a day

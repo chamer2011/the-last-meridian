@@ -1,10 +1,16 @@
 # Medicine
 draft: the AI's, not yet edited by the owner
 stands for: medicine, by its medicine crates
+the sick need: medicine crates
+
+Refined:
+- extracts, by the flask: Distilled from what grows: Lumen's night flowers, a monk's herb bed.
+- compounds, by the jar: Made up in a laboratory, from what a refinery draws off.
+- plasma and dressings, by the case: Blood spun down, and linen boiled and cut: what a ward gets through first.
 
 Developed:
-- medicine crates [medicine_crate]: Twenty doses to a crate: what a medbay's cabinet holds.
-- medkits, by the case [medkit]: Kits for one wound, on the spot, a case of them at a time.
+- medicine crates [medicine_crate], made from extracts, compounds: Twenty doses to a crate: what a medbay's cabinet holds.
+- medkits, by the case [medkit], made from compounds, plasma and dressings: Kits for one wound, on the spot, a case of them at a time.
 
 Advanced:
-- surgeon's stores, by the case: Surgical kits and synthskin, for the worst cases.
+- surgeon's stores, by the case, made from medkits: Surgical kits and synthskin, for the worst cases.

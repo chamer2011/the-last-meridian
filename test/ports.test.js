@@ -3,7 +3,7 @@
 // short of, and hauls take days by the distance on the star map. The word a port has for a supply is how many it has
 // against the usual, so prices, news and the story go on as before. What goes on at a port does real things: its
 // makers stop, its people use more, goods are taken or brought, nothing gets in, or a haul is lost. None of this
-// calls an AI.
+// calls an AI. What a maker needs to make things (part 2) is in test/ports-makers.test.js.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -101,15 +101,16 @@ test("the goods' and the ports' files are sound, and each reads back exactly as 
   const m = model();
   assert.deepEqual(Object.keys(m.trees), ["food", "fuel", "medicine", "parts", "air", "comforts"], "the supplies' trees first, in their own order");
   assert.deepEqual(m.stands, { food: "ration_crates", fuel: "jump_fuel", medicine: "medicine_crates", parts: "parts_crates" });
-  assert.equal(m.order.length, 19, "the developed and the advanced goods");
-  assert.ok(m.order.every((good) => ["developed", "advanced"].includes(m.goods[good].step)));
+  assert.equal(m.order.length, 31, "the refined, the developed and the advanced goods");
+  assert.ok(m.order.every((good) => ["refined", "developed", "advanced"].includes(m.goods[good].step)));
+  assert.equal(m.order.filter((good) => m.goods[good].step === "refined").length, 12);
   // Every port with supplies has a file, and holds each supply the world already says it deals in.
   assert.deepEqual(Object.keys(m.ports).sort(), Object.keys(DAILY.places).sort());
   for (const [id, place] of Object.entries(DAILY.places)) for (const supply of Object.keys(place.goods ?? {})) assert.ok(usualOf(id, supply) > 0, `${id} holds its ${supply}`);
-  // Across the map, more of every good is made in a day than is used.
+  // Across the map, more of every good is made in a day than is used and goes into other things.
   for (const good of m.order) {
     const made = Object.values(m.ports).reduce((sum, port) => sum + (port.made[good] ?? 0), 0);
-    const used = Object.values(m.ports).reduce((sum, port) => sum + (port.use[good] ?? 0), 0);
+    const used = Object.values(m.ports).reduce((sum, port) => sum + (port.use[good] ?? 0) + (port.eat[good] ?? 0), 0);
     assert.ok(made > used * 1.5, `${good}: ${made} made against ${used} used`);
   }
   // A haul takes two days at the least and six at the most, by how far it is on the chart.
@@ -119,8 +120,8 @@ test("the goods' and the ports' files are sound, and each reads back exactly as 
 });
 
 test("a line of each kind is read, written back, and refused in plain words when it can't be followed", () => {
-  assert.deepEqual(readGoodLine("ration packs, by the case [ration_pack]: Packs and tins for one person."), { name: "ration packs", unit: "case", item: "ration_pack", words: "Packs and tins for one person." });
-  assert.deepEqual(readGoodLine("machines"), { name: "machines", unit: null, item: null, words: "" });
+  assert.deepEqual(readGoodLine("ration packs, by the case [ration_pack]: Packs and tins for one person."), { name: "ration packs", unit: "case", item: "ration_pack", from: [], words: "Packs and tins for one person." });
+  assert.deepEqual(readGoodLine("machines"), { name: "machines", unit: null, item: null, from: [], words: "" });
   assert.match(readGoodLine("[ration_crate]: Crates").problem, /a good is its name/);
   assert.deepEqual(readStands("food, by its ration crates"), { supply: "food", good: "ration crates" });
   assert.match(readStands("the pantry").problem, /a supply and one of this tree's goods/);
@@ -129,7 +130,7 @@ test("a line of each kind is read, written back, and refused in plain words when
   assert.deepEqual(readHoldLine("drinking water: usually 600"), { good: "drinking water", usual: 600, from: [] });
   assert.match(readHoldLine("ration crates: lots").problem, /usually and how many/);
   assert.match(readHoldLine("ration crates: usually 0").problem, /more than nothing/);
-  assert.deepEqual(readMakeLine("the kitchens: 3.5 ration packs a day"), { name: "the kitchens", n: 3.5, good: "ration packs" });
+  assert.deepEqual(readMakeLine("the kitchens: 3.5 ration packs a day"), { name: "the kitchens", n: 3.5, good: "ration packs", from: [] });
   assert.match(readMakeLine("the kitchens: ration packs").problem, /how many of what, and a day/);
   assert.deepEqual(readUseLine("its people: 60 ration crates, 1.2 beer and spirits, 30 drinking water a day"), { who: "its people", list: [{ n: 60, good: "ration crates" }, { n: 1.2, good: "beer and spirits" }, { n: 30, good: "drinking water" }] });
   assert.match(readUseLine("its people: crates a day").problem, /how many and of what/);
@@ -148,7 +149,7 @@ test("the checker says what's wrong between the files: a good, a port or a sourc
   assert.match(said(portsDir, "orrin.txt", (text) => text.replace("ration crates: usually 50, from Lumen Sanctuary", "ration crates: usually 50, from Foundry Seven")), /ration crates comes from Foundry Seven, which holds none/);
   assert.match(said(portsDir, "orrin.txt", (text) => text.replace("Makes:", "Makes:\n- the hermits' still: 1 beer and spirits a day")), /the hermits' still makes beer and spirits, and the port holds none/);
   assert.match(said(portsDir, "orrin.txt", (text) => text.replace("- ration crates: usually 50, from Lumen Sanctuary", "- ration crates: usually 50")), /ration crates is used here and never comes/);
-  assert.match(said(portsDir, "maris.txt", (text) => text.replace(/(the rafts' drying racks: )[\d,.]+ ration crates/, "$110 ration crates")), /ration crates a day are used here or sent for from here, and 10 are made: it'll run down/);
+  assert.match(said(portsDir, "maris.txt", (text) => text.replace(/(the Rafts' packers: )[\d,.]+ ration crates a day, from [\d,.]+ kelp cake/, "$110 ration crates a day, from 5 kelp cake")), /ration crates a day are used here, taken by its makers or sent for from here, and 10 are made: it'll run down/);
   assert.match(said(portsDir, "atlantis.txt", () => "# Atlantis\n\nHolds:\n- ration crates: usually 5\n"), /ports\/atlantis\.txt: there's no place called atlantis on the star map/);
   assert.match(said(goodsDir, "food.txt", (text) => text.replace("[ration_crate]", "[moon_cheese]")), /goods\/food\.txt \(line \d+\): there's no item called moon_cheese in world\/items/);
   assert.match(said(goodsDir, "food.txt", (text) => text.replace("stands for: food", "stands for: gold")), /gold isn't one of the supplies every port has a word for/);
@@ -372,21 +373,21 @@ test("a save from before has its levels kept and its hauls begun, and a place wi
   assert.ok(new Set(loaded.world.hauls.map((haul) => haul[4])).size >= 3);
   assert.ok(level(loaded, "haven", "jump_fuel") < 70);
   // A place the world keeps supplies for, with no file in world/ports: its level drifts as it always did.
-  DAILY.places.anselm = structuredClone(DAILY.places.orrin);
-  t.after(() => delete DAILY.places.anselm);
+  DAILY.places.asterion = structuredClone(DAILY.places.orrin);
+  t.after(() => delete DAILY.places.asterion);
   const game = newGame();
-  game.world.places.anselm.goods.food = 40;
+  game.world.places.asterion.goods.food = 40;
   quietly(() => days(game, 20));
-  const now = game.world.places.anselm.goods.food;
+  const now = game.world.places.asterion.goods.food;
   assert.ok(now > 55 && now < 110, `it's come back toward normal by itself: ${now}`);
   for (const id of Object.keys(game.world.places)) game.seenLore.push(`place:${id}`);
-  assert.equal(placeNow(game, "anselm").goods[0].has, undefined, "and nobody counts crates there");
-  assert.deepEqual(portNow(game, "anselm"), []);
+  assert.equal(placeNow(game, "asterion").goods[0].has, undefined, "and nobody counts crates there");
+  assert.deepEqual(portNow(game, "asterion"), []);
 });
 
 test("the Story board has the ports and the goods, and saves them through the game's own readers", () => {
   const ports = boardWorldList("port");
-  assert.equal(ports.length, 17);
+  assert.equal(ports.length, 19);
   assert.ok(ports.every((one) => one.written && WORLD_PORTS[one.id] && LOCATIONS[one.id].name === one.name));
   assert.deepEqual(boardWorldList("goods").map((one) => one.name), ["Food", "Fuel", "Medicine", "Parts", "Water and air", "Comforts"]);
   const haven = boardWorldItem("port", "haven");

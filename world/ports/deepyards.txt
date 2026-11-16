@@ -5,34 +5,40 @@ people: 10,000
 Holds:
 - ration crates: usually 2,500, from Tessen Colony
 - ration packs: usually 130, from Haven Station
-- fuel cells: usually 3,500
+- refined fuel: usually 1,400
+- fuel cells: usually 3,800
 - jump fuel: usually 530
 - hot cells: usually 100
 - medicine crates: usually 50, from Lumen Sanctuary
 - medkits: usually 13, from Lumen Sanctuary or Vantor Prime
 - surgeon's stores: usually 2.5, from Vantor Prime
-- parts crates: usually 180
-- circuit boards: usually 25, from Kessara Drift
+- scrap: usually 350
+- parts crates: usually 350
+- circuit boards: usually 63, from Kessara Drift
 - machines: usually 30
+- water: usually 380
 - drinking water: usually 1,000
-- air bottles: usually 250, from Tessen Colony
+- air bottles: usually 500, from Tessen Colony
 - reserve tanks: usually 20
 - beer and spirits: usually 250, from Korrath Forge
 - clothes: usually 50, from Haven Station or Bastion Nine
 - tea and tobacco: usually 75, from Haven Station
 
 Makes:
-- the charging racks: 350 fuel cells a day
-- the melt-works: 53 jump fuel a day
-- the cell presses: 10 hot cells a day
-- the cutters' shops: 18 parts crates a day
-- the drydocks: 3 machines a day
-- the Ice Cut: 100 drinking water a day
-- the tank farm: 2 reserve tanks a day
+- the melt-works: 150 refined fuel a day
+- the cutters: 35 scrap a day
+- the Ice Cut: 38 water a day
+- the charging racks: 380 fuel cells a day, from 38 refined fuel, 7.6 parts crates
+- the cutters' shops: 35 parts crates a day, from 35 scrap
+- the Long Families' caskers: 100 drinking water a day, from 20 water
+- the enrichment racks: 53 jump fuel a day, from 106 refined fuel
+- the cell presses: 10 hot cells a day, from 20 fuel cells
+- the drydocks: 3 machines a day, from 9 parts crates, 3 circuit boards
+- the tank farm: 2 reserve tanks a day, from 20 air bottles
 
 Uses:
 - its people: 100 ration crates, 5 ration packs, 50 drinking water, 10 beer and spirits, 2 clothes, 3 tea and tobacco a day
 - ships calling: 10 jump fuel, 10 air bottles, 0.2 reserve tanks a day
 - its power: 30 fuel cells a day
 - its sick: 2 medicine crates, 0.5 medkits, 0.1 surgeon's stores a day
-- the drydocks: 9 parts crates, 1 circuit boards, 0.3 machines, 0.5 hot cells a day
+- the drydocks' own upkeep: 9 parts crates, 1 circuit boards, 0.3 machines, 0.5 hot cells a day

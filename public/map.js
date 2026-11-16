@@ -28,13 +28,14 @@ export function shipOrder(body, after) {
 const section = (title, ...children) => el("section", { class: "menu-section" }, title && el("h3", {}, title), children);
 const muted = (text) => el("div", { class: "muted small" }, text);
 
-// A port's supplies: how many it has of each and the word for that, with why under one that's short.
-export const suppliesNode = (goods) => el("div", { class: "map-goods small" }, goods.map((good) => [
+// A port's supplies: how many it has of each and the word for that, with why under one that's short; and under
+// them all, how much of their work its makers are doing, when it isn't all of it.
+export const suppliesNode = (goods, work = null) => el("div", { class: "map-goods small" }, goods.map((good) => [
   el("div", { class: "menu-row" },
     el("span", { class: "muted" }, good.name),
     el("span", { class: good.low ? "tone-bad" : good.high ? "tone-good" : "" }, good.has ? `${good.has}, ${good.level}` : good.level)),
   good.why && el("div", { class: "map-why muted" }, `${good.why}.`),
-]));
+]), work && el("div", { class: "map-work tone-bad" }, `${work}.`));
 // The whole of what a port holds is asked for when its fold is opened, since it's a long list for every place on
 // the map. The fold stays as it was left while one place after another is looked at.
 function holdsFold(place) {
@@ -56,7 +57,10 @@ function holdsFold(place) {
   if (node.classList.contains("open")) load();
   return node;
 }
-// Everything a port holds, a tree at a time: how many, the word for it, and where it comes from.
+// So many a day, as a list this long can say it: whole above ten, to a tenth under it.
+const aDay = (n) => (n >= 10 ? String(Math.round(n)) : String(Math.round(n * 10) / 10));
+// Everything a port holds, a tree at a time: how many, the word for it, where it comes from or what it's made from
+// here, and what its makers take of it to make other things.
 export const holdsNode = (trees) => el("div", { class: "map-holds small" }, trees.map((tree) => [
   el("div", { class: "map-tree muted" }, tree.name),
   tree.goods.map((good) => [
@@ -64,8 +68,9 @@ export const holdsNode = (trees) => el("div", { class: "map-holds small" }, tree
       el("span", {}, good.counted),
       el("span", { class: good.low ? "tone-bad" : good.high ? "tone-good" : "muted" }, good.level)),
     el("div", { class: "map-why muted" }, [
-      good.made ? `made here, ${good.made} a day as a rule` : good.from.length ? `from ${good.from.join(" or ")}` : "its own",
-      good.coming ? `, ${good.coming} on the way` : "",
+      good.made ? `made here, up to ${aDay(good.made)} a day${good.madeFrom?.length ? `, from ${good.madeFrom.join(" and ")}` : ""}` : good.from.length ? `from ${good.from.join(" or ")}` : "its own",
+      good.taken ? `; its makers take about ${aDay(good.taken)} a day` : "",
+      good.coming ? `; ${good.coming} on the way` : "",
       good.why ? `. ${good.why}` : "",
       ".",
     ].join("")),
@@ -161,7 +166,7 @@ function placeDetails(place, g) {
     place.now?.shares.length > 0 && el("div", { class: "map-shares small" },
       el("div", { class: "muted" }, "Who has a say"),
       place.now.shares.map((side) => el("div", { class: "menu-row" }, el("span", {}, side.name), el("span", {}, String(side.share))))),
-    place.now?.goods.length > 0 && suppliesNode(place.now.goods),
+    place.now?.goods.length > 0 && suppliesNode(place.now.goods, place.now.work),
     place.now?.goods.some((good) => good.has) && holdsFold(place),
     place.now?.going.map((text) => el("div", { class: "small map-going" }, text)),
     captain && place.sells.length > 0 && muted(`Sells to the ship: ${place.sells.join(", ")}.`),

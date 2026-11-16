@@ -7,12 +7,15 @@
 //     # Food
 //     draft: the AI's, not yet edited by the owner
 //     stands for: food, by its ration crates
+//     hands need: ration crates
 //
+//     Refined:
+//     - meal, by the sack: Grain dried and milled.
 //     Developed:
-//     - ration crates [ration_crate]: The crates a pantry holds, two hundred sittings each.
-//     - ration packs, by the case [ration_pack]: Packs and tins for one person.
+//     - ration crates [ration_crate], made from meal, kelp cake: The crates a pantry holds, two hundred sittings each.
+//     - ration packs, by the case [ration_pack], made from meal: Packs and tins for one person.
 //     Advanced:
-//     - provisions, by the hamper: Fresh bread, honey, sausage.
+//     - provisions, by the hamper, made from ration crates: Fresh bread, honey, sausage.
 //
 // A port:
 //     # Haven Station
@@ -21,8 +24,9 @@
 //
 //     Holds:
 //     - ration crates: usually 1,500, from Tessen Colony or Maris Deep
+//     - meal: usually 900, from Tessen Colony
 //     Makes:
-//     - the kitchens: 3 ration packs a day
+//     - the kitchens: 72 ration packs a day, from 36 meal
 //     Uses:
 //     - its people: 60 ration crates, 3 ration packs a day
 
@@ -45,23 +49,29 @@ export const slugOf = (words) => String(words ?? "").trim().toLowerCase().replac
 
 // ---- A tree of goods --------------------------------------------------------------------------------------
 
-// "ration packs, by the case [ration_pack]: Packs and tins for one person.": a good's name as it's counted ("3
-// ration packs"), what it's counted by when its name isn't a count ("3 casks of drinking water"), the game's own item
-// it is, if it's one, and a few words about it.
+// Goods in a list, with commas between, or an or: "meal, kelp cake". Never an and, which some goods have in their
+// own name (plasma and dressings).
+export const goodsIn = (words) => String(words ?? "").split(/\s*,\s*(?:or\s+)?|\s+or\s+/i).map((one) => one.trim()).filter(Boolean);
+
+// "ration packs, by the case [ration_pack], made from meal: Packs and tins for one person.": a good's name as it's
+// counted ("3 ration packs"), what it's counted by when its name isn't a count ("3 casks of drinking water"), the
+// game's own item it is, if it's one, the goods it's made from, if it's made from any, and a few words about it.
 export function readGoodLine(text) {
   const line = String(text ?? "").trim().replace(/^-\s*/, "");
   const cut = line.search(/:\s/);
   let head = (cut < 0 ? line.replace(/:$/, "") : line.slice(0, cut)).trim();
   const words = cut < 0 ? "" : line.slice(cut + 1).trim();
+  const made = head.match(/,\s*(?:made\s+)?from\s+(.+)$/i);
+  if (made) head = head.slice(0, made.index).trim();
   const item = head.match(/\s*\[([a-z0-9_]+)\]\s*$/i);
   if (item) head = head.slice(0, item.index).trim();
   const unit = head.match(/,\s*by the\s+(.+)$/i);
   if (unit) head = head.slice(0, unit.index).trim();
-  if (!head) return { problem: "a good is its name, such as ration crates, then how it's counted if its name isn't a count (drinking water, by the cask), then the game's own item in square brackets if it's one, then a colon and a few words" };
-  if (/[,\[\]]/.test(head)) return { problem: `"${head}" should be the good's name alone before any ", by the" and any [item]` };
-  return { name: head, unit: unit ? unit[1].trim() : null, item: item ? item[1].toLowerCase() : null, words };
+  if (!head) return { problem: "a good is its name, such as ration crates, then how it's counted if its name isn't a count (drinking water, by the cask), then the game's own item in square brackets if it's one, then made from and the goods it's made from if it's made from any, then a colon and a few words" };
+  if (/[,\[\]]/.test(head)) return { problem: `"${head}" should be the good's name alone before any ", by the", any [item] and any ", made from"` };
+  return { name: head, unit: unit ? unit[1].trim() : null, item: item ? item[1].toLowerCase() : null, from: made ? goodsIn(made[1]) : [], words };
 }
-export const writeGoodLine = (one) => `${one.name}${one.unit ? `, by the ${one.unit}` : ""}${one.item ? ` [${one.item}]` : ""}${one.words ? `: ${one.words}` : ""}`;
+export const writeGoodLine = (one) => `${one.name}${one.unit ? `, by the ${one.unit}` : ""}${one.item ? ` [${one.item}]` : ""}${one.from?.length ? `, made from ${one.from.join(", ")}` : ""}${one.words ? `: ${one.words}` : ""}`;
 
 // "food, by its ration crates": which of the supplies every port already has a word for (plenty, normal, short) this
 // tree's amounts stand behind, and by which of its goods.
@@ -72,7 +82,13 @@ export function readStands(words) {
 }
 export const writeStands = (one) => `${one.supply}, by its ${one.good}`;
 
-const GOODS_HEADER = ["draft", "stands for"];
+// What a port's makers need besides what they make things from, each a line at the top of the tree its good is in:
+// "hands need: ration crates" (a port short of them has fewer hands at its makers), "the sick need: medicine crates"
+// (and more of its people laid up), "power is: fuel cells" (what every maker runs on, but this tree's own).
+export const NEEDS = ["hands", "sick", "power"];
+export const NEED_KEYS = { hands: "hands need", sick: "the sick need", power: "power is" };
+
+const GOODS_HEADER = ["draft", "stands for", ...NEEDS.map((one) => NEED_KEYS[one])];
 export function parseGoodsText(text, id = "it") {
   const problems = [];
   const problem = (line, message) => problems.push({ line, message });
@@ -116,10 +132,14 @@ export function parseGoodsText(text, id = "it") {
         continue;
       }
       if (key === "draft") value.draft = field[2].trim();
-      else {
+      else if (key === "stands for") {
         const read = readStands(field[2]);
         if (read.problem) problem(n, read.problem);
         else value.stands = { ...read, line: n };
+      } else {
+        const good = field[2].trim().replace(/\.$/, "");
+        if (!good) problem(n, `${key} is one of this tree's goods, such as ${key}: ration crates`);
+        else (value.needs ??= {})[NEEDS.find((one) => NEED_KEYS[one] === key)] = { good, line: n };
       }
       continue;
     }
@@ -141,6 +161,7 @@ export function writeGoodsText(value) {
   const out = [`# ${value.name ?? ""}`];
   if (value.draft) out.push(`draft: ${value.draft}`);
   if (value.stands) out.push(`stands for: ${writeStands(value.stands)}`);
+  for (const need of NEEDS) if (value.needs?.[need]?.good) out.push(`${NEED_KEYS[need]}: ${value.needs[need].good}`);
   for (const step of STEPS) {
     const lines = value.steps?.[step] ?? [];
     if (!lines.length) continue;
@@ -172,16 +193,28 @@ function readAmount(words) {
   return found ? { n: toNumber(found[1]), good: found[2].trim() } : null;
 }
 
-// "the kitchens: 3 ration packs a day": who makes it, how many and of what, each day.
+// "60 ration crates, 1,200 casks": amounts in a list, with commas between (or an and before a number), split where
+// the next amount starts and never inside a number.
+const amountsIn = (words) => String(words ?? "").split(/(?:(?<=\D),\s*|,\s+)(?:and\s+)?(?=\d)|\s+and\s+(?=\d)/i).map((one) => one.trim()).filter(Boolean);
+
+// "the kitchens: 72 ration packs a day, from 36 meal": who makes it, how many and of what, each day, and what goes
+// into that many, with commas between: "380 fuel cells a day, from 38 refined fuel, 7.6 parts crates". A maker that
+// makes less, for want of room or of anything else, takes that much less of each.
 export function readMakeLine(text) {
   const line = String(text ?? "").trim().replace(/^-\s*/, "").replace(/\.$/, "");
-  const found = line.match(/^(.+?):\s*(.+?)\s+(?:a|each|every|per)\s+day$/i);
+  const found = line.match(/^(.+?):\s*(.+?)\s+(?:a|each|every|per)\s+day(?:\s*,?\s*(?:made\s+)?from\s+(.+))?$/i);
   const amount = found ? readAmount(found[2]) : null;
-  if (!amount) return { problem: `"${line}" should be who makes it, a colon, how many of what, and a day: the kitchens: 3 ration packs a day` };
+  if (!amount) return { problem: `"${line}" should be who makes it, a colon, how many of what, and a day, then from and what goes into that many if anything does: the kitchens: 72 ration packs a day, from 36 meal` };
   if (!(amount.n > 0)) return { problem: `"${line}" should make more than nothing a day` };
-  return { name: found[1].trim(), n: amount.n, good: amount.good };
+  const from = [];
+  for (const piece of found[3] ? amountsIn(found[3]) : []) {
+    const input = readAmount(piece);
+    if (!input || !(input.n > 0)) return { problem: `"${piece}" should be how many and of what goes into a day's making, such as 36 meal` };
+    from.push(input);
+  }
+  return { name: found[1].trim(), n: amount.n, good: amount.good, from };
 }
-export const writeMakeLine = (one) => `${one.name}: ${numberWords(one.n)} ${one.good} a day`;
+export const writeMakeLine = (one) => `${one.name}: ${numberWords(one.n)} ${one.good} a day${one.from?.length ? `, from ${one.from.map((entry) => `${numberWords(entry.n)} ${entry.good}`).join(", ")}` : ""}`;
 
 // "its people: 60 ration crates, 3 ration packs a day": who uses it up, and how many of each thing, each day.
 export function readUseLine(text) {
@@ -189,7 +222,7 @@ export function readUseLine(text) {
   const found = line.match(/^(.+?):\s*(.+?)\s+(?:a|each|every|per)\s+day$/i);
   if (!found) return { problem: `"${line}" should be who uses it, a colon, how many of each thing with commas between, and a day: its people: 60 ration crates, 3 ration packs a day` };
   const list = [];
-  for (const piece of found[2].split(/\s*,\s*/).map((one) => one.trim()).filter(Boolean)) {
+  for (const piece of amountsIn(found[2])) {
     const amount = readAmount(piece);
     if (!amount || !(amount.n > 0)) return { problem: `"${piece}" should be how many and of what, such as 60 ration crates` };
     list.push(amount);

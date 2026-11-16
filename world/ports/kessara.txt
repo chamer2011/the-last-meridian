@@ -10,9 +10,11 @@ Holds:
 - hot cells: usually 19, from the Veshti Deepyards
 - medicine crates: usually 33, from Haven Station
 - medkits: usually 6.3, from Lumen Sanctuary or Vantor Prime
+- scrap: usually 340
 - parts crates: usually 30
-- circuit boards: usually 120
+- circuit boards: usually 150
 - machines: usually 1.3, from the Veshti Deepyards
+- water: usually 130, from the Veshti Deepyards
 - drinking water: usually 500
 - air bottles: usually 63, from Tessen Colony
 - reserve tanks: usually 2.5, from the Veshti Deepyards
@@ -22,9 +24,10 @@ Holds:
 - fine things: usually 2.5, from the Gilded Wheel
 
 Makes:
-- the breakers' yards: 3 parts crates a day
-- the benches in the warren: 12 circuit boards a day
-- the ice-melters: 50 drinking water a day
+- the wreck divers: 34 scrap a day
+- the breakers' yards: 3 parts crates a day, from 3 scrap
+- the benches in the warren: 15 circuit boards a day, from 30 scrap
+- the water sellers: 50 drinking water a day, from 10 water
 
 Uses:
 - its people: 50 ration crates, 2.5 ration packs, 25 drinking water, 10 beer and spirits, 1 clothes, 1.5 tea and tobacco a day

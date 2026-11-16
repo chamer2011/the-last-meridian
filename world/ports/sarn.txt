@@ -6,12 +6,14 @@ Holds:
 - ration crates: usually 200, from Vantor Prime
 - fuel cells: usually 60, from Cinder Reach or the Veshti Deepyards
 - medicine crates: usually 4, from Vantor Prime
+- water: usually 16
 - drinking water: usually 80
 - clothes: usually 4, from Bastion Nine
 - tea and tobacco: usually 6, from Haven Station
 
 Makes:
-- the meltwater vaults: 8 drinking water a day
+- the meltwater vaults: 1.6 water a day
+- the Keepers' filters: 8 drinking water a day, from 1.6 water
 
 Uses:
 - the Keepers: 8 ration crates, 4 drinking water, 0.16 clothes, 0.24 tea and tobacco a day

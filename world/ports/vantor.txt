@@ -3,32 +3,40 @@ draft: the AI's, not yet edited by the owner
 people: 40,000
 
 Holds:
+- meal: usually 5,500
 - ration crates: usually 11,000
 - ration packs: usually 460
+- refined fuel: usually 1,000
 - fuel cells: usually 3,000, from Cinder Reach or the Veshti Deepyards
 - jump fuel: usually 520
 - hot cells: usually 50, from the Veshti Deepyards
+- compounds: usually 480
 - medicine crates: usually 350
-- medkits: usually 72
+- medkits: usually 120
 - surgeon's stores: usually 26
 - parts crates: usually 390, from Korrath Forge
 - circuit boards: usually 50, from Kessara Drift
 - machines: usually 10, from the Veshti Deepyards
+- water: usually 1,000
 - drinking water: usually 4,000
-- beer and spirits: usually 1,000, from Korrath Forge
+- beer and spirits: usually 1,100, from Korrath Forge
 - clothes: usually 200, from Bastion Nine
 - tea and tobacco: usually 300, from Haven Station
 - fine things: usually 43
 
 Makes:
-- the Lower Stacks' packing halls: 1,100 ration crates a day
-- the garrison kitchens: 46 ration packs a day
-- the state refineries: 52 jump fuel a day
-- the white labs: 35 medicine crates a day
-- the white labs' benches: 7.2 medkits a day
-- the white labs' theatres: 2.6 surgeon's stores a day
-- the waterworks: 400 drinking water a day
-- the cellars: 4.3 fine things a day
+- the state mills: 580 meal a day
+- the state refineries: 110 refined fuel a day
+- the white labs: 48 compounds a day
+- the waterworks: 110 water a day
+- the Lower Stacks' packing halls: 1,100 ration crates a day, from 550 meal
+- the garrison kitchens: 46 ration packs a day, from 23 meal
+- the white labs' packing floor: 35 medicine crates a day, from 35 compounds
+- the white labs' benches: 13 medkits a day, from 13 compounds
+- the bottling halls: 400 drinking water a day, from 80 water
+- the enrichment halls: 52 jump fuel a day, from 104 refined fuel
+- the white labs' theatres: 2.6 surgeon's stores a day, from 5.2 medkits
+- the cellars: 4.3 fine things a day, from 8.6 beer and spirits
 
 Uses:
 - its people: 400 ration crates, 20 ration packs, 200 drinking water, 40 beer and spirits, 8 clothes, 12 tea and tobacco a day

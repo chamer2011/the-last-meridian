@@ -3,7 +3,8 @@ draft: the AI's, not yet edited by the owner
 people: 6,000
 
 Holds:
-- ration crates: usually 3,800, from Tessen Colony or Maris Deep
+- meal: usually 450, from Tessen Colony
+- ration crates: usually 4,500, from Tessen Colony or Maris Deep
 - ration packs: usually 720
 - provisions: usually 7.5, from the Gilded Wheel
 - fuel cells: usually 450, from Cinder Reach or the Veshti Deepyards
@@ -11,22 +12,25 @@ Holds:
 - hot cells: usually 7.5, from the Veshti Deepyards
 - medicine crates: usually 140, from Lumen Sanctuary or Vantor Prime
 - medkits: usually 7.5, from Lumen Sanctuary or Vantor Prime
-- parts crates: usually 200, from the Graveyard or Korrath Forge
+- parts crates: usually 250, from the Graveyard or Korrath Forge
 - circuit boards: usually 7.5, from Kessara Drift
 - machines: usually 1.5, from the Veshti Deepyards
+- water: usually 150, from Tessen Colony or Maris Deep
 - drinking water: usually 600
 - air bottles: usually 75, from Tessen Colony
 - reserve tanks: usually 3, from the Veshti Deepyards
+- cloth: usually 330, from Lumen Sanctuary
+- cured leaf: usually 940, from Tessen Colony
 - beer and spirits: usually 230, from Korrath Forge
-- clothes: usually 190
-- tea and tobacco: usually 710
+- clothes: usually 270
+- tea and tobacco: usually 750
 - fine things: usually 3, from the Gilded Wheel or Vantor Prime
 
 Makes:
-- the kitchens on the Manifest Docks: 72 ration packs a day
-- the casking line: 60 drinking water a day
-- the sewing rooms in the Hook: 19 clothes a day
-- the packers on Consulate Row: 71 tea and tobacco a day
+- the kitchens on the Manifest Docks: 72 ration packs a day, from 36 meal
+- the casking line: 60 drinking water a day, from 12 water
+- the sewing rooms in the Hook: 27 clothes a day, from 27 cloth
+- the packers on Consulate Row: 75 tea and tobacco a day, from 75 cured leaf
 
 Uses:
 - its people: 60 ration crates, 3 ration packs, 30 drinking water, 9 beer and spirits, 1.2 clothes, 1.8 tea and tobacco a day

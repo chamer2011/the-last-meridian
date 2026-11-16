@@ -10,7 +10,7 @@ import { writeStoryText } from "./story-text.js";
 import { LINE_PHRASES, PERK_NUMBERS, SPECS, writeWorldText } from "./world-text.js";
 import { KNOWN_SYSTEMS, readComputerLine, systemIdOf, writeSystemsText } from "./systems-text.js";
 import { LOGISTICS_PARTS, PART_TITLES, WORK_KINDS, readAskers, readCarriers, readDecider, readLoadsLine, readMachineLine, readMaking, readRefillLine, readRepair, readSittings, readStoreLine, readTrip, readUrgencyLine, readWaiting, workKindWords, writeAskers, writeLogisticsText, writeMaking, writeRepair, writeDecider, writeSittings, writeStoreLine, writeTrip, writeWaiting } from "./logistics-text.js";
-import { PORT_PARTS, PORT_TITLES, STEPS, STEP_TITLES, numberWords, readGoodLine, readHoldLine, readMakeLine, readStands, readUseLine, writeGoodsText, writePortText, writeStands } from "./ports-text.js";
+import { NEEDS, PORT_PARTS, PORT_TITLES, STEPS, STEP_TITLES, numberWords, readGoodLine, readHoldLine, readMakeLine, readStands, readUseLine, writeGoodLine, writeGoodsText, writePortText, writeStands } from "./ports-text.js";
 import { COMMAND_HEADER, SPARE, readHolderLine, readJobLine, readPostLine, readWorkersLine, slugOf, writeCommandText, writeJobLine, writePostLine } from "./command-text.js";
 import { CARE, MEDBAY_KEYS, PARTS, readAccidentLine, readAccidents, readHitLine, readKindLine, readMendingLine, readOldMarks, readQueue, readShare, readStartLine, readTreatmentLine, readWeaponLine, writeHealthText, writeWoundsText } from "./health-text.js";
 
@@ -1644,9 +1644,14 @@ function portGraph() {
   });
   (P.makes ?? []).forEach((one, i) => {
     const read = readMakeLine(one.text ?? one);
-    const id = add({ id: `makes${i}`, kind: "route", col: 1, name: read.problem ? "A maker" : read.name, text: read.problem ?? `${numberWords(read.n)} ${read.good} a day.`, label: PORT_LABELS.makes, bind: { portLine: ["makes", i] }, problem: Boolean(read.problem) });
+    const id = add({ id: `makes${i}`, kind: "route", col: 1, name: read.problem ? "A maker" : read.name, text: read.problem ?? `${numberWords(read.n)} ${read.good} a day${read.from.length ? `, from ${read.from.map((entry) => `${numberWords(entry.n)} ${entry.good}`).join(" and ")}` : ""}.`, label: PORT_LABELS.makes, bind: { portLine: ["makes", i] }, problem: Boolean(read.problem) });
     const into = read.problem ? null : holds.find((hold) => !hold.read.problem && sameGood(hold.read.good, read.good));
     if (into) ws.push({ from: id, to: into.id });
+    // And what it makes them from comes to it from what the port holds.
+    for (const entry of read.problem ? [] : read.from) {
+      const out = holds.find((hold) => !hold.read.problem && sameGood(hold.read.good, entry.good));
+      if (out) ws.push({ from: out.id, to: id });
+    }
   });
   (P.uses ?? []).forEach((one, i) => {
     const read = readUseLine(one.text ?? one);
@@ -1684,7 +1689,7 @@ function inspectPortAbout(inspector) {
       else delete P.people;
       changed();
     }), button("Undo", () => inspect())),
-    hint(`The file is world/ports/${state.id}.txt. Each midnight the port makes what its Makes lines say, never past what it usually holds, uses what its Uses lines say, and sends for what it's running short of to the ports its Holds lines name. What's sent takes days to arrive, by the distance on the star map. The how-to in that folder says how each line is written.`));
+    hint(`The file is world/ports/${state.id}.txt. Each midnight the port makes what its Makes lines say, never past what it usually holds and no more than it has the goods, the hands and the power for, uses what its Uses lines say, and sends for what it's running short of to the ports its Holds lines name. What's sent takes days to arrive, by the distance on the star map. The how-to in that folder says how each line is written.`));
 }
 function inspectPortLine(inspector, node) {
   const P = state.item;
@@ -1700,7 +1705,7 @@ function inspectPortLine(inspector, node) {
     part === "holds"
       ? hint("What it holds: the good, a colon, usually and how many it has when things are as usual, then from and the ports it sends to for more: ration crates: usually 1,500, from Tessen Colony or Maris Deep. Leave the from out for a good it makes itself.")
       : part === "makes"
-        ? hint("What it makes: who makes it, a colon, how many of what, and a day: the kitchens: 40 ration crates a day. The port has to hold the good too. Its makers stop when it has as many as it usually holds.")
+        ? hint("What it makes: who makes it, a colon, how many of what, and a day, then from and what goes into that many, with commas between: the kitchens: 72 ration packs a day, from 36 meal. The port has to hold the good, and everything it's made from. Its makers stop when it has as many as it usually holds, make less when there isn't enough of what they make it from, and take that much less. Change how many it makes and change what goes into it too, or one of them will take more or less than before.")
         : hint("What it uses: who uses it, a colon, how many of each thing with commas between, and a day: its people: 60 ration crates, 30 drinking water a day. The port has to hold each of them."),
     part === "holds" ? el("div", { class: "subfacts" }, el("label", {}, "A port it comes from"), row(...(state.lists.ports ?? []).map((name) => button(name, () => put(name))))) : null,
     part !== "holds" ? el("div", { class: "subfacts" }, el("label", {}, "A good"), row(...goods.map((name) => button(name, () => { box.value = `${box.value.trim()} ${name}`; box.focus(); })))) : null,
@@ -1729,7 +1734,10 @@ const STEP_KINDS = { basic: "lead", refined: "route", developed: "beat", advance
 function goodsGraph() {
   const P = state.item, L = state.links;
   const list = [];
-  list.push({ id: "about", kind: "about", col: 0, name: P.name, text: `${P.stands ? `Stands for ${writeStands(P.stands)}: that good's amount is the word a port has for its ${P.stands.supply}. ` : "No supply stands on this tree. "}${P.draft ? `Written by ${P.draft}.` : ""}`, label: "The tree" });
+  const needs = NEEDS.filter((need) => P.needs?.[need]?.good).map((need) => (need === "hands" ? `A port short of ${P.needs[need].good} has fewer hands at its makers. ` : need === "sick" ? `A port short of ${P.needs[need].good} has more of its people laid up. ` : `Every maker runs on ${P.needs[need].good}, but this tree's own. `)).join("");
+  list.push({ id: "about", kind: "about", col: 0, name: P.name, text: `${P.stands ? `Stands for ${writeStands(P.stands)}: that good's amount is the word a port has for its ${P.stands.supply}. ` : "No supply stands on this tree. "}${needs}${P.draft ? `Written by ${P.draft}.` : ""}`, label: "The tree" });
+  const ws = [];
+  const boxOf = {};
   // The steps that have goods stand side by side, the first of them next to the tree's own box.
   const present = STEPS.filter((step) => (P.steps?.[step] ?? []).length);
   STEPS.forEach((step) => {
@@ -1738,22 +1746,33 @@ function goodsGraph() {
       const read = readGoodLine(one.text ?? one);
       const where = read.problem ? null : L.where?.[read.name];
       const makers = where?.makers?.length ? ` Made at ${where.makers.map((maker) => `${maker.name.replace(/^The /, "the ")} (${numberWords(maker.n)} a day)`).join(", ")}.` : where ? " Nobody makes it yet." : "";
-      const sums = where ? ` ${where.holders} ${where.holders === 1 ? "port holds" : "ports hold"} it; ${numberWords(where.used)} used a day and ${numberWords(where.made)} made.` : "";
-      list.push({ id: `${step}${i}`, kind: STEP_KINDS[step], col: col + 1, name: read.problem ? "A good" : read.name, text: read.problem ?? `${read.words || ""}${read.unit ? ` Counted by the ${read.unit}.` : ""}${read.item ? ` The game's own ${read.item}.` : ""}${makers}${sums}`.trim(), label: `${STEP_TITLES[step]}`, bind: { goodLine: [step, i] }, problem: Boolean(read.problem) });
+      const sums = where ? ` ${where.holders} ${where.holders === 1 ? "port holds" : "ports hold"} it; ${numberWords(where.used)} used a day${where.taken ? `, ${numberWords(where.taken)} go into other things` : ""} and ${numberWords(where.made)} made at the most.` : "";
+      const from = read.problem || !read.from.length ? "" : ` Made from ${read.from.join(", ")}.`;
+      list.push({ id: `${step}${i}`, kind: STEP_KINDS[step], col: col + 1, name: read.problem ? "A good" : read.name, text: read.problem ?? `${read.words || ""}${read.unit ? ` Counted by the ${read.unit}.` : ""}${read.item ? ` The game's own ${read.item}.` : ""}${from}${makers}${sums}`.trim(), label: `${STEP_TITLES[step]}`, bind: { goodLine: [step, i] }, problem: Boolean(read.problem) });
+      if (!read.problem) boxOf[plainWords(read.name)] = { id: `${step}${i}`, from: read.from };
     });
   });
-  return { list, ws: [] };
+  // An arrow up the tree from each good to what's made from it. What comes from another tree is in the words only.
+  for (const box of Object.values(boxOf)) for (const name of box.from) if (boxOf[plainWords(name)]) ws.push({ from: boxOf[plainWords(name)].id, to: box.id });
+  return { list, ws };
 }
 function inspectGoodsAbout(inspector) {
   const P = state.item;
   const name = textBox("edit-title", P.name ?? "");
   const draft = textBox("edit-draft", P.draft ?? "");
   const stands = textBox("edit-stands", P.stands ? writeStands(P.stands) : "");
+  const needs = Object.fromEntries(NEEDS.map((need) => [need, textBox(`edit-need-${need}`, P.needs?.[need]?.good ?? "")]));
+  const NEED_HELP = {
+    hands: "hands need: one of this tree's goods. A port that's short of it has fewer hands at its makers, down to three quarters of their work with none (empty for none)",
+    sick: "the sick need: one of this tree's goods. A port that's scarce of it has more of its people laid up, and its makers do a little less (empty for none)",
+    power: "power is: one of this tree's goods. Every port's makers run on it, but this tree's own: with it scarce they do less, down to four tenths with none (empty for none)",
+  };
   const trouble = el("div", { class: "hint tone-bad" });
   fill(inspector, h2("The tree"),
     el("label", { for: "edit-title" }, "The tree's name"), name,
     el("label", { for: "edit-draft" }, "Who wrote it (the game doesn't read this)"), draft,
     el("label", { for: "edit-stands" }, "stands for: which of the supplies every port has a word for (food, fuel, medicine, parts) this tree stands behind, and by which of its goods, like food, by its ration crates (empty for none)"), stands,
+    ...NEEDS.flatMap((need) => [el("label", { for: `edit-need-${need}` }, NEED_HELP[need]), needs[need]]),
     trouble,
     row(button("Keep", () => {
       const read = stands.value.trim() ? readStands(stands.value) : null;
@@ -1766,6 +1785,11 @@ function inspectGoodsAbout(inspector) {
       else delete P.draft;
       if (read) P.stands = read;
       else delete P.stands;
+      for (const need of NEEDS) {
+        const good = needs[need].value.trim();
+        if (good) (P.needs ??= {})[need] = { good };
+        else if (P.needs) delete P.needs[need];
+      }
       changed();
     }), button("Undo", () => inspect())),
     hint(`The file is world/goods/${state.id}.txt. A good that a supply stands on is what the star map and the Market count for that supply: how many of it a port has, against what it usually holds, is its plenty, normal, short or scarce.`));
@@ -1778,7 +1802,12 @@ function inspectGoodLine(inspector, node) {
   const box = textarea("edit-line", entry.text ?? entry, 3);
   const trouble = el("div", { class: "hint tone-bad" });
   fill(inspector, h2(node.label), el("label", { for: "edit-line" }, `The line, under ${STEP_TITLES[step]}`), box,
-    hint("A good: its name as it's counted (ration crates), then how it's counted if its name isn't a count (drinking water, by the cask), then the game's own item in square brackets if it's one ([ration_crate]), then a colon and a few words about it. A port's file names a good by this name."),
+    hint("A good: its name as it's counted (ration crates), then how it's counted if its name isn't a count (drinking water, by the cask), then the game's own item in square brackets if it's one ([ration_crate]), then made from and the goods it's made from, with commas between (made from meal, kelp cake), then a colon and a few words about it. A port's file names a good by this name, and a maker can only make it from the goods named here."),
+    el("div", { class: "subfacts" }, el("label", {}, "Made from: click a good to add it to the line"), row(...(state.lists.goods ?? []).map((name) => button(name, () => {
+      const read = readGoodLine(box.value.trim().replace(/\n+/g, " "));
+      if (read.problem || read.from.includes(name) || read.name === name) return;
+      box.value = writeGoodLine({ ...read, from: [...read.from, name] });
+    })))),
     trouble,
     row(button("Keep", () => {
       const words = box.value.trim().replace(/\n+/g, " ");

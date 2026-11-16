@@ -3,6 +3,7 @@ draft: the AI's, not yet edited by the owner
 people: 15,000
 
 Holds:
+- meal: usually 1,500
 - ration crates: usually 3,000
 - ration packs: usually 190, from Haven Station
 - fuel cells: usually 1,100, from Cinder Reach or the Veshti Deepyards
@@ -11,19 +12,26 @@ Holds:
 - medicine crates: usually 75, from Vantor Prime
 - medkits: usually 19, from Vantor Prime or Lumen Sanctuary
 - surgeon's stores: usually 3.8, from Vantor Prime
-- parts crates: usually 570
+- metal stock: usually 590
+- parts crates: usually 590
 - circuit boards: usually 19, from Kessara Drift
 - machines: usually 7.5, from the Veshti Deepyards
+- water: usually 300
 - drinking water: usually 1,500
-- beer and spirits: usually 2,900
+- mash: usually 1,500
+- beer and spirits: usually 3,000
 - clothes: usually 75, from Bastion Nine or Haven Station
 - tea and tobacco: usually 110, from Haven Station
 
 Makes:
-- the clan halls' kitchens: 300 ration crates a day
-- the Long Furnaces: 57 parts crates a day
-- the deep wells: 150 drinking water a day
-- the brewers: 290 beer and spirits a day
+- the clan granaries: 150 meal a day
+- the Long Furnaces: 60 metal stock a day
+- the deep wells: 30 water a day
+- the mash halls: 150 mash a day
+- the clan halls' kitchens: 300 ration crates a day, from 150 meal
+- the Slag Bridge shops: 59 parts crates a day, from 59 metal stock
+- the clan halls' cisterns: 150 drinking water a day, from 30 water
+- the brewers: 300 beer and spirits a day, from 150 mash
 
 Uses:
 - its people: 150 ration crates, 7.5 ration packs, 75 drinking water, 30 beer and spirits, 3 clothes, 4.5 tea and tobacco a day

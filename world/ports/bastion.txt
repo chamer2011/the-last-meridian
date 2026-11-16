@@ -13,16 +13,18 @@ Holds:
 - parts crates: usually 90, from Vantor Prime
 - circuit boards: usually 15, from Kessara Drift
 - machines: usually 3, from the Veshti Deepyards
+- water: usually 300, from Vantor Prime
 - drinking water: usually 1,200
 - air bottles: usually 150, from Tessen Colony
 - reserve tanks: usually 6, from the Veshti Deepyards
+- cloth: usually 410, from Lumen Sanctuary
 - beer and spirits: usually 150, from Korrath Forge
 - clothes: usually 330
 - tea and tobacco: usually 90, from Haven Station
 
 Makes:
-- the fortress cisterns: 120 drinking water a day
-- the contract workrooms: 33 clothes a day
+- the fortress cisterns: 120 drinking water a day, from 24 water
+- the contract workrooms: 33 clothes a day, from 33 cloth
 
 Uses:
 - the garrison and the Line: 120 ration crates, 6 ration packs, 60 drinking water, 6 beer and spirits, 3.6 clothes, 3.6 tea and tobacco a day

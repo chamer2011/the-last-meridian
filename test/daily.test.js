@@ -88,7 +88,9 @@ test("whatever sells to the Meridian on the star map is something that place dea
 
 test("the places that can't change hands are the ones the story needs that way", () => {
   for (const id of ["vantor", "ilun", "foundry", "orrin"]) assert.equal(FILE[id].locked, true, id);
-  for (const id of ["nest", "asterion", "harbor", "pale_gate", "meridian", "anselm", "sundial"]) assert.equal(FILE[id], undefined, `${id} has nothing going on day to day`);
+  for (const id of ["nest", "asterion", "harbor", "pale_gate", "meridian"]) assert.equal(FILE[id], undefined, `${id} has nothing going on day to day`);
+  // The farm ship and the hospital ship are ports of their own, held by the fleet's people for good.
+  for (const id of ["sundial", "anselm"]) assert.deepEqual([FILE[id].locked, FILE[id].hold], [true, { fleet: 100 }], id);
 });
 
 // ---- How it starts ------------------------------------------------------------
@@ -96,7 +98,10 @@ test("the places that can't change hands are the ones the story needs that way",
 test("on day one, every price and every chart entry is exactly what it always was", () => {
   const game = newGame();
   for (const [id, spot] of Object.entries(STAR_MAP.places)) {
-    for (const good of Object.keys(spot.trade ?? {})) assert.equal(supplyFactor(game, id, good), 1, `${id} ${good}`);
+    // The Sundial and Anselm's Mercy are ports now, held by the fleet's own people, who give their captain a friend's
+    // price like any port does for whoever it thinks well of.
+    const friend = ["sundial", "anselm"].includes(id) && game.factions.fleet >= DAILY.standing.friendly.at ? DAILY.standing.friendly.price : 1;
+    for (const good of Object.keys(spot.trade ?? {})) assert.equal(supplyFactor(game, id, good), friend, `${id} ${good}`);
     if (!spot.control) continue;
     game.seenLore.push(`place:${id}`);
     assert.equal(chartEntry(game, id).control, spot.control, id);
@@ -130,8 +135,9 @@ test("a year goes by quickly, everything stays in bounds, and the world does cha
   days(game, 365);
   const used = process.cpuUsage(started);
   const took = Math.round((used.user + used.system) / 1000);
-  // About 1.4 s by itself; three times that when every test runs at once on a busy computer.
-  assert.ok(took < 8000, `a year took ${took} ms of work`);
+  // About 3 s by itself, now that the ship's own logistics and the ports' real amounts run with it (the ports are a
+  // quarter of a second of that); three or four times as much when every test runs at once on a busy computer.
+  assert.ok(took < 12000, `a year took ${took} ms of work`);
   const { world } = game;
   assert.equal(world.day, 365);
   let moved = 0;
@@ -364,12 +370,30 @@ test("whoever holds a place charges you more if they hate you, and less if they 
   assert.ok(buyPrice(game, ITEMS.medkit) > usual, "and it's whoever holds it now that counts");
 });
 
-test("the Meridian herself, and a ship with no day of its own, have no prices of their own", () => {
-  for (const id of ["meridian", "sundial"]) {
-    const game = at(id);
-    assert.equal(buyPrice(game, ITEMS.ration_pack), buyPrice(newGame(), ITEMS.ration_pack), id);
-    assert.equal(placeNow(game, id), null, id);
-  }
+test("the Meridian herself has no prices of her own; the Sundial and Anselm's Mercy are ports now, and have", () => {
+  const aboard = at("meridian");
+  assert.equal(buyPrice(aboard, ITEMS.ration_pack), buyPrice(newGame(), ITEMS.ration_pack));
+  assert.equal(placeNow(aboard, "meridian"), null);
+  // A farm ship that's short of food charges more for it.
+  const game = at("sundial");
+  const usual = buyPrice(game, ITEMS.ration_pack);
+  game.world.places.sundial.goods.food = 30;
+  assert.ok(buyPrice(game, ITEMS.ration_pack) > usual, "food costs more on the Sundial when it's scarce there");
+  const now = placeNow(game, "sundial");
+  assert.deepEqual(now.goods.map((good) => good.id), ["food", "medicine", "parts"]);
+  assert.equal(now.goods[0].level, "scarce");
+  assert.match(now.goods[0].has, /^[\d,]+ ration crates$/);
+  assert.equal(now.holder, FACTIONS.fleet.name, "held by the fleet's people, as its own file says");
+  assert.deepEqual([now.shares, now.changed, now.rival], [[], false, null], "and that never changes");
+  assert.deepEqual(placeNow(at("anselm"), "anselm").goods.map((good) => good.id), ["food", "medicine", "parts"]);
+  // A save from before they were ports gets them, as they usually stand.
+  const old = newGame();
+  delete old.world.places.sundial;
+  delete old.world.places.anselm;
+  const loaded = JSON.parse(JSON.stringify(old));
+  passTime(loaded, 1, "routine");
+  assert.deepEqual(loaded.world.places.sundial.goods, { food: 100, medicine: 100, parts: 100 });
+  assert.equal(loaded.world.places.anselm.holder, "fleet");
 });
 
 // ---- The story ------------------------------------------------------------------

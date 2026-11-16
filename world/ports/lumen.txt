@@ -3,28 +3,37 @@ draft: the AI's, not yet edited by the owner
 people: 9,000
 
 Holds:
+- meal: usually 950
 - ration crates: usually 1,900
 - ration packs: usually 110, from Haven Station
 - provisions: usually 23, from the Gilded Wheel
 - fuel cells: usually 680, from Cinder Reach or the Veshti Deepyards
 - jump fuel: usually 230, from the Veshti Deepyards
+- extracts: usually 260
+- plasma and dressings: usually 57, from Anselm's Mercy
 - medicine crates: usually 150
 - medkits: usually 46
 - surgeon's stores: usually 2.3, from Vantor Prime
 - parts crates: usually 68, from Haven Station
 - circuit boards: usually 11, from Kessara Drift
 - machines: usually 2.3, from the Veshti Deepyards
+- water: usually 180
 - drinking water: usually 900
+- cloth: usually 590
 - beer and spirits: usually 230, from Korrath Forge
 - clothes: usually 45, from Haven Station or Bastion Nine
 - tea and tobacco: usually 68, from Haven Station
 - fine things: usually 4.5, from the Gilded Wheel or Vantor Prime
 
 Makes:
-- the terrace kitchens: 190 ration crates a day
-- the still-houses: 15 medicine crates a day
-- the still-houses' benches: 4.6 medkits a day
-- the Water Courts: 90 drinking water a day
+- the terraces: 95 meal a day
+- the still-houses: 27 extracts a day
+- the Water Courts: 18 water a day
+- the looms: 59 cloth a day
+- the terrace kitchens: 190 ration crates a day, from 95 meal
+- the dispensaries: 15 medicine crates a day, from 15 extracts
+- the still-houses' benches: 4.6 medkits a day, from 4.6 plasma and dressings
+- the court fountains: 90 drinking water a day, from 18 water
 
 Uses:
 - its people: 90 ration crates, 4.5 ration packs, 45 drinking water, 9 beer and spirits, 1.8 clothes, 2.7 tea and tobacco a day

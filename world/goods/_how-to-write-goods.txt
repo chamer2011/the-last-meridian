@@ -3,11 +3,12 @@ HOW TO WRITE THE WORLD'S GOODS
 
 Every file in this folder is a tree of goods: food, fuel, medicine, parts, water and air, comforts. A tree
 says what goods there are of that kind, each at its step of the tree: basic goods out of the ground, refined
-once, developed into what people use, and one advanced good on top. The ports' files, in world/ports, say how
-many of each a port holds, makes and uses, and name a good by the name it has here.
+once, developed into what people use, and one advanced good on top. It says what each good is made from, too.
+The ports' files, in world/ports, say how many of each a port holds, makes and uses, and name a good by the
+name it has here.
 
-So far only the Developed and Advanced steps are played. The Refined and Basic steps, and what each good is
-made from, come with the next parts of this step.
+So far the Refined, Developed and Advanced steps are played. The Basic step, and the ground the basic goods
+come out of, come with the last part of this step: until then a refined good is made from nothing.
 
 A file's name is the tree's id, in small letters: food.txt. Files that start with an underscore, like this one,
 aren't read.
@@ -15,48 +16,83 @@ aren't read.
     # Food
     draft: the AI's, not yet edited by the owner
     stands for: food, by its ration crates
+    hands need: ration crates
+
+    Refined:
+    - meal, by the sack: Grain dried and milled.
+    - kelp cake, by the block: Kelp pressed and dried on the rafts.
 
     Developed:
-    - ration crates [ration_crate]: The crates a pantry holds, two hundred sittings each.
-    - ration packs, by the case [ration_pack]: Packs and tins for one person.
+    - ration crates [ration_crate], made from meal, kelp cake: The crates a pantry holds.
+    - ration packs, by the case [ration_pack], made from meal: Packs and tins for one person.
 
     Advanced:
-    - provisions, by the hamper: Fresh bread, honey, sausage.
+    - provisions, by the hamper, made from ration crates: Fresh bread, honey, sausage.
 
 THE TOP
 
 The first line is the tree's name, after a #.
 
-draft:        who wrote it. The game doesn't read it.
+draft:          who wrote it. The game doesn't read it.
 
-stands for:   which of the four supplies every port already has a word for (food, fuel, medicine, parts) this
-              tree stands behind, and by which of its goods: food, by its ration crates. That good's amount is
-              then what the star map and the Market count for the supply: how many of it a port has, against
-              what it usually holds, is its plenty, normal, short or scarce, and what things cost follows from
-              that as before. A tree without this line (water and air, comforts) has amounts and no word.
+stands for:     which of the four supplies every port already has a word for (food, fuel, medicine, parts) this
+                tree stands behind, and by which of its goods: food, by its ration crates. That good's amount
+                is then what the star map and the Market count for the supply: how many of it a port has,
+                against what it usually holds, is its plenty, normal, short or scarce, and what things cost
+                follows from that as before. A tree without this line (water and air, comforts) has amounts
+                and no word.
+
+Three more lines say what a port's makers need besides the goods they make things from. Each names one of this
+tree's goods, and a tree has a line only if it's that kind of tree:
+
+hands need:     a port that's short of this good has fewer hands at its makers. With all it usually holds, or
+                four fifths of it, every hand is at work; below that fewer and fewer, down to three quarters
+                of their work when there's none. Food has it for its ration crates, water and air for its
+                drinking water. Where two trees have one, the port goes by the one it's worse off for.
+
+the sick need:  a port that's scarce of this good has more of its people laid up. With half of what it usually
+                holds or more, nobody extra is; below that more and more, down to 85 hundredths of their work
+                when there's none. Medicine has it, for its medicine crates. It counts on top of the hands.
+
+power is:       what every port's makers run on. With half of what it usually holds or more, they have all
+                the power they want; below that less and less, down to four tenths of their work when there's
+                none, which is what can be done by hand. Fuel has it, for its fuel cells. The makers of that
+                same tree don't need it: a refinery runs on what it makes, or no port could ever get its
+                power back.
+
+A port that holds none of a good isn't short of it: Foundry Seven's machines neither eat nor drink.
 
 A GOOD
 
 A line under a step, starting with a dash:
 
-    - ration packs, by the case [ration_pack]: Packs and tins for one person.
+    - ration packs, by the case [ration_pack], made from meal: Packs and tins for one person.
 
-its name      as it's counted, in the plural: ration crates, medkits, machines. This is what a port's file
-              calls it, and what the game says: "1,180 ration crates".
+its name        as it's counted, in the plural: ration crates, medkits, machines. This is what a port's file
+                calls it, and what the game says: "1,180 ration crates".
 
-, by the ...  how it's counted, when its name isn't a count: drinking water, by the cask ("150 casks of drinking
-              water"); jump fuel, by the measure. Leave it out for a name that counts itself.
+, by the ...    how it's counted, when its name isn't a count: drinking water, by the cask ("150 casks of
+                drinking water"); jump fuel, by the measure. Leave it out for a name that counts itself.
 
-[item]        the game's own item, by its id in world/items, if the good is one: [ration_crate]. Leave it out
-              if it isn't. Nothing is done with it yet; it's for the steps where the ship buys and carries the
-              goods themselves.
+[item]          the game's own item, by its id in world/items, if the good is one: [ration_crate]. Leave it out
+                if it isn't. Nothing is done with it yet; it's for the steps where the ship buys and carries
+                the goods themselves.
 
-: words       a few words about it, for whoever reads the file and the Story board.
+, made from ... the goods it can be made from, with commas between them: made from meal, kelp cake. Never an
+                and: some goods have one in their own name (plasma and dressings). They can be goods of
+                another tree: a fuel cell's casing comes out of a parts crate. This is the list a port's maker
+                picks from: a maker says how many of which it takes (world/ports), and one that takes a good
+                that isn't in this list is something npm run check-story says. Leave it out for a good that's
+                made from nothing here: the refined goods, until the basic ones are in.
+
+: words         a few words about it, for whoever reads the file and the Story board.
 
 A good's name is used once in all the trees. Take a good out, or change its name, and the ports' files that
-name it are wrong: npm run check-story says which lines.
+name it are wrong: npm run check-story says which lines. It also says when the goods go round in a ring (one
+made from another that's made from the first), since then neither could ever be made.
 
 CHANGING THEM IN THE GAME
 
-The Story board has Goods: each tree as boxes by step, with the ports that make each good and how many are made
-and used a day across the map. Click a box to change its line, then Keep and Save.
+The Story board has Goods: each tree as boxes by step, with an arrow from each good to what's made from it, the
+ports that make each good, and how many are used, go into other things and are made a day across the map. Click
+a box to change its line, then Keep and Save. A tree's own box has what hands, the sick and power need.

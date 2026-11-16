@@ -11,7 +11,7 @@ import { FACTIONS, ITEMS, LOCATIONS } from "./data.js";
 import { isCharted } from "./ship.js";
 import { aboardShip } from "./role.js";
 import { DAILY, SHIP_DATA } from "./world.js";
-import { amountOf, counted, hasPort, portHolds, portsDay, portsModel, pushOf, usualOf, whyShort } from "./ports.js";
+import { amountOf, counted, hasPort, portHolds, portsDay, portsModel, pushOf, usualOf, whyShort, workLine } from "./ports.js";
 
 const PLACES = DAILY.places ?? {};
 const GOODS = DAILY.goods ?? {};
@@ -274,6 +274,7 @@ export function placeNow(game, id, { full = false } = {}) {
   // holds. A port the player doesn't know of isn't named in the reasons.
   const model = hasPort(id) ? portsModel() : null;
   const name = (place) => (knownPlace(game, place) ? LOCATIONS[place]?.name ?? null : null);
+  const work = model ? workLine(game.world, id) : null;
   const real = (good) => {
     const stood = model?.stands[good];
     if (!stood || !model.ports[id].holds[stood]) return {};
@@ -283,6 +284,8 @@ export function placeNow(game, id, { full = false } = {}) {
   return {
     goods: Object.entries(state.goods).map(([good, level]) => ({ id: good, name: GOODS[good]?.name ?? good, level: levelName(level), low: level < 80, high: level >= 125, ...real(good) })),
     ...(model && full ? { holds: portHolds(game.world, id, levelName, name) } : {}),
+    // How much of their work its makers are doing, when it isn't all of it: hungry, sick or without power.
+    ...(work ? { work } : {}),
     holder: sideName(id, state.holder),
     changed: state.holder !== topOf(PLACES[id].hold),
     since: state.since ?? null,

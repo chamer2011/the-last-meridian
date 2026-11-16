@@ -2,9 +2,13 @@
 draft: the AI's, not yet edited by the owner
 stands for: parts, by its parts crates
 
+Refined:
+- metal stock, by the load: Ore smelted into plate and bar.
+- scrap, by the load [scrap]: Dead ships cut up and sorted, by the load.
+
 Developed:
-- parts crates [parts_crate]: A crate of spares: one repair, or half of an artificial limb.
-- circuit boards, by the case: Boards stripped and re-flashed, for anything that thinks.
+- parts crates [parts_crate], made from metal stock, scrap: A crate of spares: one repair, or half of an artificial limb.
+- circuit boards, by the case, made from scrap: Boards stripped and re-flashed, for anything that thinks.
 
 Advanced:
-- machines: Whole machines built from crates and boards: a rig's parts, weapons, a port's own plant.
+- machines, made from parts crates, circuit boards: Whole machines built from crates and boards: a rig's parts, weapons, a port's own plant.

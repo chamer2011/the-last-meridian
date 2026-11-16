@@ -3,7 +3,7 @@ draft: the AI's, not yet edited by the owner
 people: 4,000
 
 Holds:
-- ration crates: usually 1,000, from Haven Station
+- ration crates: usually 1,400, from Haven Station
 - ration packs: usually 50, from Haven Station
 - provisions: usually 140
 - fuel cells: usually 300, from the Veshti Deepyards or Cinder Reach
@@ -14,18 +14,19 @@ Holds:
 - surgeon's stores: usually 1, from Vantor Prime
 - parts crates: usually 30, from Haven Station
 - circuit boards: usually 5, from Kessara Drift
+- water: usually 100, from the Veshti Deepyards
 - drinking water: usually 400
 - air bottles: usually 50, from Tessen Colony
 - reserve tanks: usually 2, from the Veshti Deepyards
-- beer and spirits: usually 300, from Korrath Forge
-- clothes: usually 40, from Haven Station
+- beer and spirits: usually 350, from Korrath Forge
+- clothes: usually 86, from Haven Station
 - tea and tobacco: usually 30, from Haven Station
 - fine things: usually 37
 
 Makes:
-- the kitchens: 14 provisions a day
-- the house cisterns: 40 drinking water a day
-- the tailor and the Cellars: 3.7 fine things a day
+- the house cisterns: 40 drinking water a day, from 8 water
+- the kitchens: 14 provisions a day, from 28 ration crates
+- the tailor and the Cellars: 3.7 fine things a day, from 3.7 clothes, 3.7 beer and spirits
 
 Uses:
 - its people: 40 ration crates, 2 ration packs, 20 drinking water, 12 beer and spirits, 1.6 clothes, 1.2 tea and tobacco a day

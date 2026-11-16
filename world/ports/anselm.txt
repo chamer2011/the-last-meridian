@@ -1,0 +1,31 @@
+# Anselm's Mercy
+draft: the AI's, not yet edited by the owner
+people: 3,000
+
+Holds:
+- ration crates: usually 750, from the Sundial or Haven Station
+- fuel cells: usually 230, from Cinder Reach or the Veshti Deepyards
+- extracts: usually 140, from Lumen Sanctuary
+- plasma and dressings: usually 77
+- medicine crates: usually 110
+- medkits: usually 31
+- surgeon's stores: usually 3.6
+- parts crates: usually 22, from Haven Station
+- water: usually 60
+- drinking water: usually 300
+- clothes: usually 30, from Haven Station
+- tea and tobacco: usually 22, from Haven Station
+
+Makes:
+- the blood line and the laundry: 7.8 plasma and dressings a day
+- the recyclers: 6 water a day
+- the pharmacy cage: 11 medicine crates a day, from 11 extracts
+- the ward benches: 3.2 medkits a day, from 3.2 plasma and dressings
+- the boilers: 30 drinking water a day, from 6 water
+- the theatres: 0.36 surgeon's stores a day, from 0.72 medkits
+
+Uses:
+- the patients and their families: 30 ration crates, 15 drinking water, 1.2 clothes, 0.9 tea and tobacco a day
+- its power: 9 fuel cells a day
+- the wards: 4.8 medicine crates, 1.2 medkits, 0.18 surgeon's stores a day
+- its docks and workshops: 0.9 parts crates a day

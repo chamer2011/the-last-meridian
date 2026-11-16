@@ -3,21 +3,25 @@ draft: the AI's, not yet edited by the owner
 people: 3,000
 
 Holds:
-- ration crates: usually 2,800
+- kelp cake: usually 1,500
+- ration crates: usually 3,100
 - ration packs: usually 38, from Haven Station
 - fuel cells: usually 230, from Cinder Reach
 - jump fuel: usually 75, from Haven Station
 - medicine crates: usually 15, from Lumen Sanctuary
 - medkits: usually 3.8, from Lumen Sanctuary
 - parts crates: usually 22, from Haven Station
+- water: usually 120
 - drinking water: usually 300
 - beer and spirits: usually 75, from Korrath Forge
 - clothes: usually 15, from Haven Station
 - tea and tobacco: usually 22, from Haven Station
 
 Makes:
-- the rafts' drying racks: 280 ration crates a day
-- the rain sails: 30 drinking water a day
+- the presses on the Rafts: 160 kelp cake a day
+- the rain sails: 12 water a day
+- the Rafts' packers: 310 ration crates a day, from 155 kelp cake
+- the raft cisterns: 30 drinking water a day, from 6 water
 
 Uses:
 - the kelpers: 30 ration crates, 1.5 ration packs, 15 drinking water, 3 beer and spirits, 0.6 clothes, 0.9 tea and tobacco a day

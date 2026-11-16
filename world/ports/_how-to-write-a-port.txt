@@ -1,22 +1,24 @@
 HOW TO WRITE A PORT
 ===================
 
-Every file in this folder is a port: what it holds, what it makes and what it uses, in real amounts. A file's
-name is the place's id, as in world/places and on the star map: haven.txt. Files that start with an underscore,
-like this one, aren't read. The goods are named as world/goods names them.
+Every file in this folder is a port: what it holds, what it makes and from what, and what it uses, in real
+amounts. A file's name is the place's id, as in world/places and on the star map: haven.txt. Files that start
+with an underscore, like this one, aren't read. The goods are named as world/goods names them.
 
     # Haven Station
     draft: the AI's, not yet edited by the owner
     people: 6,000
 
     Holds:
-    - ration crates: usually 3,800, from Tessen Colony or Maris Deep
+    - meal: usually 450, from Tessen Colony
+    - ration crates: usually 4,500, from Tessen Colony or Maris Deep
     - ration packs: usually 720
+    - water: usually 150, from Tessen Colony or Maris Deep
     - drinking water: usually 600
 
     Makes:
-    - the kitchens on the Manifest Docks: 72 ration packs a day
-    - the casking line: 60 drinking water a day
+    - the kitchens on the Manifest Docks: 72 ration packs a day, from 36 meal
+    - the casking line: 60 drinking water a day, from 12 water
 
     Uses:
     - its people: 60 ration crates, 3 ration packs, 30 drinking water a day
@@ -26,6 +28,8 @@ WHAT HAPPENS EACH MIDNIGHT
 
 1. What's on its way to the port comes a day nearer, and what arrives is put away.
 2. Its makers make what their lines say, but never past what the port usually holds: a full store stops them.
+   Each takes what its line says it makes things from, out of what the port holds, and makes no more than
+   there is of it. A port that's hungry, thirsty, sick or out of power makes less (see MAKES).
 3. What its Uses lines say is used up.
 4. For each good it sends elsewhere for, when a haul would leave it with no more than a little over what it
    usually holds, it sends for one: to the ports its Holds line names, the best stocked first, sharing what it
@@ -37,6 +41,11 @@ nothing once it's down to three tenths, which it keeps for itself. So a port who
 down, then sends less, and the ports it supplies run short some days after it, and recover when the hauls
 come again. One haul of a good is on its way from each sender at a time, and a second once the port is badly
 short.
+
+A shortage travels down a tree the same way. A port that makes medicine from another port's extracts runs out
+of extracts some days after that port stops sending them, then makes no medicine, and then the ports it sends
+medicine to run short. The star map says so under the supply: "Its makers are short of extracts (nothing's
+leaving Lumen Sanctuary)."
 
 A port's word for a supply (plenty, normal, short, scarce, almost gone) is how many it has against what it
 usually holds: with all of it, it's normal; with four fifths or less, short; with half or less, scarce. What
@@ -54,25 +63,53 @@ people:   how many live there. The game doesn't use the number: it's for whoever
 
 HOLDS
 
-    - ration crates: usually 3,800, from Tessen Colony or Maris Deep
+    - ration crates: usually 4,500, from Tessen Colony or Maris Deep
 
 The good, a colon, usually and how many it has when things are as usual, then from and the ports it sends to for
 more, with or between them. A port is named by its name, the name the star map gives it, or its id, and has to
 have a file here that holds the good. Leave the from out for a good the port makes itself, or one that only ever
 goes down.
 
+A port holds everything its makers make, and everything they make things from: Haven holds meal because its
+kitchens pack ration packs from it, though nobody there eats meal.
+
 usually is what the word for a supply is measured against, and where the port's makers stop. The drafts gave a
 port that sends for a good twenty-five days' worth of what goes through it, and a port that makes one twenty
-days' worth of what's taken from it: enough that a single haul never makes it short.
+days' worth of what's taken from it (and never less than six of the biggest haul that leaves it): enough that
+a single haul never makes it short.
 
 MAKES
 
-    - the kitchens on the Manifest Docks: 72 ration packs a day
+    - the kitchens on the Manifest Docks: 72 ration packs a day, from 36 meal
+    - the charging sheds: 430 fuel cells a day, from 43 refined fuel, 8.6 parts crates
+    - the drying sheds: 310 meal a day
 
-Who makes it, a colon, how many of what, and a day. The port has to hold the good too. For now a maker needs
-nothing to make things from: what each good is made of, and the power and the hands it takes, come with the
-next part of this step. The drafts gave each maker twice what's taken from it in a day, so that it catches up
-after a bad stretch; a maker that makes less than is taken from it is something npm run check-story says.
+Who makes it, a colon, how many of what, and a day; then from and what goes into that many, with commas
+between. So the kitchens make 72 cases of ration packs on a day they work flat out, and take 36 sacks of meal
+for them: a sack to two cases. On a day they make less, they take that much less. Change how many a maker
+makes and change what goes into it as well, or each one will take more or less than it did.
+
+The port has to hold the good and everything that goes into it, and what goes into it has to be something
+world/goods says the good is made from (its "made from"). A maker of a good that's made from nothing there
+(the refined goods, for now) has no from.
+
+How much a maker makes on a day is the least of:
+- what its line says, when nothing's in its way;
+- the room there is: it stops at what the port usually holds;
+- what there is of each thing it makes it from;
+- its hands and its power. A port that's short of what its people eat or drink has fewer hands at its makers,
+  down to three quarters of their work; one that's scarce of medicine has more of them laid up, down to 85
+  hundredths; one that's scarce of what its makers run on has less power, down to four tenths of their work.
+  Which goods those are is written at the top of the trees in world/goods (hands need, the sick need, power
+  is), and the makers of the tree the power comes from don't need it.
+
+The makers work in the order the goods are made in, whatever order they're written in: what's refined first,
+then what's made of it, so that today's meal goes into today's crates. Two makers that take the same good are
+served in the order they're written.
+
+The drafts gave each maker twice what's taken from it in a day, so that it catches up after a bad stretch, and
+a maker of something that's made into other things here enough to keep those going flat out. A maker that
+makes less than is taken from it is something npm run check-story says.
 
 USES
 
@@ -80,26 +117,32 @@ USES
 
 Who uses it, a colon, how many of each thing with commas between them, and a day. The port has to hold each of
 them. As many lines as you like: its people, ships calling, its power, its sick, its docks. Who it is only
-matters to whoever reads it.
+matters to whoever reads it. What its makers take isn't written here: their own lines say it.
 
 WHAT GOES ON THERE
 
 world/daily.json's events are the things that happen at a port (a strike, a fever, a harvest), and each says
 what it does to a supply while it lasts: its makers make less or more, its people use more, goods are taken off
-its market or brought to it, nothing gets in or out, or what was sent there never arrives. It goes for every
-good of that supply's tree. That file's own first lines explain the words.
+its market or brought to it, nothing gets in or out, or what was sent there never arrives. Makers and what gets
+in or out go for every good of that supply's tree, the refined ones too; what's taken off the market or
+brought to it is only the finished goods, the developed and the advanced. That file's own first lines explain
+the words.
 
 WHAT'S NOT HERE YET
 
-The ship herself still buys by the lot, and what she buys or sells is taken from the port or added to it in
-real crates. Freight, a port's goods in its rooms, and the ships that carry the hauls come with later steps:
-until then a haul is an amount on its way, which the star map says when a port is short.
+The basic goods, and the ground they come out of, are the last part of this step: until then the refined goods
+are made from nothing. The ship herself still buys by the lot, and what she buys or sells is taken from the
+port or added to it in real crates. Freight, a port's goods in its rooms, and the ships that carry the hauls
+come with later steps: until then a haul is an amount on its way, which the star map says when a port is short.
 
 CHECKING AND CHANGING
 
 npm run check-story reads every file here and says, in plain words, what it can't follow: a good that isn't in
 world/goods, a port that isn't on the star map, a good that comes from a port that holds none, a maker of
-something the port doesn't hold, a good that's used and never comes, or one that's taken faster than it's made.
+something the port doesn't hold, a maker that takes something the port doesn't hold or that the good isn't
+made from, a maker that says nothing of what it makes a good from, a good that's used or taken and never
+comes, or one that's taken faster than it's made.
 
 The Story board has Ports: each line of a port's file is a box, with the ports it sends to on the left and the
-ports that send to it on the right. Click a box to change its line, then Keep and Save.
+ports that send to it on the right, an arrow from each maker to what it makes, and one to it from each thing
+it's made from. Click a box to change its line, then Keep and Save.
