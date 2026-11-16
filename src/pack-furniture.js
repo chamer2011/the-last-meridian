@@ -86,7 +86,7 @@ const firstPicture = (piece) => piece.pictures?.find((picture) => picture.side =
 export function guessFurniture(piece) {
   if (NOT_FURNITURE.test(piece.id)) return null;
   const rule = RULES.find(([of]) => of.test(piece.id))?.[1] ?? { what: "stand" };
-  const facts = { what: rule.what, like: rule.like ?? null, across: 1, down: 1, high: WHAT[rule.what].high, blocks: WHAT[rule.what].blocks, lit: LIGHTS.find(([of]) => of.test(piece.id))?.[1] ?? null };
+  const facts = { what: rule.what, like: rule.like ?? null, across: 1, down: 1, high: WHAT[rule.what].high, blocks: WHAT[rule.what].blocks, lit: LIGHTS.find(([of]) => of.test(piece.id))?.[1] ?? null, steel: false };
   if (facts.what === "wall" || facts.what === "small") return facts;
   const picture = firstPicture(piece);
   const box = picture ? solidBoxOf(path.join(licensedDir(), picture.file), picture.x === undefined ? null : picture) : null;
@@ -115,6 +115,7 @@ const TOP = [
   "- What it is, first: a seat, a bed, a table, stands on the floor, something to open like a locker (or like shelves, like a desk, like a barrel), hangs on a wall, lies on the floor, or a small thing. A small thing put on a table's square sits on the table.",
   "- Then how many squares it takes, across by down, as it stands facing you. A square is half a tile across and a whole tile down, so \"2 by 1\" is one whole tile.",
   "- Then, if you like: how high it stands in tiles (\"0.8 high\": a table's top, or how far up the wall a fitting hangs), \"in the way\" or \"not in the way\" where that isn't what its kind usually is, and \"glows\" with a colour for a thing that gives off light.",
+  "- And \"in steel\" for a piece drawn in wood or orange that a ship would have in steel: its picture is drawn with the brown and the orange turned blue-grey.",
   "- Leave what's in the square brackets as it is, and the name is only here to read: the name the game uses is the one in pieces.txt.",
   "- The floors, walls, doors and stairs of the packs aren't in here: a deck is built of those, and they come later.",
 ];
@@ -122,7 +123,7 @@ const TOP = [
 const PLACE_NAMES = new Set(PLACES.map((place) => place.name.toLowerCase()));
 
 function readFacts(words) {
-  const facts = { what: null, like: null, across: 1, down: 1, high: null, blocks: null, lit: null };
+  const facts = { what: null, like: null, across: 1, down: 1, high: null, blocks: null, lit: null, steel: false };
   for (const part of words.split(",").map((one) => one.trim()).filter(Boolean)) {
     const said = part.toLowerCase();
     const open = said.match(/^something to open(?: like (?:an? )?([a-z]+))?$/);
@@ -140,6 +141,7 @@ function readFacts(words) {
     else if (said === "in the way") facts.blocks = true;
     else if (said === "not in the way") facts.blocks = false;
     else if (glows) facts.lit = glows[1];
+    else if (said === "in steel") facts.steel = true;
     else return { problem: `"${part}" isn't something this file knows` };
   }
   if (!facts.what) return { problem: "it doesn't say what the piece is (a seat, a table, hangs on a wall...)" };
@@ -155,6 +157,7 @@ export function factsWords(facts) {
   if (facts.high !== kind.high) parts.push(`${facts.high} high`);
   if (facts.blocks !== kind.blocks) parts.push(facts.blocks ? "in the way" : "not in the way");
   if (facts.lit) parts.push(`glows ${facts.lit}`);
+  if (facts.steel) parts.push("in steel");
   return parts.join(", ");
 }
 
@@ -225,6 +228,7 @@ function asFurniture(id, name, facts) {
     size: [facts.across * 0.5, facts.down], blocks: facts.blocks, high: facts.high,
     ...(facts.what === "seat" ? { seat: true } : {}), ...(facts.what === "wall" ? { wall: true } : {}),
     ...(facts.what === "opens" ? { opens: facts.like } : {}), ...(facts.lit ? { lit: facts.lit } : {}),
+    ...(facts.steel ? { steel: true } : {}),
   };
 }
 
@@ -245,7 +249,7 @@ export function withFurniture(all = catalogue()) {
   for (const piece of all.pieces) {
     const own = listed.get(piece.id);
     const facts = own ?? guessFurniture(piece);
-    piece.furniture = facts ? { what: facts.what, like: facts.like, across: facts.across, down: facts.down, high: facts.high, blocks: facts.blocks, lit: facts.lit, known: Boolean(own) } : null;
+    piece.furniture = facts ? { what: facts.what, like: facts.like, across: facts.across, down: facts.down, high: facts.high, blocks: facts.blocks, lit: facts.lit, steel: Boolean(facts.steel), known: Boolean(own) } : null;
   }
   all.furnitureProblems = readFile().problems;
   return all;
@@ -299,7 +303,7 @@ export function setFurniture(changes) {
       listed.delete(piece.id);
       continue;
     }
-    const now = listed.get(piece.id) ?? guessFurniture(piece) ?? { what: "stand", like: null, across: 1, down: 1, high: WHAT.stand.high, blocks: true, lit: null };
+    const now = listed.get(piece.id) ?? guessFurniture(piece) ?? { what: "stand", like: null, across: 1, down: 1, high: WHAT.stand.high, blocks: true, lit: null, steel: false };
     const next = { ...now, ...change.furniture };
     if (!WHAT[next.what]) throw new Error("That isn't something a piece can be.");
     if (next.what !== now.what) {
@@ -314,7 +318,7 @@ export function setFurniture(changes) {
     next.high = clamp(Math.round(next.high * 20) / 20, 0, 2);
     next.blocks = Boolean(next.blocks);
     next.lit = /^#[0-9a-f]{6}$/i.test(next.lit ?? "") ? next.lit.toLowerCase() : null;
-    listed.set(piece.id, { id: piece.id, name: piece.name, what: next.what, like: next.like, across: next.across, down: next.down, high: next.high, blocks: next.blocks, lit: next.lit });
+    listed.set(piece.id, { id: piece.id, name: piece.name, what: next.what, like: next.like, across: next.across, down: next.down, high: next.high, blocks: next.blocks, lit: next.lit, steel: Boolean(next.steel) });
   }
   save(listed, all);
   return { known: listed.size };

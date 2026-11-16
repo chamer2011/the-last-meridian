@@ -158,7 +158,7 @@ test("what a piece is guessed to be comes from where it is in the packs, and its
   const pieces = new Map(catalogue().pieces.map((one) => [one.id, one]));
   const guess = (id) => furniture.guessFurniture(pieces.get(id));
   // A table 128 pixels wide standing on a point three quarters across: four squares by one, and 0.7 of a tile high.
-  assert.deepEqual(guess("interiors/Tables/Table_10"), { what: "table", like: null, across: 4, down: 1, high: 0.7, blocks: true, lit: null });
+  assert.deepEqual(guess("interiors/Tables/Table_10"), { what: "table", like: null, across: 4, down: 1, high: 0.7, blocks: true, lit: null, steel: false });
   assert.deepEqual(guess("interiors/Tables/Table_11"), guess("interiors/Tables/Table_10"));
   // A chair is one square whatever its picture; a sofa is as wide as it's drawn, and one deep.
   assert.deepEqual([guess("interiors/Chairs/Chair_4").what, guess("interiors/Chairs/Chair_4").across, guess("interiors/Chairs/Chair_4").down, guess("interiors/Chairs/Chair_4").blocks], ["seat", 1, 1, false]);
@@ -166,8 +166,8 @@ test("what a piece is guessed to be comes from where it is in the packs, and its
   assert.deepEqual([guess("interiors/Lab/Server_2").what, guess("interiors/Lab/Server_2").blocks, guess("interiors/Lab/Server_2").lit], ["stand", true, "#86dcff"]);
   assert.deepEqual([guess("interiors/Office/Office_Metallic_Closet_Ani").what, guess("interiors/Office/Office_Metallic_Closet_Ani").like], ["opens", "locker"]);
   // What hangs on a wall and what's small have no size of their own, and aren't in the way.
-  assert.deepEqual(guess("interiors/Wall_Decoration/Poster_6"), { what: "wall", like: null, across: 1, down: 1, high: 0.95, blocks: false, lit: null });
-  assert.deepEqual(guess("interiors/Kitchen/Mug_Red"), { what: "small", like: null, across: 1, down: 1, high: 0.2, blocks: false, lit: null });
+  assert.deepEqual(guess("interiors/Wall_Decoration/Poster_6"), { what: "wall", like: null, across: 1, down: 1, high: 0.95, blocks: false, lit: null, steel: false });
+  assert.deepEqual(guess("interiors/Kitchen/Mug_Red"), { what: "small", like: null, across: 1, down: 1, high: 0.2, blocks: false, lit: null, steel: false });
   assert.equal(guess("interiors/Lamps/Lamp_11").lit, "#ffd9a0");
   // A carpet lies flat: as much floor as its picture, nothing high.
   assert.deepEqual([guess("interiors/Carpets/Carpet_Modern").what, guess("interiors/Carpets/Carpet_Modern").across, guess("interiors/Carpets/Carpet_Modern").down, guess("interiors/Carpets/Carpet_Modern").high, guess("interiors/Carpets/Carpet_Modern").blocks], ["rug", 2, 1, 0, false]);
@@ -176,25 +176,25 @@ test("what a piece is guessed to be comes from where it is in the packs, and its
   assert.equal(guess("interiors/Doors/Door_6_Blue"), null);
   for (const id of ["isospace/floor-dark-1", "isospace/wall-light-2", "isospace/low-wall-dark", "isospace/door-dark", "isospace/stairs-light", "isospace/pillar-dark", "interiors/StairCase/StairRailing_1", "interiors/Lab/Door_Lab", "interiors/Japanese_Room/Japanese_Door"]) assert.equal(furniture.guessFurniture({ id, pictures: [] }), null, id);
   // Without its picture a piece still has a kind, and the size its kind usually has.
-  assert.deepEqual(furniture.guessFurniture({ id: "interiors/Tables/Table_99", pictures: [] }), { what: "table", like: null, across: 1, down: 1, high: 0.75, blocks: true, lit: null });
+  assert.deepEqual(furniture.guessFurniture({ id: "interiors/Tables/Table_99", pictures: [] }), { what: "table", like: null, across: 1, down: 1, high: 0.75, blocks: true, lit: null, steel: false });
   assert.equal(furniture.guessFurniture({ id: "isospace/bunk", pictures: [] }).what, "bed");
   assert.equal(furniture.guessFurniture({ id: "interiors/Somewhere/New_Thing", pictures: [] }).what, "stand");
 });
 
 test("the file's words read back as the same facts, and its mistakes are named with their line", () => {
   const facts = [
-    { id: "a/Seat", name: "A seat", place: "bridge", what: "seat", like: null, across: 1, down: 1, high: 0.5, blocks: false, lit: null },
-    { id: "a/Table", name: "A [long] table", place: "mess", what: "table", like: null, across: 4, down: 1, high: 0.7, blocks: true, lit: null },
-    { id: "a/Fridge", name: "A fridge", place: "mess", what: "opens", like: "shelf", across: 1, down: 1, high: 1.4, blocks: true, lit: null },
-    { id: "a/Sign", name: "A sign", place: "walls", what: "wall", like: null, across: 1, down: 1, high: 1.2, blocks: false, lit: null },
-    { id: "a/Rug", name: "A rug", place: "quarters", what: "rug", like: null, across: 4, down: 2, high: 0, blocks: false, lit: null },
-    { id: "a/Lamp", name: "A lamp", place: "nowhere at all", what: "small", like: null, across: 1, down: 1, high: 0.2, blocks: false, lit: "#ffd9a0" },
-    { id: "a/Ghost", name: "A screen you walk through", place: "bridge", what: "stand", like: null, across: 2, down: 1, high: 1, blocks: false, lit: null },
+    { id: "a/Seat", name: "A seat", place: "bridge", what: "seat", like: null, across: 1, down: 1, high: 0.5, blocks: false, lit: null, steel: false },
+    { id: "a/Table", name: "A [long] table", place: "mess", what: "table", like: null, across: 4, down: 1, high: 0.7, blocks: true, lit: null, steel: true },
+    { id: "a/Fridge", name: "A fridge", place: "mess", what: "opens", like: "shelf", across: 1, down: 1, high: 1.4, blocks: true, lit: null, steel: false },
+    { id: "a/Sign", name: "A sign", place: "walls", what: "wall", like: null, across: 1, down: 1, high: 1.2, blocks: false, lit: null, steel: false },
+    { id: "a/Rug", name: "A rug", place: "quarters", what: "rug", like: null, across: 4, down: 2, high: 0, blocks: false, lit: null, steel: false },
+    { id: "a/Lamp", name: "A lamp", place: "nowhere at all", what: "small", like: null, across: 1, down: 1, high: 0.2, blocks: false, lit: "#ffd9a0", steel: false },
+    { id: "a/Ghost", name: "A screen you walk through", place: "bridge", what: "stand", like: null, across: 2, down: 1, high: 1, blocks: false, lit: null, steel: false },
   ];
   const text = furniture.writeFurniture(facts);
   assert.match(text, /^What each piece of the two pixel-art packs is/);
   assert.match(text, /\nBridge and command\n- A seat \[a\/Seat\]: a seat, 1 by 1\n- A screen you walk through \[a\/Ghost\]: stands on the floor, 2 by 1, not in the way\n/);
-  assert.match(text, /\n- A long table \[a\/Table\]: a table, 4 by 1, 0\.7 high\n- A fridge \[a\/Fridge\]: something to open like shelves, 1 by 1, 1\.4 high\n/);
+  assert.match(text, /\n- A long table \[a\/Table\]: a table, 4 by 1, 0\.7 high, in steel\n- A fridge \[a\/Fridge\]: something to open like shelves, 1 by 1, 1\.4 high\n/);
   assert.match(text, /\n- A sign \[a\/Sign\]: hangs on a wall, 1\.2 high\n/);
   assert.match(text, /\n- A rug \[a\/Rug\]: lies on the floor, 4 by 2\n/);
   // A place the game doesn't know goes under the last heading.

@@ -1601,7 +1601,7 @@ export function draftLook(place, level) {
     things: level.things.map((thing) => ({ id: thing.id, name: thing.name, x: thing.x, y: thing.y, ...thingLooks(level, thing) })),
     furniture: level.furniture ?? [],
     exits: level.exits.map(({ key, x, y, label, glyph, side }) => ({ key, x, y, label, glyph, side })),
-    areas: level.areas.map((area) => ({ id: area.id, name: area.name, x: area.x, y: area.y, w: area.w, h: area.h, dark: false })),
+    areas: level.areas.map((area) => ({ id: area.id, name: area.name, x: area.x, y: area.y, w: area.w, h: area.h, dark: false, look: lookOf(place, area.name, { only: true }) })),
     // Where each of the people drawn on the deck stands at their post, so the picture can show someone there.
     posts: level.homes.map((home) => ({ id: home.id, x: home.x, y: home.y })),
   };

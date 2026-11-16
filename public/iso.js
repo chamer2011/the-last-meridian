@@ -7,7 +7,7 @@
 import { el } from "./dom.js";
 import { FURNITURE_BY_ID, footprintOf } from "./furniture.js";
 import { hideLoading, showLoading } from "./loading.js";
-import { PIXEL_UNIT, drawPixelCrate, drawPixelDoor, drawPixelFloors, drawPixelPiece, drawPixelWall, packKey, pixelArtOn, pixelDoorDepth, pixelKey } from "./pixel-art.js";
+import { PIXEL_UNIT, drawPixelCrate, drawPixelDoor, drawPixelFloors, drawPixelPiece, drawPixelWall, packKey, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim } from "./pixel-art.js";
 
 // A console square is about twice as tall as it's wide, so two columns make one tile.
 export const CELL_WIDTH = 0.5;
@@ -42,6 +42,18 @@ const SHIP_STYLES = {
   clean: { name: "clean", hull: "#7a828a", rib: "#9aa2aa", ribEvery: 5, frame: "#b8c0c8", trim: "#4f7fb0", pipes: 0.1, pipe: "#9aa2aa", strips: 1, strip: "#eaf4ff", passage: "tile", grime: 0, walls: ["#c0c8d0", 0.5], floors: ["#9aa2a8", 0.45], ambient: ["#8a96a4", 0.4] },
 };
 const tinted = (color, tint) => (tint ? mix(color, tint[0], tint[1]) : color);
+// How much the packs' Light look is toned down in a room of a Dark ship: what the place's look says ("pixelLight", 1
+// being the pack's own Light), or what meridian-pixel-light in localStorage tries on, for picking one.
+function lightDimOf(look) {
+  let tried = null;
+  try {
+    tried = localStorage.getItem("meridian-pixel-light");
+  } catch {
+    tried = null;
+  }
+  const value = Number(tried ?? look.pixelLight ?? 1);
+  return Number.isFinite(value) && value > 0 ? value : 1;
+}
 function shipStyleOf(look) {
   let picked = null;
   try {
@@ -103,6 +115,7 @@ export function buildScene(view) {
   const { cols, lines, layers } = view;
   const look = { ...FALLBACK_LOOK, ...view.look };
   const style = shipStyleOf(look);
+  setLightDim(lightDimOf(look));
   if (style) look.ambient = tinted(hexOr(look.ambient, FALLBACK_LOOK.ambient), style.ambient);
   // On a deck, each room drawn there can have lamps of its own colour, and a room with its lights out has none lit.
   const areas = view.areas ?? [];
@@ -301,6 +314,9 @@ export function buildScene(view) {
     bounds.minV = Math.min(bounds.minV, span.minV);
     bounds.maxV = Math.max(bounds.maxV, span.maxV);
   };
+  // The squares of the rooms that are in the packs' Light look whatever the ship's is (world/looks.json, "pixel"): the
+  // pixel-art view lays their floors, walls and furniture from that look.
+  const light = Array.from({ length: lines }, (_, y) => Array.from({ length: cols }, (_, x) => areaAt(x, y)?.look?.pixel === "light"));
   for (let y = 0; y < lines; y += 1) {
     for (let x = 0; x < cols; x += 1) {
       const kind = kinds[y][x];
@@ -312,7 +328,7 @@ export function buildScene(view) {
       else if (kind === "spark") sparks.push({ x, y, seed: hashOf(x, y), mark: marks[y][x] });
       else if (kind === "hull") ground.push({ x, y, kind, seed: hashOf(x, y), mark: " ", ring: hull[y][x], rib: Math.floor(x / 2) % style.ribEvery === 0 });
       // On a deck, the floor of the deck itself, between the rooms drawn on it, is a passage.
-      else ground.push({ x, y, kind, seed: hashOf(x, y), mark: floors[y][x], passage: Boolean(style) && kind === "floor" && areas.length > 0 && !areaAt(x, y) });
+      else ground.push({ x, y, kind, seed: hashOf(x, y), mark: floors[y][x], passage: Boolean(style) && kind === "floor" && areas.length > 0 && !areaAt(x, y), ...(light[y][x] ? { light: true } : {}) });
       if (heights[y][x] > 0) {
         blocks.push({
           type: "block",
@@ -491,6 +507,7 @@ export function buildScene(view) {
     marks: stains,
     // How worn and cluttered the place looks, 0 to 3 each, where it's said (the ship: src/wear.js).
     wear: view.wear ?? null,
+    light,
     bounds: bounds ?? { minU: -1, maxU: 1, minV: -1, maxV: 1 },
     colors: { ...FALLBACK_COLORS, ...view.colors },
   };
@@ -1360,7 +1377,7 @@ function drawBlock(painter, block, materials) {
   const x1 = x0 + CELL_WIDTH;
   if (style === "piece") {
     // The pixel-art test draws the pack's piece where it has one like it (public/pixel-art.js).
-    if (!drawPixelPiece(painter, block, { wallHeight: WALL_HEIGHT })) drawPiece(painter, block);
+    if (!drawPixelPiece(painter, block, { wallHeight: WALL_HEIGHT, ...lookOfPiece(block) })) drawPiece(painter, block);
     return;
   }
   if (style === "plants") {
@@ -1377,7 +1394,10 @@ function drawBlock(painter, block, materials) {
     if (h === WALL_HEIGHT && pixelArtOn()) {
       const { heights, styles } = iso.scene;
       const fullWall = (wx) => styles[y]?.[wx] === "wall" && heights[y]?.[wx] === WALL_HEIGHT && (heights[y + 1]?.[wx] ?? 0) < WALL_HEIGHT;
-      if (drawPixelWall(painter, block, { cellWidth: CELL_WIDTH, sameWallRight: fullWall(x + 1), sameWallLeft: fullWall(x - 1) })) return;
+      // Each face is in the look of the room it's a wall of: the one in front of it.
+      const lit = iso.scene.light;
+      const faces = (wx) => Boolean(lit?.[y + 1]?.[wx]);
+      if (drawPixelWall(painter, block, { cellWidth: CELL_WIDTH, sameWallRight: fullWall(x + 1) && faces(x + 1) === faces(x), sameWallLeft: fullWall(x - 1) && faces(x - 1) === faces(x), ...(faces(x) ? { lookLeft: "light" } : {}), ...(lit?.[y]?.[x + 1] ? { lookRight: "light" } : {}) })) return;
     }
     const image = materials.wall[Math.floor(hashOf(Math.floor(x / 2), y) * 3)];
     if (block.left < h) leftFace(painter, image, x, y, h, block.left, 0.05);
@@ -1421,7 +1441,7 @@ function drawBlock(painter, block, materials) {
     ctx.fill();
     return;
   }
-  if (style === "crate" && drawPixelCrate(painter, block, { cellWidth: CELL_WIDTH, wallHeight: WALL_HEIGHT })) return;
+  if (style === "crate" && drawPixelCrate(painter, block, { cellWidth: CELL_WIDTH, wallHeight: WALL_HEIGHT, ...(iso.scene?.light?.[y]?.[x] ? { look: "light" } : {}) })) return;
   const side = { crate: materials.crate, rock: materials.rock, ice: materials.ice, scrap: materials.scrap, body: materials.body[Math.floor(block.seed * 2)], bench: materials.body[Math.floor(block.seed * 2)], dais: materials.body[0] }[style] ?? materials.steel;
   const top = { crate: materials.crateTop, machine: block.off ? materials.consoleOff : materials.console, rock: materials.rockTop, ice: materials.iceTop, scrap: materials.scrap, body: materials.roof, bench: materials.roof, dais: materials.roof }[style] ?? materials.steelTop;
   if (block.left < h) leftFace(painter, side, x, y, h, block.left, 0.08);
@@ -2278,7 +2298,7 @@ function drawTile(room, tx, ty) {
   }
   // The pixel-art test lays its own floor tiles in place of the game's (public/pixel-art.js).
   if (pixelArtOn()) {
-    drawPixelFloors(painter, [...byLook.values()].flat().map((cell) => ({ x: cell.x, y: cell.y, passage: !!cell.passage, second: cell.kind === "floor" && cell.mark !== " " && cell.mark !== mainFloor })), CELL_WIDTH);
+    drawPixelFloors(painter, [...byLook.values()].flat().map((cell) => ({ x: cell.x, y: cell.y, passage: !!cell.passage, second: cell.kind === "floor" && cell.mark !== " " && cell.mark !== mainFloor, ...(cell.light ? { look: "light" } : {}) })), CELL_WIDTH);
     byLook.clear();
   }
   for (const [image, cells] of byLook) {
@@ -3392,7 +3412,7 @@ function draw(now, dt) {
     if (item.type === "block") drawBlock(painter, item, iso.materials);
     else if (item.type === "seatback") {
       // In the pixel-art test a chair seen from behind is one picture, so all of it goes over whoever's sitting in it.
-      if (!drawPixelPiece(painter, item.block, { wallHeight: WALL_HEIGHT })) drawPiece(painter, item.block, { only: item.tag ?? "back", sleepers: beds.get(item.block) ?? null });
+      if (!drawPixelPiece(painter, item.block, { wallHeight: WALL_HEIGHT, ...lookOfPiece(item.block) })) drawPiece(painter, item.block, { only: item.tag ?? "back", sleepers: beds.get(item.block) ?? null });
     }
     else if (item.type === "prop") item.draw();
     else if (item.type === "bed") {
@@ -3934,6 +3954,11 @@ function wallFace(painter, piece, inset) {
 // A piece of the bought packs where its picture isn't shown: in this view's own drawing, and in the pixel-art test for
 // the moment before its picture has come. A plain shape of its size: a box as high as the piece, a seat with a back, a
 // flat patch for what lies on the floor, a panel for what hangs on a wall, a little box for a small thing.
+// The look a piece of furniture is drawn in by the pixel-art view, where its room has one of its own.
+function lookOfPiece(piece) {
+  return iso.scene?.light?.[Math.floor(piece.y0 + 1e-6)]?.[Math.round(piece.x0 / CELL_WIDTH)] ? { look: "light" } : {};
+}
+
 // Whether a light's colour is a warm one: a good deal more red in it than blue.
 export function warmLight(hex) {
   const found = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex ?? ""));

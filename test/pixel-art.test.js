@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { doorPicture, mapping, pieceWay, pixelArtOn, pixelDoorDepth, pixelKey, solidBox, standingPoint } from "../public/pixel-art.js";
+import { doorPicture, lightDim, mapping, pieceWay, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim, solidBox, standingPoint, steelOf } from "../public/pixel-art.js";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const apply = (m, [x, y]) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
@@ -95,6 +95,32 @@ test("a picture's soft shadow isn't part of the piece it's stood by", () => {
   data[(1 * 4 + 3) * 4 + 3] = 128;
   assert.deepEqual(solidBox(data, 4, 2), { x0: 1, y0: 0, x1: 1, y1: 0 });
   assert.equal(solidBox(new Uint8ClampedArray(16), 2, 2), null);
+});
+
+test("wood and orange turn to the ship's blue-grey, and nothing else changes colour", () => {
+  const top = steelOf(224, 130, 58); // an orange table top
+  const wood = steelOf(138, 84, 52); // a darker wood
+  for (const one of [top, wood]) assert.ok(one && one[2] > one[0] + 15 && one[1] > one[0], `blue-grey: ${one}`);
+  // What was lighter is still lighter, and nothing's brighter than it was.
+  assert.ok(top[0] + top[1] + top[2] > wood[0] + wood[1] + wood[2]);
+  assert.ok(Math.max(...top) < 224 && Math.max(...wood) < 138);
+  for (const [name, colour] of [["steel grey", [120, 124, 128]], ["red", [200, 40, 40]], ["hazard yellow", [240, 214, 40]], ["green", [70, 160, 80]], ["blue", [80, 120, 200]], ["white", [250, 250, 250]], ["a dark outline", [22, 14, 10]]]) assert.equal(steelOf(...colour), null, name);
+});
+
+test("a room can be in the Light look on a Dark ship, toned down by as much as its place says", () => {
+  setLightDim(0.65);
+  assert.equal(lightDim(), 0.65);
+  setLightDim(5);
+  assert.equal(lightDim(), 1);
+  setLightDim(0.1);
+  assert.equal(lightDim(), 0.35);
+  setLightDim("nonsense");
+  assert.equal(lightDim(), 1);
+  // A piece with a picture for each look says which one it gave, so a Light one can be toned down with its room.
+  const has = () => true;
+  assert.equal(pieceWay("desk", "s", 0, { look: "light", has }).look, "light");
+  assert.equal(pieceWay("desk", "s", 0, { look: "dark", has }).look, null);
+  assert.equal(pieceWay("plot-table", "s", 0, { look: "light", has }).look, null);
 });
 
 test("the view draws as it always has until Settings turns the test on", () => {

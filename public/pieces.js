@@ -160,7 +160,7 @@ async function send() {
   if (state.waiting.size) send();
 }
 
-const factsOf = (piece) => (piece.furniture ? { what: piece.furniture.what, like: piece.furniture.like, across: piece.furniture.across, down: piece.furniture.down, high: piece.furniture.high, blocks: piece.furniture.blocks, lit: piece.furniture.lit } : null);
+const factsOf = (piece) => (piece.furniture ? { what: piece.furniture.what, like: piece.furniture.like, across: piece.furniture.across, down: piece.furniture.down, high: piece.furniture.high, blocks: piece.furniture.blocks, lit: piece.furniture.lit, steel: Boolean(piece.furniture.steel) } : null);
 function later(piece, facts = false) {
   const waiting = state.waiting.get(piece.id);
   state.waiting.set(piece.id, { id: piece.id, on: piece.on, place: piece.place, ...(facts || (waiting && "furniture" in waiting) ? { furniture: factsOf(piece) } : {}) });
@@ -202,6 +202,7 @@ function factsWords(facts) {
   const parts = [facts.what === "opens" ? `something to open like ${LIKE_WORDS[facts.like] ?? LIKE_WORDS.barrel}` : WHAT_WORDS[facts.what]];
   if (facts.what !== "wall" && facts.what !== "small") parts.push(`${facts.across} by ${facts.down}`);
   parts.push(facts.blocks ? "in the way" : "not in the way");
+  if (facts.steel) parts.push("in steel");
   return parts.join(", ");
 }
 
@@ -424,6 +425,11 @@ function factsRows(piece) {
       el("span", { class: "pieces-label" }, "People walk round it:"),
       button("Yes", { onclick: () => setFacts(piece, { blocks: true }) }, facts.blocks),
       button("No", { onclick: () => setFacts(piece, { blocks: false }) }, !facts.blocks)),
+    // What's drawn in wood or orange can be drawn in steel on the deck (the picture here stays the pack's own).
+    el("div", { class: "pieces-belongs" },
+      el("span", { class: "pieces-label" }, "Its wood and orange:"),
+      button("As drawn", { onclick: () => setFacts(piece, { steel: false }) }, !facts.steel),
+      button("In steel", { title: "On a deck its brown and orange are drawn blue-grey, like the ship's own steel", onclick: () => setFacts(piece, { steel: true }) }, facts.steel)),
   ];
 }
 

@@ -63,6 +63,46 @@ const picturesOf = (way) => [way.picture, way.dark, way.light, way.on, ...Object
 // How much bigger the pack's furniture is drawn than its own size: as much as its walls are stood up, so they keep to
 // each other and to the game's people.
 const WALL_PACK_HEIGHT = 1.375;
+// The game's own furniture whose picture in the packs is wood or orange, and is drawn in steel: the benches and the
+// washbasins' cabinets. (A piece of the packs put on a deck as itself says so in world/furniture.txt, "in steel".)
+const STEEL_FILES = new Set(["Tables/Table_Corridor.png", "Bathroom/WC_Tap_Ani/Wc_Tap_1.png"]);
+
+// Wood and orange turned to worn steel: a colour between red-orange and yellow-brown, strong enough to be one, keeps
+// how light it is, a little darkened, and takes the ship's blue-grey. Anything else is left as it was (null).
+export function steelOf(r, g, b) {
+  const [hi, lo] = [Math.max(r, g, b), Math.min(r, g, b)];
+  const light = (hi + lo) / 510;
+  if (hi === lo || light < 0.1 || light > 0.93) return null;
+  const spread = hi - lo;
+  const strong = spread / 255 / (1 - Math.abs(2 * light - 1));
+  let hue = hi === r ? ((g - b) / spread) % 6 : hi === g ? (b - r) / spread + 2 : (r - g) / spread + 4;
+  hue = (hue * 60 + 360) % 360;
+  if (strong < 0.25 || hue < 8 || hue > 50) return null;
+  // Blue-grey, with a little more colour in it the stronger the wood's was.
+  const [h, s, l] = [208, 0.1 + 0.12 * Math.min(1, strong), light * 0.86];
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = l - c / 2;
+  return [m, x + m, c + m].map((value) => Math.round(Math.min(1, Math.max(0, value)) * 255));
+}
+// A copy of a picture with its wood and orange in steel.
+function inSteel(image) {
+  if (typeof document === "undefined") return image;
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth ?? image.width;
+  canvas.height = image.naturalHeight ?? image.height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(image, 0, 0);
+  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const { data } = pixels;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) continue;
+    const steel = steelOf(data[i], data[i + 1], data[i + 2]);
+    if (steel) [data[i], data[i + 1], data[i + 2]] = steel;
+  }
+  ctx.putImageData(pixels, 0, 0);
+  return canvas;
+}
 // The two looks of the pack: where each one's floors and walls are on the level sheet, in cells across and down.
 const LOOKS = {
   dark: { floors: [0, 1, 2, 3, 4, 5, 6, 7], floorRow: 0, wallRow: 1 },
@@ -83,7 +123,7 @@ const WALL_DOWN_RIGHT = { cells: [0, 1, 2], corners: [[40, 124], [104, 92], [40,
 // end's foot and the left end's top. Cells 5 to 7 of the wall row.
 const WALL_DOWN_LEFT = { cells: [5, 6, 7], corners: [[24, 92], [88, 124], [24, 4]] };
 
-const state = { on: false, look: "dark", images: null, files: {}, loaded: false, failed: false, second: null, tops: {}, boxes: {}, listeners: new Set(), pack: {}, wanted: new Set(), loading: {}, version: 0, settle: 0, scratch: null, forced: false };
+const state = { on: false, look: "dark", images: null, files: {}, loaded: false, failed: false, second: null, tops: {}, boxes: {}, listeners: new Set(), pack: {}, wanted: new Set(), loading: {}, version: 0, settle: 0, scratch: null, forced: false, lightDim: 1, dimmed: {} };
 
 // ---- Any piece of the packs, as furniture ---------------------------------------------------------------------------
 // The game says what each piece of the packs is (src/pack-furniture.js, world/furniture.txt), and the page's list of
@@ -98,11 +138,12 @@ export async function loadPack() {
     if (!response.ok) return false;
     const { furniture } = await response.json();
     setPackFurniture(furniture);
-    const made = (picture) => (picture ? { id: `pk:${picture.file}|${picture.x ?? ""},${picture.y ?? ""}`, file: `pk:${picture.file}`, path: picture.file, ...(picture.x === undefined ? {} : { x: picture.x, y: picture.y, w: picture.w, h: picture.h }) } : null);
+    // A piece that's to be in steel has its own copy of each picture, recoloured as it comes (want, below).
+    const made = (picture, steel) => (picture ? { id: `pk:${picture.file}|${picture.x ?? ""},${picture.y ?? ""}${steel ? "|steel" : ""}`, file: `pk:${picture.file}${steel ? "|steel" : ""}`, path: picture.file, ...(steel ? { steel: true } : {}), ...(picture.x === undefined ? {} : { x: picture.x, y: picture.y, w: picture.w, h: picture.h }) } : null);
     state.pack = {};
     for (const one of furniture) {
-      if (one.faces) state.pack[one.id] = { faces: Object.fromEntries(Object.entries(one.faces).map(([facing, picture]) => [facing, made(picture)])) };
-      else if (one.picture) state.pack[one.id] = { picture: made(one.picture) };
+      if (one.faces) state.pack[one.id] = { faces: Object.fromEntries(Object.entries(one.faces).map(([facing, picture]) => [facing, made(picture, one.steel)])) };
+      else if (one.picture) state.pack[one.id] = { picture: made(one.picture, one.steel) };
     }
     changed();
     return true;
@@ -150,7 +191,7 @@ function want(picture) {
   });
   state.loading[picture.file].then((image) => {
     if (image) {
-      state.files[picture.file] = image;
+      state.files[picture.file] = picture.steel ? inSteel(image) : image;
       state.scratch ??= document.createElement("canvas");
       const ctx = state.scratch.getContext("2d", { willReadFrequently: true });
       const { x = 0, y = 0, w = image.naturalWidth, h = image.naturalHeight } = picture;
@@ -200,7 +241,32 @@ export function pixelFurnitureFound() {
 // What the pictures of the room are drawn with, as one short string: part of every picture's name, so turning the test
 // on or off, or the sheets arriving, draws the room again.
 export function pixelKey() {
-  return pixelArtOn() ? `px-${state.look}` : "drawn";
+  return pixelArtOn() ? `px-${state.look}${state.look === "dark" && state.lightDim < 0.995 ? `@${state.lightDim}` : ""}` : "drawn";
+}
+
+// A room of a Dark ship can be in the pack's Light look (the medbay, the galley), toned down so that it sits with the
+// rest: its floors, walls and furniture are drawn from a copy of the sheet that's dimmed and greyed by so much. 1 is
+// the pack's own Light, which is also what a ship that's Light all through gets.
+export function setLightDim(value) {
+  const dim = Math.min(1, Math.max(0.35, Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : 1));
+  if (dim === state.lightDim) return;
+  state.lightDim = dim;
+  state.dimmed = {};
+}
+export const lightDim = () => state.lightDim;
+function sheetFor(sheet, look) {
+  const image = state.images[sheet];
+  if (look !== "light" || state.look === "light" || state.lightDim >= 0.995 || typeof document === "undefined") return image;
+  if (!state.dimmed[sheet]) {
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.filter = `brightness(${state.lightDim}) saturate(${(0.45 + state.lightDim * 0.55).toFixed(3)})`;
+    ctx.drawImage(image, 0, 0);
+    state.dimmed[sheet] = canvas;
+  }
+  return state.dimmed[sheet];
 }
 
 // Whether the room should be drawn in the pack's pictures now.
@@ -245,7 +311,7 @@ function loadSheets() {
   const files = Promise.all(paths.map((path) => load(link(path)).then((image) => [path, image], () => null)));
   Promise.all([sheets, files]).then(([pairs, found]) => {
     for (const [name, image] of pairs) state.images[name] = image;
-    for (const one of found) if (one) state.files[one[0]] = one[1];
+    for (const one of found) if (one) state.files[one[0]] = STEEL_FILES.has(one[0]) ? inSteel(one[1]) : one[1];
     state.second = found.some(Boolean);
     readTops();
     readBoxes();
@@ -281,7 +347,7 @@ function readBoxes() {
   for (const picture of new Map(Object.values(PIECES).flat().flatMap(picturesOf).map((one) => [one.id, one])).values()) {
     const image = picture.file ? state.files[picture.file] : state.images[picture.sheet];
     if (!image) continue;
-    const { x = 0, y = 0, w = image.naturalWidth, h = image.naturalHeight } = picture;
+    const { x = 0, y = 0, w = image.naturalWidth ?? image.width, h = image.naturalHeight ?? image.height } = picture;
     canvas.width = w;
     canvas.height = h;
     ctx.clearRect(0, 0, w, h);
@@ -333,14 +399,14 @@ export function mapping(from, to) {
 }
 
 // A cell of a sheet onto the canvas, with three of its points on three of the view's.
-function drawCell(painter, cx, cy, from, to, sheet = "level") {
+function drawCell(painter, cx, cy, from, to, sheet = "level", look = state.look) {
   const { ctx, ratio } = painter;
   const [a, b, c, d, e, f] = mapping(from, to);
   ctx.save();
   ctx.setTransform(a * ratio, b * ratio, c * ratio, d * ratio, e * ratio, f * ratio);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(state.images[sheet], cx * 128, cy * 128, 128, 128, 0, 0, 128, 128);
+  ctx.drawImage(sheetFor(sheet, look), cx * 128, cy * 128, 128, 128, 0, 0, 128, 128);
   ctx.restore();
 }
 
@@ -356,9 +422,17 @@ function hash(x, y, salt = 0) {
 // { x, y, passage, second }, x in the game's half-width squares.
 export function drawPixelFloors(painter, cells, cellWidth) {
   if (!cells.length) return;
+  // A room in the other look (the medbay's Light, on a Dark ship) has its own stretch of floor, laid after the rest.
+  const other = state.look === "dark" ? "light" : null;
+  const theirs = other ? cells.filter((cell) => cell.look === other) : [];
+  const mine = theirs.length ? cells.filter((cell) => cell.look !== other) : cells;
+  if (mine.length) layFloor(painter, mine, cellWidth, state.look);
+  if (theirs.length) layFloor(painter, theirs, cellWidth, other);
+}
+function layFloor(painter, cells, cellWidth, which) {
   const { ctx, at } = painter;
-  const look = LOOKS[state.look];
-  const picks = FLOOR_PICKS[state.look];
+  const look = LOOKS[which];
+  const picks = FLOOR_PICKS[which];
   const tiles = new Map();
   ctx.save();
   ctx.beginPath();
@@ -375,14 +449,15 @@ export function drawPixelFloors(painter, cells, cellWidth) {
     if (!tiles.has(key)) tiles.set(key, { tx, ty: cell.y, kind: cell.passage ? "passage" : cell.second ? "second" : "plain" });
   }
   // Under the tiles, the floor's own dark, so the joins between them don't show what's under the room.
-  ctx.fillStyle = state.look === "dark" ? "#1e2322" : "#7e8482";
+  const dim = which === "light" && state.look === "dark" ? state.lightDim : 1;
+  ctx.fillStyle = which === "dark" ? "#1e2322" : `rgb(${Math.round(126 * dim)},${Math.round(132 * dim)},${Math.round(130 * dim)})`;
   ctx.fill();
   ctx.clip();
   for (const tile of [...tiles.values()].sort((p, q) => p.tx + p.ty - (q.tx + q.ty) || p.tx - q.tx)) {
     const choices = picks[tile.kind];
     const pick = choices[Math.floor(hash(tile.tx, tile.ty, 1) * choices.length)];
     const to = [at(tile.tx, tile.ty), at(tile.tx + 1, tile.ty), at(tile.tx, tile.ty + 1)];
-    drawCell(painter, look.floors[pick], look.floorRow, FLOOR_CORNERS, to);
+    drawCell(painter, look.floors[pick], look.floorRow, FLOOR_CORNERS, to, "level", which);
   }
   ctx.restore();
 }
@@ -391,11 +466,10 @@ export function drawPixelFloors(painter, cells, cellWidth) {
 // wall on each face that shows. A face along the plan's rows is half a tile wide and the pack's wall a whole tile, so
 // both halves of a tile's wall are drawn from the same slab, each kept to its own half. Returns false if the test isn't
 // on, so the game draws the wall itself.
-export function drawPixelWall(painter, block, { cellWidth, sameWallRight, sameWallLeft }) {
+export function drawPixelWall(painter, block, { cellWidth, sameWallRight, sameWallLeft, lookLeft = state.look, lookRight = state.look }) {
   if (!pixelArtOn()) return false;
   const { ctx, at } = painter;
   const { x, y, h } = block;
-  const look = LOOKS[state.look];
   const x0 = x * cellWidth;
   const x1 = x0 + cellWidth;
   // The top, short of the front edge where a slab stands, whose own top is drawn there (the slab may have been drawn
@@ -414,21 +488,21 @@ export function drawPixelWall(painter, block, { cellWidth, sameWallRight, sameWa
     const to = [at(tile, y + 1, 0), at(tile + 1, y + 1, 0), at(tile, y + 1, h)];
     const first = Math.abs(x0 - tile) < 1e-6;
     if (first && sameWallRight) {
-      drawCell(painter, cell, look.wallRow, WALL_DOWN_LEFT.corners, to);
+      drawCell(painter, cell, LOOKS[lookLeft].wallRow, WALL_DOWN_LEFT.corners, to, "level", lookLeft);
     } else if (first || !sameWallLeft) {
       ctx.save();
       ctx.beginPath();
       for (const point of [at(x0, y + 1, -0.05), at(x1, y + 1, -0.05), at(x1, y + 0.8, h + 0.3), at(x0, y + 0.8, h + 0.3)]) ctx.lineTo(...point);
       ctx.closePath();
       ctx.clip();
-      drawCell(painter, cell, look.wallRow, WALL_DOWN_LEFT.corners, to);
+      drawCell(painter, cell, LOOKS[lookLeft].wallRow, WALL_DOWN_LEFT.corners, to, "level", lookLeft);
       ctx.restore();
     }
   }
   // The face looking down and to the right, along the plan's column: a square is a whole tile deep, so it's a whole slab.
   if (block.right < h) {
     const cell = WALL_DOWN_RIGHT.cells[Math.floor(hash(Math.round(x1 * 2), y, 3) * WALL_DOWN_RIGHT.cells.length)];
-    drawCell(painter, cell, look.wallRow, WALL_DOWN_RIGHT.corners, [at(x1, y + 1, 0), at(x1, y, 0), at(x1, y + 1, h)]);
+    drawCell(painter, cell, LOOKS[lookRight].wallRow, WALL_DOWN_RIGHT.corners, [at(x1, y + 1, 0), at(x1, y, 0), at(x1, y + 1, h)], "level", lookRight);
   }
   return true;
 }
@@ -486,14 +560,15 @@ export function pieceWay(kind, facing = "s", seed = 0, { look = state.look, has 
   for (const way of PIECES[kind] ?? []) {
     const picture = way.faces ? way.faces[facing] ?? way.faces.s : way.any ? way.any[Math.min(way.any.length - 1, Math.floor(seed * way.any.length))] : way[look] ?? way.picture;
     if (!picture || !has(picture) || (way.on && !has(way.on))) continue;
-    return { picture, flip: !way.faces && (facing === "e" || facing === "w"), times: way.times ?? 1, on: way.on ?? null, lift: way.lift ?? 0 };
+    // Which look's picture it is, where the piece has one for each: a Light one in a Dark ship is toned down.
+    return { picture, flip: !way.faces && (facing === "e" || facing === "w"), times: way.times ?? 1, on: way.on ?? null, lift: way.lift ?? 0, look: way.light && picture === way.light ? "light" : null };
   }
   return null;
 }
 
 // One picture of a piece, stood with its middle on a point of the floor (cx, cy, in tiles) or so far above it, as much
 // bigger than its own size as the pack's walls are stood up, so they keep to each other and to the game's people.
-function drawPicture(painter, picture, cx, cy, { flip = false, lift = 0, wallHeight, middle = false }) {
+function drawPicture(painter, picture, cx, cy, { flip = false, lift = 0, wallHeight, middle = false, look = null }) {
   const box = state.boxes[picture.id];
   const { ctx, ratio, at, unit } = painter;
   const scale = (unit / 128) * (wallHeight / WALL_PACK_HEIGHT);
@@ -501,7 +576,7 @@ function drawPicture(painter, picture, cx, cy, { flip = false, lift = 0, wallHei
   // What's hung on a wall is placed by its middle; anything else by where it stands.
   const [ax, ay] = middle ? [(box.x0 + box.x1 + 1) / 2, (box.y0 + box.y1 + 1) / 2] : standingPoint(box);
   const [px, py] = at(cx, cy, lift);
-  const image = picture.file ? state.files[picture.file] : state.images[picture.sheet];
+  const image = picture.file ? state.files[picture.file] : sheetFor(picture.sheet, look ?? state.look);
   ctx.save();
   ctx.setTransform(ratio * scale * turn, 0, 0, ratio * scale, ratio * (px - scale * turn * ax), ratio * (py - scale * ay));
   ctx.imageSmoothingEnabled = true;
@@ -512,7 +587,7 @@ function drawPicture(painter, picture, cx, cy, { flip = false, lift = 0, wallHei
 
 // A piece of the game's furniture, if the packs have one like it: drawn in its place, and true; else false, and the
 // game draws its own. A long piece's picture is drawn several times along it, the far one first.
-export function drawPixelPiece(painter, piece, { wallHeight }) {
+export function drawPixelPiece(painter, piece, { wallHeight, look = state.look }) {
   if (!pixelArtOn() || piece.kind === "crate") return false;
   const kind = FURNITURE_BY_ID[piece.kind];
   if (kind?.pack && kind.wall) {
@@ -525,7 +600,7 @@ export function drawPixelPiece(painter, piece, { wallHeight }) {
     drawPicture(painter, hung.picture, wx, wy, { flip: Boolean(lean) && lean !== piece.face, lift: kind.high ?? 0.95, wallHeight, middle: true });
     return true;
   }
-  const way = pieceWay(piece.kind, piece.facing ?? "s", piece.seed ?? 0);
+  const way = pieceWay(piece.kind, piece.facing ?? "s", piece.seed ?? 0, { look });
   if (!way) return false;
   const cx = (piece.x0 + piece.x1) / 2;
   const cy = (piece.y0 + piece.y1) / 2;
@@ -534,17 +609,17 @@ export function drawPixelPiece(painter, piece, { wallHeight }) {
   const along = (from, to) => Array.from({ length: way.times }, (_, i) => from + ((i + 0.5) * (to - from)) / way.times);
   const spots = across ? along(piece.x0, piece.x1).map((x) => [x, cy]) : along(piece.y0, piece.y1).map((y) => [cx, y]);
   for (const [x, y] of spots) {
-    drawPicture(painter, way.picture, x, y, { flip: way.flip, lift: piece.lift ?? 0, wallHeight });
+    drawPicture(painter, way.picture, x, y, { flip: way.flip, lift: piece.lift ?? 0, wallHeight, look: way.look });
     if (way.on) drawPicture(painter, way.on, x, y, { lift: way.lift, wallHeight });
   }
   return true;
 }
 
 // A crate on the plan, on its square.
-export function drawPixelCrate(painter, { x, y }, { cellWidth, wallHeight }) {
+export function drawPixelCrate(painter, { x, y }, { cellWidth, wallHeight, look = state.look }) {
   if (!pixelArtOn()) return false;
-  const way = pieceWay("crate");
+  const way = pieceWay("crate", "s", 0, { look });
   if (!way) return false;
-  drawPicture(painter, way.picture, (x + 0.5) * cellWidth, y + 0.5, { wallHeight });
+  drawPicture(painter, way.picture, (x + 0.5) * cellWidth, y + 0.5, { wallHeight, look: way.look });
   return true;
 }

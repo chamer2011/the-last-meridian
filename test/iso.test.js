@@ -7,7 +7,7 @@ import { test } from "node:test";
 import { CELL_WIDTH, FLOOR_COLORS, WALL_COLORS, buildScene, cellAt, cellCentre, project } from "../public/iso.js";
 import { createGameFromDraft, randomDraft } from "../src/creator.js";
 import { runTool, newTurnLimits } from "../src/tools.js";
-import { lookOf, mapFor, roomsOf, walkView } from "../src/walk.js";
+import { lookOf, mapFor, placeLevels, roomsOf, walkView } from "../src/walk.js";
 import { LOOKS, WORLD_MAPS } from "../src/world.js";
 
 const viewOf = (level) => ({ cols: level.width, lines: level.height, layers: level.layers, labels: level.labels, colors: level.colors, things: level.things, exits: level.exits, people: [], here: { id: level.id } });
@@ -139,6 +139,9 @@ test("every place says what it's made of, in words the view knows, and only abou
     if (look.glow) assert.match(look.glow, hex, where);
     if (look.fire) assert.match(look.fire, hex, where);
     for (const color of look.lights ?? []) assert.match(color, hex, where);
+    // For the pixel-art view: a room in the packs' Light look, and how much a place tones that down.
+    if (look.pixel !== undefined) assert.ok(["light", "dark"].includes(look.pixel), `${where}: pixel ${look.pixel}`);
+    if (look.pixelLight !== undefined) assert.ok(look.pixelLight >= 0.35 && look.pixelLight <= 1, `${where}: pixelLight ${look.pixelLight}`);
     if (look.lights) assert.ok(look.lights.length > 0, where);
   };
   check(LOOKS.default, "default");
@@ -157,6 +160,21 @@ test("every place says what it's made of, in words the view knows, and only abou
       }
     }
   }
+});
+
+test("the medbay and the galley are Light rooms for the pixel-art view, down to their squares", () => {
+  const game = createGameFromDraft(randomDraft({ seed: 7, archetype: "officer" }));
+  const deck2 = placeLevels(game).levels.deck2;
+  assert.deepEqual(deck2.areas.filter((area) => area.look?.pixel === "light").map((area) => area.id).sort(), ["galley", "medbay"]);
+  assert.equal(deck2.look.pixelLight, LOOKS.places.meridian.pixelLight);
+  const scene = buildScene(deck2);
+  const inside = (id) => { const area = deck2.areas.find((one) => one.id === id); return scene.light[area.y + 2][area.x + 2]; };
+  assert.equal(inside("medbay"), true);
+  assert.equal(inside("galley"), true);
+  assert.equal(inside("mess"), false);
+  assert.ok(scene.ground.some((cell) => cell.light) && scene.ground.some((cell) => cell.kind === "floor" && !cell.light));
+  // No room of deck 1 is.
+  assert.ok(!buildScene(placeLevels(game).levels.deck1).light.some((row) => row.some(Boolean)));
 });
 
 test("a room's own look goes over its place's, and the view gets it from the real game", () => {
