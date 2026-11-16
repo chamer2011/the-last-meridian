@@ -10,7 +10,7 @@
   "main": "app/main.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test test/",
+    "test": "node --import ./test/kept-ship.mjs --test test/",
     "check-story": "node src/check-scenes.js",
     "app": "electron .",
     "build-app": "node app/build.js"

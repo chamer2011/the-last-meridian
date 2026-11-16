@@ -1,0 +1,9 @@
+The ship as she was drawn on 2026-11-16, before deck 1's rooms were laid out again with the pixel-art packs' pieces
+(step 6 of the map's rework): a whole copy of world/maps and world/life as they stood that day.
+
+The automatic tests run on this copy, so that redrawing the real decks, by the owner in the Map editor or by anyone
+else, can't break them: `npm test` loads test/kept-ship.mjs first, which points the game at these two folders. The
+tests in files with "as-drawn" in their names look at the real decks instead, and check what must hold however she's
+drawn: every room reached, everyone's places on floor or in a seat or a bed, the opening battle fought to an end.
+
+Nothing here is read by the game itself. Don't redraw these: redraw world/maps.

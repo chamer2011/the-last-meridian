@@ -1,0 +1,120 @@
+{
+  "_help": [
+    "The Meridian's decks are drawn in Tiled, the free map editor, in world/maps/meridian/, one file to a deck, with the rooms drawn on each deck as rectangles, and the game reads them from there. world/maps/_how-to-draw-rooms-in-tiled.txt says how. This file keeps the ship's name and the room it starts in; the deck plan is made from the decks. The overview below is the old drawing of the whole ship, kept only so that saves from when the ship was one plan still find their room.",
+    "Each place's levels are in a file named after it, and each room is its own level, drawn in characters, which you can edit like a picture. These instructions are for all of them. Restart the game after changing a file.",
+    "In a level's plan: # is a wall, + is a door inside the level, and @ is where the captain stands when the story puts them here. The floor setting says which characters are floor. Any other mark is scenery, which nobody can walk through.",
+    "A capital letter is one of the level's people, a small letter is one of its things, and a digit is one of its exits. Move a letter to move them. A letter that isn't listed is a mistake, and digits that aren't listed are just scenery.",
+    "exits say which level each one goes to, and which exit there you come out of (via). They should match up in both directions.",
+    "An exit with closed in it can't be walked through until the story has taken the captain through it. closed.look says why it's closed, and closed.use goes to the story when the player asks at it.",
+    "A person's asks are what the player can click to say to them first, and greeting, if there is one, is how they look when you come over. A thing's look is what the player reads for free, and its use goes to the story as the player's action. A thing with an item in it can't be used again while you're carrying one.",
+    "A thing with holds, such as \"holds\": { \"medkit\": 2, \"ration_pack\": 5 }, can be opened, and what's in it opens in the inventory beside the player's pack. It's filled from holds the first time it's opened, and from then on keeps what's taken out and put in.",
+    "desc is what the player reads about the room, so keep the place file's secrets out of it. writing is words painted or chalked on the level, labels are the room names on it, and colors are the level's colors. writing and labels use column and row numbers, counted from 0 at the top left of the plan.",
+    "aliases are the other names the game master might use for a room, so that the map follows the story.",
+    "overview is the map of the whole place, which opens from the button beside the level. title is what that button says.",
+    "What everyone says in a talk, and how they look when you come over, is in talk in world/rooms.json. A place's file can have a talk of its own to change any of it."
+  ],
+  "name": "CFS Meridian",
+  "start": "bridge",
+  "levels": {},
+  "overview": {
+    "title": "Deck plan",
+    "plan": [
+      "                    #################################################         ",
+      "                 #######################################################      ",
+      "              #########,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,##::::::::::::::##    ",
+      "           ##.........#,,,,=======,,,,,=======,,,,,,,,,,##::::(*****)::::##   ",
+      "        ##............#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,##::::(*****):::::##  ",
+      "      ##......====....#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,##::::(*****):::::##  ",
+      "    ##................#,,,,=======,,,,,=======,,,,,,,,,,##::::(*****)::::::## ",
+      "  ##..................#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,##:::::::::::::::::## ",
+      " ##..==...............########+#################+#########::::::::::::::::::##",
+      "##......|.............+''''''''''''''''''''''''''''''''''+:::[||||]:::::::::##",
+      "##......|.............+''''''''''''''''''''''''''''''''''+::::::::::::::::::##",
+      " ##..==...............######+##;;;;;;;;;;;+;;;;;;;;;;;;;;#########+###########",
+      "  ##..................#--------------#~~~~~~~~~~~~~~~~~~~#_________________## ",
+      "    ##................#--==---==-----#~~~~~~~~~~~~~~~~~~~+____________(0)__## ",
+      "      ##......====....#--------------#~~####~~######~~####______[][]__%%__##  ",
+      "        ##............#--==---==-----#~~####~~######~~####______[][]__%%__##  ",
+      "           ##.........#--------------#~~####~~######~~####__________(0)__##   ",
+      "              ######+#################~~####~~######~~####______________##    ",
+      "                 ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~###############      ",
+      "                    #################################################         "
+    ],
+    "floors": {
+      ".": "bridge",
+      ",": "mess",
+      ":": "engineering",
+      "_": "aft",
+      "'": "names",
+      "-": "medbay",
+      "~": "crawlways",
+      ";": "bunks"
+    },
+    "rooms": [
+      {
+        "level": "bridge",
+        "at": [
+          12,
+          4
+        ],
+        "text": "THE BRIDGE"
+      },
+      {
+        "level": "mess",
+        "at": [
+          36,
+          4
+        ],
+        "text": "THE LONG MESS"
+      },
+      {
+        "level": "engineering",
+        "at": [
+          60,
+          2
+        ],
+        "text": "ENGINEERING"
+      },
+      {
+        "level": "names",
+        "at": [
+          27,
+          9
+        ],
+        "text": "THE NAMES BULKHEAD"
+      },
+      {
+        "level": "medbay",
+        "at": [
+          24,
+          12
+        ],
+        "text": "MEDBAY"
+      },
+      {
+        "level": "crawlways",
+        "at": [
+          40,
+          13
+        ],
+        "text": "THE CRAWLWAYS"
+      },
+      {
+        "level": "aft",
+        "at": [
+          60,
+          17
+        ],
+        "text": "AFT HOLDS"
+      },
+      {
+        "level": "bunks",
+        "at": [
+          32,
+          11
+        ],
+        "text": "THE HOT BUNKS"
+      }
+    ]
+  }
+}

@@ -1,0 +1,226 @@
+{
+    "automappingRulesFile": "",
+    "commands": [],
+    "extensionsPath": "extensions",
+    "folders": [
+        "meridian",
+        "tiles"
+    ],
+    "propertyTypes": [
+        {
+            "id": 1,
+            "name": "Room",
+            "type": "class",
+            "color": "#ffa0a0a4",
+            "drawFill": true,
+            "useAs": [
+                "map"
+            ],
+            "members": [
+                {
+                    "name": "name",
+                    "type": "string",
+                    "value": ""
+                },
+                {
+                    "name": "aliases",
+                    "type": "string",
+                    "value": ""
+                },
+                {
+                    "name": "district",
+                    "type": "string",
+                    "value": ""
+                },
+                {
+                    "name": "desc",
+                    "type": "string",
+                    "value": ""
+                },
+                {
+                    "name": "floor",
+                    "type": "string",
+                    "value": ""
+                },
+                {
+                    "name": "floor color",
+                    "type": "color",
+                    "value": ""
+                },
+                {
+                    "name": "walls color",
+                    "type": "color",
+                    "value": ""
+                },
+                {
+                    "name": "scenery color",
+                    "type": "color",
+                    "value": ""
+                },
+                {
+                    "name": "writing color",
+                    "type": "color",
+                    "value": ""
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "name": "Person",
+            "type": "class",
+            "color": "#ff5fd08a",
+            "drawFill": true,
+            "useAs": [
+                "object",
+                "tile"
+            ],
+            "members": [
+                {
+                    "name": "person",
+                    "type": "string",
+                    "value": ""
+                },
+                {
+                    "name": "asks",
+                    "type": "string",
+                    "value": ""
+                },
+                {
+                    "name": "asksOther",
+                    "type": "string",
+                    "value": ""
+                },
+                {
+                    "name": "greeting",
+                    "type": "string",
+                    "value": ""
+                },
+                {
+                    "name": "side",
+                    "type": "string",
+                    "value": ""
+                },
+                {
+                    "name": "mark",
+                    "type": "string",
+                    "value": ""
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "name": "Thing",
+            "type": "class",
+            "color": "#ffffcc4d",
+            "drawFill": true,
+            "useAs": [
+                "object",
+                "tile"
+            ],
+            "members": [
+                {
+                    "name": "look",
+                    "type": "string",
+                    "value": ""
+                },
+                {
+                    "name": "use",
+                    "type": "string",
+                    "value": ""
+                },
+                {
+                    "name": "used",
+                    "type": "string",
+                    "value": ""
+                },
+                {
+                    "name": "lookOther",
+                    "type": "string",
+                    "value": ""
+                },
+                {
+                    "name": "useOther",
+                    "type": "string",
+                    "value": ""
+                },
+                {
+                    "name": "usedOther",
+                    "type": "string",
+                    "value": ""
+                },
+                {
+                    "name": "item",
+                    "type": "string",
+                    "value": ""
+                },
+                {
+                    "name": "mark",
+                    "type": "string",
+                    "value": ""
+                }
+            ]
+        },
+        {
+            "id": 4,
+            "name": "Way out",
+            "type": "class",
+            "color": "#ff4fd0d0",
+            "drawFill": true,
+            "useAs": [
+                "object",
+                "tile"
+            ],
+            "members": [
+                {
+                    "name": "to",
+                    "type": "string",
+                    "value": ""
+                },
+                {
+                    "name": "via",
+                    "type": "string",
+                    "value": ""
+                },
+                {
+                    "name": "mark",
+                    "type": "string",
+                    "value": ""
+                }
+            ]
+        },
+        {
+            "id": 5,
+            "name": "Start",
+            "type": "class",
+            "color": "#ffe6e6eb",
+            "drawFill": true,
+            "useAs": [
+                "object",
+                "tile"
+            ],
+            "members": []
+        },
+        {
+            "id": 6,
+            "name": "Label",
+            "type": "class",
+            "color": "#ffd8d4c0",
+            "drawFill": true,
+            "useAs": [
+                "object"
+            ],
+            "members": []
+        },
+        {
+            "id": 7,
+            "name": "Writing",
+            "type": "class",
+            "color": "#ffd8d4c0",
+            "drawFill": true,
+            "useAs": [
+                "object"
+            ],
+            "members": []
+        }
+    ]
+}

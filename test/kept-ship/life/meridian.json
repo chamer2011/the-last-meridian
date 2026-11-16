@@ -1,0 +1,1655 @@
+{
+  "_help": [
+    "The days of the people aboard this ship. Restart the game after changing this file. A file here turns on the living clock for the place it's named after.",
+    "spots are places on the levels: [level, column, row], with \"left\" at the end if the person's name should go to the left of them. A spot can be on a bunk or a bench. Columns and rows count from 0 at the top left of the level's plan.",
+    "groups are lists of spots for many people, like a mess bench. Each person takes the next one that's free. A group entry with from and to fills a whole row, every step squares.",
+    "Each person's day is a list of what they start doing, and when: they leave for it at that time, give or take a few minutes, and it lasts until the next one. It wraps around at midnight.",
+    "go is where they go: post means their usual place in the map's file, or it's the name of a spot or a group. @bridge means anywhere on that level, wherever's free, and >bridge means out by one of that level's doors. pick is a list of those, and they choose one each day. rounds is a list they walk around, a stop every few minutes.",
+    "asleep, hidden, exact and stays change how something works. Someone hidden goes out of sight once they get there. exact means they don't vary the time. stays means the same place on that level every day, as asleep does. every means only on every so many days.",
+    "doing is what the player and the game master are told. Keep the secrets out of it, because what someone's doing can be seen, but not why.",
+    "crowd is everyone without a file. Each group has a list of names, and shift moves that person's whole day later by that many minutes."
+  ],
+  "spots": {
+    "ready-room": ["bridge", 40, 2],
+    "helm-night": ["bridge", 14, 16],
+    "pit-night": ["bridge", 22, 26],
+    "comms-night": ["bridge", 22, 5],
+    "plot-table": ["bridge", 22, 15],
+    "captain-cot": ["bridge", 40, 27],
+    "seat-voss": ["mess", 50, 5],
+    "seat-pell": ["mess", 53, 6],
+    "seat-sorel": ["mess", 58, 5],
+    "seat-vey": ["mess", 50, 8],
+    "seat-tarrow": ["mess", 51, 8],
+    "seat-hask": ["mess", 58, 8],
+    "seat-marrow": ["mess", 50, 10],
+    "seat-brandt": ["mess", 52, 10],
+    "seat-aduro": ["mess", 58, 10],
+    "seat-roe": ["mess", 51, 5],
+    "seat-cass": ["mess", 54, 6],
+    "seat-halm": ["mess", 65, 8],
+    "kettle": ["mess", 47, 5],
+    "tea-table": ["mess", 61, 7],
+    "tea-urn": ["mess", 58, 3],
+    "plot-side": ["bridge", 19, 16],
+    "mess-corner": ["mess", 66, 10],
+    "mess-middle": ["mess", 57, 8],
+    "mess-west": ["mess", 48, 8],
+    "mess-east": ["mess", 64, 4],
+    "mess-door": ["mess", 51, 11],
+    "reactor-front": ["engineering", 126, 23],
+    "engine-bench": ["engineering", 132, 25],
+    "engine-bench-2": ["engineering", 135, 24],
+    "capacitors": ["engineering", 136, 7],
+    "gauges": ["engineering", 138, 17],
+    "engine-pipes": ["engineering", 134, 11],
+    "engine-south": ["engineering", 129, 27],
+    "marrow-cot": ["engineering", 125, 26],
+    "aft-west": ["aft", 47, 23],
+    "aft-middle": ["aft", 52, 23],
+    "aft-east": ["aft", 60, 26],
+    "aft-stores": ["aft", 52, 26],
+    "behind-tanks": ["aft", 65, 23],
+    "by-the-tanks": ["aft", 62, 23],
+    "annex-way": ["aft", 44, 24],
+    "names-west": ["names", 56, 16],
+    "names-middle": ["names", 75, 16],
+    "names-east": ["names", 104, 16],
+    "names-wall": ["names", 85, 16],
+    "names-wall-2": ["names", 101, 16],
+    "names-wall-3": ["names", 106, 16],
+    "service": ["names", 89, 15],
+    "scan-bed": ["medbay", 27, 12, "left"],
+    "aduro-cot": ["medbay", 10, 21],
+    "ward-north": ["medbay", 11, 8],
+    "ward-middle": ["medbay", 11, 14],
+    "ward-south": ["medbay", 11, 19],
+    "ward-east": ["medbay", 18, 9],
+    "medbay-night": ["medbay", 34, 14],
+    "medbay-door": ["medbay", 23, 4],
+    "patient-1": ["medbay", 10, 6],
+    "patient-2": ["medbay", 10, 12],
+    "patient-3": ["medbay", 10, 9],
+    "patient-4": ["medbay", 15, 6],
+    "naomi-nook": ["crawlways", 29, 18],
+    "duct-north": ["crawlways", 17, 6],
+    "duct-east": ["crawlways", 38, 6],
+    "duct-south": ["crawlways", 17, 26],
+    "duct-long": ["crawlways", 32, 25],
+    "frame-thirty": ["crawlways", 28, 27],
+    "cabin-voss": ["cabins", 86, 5],
+    "cabin-tarrow": ["cabins", 98, 5],
+    "cabin-halm": ["cabins", 92, 5],
+    "cabin-sorel": ["cabins", 104, 5],
+    "cabin-brandt": ["cabins", 110, 5],
+    "cabin-roe": ["cabins", 116, 5],
+    "rack-pell": ["bunks", 74, 23],
+    "rack-vey": ["bunks", 74, 24],
+    "rack-hask": ["bunks", 74, 27],
+    "bunks-aisle": ["bunks", 96, 22]
+  },
+  "groups": {
+    "benches": [
+      ["mess", 49, 4],
+      ["mess", 52, 4],
+      ["mess", 53, 3],
+      ["mess", 56, 4],
+      ["mess", 56, 3],
+      ["mess", 57, 4],
+      ["mess", 59, 4],
+      ["mess", 60, 4],
+      ["mess", 61, 4],
+      ["mess", 61, 3],
+      ["mess", 62, 4],
+      ["mess", 63, 4],
+      ["mess", 49, 5],
+      ["mess", 52, 5],
+      ["mess", 56, 5],
+      ["mess", 55, 5],
+      ["mess", 61, 5],
+      ["mess", 62, 5],
+      ["mess", 63, 6],
+      ["mess", 49, 8],
+      ["mess", 52, 8],
+      ["mess", 53, 7],
+      ["mess", 56, 8],
+      ["mess", 61, 8],
+      ["mess", 62, 8],
+      ["mess", 62, 7],
+      ["mess", 63, 8],
+      ["mess", 49, 11],
+      ["mess", 53, 9],
+      ["mess", 56, 10],
+      ["mess", 61, 10],
+      ["mess", 62, 10],
+      ["mess", 63, 10]
+    ],
+    "beds": [
+      ["garden", 94, 7],
+      ["garden", 104, 7],
+      ["garden", 112, 7],
+      ["garden", 96, 9]
+    ],
+    "galley": [
+      ["galley", 82, 4],
+      ["galley", 84, 4],
+      ["galley", 86, 4],
+      ["galley", 88, 4]
+    ],
+    "racks": [
+      ["bunks", 82, 23],
+      ["bunks", 84, 23],
+      ["bunks", 85, 23],
+      ["bunks", 73, 23],
+      ["bunks", 81, 23],
+      ["bunks", 83, 23],
+      ["bunks", 86, 23],
+      ["bunks", 92, 23],
+      ["bunks", 94, 23],
+      ["bunks", 97, 23],
+      ["bunks", 99, 23],
+      ["bunks", 102, 23],
+      ["bunks", 91, 23],
+      ["bunks", 93, 23],
+      ["bunks", 96, 23],
+      ["bunks", 98, 23],
+      ["bunks", 101, 23],
+      ["bunks", 79, 24],
+      ["bunks", 82, 24],
+      ["bunks", 84, 24],
+      ["bunks", 85, 24],
+      ["bunks", 73, 24],
+      ["bunks", 81, 24],
+      ["bunks", 83, 24],
+      ["bunks", 86, 24],
+      ["bunks", 92, 24],
+      ["bunks", 94, 24],
+      ["bunks", 97, 24],
+      ["bunks", 99, 24],
+      ["bunks", 102, 24],
+      ["bunks", 82, 27],
+      ["bunks", 84, 27],
+      ["bunks", 86, 27],
+      ["bunks", 74, 28],
+      ["bunks", 77, 28],
+      ["bunks", 79, 28],
+      ["bunks", 82, 28],
+      ["bunks", 84, 28],
+      ["bunks", 86, 28]
+    ],
+    "queue": [
+      ["medbay", 10, 27],
+      ["medbay", 12, 27],
+      ["medbay", 11, 27],
+      ["medbay", 15, 27],
+      ["medbay", 16, 27],
+      ["medbay", 17, 27],
+      ["medbay", 20, 27]
+    ],
+    "names-readers": [
+      ["names", 69, 16],
+      ["names", 95, 15],
+      ["names", 110, 16],
+      ["names", 112, 16],
+      ["names", 114, 16]
+    ]
+  },
+  "people": {
+    "reddick": [
+      {
+        "at": "00:00",
+        "doing": "asleep",
+        "go": "captain-cot",
+        "asleep": true
+      },
+      {
+        "at": "06:30",
+        "doing": "eating",
+        "go": "tea-table"
+      },
+      {
+        "at": "07:15",
+        "doing": "on the bridge",
+        "go": "post"
+      },
+      {
+        "at": "12:30",
+        "doing": "eating",
+        "go": "mess-middle"
+      },
+      {
+        "at": "13:10",
+        "doing": "on the bridge",
+        "go": "post"
+      },
+      {
+        "at": "18:30",
+        "doing": "eating",
+        "go": "mess-east"
+      },
+      {
+        "at": "19:10",
+        "doing": "walking the ship",
+        "rounds": [
+          "engine-south",
+          "names-middle",
+          "medbay-door",
+          "mess-door"
+        ],
+        "stop": 15
+      },
+      {
+        "at": "20:30",
+        "doing": "at the plot table",
+        "go": "plot-table"
+      },
+      {
+        "at": "22:30",
+        "doing": "asleep",
+        "go": "captain-cot",
+        "asleep": true
+      }
+    ],
+    "marchetti": [
+      {
+        "at": "00:00",
+        "doing": "asleep",
+        "go": "captain-cot",
+        "asleep": true
+      },
+      {
+        "at": "06:30",
+        "doing": "eating",
+        "go": "tea-table"
+      },
+      {
+        "at": "07:15",
+        "doing": "on the bridge",
+        "go": "post"
+      },
+      {
+        "at": "12:30",
+        "doing": "eating",
+        "go": "mess-middle"
+      },
+      {
+        "at": "13:10",
+        "doing": "on the bridge",
+        "go": "post"
+      },
+      {
+        "at": "18:30",
+        "doing": "eating",
+        "go": "mess-east"
+      },
+      {
+        "at": "19:10",
+        "doing": "walking the ship",
+        "rounds": [
+          "engine-south",
+          "names-middle",
+          "medbay-door",
+          "mess-door"
+        ],
+        "stop": 15
+      },
+      {
+        "at": "20:30",
+        "doing": "at the plot table",
+        "go": "plot-table"
+      },
+      {
+        "at": "22:30",
+        "doing": "asleep",
+        "go": "captain-cot",
+        "asleep": true
+      }
+    ],
+    "lund": [
+      {
+        "at": "00:00",
+        "doing": "asleep",
+        "go": "captain-cot",
+        "asleep": true
+      },
+      {
+        "at": "06:30",
+        "doing": "eating",
+        "go": "tea-table"
+      },
+      {
+        "at": "07:15",
+        "doing": "on the bridge",
+        "go": "post"
+      },
+      {
+        "at": "12:30",
+        "doing": "eating",
+        "go": "mess-middle"
+      },
+      {
+        "at": "13:10",
+        "doing": "on the bridge",
+        "go": "post"
+      },
+      {
+        "at": "18:30",
+        "doing": "eating",
+        "go": "mess-east"
+      },
+      {
+        "at": "19:10",
+        "doing": "walking the ship",
+        "rounds": [
+          "engine-south",
+          "names-middle",
+          "medbay-door",
+          "mess-door"
+        ],
+        "stop": 15
+      },
+      {
+        "at": "20:30",
+        "doing": "at the plot table",
+        "go": "plot-table"
+      },
+      {
+        "at": "22:30",
+        "doing": "asleep",
+        "go": "captain-cot",
+        "asleep": true
+      }
+    ],
+    "voss": [
+      {
+        "at": "00:00",
+        "doing": "asleep",
+        "go": "cabin-voss",
+        "asleep": true
+      },
+      {
+        "at": "02:50",
+        "doing": "at the scan bed",
+        "go": "scan-bed",
+        "exact": true
+      },
+      {
+        "at": "03:20",
+        "doing": "asleep",
+        "go": "cabin-voss",
+        "asleep": true
+      },
+      {
+        "at": "06:45",
+        "doing": "eating",
+        "go": "seat-voss"
+      },
+      {
+        "at": "07:30",
+        "doing": "on the bridge",
+        "go": "post"
+      },
+      {
+        "at": "12:30",
+        "doing": "eating",
+        "go": "seat-voss"
+      },
+      {
+        "at": "13:10",
+        "doing": "on the bridge",
+        "go": "post"
+      },
+      {
+        "at": "18:30",
+        "doing": "eating",
+        "go": "seat-voss"
+      },
+      {
+        "at": "19:10",
+        "doing": "doing the paperwork",
+        "go": "ready-room"
+      },
+      {
+        "at": "22:15",
+        "doing": "walking the ship",
+        "rounds": [
+          "names-middle",
+          "mess-door",
+          "engine-south",
+          "names-east"
+        ],
+        "stop": 15
+      },
+      {
+        "at": "23:20",
+        "doing": "asleep",
+        "go": "cabin-voss",
+        "asleep": true
+      }
+    ],
+    "pell": [
+      {
+        "at": "00:00",
+        "doing": "asleep",
+        "go": "rack-pell",
+        "asleep": true
+      },
+      {
+        "at": "06:15",
+        "doing": "eating",
+        "go": "seat-pell"
+      },
+      {
+        "at": "07:00",
+        "doing": "at the helm",
+        "go": "post"
+      },
+      {
+        "at": "12:00",
+        "doing": "eating, quickly",
+        "go": "seat-pell"
+      },
+      {
+        "at": "12:30",
+        "doing": "at the helm",
+        "go": "post"
+      },
+      {
+        "at": "18:00",
+        "doing": "eating",
+        "go": "seat-pell"
+      },
+      {
+        "at": "18:40",
+        "doing": "off watch",
+        "pick": [
+          "mess-corner",
+          "names-west",
+          "plot-table"
+        ]
+      },
+      {
+        "at": "23:40",
+        "doing": "asleep",
+        "go": "rack-pell",
+        "asleep": true
+      }
+    ],
+    "iven": [
+      {
+        "at": "00:00",
+        "doing": "lying awake",
+        "go": "cabin-sorel"
+      },
+      {
+        "at": "02:40",
+        "doing": "on comms, in the small hours",
+        "go": "post",
+        "exact": true
+      },
+      {
+        "at": "03:45",
+        "doing": "walking the corridors",
+        "rounds": [
+          "names-east",
+          "names-west",
+          "mess-door"
+        ],
+        "stop": 25
+      },
+      {
+        "at": "06:30",
+        "doing": "eating very little",
+        "go": "seat-sorel"
+      },
+      {
+        "at": "07:15",
+        "doing": "on comms",
+        "go": "post"
+      },
+      {
+        "at": "13:00",
+        "doing": "eating very little",
+        "go": "seat-sorel"
+      },
+      {
+        "at": "13:30",
+        "doing": "on comms",
+        "go": "post"
+      },
+      {
+        "at": "18:15",
+        "doing": "eating very little",
+        "go": "seat-sorel"
+      },
+      {
+        "at": "19:00",
+        "doing": "writing in a notebook",
+        "go": "tea-table"
+      },
+      {
+        "at": "22:00",
+        "doing": "lying awake",
+        "go": "cabin-sorel"
+      }
+    ],
+    "lira": [
+      {
+        "at": "00:00",
+        "doing": "asleep",
+        "go": "rack-vey",
+        "asleep": true
+      },
+      {
+        "at": "06:00",
+        "doing": "eating",
+        "go": "seat-vey"
+      },
+      {
+        "at": "07:00",
+        "doing": "in the sensor pit",
+        "go": "post"
+      },
+      {
+        "at": "12:45",
+        "doing": "eating",
+        "go": "seat-vey"
+      },
+      {
+        "at": "13:20",
+        "doing": "in the sensor pit",
+        "go": "post"
+      },
+      {
+        "at": "18:45",
+        "doing": "eating",
+        "go": "seat-vey"
+      },
+      {
+        "at": "19:30",
+        "doing": "off watch",
+        "pick": [
+          "mess-west",
+          "names-wall-2",
+          "plot-side"
+        ]
+      },
+      {
+        "at": "22:30",
+        "doing": "asleep",
+        "go": "rack-vey",
+        "asleep": true
+      }
+    ],
+    "marrow": [
+      {
+        "at": "00:00",
+        "doing": "asleep on the deck plates",
+        "go": "marrow-cot",
+        "asleep": true
+      },
+      {
+        "at": "05:15",
+        "doing": "swearing at the reactor",
+        "go": "post"
+      },
+      {
+        "at": "09:30",
+        "doing": "checking the capacitors",
+        "go": "capacitors"
+      },
+      {
+        "at": "10:30",
+        "doing": "swearing at the reactor",
+        "go": "post"
+      },
+      {
+        "at": "12:15",
+        "doing": "eating at the bench",
+        "go": "engine-bench"
+      },
+      {
+        "at": "12:45",
+        "doing": "swearing at the reactor",
+        "go": "post"
+      },
+      {
+        "at": "16:00",
+        "doing": "reading the gauges",
+        "go": "gauges"
+      },
+      {
+        "at": "17:00",
+        "doing": "swearing at the reactor",
+        "go": "post"
+      },
+      {
+        "at": "18:45",
+        "doing": "eating",
+        "go": "seat-marrow"
+      },
+      {
+        "at": "19:30",
+        "doing": "working late",
+        "go": "engine-bench"
+      },
+      {
+        "at": "21:30",
+        "doing": "in the aft holds",
+        "go": "behind-tanks"
+      },
+      {
+        "at": "22:30",
+        "doing": "working late",
+        "go": "post"
+      },
+      {
+        "at": "23:45",
+        "doing": "asleep on the deck plates",
+        "go": "marrow-cot",
+        "asleep": true
+      }
+    ],
+    "tobin": [
+      {
+        "at": "00:00",
+        "doing": "asleep",
+        "go": "rack-hask",
+        "asleep": true
+      },
+      {
+        "at": "05:45",
+        "doing": "eating",
+        "go": "seat-hask"
+      },
+      {
+        "at": "06:30",
+        "doing": "going over the deck logs",
+        "go": "post"
+      },
+      {
+        "at": "08:45",
+        "doing": "walking the deck with his scale",
+        "rounds": [
+          "names-middle",
+          "aft-middle",
+          "engine-south",
+          "mess-east",
+          "names-east"
+        ],
+        "stop": 30
+      },
+      {
+        "at": "12:00",
+        "doing": "eating",
+        "go": "seat-hask"
+      },
+      {
+        "at": "12:45",
+        "doing": "walking the deck with his scale",
+        "rounds": [
+          "aft-east",
+          "engine-pipes",
+          "names-west",
+          "duct-long"
+        ],
+        "stop": 30
+      },
+      {
+        "at": "17:30",
+        "doing": "going over the deck logs",
+        "go": "post"
+      },
+      {
+        "at": "19:00",
+        "doing": "eating",
+        "go": "seat-hask"
+      },
+      {
+        "at": "19:45",
+        "doing": "weighing something on his pocket scale",
+        "go": "names-wall-3"
+      },
+      {
+        "at": "22:00",
+        "doing": "asleep",
+        "go": "rack-hask",
+        "asleep": true
+      }
+    ],
+    "tarrow": [
+      {
+        "at": "00:00",
+        "doing": "asleep",
+        "go": "cabin-tarrow",
+        "asleep": true
+      },
+      {
+        "at": "05:30",
+        "doing": "eating",
+        "go": "seat-tarrow"
+      },
+      {
+        "at": "06:15",
+        "doing": "watching the aft holds",
+        "go": "post"
+      },
+      {
+        "at": "09:00",
+        "doing": "on security rounds",
+        "rounds": [
+          "aft-west",
+          "names-west",
+          "ready-room",
+          "names-east",
+          "mess-middle",
+          "engine-pipes"
+        ],
+        "stop": 25
+      },
+      {
+        "at": "12:30",
+        "doing": "eating",
+        "go": "seat-tarrow"
+      },
+      {
+        "at": "13:10",
+        "doing": "on security rounds",
+        "rounds": [
+          "engine-south",
+          "aft-east",
+          "names-middle",
+          "duct-south",
+          "medbay-door"
+        ],
+        "stop": 25
+      },
+      {
+        "at": "18:30",
+        "doing": "picking up two dinner trays",
+        "go": "kettle"
+      },
+      {
+        "at": "18:50",
+        "doing": "carrying two dinner trays aft",
+        "go": "annex-way",
+        "hidden": true
+      },
+      {
+        "at": "20:10",
+        "doing": "on security rounds",
+        "rounds": [
+          "aft-middle",
+          "names-middle",
+          "engine-pipes"
+        ],
+        "stop": 25
+      },
+      {
+        "at": "23:00",
+        "doing": "asleep",
+        "go": "cabin-tarrow",
+        "asleep": true
+      }
+    ],
+    "aduro": [
+      {
+        "at": "00:00",
+        "doing": "still treating patients",
+        "go": "post"
+      },
+      {
+        "at": "01:15",
+        "doing": "asleep at last",
+        "go": "aduro-cot",
+        "asleep": true
+      },
+      {
+        "at": "05:30",
+        "doing": "treating patients",
+        "go": "post"
+      },
+      {
+        "at": "09:30",
+        "doing": "going around the cots",
+        "rounds": [
+          "ward-north",
+          "ward-middle",
+          "ward-south",
+          "ward-east"
+        ],
+        "stop": 15
+      },
+      {
+        "at": "10:30",
+        "doing": "treating patients",
+        "go": "post"
+      },
+      {
+        "at": "14:30",
+        "doing": "eating, finally",
+        "go": "seat-aduro"
+      },
+      {
+        "at": "15:00",
+        "doing": "treating patients",
+        "go": "post"
+      },
+      {
+        "at": "19:30",
+        "doing": "going around the cots",
+        "rounds": [
+          "ward-east",
+          "ward-south",
+          "ward-middle",
+          "ward-north"
+        ],
+        "stop": 15
+      },
+      {
+        "at": "20:30",
+        "doing": "treating patients",
+        "go": "post"
+      }
+    ],
+    "seven": [
+      {
+        "at": "00:00",
+        "doing": "sitting up with the night's patients",
+        "go": "medbay-night"
+      },
+      {
+        "at": "06:00",
+        "doing": "speaking with people",
+        "go": "post"
+      },
+      {
+        "at": "10:30",
+        "doing": "helping in medbay",
+        "rounds": [
+          "ward-north",
+          "ward-south",
+          "medbay-night"
+        ],
+        "stop": 20
+      },
+      {
+        "at": "14:00",
+        "doing": "speaking with people",
+        "go": "post"
+      },
+      {
+        "at": "18:00",
+        "doing": "walking the civilian deck",
+        "rounds": [
+          "bunks-aisle",
+          "names-middle",
+          "names-west",
+          "bunks-aisle"
+        ],
+        "stop": 30
+      },
+      {
+        "at": "22:00",
+        "doing": "sitting up with the night's patients",
+        "go": "medbay-night"
+      }
+    ],
+    "halm": [
+      {
+        "at": "00:00",
+        "doing": "asleep",
+        "go": "cabin-halm",
+        "asleep": true
+      },
+      {
+        "at": "06:30",
+        "doing": "eating",
+        "go": "seat-halm"
+      },
+      {
+        "at": "07:15",
+        "doing": "holding court at the far table",
+        "go": "post"
+      },
+      {
+        "at": "12:30",
+        "doing": "eating",
+        "go": "seat-halm"
+      },
+      {
+        "at": "13:15",
+        "doing": "holding court at the far table",
+        "go": "post"
+      },
+      {
+        "at": "18:30",
+        "doing": "eating",
+        "go": "seat-halm"
+      },
+      {
+        "at": "19:15",
+        "doing": "talking with civilians",
+        "rounds": [
+          "names-wall",
+          "bunks-aisle",
+          "mess-east"
+        ],
+        "stop": 35
+      },
+      {
+        "at": "21:30",
+        "doing": "writing letters in his cabin",
+        "go": "cabin-halm"
+      },
+      {
+        "at": "23:00",
+        "doing": "asleep",
+        "go": "cabin-halm",
+        "asleep": true
+      }
+    ],
+    "odessa": [
+      {
+        "at": "00:00",
+        "doing": "asleep",
+        "go": "cabin-brandt",
+        "asleep": true
+      },
+      {
+        "at": "05:00",
+        "doing": "counting the ration crates",
+        "go": "post"
+      },
+      {
+        "at": "11:00",
+        "doing": "eating",
+        "go": "seat-brandt"
+      },
+      {
+        "at": "11:30",
+        "doing": "watching the sittings",
+        "go": "post"
+      },
+      {
+        "at": "14:30",
+        "doing": "counting stores in the aft holds",
+        "go": "aft-stores"
+      },
+      {
+        "at": "16:30",
+        "doing": "counting the ration crates",
+        "go": "post"
+      },
+      {
+        "at": "20:15",
+        "doing": "eating",
+        "go": "seat-brandt"
+      },
+      {
+        "at": "21:00",
+        "doing": "going over the ledger",
+        "go": "cabin-brandt"
+      },
+      {
+        "at": "22:30",
+        "doing": "asleep",
+        "go": "cabin-brandt",
+        "asleep": true
+      }
+    ],
+    "bastian": [
+      {
+        "at": "00:00",
+        "doing": "on his way down to the crawlways",
+        "go": "frame-thirty",
+        "hidden": true
+      },
+      {
+        "at": "01:00",
+        "doing": "asleep",
+        "go": "cabin-roe",
+        "asleep": true
+      },
+      {
+        "at": "07:15",
+        "doing": "sitting with the names",
+        "go": "post"
+      },
+      {
+        "at": "12:00",
+        "doing": "eating",
+        "go": "seat-roe"
+      },
+      {
+        "at": "12:45",
+        "doing": "sitting with whoever's eating",
+        "go": "mess-middle"
+      },
+      {
+        "at": "15:00",
+        "doing": "visiting the medbay queue",
+        "go": "ward-east"
+      },
+      {
+        "at": "17:00",
+        "doing": "sitting with the names",
+        "go": "post"
+      },
+      {
+        "at": "18:45",
+        "doing": "eating",
+        "go": "seat-roe"
+      },
+      {
+        "at": "19:00",
+        "doing": "leading the service",
+        "go": "service",
+        "every": 10
+      },
+      {
+        "at": "20:00",
+        "doing": "making very weak tea",
+        "go": "tea-urn"
+      },
+      {
+        "at": "22:30",
+        "doing": "on his way down to the crawlways",
+        "go": "frame-thirty",
+        "hidden": true
+      }
+    ],
+    "naomi": [
+      {
+        "at": "00:00",
+        "doing": "asleep, more or less",
+        "go": "naomi-nook",
+        "asleep": true
+      },
+      {
+        "at": "02:45",
+        "doing": "up and about",
+        "go": "medbay-door",
+        "exact": true
+      },
+      {
+        "at": "03:30",
+        "doing": "asleep, more or less",
+        "go": "naomi-nook",
+        "asleep": true
+      },
+      {
+        "at": "06:45",
+        "doing": "cadging breakfast",
+        "go": "seat-cass"
+      },
+      {
+        "at": "07:30",
+        "doing": "in the crawlways",
+        "go": "post"
+      },
+      {
+        "at": "08:45",
+        "doing": "running messages",
+        "rounds": [
+          "ready-room",
+          "names-east",
+          "engine-pipes",
+          "mess-east",
+          "medbay-door",
+          "aft-west"
+        ],
+        "stop": 18
+      },
+      {
+        "at": "12:00",
+        "doing": "in the crawlways",
+        "go": "post"
+      },
+      {
+        "at": "13:00",
+        "doing": "running messages",
+        "rounds": [
+          "mess-west",
+          "duct-long",
+          "names-west",
+          "plot-table",
+          "aft-east",
+          "engine-south"
+        ],
+        "stop": 18
+      },
+      {
+        "at": "18:00",
+        "doing": "cadging dinner",
+        "go": "seat-cass"
+      },
+      {
+        "at": "18:45",
+        "doing": "running messages",
+        "rounds": [
+          "names-middle",
+          "duct-north",
+          "mess-door"
+        ],
+        "stop": 20
+      },
+      {
+        "at": "21:00",
+        "doing": "in the aft holds",
+        "go": "by-the-tanks"
+      },
+      {
+        "at": "22:00",
+        "doing": "asleep, more or less",
+        "go": "naomi-nook",
+        "asleep": true
+      }
+    ]
+  },
+  "crowd": [
+    {
+      "names": [
+        [
+          "Cook Imre",
+          0
+        ],
+        [
+          "Cook Dessa",
+          60
+        ]
+      ],
+      "day": [
+        {
+          "at": "04:30",
+          "doing": "cooking",
+          "go": "galley"
+        },
+        {
+          "at": "20:30",
+          "doing": "eating what's left",
+          "go": "benches"
+        },
+        {
+          "at": "21:00",
+          "doing": "asleep",
+          "go": "racks",
+          "asleep": true
+        }
+      ]
+    },
+    {
+      "names": [
+        [
+          "Gardener Odile",
+          0
+        ],
+        [
+          "Gardener Benno",
+          30
+        ]
+      ],
+      "day": [
+        {
+          "at": "05:30",
+          "doing": "tending the beds",
+          "go": "beds"
+        },
+        {
+          "at": "12:00",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "12:40",
+          "doing": "tending the beds",
+          "go": "beds"
+        },
+        {
+          "at": "18:30",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "19:10",
+          "doing": "asleep",
+          "go": "racks",
+          "asleep": true
+        }
+      ]
+    },
+    {
+      "names": [
+        [
+          "Mess Hand Bao",
+          0
+        ],
+        [
+          "Mess Hand Lotte",
+          90
+        ]
+      ],
+      "day": [
+        {
+          "at": "05:30",
+          "doing": "clearing tables",
+          "rounds": [
+            "mess-middle",
+            "mess-west",
+            "tea-table",
+            "mess-door"
+          ],
+          "stop": 12
+        },
+        {
+          "at": "14:30",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "15:00",
+          "doing": "clearing tables",
+          "rounds": [
+            "mess-west",
+            "tea-table",
+            "mess-middle"
+          ],
+          "stop": 12
+        },
+        {
+          "at": "21:30",
+          "doing": "asleep",
+          "go": "racks",
+          "asleep": true
+        }
+      ]
+    },
+    {
+      "names": [
+        [
+          "Deckhand Kofi",
+          0
+        ],
+        [
+          "Deckhand Ines",
+          45
+        ],
+        [
+          "Deckhand Rafe",
+          480
+        ],
+        [
+          "Deckhand Zuri",
+          525
+        ]
+      ],
+      "day": [
+        {
+          "at": "06:00",
+          "doing": "hauling crates",
+          "rounds": [
+            "names-middle",
+            "aft-middle",
+            "aft-west",
+            "engine-south",
+            "aft-east"
+          ],
+          "stop": 22
+        },
+        {
+          "at": "12:00",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "12:40",
+          "doing": "hauling crates",
+          "rounds": [
+            "aft-east",
+            "names-east",
+            "aft-west",
+            "names-west"
+          ],
+          "stop": 22
+        },
+        {
+          "at": "18:00",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "18:40",
+          "doing": "off shift",
+          "pick": [
+            "names-readers",
+            "bunks-aisle",
+            "mess-middle"
+          ]
+        },
+        {
+          "at": "22:00",
+          "doing": "asleep",
+          "go": "racks",
+          "asleep": true
+        }
+      ]
+    },
+    {
+      "names": [
+        [
+          "Tech Sami",
+          0
+        ],
+        [
+          "Tech Oona",
+          180
+        ],
+        [
+          "Tech Goran",
+          480
+        ]
+      ],
+      "day": [
+        {
+          "at": "06:00",
+          "doing": "minding the pipes",
+          "rounds": [
+            "engine-pipes",
+            "reactor-front",
+            "engine-bench-2",
+            "duct-south"
+          ],
+          "stop": 40
+        },
+        {
+          "at": "12:30",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "13:10",
+          "doing": "crawling through a duct",
+          "rounds": [
+            "duct-north",
+            "duct-east",
+            "duct-long"
+          ],
+          "stop": 40
+        },
+        {
+          "at": "18:30",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "19:10",
+          "doing": "off shift",
+          "pick": [
+            "mess-middle",
+            "names-readers"
+          ]
+        },
+        {
+          "at": "22:30",
+          "doing": "asleep",
+          "go": "racks",
+          "asleep": true
+        }
+      ]
+    },
+    {
+      "names": [
+        [
+          "Nurse Haru",
+          0
+        ],
+        [
+          "Nurse Anton",
+          720
+        ]
+      ],
+      "day": [
+        {
+          "at": "07:00",
+          "doing": "going around the cots",
+          "rounds": [
+            "ward-north",
+            "ward-south",
+            "ward-east",
+            "ward-middle"
+          ],
+          "stop": 18
+        },
+        {
+          "at": "13:00",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "13:30",
+          "doing": "going around the cots",
+          "rounds": [
+            "ward-middle",
+            "ward-east",
+            "ward-north"
+          ],
+          "stop": 18
+        },
+        {
+          "at": "19:00",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "19:30",
+          "doing": "asleep",
+          "go": "racks",
+          "asleep": true
+        }
+      ]
+    },
+    {
+      "names": [
+        [
+          "Ensign Mirela",
+          0
+        ]
+      ],
+      "day": [
+        {
+          "at": "00:30",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "01:00",
+          "doing": "at the helm, on the night watch",
+          "go": "helm-night"
+        },
+        {
+          "at": "07:30",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "08:15",
+          "doing": "asleep",
+          "go": "racks",
+          "asleep": true
+        },
+        {
+          "at": "18:00",
+          "doing": "at the helm, on the night watch",
+          "go": "helm-night"
+        }
+      ]
+    },
+    {
+      "names": [
+        [
+          "Ensign Tadeo",
+          0
+        ]
+      ],
+      "day": [
+        {
+          "at": "01:30",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "02:00",
+          "doing": "in the sensor pit, on the night watch",
+          "go": "pit-night"
+        },
+        {
+          "at": "07:30",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "08:15",
+          "doing": "asleep",
+          "go": "racks",
+          "asleep": true
+        },
+        {
+          "at": "18:30",
+          "doing": "in the sensor pit, on the night watch",
+          "go": "pit-night"
+        }
+      ]
+    },
+    {
+      "names": [
+        [
+          "Ensign Nadia",
+          0
+        ]
+      ],
+      "day": [
+        {
+          "at": "00:00",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "00:30",
+          "doing": "on comms, on the night watch",
+          "go": "comms-night"
+        },
+        {
+          "at": "07:30",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "08:15",
+          "doing": "asleep",
+          "go": "racks",
+          "asleep": true
+        },
+        {
+          "at": "18:00",
+          "doing": "on comms, on the night watch",
+          "go": "comms-night"
+        }
+      ]
+    },
+    {
+      "names": [
+        [
+          "Yusuf",
+          0
+        ],
+        [
+          "Salome",
+          120
+        ],
+        [
+          "Emeka",
+          240
+        ],
+        [
+          "Ayla",
+          480
+        ],
+        [
+          "Teo",
+          600
+        ],
+        [
+          "Petra",
+          780
+        ],
+        [
+          "Vik",
+          900
+        ],
+        [
+          "Hana",
+          1020
+        ]
+      ],
+      "day": [
+        {
+          "at": "07:00",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "07:45",
+          "doing": "passing the morning",
+          "pick": [
+            "names-readers",
+            "bunks-aisle",
+            "mess-west"
+          ]
+        },
+        {
+          "at": "10:30",
+          "doing": "reading the names",
+          "pick": [
+            "names-readers",
+            "names-west",
+            "mess-west"
+          ]
+        },
+        {
+          "at": "13:00",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "13:45",
+          "doing": "patching something",
+          "pick": [
+            "bunks-aisle",
+            "names-east",
+            "mess-east"
+          ]
+        },
+        {
+          "at": "18:00",
+          "doing": "eating",
+          "go": "benches"
+        },
+        {
+          "at": "18:45",
+          "doing": "talking in the corridor",
+          "pick": [
+            "names-middle",
+            "names-readers",
+            "bunks-aisle"
+          ]
+        },
+        {
+          "at": "22:00",
+          "doing": "asleep",
+          "go": "racks",
+          "asleep": true
+        }
+      ]
+    }
+  ]
+}
