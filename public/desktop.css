@@ -331,6 +331,46 @@
 .desk .pocket button.pocket-away { font-size: 9px; padding: 2px 6px; color: #8b9196; border-color: #44484c; letter-spacing: .12em; }
 .desk .rig-strip button.away { margin-top: auto; color: #8b9196; border-color: #44484c; background: none; font-size: 9px; }
 
+/* The rig coming out of the pocket and going back (public/rig-motion.js has the times; the window's box says which part
+   is playing, rig-out, rig-away or rig-tab, and how far in it is, --rig-at). Out, the rig slides out from behind the
+   computer's edge, where its tab was: it's moved across by its own width and the gap, and cut off where the computer
+   ends, the two going at the same pace, so it only ever shows on its own side. Away is the same backwards, and then the
+   tab slides out the same way. The row sits in the middle, so it grows and shrinks at both ends: the whole row slides
+   by half the difference (--rig-shift, measured by the page) to keep the computer from jumping. A rig that's been
+   dragged away from the computer has no edge to come from, and grows and shrinks where it is. */
+.desk { --rig-gap: 56px; --rig-shift: calc((var(--rig-gap) + var(--rig-wide, 352px) - 50px) / 2); }
+.desk.device.narrow { --rig-gap: 26px; }
+.desk.folded { --rig-gap: 0px; }
+.desk.rig-out .device-row { animation: rig-row-out 420ms cubic-bezier(.2, .8, .3, 1.04) var(--rig-at, 0ms) backwards; }
+.desk.rig-away .device-row { animation: rig-row-away 300ms cubic-bezier(.5, 0, .9, .5) var(--rig-at, 0ms) both; }
+.desk.rig-out .rig-case > .pocket, .desk.rig-out .rig-folded > .rig-strip { animation: rig-out 420ms cubic-bezier(.2, .8, .3, 1.04) var(--rig-at, 0ms) backwards; }
+.desk.rig-away .rig-case > .pocket, .desk.rig-away .rig-folded > .rig-strip { animation: rig-away 300ms cubic-bezier(.5, 0, .9, .5) var(--rig-at, 0ms) both; }
+.desk.rig-out .moved > .pocket, .desk.rig-out .moved > .rig-strip { animation-name: rig-grow; }
+.desk.rig-away .moved > .pocket, .desk.rig-away .moved > .rig-strip { animation-name: rig-shrink; }
+.desk.rig-away #computer-rig { pointer-events: none; }
+.desk.rig-tab .rig-pocket { animation: rig-tab-in 190ms ease-out var(--rig-at, 0ms) backwards; }
+/* Coming out, and the tab coming out, hold still for a moment first: the window has just been drawn again, and the
+   frames that takes would otherwise be the first of the slide. */
+@keyframes rig-out {
+  from, 14% { transform: translateX(calc(-100% - var(--rig-gap) - 12px)); clip-path: inset(-60px -60px -60px calc(100% + 12px)); }
+  to { transform: translateX(0); clip-path: inset(-60px -60px -60px calc(0px - var(--rig-gap))); }
+}
+@keyframes rig-away {
+  from { transform: translateX(0); clip-path: inset(-60px -60px -60px calc(0px - var(--rig-gap))); }
+  to { transform: translateX(calc(-100% - var(--rig-gap) - 12px)); clip-path: inset(-60px -60px -60px calc(100% + 12px)); }
+}
+@keyframes rig-grow { from, 14% { transform: scale(.86); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes rig-shrink { from { transform: scale(1); opacity: 1; } to { transform: scale(.86); opacity: 0; } }
+@keyframes rig-tab-in {
+  from, 30% { transform: translateX(-100%); clip-path: inset(-30px -30px -30px 100%); }
+  to { transform: translateX(0); clip-path: inset(-30px -30px -30px 0%); }
+}
+@keyframes rig-row-out { from, 14% { transform: translateX(var(--rig-shift)); } to { transform: translateX(0); } }
+@keyframes rig-row-away { from { transform: translateX(0); } to { transform: translateX(var(--rig-shift)); } }
+@media (prefers-reduced-motion: reduce) {
+  .desk.rig-out .device-row, .desk.rig-away .device-row, .desk.rig-out #computer-rig > *, .desk.rig-away #computer-rig > *, .desk.rig-tab .rig-pocket { animation: none; }
+}
+
 /* The rig waking up as it connects: three seconds of its boot on its screen, LINK blinking amber. */
 .desk .lamp.busy { background: #f2c14e; box-shadow: 0 0 6px #f2c14e; animation: desk-blink .32s steps(2) infinite; }
 .desk .pocket-boot { display: grid; gap: 2px; align-content: start; min-height: 100%; padding-top: 4px; cursor: pointer; font-size: 11px; }

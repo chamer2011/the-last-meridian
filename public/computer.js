@@ -6,7 +6,8 @@
 // by their title bars. The monitor and the player's rig beside it are two windows of their own, each dragged by its
 // frame: the monitor slides back when it's let go, like the game's other floating windows, and the rig stays where it's
 // put, with the lead between them following. The rig starts in the player's pocket: H, or the tab down the computer's
-// side, takes it out, and H again, or AWAY on it, puts it back.
+// side, takes it out, and H again, or AWAY on it, puts it back. It slides out from behind the computer's edge and back
+// in (public/rig-motion.js).
 // Skin and the old screen's strength are Settings choices (desktop.css). Nothing here needs typing. Since step 6 a
 // computer can look like something else: a door's panel with its keypad, a junction box's service menu and a camera's
 // feed on the rig's little screen, and NAVCOM 7, the Navy's desktop, for the ship's main system.
@@ -16,6 +17,7 @@ import { leaderNode } from "./float.js";
 import { SPRING_MS, makePullable, pulledBy } from "./pull.js";
 import { NET_MAP, layOutNetMap } from "./net-layout.js";
 import { LOAD_MS, loadingLines, loadingNode, navplotNode, newChartState } from "./navplot.js";
+import { rigNextChange, rigPhase, rigTurned } from "./rig-motion.js";
 
 const comp = { id: null, view: null, sending: false, message: null, seen: 0 };
 
@@ -39,7 +41,7 @@ const startWindows = () => ({
 });
 
 export function resetComputer() {
-  Object.assign(comp, { app: null, chart: null, id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1, rigTab: null, rigSlide: null, wasLocked: null, logSeen: 0, boot: null, rigOut: false, woke: false });
+  Object.assign(comp, { app: null, chart: null, id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1, rigTab: null, rigSlide: null, wasLocked: null, logSeen: 0, boot: null, rigOut: false, rigMove: null, woke: false });
 }
 resetComputer();
 
@@ -610,10 +612,12 @@ function deviceWindow(view) {
     el("div", { class: "device-foot" },
       el("button", { disabled: comp.sending, onclick: (event) => { event.stopPropagation(); logOff(); } }, d.leave ?? "Log off")));
   const narrow = pocketRoom() < 960;
-  const rig = comp.rigOut
-    ? [el("div", { class: "rig-gap", "aria-hidden": "true" }), movable(el("div", { class: "rig-case", id: "computer-rig" }, pocketNode(view, pocketMapWidth(narrow))), "rig", { stays: true })]
+  const wide = pocketMapWidth(narrow);
+  // The rig is drawn while it's out, and while it's still on its way back into the pocket.
+  const rig = rigShown()
+    ? [el("div", { class: "rig-gap", "aria-hidden": "true" }), movable(el("div", { class: "rig-case", id: "computer-rig" }, pocketNode(view, wide)), "rig", { stays: true })]
     : [rigPocketTab(view)];
-  return el("div", { class: `desk device${narrow ? " narrow" : ""}`, id: "computer-desk", role: "dialog", "aria-label": view.name, tabindex: "-1" },
+  return el("div", { ...deskLook(`desk device${narrow ? " narrow" : ""}`, wide + RIG_CASE), id: "computer-desk", role: "dialog", "aria-label": view.name, tabindex: "-1" },
     el("div", { class: "device-row" }, movable(frame, "window"), rig));
 }
 
@@ -783,7 +787,8 @@ function drawLead() {
   const desk = document.getElementById("computer-window");
   const rig = document.querySelector("#computer-rig > .rig-strip") ?? document.getElementById("computer-rig");
   const layer = svg.parentElement;
-  if (!kind || !LEADS[kind] || !desk || !rig || !layer) {
+  // No lead while the rig is on its way out of the pocket or back into it: it's drawn once the rig has arrived.
+  if (!kind || !LEADS[kind] || !desk || !rig || !layer || rigDoing()) {
     svg.innerHTML = "";
     return;
   }
@@ -806,10 +811,69 @@ function toggleRig() {
   const view = comp.view;
   if (!view) return;
   comp.rigOut = !comp.rigOut;
+  // It comes out and goes back by an animation, and the same press in the middle turns it round from where it is.
+  comp.rigMove = rigStill() ? null : rigTurned(comp.rigMove, performance.now(), comp.rigOut ? "out" : "away");
   if (comp.rigOut && !comp.woke && view.reach?.plugged && !view.reach?.remote && THROUGH_RIG.includes(view.look)) startBoot();
   if (comp.rigOut) comp.woke = true;
   else comp.rigSlide = null;
   draw();
+  followRigMove();
+}
+
+// ---- The rig coming out and going back -------------------------------------------------------------------------------
+// Taken out, the rig slides out from behind the computer's edge, where its tab was, and the computer slides over to make
+// room, since the two sit in the middle together. Put away, it slides back in, and its tab slides out again. A rig that
+// was dragged away from the computer has no edge to come from, and grows and shrinks where it is. The times and what's
+// happening when are public/rig-motion.js's; the pictures are the stylesheet's animations, each started as far in as
+// the move has got, so that drawing the window again in the middle of one carries on with it. Nothing moves when the
+// player's computer is set to show no animations: the rig is there, or it isn't, as it was before.
+
+// How much wider than its screen's page the rig's case is, and how wide its tab is until one's been measured.
+const RIG_CASE = 52;
+const STRIP_WIDE = 64;
+let rigTabWide = 50;
+const rigStill = () => typeof window !== "undefined" && Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+const rigDoing = () => rigPhase(comp.rigMove, performance.now());
+const rigShown = () => comp.rigOut || rigDoing()?.phase === "away";
+
+// The window's own box says what the rig is doing and how far in it is, for the stylesheet, and how wide the rig is,
+// for how far the computer has to slide until that's been measured.
+function deskLook(cls, wide) {
+  const doing = rigDoing();
+  return { class: doing ? `${cls} rig-${doing.phase}` : cls, style: `--rig-wide:${wide}px${doing ? `;--rig-at:-${Math.round(doing.ms)}ms` : ""}` };
+}
+
+// How far the computer slides over: half of what the row grows by when the rig takes its tab's place, since the row
+// sits in the middle. Measured on the row as it's drawn with the rig in it, which is how it's drawn both ways.
+function fitRigShift() {
+  const desk = document.getElementById("computer-desk");
+  if (!desk) return;
+  const tab = desk.querySelector(".rig-pocket");
+  if (tab?.offsetWidth) rigTabWide = tab.offsetWidth;
+  const row = desk.querySelector(".device-row");
+  const win = document.getElementById("computer-window");
+  if (!rigDoing() || !row || !win || !document.getElementById("computer-rig")) return;
+  desk.style.setProperty("--rig-shift", `${Math.round((row.offsetWidth - win.offsetWidth - rigTabWide) / 2)}px`);
+}
+
+// What has to be drawn again as a move goes on: the row without the rig, and its tab coming out, once it's gone in;
+// and the lead, once it's out.
+let rigTimer = 0;
+function followRigMove() {
+  clearTimeout(rigTimer);
+  const before = rigDoing();
+  if (!before) {
+    comp.rigMove = null;
+    return;
+  }
+  rigTimer = setTimeout(() => {
+    if (!rigDoing()) comp.rigMove = null;
+    if (document.getElementById("computer")) {
+      if (before.phase === "away") draw();
+      else drawLead();
+    }
+    followRigMove();
+  }, rigNextChange(comp.rigMove, performance.now()) + 16);
 }
 const rigToggle = (event) => {
   event.stopPropagation();
@@ -965,12 +1029,13 @@ function windowNode() {
     glass,
     el("div", { class: "plate" }, el("span", {}, "VARNE 15SX"), el("span", { class: `led${watch?.stage === "tracing" ? " bad" : watch?.stage === "noticed" ? " warn" : ""}` })));
   // In the pocket, the rig is a tab down the monitor's side. Out and folded, it's the strip down the monitor's side, and
-  // the page that slides out of it goes where it goes.
-  const rig = !comp.rigOut ? [rigPocketTab(view)]
+  // the page that slides out of it goes where it goes. It's drawn while it's out, and while it's still on its way back in.
+  const shown = rigShown();
+  const rig = !shown ? [rigPocketTab(view)]
     : lay.strip
       ? [movable(el("div", { class: "rig-folded", id: "computer-rig" }, stripNode(view), comp.rigSlide && el("div", { class: "rig-slide" }, pocketNode(view, lay.map, { closeable: true }))), "rig", { stays: true })]
       : [el("div", { class: "rig-gap", "aria-hidden": "true" }), movable(el("div", { class: "rig-case", id: "computer-rig" }, pocketNode(view, lay.map)), "rig", { stays: true })];
-  return el("div", { class: `desk computer${lay.strip && comp.rigOut ? " folded" : ""}`, id: "computer-desk", role: "dialog", "aria-label": view.name, tabindex: "-1" },
+  return el("div", { ...deskLook(`desk computer${lay.strip && shown ? " folded" : ""}`, lay.strip ? STRIP_WIDE : lay.map + RIG_CASE), id: "computer-desk", role: "dialog", "aria-label": view.name, tabindex: "-1" },
     el("div", { class: "device-row" }, movable(monitor, "window"), rig));
 }
 
@@ -999,6 +1064,8 @@ export function computerNode() {
   lead.setAttribute("aria-hidden", "true");
   const node = el("div", { class: "check-float", id: "computer" }, leaderNode(comp.view?.at), lead, windowNode());
   requestAnimationFrame(drawLead);
+  // While the rig is on its way out or back, how far the computer slides is measured once the window's on the page.
+  if (comp.rigMove) requestAnimationFrame(fitRigShift);
   // The lines that came with the last answer type out once: drawing the desktop again for a click doesn't retype them.
   comp.seen = comp.view?.log?.length ?? 0;
   return node;
@@ -1008,6 +1075,8 @@ function draw() {
   const node = computerNode();
   const current = document.getElementById("computer");
   if (current && node) current.replaceWith(node);
+  // Measured at once, before anything's painted, so the computer never jumps as the rig comes out or goes back.
+  fitRigShift();
   focusComputer();
 }
 

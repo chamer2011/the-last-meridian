@@ -931,3 +931,48 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
   scroll. Pictures were taken in the middle of four of them in slow motion. After publishing, the page's `plan`
   collection was listed once (empty). Saving a click couldn't be tried on this computer, since only the published
   page has the store, and nobody has watched the animations at full speed on a real screen but through those pictures.
+- **Their clicks, read before building** (`plan/state`, saved 2026-11-16 22:42 UTC): `often: always` (the full
+  loading screen every time), `connect: same` (CONNECT left exactly as it is), `plugged: unplugs` (putting it away
+  takes it off the computer) and `settings: yes`. Three of the four aren't my picks, and they stand. No `motion`,
+  `boot` or `off` was kept. They then said "Yes, step 1" in chat, to "Shall I build step 1 now with my picks, or do
+  you want to look at the page and keep your own three first?", so step 1 was built with my pick for the animation,
+  out of the tab, and they were told so. **Steps 2 and 3 have no kept example either: read the page again, or ask,
+  before building them.** For step 3, `unplugs` means a minute and being seen at every reconnect, and a junction box
+  or a camera can't be unplugged at all (`THROUGH_RIG`): say so again when it's laid out.
+- **Step 1, the rig comes out and goes back, is built (2026-11-16), untried by them.** Page only.
+  - **What they see:** H (or the tab) slides the rig out from behind the computer's edge, where the tab was, cut off
+    cleanly at that edge, while the computer slides over to make room at the same pace. H again (or AWAY) slides it back
+    in, the computer slides back, and the tab comes out of the same edge. About 0.4 s out and 0.5 s back. It's the same
+    at a monitor, at a panel (keypad, junction box, camera) and for the folded strip in a narrow window. H in the middle
+    turns it round from about where it is. The lead is drawn only once the rig has arrived, and goes the moment it
+    leaves. A rig that was dragged away from the computer grows and shrinks where it was left. With the computer set
+    to show no animations, nothing moves.
+  - `public/rig-motion.js` (pure, so `npm test` can check it): `RIG_MOVE` (out 420, away 300, tab 190 ms),
+    `rigMoveFrom`, `rigPhase(move, now)` giving `{ phase: "out" | "away" | "tab", ms }` or null, `rigShown`,
+    `rigNextChange`, and `rigTurned` (a turn in the middle begins the new move as far along as the old one had left).
+  - `public/computer.js`: `comp.rigMove` (`{ dir, at }`, cleared by `resetComputer`). `toggleRig` sets it, never
+    when `rigStill()` (reduced motion), and calls `followRigMove`, which draws the window again once the rig has gone
+    in (the row without it, the tab coming out) and the lead once it's out. The rig is drawn while `rigShown()` (out,
+    or still going in) in `windowNode` and `deviceWindow`. `deskLook` puts `rig-out`, `rig-away` or `rig-tab` and
+    `--rig-at` (minus how far in the move is) on `#computer-desk`, with `--rig-wide`. `fitRigShift` measures how far
+    the computer slides, half of what the row grows by, `(row - window - tab) / 2`, and sets `--rig-shift`: at once in
+    `draw()`, a frame later from `computerNode()`. `drawLead` draws nothing while a move is on.
+  - `public/desktop.css`: the animations, each begun `var(--rig-at, 0ms)` in, so a redraw in the middle carries on.
+    `rig-out` and `rig-away` on `.rig-case > .pocket` and `.rig-folded > .rig-strip`: a `translateX` by the rig's
+    own width and the gap, with a `clip-path: inset()` whose left edge moves the other way at the same pace, so the cut
+    stays at the computer's edge (`--rig-gap` is 56, 26 on a narrow panel, 0 folded). `rig-row-out` and
+    `rig-row-away` on `.device-row`, by `--rig-shift`. `rig-tab-in` on the tab. `rig-grow` and `rig-shrink` for a
+    rig that's `.moved`. Coming out and the tab begin with a hold (`from, 14%` and `from, 30%`): the window has just
+    been drawn again, and the frame that took (about 60 ms in the check) would otherwise have been the first of the slide.
+  - **Not done here, by the plan:** no loading screen, no power-off, no unplugging, no Settings line. In a narrow
+    window the rig's page doesn't come out with the strip yet (step 2), and a page that was out when the rig is put
+    away goes at once.
+  - **Tests:** `test/rig-motion.test.js` (8: the phases, when the rig is shown and when its tab is, the turn in the
+    middle, the stylesheet's times matching `RIG_MOVE`, the window drawing by `rigShown`); 1,390 tests in all.
+  - **Screens,** on a test copy run from a worktree (port 3296) in a headless Edge, every frame read: at 1400 and 810
+    wide, at the plot table and at the Bridge door's keypad, the computer never moved more than about 24 px between two
+    frames, the rig never showed on the computer's side of its edge, and everything ended where it rests; three quick
+    presses; connected (the lead gone while it moves, the tab's LINK lamp lit, the lead back after); a dragged rig; a
+    redraw in the middle of each way carrying on; reduced motion; pictures part-way with the animations stopped. **Not
+    checked:** a junction box and a camera (the same window as the keypad), practice, going along the network, the
+    installed app, and nobody has watched it at full speed on a real screen.
