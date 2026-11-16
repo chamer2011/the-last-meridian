@@ -5,7 +5,7 @@
  "name": "Stand-ins",
  "tilewidth": 128,
  "tileheight": 160,
- "tilecount": 119,
+ "tilecount": 120,
  "columns": 0,
  "margin": 0,
  "spacing": 0,
@@ -2693,6 +2693,29 @@
      "name": "what",
      "type": "string",
      "value": "floor (,) at the back, floor (.) at the front"
+    }
+   ]
+  },
+  {
+   "id": 119,
+   "image": "stand-ins/piece-119.png",
+   "imagewidth": 128,
+   "imageheight": 160,
+   "properties": [
+    {
+     "name": "floor",
+     "type": "string",
+     "value": ":"
+    },
+    {
+     "name": "mark",
+     "type": "string",
+     "value": ":("
+    },
+    {
+     "name": "what",
+     "type": "string",
+     "value": "floor (:) at the back, machine (() at the front"
     }
    ]
   }
