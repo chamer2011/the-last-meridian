@@ -53,7 +53,7 @@ const ui = {
 // ---- Reading preferences ------------------------------------------------
 
 const READING_KEY = "meridian-reading";
-const reading = { font: "book", size: 17, view: "iso", tiles: "techlab", isoArt: "drawn", pixelLook: "dark", pixelPeople: "drawn", chosen: true, story: "popups", popFont: "terminal", writing: "normal", interface: "auto", deskSkin: "grey", deskCrt: "light" };
+const reading = { font: "book", size: 17, view: "iso", tiles: "techlab", isoArt: "drawn", pixelLook: "dark", chosen: true, story: "popups", popFont: "terminal", writing: "normal", interface: "auto", deskSkin: "grey", deskCrt: "light" };
 const textSizes = { min: 13, max: 26 };
 
 function applyReading() {
@@ -64,7 +64,7 @@ function applyReading() {
   document.documentElement.dataset.deskCrt = reading.deskCrt;
   document.documentElement.style.setProperty("--story-size", `${reading.size}px`);
   // The pixel-art test draws the isometric room in a bought pack's pictures (public/pixel-art.js).
-  setPixelArt({ on: reading.view === "iso" && reading.isoArt === "pixel", look: reading.pixelLook, people: reading.pixelPeople });
+  setPixelArt({ on: reading.view === "iso" && reading.isoArt === "pixel", look: reading.pixelLook });
   applyInterface();
 }
 
@@ -84,7 +84,6 @@ function loadReading() {
     if (saved?.tiles === "techlab" || saved?.tiles === "interior") reading.tiles = saved.tiles;
     if (saved?.isoArt === "drawn" || saved?.isoArt === "pixel") reading.isoArt = saved.isoArt;
     if (saved?.pixelLook === "dark" || saved?.pixelLook === "light") reading.pixelLook = saved.pixelLook;
-    if (saved?.pixelPeople === "drawn" || saved?.pixelPeople === "pixel") reading.pixelPeople = saved.pixelPeople;
     if (saved?.story === "popups" || saved?.story === "box" || saved?.story === "panel") reading.story = saved.story;
     if (saved?.popFont === "terminal" || saved?.popFont === "book") reading.popFont = saved.popFont;
     if (saved?.writing in WRITING_SPEEDS) reading.writing = saved.writing;
