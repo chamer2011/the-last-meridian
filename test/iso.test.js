@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { test } from "node:test";
-import { CELL_WIDTH, FLOOR_COLORS, WALL_COLORS, buildScene, cellAt, cellCentre, project } from "../public/iso.js";
+import { CELL_WIDTH, FLOOR_COLORS, WALL_COLORS, buildScene, cellAt, cellCentre, project, warmLight, wornPaths } from "../public/iso.js";
 import { createGameFromDraft, randomDraft } from "../src/creator.js";
 import { runTool, newTurnLimits } from "../src/tools.js";
 import { lookOf, mapFor, placeLevels, roomsOf, walkView } from "../src/walk.js";
@@ -175,6 +175,42 @@ test("the medbay and the galley are Light rooms for the pixel-art view, down to 
   assert.ok(scene.ground.some((cell) => cell.light) && scene.ground.some((cell) => cell.kind === "floor" && !cell.light));
   // No room of deck 1 is.
   assert.ok(!buildScene(placeLevels(game).levels.deck1).light.some((row) => row.some(Boolean)));
+});
+
+test("the floor is worn from a doorway to each seat and thing, round what's in the way", () => {
+  // A room fourteen squares by five with a door in its left wall, a table in the middle and a chair at the far end.
+  const rows = ["##############", "#............#", "+............#", "#............#", "##############"];
+  const kinds = rows.map((row) => [...row].map((mark) => (mark === "#" ? "wall" : mark === "+" ? "door" : "floor")));
+  const room = { furniture: [{ kind: "table", x: 6, y: 2, facing: "s" }, { kind: "chair", x: 12, y: 2, facing: "w" }], things: [] };
+  const paths = wornPaths(room, kinds);
+  assert.equal(paths.length, 1);
+  const [path] = paths;
+  // From the chair's square back to the door's, from middle to middle.
+  assert.deepEqual(path.points[0], [12.5 * CELL_WIDTH, 2.5]);
+  assert.deepEqual(path.points.at(-1), [0.5 * CELL_WIDTH, 2.5]);
+  assert.deepEqual([path.x0, path.x1], [0, 13]);
+  // Straightened: a handful of points, not one a square.
+  assert.ok(path.points.length >= 3 && path.points.length <= 6, `${path.points.length} points`);
+  // And never across the table (squares 6 and 7 of row 2).
+  for (let i = 1; i < path.points.length; i += 1) {
+    const [[ax, ay], [bx, by]] = [path.points[i - 1], path.points[i]];
+    for (let t = 0; t <= 1; t += 0.05) {
+      const [wx, wy] = [ax + (bx - ax) * t, ay + (by - ay) * t];
+      assert.ok(!(wx > 6 * CELL_WIDTH && wx < 8 * CELL_WIDTH && wy > 2 && wy < 3), `the way crosses the table at ${wx},${wy}`);
+    }
+  }
+  // A thing is walked up to, from the square beside it.
+  const withThing = wornPaths({ furniture: [], things: [{ x: 10, y: 1 }] }, kinds);
+  assert.equal(withThing.length, 1);
+  // Nothing to walk to, no ways; and no door, none either.
+  assert.deepEqual(wornPaths({ furniture: [], things: [] }, kinds), []);
+  assert.deepEqual(wornPaths(room, kinds.map((row) => row.map((kind) => (kind === "door" ? "wall" : kind)))), []);
+  // The real bridge has its ways, and a warm lamp is told from a screen's glow.
+  const game = createGameFromDraft(randomDraft({ seed: 7, archetype: "officer" }));
+  assert.ok(buildScene(placeLevels(game).levels.deck1).worn.length > 20);
+  assert.equal(warmLight("#ffd9a0"), true);
+  assert.equal(warmLight("#86dcff"), false);
+  assert.equal(warmLight(undefined), false);
 });
 
 test("a room's own look goes over its place's, and the view gets it from the real game", () => {

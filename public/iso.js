@@ -5,7 +5,7 @@
 // server still decides everything.
 
 import { el } from "./dom.js";
-import { FURNITURE_BY_ID, footprintOf } from "./furniture.js";
+import { FURNITURE_BY_ID, footprintOf, squaresOf } from "./furniture.js";
 import { hideLoading, showLoading } from "./loading.js";
 import { PIXEL_UNIT, drawPixelCrate, drawPixelDoor, drawPixelFloors, drawPixelPiece, drawPixelWall, packKey, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim } from "./pixel-art.js";
 
@@ -508,6 +508,8 @@ export function buildScene(view) {
     // How worn and cluttered the place looks, 0 to 3 each, where it's said (the ship: src/wear.js).
     wear: view.wear ?? null,
     light,
+    // Where the floor is worn by walking (wornPaths, below).
+    worn: wornPaths(view, kinds),
     bounds: bounds ?? { minU: -1, maxU: 1, minV: -1, maxV: 1 },
     colors: { ...FALLBACK_COLORS, ...view.colors },
   };
@@ -2344,6 +2346,39 @@ function drawTile(room, tx, ty) {
       }
     }
   }
+  // Where people walk, the floor is worn paler: every way across this stretch drawn as one band on a canvas of its own,
+  // then blurred and laid faintly over the floor, the way the shadows are, so the ways run into one another.
+  const worn = (scene.worn ?? []).filter((path) => reaches((path.box ??= uvBox(path.x0, path.y0, path.x1, path.y1, 0)), unit * 1.5));
+  if (worn.length) {
+    const wide = unit * 0.3;
+    const soften = Math.max(1.5, unit * 0.11 * ratio);
+    const edge = Math.ceil(soften * 3 + wide * ratio) + 2;
+    const size = Math.ceil((TILE + edge * 2) * 0.5);
+    const lane = newCanvas(size, size);
+    const lctx = lane.getContext("2d");
+    const lanePainter = painterFor(lctx, ratio * 0.5, unit, ox + edge / ratio, oy + edge / ratio);
+    lanePainter.flat();
+    lctx.strokeStyle = "#fff";
+    lctx.lineWidth = wide;
+    lctx.lineCap = "round";
+    lctx.lineJoin = "round";
+    for (const path of worn) {
+      lctx.beginPath();
+      path.points.forEach(([wx, wy], i) => (i ? lctx.lineTo(...lanePainter.at(wx, wy)) : lctx.moveTo(...lanePainter.at(wx, wy))));
+      lctx.stroke();
+    }
+    const soft = newCanvas(size, size);
+    const softCtx = soft.getContext("2d");
+    softCtx.filter = `blur(${soften * 0.5}px)`;
+    softCtx.drawImage(lane, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = "source-atop";
+    ctx.globalAlpha = 0.075 + (scene.wear?.grime ?? 1) * 0.015;
+    ctx.drawImage(soft, -edge, -edge, size / 0.5, size / 0.5);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+    flat();
+  }
   for (const mark of scene.marks ?? []) drawMark(painter, mark);
   const paint = mix(hexOr(scene.colors.writing, FALLBACK_COLORS.writing), "#c8c4b0", 0.5);
   for (const label of room.labels) {
@@ -3954,6 +3989,119 @@ function wallFace(painter, piece, inset) {
 // A piece of the bought packs where its picture isn't shown: in this view's own drawing, and in the pixel-art test for
 // the moment before its picture has come. A plain shape of its size: a box as high as the piece, a seat with a back, a
 // flat patch for what lies on the floor, a panel for what hangs on a wall, a little box for a small thing.
+// ---- Where people walk ----------------------------------------------------------------------------------------------
+// A floor wears where it's walked on: from each doorway and stair to every seat, bed and thing that can be reached from
+// it, by the shortest way round what's in the way. The ways are worked out once for a level, as lines across the floor
+// from the middle of one square to the middle of another, straightened wherever nothing stands between two points.
+// Each is { points: [[wx, wy], ...] in tiles, x0, y0, x1, y1 in squares }.
+export function wornPaths(view, kinds) {
+  const lines = kinds.length;
+  const cols = kinds[0]?.length ?? 0;
+  const at = (x, y) => y * cols + x;
+  // What nobody walks through: furniture that's in the way, and things.
+  const taken = new Set();
+  for (const piece of view.furniture ?? []) {
+    const kind = FURNITURE_BY_ID[piece.kind];
+    if (kind && !kind.wall && kind.blocks) for (const [x, y] of squaresOf(piece)) taken.add(at(x, y));
+  }
+  const floor = (x, y) => x >= 0 && y >= 0 && x < cols && y < lines && (kinds[y][x] === "floor" || kinds[y][x] === "door" || kinds[y][x] === "exit") && !taken.has(at(x, y));
+  // From every doorway and stair at once, to everywhere: a square is half as wide as it's deep, so a step along a row
+  // is half the way of a step along a column.
+  const far = new Float32Array(cols * lines).fill(Infinity);
+  const from = new Int32Array(cols * lines).fill(-1);
+  const heap = [];
+  const push = (cost, cell) => {
+    heap.push([cost, cell]);
+    for (let i = heap.length - 1; i > 0;) {
+      const up = (i - 1) >> 1;
+      if (heap[up][0] <= heap[i][0]) break;
+      [heap[up], heap[i]] = [heap[i], heap[up]];
+      i = up;
+    }
+  };
+  const pop = () => {
+    const top = heap[0];
+    const last = heap.pop();
+    if (heap.length) {
+      heap[0] = last;
+      for (let i = 0; ;) {
+        const [l, r] = [i * 2 + 1, i * 2 + 2];
+        let least = i;
+        if (l < heap.length && heap[l][0] < heap[least][0]) least = l;
+        if (r < heap.length && heap[r][0] < heap[least][0]) least = r;
+        if (least === i) break;
+        [heap[least], heap[i]] = [heap[i], heap[least]];
+        i = least;
+      }
+    }
+    return top;
+  };
+  for (let y = 0; y < lines; y += 1) for (let x = 0; x < cols; x += 1) if ((kinds[y][x] === "door" || kinds[y][x] === "exit") && floor(x, y)) {
+    far[at(x, y)] = 0;
+    push(0, at(x, y));
+  }
+  if (!heap.length) return [];
+  while (heap.length) {
+    const [cost, cell] = pop();
+    if (cost > far[cell]) continue;
+    const [x, y] = [cell % cols, Math.floor(cell / cols)];
+    for (const [dx, dy, step] of [[1, 0, 0.5], [-1, 0, 0.5], [0, 1, 1], [0, -1, 1]]) {
+      if (!floor(x + dx, y + dy)) continue;
+      const next = at(x + dx, y + dy);
+      if (cost + step < far[next]) {
+        far[next] = cost + step;
+        from[next] = cell;
+        push(cost + step, next);
+      }
+    }
+  }
+  // Where people go: onto a seat or a bed, and up to a thing, from the square beside it that's nearest a door.
+  const ends = new Set();
+  const beside = (x, y) => [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [x + dx, y + dy]).filter(([bx, by]) => floor(bx, by) && far[at(bx, by)] < Infinity).sort((a, b) => far[at(...a)] - far[at(...b)])[0] ?? null;
+  for (const piece of view.furniture ?? []) {
+    const kind = FURNITURE_BY_ID[piece.kind];
+    if (!kind || !(kind.seat || kind.bed)) continue;
+    const [x, y] = squaresOf(piece)[0];
+    const end = floor(x, y) && far[at(x, y)] < Infinity ? [x, y] : beside(x, y);
+    if (end) ends.add(at(...end));
+  }
+  for (const thing of view.things ?? []) {
+    if (thing.part || thing.x === undefined) continue;
+    const end = beside(thing.x, thing.y);
+    if (end) ends.add(at(...end));
+  }
+  const middle = (cell) => [((cell % cols) + 0.5) * CELL_WIDTH, Math.floor(cell / cols) + 0.5];
+  // Whether the straight line between two squares' middles crosses only floor.
+  const clear = (a, b) => {
+    const [ax, ay] = middle(a);
+    const [bx, by] = middle(b);
+    const steps = Math.ceil(Math.hypot(bx - ax, by - ay) / 0.2);
+    for (let i = 1; i < steps; i += 1) {
+      const [wx, wy] = [ax + ((bx - ax) * i) / steps, ay + ((by - ay) * i) / steps];
+      if (!floor(Math.floor(wx / CELL_WIDTH), Math.floor(wy))) return false;
+    }
+    return true;
+  };
+  const paths = [];
+  for (const end of ends) {
+    if (!(far[end] > 1)) continue;
+    const cells = [];
+    for (let cell = end; cell >= 0 && cells.length < 400; cell = from[cell]) cells.push(cell);
+    // Straightened: from each point, straight to the furthest one along the way that can be seen from it.
+    const kept = [cells[0]];
+    for (let i = 0; i < cells.length - 1;) {
+      let next = i + 1;
+      for (let j = Math.min(cells.length - 1, i + 40); j > i + 1; j -= 1) if (clear(cells[i], cells[j])) { next = j; break; }
+      kept.push(cells[next]);
+      i = next;
+    }
+    const xs = cells.map((cell) => cell % cols);
+    const ys = cells.map((cell) => Math.floor(cell / cols));
+    paths.push({ points: kept.map(middle), x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs) + 1, y1: Math.max(...ys) + 1 });
+  }
+  return paths;
+}
+
 // The look a piece of furniture is drawn in by the pixel-art view, where its room has one of its own.
 function lookOfPiece(piece) {
   return iso.scene?.light?.[Math.floor(piece.y0 + 1e-6)]?.[Math.round(piece.x0 / CELL_WIDTH)] ? { look: "light" } : {};
