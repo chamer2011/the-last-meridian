@@ -294,8 +294,9 @@ test("people head out of a room with bad air, and the guards and engineers go wh
   assert.ok(away && away.where !== "@mess" && /bad air in the Long Mess/.test(away.doing), JSON.stringify(away));
   assert.ok(detour("halm", "mess", true), "asleep, once it's bad, they wake and go too");
   assert.equal(detour("halm", "bridge", false), null, "the bridge is fine");
-  // Marrow, the first engineer, walks over within the hour before the seal's due to come off.
+  // Marrow, the first engineer the ship's work board asks, walks over within the hour before the seal's due to come off.
   game.systems.meridian.parts[vent.id].fixAt = game.clock.hours + 0.5;
+  passTime(game, 0.1);
   assert.deepEqual(sys.detourFor(game, "meridian")("marrow", "engineering", false), { where: "@mess", doing: "fixing the vent" });
   const notes = passTime(game, 0.6);
   assert.ok(notes.some((note) => /Marrow has fixed the vent in The Long Mess/.test(note)), notes.join(" | "));

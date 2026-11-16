@@ -201,14 +201,16 @@ test("the guards and engineers the systems file names by post are whoever holds 
   const game = newGame();
   assert.deepEqual(sys.staffOf(game, "meridian", model.engineers), ["marrow", "Tech Sami", "Tech Oona", "Tech Goran"]);
   assert.deepEqual(sys.staffOf(game, "meridian", model.guards), ["tarrow"]);
-  // Hask as chief engineer: he's the one who goes to the vent, and the one who's said to have fixed it.
+  // Hask as chief engineer: he's the first the ship's work board asks, so he's the one who goes to the vent, and the
+  // one who's said to have fixed it.
   cmd.setHolder(game, "meridian", "chief_engineer", "tobin");
   const vent = Object.values(model.parts).find((one) => one.name === "vent" && one.room === "mess");
   sys.damagePart(game, "meridian", vent.id, "sealed", { by: "story" });
   game.systems.meridian.parts[vent.id].fixAt = game.clock.hours + 0.5;
+  game.location = "meridian";
+  passTime(game, 0.1);
   assert.deepEqual(sys.detourFor(game, "meridian")("tobin", "engineering", false), { where: "@mess", doing: "fixing the vent" });
   assert.equal(sys.detourFor(game, "meridian")("marrow", "engineering", false), null, "Marrow isn't the chief engineer any more");
-  game.location = "meridian";
   const notes = passTime(game, 0.6);
   assert.ok(notes.some((line) => /\[SYSTEMS\] Hask has fixed the vent in The Long Mess/.test(line)), notes.join(" | "));
   cmd.setHolder(game, "meridian", "chief_of_security", null);

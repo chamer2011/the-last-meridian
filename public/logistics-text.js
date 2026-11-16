@@ -1,11 +1,33 @@
 // A place's logistics as plain text: world/logistics/<place>.txt. The file names the place, has a few numbers at
-// the top, and one part each for Stores, Machines, Loads and Refills, every line of them starting with - and a
-// space. This only reads and writes the words, and reads a store's line into its pieces; which rooms, things,
+// the top, and one part each for Stores, Machines, Loads, Refills and Urgency, every line of them starting with -
+// and a space. This only reads and writes the words, and reads a store's line into its pieces; which rooms, things,
 // items and people they name is worked out by src/logistics.js, which knows the maps. It runs in the browser too,
 // for the Story board. world/logistics/_how-to-write-logistics.txt explains the format.
 
-export const LOGISTICS_PARTS = ["stores", "machines", "loads", "refills"];
-export const PART_TITLES = { stores: "Stores", machines: "Machines", loads: "Loads", refills: "Refills" };
+export const LOGISTICS_PARTS = ["stores", "machines", "loads", "refills", "urgency"];
+export const PART_TITLES = { stores: "Stores", machines: "Machines", loads: "Loads", refills: "Refills", urgency: "Urgency" };
+// The kinds of work a place's board gives out, each with the words the Urgency part uses for it, in the order they
+// come in when a file doesn't say: the most urgent first.
+export const WORK_KINDS = [
+  ["bleeding", "carrying someone who's bleeding"],
+  ["fire", "a fire"],
+  ["breach", "a breach"],
+  ["fallen", "carrying someone who's down"],
+  ["alarm", "the alarm"],
+  ["carry_urgent", "urgent carrying"],
+  ["repair_critical", "a repair the ship can't do without"],
+  ["treat", "treating someone"],
+  ["carry", "carrying"],
+  ["repair", "a repair"],
+  ["workshop", "mending in the workshop"],
+];
+const workWords = (words) => String(words ?? "").toLowerCase().replace(/[\u2019']/g, "").replace(/^the\s+/, "").replace(/\.$/, "").replace(/\s+/g, " ").trim();
+// "a repair the ship can't do without": one line of the Urgency part, to the kind of work it names.
+export function readUrgencyLine(text) {
+  const found = WORK_KINDS.find(([, words]) => workWords(words) === workWords(text));
+  return found ? { kind: found[0] } : { problem: `"${text}" isn't a kind of work the board gives out: the kinds are ${WORK_KINDS.map(([, words]) => words).join("; ")}` };
+}
+export const workKindWords = (kind) => WORK_KINDS.find(([id]) => id === kind)?.[1] ?? kind;
 // A part the file had until the stores said what they want themselves: who carried what from where to where.
 const OLD_PARTS = { errands: "the Errands part isn't written any more: a store says what it wants kept in it and who carries for it on its own line, such as - pantry in The Galley: holds 12 ration crates; wants 4; carried by the deckhands" };
 
@@ -75,7 +97,7 @@ export const slugOf = (words) => String(words ?? "").toLowerCase().replace(/['â€
 export function parseLogisticsText(text, id = "it") {
   const problems = [];
   const problem = (line, message) => problems.push({ line, message });
-  const value = { name: id, numbers: {}, stores: [], machines: [], loads: [], refills: [] };
+  const value = { name: id, numbers: {}, stores: [], machines: [], loads: [], refills: [], urgency: [] };
   const lines = String(text ?? "").replace(/\r\n?/g, "\n").split("\n");
   const header = new Map(LOGISTICS_HEADER.map((field) => [field.key, field]));
   let titled = false;

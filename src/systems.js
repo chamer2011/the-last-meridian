@@ -17,6 +17,7 @@ import { startCheck } from "./checks.js";
 import { genericKindOf, writtenAtThing } from "./computers.js";
 import { livesHere, peopleAboard } from "./life.js";
 import { dropOrderOf, loadsOf, noPartsWords, powerSupply, repairPartsAboard, repairPartsWords, repairStore, takeRepairParts } from "./logistics.js";
+import { boardRuns, repairHands } from "./work.js";
 import { recordFact } from "./record.js";
 import { YOU, countForDuty, holderKey, jobById, jobByWords, lostReason, onJob, postByWords, speedOf } from "./command.js";
 import { isCaptain } from "./role.js";
@@ -1121,17 +1122,104 @@ export const staffWords = (place, ref) => {
 // A repair that's due takes what the place's logistics say a repair of that damage takes, from its stores. Without
 // enough there it waits, which is said once, and starts again within the hour once some comes. Gives the words for
 // what it took ("a parts crate from the parts lockers", or "" for a repair that takes nothing), or null while it waits.
-function repairWith(game, place, model, s, damage, what, say) {
+function repairWith(game, place, model, s, damage, what, say, who = null) {
   const took = takeRepairParts(game, place, damage, what);
   if (took !== null) {
     delete s.noParts;
     return took;
   }
   delete s.fixAt;
-  if (!s.noParts) say(`[SYSTEMS] ${personName(place, staffOf(game, place, model.engineers)[0] ?? "Someone")} can't fix ${what}: ${noPartsWords(place, damage)}.`);
+  if (!s.noParts) say(`[SYSTEMS] ${personName(place, who ?? staffOf(game, place, model.engineers)[0] ?? "Someone")} can't fix ${what}: ${noPartsWords(place, damage)}.`);
   s.noParts = true;
   return null;
 }
+
+// ---- Repairs, for a place's work board (src/work.js) ---------------------------------------------------------
+// A repair is known to the board by its part's id, or by door: and its room for a door that was forced.
+const doorRef = (room) => `door:${room}`;
+function repairOf(place, model, state, ref) {
+  if (String(ref).startsWith("door:")) {
+    const room = ref.slice(5);
+    const st = state.doors[room];
+    return st?.forced ? { ref, st, damage: "forced", door: room, room, name: `door to ${roomNameOf(place, room)}`, system: "doors", what: `the door to ${roomNameOf(place, room)}` } : null;
+  }
+  const part = model.parts[ref];
+  const st = state.parts[ref];
+  return part && st?.damage ? { ref, st, damage: st.damage, part, room: part.room, name: part.name, system: part.system, what: `the ${part.name} in ${roomNameOf(place, part.room)}` } : null;
+}
+// Everything at a place that's waiting to be mended, the soonest due first: each with when it's due, or that it's
+// waiting for parts. Reading this changes nothing.
+export function repairsWaiting(game, place) {
+  const model = systemsOf(place);
+  const state = game.systems?.[place];
+  if (!model || !state) return [];
+  const refs = [...Object.keys(state.parts).filter((id) => model.parts[id] && state.parts[id].damage), ...Object.keys(state.doors).filter((room) => state.doors[room].forced).map(doorRef)];
+  return refs.map((ref) => repairOf(place, model, state, ref)).filter((one) => one && (one.st.fixAt || one.st.noParts))
+    .map(shown).sort((a, b) => (a.fixAt ?? Infinity) - (b.fixAt ?? Infinity));
+}
+// The repairs that are due by a time, the soonest first, and nothing that's waiting for parts: what the board looks
+// at every few minutes, so it's kept cheap. Reading this changes nothing.
+const NONE_DUE = Object.freeze([]);
+const shown = ({ st, ...rest }) => ({ ...rest, fixAt: st.fixAt ?? null, noParts: Boolean(st.noParts), battle: st.by === "battle" });
+export function repairsDue(game, place, by) {
+  const state = game.systems?.[place];
+  if (!state) return NONE_DUE;
+  let refs = null;
+  for (const id in state.parts) {
+    const s = state.parts[id];
+    if (s.fixAt && s.fixAt <= by && s.damage) (refs ??= []).push(id);
+  }
+  for (const room in state.doors) {
+    const s = state.doors[room];
+    if (s.fixAt && s.fixAt <= by && s.forced) (refs ??= []).push(doorRef(room));
+  }
+  if (!refs) return NONE_DUE;
+  const model = systemsOf(place);
+  return model ? refs.map((ref) => repairOf(place, model, state, ref)).filter(Boolean).map(shown).sort((a, b) => a.fixAt - b.fixAt) : NONE_DUE;
+}
+// One repair, by what the board knows it as: null when it's been mended.
+export function repairNow(game, place, ref) {
+  const model = systemsOf(place);
+  const state = game.systems?.[place];
+  const found = model && state ? repairOf(place, model, state, ref) : null;
+  return found && (found.st.fixAt || found.st.noParts) ? shown(found) : null;
+}
+// Whether anything at a place is waiting for parts before it can be mended.
+export function anyWaitingForParts(game, place) {
+  const state = game.systems?.[place];
+  if (!state) return false;
+  for (const id in state.parts) if (state.parts[id].noParts) return true;
+  for (const room in state.doors) if (state.doors[room].noParts) return true;
+  return false;
+}
+// A repair nobody's on can't be finished in under an hour from now: the hour starts when an engineer takes it.
+export function holdRepair(game, place, ref, hours) {
+  const model = systemsOf(place);
+  const state = game.systems?.[place];
+  const found = model && state ? repairOf(place, model, state, ref) : null;
+  if (found?.st.fixAt && found.st.fixAt < hours + 1) found.st.fixAt = hours + 1;
+}
+// The board's engineer has had their hour at it: the repair is done, if what it takes is in the stores. Gives the
+// lines for the story, said only where the player is.
+export function finishRepair(game, place, ref, who) {
+  const model = systemsOf(place);
+  const state = game.systems?.[place];
+  const lines = [];
+  const found = model && state ? repairOf(place, model, state, ref) : null;
+  if (!found?.st.fixAt) return lines;
+  const here = place === game.location;
+  const say = (...text) => { if (here) lines.push(...text); };
+  const took = repairWith(game, place, model, found.st, found.damage, found.what, say, who);
+  if (took !== null) {
+    delete found.st[found.door ? "forced" : "damage"];
+    delete found.st.fixAt;
+    say(`[SYSTEMS] ${personName(place, who ?? staffOf(game, place, model.engineers)[0] ?? "Someone")} has fixed ${found.what}${took ? `, with ${took}` : ""}.`);
+    tidy(game, place);
+  }
+  return lines;
+}
+// Who mends at a place, in the order they're asked.
+export const engineersOf = (game, place) => (systemsOf(place) ? staffOf(game, place, systemsOf(place).engineers) : []);
 
 // Called whenever the clock moves. Only places where something isn't normal have anything to do.
 export function advanceSystems(game) {
@@ -1149,6 +1237,8 @@ export function advanceSystems(game) {
     state.at = t;
     const here = place === game.location;
     const say = (...text) => { if (here) lines.push(...text); };
+    // Where a work board gives the repairs out, it finishes them too, when its engineer's hour is up (src/work.js).
+    const byClock = !boardRuns(place);
     // What the place's people put right, once it's due.
     for (const [id, s] of Object.entries(state.parts)) {
       const part = model.parts[id];
@@ -1163,7 +1253,7 @@ export function advanceSystems(game) {
         delete s.noParts;
         s.fixAt = t + 1;
       }
-      if (s.fixAt && s.fixAt <= t) {
+      if (byClock && s.fixAt && s.fixAt <= t) {
         const took = repairWith(game, place, model, s, s.damage, what, say);
         if (took !== null) {
           delete s.damage;
@@ -1189,7 +1279,7 @@ export function advanceSystems(game) {
         delete s.noParts;
         s.fixAt = t + 1;
       }
-      if (s.fixAt && s.fixAt <= t) {
+      if (byClock && s.fixAt && s.fixAt <= t) {
         const took = repairWith(game, place, model, s, "forced", what, say);
         if (took !== null) {
           delete s.forced;
@@ -1270,14 +1360,23 @@ function driftAir(game, model, state, minutes, here) {
 // an engineer for each repair in its last hour. Null when nobody is.
 function calledNow(game, place, model, state, t) {
   const ringing = state.alarm?.ringing?.room && commsUp(game, place) ? state.alarm.ringing.room : null;
-  const due = Object.entries(state.parts).filter(([id, s]) => s.fixAt && s.fixAt - t <= 1 && model.parts[id]).sort((a, b) => a[1].fixAt - b[1].fixAt);
-  if (!ringing && !due.length) return null;
   const fixing = {};
-  const engineers = staffOf(game, place, model.engineers);
-  due.forEach(([id, s], i) => {
-    const key = engineers[i % Math.max(1, engineers.length)];
-    if (key && !fixing[key]) fixing[key] = { part: model.parts[id], s };
-  });
+  if (boardRuns(place)) {
+    // Whoever the place's work board has put on each repair (src/work.js).
+    for (const hand of repairHands(game, place)) {
+      const found = repairOf(place, model, state, hand.ref);
+      if (found?.st.fixAt && !fixing[hand.key]) fixing[hand.key] = { part: found.part ?? { room: found.room, name: found.name }, s: found.st };
+    }
+    if (!ringing && !Object.keys(fixing).length) return null;
+  } else {
+    const due = Object.entries(state.parts).filter(([id, s]) => s.fixAt && s.fixAt - t <= 1 && model.parts[id]).sort((a, b) => a[1].fixAt - b[1].fixAt);
+    if (!ringing && !due.length) return null;
+    const engineers = staffOf(game, place, model.engineers);
+    due.forEach(([id, s], i) => {
+      const key = engineers[i % Math.max(1, engineers.length)];
+      if (key && !fixing[key]) fixing[key] = { part: model.parts[id], s };
+    });
+  }
   return { ringing, guards: ringing ? staffOf(game, place, model.guards) : [], fixing };
 }
 // Where their duty has one of them, or null for anyone it hasn't called.
@@ -1293,6 +1392,15 @@ function dutyTurn(game, place, called, key, t) {
 }
 // The same for the ship's work board (src/work.js), which gives nobody a job while their duty has them: the guards
 // at an alarm and the engineers at a repair, and not whoever's getting out of bad air. Null when nobody's called.
+// The guards answering an alarm, and nobody else: null while nothing rings.
+export function alarmDetour(game, place) {
+  const model = systemsOf(place);
+  const state = game.systems?.[place];
+  const ringing = model && state?.alarm?.ringing?.room && commsUp(game, place) ? state.alarm.ringing.room : null;
+  if (!ringing) return null;
+  const guards = staffOf(game, place, model.guards);
+  return (key) => (guards.includes(key) ? { where: `@${ringing}`, doing: `answering the alarm in ${lowerFirst(roomNameOf(place, ringing))}` } : null);
+}
 export function dutyDetour(game, place) {
   const model = systemsOf(place);
   const state = game.systems?.[place];

@@ -55,6 +55,12 @@ THE FILE
     Refills:
     - the shuttle stores: ration crates and fuel cells from nothing for now, every 6 hours, up to full
 
+    Urgency:
+    - urgent carrying
+    - a repair the ship can't do without
+    - carrying
+    - a repair
+
 The first line is the place's name. The lines after it, before the first part, are the numbers at the top.
 Then come the parts, each a heading with a colon and lines that start with - and a space.
 
@@ -169,12 +175,13 @@ cells, 4 produce). Anything it doesn't name goes one at a time. A carrier takes 
 the store they're filling has room for, or as many as can be spared, whichever is least.
 
 Whoever takes a job leaves what they were doing, walks to the store they fetch from, stands there a minute,
-takes their load, walks it over, puts it in, and goes back to their day. The board sends nobody who's already
-taken by something more pressing: someone in the last hour of a repair, answering an alarm, down or carrying
-the fallen, or walking with the captain. The next of the carriers goes instead, and with nobody free the job
-waits. A carrier who's called away hands the job back: whatever they'd loaded is set down, and the next free
-hand carries it on. A walk takes as long as the way through the decks is. The Ship menu's Work lines say what
-each store has against what it wants, who's carrying for it and since when, or why nobody is.
+takes their load, walks it over, puts it in, and goes back to their day. One person has one job: the board
+sends nobody who's already on another (see URGENCY for when someone leaves one job for another), nor anyone
+taken by something outside it: answering an alarm, down or carrying the fallen, or walking with the captain.
+The next of the carriers goes instead, and with nobody free the job waits. A carrier who's called away hands
+the job back: whatever they'd loaded is set down, and the next free hand carries it on. A walk takes as long
+as the way through the decks is. The Work page says what each store has against what it wants, who's carrying
+for it and since when, or why nobody is.
 
 An older file's Errands part (who carries what from which store to which) isn't read any more, and the
 checker says so.
@@ -211,6 +218,45 @@ page says whose order stands, since when and why.
 
 The player can take any job nobody's on, from the Work page (I'll do it): the crew leaves it alone for two
 hours, or three quarters of an hour if it's urgent, and takes it back after that.
+
+URGENCY
+-------
+
+The Urgency part is the order the board's work comes in, the most urgent first, a kind of work to a line:
+
+    Urgency:
+    - carrying someone who's bleeding
+    - a fire
+    - a breach
+    - carrying someone who's down
+    - the alarm
+    - urgent carrying
+    - a repair the ship can't do without
+    - treating someone
+    - carrying
+    - a repair
+    - mending in the workshop
+
+Those are all the kinds there are, written just so. Move a line up or down and the ship chooses differently. A
+kind the part leaves out comes after the ones it has, in the order above, and a place with no Urgency part
+uses the order above.
+
+The order does two things. Jobs are given out from the top: when there are more jobs than hands, the higher
+line gets the hands. And someone who's already at work leaves it only for a job two lines higher or more: a
+tech mending a speaker (a repair) leaves it to fetch the generator's fuel (urgent carrying, four lines up), but
+not for a crate the pantry merely wants (carrying, one line up). What they leave waits for the next free hand: a
+load is set down where they were, and a repair is simply still broken, with an hour's work for whoever takes it
+up. Within one line, the part of the ship the first officer has put first goes before the rest.
+
+urgent carrying is carrying for a store that's under its urgent mark, or that a machine, the medbay or a
+repair is waiting on (see CARRYING); carrying is the rest. a repair the ship can't do without is one to
+whatever carries her power (the junction boxes) or to the air plant; a repair is anything else that's broken.
+The top seven kinds, as the list first has them, wake someone when nobody who could do the job is up; the rest
+wait for the morning. (Whether a kind wakes people goes with the kind, not with where its line is.)
+
+So far the board gives out the carrying and the repairs. The other lines are read and kept, and count from
+the day their kinds of work join the board: until then the medbay, the workshop, the fires and the alarm send
+their own people, as they always have, and anyone they've taken is given no job by the board.
 
 LOADS
 -----
@@ -258,10 +304,15 @@ damage:
     a repair takes: 1 parts crate, from the parts lockers or the shuttle stores, for what's broken, cut, crippled or forced
 
 The engineers are the ones the place's systems file names (world/systems). In the last hour before something's
-due to be fixed, an engineer spends the first half fetching what it takes from the first of those stores with
-enough in it, and the second half at the part, and it comes out of the store when the part's fixed. With none
-in any of them, the repair waits: the story says so once, the part's look says what it's waiting for, and the
-Ship menu's Repairs lines list it. Within the hour after some comes aboard, it's fixed.
+due to be fixed, the work board gives it to the first of them who's free, in the order that file has them (the
+chief engineer, then the techs): they spend the first half of the hour fetching what it takes from the first
+of those stores with enough in it, and the second half at the part, and it comes out of the store when the
+part's fixed. One engineer mends one thing at a time. With none of them free the repair waits, and its hour
+starts when someone takes it; an ordinary repair wakes nobody, and one the ship can't do without does (see
+URGENCY). With no spare in any of the stores, the repair waits: the story says so once, the part's look says
+what it's waiting for, and the Work page and the Ship menu's Repairs lines list it. About an hour after some
+comes aboard, it's fixed. The Work page lists every repair: who's on it, when the engineers will start, or
+why nobody has. The player can take one from there (I'll do it), and then mends it by hand.
 
 The kinds of damage are what each kind of part's break line does to it (cut, jammed, sealed, covered, crippled,
 scrambled, broken), and forced, for a door. A kind left out of the line is fixed with nothing, the way a rag

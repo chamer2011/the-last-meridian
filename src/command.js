@@ -52,7 +52,9 @@ export const DUTY_MEASURES = {
   "sittings missed": (c) => c.sittings,
   "stores run dry": (c) => 100 - 34 * outOf(c, ["food", "medicine", "parts"]),
   "power short": (c) => 100 - c.tally.powerShort / 7.2,
-  "repairs waiting": (c) => 100 - 30 * c.waitingParts,
+  // Repairs waiting for parts at the day's end, and the minutes a repair the ship can't do without stood with nobody
+  // to send to it (src/work.js).
+  "repairs waiting": (c) => 100 - 30 * c.waitingParts - c.tally.repairsLeft / 6,
   "hull worn": (c) => (100 * c.ship.hull) / (c.ship.maxHull || 100),
   "alarms": (c) => 100 - 30 * c.tally.alarms,
   "tampering seen": (c) => 100 - 30 * c.tally.tampering,
@@ -2236,7 +2238,7 @@ export function dutyDay(game, day) {
     const meals = game.logistics?.[place]?.meals?.days?.[ended];
     const c = {
       ship: game.ship,
-      tally: { powerShort: 0, errandsWaiting: 0, alarms: 0, tampering: 0, thefts: 0, deaths: 0, patientHours: 0, lateCalls: 0, ...(state.tally?.[ended] ?? {}) },
+      tally: { powerShort: 0, errandsWaiting: 0, repairsLeft: 0, alarms: 0, tampering: 0, thefts: 0, deaths: 0, patientHours: 0, lateCalls: 0, ...(state.tally?.[ended] ?? {}) },
       staffed: staffedScore(game, place, model),
       sittings: meals && meals.served + meals.missed > 0 ? (100 * meals.served) / (meals.served + meals.missed) : null,
       waitingParts: waitingForParts(game, place).length,

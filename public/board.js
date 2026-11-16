@@ -9,7 +9,7 @@ import { el } from "./dom.js";
 import { writeStoryText } from "./story-text.js";
 import { LINE_PHRASES, PERK_NUMBERS, SPECS, writeWorldText } from "./world-text.js";
 import { KNOWN_SYSTEMS, readComputerLine, systemIdOf, writeSystemsText } from "./systems-text.js";
-import { LOGISTICS_PARTS, PART_TITLES, readCarriers, readDecider, readLoadsLine, readMachineLine, readMaking, readRefillLine, readRepair, readSittings, readStoreLine, readTrip, writeLogisticsText, writeMaking, writeRepair, writeDecider, writeSittings, writeStoreLine, writeTrip } from "./logistics-text.js";
+import { LOGISTICS_PARTS, PART_TITLES, WORK_KINDS, readCarriers, readDecider, readLoadsLine, readMachineLine, readMaking, readRefillLine, readRepair, readSittings, readStoreLine, readTrip, readUrgencyLine, workKindWords, writeLogisticsText, writeMaking, writeRepair, writeDecider, writeSittings, writeStoreLine, writeTrip } from "./logistics-text.js";
 import { COMMAND_HEADER, SPARE, readHolderLine, readJobLine, readPostLine, readWorkersLine, slugOf, writeCommandText, writeJobLine, writePostLine } from "./command-text.js";
 import { CARE, MEDBAY_KEYS, PARTS, readAccidentLine, readAccidents, readHitLine, readKindLine, readMendingLine, readOldMarks, readQueue, readShare, readStartLine, readTreatmentLine, readWeaponLine, writeHealthText, writeWoundsText } from "./health-text.js";
 
@@ -507,8 +507,23 @@ function logisticsGraph() {
       }
     });
   }
+  // The order the board's work comes in: one box, the most urgent first.
+  const order = urgencyOrder(P);
+  add({ id: "urgency", kind: "clock", col: 3, name: "The order of urgency", text: order.kinds.map((kind, i) => `${i + 1}. ${workKindWords(kind)}`).join("; ") + (order.problems.length ? `. ${order.problems.join(". ")}.` : "."), label: "Which work comes before which", bind: { urgency: true }, problem: order.problems.length > 0 });
   if (L.place) add(linkNode(`link_place_${L.place.id}`, "place", L.place.name, "The place itself.", "The place"));
   return { list, ws };
+}
+// The kinds of work in the order a logistics file gives them, with any it leaves out after the rest, as the game
+// takes them; and what's wrong with its lines, if anything.
+function urgencyOrder(P) {
+  const kinds = [], problems = [];
+  for (const one of P.urgency ?? []) {
+    const read = readUrgencyLine(one.text ?? one);
+    if (read.problem) problems.push(read.problem);
+    else if (kinds.includes(read.kind)) problems.push(`${workKindWords(read.kind)} is written twice`);
+    else kinds.push(read.kind);
+  }
+  return { kinds: [...kinds, ...WORK_KINDS.map(([kind]) => kind).filter((kind) => !kinds.includes(kind))], problems };
 }
 // A place's chain of command: each post a box with who holds it when a game begins, with an arrow from whoever chooses
 // it (another post, the council or the civilians), and each job a box with who does it, with an arrow from the post
@@ -1147,6 +1162,7 @@ function inspect() {
   if (node.bind?.spare) return inspectSpareLine(inspector);
   if (node.bind?.store !== undefined) return inspectStoreLine(inspector, node);
   if (node.bind?.logLine) return inspectLogisticsLine(inspector, node);
+  if (node.bind?.urgency) return inspectUrgency(inspector);
   if (node.bind?.healthTop) return inspectHealthTop(inspector, node);
   if (node.bind?.healthLine) return inspectHealthLine(inspector, node);
   if (node.bind?.speciesBody) return inspectSpeciesBody(inspector);
@@ -1492,7 +1508,7 @@ function inspectLogisticsAbout(inspector) {
       else delete P.levels;
       changed();
     }), button("Undo", () => inspect())),
-    hint(`The file is world/logistics/${state.id}.txt. Every part of it is played: the stores and what they want, the machines, the sittings, the loads, the refills, the repairs and what salvage makes. The how-to there says how each is written.`));
+    hint(`The file is world/logistics/${state.id}.txt. Every part of it is played: the stores and what they want, the machines, the sittings, the loads, the refills, the repairs, what salvage makes and the order of urgency. The how-to there says how each is written.`));
 }
 // A store: its line, with the room, what it holds, what it wants and who carries for it picked from lists to write it.
 function inspectStoreLine(inspector, node) {
@@ -1558,6 +1574,24 @@ function inspectLogisticsLine(inspector, node) {
           : hint("A refill: the store, a colon, what comes into it, from nothing (the one source left until trade off the ship is built), how often, and how far it's filled: the shuttle stores: ration crates and fuel cells from nothing for now, every 6 hours, up to full. Each refill is written in the manifest."),
     row(button("Keep", () => { P[part][i] = { text: box.value.trim().replace(/\n+/g, " ") }; changed(); }), button("Undo", () => inspect())),
     row(button(`+ another under ${PART_TITLES[part]}`, () => addLogisticsLine(part)), button("Remove", () => remove(node), { class: "danger" })));
+}
+// The order of urgency: every kind of work the board gives out, the most urgent first, each with buttons to move it.
+function inspectUrgency(inspector, order = null) {
+  const P = state.item;
+  const kinds = order ?? urgencyOrder(P).kinds;
+  const move = (i, by) => {
+    const next = [...kinds];
+    [next[i], next[i + by]] = [next[i + by], next[i]];
+    inspectUrgency(inspector, next);
+  };
+  inspector.replaceChildren();
+  fill(inspector, h2("The order of urgency"),
+    hint("Every kind of work the crew is sent to, the most urgent first. Someone who's free takes the most urgent job they can do. Someone already at work leaves it only for a job two lines higher or more, so a line's place matters twice: for what's taken up first, and for what's dropped for what."),
+    ...kinds.map((kind, i) => row(el("span", { class: "board-order" }, `${i + 1}. ${workKindWords(kind)}`),
+      i > 0 ? button("Up", () => move(i, -1), { title: `Move ${workKindWords(kind)} up a line` }) : null,
+      i < kinds.length - 1 ? button("Down", () => move(i, 1), { title: `Move ${workKindWords(kind)} down a line` }) : null)),
+    row(button("Keep", () => { P.urgency = kinds.map((kind) => ({ text: workKindWords(kind) })); changed(); }), button("Undo", () => inspect())),
+    hint("Urgent carrying is for a store under its urgent mark, or one a machine, the medbay or a repair is waiting on. A repair the ship can't do without is one to what carries her power, or to the air plant. The kinds that wake someone when nobody's up are the first seven as the game first has them: someone bleeding or down, a fire, a breach, the alarm, urgent carrying and a repair the ship can't do without."));
 }
 function addStore() {
   const room = (state.lists.rooms ?? [])[0] ?? "a room";

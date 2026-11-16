@@ -81,6 +81,8 @@
 .board-node.target { border-color: var(--bright); box-shadow: 0 0 0 2px var(--bright); }
 .board-inspector .hit { border-top: 1px dotted var(--line); padding-top: 6px; }
 .board-inspector .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+/* The order of urgency: each kind of work on a line, its buttons at the end. */
+.board-inspector .board-order { flex: 1 1 12em; color: var(--bright); }
 .board-inspector label { color: var(--muted); font-size: 12px; }
 .board-inspector .danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); }
 .board-inspector .small { padding: 1px 6px; font-size: 12px; }

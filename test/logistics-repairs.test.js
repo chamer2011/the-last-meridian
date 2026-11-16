@@ -142,7 +142,8 @@ test("with no parts in the stores a repair waits, says so once, and is done with
   passTime(game, 0.1);
   assert.ok(game.systems.meridian.parts[box.id].fixAt - game.clock.hours <= 1, "an engineer's on it");
   assert.deepEqual(publicState(game).ship.repairs.waiting, []);
-  assert.deepEqual(said(passTime(game, 1)), ["[SYSTEMS] Marrow has fixed the junction box in Engineering, with a parts crate from the parts lockers."]);
+  // The work board looks every five minutes, so the hour can run a few minutes over.
+  assert.deepEqual(said(passTime(game, 1.1)), ["[SYSTEMS] Marrow has fixed the junction box in Engineering, with a parts crate from the parts lockers."]);
   assert.equal(parts(game), 0);
 });
 

@@ -17,7 +17,7 @@ import { claimedSquares, damageKinds, floorSpot, powerBalance, roomPowered, syst
 import { YOU, jobById, jobByWords, mutinyStage, postByWords, speedOf, tallyDuty } from "./command.js";
 import { mapFor, roomHere, roomsOf, roomsOn, thingsIn } from "./walk.js";
 import { LOGISTICS_FILE_PROBLEMS, WORLD_LOGISTICS } from "./world.js";
-import { everyWords, readLoadsLine, readMachineLine, readRefillLine, readStoreLine, slugOf } from "../public/logistics-text.js";
+import { WORK_KINDS, everyWords, readLoadsLine, readMachineLine, readRefillLine, readStoreLine, readUrgencyLine, slugOf } from "../public/logistics-text.js";
 import { KNOWN_SYSTEMS, SYSTEM_TITLES } from "../public/systems-text.js";
 import { SHIP_DATA } from "./world.js";
 import { refillsHeld } from "./room-hooks.js";
@@ -158,6 +158,16 @@ function compileLogistics(place) {
     if (!item) at(file.trip.line ?? null, `there's no item called ${what} in world/items, for a trip to carry`);
     else model.trip[item] = n;
   }
+  // The order the board's work comes in, the most urgent first: the file's Urgency part, with any kind it leaves out
+  // after the rest, in the usual order.
+  const ordered = [];
+  for (const raw of file.urgency ?? []) {
+    const read = readUrgencyLine(raw.text);
+    if (read.problem) at(raw.line ?? null, read.problem);
+    else if (ordered.includes(read.kind)) at(raw.line ?? null, `${raw.text} is written twice under Urgency`);
+    else ordered.push(read.kind);
+  }
+  model.urgency = [...ordered, ...WORK_KINDS.map(([kind]) => kind).filter((kind) => !ordered.includes(kind))];
   // Who decides what comes first on the work board, and how much each store should want: a post each, and how often
   // whoever holds it looks. Without the lines nobody decides: jobs go as they come, and stores want what's written.
   model.deciders = {};
@@ -1049,7 +1059,7 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
   const until = minutesOf(untilHours);
   for (const place of Object.keys(WORLD_LOGISTICS)) {
     const model = logisticsOf(place);
-    if (!model || (!model.kettles.length && !model.machines.some((m) => m.runs) && !model.wants.length && !model.refills.length)) continue;
+    if (!model) continue;
     const state = stateOf(game, place);
     if (state.at === null) {
       state.at = until;
@@ -1064,8 +1074,8 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
     let balanceAt = -Infinity;
     let dropping = false;
     // What the posts' duty counts is added up through each day here, and handed over when the day turns or this ends.
-    let counted = { day: Math.floor(t / 1440), powerShort: 0, errandsWaiting: 0 };
-    const handOver = () => tallyDuty(game, place, counted.day, { powerShort: counted.powerShort, errandsWaiting: counted.errandsWaiting });
+    let counted = { day: Math.floor(t / 1440), powerShort: 0, errandsWaiting: 0, repairsLeft: 0 };
+    const handOver = () => tallyDuty(game, place, counted.day, { powerShort: counted.powerShort, errandsWaiting: counted.errandsWaiting, repairsLeft: counted.repairsLeft });
     while (t + CHUNK <= until) {
       for (const m of model.machines) {
         if (m.generator) runGenerator(game, model, m, state, CHUNK);
@@ -1073,9 +1083,10 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
       }
       serveMeals(game, place, model, state, t, CHUNK, notes);
       runRefills(game, place, model, state, t);
-      // The board says how many urgent jobs it couldn't give to anyone: something a store is badly short of, that
-      // some other store could spare, with nobody able to carry it. That's what counts as an errand left waiting.
-      const waiting = runBoard(game, place, model, state, t, CHUNK, notes);
+      // The board says what it couldn't give to anyone: something a store is badly short of, that some other store
+      // could spare, with nobody able to carry it, which is what counts as an errand left waiting; and a repair the
+      // ship can't do without, with nobody to send to it.
+      const left = runBoard(game, place, model, state, t, CHUNK, notes);
       // What the posts' duty counts: the minutes the generator was short of the loads, and the minutes urgent jobs
       // stood with nobody on them.
       const supply = powerSupply(game, place);
@@ -1086,10 +1097,11 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
       }
       if (Math.floor(t / 1440) !== counted.day) {
         handOver();
-        counted = { day: Math.floor(t / 1440), powerShort: 0, errandsWaiting: 0 };
+        counted = { day: Math.floor(t / 1440), powerShort: 0, errandsWaiting: 0, repairsLeft: 0 };
       }
       if ((supply !== null && supply <= 0) || dropping) counted.powerShort += CHUNK;
-      counted.errandsWaiting += waiting * CHUNK;
+      counted.errandsWaiting += left.carrying * CHUNK;
+      counted.repairsLeft += left.repairs * CHUNK;
       t += CHUNK;
     }
     handOver();

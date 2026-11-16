@@ -30,3 +30,16 @@ Loads:
 
 Refills:
 - the shuttle stores: ration crates and fuel cells from nothing for now, every 6 hours, up to full
+
+Urgency:
+- carrying someone who's bleeding
+- a fire
+- a breach
+- carrying someone who's down
+- the alarm
+- urgent carrying
+- a repair the ship can't do without
+- treating someone
+- carrying
+- a repair
+- mending in the workshop

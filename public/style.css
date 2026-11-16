@@ -373,7 +373,7 @@ button.watch-person.moving { background: var(--warn); color: var(--bg); }
 .work-orders { display: grid; gap: 4px; padding: 8px 10px; border: 1px solid var(--line); }
 .work-first strong { color: var(--bright); }
 .work-first .work-part { color: var(--warn); }
-.work-row { display: grid; grid-template-columns: minmax(12ch, 22ch) minmax(22ch, 34ch) minmax(0, 1fr); gap: 2px 14px; align-items: baseline; padding: 3px 0; }
+.work-row { display: grid; grid-template-columns: minmax(12ch, 22ch) minmax(22ch, 46ch) minmax(0, 1fr); gap: 2px 14px; align-items: baseline; padding: 3px 0; }
 .work-name { color: var(--bright); }
 .work-count { white-space: nowrap; }
 .work-squares { display: inline-flex; gap: 2px; vertical-align: -1px; margin-right: 4px; min-width: 142px; }

@@ -309,8 +309,9 @@ test("the Work page has the hands free, every store with what it has against wha
   at(game, 16);
   const quiet = board(game);
   assert.deepEqual(quiet.jobs, [], "with every store at what it wants there are no jobs");
-  assert.deepEqual([quiet.name, quiet.hands.of], ["CFS Meridian", 18]);
-  assert.ok(quiet.hands.free > 0 && quiet.hands.free <= 18);
+  // Everyone who carries for a store or mends: the carriers, and the chief engineer with the techs.
+  assert.deepEqual([quiet.name, quiet.hands.of], ["CFS Meridian", 19]);
+  assert.ok(quiet.hands.free > 0 && quiet.hands.free <= 19);
   assert.deepEqual(quiet.stores.map((one) => one.id), ["shuttle_stores", "fuel_rack", "pantry", "garden_bins", "medicine_cabinet", "parts_lockers", "soup_kettle"]);
   const kettle = quiet.stores.at(-1);
   assert.deepEqual([kettle.count.of, kettle.count.unit, kettle.rows], [400, "sittings", []]);

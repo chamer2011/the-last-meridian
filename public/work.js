@@ -65,7 +65,7 @@ function storeRow(store) {
 }
 
 function jobRow(job) {
-  return el("div", { class: "work-job", title: `Carried by ${job.by}.` },
+  return el("div", { class: "work-job", title: job.tip ?? `Carried by ${job.by}.` },
     el("span", { class: `work-mark${job.mark ? " tone-bad" : ""}` }, job.mark || "·"),
     el("span", { class: "work-what" }, job.what, job.why ? el("span", { class: "tone-bad" }, `, ${job.why}`) : null),
     el("span", { class: `work-status small${job.stuck ? " tone-bad" : job.busy || job.mine ? "" : " muted"}` }, job.status),
@@ -82,6 +82,6 @@ export function workMenu() {
     orders(board),
     section("Stores, has / wants", board.stores.map(storeRow),
       muted("A filled square is something in the store, and an empty one something it still wants. A job comes up whenever a store has fewer than it wants, and it's fetched from the nearest store that can spare it.")),
-    section("Jobs, the most urgent first", board.jobs.length ? board.jobs.map(jobRow) : muted("Every store has what it wants."),
-      muted("!! is urgent, and ! is in the part of the ship that's been put first. Point at a job for who carries for that store. I'll do it holds a job for you: carry the things into the store yourself, and the crew takes it back if you don't get to it.")));
+    section("Jobs, the most urgent first", board.jobs.length ? board.jobs.map(jobRow) : muted("Every store has what it wants, and nothing's waiting to be mended."),
+      muted("!! is urgent, and ! is in the part of the ship that's been put first. Point at a job for who does that kind of work. I'll do it holds a job for you: carry the things into the store yourself, or walk up to what's broken and mend it by hand, and the crew takes it back if you don't get to it.")));
 }
