@@ -74,3 +74,57 @@
   News views and the choices were clicked; no errors in the console and no sideways scroll. The page's database was
   listed once after publishing (empty). Saving a click couldn't be tried on this computer, since only the published
   page has the database.
+
+## Their answers, and step 1 (2026-11-16)
+
+- **What they clicked on the page** (`plan/state`, read before building): `where: plot`, `after: aboard`, `boat: boatbay`,
+  `dark: hand`, `elsewhere: none`, all my picks, and `who: anyone`, which isn't: anyone who gets into the computer can
+  order a jump. `look` was left unclicked; in chat they said "A, but with a loading screen upon opening the app and make
+  it full screen on the computer window. Start step 1". `look: a` was then written to the page's database for them, so
+  the page says what was built.
+- **Step 1 is built, untried by them.** What they see: at the plot table, a **Charts** icon on NAVCOM 7's desktop (a
+  click picks it, a second opens it, like the folders; it's in the NAVCOM menu too). A loading screen for three seconds
+  (NAVPLOT 7, what it reads line by line, a bar; a click skips it), then Navplot over the whole screen under the red
+  RESTRICTED bar: the chart, the Course box, the Destination panel, Ports, News, Everything it holds, the menus, the
+  row along the bottom. Plot course, Engage jump..., a box that asks, the ship on her way for a moment, and then, for
+  the captain, ashore where she arrived, as the Star Map's Set course does. The Star map menu is untouched.
+- **How it's made:**
+  - `charts: yes` in a computer's file (the `COMPUTER` spec in `public/world-text.js`, `charts` in `writtenContent`).
+    Only the plot table has it. `navcomView` in `src/devices.js` adds `charts` to the view, and `deviceCommand` takes
+    `nav-course:<place>`.
+  - `src/charts.js`: `chartView` (for every place with a spot on the star map: `fuel`, `hours`, `here`, `why`; and
+    `rings`, `byHand`, `blocked`, `ashore`), `mayChart` (a session a trusted machine let in for less than the
+    computer's programs gets no chart), `engageFromChart`.
+  - `src/ship.js`: `shipsJumpCost` (what a jump costs the ship, whoever asks; `jumpCost` uses it for the captain) and
+    `logForShip`. `src/rules.js`: `jumpShip` (the jump itself, taken out of `travel`, with `ashore` and an `underWay`
+    callback). `src/systems.js`: `jumpBlocked(game, { whoever })`.
+  - `public/navplot.js` draws it from the game's own state (`game.locations`, `game.ship`, `game.world.news`) with the
+    server's numbers laid over each place, and keeps what's picked in `comp.chart` while the computer is open.
+    `public/computer.js` has the icon, `comp.app`, the loading timer, the layer (`programNode`) and Esc.
+    `public/navplot.css` is linked from `public/index.html`.
+- **Calls of mine, told to them:**
+  - **The plot table is the captain's alone** (`theirOwn` in `src/computers.js`). Before, every computer marked
+    `yours: yes` let any player straight in as its owner, a relieved captain included, which would have made "anyone
+    who gets in" mean "anyone at all". Only the computer with the chart changed; the other four are as they were.
+  - A jump ordered by someone who isn't in the chair: the ship goes with them aboard, her log says "Jumped to X on an
+    order from the plot table that wasn't the chair's." (a line that can be struck, like any), it costs 3 noise, which
+    SENTRY notices at once on a ship's main system, and nothing else: nobody remembers it against them and no alarm
+    rings. Whoever has the chair goes on buying and moving her as before.
+  - The loading screen plays every time the program is opened, three seconds, as their rig's wake-up does.
+  - "Full screen" is the whole of the computer's screen under the RESTRICTED bar. The bar stays because SENTRY's meter
+    is in it, and the taskbar is covered.
+  - The captain's own computer closes without the usual "[COMPUTER] On The plot table: read nothing." after a jump.
+- **Offered, not done:** new words for the plot table's "What the player sees", which still speaks of forty-one dots
+  and a chalk line.
+- **Not in step 1:** staying aboard after a jump and the boat (step 2); the menu's removal and passage at the ports
+  (step 3); a dark bridge, the helm jumping her by hand, and saying why Engage is refused before it's pressed when the
+  engines are down or the clamps locked (step 4; until then the refusal comes back as a line when Engage is pressed).
+- **How it was checked:** `test/charts.test.js` (6 tests) and the whole suite, 1,380 passing, in a worktree at the
+  commit before it. The screens with a headless Edge driven by a scratch script over the test copy on port 3313, at
+  1400 by 900 and 810 by 700: the desktop with its icon, the loading screen, the chart, a place picked, the box that
+  asks, a menu open, Ports, News, Everything it holds, the ship on her way, the captain ashore afterwards, and a
+  relieved captain logged in with the password ordering a jump and staying at the chart with SENTRY's meter up. No
+  errors on the page. The app's own browser pane wasn't on anyone's screen, so nothing was looked at there.
+- **Working beside the other session:** its unfinished ports work had the game unable to load a save in the shared
+  folder ("workLine is not defined"), so the files were moved to a worktree, the shared folder's copies put back, and
+  the commit brought in with a fast-forward.

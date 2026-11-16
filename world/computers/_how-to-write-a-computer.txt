@@ -90,6 +90,10 @@ The first line is the name, written # The Name. Then, before the first part, one
                 at its place, under Weak points below; with none written, the game makes one up (a
                 note on another computer here, a session left open at the shift change, or a service
                 account the junction boxes still share).
+    charts      yes when the ship's chart runs on it: the star map, as a program on its desktop, where a
+                course is plotted and a jump ordered. It's for a navcom computer aboard the Meridian (the
+                plot table has it). That computer is the captain's alone, whatever "yours" says: whoever
+                isn't in the chair has its logon to get past, and once past it can order a jump too.
 
 Every one of them can be left out.
 

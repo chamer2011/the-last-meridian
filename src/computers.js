@@ -24,6 +24,7 @@ import { LINK_WORDS, LOOKS, THROUGH_RIG, deviceView, howOf, leaveOf, lookOf, rea
 import { networkView } from "./network.js";
 import { contentHardened, weakWords, withWeakPoints } from "./weak-points.js";
 import { inSentence, rightsWords, sealedNow, sealedWords, trustLine, trustsOf, withRights } from "./sealed.js";
+import { isCaptain } from "./role.js";
 import { noteGotIn } from "./story-rig.js";
 import "./terminals.js";
 
@@ -135,6 +136,8 @@ export function writtenContent(id) {
     // Sealed: it takes nothing at its own keyboard, and lets in only the machines it trusts (src/sealed.js).
     sealed: Boolean(c.sealed),
     trusts: trustsOf(c.trusts),
+    // The ship's chart runs on it: the star map, as a program on its desktop (src/charts.js).
+    charts: Boolean(c.charts),
   };
 }
 
@@ -278,6 +281,10 @@ export function computerForPlace(game, classKey) {
 // ---- Getting in -------------------------------------------------------------------------------
 
 export const knowsPassword = (game, id) => Boolean(id && game.passwords?.[id]);
+// A computer marked as the player's own is theirs by right. The one that carries the ship's chart is the chair's:
+// theirs only while they're the captain, and a logon to get past for anyone else (the owner's word, 2026-11-16: "the
+// allocated computer that only the captain can use").
+export const theirOwn = (game, content) => Boolean(content?.yours) && (!content.charts || isCaptain(game));
 
 // at is what the player sat down at, as the room's marks name it, for the window's line to point at. locked is a
 // session still at the computer's logon; practice is one that counts for nothing; story is the scene's check it's for
@@ -288,7 +295,7 @@ export function openSession(game, content, { hacked = false, locked = false, noi
   game.computers ??= {};
   game.computers[content.id] ??= { read: [], ran: [], visits: 0 };
   game.computers[content.id].visits += 1;
-  const yours = Boolean(content.yours);
+  const yours = theirOwn(game, content);
   game.computer = {
     id: content.id,
     name: content.name,
@@ -361,9 +368,10 @@ export function openLogon(game, content, { at = null, practice: practising = fal
   const trust = practising ? null : trustLine(content.place, content, from);
   const sealed = !practising && sealedNow(game, content);
   if (sealed && !trust) throw new Error(sealedWords(content));
-  const own = !practising && (content.yours || knowsPassword(game, content.id));
+  const mine = theirOwn(game, content);
+  const own = !practising && (mine || knowsPassword(game, content.id));
   if (trust) return openSession(game, content, { how: "trusted", at, story, doorRule, remote, noise, from, fromName, trusted: trust.rights, rights: sealed || !own ? trust.rights : null, byHand });
-  if (own) return openSession(game, content, { how: content.yours ? "sat down" : "the password", at, story, doorRule, remote, noise, from, byHand });
+  if (own) return openSession(game, content, { how: mine ? "sat down" : "the password", at, story, doorRule, remote, noise, from, byHand });
   return openSession(game, practising ? { ...content, yours: false } : content, { locked: true, how: "logon", at, practice: practising, story, doorRule, remote, noise, from, byHand });
 }
 

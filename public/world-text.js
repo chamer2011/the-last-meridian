@@ -190,7 +190,7 @@ export const COMPUTER = {
     { path: "place", key: "place", type: "name" }, { path: "room", key: "room", type: "string" }, { path: "thing", key: "thing", type: "string" }, { path: "door", key: "door", type: "string" },
     { path: "user", key: "login", type: "string" }, { path: "password", key: "password", type: "string" }, { path: "flavor", key: "flavor", type: "string" },
     { path: "look", key: "look", type: "string" }, { path: "reach", key: "reached by", type: "string" }, { path: "hardened", key: "hardened", type: "flag" },
-    { path: "sealed", key: "sealed", type: "flag" },
+    { path: "sealed", key: "sealed", type: "flag" }, { path: "charts", key: "charts", type: "flag" },
   ],
   sections: [
     { path: "desc", phrase: "What the player sees", type: "text" },

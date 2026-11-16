@@ -18,7 +18,7 @@ import { manifestLines } from "./logistics.js";
 import { untagged } from "../public/story.js";
 import { copyProgram, rigNow, runRigProgram, wearHottest } from "./rig.js";
 import { HEAT, rigMinutes, rigNoise, sessionHeat } from "./rig-parts.js";
-import { MAX_LOG, MINUTES_PER_ACTION, contentOf, knowsPassword, levelNamed, line, memoryOf, openLogon, openSession, peopleAt, programOffered, readNoise, sameName, settleHack, slug, watcherOf, watchStage, writtenContent } from "./computers.js";
+import { MAX_LOG, MINUTES_PER_ACTION, contentOf, knowsPassword, levelNamed, line, memoryOf, openLogon, openSession, peopleAt, programOffered, readNoise, sameName, settleHack, slug, theirOwn, watcherOf, watchStage, writtenContent } from "./computers.js";
 import { deviceCommand, plugIn, unplugRig } from "./devices.js";
 import { hop } from "./network.js";
 import { learnWeak } from "./weak-points.js";
@@ -325,7 +325,7 @@ function connectTo(game, session, content, id) {
   if (!entry || !target) return { over: false, said: "No such node on the network." };
   const next = writtenContent(id);
   const summary = finish(game, session, [`[COMPUTER] From ${session.name} you reached for ${next.name}.`]);
-  if (next.yours || knowsPassword(game, id)) openSession(game, next, { how: "connected", at: session.at ?? null });
+  if (theirOwn(game, next) || knowsPassword(game, id)) openSession(game, next, { how: "connected", at: session.at ?? null });
   else openLogon(game, next, { at: session.at ?? null });
   return { over: true, summary, computer: true };
 }

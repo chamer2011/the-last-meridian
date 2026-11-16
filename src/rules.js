@@ -17,7 +17,7 @@ import {
 import { checkView } from "./checks.js";
 import { FIGHT_DIFFICULTIES, attackBonus, combatProfile, combatView, enemyNumbers, parleyNotes } from "./combat.js";
 import { advanceWorld, holdingsOf, itemFactor, newWorld, newsView, placeNow, worldOf } from "./daily.js";
-import { advanceShip, chairOf, chartEntry, isCharted, jumpCost, newShipState, shipGoingHungry, shipJumped, shipOf, shipView } from "./ship.js";
+import { advanceShip, chairOf, chartEntry, isCharted, jumpCost, newShipState, shipGoingHungry, shipJumped, shipOf, shipView, shipsJumpCost } from "./ship.js";
 import { advanceLife, lifeOf } from "./life.js";
 import { advanceLogistics, startLogistics } from "./logistics.js";
 import { advanceCommand, commandView, dutyDay, moodDay, reviewDay, sidesTaken, startCommand } from "./command.js";
@@ -727,7 +727,23 @@ export function travel(game, destination) {
     game.walk = null;
     return { message: destination === "meridian" ? `Returned aboard the ${place.name}.` : `Crossed over to ${place.name}.`, notes: passTime(game, cost.hours) };
   }
-  const blocked = jumpBlocked(game);
+  // A captain goes ashore where she arrives, as things stand.
+  const { saved, notes } = jumpShip(game, destination, { ashore: true });
+  return {
+    message: `Jumped to ${place.name} in ${cost.hours} hours.${saved ? " A clean jump saved the fuel." : ""} Fuel left: ${game.ship.fuel}. It's now ${clockLabel(game)}.`,
+    notes,
+  };
+}
+
+// The Meridian makes a jump, whoever gave the order: the fuel, the hours, and where she is afterwards. With ashore the
+// player goes ashore where she arrives; without it they stay where they are aboard her, which is how it goes when
+// someone who isn't in the chair orders it from her chart (src/charts.js). underWay is called once she's certain to
+// go, before the hours pass.
+export function jumpShip(game, destination, { ashore = false, underWay = null } = {}) {
+  const place = LOCATIONS[destination];
+  if (!place) throw new Error(`Unknown location: ${destination}`);
+  const cost = shipsJumpCost(game, destination);
+  const blocked = jumpBlocked(game, { whoever: true });
   if (blocked) throw new Error(blocked);
   if (game.ship.fuel < 1) throw new Error("The ship is out of fuel and can't jump.");
   if (game.ship.fuel < cost.fuel) throw new Error(`A jump to ${place.name} takes ${cost.fuel} fuel, and the Meridian has ${game.ship.fuel}.`);
@@ -735,9 +751,12 @@ export function travel(game, destination) {
   const navigation = skillRank(game, "navigation");
   const saved = Math.random() < navigation * 0.04;
   game.ship.fuel -= saved ? cost.fuel - 1 : cost.fuel;
-  game.location = destination;
-  game.walk = null;
+  if (ashore) {
+    game.location = destination;
+    game.walk = null;
+  }
   shipJumped(game, destination);
+  underWay?.();
   // Under way, the engines draw their share of the generator's power, and the systems written to go first are let go.
   game.ship.underWay = true;
   let notes;
@@ -747,10 +766,7 @@ export function travel(game, destination) {
     delete game.ship.underWay;
   }
   notes.push(...practice(game, "navigation", 2));
-  return {
-    message: `Jumped to ${place.name} in ${cost.hours} hours.${saved ? " A clean jump saved the fuel." : ""} Fuel left: ${game.ship.fuel}. It's now ${clockLabel(game)}.`,
-    notes,
-  };
+  return { cost, saved, notes };
 }
 
 // Whether the written story is waiting on something. src/scenes.js says, since it reads these rules and they can't read it.

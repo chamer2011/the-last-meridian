@@ -1482,8 +1482,10 @@ export function roomEdge(game, skill) {
 }
 
 // The Meridian can't jump with her engines down, and she can't leave a station that has its clamps locked.
-export function jumpBlocked(game) {
-  if (!isCaptain(game)) return null;
+export function jumpBlocked(game, { whoever = false } = {}) {
+  // For anyone who isn't the captain a journey is a passage on someone else's ship, unless it's the Meridian herself
+  // they've ordered to jump, from her chart (whoever).
+  if (!whoever && !isCaptain(game)) return null;
   const ship = systemsOf("meridian");
   const engines = partsOf(ship, "engines");
   if (engines.length && !engines.every((part) => partWorks(game, "meridian", part))) return "The Meridian's engines are down, so she can't jump until they're running again.";

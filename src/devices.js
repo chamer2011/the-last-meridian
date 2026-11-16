@@ -23,6 +23,7 @@ import { busWeakPoints, learnWeak } from "./weak-points.js";
 import { mayWorkDoor, partOpen, partSealedWords, sealedNow, sealedWords } from "./sealed.js";
 import { noteCamera, noteRecoded, noteStruck } from "./story-rig.js";
 import { testing } from "./test-mode.js";
+import { chartView, engageFromChart } from "./charts.js";
 
 // The looks with no screen of their own: a door's panel, a junction box's service menu, a camera's feed.
 export const PANEL_LOOKS = ["door", "service", "camera"];
@@ -337,7 +338,7 @@ function assessments(game) {
 }
 
 function navcomView(game, session, content) {
-  if (session.locked || session.place !== SHIP || !game.ship) return { kind: "navcom", shipLog: [], crew: null, purse: null };
+  if (session.locked || session.place !== SHIP || !game.ship) return { kind: "navcom", shipLog: [], crew: null, purse: null, charts: null };
   const log = game.ship.log ?? [];
   // The crew file can be kept to a machine NAVCOM trusts (step 9): then it opens only from there.
   const crewOpen = partOpen(content, session, "the crew file");
@@ -347,6 +348,8 @@ function navcomView(game, session, content) {
     crew: crewOpen ? assessments(game) : { by: null, list: [], sealed: partSealedWords(SHIP, content, "the crew file") },
     purse: game.ship.purse ?? null,
     struck: game.rig?.struck ?? 0,
+    // The chart program, where this computer carries it: what a jump costs the ship herself (src/charts.js).
+    charts: content.charts ? chartView(game, session) : null,
   };
 }
 
@@ -463,6 +466,8 @@ export function deviceCommand(game, session, content, id, { act, finish }) {
   }
   if (look === "navcom") {
     const [verb, arg] = id.split(":");
+    // Engage, from the chart program (src/charts.js).
+    if (verb === "nav-course") return engageFromChart(game, session, content, arg, { act, finish, say });
     if (verb === "nav-strike") {
       if (session.place !== SHIP || !game.ship?.log) throw new Error("There's no ship's log on this computer.");
       const i = Number(arg);

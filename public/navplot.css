@@ -1,0 +1,104 @@
+/* Navplot, the ship's chart: a program on NAVCOM 7 (the plot table's computer on the bridge) that takes the whole screen
+   under the RESTRICTED bar, with a loading screen when it's opened (public/navplot.js). It's drawn on the desktop's own
+   640 by 480 screen and in its colours, so it follows the Settings' skins like every window there. */
+.os .navplot { position: absolute; left: 0; right: 0; top: 18px; bottom: 0; z-index: 820; display: flex; flex-direction: column; padding: 2px; }
+.os .nv-title { display: flex; align-items: center; gap: 5px; height: 18px; flex: none; padding: 0 2px 0 4px; background: linear-gradient(90deg, var(--t1), var(--t2)); color: var(--tt); font-weight: 700; }
+.os .nv-title svg { width: 14px; height: 14px; flex: none; }
+.os .nv-title span { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.os .nv-title button { width: 16px; height: 14px; padding: 0; font: 700 9px/1 var(--font); flex: none; }
+.os .navplot button.down { border-color: var(--dark) var(--hi) var(--hi) var(--dark); box-shadow: inset 1px 1px 0 var(--lo); }
+
+/* Its menus and its row of buttons */
+.os .nv-mbar { display: flex; gap: 2px; padding: 1px 2px; flex: none; }
+.os .nv-mi { position: relative; }
+.os .nv-mi > button { border-color: transparent; box-shadow: none; background: none; padding: 1px 7px; }
+.os .nv-mi > button.down, .os .nv-mi > button:hover:not(:disabled), .os .nv-mi > button:focus-visible { background: var(--sel); color: var(--selt); outline: 0; border-color: transparent; box-shadow: none; }
+.os .nv-drop { position: absolute; left: 0; top: 100%; z-index: 5; min-width: 160px; padding: 2px; display: grid; }
+.os .nv-drop button { text-align: left; border: 0; box-shadow: none; background: none; padding: 3px 14px 3px 8px; white-space: pre; }
+.os .nv-drop button:hover:not(:disabled), .os .nv-drop button:focus-visible { background: var(--sel); color: var(--selt); outline: 0; }
+.os .nv-drop hr { border: 0; border-top: 1px solid var(--lo); border-bottom: 1px solid var(--hi); margin: 2px; }
+.os .nv-tbar { display: flex; gap: 3px; padding: 2px 3px 3px; flex: none; border-top: 1px solid var(--lo); align-items: center; }
+.os .nv-tbar i { width: 1px; height: 16px; background: var(--hi); margin: 0 3px; }
+
+/* The page on the left with the course under it, and the place that's picked on the right */
+.os .nv-body { flex: 1; min-height: 0; display: flex; gap: 6px; padding: 4px; }
+.os .nv-left { width: 424px; flex: none; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.os .nv-pane { height: 251px; flex: none; overflow: hidden; }
+.os .nv-pane.scrolls { overflow-y: auto; scrollbar-width: thin; }
+.os .nv-group { position: relative; border: 1px solid var(--hi); padding: 10px 7px 6px; margin-top: 6px; display: grid; gap: 3px; align-content: start; }
+.os .nv-legend { position: absolute; left: 7px; top: -8px; background: var(--face); padding: 0 4px; }
+.os .nv-row { display: flex; gap: 8px; justify-content: space-between; }
+.os .nv-row > span:first-child { color: var(--dim); flex: none; }
+.os .nv-row > span:last-child { text-align: right; }
+.os .nv-btns { display: flex; gap: 5px; margin-top: 3px; flex-wrap: wrap; }
+.os .nv-btns.end { justify-content: flex-end; }
+.os .nv-dest { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.os .nv-scroll { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; display: grid; gap: 3px; align-content: start; overflow-wrap: anywhere; }
+.os .nv-pname { font-weight: 700; font-size: 13px; color: var(--tt); }
+.os .nv-desc { margin-bottom: 2px; }
+.os .nv-fact { display: grid; }
+.os .nv-fact > span:first-child, .os .nv-sub { color: var(--dim); }
+.os .nv-sub { margin-top: 2px; }
+.os .nv-line { display: flex; gap: 8px; justify-content: space-between; }
+.os .nv-line > span:last-child { text-align: right; }
+.os .nv-good > span:first-child { flex: none; white-space: nowrap; overflow-wrap: normal; }
+.os .nv-why { color: var(--dim); padding-left: 8px; }
+.os .nv-going { color: var(--warnc); }
+.os .nv-tree { color: var(--tt); font-weight: 700; margin-top: 4px; }
+
+/* The chart */
+.os .nv-svg { display: block; width: 100%; height: 100%; }
+.os .nv-svg text { font-family: var(--font); }
+.os .nv-space { fill: var(--field); }
+.os .nv-grid { stroke: var(--hi); stroke-opacity: .22; stroke-width: 2; }
+.os .nv-star { fill: var(--dim); fill-opacity: .7; }
+.os .nv-ring { fill: none; stroke: var(--hi); stroke-width: 2; stroke-dasharray: 4 10; }
+.os .nv-ringt { fill: var(--dim); font-size: 19px; }
+.os .nv-course { stroke: var(--tt); stroke-width: 4; stroke-dasharray: 14 10; }
+.os .nv-hit { fill: var(--field); fill-opacity: 0; }
+.os .nv-place { cursor: pointer; }
+.os .nv-place:focus { outline: 0; }
+.os .nv-place:focus-visible .nv-hit { stroke: var(--tx); stroke-width: 2; stroke-dasharray: 3 4; }
+.os .nv-sym { stroke-width: 4; stroke: var(--tx); fill: var(--field); }
+.os .nv-d0 .nv-sym { stroke: var(--goodc); }
+.os .nv-d2 .nv-sym { stroke: var(--warnc); }
+.os .nv-d3 .nv-sym, .os .nv-d4 .nv-sym { stroke: var(--badc); }
+.os .nv-place.on .nv-sym { fill: var(--tt); }
+.os .nv-reticle { fill: none; stroke: var(--tt); stroke-width: 3; }
+.os .nv-shipring { fill: none; stroke: var(--tt); stroke-width: 3; }
+.os .nv-name { fill: var(--tx); font-size: 22px; pointer-events: none; }
+.os .nv-name.on { fill: var(--tt); font-weight: 700; }
+.os .nv-ship { fill: var(--tt); }
+.os .nv-shipt { fill: var(--tt); font-size: 19px; font-weight: 700; letter-spacing: 2px; pointer-events: none; }
+
+/* The list of ports, the news and what a port holds */
+.os .nv-list { display: grid; align-content: start; }
+.os .nv-lrow { display: grid; grid-template-columns: minmax(0, 1.25fr) 30px 36px 66px minmax(0, 1fr); gap: 6px; padding: 2px 6px; text-align: left; }
+.os .nv-lrow > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.os button.nv-lrow { border: 0; box-shadow: none; background: none; }
+.os button.nv-lrow:hover:not(:disabled), .os button.nv-lrow:focus-visible, .os button.nv-lrow.on { background: var(--sel); color: var(--selt); outline: 0; }
+.os .nv-lhead { background: var(--face); color: var(--dim); border-bottom: 1px solid var(--hi); position: sticky; top: 0; }
+.os .nv-news { padding: 6px 8px; display: grid; gap: 4px; align-content: start; overflow-wrap: anywhere; }
+.os .nv-news > b { color: var(--tt); }
+.os .nv-entry small { color: var(--dim); }
+
+/* Along the bottom, and the boxes that come up over it */
+.os .nv-sbar { display: flex; gap: 2px; flex: none; padding: 2px; }
+.os .nv-sbar span { padding: 1px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.os .nv-sbar span:nth-child(2) { flex: 1; }
+.os .nv-dlg { position: absolute; left: 170px; top: 150px; width: 300px; z-index: 8; padding: 2px; }
+.os .nv-dlg.low { top: 268px; }
+.os .nv-dbody { padding: 12px 12px 10px; display: grid; gap: 10px; }
+.os .nv-bar { height: 14px; display: flex; gap: 2px; padding: 2px; }
+.os .nv-bar i { flex: 1; background: var(--field); }
+.os .nv-bar i.on { background: var(--t2); }
+
+/* The loading screen */
+.os .nv-load { background: var(--desk); padding: 84px 120px 0; gap: 7px; cursor: pointer; display: flex; flex-direction: column; }
+.os .nv-load-head { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--hi); }
+.os .nv-load-head svg { width: 48px; height: 48px; flex: none; }
+.os .nv-load-head b { display: block; font-size: 24px; letter-spacing: .18em; color: var(--tt); }
+.os .nv-load-head small { color: var(--dim); }
+.os .nv-ready { color: var(--tt); font-weight: 700; letter-spacing: .1em; }
+.os .nv-load-bar { margin-top: auto; }
+.os .nv-load-skip { color: var(--dim); text-align: right; padding: 4px 0 40px; }

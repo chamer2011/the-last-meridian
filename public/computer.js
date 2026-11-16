@@ -15,6 +15,7 @@ import { api, el, zoom } from "./dom.js";
 import { leaderNode } from "./float.js";
 import { SPRING_MS, makePullable, pulledBy } from "./pull.js";
 import { NET_MAP, layOutNetMap } from "./net-layout.js";
+import { LOAD_MS, loadingLines, loadingNode, navplotNode, newChartState } from "./navplot.js";
 
 const comp = { id: null, view: null, sending: false, message: null, seen: 0 };
 
@@ -38,7 +39,7 @@ const startWindows = () => ({
 });
 
 export function resetComputer() {
-  Object.assign(comp, { id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1, rigTab: null, rigSlide: null, wasLocked: null, logSeen: 0, boot: null, rigOut: false, woke: false });
+  Object.assign(comp, { app: null, chart: null, id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1, rigTab: null, rigSlide: null, wasLocked: null, logSeen: 0, boot: null, rigOut: false, woke: false });
 }
 resetComputer();
 
@@ -124,6 +125,7 @@ const PICTURES = {
   keel: r(1, 9, 14, 2, "#222") + r(2, 11, 12, 2, "#2a6f9e") + r(4, 13, 8, 1, "#1d4f73") + r(7, 2, 1, 7, "#222") + r(8, 3, 5, 5, "#f2f2f2") + r(8, 3, 1, 5, "#c33"),
   rig: r(2, 4, 12, 9, "#123d22") + r(3, 5, 10, 7, "#1f6b3a") + r(4, 6, 3, 2, "#ffd84a") + r(8, 9, 4, 2, "#9fd9a8") + r(3, 13, 1, 2, "#d8b040") + r(6, 13, 1, 2, "#d8b040") + r(9, 13, 1, 2, "#d8b040") + r(12, 13, 1, 2, "#d8b040"),
   eye: r(2, 6, 12, 4, "#222") + r(3, 5, 10, 6, "#fff") + r(6, 5, 4, 6, "#2a6f9e") + r(7, 7, 2, 2, "#000") + r(4, 4, 8, 1, "#222") + r(4, 11, 8, 1, "#222"),
+  chart: r(1, 2, 14, 12, "#222") + r(2, 3, 12, 10, "#0b1c33") + r(2, 8, 12, 1, "#1b3a5c") + r(8, 3, 1, 10, "#1b3a5c") + r(4, 5, 1, 1, "#8fd18f") + r(11, 6, 1, 1, "#f2c14e") + r(6, 10, 1, 1, "#8fd18f") + r(5, 6, 1, 1, "#c8d6e8") + r(6, 7, 1, 1, "#c8d6e8") + r(8, 7, 1, 1, "#c8d6e8") + r(9, 6, 1, 1, "#c8d6e8") + r(10, 6, 1, 1, "#c8d6e8"),
 };
 function picture(name) {
   const box = document.createElement("template");
@@ -344,6 +346,91 @@ function clockText() {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+// ---- The chart program (public/navplot.js) ---------------------------------------------------------------------
+
+// NAVCOM 7 on the plot table carries the ship's chart, the star map as a program. A Charts icon on its desktop opens
+// it, behind a loading screen of about three seconds that a click skips, over the whole screen under the RESTRICTED
+// bar. What's picked and plotted is kept while the computer stays open.
+const hasCharts = (view) => !view.locked && Boolean(view.device?.charts);
+const chartLoading = () => Boolean(comp.app) && !comp.app.ready && performance.now() - comp.app.at < LOAD_MS;
+let loadTimer = 0;
+function chartCtx(view = comp.view) {
+  return {
+    view,
+    game: app.ui.game,
+    st: comp.chart,
+    sending: comp.sending,
+    picture,
+    draw,
+    send,
+    close: closeCharts,
+    message: () => comp.message,
+    // The same as it stands now, for what's drawn again a moment later, and whether this is still the program open.
+    fresh: () => (comp.view && comp.app && hasCharts(comp.view) ? chartCtx(comp.view) : null),
+    gone: (st) => !comp.app || comp.chart !== st || !document.getElementById("computer"),
+  };
+}
+function openCharts() {
+  comp.chart ??= newChartState();
+  comp.app = { id: "charts", at: performance.now(), ready: false };
+  comp.sel = null;
+  clearInterval(loadTimer);
+  loadTimer = setInterval(() => {
+    if (!comp.app || comp.app.ready) {
+      clearInterval(loadTimer);
+      return;
+    }
+    if (!chartLoading()) {
+      clearInterval(loadTimer);
+      comp.app.ready = true;
+      if (document.getElementById("computer")) draw();
+      return;
+    }
+    const box = document.getElementById("navplot-load");
+    if (box && comp.view && hasCharts(comp.view)) box.replaceChildren(...loadingLines(chartCtx(), performance.now() - comp.app.at));
+  }, 100);
+  draw();
+}
+function skipLoading() {
+  if (!comp.app) return;
+  comp.app.ready = true;
+  clearInterval(loadTimer);
+  draw();
+}
+function closeCharts() {
+  comp.app = null;
+  clearInterval(loadTimer);
+  if (comp.chart) Object.assign(comp.chart, { menu: null, confirm: false, jump: null });
+  draw();
+}
+function chartsIcon(view) {
+  if (!hasCharts(view)) return null;
+  return el("button", {
+    class: `icon${comp.sel === "charts" ? " sel" : ""}`,
+    title: "Navplot, the ship's chart: plot a course and order a jump",
+    onclick: (event) => {
+      event.stopPropagation();
+      if (comp.sel === "charts") openCharts();
+      else {
+        comp.sel = "charts";
+        draw();
+      }
+    },
+    ondblclick: (event) => { event.stopPropagation(); openCharts(); },
+  }, picture("chart"), el("span", {}, "Charts"));
+}
+function programNode(view) {
+  if (!comp.app) return null;
+  // Back at the logon, or let in for less than its programs: the program isn't there any more.
+  if (!hasCharts(view)) {
+    comp.app = null;
+    return null;
+  }
+  comp.chart ??= newChartState();
+  const ctx = chartCtx(view);
+  return chartLoading() ? loadingNode(ctx, performance.now() - comp.app.at, skipLoading) : navplotNode(ctx);
+}
+
 function osNode(view, watch) {
   const navcom = view.look === "navcom";
   const here = view.locked ? [] : foldersHere(view);
@@ -361,7 +448,7 @@ function osNode(view, watch) {
       }
     },
     ondblclick: (event) => { event.stopPropagation(); openFolder(id); },
-  }, picture(pic), el("span", {}, `${name} (${countOf(id)})`))));
+  }, picture(pic), el("span", {}, `${name} (${countOf(id)})`))), chartsIcon(view));
   const folder = allFolders(view).find(([id]) => id === comp.folder);
   const list = !view.locked && folder && winNode("list", `${folder[1]} - ${view.name}`, folder[2], el("div", { class: "pane-in sunk" }, el("div", { class: "rows" }, folderRows(view))), [`${folderItems(view, folder[0]).length} ${folder[0] === "mail" ? "letters" : "objects"}`, comp.sending ? "Working..." : folder[0] === "shiplog" ? "Strike a line to take it out" : folder[0] === "crew" ? (view.device?.crew?.sealed ? "Sealed" : "Restricted: the first officer's") : "Click one to open it"]);
   const viewer = !view.locked && winNode("view", view.screen.kind === "home" ? `Welcome - ${view.name}` : view.screen.title ?? view.name, "txt", el("div", { class: "pane-in sunk viewer-in", id: "computer-screen" }, screenNode(view)), [view.hacked ? "Hacked" : view.yours ? "Yours" : "Logged in", view.className]);
@@ -369,6 +456,7 @@ function osNode(view, watch) {
   const tasks = el("div", { class: "tasks" }, Object.entries(comp.wins).filter(([id, w]) => w.open && named[id]).map(([id]) => el("button", { class: comp.top === id ? "on" : "", onclick: (event) => { event.stopPropagation(); raise(id); draw(); } }, named[id])));
   const menu = comp.menu && el("div", { class: "menu bev" }, el("div", { class: "side" }, navcom ? "NAVCOM 7" : "KEELWORKS 4.1"), el("div", { class: "items" },
     here.map(([id, name, pic]) => el("button", { onclick: (event) => { event.stopPropagation(); comp.menu = false; openFolder(id); } }, picture(pic), name)),
+    hasCharts(view) && el("button", { onclick: (event) => { event.stopPropagation(); comp.menu = false; openCharts(); } }, picture("chart"), "Charts"),
     el("hr"),
     el("button", { onclick: (event) => { event.stopPropagation(); logOff(); } }, picture("keel"), "Log off")));
   // The watcher speaks up once for each step, noticing and tracing, until it's clicked away.
@@ -384,7 +472,7 @@ function osNode(view, watch) {
   // NAVCOM 7's bar along the top, with SENTRY's meter when it's listening.
   const bar = navcom && el("div", { class: "navcom-top" }, el("span", {}, "RESTRICTED · CFS MERIDIAN · NAVCOM 7"),
     watch && el("span", { class: `navcom-sentry ${watch.stage}`, title: `${watch.name}: ${watchWords(watch).toLowerCase()}` }, watch.name, Array.from({ length: watch.cuts }, (_, i) => el("i", { class: i < watch.noise ? "on" : "" }))));
-  const os = el("div", { class: `os${navcom ? " navcom" : ""}`, onclick: () => { if (comp.menu) { comp.menu = false; draw(); } } }, bar, icons, list, viewer, view.locked && logonNode(view), balloon, taskbar, menu);
+  const os = el("div", { class: `os${navcom ? " navcom" : ""}`, onclick: () => { if (comp.menu) { comp.menu = false; draw(); } } }, bar, icons, list, viewer, view.locked && logonNode(view), balloon, taskbar, menu, programNode(view));
   os.addEventListener("pointerdown", dragWindow);
   return os;
 }
@@ -945,6 +1033,15 @@ function onKey(event) {
   if (event.key === "Escape") {
     if (comp.menu) {
       comp.menu = false;
+      draw();
+      return;
+    }
+    // The chart program closes before the computer does, and its own menus and boxes before it.
+    if (comp.app) {
+      const st = comp.chart;
+      if (st?.jump) return;
+      if (st && (st.menu || st.confirm)) Object.assign(st, { menu: null, confirm: false });
+      else comp.app = null;
       draw();
       return;
     }

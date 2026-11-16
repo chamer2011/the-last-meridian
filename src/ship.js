@@ -214,6 +214,12 @@ function note(game, notes, tag, text) {
   if (!aboardShip(game)) return;
   notes.push(`[${tag}] ${text}`);
 }
+// The same from outside these rules: a jump ordered from her chart by someone who isn't in the chair (src/charts.js).
+export function logForShip(game, tag, text) {
+  const notes = [];
+  note(game, notes, tag, text);
+  return notes;
+}
 
 // A shortage ended by buying something or by a story reward gets said now, not tomorrow.
 function noteRestocked(game, id, notes) {
@@ -611,6 +617,15 @@ function passageCost(game, destination) {
   return { fuel: 0, fare: Math.round(band.fare * (1 + danger * dangerFare)), hours: Math.round(base * band.hours), jump: true, none: Boolean(going.noPassage) };
 }
 
+// What a jump costs the Meridian herself, whoever gives the order. The chart on her bridge shows this to anyone who
+// gets into it (src/charts.js).
+export function shipsJumpCost(game, destination) {
+  const band = mapSpot(destination) ? shipJumpCost(shipOf(game), destination) : { fuel: 1, hours: 1 };
+  // With the Meridian's navigation down, the jump's plotted by hand: a fuel more, and half as long again.
+  const byHand = navigationDown(game);
+  return { fuel: band.fuel + (byHand ? 1 : 0), hours: Math.round(jumpHours(game) * band.hours * (byHand ? 1.5 : 1)), jump: true, ...(byHand ? { byHand: true } : {}) };
+}
+
 // What it takes to get somewhere: a shuttle hop between the Meridian and the dock she's at, and otherwise a jump,
 // or for anyone who isn't the captain, a passage.
 export function jumpCost(game, destination) {
@@ -620,11 +635,7 @@ export function jumpCost(game, destination) {
     return aboardShip(game) && shuttle ? { fuel: 0, fare: 0, hours: 1, jump: false } : passageCost(game, destination);
   }
   if (shuttle) return { fuel: 0, hours: 1, jump: false };
-  const to = mapSpot(destination);
-  const band = to ? shipJumpCost(ship, destination) : { fuel: 1, hours: 1 };
-  // With the Meridian's navigation down, the jump's plotted by hand: a fuel more, and half as long again.
-  const byHand = navigationDown(game);
-  return { fuel: band.fuel + (byHand ? 1 : 0), hours: Math.round(jumpHours(game) * band.hours * (byHand ? 1.5 : 1)), jump: true, ...(byHand ? { byHand: true } : {}) };
+  return shipsJumpCost(game, destination);
 }
 
 // The Meridian has arrived somewhere new.
