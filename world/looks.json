@@ -110,7 +110,7 @@
         }
       },
       "style": "navy",
-      "pixelLight": 0.65
+      "pixelLight": 0.8
     },
     "haven": {
       "floor": "deck",
