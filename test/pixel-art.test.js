@@ -5,7 +5,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { doorPicture, lightDim, mapping, pieceWay, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim, solidBox, standingPoint, steelOf } from "../public/pixel-art.js";
+import { PACK_FIGURE, doorPicture, lightDim, mapping, pieceWay, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim, solidBox, standingPoint, steelOf } from "../public/pixel-art.js";
+import { figureUnit } from "../public/iso.js";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const apply = (m, [x, y]) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
@@ -58,8 +59,9 @@ test("a chair is drawn from the side it's seen from, and a piece with one pictur
   assert.equal(pieceWay("locker", "e", 0, both).flip, true);
 });
 
-test("a long table is its picture three times along it, and the kettle is a pot stood on a stove", () => {
-  assert.equal(pieceWay("long-table", "s", 0, both).times, 3);
+test("a long table is its picture four times along it, and the kettle is a pot stood on a stove", () => {
+  // Four, since the packs' pieces are drawn at their own size: a table of theirs is half a tile, and a long table two.
+  assert.equal(pieceWay("long-table", "s", 0, both).times, 4);
   assert.equal(pieceWay("table", "s", 0, both).times, 1);
   const kettle = pieceWay("kettle", "s", 0, both);
   assert.match(kettle.picture.file, /Oven/);
@@ -121,6 +123,16 @@ test("a room can be in the Light look on a Dark ship, toned down by as much as i
   assert.equal(pieceWay("desk", "s", 0, { look: "light", has }).look, "light");
   assert.equal(pieceWay("desk", "s", 0, { look: "dark", has }).look, null);
   assert.equal(pieceWay("plot-table", "s", 0, { look: "light", has }).look, null);
+});
+
+test("the packs' furniture is drawn at its own size, and people as much smaller beside it", () => {
+  // The game enlarged the packs' furniture by 1.7 / 1.375 to fit its people; now the people are that much smaller.
+  assert.ok(Math.abs(PACK_FIGURE - 1.375 / 1.7) < 1e-9);
+  assert.ok(PACK_FIGURE > 0.8 && PACK_FIGURE < 0.82);
+  // Until the test view is on, people are the game's own size.
+  assert.equal(figureUnit(64), 64);
+  // A bench is its picture three times along it at that size, so the three meet.
+  assert.equal(pieceWay("bench", "s", 0, { look: "dark", has: () => true }).times, 3);
 });
 
 test("the view draws as it always has until Settings turns the test on", () => {

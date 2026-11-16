@@ -157,8 +157,9 @@ test("a picture's solid part is found, in each of the ways a picture file can be
 test("what a piece is guessed to be comes from where it is in the packs, and its size from its picture", () => {
   const pieces = new Map(catalogue().pieces.map((one) => [one.id, one]));
   const guess = (id) => furniture.guessFurniture(pieces.get(id));
-  // A table 128 pixels wide standing on a point three quarters across: four squares by one, and 0.7 of a tile high.
-  assert.deepEqual(guess("interiors/Tables/Table_10"), { what: "table", like: null, across: 4, down: 1, high: 0.7, blocks: true, lit: null, steel: false });
+  // A table 128 pixels wide standing on a point three quarters across: four squares by one, and 0.55 of a tile high,
+  // as its picture has it (the packs' pieces are drawn at their own size).
+  assert.deepEqual(guess("interiors/Tables/Table_10"), { what: "table", like: null, across: 4, down: 1, high: 0.55, blocks: true, lit: null, steel: false });
   assert.deepEqual(guess("interiors/Tables/Table_11"), guess("interiors/Tables/Table_10"));
   // A chair is one square whatever its picture; a sofa is as wide as it's drawn, and one deep.
   assert.deepEqual([guess("interiors/Chairs/Chair_4").what, guess("interiors/Chairs/Chair_4").across, guess("interiors/Chairs/Chair_4").down, guess("interiors/Chairs/Chair_4").blocks], ["seat", 1, 1, false]);
@@ -338,7 +339,7 @@ test("the Pieces window's changes are kept in the file, and the game's furniture
   const before = furnitureVersion();
   // A piece of the packs that has no line yet: its first change writes the guess with the change on top.
   assert.deepEqual(furniture.setFurniture([{ id: "interiors/Tables/Table_10", furniture: { blocks: false } }]), { known: 8 });
-  assert.match(fs.readFileSync(file, "utf8"), /\n- Square table \[interiors\/Tables\/Table_10\]: a table, 4 by 1, 0\.7 high, not in the way\n/);
+  assert.match(fs.readFileSync(file, "utf8"), /\n- Square table \[interiors\/Tables\/Table_10\]: a table, 4 by 1, 0\.55 high, not in the way\n/);
   assert.ok(furnitureVersion() > before);
   assert.deepEqual([FURNITURE_BY_ID["interiors/Tables/Table_10"].size, FURNITURE_BY_ID["interiors/Tables/Table_10"].blocks], [[2, 1], false]);
   // The lines that were there are still there, under their headings.
@@ -346,7 +347,7 @@ test("the Pieces window's changes are kept in the file, and the game's furniture
   // Another kind of thing is in the way as that kind is; a size is kept to what a deck can take.
   furniture.setFurniture([{ id: "interiors/Tables/Table_10", furniture: { what: "opens", like: "desk", across: 40, down: 0 } }]);
   let table = furniture.furnitureFacts().get("interiors/Tables/Table_10");
-  assert.deepEqual([table.what, table.like, table.across, table.down, table.blocks, table.high], ["opens", "desk", 8, 1, true, 0.7]);
+  assert.deepEqual([table.what, table.like, table.across, table.down, table.blocks, table.high], ["opens", "desk", 8, 1, true, 0.55]);
   assert.equal(FURNITURE_BY_ID["interiors/Tables/Table_10"].opens, "desk");
   furniture.setFurniture([{ id: "interiors/Tables/Table_10", furniture: { what: "wall" } }]);
   table = furniture.furnitureFacts().get("interiors/Tables/Table_10");

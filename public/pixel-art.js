@@ -50,19 +50,21 @@ const PIECES = {
   locker: [{ picture: from("Office/Office_Metallic_Closet_Ani/Metallic_Closet_Base.png") }, { dark: cell(7, 0), light: cell(4, 1) }],
   chair: [{ faces: fourWays("Chairs/Chair_4_", "_Tile") }],
   "command-chair": [{ faces: fourWays("Chairs/GChair_9_") }],
-  bench: [{ picture: from("Tables/Table_Corridor.png"), times: 2 }],
+  bench: [{ picture: from("Tables/Table_Corridor.png"), times: 3 }],
   table: [{ picture: from("Tables/Office_Kitchen_Table.png") }],
-  "long-table": [{ picture: from("Tables/Office_Kitchen_Table.png"), times: 3 }],
+  "long-table": [{ picture: from("Tables/Office_Kitchen_Table.png"), times: 4 }],
   shelf: [{ picture: from("Office/Rack.png") }],
   screen: [{ picture: from("Computer/Vertical_Screen.png") }],
-  kettle: [{ picture: from("Kitchen/Oven.png"), on: from("Kitchen/Pot_Full.png"), lift: 0.86 }],
+  kettle: [{ picture: from("Kitchen/Oven.png"), on: from("Kitchen/Pot_Full.png"), lift: 0.7 }],
   plant: [{ any: [from("Plants/Plant_3.png"), from("Plants/Plant_2.png"), from("Plants/Plant_5.png"), from("Plants/Plant_1.png")] }],
   basin: [{ picture: from("Bathroom/WC_Tap_Ani/Wc_Tap_1.png") }],
 };
 const picturesOf = (way) => [way.picture, way.dark, way.light, way.on, ...Object.values(way.faces ?? {}), ...(way.any ?? [])].filter(Boolean);
-// How much bigger the pack's furniture is drawn than its own size: as much as its walls are stood up, so they keep to
-// each other and to the game's people.
+// The pack's walls are 1.375 tiles high and the game's 1.7, so the pack's are stood up taller to the game's height.
+// Its furniture is drawn at its own size all the same, at the owner's word ("higher walls and smaller objects"), and
+// the game's people as much smaller as that makes it beside the game's own (PACK_FIGURE), so they still fit its chairs.
 const WALL_PACK_HEIGHT = 1.375;
+export const PACK_FIGURE = WALL_PACK_HEIGHT / 1.7;
 // The game's own furniture whose picture in the packs is wood or orange, and is drawn in steel: the benches and the
 // washbasins' cabinets. (A piece of the packs put on a deck as itself says so in world/furniture.txt, "in steel".)
 const STEEL_FILES = new Set(["Tables/Table_Corridor.png", "Bathroom/WC_Tap_Ani/Wc_Tap_1.png"]);
@@ -566,12 +568,12 @@ export function pieceWay(kind, facing = "s", seed = 0, { look = state.look, has 
   return null;
 }
 
-// One picture of a piece, stood with its middle on a point of the floor (cx, cy, in tiles) or so far above it, as much
-// bigger than its own size as the pack's walls are stood up, so they keep to each other and to the game's people.
+// One picture of a piece, stood with its middle on a point of the floor (cx, cy, in tiles) or so far above it, at the
+// pack's own size: half its pixels at 64 a tile, so they stay even.
 function drawPicture(painter, picture, cx, cy, { flip = false, lift = 0, wallHeight, middle = false, look = null }) {
   const box = state.boxes[picture.id];
   const { ctx, ratio, at, unit } = painter;
-  const scale = (unit / 128) * (wallHeight / WALL_PACK_HEIGHT);
+  const scale = unit / 128;
   const turn = flip ? -1 : 1;
   // What's hung on a wall is placed by its middle; anything else by where it stands.
   const [ax, ay] = middle ? [(box.x0 + box.x1 + 1) / 2, (box.y0 + box.y1 + 1) / 2] : standingPoint(box);

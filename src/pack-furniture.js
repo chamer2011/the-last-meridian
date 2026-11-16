@@ -101,7 +101,8 @@ export function guessFurniture(piece) {
   const sofa = /sofa/i.test(piece.id);
   if (facts.what !== "seat" || sofa) facts.across = clamp(Math.round(across / 0.5), 1, 8);
   if (facts.what !== "seat") facts.down = clamp(Math.round(down), 1, 4);
-  if (facts.what !== "rug") facts.high = clamp(Math.round(((tall - wide / 2) / 64) * bigger * 20) / 20, 0.1, 2);
+  // How high it stands is as its picture has it: the packs' pieces are drawn at their own size.
+  if (facts.what !== "rug") facts.high = clamp(Math.round(((tall - wide / 2) / 64) * 20) / 20, 0.1, 2);
   return facts;
 }
 

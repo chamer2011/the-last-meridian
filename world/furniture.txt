@@ -10,45 +10,45 @@ How this file works
 - The floors, walls, doors and stairs of the packs aren't in here: a deck is built of those, and they come later.
 
 Bridge and command
-- Big swivel chair [interiors/Chairs/Office_Main_Chair]: a seat, 1 by 1, 0.8 high
-- Black glass desk [interiors/Desks/Office_Main_Table_Desk]: a table, 3 by 1, 0.5 high
-- Chart table with a lit top [isospace/chart-table]: a table, 1 by 1, 0.4 high, glows #7dffa8
+- Big swivel chair [interiors/Chairs/Office_Main_Chair]: a seat, 1 by 1, 0.65 high
+- Black glass desk [interiors/Desks/Office_Main_Table_Desk]: a table, 3 by 1, 0.4 high
+- Chart table with a lit top [isospace/chart-table]: a table, 1 by 1, 0.3 high, glows #7dffa8
 - Computer tower [interiors/Computer/PcTower]: a small thing, glows #86dcff
-- Control console [isospace/console]: a table, 2 by 1, 0.9 high, glows #86dcff
-- Copy machine, dark [interiors/Office/Copy_Machine_Dark_Ani]: stands on the floor, 2 by 1, 0.9 high
-- Copy machine, white [interiors/Office/Copy_Machine_White_Ani]: stands on the floor, 1 by 1, 0.9 high
+- Control console [isospace/console]: a table, 2 by 1, glows #86dcff
+- Copy machine, dark [interiors/Office/Copy_Machine_Dark_Ani]: stands on the floor, 2 by 1, 0.75 high
+- Copy machine, white [interiors/Office/Copy_Machine_White_Ani]: stands on the floor, 1 by 1, 0.75 high
 - Curved screen [interiors/Computer/BendedScreen]: a small thing, glows #86dcff
-- Desk with steel drawers [interiors/Desks/Office_Normal_Table_Ani]: something to open like a desk, 2 by 1, 0.6 high, in steel
+- Desk with steel drawers [interiors/Desks/Office_Normal_Table_Ani]: something to open like a desk, 2 by 1, 0.5 high, in steel
 - Drawing tablet [interiors/Computer/WacomTablet]: a small thing, glows #86dcff
 - Flat computer [interiors/Computer/NewImac]: a small thing, glows #86dcff
 - Keyboard and mouse [interiors/Computer/NewKeyboard]: a small thing, glows #86dcff
 - Laptop [interiors/Computer/MacBook_Ani]: a small thing, glows #86dcff
-- Metal-legged desk [interiors/Desks/Desk_2]: a table, 2 by 1, 0.65 high, in steel
-- Office chair [interiors/Chairs/Basic_Office_Chair]: a seat, 1 by 1, 0.65 high
+- Metal-legged desk [interiors/Desks/Desk_2]: a table, 2 by 1, 0.55 high, in steel
+- Office chair [interiors/Chairs/Basic_Office_Chair]: a seat, 1 by 1, 0.55 high
 - Old beige computer [interiors/Computer/OldPC]: a small thing, glows #86dcff
 - Old keyboard [interiors/Computer/OldKeyboard]: a small thing, glows #86dcff
 - Old rounded computer [interiors/Computer/OldImac]: a small thing, glows #86dcff
-- Padded chair [isospace/padded-chair]: a seat, 1 by 1, 0.7 high
-- Padded swivel chair [interiors/Chairs/GChair_9]: a seat, 1 by 1, 0.8 high
-- Partition [interiors/Office/Office_Partition]: stands on the floor, 1 by 1, 1.5 high
+- Padded chair [isospace/padded-chair]: a seat, 1 by 1, 0.55 high
+- Padded swivel chair [interiors/Chairs/GChair_9]: a seat, 1 by 1, 0.65 high
+- Partition [interiors/Office/Office_Partition]: stands on the floor, 1 by 1, 1.2 high
 - Printer [interiors/Office/Printer_Ani]: a small thing
-- Projector [interiors/Office/Projector_Ani]: stands on the floor, 1 by 1, 0.15 high
-- Projector screen [interiors/Office/Projector_Screen_Ani]: stands on the floor, 1 by 1, 1.55 high
+- Projector [interiors/Office/Projector_Ani]: stands on the floor, 1 by 1, 0.1 high
+- Projector screen [interiors/Office/Projector_Screen_Ani]: stands on the floor, 1 by 1, 1.25 high
 - Screen on a stand [interiors/Computer/RotationScreen]: a small thing, glows #86dcff
-- Shredder [interiors/Office/Document_Shredder_Ani]: stands on the floor, 1 by 1, 0.45 high
+- Shredder [interiors/Office/Document_Shredder_Ani]: stands on the floor, 1 by 1, 0.35 high
 - Tall screen [interiors/Computer/Vertical_Screen]: a small thing, glows #86dcff
 - Telephone [interiors/Office/Telephone]: a small thing
-- Terminal desk [isospace/terminal]: a table, 1 by 1, 0.9 high, glows #86dcff
-- Tripod stool [interiors/Office/Projector_Stand]: a seat, 1 by 1, 0.85 high
-- Wooden cupboard [interiors/Office/Office_Wood_Closet_Ani]: something to open like a locker, 1 by 1, 1.55 high
-- Wooden desk [interiors/Desks/Desk_1]: something to open like a desk, 2 by 1, 0.6 high
+- Terminal desk [isospace/terminal]: a table, 1 by 1, glows #86dcff
+- Tripod stool [interiors/Office/Projector_Stand]: a seat, 1 by 1, 0.7 high
+- Wooden cupboard [interiors/Office/Office_Wood_Closet_Ani]: something to open like a locker, 1 by 1, 1.25 high
+- Wooden desk [interiors/Desks/Desk_1]: something to open like a desk, 2 by 1, 0.5 high
 
 Quarters
-- Armchair, teal [interiors/Sofa/Sofa_1]: a seat, 1 by 1, 0.7 high
-- Bare mattress [interiors/Bedroom/Bed_A_4]: a bed, 2 by 1, 0.2 high
-- Bedside drawers, orange [interiors/Bedroom/Night_Table]: something to open like a desk, 1 by 1, 0.45 high, in steel
+- Armchair, teal [interiors/Sofa/Sofa_1]: a seat, 1 by 1, 0.55 high
+- Bare mattress [interiors/Bedroom/Bed_A_4]: a bed, 2 by 1, 0.15 high
+- Bedside drawers, orange [interiors/Bedroom/Night_Table]: something to open like a desk, 1 by 1, 0.35 high, in steel
 - Bonsai [interiors/Japanese_Room/Bonsai]: a small thing
-- Bunk, two beds [isospace/bunk]: a bed, 2 by 1, 0.8 high
+- Bunk, two beds [isospace/bunk]: a bed, 2 by 1, 0.65 high
 - Candle [interiors/Japanese_Room/Candle]: a small thing, glows #ffd9a0
 - Carpet 3 [interiors/Carpets/Carpet_3]: lies on the floor, 2 by 1
 - Carpet 7 [interiors/Carpets/Carpet_7]: lies on the floor, 1 by 1
@@ -58,59 +58,59 @@ Quarters
 - Carpet modern [interiors/Carpets/Carpet_Modern]: lies on the floor, 3 by 1
 - Carpet, red [interiors/Carpets/Carpet_Red]: lies on the floor, 2 by 1
 - Carpet, yellow [interiors/Carpets/Carpet_Yellow]: lies on the floor, 2 by 1
-- Cupboard with shelves, orange [interiors/Living Roon/shelving_7]: something to open like shelves, 1 by 1, 1.6 high, in steel
+- Cupboard with shelves, orange [interiors/Living Roon/shelving_7]: something to open like shelves, 1 by 1, in steel
 - Cushion, teal pattern [interiors/Sofa/Pillow_12]: a small thing
 - Cushions, brown and cream [interiors/Sofa/Pillow_10]: a small thing
 - Cushions, teal [interiors/Sofa/Pillow_11]: a small thing
 - Desk lamp, green shade [interiors/Lamps/Lamp_11]: a small thing, glows #ffd9a0
 - Desk lamp, orange [interiors/Lamps/Lamp_8]: a small thing, glows #ffd9a0
-- Dining chair, red seat [interiors/Chairs/Chair_5]: a seat, 1 by 1, 0.9 high
+- Dining chair, red seat [interiors/Chairs/Chair_5]: a seat, 1 by 1, 0.75 high
 - Japanese base cup [interiors/Japanese_Room/Japanese_BaseCup]: a small thing
 - Japanese canvas [interiors/Japanese_Room/Japanese_Canvas]: hangs on a wall
 - Japanese canvas leters [interiors/Japanese_Room/Japanese_Canvas_Leters]: hangs on a wall
-- Japanese closet [interiors/Japanese_Room/Japanese_Closet]: something to open like a locker, 2 by 1, 1.8 high
+- Japanese closet [interiors/Japanese_Room/Japanese_Closet]: something to open like a locker, 2 by 1, 1.45 high
 - Japanese cup [interiors/Japanese_Room/Japanese_Cup]: a small thing
 - Japanese dish [interiors/Japanese_Room/Japanese_Dish]: a small thing
-- Japanese lamp [interiors/Japanese_Room/Japanese_Lamp]: stands on the floor, 1 by 1, 0.65 high, glows #ffd9a0
-- Japanese plant [interiors/Japanese_Room/Japanese_Plant]: stands on the floor, 1 by 1, 0.7 high
+- Japanese lamp [interiors/Japanese_Room/Japanese_Lamp]: stands on the floor, 1 by 1, 0.55 high, glows #ffd9a0
+- Japanese plant [interiors/Japanese_Room/Japanese_Plant]: stands on the floor, 1 by 1, 0.55 high
 - Japanese seat [interiors/Japanese_Room/Japanese_Seat]: a seat, 1 by 1, 0.1 high
-- Japanese shelf [interiors/Japanese_Room/Japanese_Shelf]: something to open like shelves, 2 by 1, 1.65 high
-- Japanese table [interiors/Japanese_Room/Japanese_Table]: a table, 1 by 1, 0.3 high
+- Japanese shelf [interiors/Japanese_Room/Japanese_Shelf]: something to open like shelves, 2 by 1, 1.35 high
+- Japanese table [interiors/Japanese_Room/Japanese_Table]: a table, 1 by 1, 0.25 high
 - Japanese tea [interiors/Japanese_Room/Japanese_Tea]: a small thing
-- Japanese tori gate [interiors/Japanese_Room/Japanese_Tori_Gate]: stands on the floor, 3 by 1, 1.5 high
-- Japanese vase [interiors/Japanese_Room/Japanese_Vase]: stands on the floor, 1 by 1, 0.35 high
-- Ladder-back chair [interiors/Chairs/Chair_3]: a seat, 1 by 1, 0.8 high
+- Japanese tori gate [interiors/Japanese_Room/Japanese_Tori_Gate]: stands on the floor, 3 by 1, 1.2 high
+- Japanese vase [interiors/Japanese_Room/Japanese_Vase]: stands on the floor, 1 by 1, 0.3 high
+- Ladder-back chair [interiors/Chairs/Chair_3]: a seat, 1 by 1, 0.65 high
 - Lava lamp [interiors/Lamps/LavaLamp_Ani]: a small thing, glows #b98cff
-- Locker, light [isospace/locker-light]: something to open like a locker, 1 by 1, 1 high
+- Locker, light [isospace/locker-light]: something to open like a locker, 1 by 1, 0.8 high
 - Long pillow, white [interiors/Bedroom/Pillow_12]: a small thing
-- Low table, orange [interiors/Living Roon/SmallTable_5]: a table, 1 by 1, 0.35 high, in steel
-- Low wooden bed, checked blanket [interiors/Bedroom/Bed_M_4]: a bed, 3 by 2, 0.7 high
-- Low wooden bed, navy blanket [interiors/Bedroom/Bed_J_4]: a bed, 2 by 1, 0.7 high
-- Mattress with a blanket [interiors/Bedroom/Bed_C_4]: a bed, 2 by 1, 0.2 high
+- Low table, orange [interiors/Living Roon/SmallTable_5]: a table, 1 by 1, 0.3 high, in steel
+- Low wooden bed, checked blanket [interiors/Bedroom/Bed_M_4]: a bed, 3 by 2, 0.55 high
+- Low wooden bed, navy blanket [interiors/Bedroom/Bed_J_4]: a bed, 2 by 1, 0.55 high
+- Mattress with a blanket [interiors/Bedroom/Bed_C_4]: a bed, 2 by 1, 0.15 high
 - Pillow, cream [interiors/Bedroom/Pillow_11]: a small thing
 - Pillow, pale green [interiors/Bedroom/Pillow_10]: a small thing
-- Plastic chair, purple [interiors/Chairs/Chair_7]: a seat, 1 by 1, 0.7 high
+- Plastic chair, purple [interiors/Chairs/Chair_7]: a seat, 1 by 1, 0.55 high
 - Rumpled blanket [interiors/Bedroom/Pillow_9]: a small thing
-- Slatted wooden bed [interiors/Bedroom/Bed_L_4]: a bed, 2 by 1, 0.8 high
-- Sofa, beige [interiors/Sofa/Sofa_3]: a seat, 1 by 1, 0.6 high
-- Sofa, grey [isospace/sofa]: a seat, 2 by 1, 0.55 high
-- Sofa, teal [interiors/Sofa/Sofa_2]: a seat, 3 by 1, 0.7 high
-- Sofa, yellow [interiors/Sofa/Sofa_4]: a seat, 3 by 1, 0.75 high
-- Speaker [interiors/Living Roon/Speaker_6]: stands on the floor, 1 by 1, 0.75 high
-- Standing lamp on a tripod [interiors/Lamps/Lamp_10]: stands on the floor, 1 by 1, 0.35 high, glows #ffd9a0
-- Steel locker [interiors/Office/Office_Metallic_Closet_Ani]: something to open like a locker, 1 by 1, 1.45 high
+- Slatted wooden bed [interiors/Bedroom/Bed_L_4]: a bed, 2 by 1, 0.65 high
+- Sofa, beige [interiors/Sofa/Sofa_3]: a seat, 1 by 1
+- Sofa, grey [isospace/sofa]: a seat, 2 by 1, 0.45 high
+- Sofa, teal [interiors/Sofa/Sofa_2]: a seat, 3 by 1, 0.55 high
+- Sofa, yellow [interiors/Sofa/Sofa_4]: a seat, 3 by 1, 0.6 high
+- Speaker [interiors/Living Roon/Speaker_6]: stands on the floor, 1 by 1, 0.6 high
+- Standing lamp on a tripod [interiors/Lamps/Lamp_10]: stands on the floor, 1 by 1, 0.3 high, glows #ffd9a0
+- Steel locker [interiors/Office/Office_Metallic_Closet_Ani]: something to open like a locker, 1 by 1, 1.15 high
 - Strip light on a wall [interiors/Lamps/Lamp_Modern]: hangs on a wall, glows #dfeaff
 - Table lamp, pleated shade [interiors/Lamps/Lamp_9]: a small thing, glows #ffd9a0
-- Unmade bed [interiors/Bedroom/Bed_B_4]: a bed, 2 by 1, 0.2 high
+- Unmade bed [interiors/Bedroom/Bed_B_4]: a bed, 2 by 1, 0.15 high
 - Wall lamp, cream shade [interiors/Lamps/Lamp_7]: hangs on a wall, glows #ffd9a0
-- Wooden bed, checked blanket [interiors/Bedroom/Bed_K_4]: a bed, 2 by 1, 0.7 high
-- Wooden bed, cream blanket [interiors/Bedroom/Bed_D_4]: a bed, 2 by 1
-- Wooden bed, green blanket [interiors/Bedroom/Bed_F_4]: a bed, 2 by 1, 0.65 high
-- Wooden bed, navy blanket [interiors/Bedroom/Bed_G_4]: a bed, 2 by 1, 0.65 high
-- Wooden bed, patchwork quilt [interiors/Bedroom/Bed_H_4]: a bed, 2 by 1, 0.7 high
-- Wooden bed, red blanket and pillow [interiors/Bedroom/Bed_I_4]: a bed, 2 by 1, 0.65 high
-- Wooden bed, wine blanket [interiors/Bedroom/Bed_E_4]: a bed, 2 by 1
-- Wooden chair [interiors/Chairs/Chair_2]: a seat, 1 by 1, 0.7 high
+- Wooden bed, checked blanket [interiors/Bedroom/Bed_K_4]: a bed, 2 by 1, 0.55 high
+- Wooden bed, cream blanket [interiors/Bedroom/Bed_D_4]: a bed, 2 by 1, 0.4 high
+- Wooden bed, green blanket [interiors/Bedroom/Bed_F_4]: a bed, 2 by 1, 0.55 high
+- Wooden bed, navy blanket [interiors/Bedroom/Bed_G_4]: a bed, 2 by 1, 0.55 high
+- Wooden bed, patchwork quilt [interiors/Bedroom/Bed_H_4]: a bed, 2 by 1, 0.55 high
+- Wooden bed, red blanket and pillow [interiors/Bedroom/Bed_I_4]: a bed, 2 by 1, 0.55 high
+- Wooden bed, wine blanket [interiors/Bedroom/Bed_E_4]: a bed, 2 by 1, 0.4 high
+- Wooden chair [interiors/Chairs/Chair_2]: a seat, 1 by 1, 0.55 high
 
 Mess and galley
 - Bottle, green [interiors/Kitchen/Bottle_12]: a small thing
@@ -119,105 +119,105 @@ Mess and galley
 - Coffee machine [interiors/Kitchen/CoffeMachine_Red]: a small thing
 - Cola bottle [interiors/Kitchen/Cola]: a small thing
 - Cooking pot [interiors/Kitchen/Pot]: a small thing
-- Cooler cabinet [isospace/cooler]: something to open like shelves, 1 by 1, 1.05 high
+- Cooler cabinet [isospace/cooler]: something to open like shelves, 1 by 1, 0.85 high
 - Cutting board [interiors/Kitchen/Cutting_Board]: a small thing
 - Detergent bottle [interiors/Kitchen/Kitchen_Soap]: a small thing
 - Dish cloth [interiors/Kitchen/Rag]: a small thing
 - Dish soap [interiors/Kitchen/Dish_Soap]: a small thing
 - Drinks can [interiors/Kitchen/Soda_Can]: a small thing
 - Fork [interiors/Kitchen/Fork]: a small thing
-- Fridge [interiors/Kitchen/Fridge]: something to open like shelves, 1 by 1
-- Fridge, red [interiors/Kitchen/Fidge_Red]: something to open like shelves, 1 by 1, 1.4 high
+- Fridge [interiors/Kitchen/Fridge]: something to open like shelves, 1 by 1, 1.05 high
+- Fridge, red [interiors/Kitchen/Fidge_Red]: something to open like shelves, 1 by 1, 1.15 high
 - Frying pan [interiors/Kitchen/Frying_Pan]: a small thing
 - Glass [interiors/Kitchen/Glass_1]: a small thing
-- Hob [interiors/Kitchen/Stoves]: stands on the floor, 1 by 1, 0.15 high
+- Hob [interiors/Kitchen/Stoves]: stands on the floor, 1 by 1, 0.1 high
 - Kettle [interiors/Kitchen/Ketel_7]: a small thing
-- Kitchen counter with drawers [interiors/Kitchen/Kitchen]: something to open like shelves, 1 by 1, 0.85 high, in steel
+- Kitchen counter with drawers [interiors/Kitchen/Kitchen]: something to open like shelves, 1 by 1, 0.7 high, in steel
 - Kitchen knife [interiors/Kitchen/Kitchen_Knife]: a small thing
 - Kitchen rug [interiors/Kitchen/Kitchen_Rug]: lies on the floor, 1 by 1
-- Kitchen units, black [interiors/Kitchen/Kitchen_Furniture_Black]: something to open like shelves, 5 by 1, 0.9 high
-- Kitchen units, green [interiors/Kitchen/Kitchen_Furniture_Green]: something to open like shelves, 5 by 1, 0.9 high
-- Kitchen units, orange [interiors/Kitchen/Kitchen_Furniture_Orange]: something to open like shelves, 5 by 1, 0.9 high
-- Kitchen units, pink [interiors/Kitchen/Kitchen_Furniture_Pink]: something to open like shelves, 5 by 1, 0.9 high
-- Kitchen units, red [interiors/Kitchen/Kitchen_Furniture_Red]: something to open like shelves, 5 by 1, 0.9 high
-- Kitchen units, white [interiors/Kitchen/Kitchen_Furniture_White]: something to open like shelves, 5 by 1, 0.9 high
-- Kitchen units, wood [interiors/Kitchen/Kitchen_Furniture_Wood]: something to open like shelves, 5 by 1, 0.9 high
+- Kitchen units, black [interiors/Kitchen/Kitchen_Furniture_Black]: something to open like shelves, 5 by 1, 0.75 high
+- Kitchen units, green [interiors/Kitchen/Kitchen_Furniture_Green]: something to open like shelves, 5 by 1, 0.75 high
+- Kitchen units, orange [interiors/Kitchen/Kitchen_Furniture_Orange]: something to open like shelves, 5 by 1, 0.75 high
+- Kitchen units, pink [interiors/Kitchen/Kitchen_Furniture_Pink]: something to open like shelves, 5 by 1, 0.75 high
+- Kitchen units, red [interiors/Kitchen/Kitchen_Furniture_Red]: something to open like shelves, 5 by 1, 0.75 high
+- Kitchen units, white [interiors/Kitchen/Kitchen_Furniture_White]: something to open like shelves, 5 by 1, 0.75 high
+- Kitchen units, wood [interiors/Kitchen/Kitchen_Furniture_Wood]: something to open like shelves, 5 by 1, 0.75 high
 - Kitchen window [interiors/Kitchen/Kitchen_Window]: hangs on a wall
-- Long table [interiors/Tables/Table_11]: a table, 1 by 1, 0.6 high, in steel
+- Long table [interiors/Tables/Table_11]: a table, 1 by 1, 0.5 high, in steel
 - Microwave [interiors/Kitchen/Microwave]: a small thing
 - Mug, dark red [interiors/Kitchen/Mug_15]: a small thing
 - Mug, green [interiors/Kitchen/Mug_Green]: a small thing
 - Mug, red [interiors/Kitchen/Mug_Red]: a small thing
-- Narrow bench table [interiors/Tables/Table_Corridor]: a table, 2 by 1, 0.6 high, in steel
-- Oval table [interiors/Tables/Table_12]: a table, 1 by 1, 0.65 high, in steel
+- Narrow bench table [interiors/Tables/Table_Corridor]: a table, 2 by 1, 0.5 high, in steel
+- Oval table [interiors/Tables/Table_12]: a table, 1 by 1, 0.55 high, in steel
 - Painting [interiors/Kitchen/Painting]: hangs on a wall
-- Pedal bin [interiors/Kitchen/TrashBin]: something to open like a barrel, 1 by 1, 0.5 high
-- Plastic chair, blue [interiors/Chairs/Chair_4]: a seat, 1 by 1, 0.75 high
+- Pedal bin [interiors/Kitchen/TrashBin]: something to open like a barrel, 1 by 1, 0.4 high
+- Plastic chair, blue [interiors/Chairs/Chair_4]: a seat, 1 by 1, 0.6 high
 - Plate [interiors/Kitchen/Dish]: a small thing
-- Round table [interiors/Tables/Table_13]: a table, 1 by 1, 0.65 high, in steel
+- Round table [interiors/Tables/Table_13]: a table, 1 by 1, 0.55 high, in steel
 - Scourer [interiors/Kitchen/Scourer]: a small thing
-- Sink [interiors/Kitchen/Sink]: stands on the floor, 1 by 1, 0.25 high
+- Sink [interiors/Kitchen/Sink]: stands on the floor, 1 by 1, 0.2 high
 - Spoon [interiors/Kitchen/Spoon]: a small thing
-- Square table [interiors/Tables/Table_10]: a table, 1 by 1, 0.6 high, in steel
-- Steel table [interiors/Tables/Office_Kitchen_Table]: a table, 1 by 1, 0.6 high
-- Stool [interiors/Chairs/Kitchen_Stool]: a seat, 1 by 1, 0.45 high, in steel
-- Stove with an oven [interiors/Kitchen/Oven]: stands on the floor, 1 by 1, 0.9 high
+- Square table [interiors/Tables/Table_10]: a table, 1 by 1, 0.5 high, in steel
+- Steel table [interiors/Tables/Office_Kitchen_Table]: a table, 1 by 1, 0.5 high
+- Stool [interiors/Chairs/Kitchen_Stool]: a seat, 1 by 1, 0.35 high, in steel
+- Stove with an oven [interiors/Kitchen/Oven]: stands on the floor, 1 by 1, 0.75 high
 - Sugar [interiors/Kitchen/Sugar]: a small thing
-- Table with a cloth [interiors/Tables/Table_14]: a table, 2 by 1, 0.65 high
+- Table with a cloth [interiors/Tables/Table_14]: a table, 2 by 1, 0.55 high
 - Teapot [interiors/Kitchen/TeaPot]: a small thing
 - Toaster [interiors/Kitchen/Toaster]: a small thing
-- Trestle table [interiors/Tables/Kitchen_Table]: a table, 3 by 1, 0.7 high
+- Trestle table [interiors/Tables/Kitchen_Table]: a table, 3 by 1, 0.55 high
 - Tumbler, dark [interiors/Kitchen/Glass_2]: a small thing
-- Water dispenser [interiors/Office/Water_Dispenser_Ani]: stands on the floor, 1 by 1, 1.1 high
+- Water dispenser [interiors/Office/Water_Dispenser_Ani]: stands on the floor, 1 by 1, 0.9 high
 - Wine bottle [interiors/Kitchen/Wine]: a small thing
 
 Medbay
 - Medical kit on a wall [interiors/Office/Medical_Kit_Ani]: hangs on a wall
-- Medical pod [isospace/pod]: a bed, 1 by 1, 0.55 high
+- Medical pod [isospace/pod]: a bed, 1 by 1, 0.45 high
 - Microscope [interiors/Lab/Microscope]: a small thing
 
 Engineering and workshop
 - 3D printer [interiors/Lab/3D_Printer]: a small thing
-- Air unit, standing [interiors/Lab/Ac_Big_2]: stands on the floor, 1 by 1, 1.3 high
+- Air unit, standing [interiors/Lab/Ac_Big_2]: stands on the floor, 1 by 1, 1.05 high
 - Circuit board [interiors/Lab/Tools_Electric]: a small thing
-- Drafting table [interiors/Tables/Drawing_Table]: a table, 2 by 1, 0.95 high, in steel
-- Pump unit [isospace/pump]: stands on the floor, 1 by 1, 0.7 high
-- Server cabinet [interiors/Lab/Server_2]: stands on the floor, 1 by 1, 1.4 high, glows #86dcff
-- Server rack, dark [isospace/rack-dark]: stands on the floor, 1 by 1, 1.05 high, glows #86dcff
-- Server rack, four sides [interiors/Lab/Server_1]: stands on the floor, 1 by 1, 1.4 high, glows #86dcff
+- Drafting table [interiors/Tables/Drawing_Table]: a table, 2 by 1, in steel
+- Pump unit [isospace/pump]: stands on the floor, 1 by 1, 0.55 high
+- Server cabinet [interiors/Lab/Server_2]: stands on the floor, 1 by 1, 1.15 high, glows #86dcff
+- Server rack, dark [isospace/rack-dark]: stands on the floor, 1 by 1, 0.85 high, glows #86dcff
+- Server rack, four sides [interiors/Lab/Server_1]: stands on the floor, 1 by 1, 1.15 high, glows #86dcff
 - Small server [interiors/Lab/Server_3]: a small thing, glows #86dcff
 - Spools on a spindle [interiors/Lab/Printer_Filament]: a small thing
-- Tank with a lit core [isospace/tank]: stands on the floor, 1 by 1, 1.1 high, glows #7dffe0
+- Tank with a lit core [isospace/tank]: stands on the floor, 1 by 1, 0.9 high, glows #7dffe0
 - Test instrument [interiors/Lab/Oscilator_Machine]: a small thing, glows #86dcff
-- Tool box [interiors/Lab/Tool_Box]: something to open like a barrel, 1 by 1, 0.3 high
+- Tool box [interiors/Lab/Tool_Box]: something to open like a barrel, 1 by 1, 0.25 high
 - Tools on a rack [interiors/Lab/Tools]: hangs on a wall
 - Voltage meter [interiors/Lab/VoltageMeter]: a small thing
-- Welder [interiors/Lab/Welder_Machine]: stands on the floor, 1 by 1, 0.15 high
-- Workbench [interiors/Desks/Desk_3]: a table, 3 by 1, in steel
+- Welder [interiors/Lab/Welder_Machine]: stands on the floor, 1 by 1, 0.1 high
+- Workbench [interiors/Desks/Desk_3]: a table, 3 by 1, 0.6 high, in steel
 
 Stores and cargo
-- Big crate, dark [isospace/crate-dark]: something to open like a barrel, 1 by 1, 0.9 high
-- Big crate, light [isospace/crate-light]: something to open like a barrel, 1 by 1, 0.9 high
-- Cardboard box [interiors/Office/Carton_Box]: something to open like a barrel, 1 by 1, 0.25 high
-- Cardboard box, grey [interiors/Japanese_Room/Carton_Box]: something to open like a barrel, 1 by 1, 0.35 high
-- Parts bin with a lid [interiors/Lab/Plastic_Box_2]: something to open like a barrel, 1 by 1, 0.15 high
-- Parts bin, blue [interiors/Lab/Plastic_Box_1]: something to open like a barrel, 1 by 1, 0.15 high
-- Pile of cases [isospace/cases]: something to open like a barrel, 1 by 1, 0.4 high
-- Stack of drums [isospace/drums]: something to open like a barrel, 1 by 1, 0.7 high
-- Taped cardboard box [interiors/Kitchen/Box_2]: something to open like a barrel, 1 by 1, 0.3 high
-- White box [interiors/Office/White_Box]: something to open like a barrel, 1 by 1, 0.3 high
-- Wire shelving [interiors/Office/Rack]: something to open like shelves, 2 by 1, 1.8 high
+- Big crate, dark [isospace/crate-dark]: something to open like a barrel, 1 by 1, 0.75 high
+- Big crate, light [isospace/crate-light]: something to open like a barrel, 1 by 1, 0.75 high
+- Cardboard box [interiors/Office/Carton_Box]: something to open like a barrel, 1 by 1, 0.2 high
+- Cardboard box, grey [interiors/Japanese_Room/Carton_Box]: something to open like a barrel, 1 by 1, 0.3 high
+- Parts bin with a lid [interiors/Lab/Plastic_Box_2]: something to open like a barrel, 1 by 1, 0.1 high
+- Parts bin, blue [interiors/Lab/Plastic_Box_1]: something to open like a barrel, 1 by 1, 0.1 high
+- Pile of cases [isospace/cases]: something to open like a barrel, 1 by 1, 0.3 high
+- Stack of drums [isospace/drums]: something to open like a barrel, 1 by 1, 0.55 high
+- Taped cardboard box [interiors/Kitchen/Box_2]: something to open like a barrel, 1 by 1, 0.25 high
+- White box [interiors/Office/White_Box]: something to open like a barrel, 1 by 1, 0.25 high
+- Wire shelving [interiors/Office/Rack]: something to open like shelves, 2 by 1, 1.45 high
 
 Heads and laundry
 - Bath mat [interiors/Bathroom/Bath_Carpet]: lies on the floor, 1 by 1
-- Bathroom cabinet [interiors/Bathroom/Wc_Furniture]: something to open like shelves, 1 by 1, 0.75 high, in steel
-- Bathtub [interiors/Bathroom/Bath_Ani]: stands on the floor, 2 by 1, 0.45 high
-- Bin with a lid [interiors/Bathroom/Shower_Bin]: something to open like a barrel, 1 by 1, 0.4 high
+- Bathroom cabinet [interiors/Bathroom/Wc_Furniture]: something to open like shelves, 1 by 1, 0.6 high, in steel
+- Bathtub [interiors/Bathroom/Bath_Ani]: stands on the floor, 2 by 1, 0.35 high
+- Bin with a lid [interiors/Bathroom/Shower_Bin]: something to open like a barrel, 1 by 1, 0.3 high
 - Coat hooks [interiors/Bathroom/Hanger]: hangs on a wall, in steel
 - Duck [interiors/Bathroom/Duck]: a small thing
 - Hanging towel [interiors/Bathroom/Hanging_Towel]: hangs on a wall
-- Laundry basket [interiors/Kitchen/Clothes_Basket]: something to open like a barrel, 1 by 1, 0.4 high
-- Laundry basket, wire [interiors/Japanese_Room/Clothes_Case]: something to open like a barrel, 1 by 1, 0.4 high
+- Laundry basket [interiors/Kitchen/Clothes_Basket]: something to open like a barrel, 1 by 1, 0.3 high
+- Laundry basket, wire [interiors/Japanese_Room/Clothes_Case]: something to open like a barrel, 1 by 1, 0.3 high
 - Long shelf [interiors/Bathroom/Long_Shelf]: hangs on a wall, in steel
 - Mirror [interiors/Bathroom/Mirror]: hangs on a wall
 - Shower fittings [interiors/Bathroom/Tap_Shower]: hangs on a wall
@@ -230,29 +230,29 @@ Heads and laundry
 - Soap, red [interiors/Bathroom/Soap_Red]: a small thing
 - Soap, yellow [interiors/Bathroom/Soap_Yellow]: a small thing
 - Tissues [interiors/Bathroom/Tissues]: a small thing
-- Toilet [interiors/Bathroom/WC_Ani]: a seat, 1 by 1, 0.55 high
+- Toilet [interiors/Bathroom/WC_Ani]: a seat, 1 by 1, 0.45 high
 - Toilet paper [interiors/Bathroom/Toilet_Paper]: hangs on a wall
 - Towel, blue [interiors/Bathroom/Towel_Blue]: a small thing
 - Towel, green [interiors/Bathroom/Towel_Green]: a small thing
 - Towel, red [interiors/Bathroom/Towel_Red]: a small thing
 - Wall tap [interiors/Bathroom/Tap_Wall]: hangs on a wall
-- Washbasin on a cabinet [interiors/Bathroom/WC_Tap_Ani]: stands on the floor, 1 by 1, 0.75 high, in steel
-- Washing machine [interiors/Kitchen/WashingMachine]: stands on the floor, 1 by 1, 0.9 high
+- Washbasin on a cabinet [interiors/Bathroom/WC_Tap_Ani]: stands on the floor, 1 by 1, 0.6 high, in steel
+- Washing machine [interiors/Kitchen/WashingMachine]: stands on the floor, 1 by 1, 0.75 high
 
 Passages, doors and stairs
-- Cleaning robot [interiors/Office/Rumba_Robot]: stands on the floor, 1 by 1, 0.15 high
-- Cleaning robot, turning [interiors/Cleaning_Robot_Ani/Cleaning_Robot]: stands on the floor, 1 by 1, 0.2 high
+- Cleaning robot [interiors/Office/Rumba_Robot]: stands on the floor, 1 by 1, 0.1 high
+- Cleaning robot, turning [interiors/Cleaning_Robot_Ani/Cleaning_Robot]: stands on the floor, 1 by 1, 0.15 high
 
 Garden
-- Cactus 1 [interiors/Plants/Cactus_1]: stands on the floor, 1 by 1, 0.4 high
-- Cactus 2 [interiors/Plants/Cactus_2]: stands on the floor, 1 by 1, 0.35 high
-- Plant 1 [interiors/Plants/Plant_1]: stands on the floor, 1 by 1, 0.35 high
-- Plant 2 [interiors/Plants/Plant_2]: stands on the floor, 1 by 1, 0.7 high
-- Plant 3 [interiors/Plants/Plant_3]: stands on the floor, 1 by 1, 0.55 high
-- Plant 5 [interiors/Plants/Plant_5]: stands on the floor, 1 by 1, 0.4 high
-- Plant small [interiors/Plants/Plant_Small]: stands on the floor, 1 by 1, 0.25 high
-- Plastic garden chair [interiors/Chairs/Chair_6]: a seat, 1 by 1, 0.7 high
-- Sun flower [interiors/Plants/Sun_Flower]: stands on the floor, 1 by 1, 0.6 high
+- Cactus 1 [interiors/Plants/Cactus_1]: stands on the floor, 1 by 1, 0.3 high
+- Cactus 2 [interiors/Plants/Cactus_2]: stands on the floor, 1 by 1, 0.3 high
+- Plant 1 [interiors/Plants/Plant_1]: stands on the floor, 1 by 1, 0.3 high
+- Plant 2 [interiors/Plants/Plant_2]: stands on the floor, 1 by 1, 0.55 high
+- Plant 3 [interiors/Plants/Plant_3]: stands on the floor, 1 by 1, 0.45 high
+- Plant 5 [interiors/Plants/Plant_5]: stands on the floor, 1 by 1, 0.3 high
+- Plant small [interiors/Plants/Plant_Small]: stands on the floor, 1 by 1, 0.2 high
+- Plastic garden chair [interiors/Chairs/Chair_6]: a seat, 1 by 1, 0.55 high
+- Sun flower [interiors/Plants/Sun_Flower]: stands on the floor, 1 by 1, 0.5 high
 
 Walls and what hangs on them
 - Air unit on a wall [interiors/Office/AC]: hangs on a wall
@@ -273,8 +273,8 @@ Walls and what hangs on them
 - Flow chart [interiors/Wall_Decoration/Poster_4]: hangs on a wall
 - Framed print, green and red [interiors/Wall_Decoration/Picture_Modern_2]: hangs on a wall
 - Framed print, yellow and blue [interiors/Wall_Decoration/Picture_Modern_1]: hangs on a wall
-- Glass wall [interiors/Office/Glass_Wall]: stands on the floor, 1 by 2, 2 high
-- Grandfather clock [interiors/Clocks/Grandfather_Clock]: stands on the floor, 1 by 1, 1.9 high
+- Glass wall [interiors/Office/Glass_Wall]: stands on the floor, 1 by 2, 1.6 high
+- Grandfather clock [interiors/Clocks/Grandfather_Clock]: stands on the floor, 1 by 1, 1.55 high
 - Hazard sign, yellow [interiors/Wall_Decoration/Poster_6]: hangs on a wall, 1.05 high
 - Map on a wall [interiors/Wall_Decoration/Poster_Map_6]: hangs on a wall
 - Medical sign [interiors/Wall_Decoration/Poster_Medical]: hangs on a wall
@@ -288,7 +288,7 @@ Walls and what hangs on them
 - Portrait of a cat [interiors/Wall_Decoration/Picture_Cat]: hangs on a wall
 - Poster, doughnut [interiors/Wall_Decoration/Poster_17]: hangs on a wall
 - Poster, game symbols [interiors/Wall_Decoration/Poster_16]: hangs on a wall
-- Screen with a player under it [interiors/Televisions_TV/Tv_DVD_Ani]: stands on the floor, 1 by 1, 0.85 high, glows #86dcff
+- Screen with a player under it [interiors/Televisions_TV/Tv_DVD_Ani]: stands on the floor, 1 by 1, 0.7 high, glows #86dcff
 - Security camera, turning [interiors/Lab/Camera_1]: hangs on a wall
 - Sign with an arrow [interiors/Wall_Decoration/Poster_1]: hangs on a wall, 1.05 high
 - Small wall screen [interiors/Lab/Screen_Small]: hangs on a wall, 1.05 high, glows #86dcff
@@ -312,7 +312,7 @@ Walls and what hangs on them
 
 Small things
 - Big book, light blue [interiors/Books/Book_Big_LightBlue]: a small thing
-- Bin [interiors/Office/Trash]: something to open like a barrel, 1 by 1, 0.3 high
+- Bin [interiors/Office/Trash]: something to open like a barrel, 1 by 1, 0.25 high
 - Blueprint [interiors/Office/Blueprint]: a small thing
 - Book, green [interiors/Books/Book_Green]: a small thing
 - Books pile [interiors/Books/Books_Pile]: a small thing
@@ -344,7 +344,7 @@ Small things
 - Small book, orange [interiors/Books/Book_Small_Orange]: a small thing
 - Small book, purple [interiors/Books/Book_Small_Purple]: a small thing
 - Small book, yellow [interiors/Books/Book_Small_Yellow]: a small thing
-- Square bin [interiors/Office/Trash_Square]: something to open like a barrel, 1 by 1, 0.4 high
+- Square bin [interiors/Office/Trash_Square]: something to open like a barrel, 1 by 1, 0.3 high
 - Sticky note 1 [interiors/Office/Sticky_Note_1]: a small thing
 - Sticky note 2 [interiors/Office/Sticky_Note_2]: a small thing
 - Sticky note 3 [interiors/Office/Sticky_Note_3]: a small thing

@@ -7,7 +7,7 @@
 import { el } from "./dom.js";
 import { FURNITURE_BY_ID, footprintOf, squaresOf } from "./furniture.js";
 import { hideLoading, showLoading } from "./loading.js";
-import { PIXEL_UNIT, drawPixelCrate, drawPixelDoor, drawPixelFloors, drawPixelPiece, drawPixelWall, packKey, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim } from "./pixel-art.js";
+import { PACK_FIGURE, PIXEL_UNIT, drawPixelCrate, drawPixelDoor, drawPixelFloors, drawPixelPiece, drawPixelWall, packKey, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim } from "./pixel-art.js";
 
 // A console square is about twice as tall as it's wide, so two columns make one tile.
 export const CELL_WIDTH = 0.5;
@@ -2621,6 +2621,10 @@ const limb = (ctx, x0, y0, x1, y1, width, color) => {
 
 // Someone standing on the floor, with the point between their feet at x, y. They're drawn thirty units
 // tall, facing away from the camera or towards it, and a mirror image does for the other direction.
+// The size people are drawn at, as the tile's width to draw them by: in the pixel-art view the packs' furniture is its
+// own size, smaller than the game's, and people are as much smaller, so a chair still fits whoever sits in it.
+export const figureUnit = (unit) => (pixelArtOn() ? unit * PACK_FIGURE : unit);
+
 function drawPerson(ctx, x, y, unit, person) {
   const scale = (unit * 0.86) / 30;
   ctx.save();
@@ -3461,22 +3465,25 @@ function draw(now, dt) {
     } else if (item.type === "fighter") {
       const { one, wx, wy } = item;
       const [x, y] = at(wx, wy);
+      const fig = figureUnit(unit);
       const look = (one.person && iso.shown.get(one.person)?.look) ?? fighterLook(one);
       ctx.save();
       ctx.globalAlpha = one.fade ?? 1;
-      drawPerson(ctx, x, y, unit, { look, flip: one.flip, back: one.back, walking: one.walking, step: one.step, asleep: one.down, ring: hoverKey === `fighter:${one.key}` && !one.down ? "rgba(255,250,220,.95)" : one.ring });
+      drawPerson(ctx, x, y, fig, { look, flip: one.flip, back: one.back, walking: one.walking, step: one.step, asleep: one.down, ring: hoverKey === `fighter:${one.key}` && !one.down ? "rgba(255,250,220,.95)" : one.ring });
       ctx.restore();
-      if (!one.down) hits.push({ kind: "fighter", key: `fighter:${one.key}`, fighter: one.key, side: one.side, x: x - unit * 0.22, y: y - unit * 0.92, w: unit * 0.44, h: unit, floorX: x, floorY: y });
+      if (!one.down) hits.push({ kind: "fighter", key: `fighter:${one.key}`, fighter: one.key, side: one.side, x: x - fig * 0.22, y: y - fig * 0.92, w: fig * 0.44, h: fig, floorX: x, floorY: y, tall: fig });
     } else if (item.type === "person") {
       const { person, shown, wx, wy } = item;
       const [x, y] = at(wx, wy);
+      const fig = figureUnit(unit);
       const hovered = hoverKey === `person:${person.key}`;
-      drawPerson(ctx, x, y, unit, { look: shown.look, flip: shown.flip, back: shown.back, walking: shown.walking, step: shown.step, asleep: person.asleep || person.down, mark: person.down && !person.onCot && !person.carried && !person.dead, ring: hovered ? "rgba(255,250,220,.9)" : null, ...item.pose });
-      hits.push({ kind: "person", key: `person:${person.key}`, person, x: x - unit * 0.22, y: y - unit * 0.92, w: unit * 0.44, h: unit * 1, floorX: x, floorY: y });
+      drawPerson(ctx, x, y, fig, { look: shown.look, flip: shown.flip, back: shown.back, walking: shown.walking, step: shown.step, asleep: person.asleep || person.down, mark: person.down && !person.onCot && !person.carried && !person.dead, ring: hovered ? "rgba(255,250,220,.9)" : null, ...item.pose });
+      hits.push({ kind: "person", key: `person:${person.key}`, person, x: x - fig * 0.22, y: y - fig * 0.92, w: fig * 0.44, h: fig * 1, floorX: x, floorY: y, tall: fig });
     } else {
       const [x, y] = at(item.wx, item.wy);
-      hits.push({ kind: "you", key: "person:you", x: x - unit * 0.22, y: y - unit * 0.92, w: unit * 0.44, h: unit, floorX: x, floorY: y });
-      drawPerson(ctx, x, y, unit, { look: YOU_LOOK, flip: iso.you.flip, back: iso.you.back, walking: iso.you.walking, step: iso.you.step, ring: "rgba(180,240,190,.8)", ...item.pose });
+      const fig = figureUnit(unit);
+      hits.push({ kind: "you", key: "person:you", x: x - fig * 0.22, y: y - fig * 0.92, w: fig * 0.44, h: fig, floorX: x, floorY: y, tall: fig });
+      drawPerson(ctx, x, y, fig, { look: YOU_LOOK, flip: iso.you.flip, back: iso.you.back, walking: iso.you.walking, step: iso.you.step, ring: "rgba(180,240,190,.8)", ...item.pose });
     }
   }
 
@@ -3580,7 +3587,7 @@ function draw(now, dt) {
     const tag = person.asks ? ASKS_COLOR : mix(hexOr(person.color, "#a0a090"), "#d8d4c0", 0.3);
     // The mark is a filled amber box, always, so it can't be taken for the gold ? over things.
     const filled = hovered || person.asks;
-    chip(ctx, text, hit.floorX, hit.floorY - unit * 0.95, filled ? BACKGROUND : tag, { background: filled ? tag : undefined, size: person.asks && !hovered && !near ? 13 : 11, ...clip });
+    chip(ctx, text, hit.floorX, hit.floorY - (hit.tall ?? unit) * 0.95, filled ? BACKGROUND : tag, { background: filled ? tag : undefined, size: person.asks && !hovered && !near ? 13 : 11, ...clip });
   }
 
   // Now and then someone near the player says something over their head (src/chatter.js).
@@ -3849,6 +3856,8 @@ function partRect(piece, a0, a1, b0, b1) {
 
 // How high the top of each of the game's own tables is, for a small thing of the packs put on one.
 const TABLE_TOP = { table: 0.76, "long-table": 0.76, desk: 0.62, "plot-table": 0.7 };
+// The same in the pixel-art view, where the game's tables are the packs' pictures at the packs' own size.
+const PIXEL_TABLE_TOP = { table: 0.48, "long-table": 0.48, desk: 0.45, "plot-table": 0.33 };
 // Whether a piece is a table (or something no taller than one) with this square under it.
 function tableUnder(piece, x, y) {
   const kind = FURNITURE_BY_ID[piece.kind];
@@ -3908,7 +3917,7 @@ function furnish(view, { kinds, heights, blocks, painted, unpowered = () => fals
       // A piece of the packs that isn't in the way. What lies on the floor goes down before anyone who might stand on
       // it; a small thing sits on the table that has its square, if one has, and goes on after it.
       const under = kind.what === "small" ? pieces.find((other) => other !== piece && tableUnder(other, piece.x, piece.y)) : null;
-      const lift = under ? (FURNITURE_BY_ID[under.kind].pack ? FURNITURE_BY_ID[under.kind].high : TABLE_TOP[under.kind]) ?? 0.75 : 0;
+      const lift = under ? (FURNITURE_BY_ID[under.kind].pack ? FURNITURE_BY_ID[under.kind].high : (pixelArtOn() ? PIXEL_TABLE_TOP : TABLE_TOP)[under.kind]) ?? 0.75 : 0;
       add({ ...placed, lift, top: lift + placed.top, bias: kind.what === "rug" ? -(across * CELL_WIDTH + down) / 2 - 0.05 : under ? 0.6 : 0, ...(off ? { off: true } : {}) });
       // A small thing with a warm light is a lamp, and throws it further than a screen's glow: the pool of warm light
       // at a station, in a room whose own light is cold.
@@ -4780,7 +4789,7 @@ function drawChatter(ctx, now, view, hits, clip, unit) {
     const fade = iso.calm ? 1 : Math.max(0, Math.min(1, (now - one.from) / 250, (one.until - now) / 600));
     ctx.save();
     ctx.globalAlpha = fade;
-    const box = chip(ctx, `“${one.text}”`, head.floorX, head.floorY - unit * 1.24, "#d9d3ba", { background: "rgba(4,6,5,.58)", size: 10, ...clip });
+    const box = chip(ctx, `“${one.text}”`, head.floorX, head.floorY - (head.tall ?? unit) * 1.24, "#d9d3ba", { background: "rgba(4,6,5,.58)", size: 10, ...clip });
     // A small tail under it, to whoever's saying it.
     const tip = Math.max(box.x + 4, Math.min(box.x + box.w - 4, head.floorX));
     ctx.fillStyle = "rgba(4,6,5,.58)";
@@ -4870,7 +4879,7 @@ export function drawPreview(canvas, view, { version = 0, focus = null, ring = nu
       const [x, y] = at(wx, wy);
       if (!painter.seen([x, y], unit * 2)) continue;
       const { u, v } = project(wx, wy);
-      props.push({ depth: wx + wy, span: { minU: u - 0.25, maxU: u + 0.25, minV: v - 0.95, maxV: v + 0.05 }, draw: () => drawPerson(ctx, x, y, unit, { look: lookFor(post.id, null, false) }) });
+      props.push({ depth: wx + wy, span: { minU: u - 0.25, maxU: u + 0.25, minV: v - 0.95, maxV: v + 0.05 }, draw: () => drawPerson(ctx, x, y, figureUnit(unit), { look: lookFor(post.id, null, false) }) });
     }
     // What stands nearer the camera than a door or a person, and over them on the screen, is drawn again over them.
     const covering = new Set();
