@@ -4120,7 +4120,9 @@ function furnish(view, { kinds, heights, blocks, painted, unpowered = () => fals
   const floorAt = (x, y) => seeThrough(kinds[y]?.[x]);
   const pieces = [...(view.furniture ?? [])];
   for (const thing of view.things ?? []) {
-    if (!thing.looks || thing.part || !FURNITURE_BY_ID[thing.looks]) continue;
+    // (A container that's a piece of the deck's furniture is that piece, which is drawn as itself: a tool box of the
+    // packs isn't the barrel it opens like.)
+    if (!thing.looks || thing.part || thing.onPiece || !FURNITURE_BY_ID[thing.looks]) continue;
     // A thing is on one square; a piece wider than that is laid from the pair of squares the thing is half of.
     const { across } = footprintOf({ kind: thing.looks, facing: thing.facing });
     pieces.push({ kind: thing.looks, facing: thing.facing ?? "s", x: across > 1 ? thing.x - (thing.x % 2) : thing.x, y: thing.y });
