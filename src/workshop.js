@@ -8,7 +8,9 @@
 // nothing: every crate is one of the stores' own.
 //
 // game.workshop[place] = { at, jobs: { [id]: { kind: "mend"|"build", key, by, part, wound, at, crates, since, until } },
-// ready: { [key]: { part, at } }, log, short }. Reading any of it writes nothing.
+// ready: { [key]: { part, at } }, log, short }. A job that was set down, because its mender was wanted for something
+// more urgent (src/work.js), has nobody (by: null), no time it's done by (until: null) and what was left of it (left,
+// in hours). Reading any of it writes nothing.
 
 import { hurtAt, keyAt, limbOf, limbsWanted, mendedByTechs, nameOfKey, queueOf, treatWound, waitingMending, woundsNow } from "./body.js";
 import { findCharacter } from "./campaign.js";
@@ -20,6 +22,7 @@ import { doorLocked, roomPowered } from "./systems.js";
 import { mapFor, roomsOf } from "./walk.js";
 import { WORLD_HEALTH, WORLD_LIFE } from "./world.js";
 import { MEDBAY_KEYS, readMendingLine } from "../public/health-text.js";
+import { boardRuns, busyOnBoard } from "./work.js";
 
 const YOU = "you";
 const lower = (text) => String(text ?? "").trim().toLowerCase();
@@ -140,8 +143,14 @@ function patientsAt(game, place, shop, hours) {
 // post. Whoever takes a job walks to the workshop for it, and the work starts once they're there.
 function mendersFree(game, place, shop, hours, state) {
   const busy = new Set([...Object.values(game.down ?? {}).map((d) => d.call?.by), ...Object.values(state.jobs).map((job) => job.by)].filter(Boolean));
+  // Where there's a work board, nobody who's carrying or mending for it is at the bench as well.
+  const board = boardRuns(place);
+  return mendersOf(game, place, shop).filter((key) => !busy.has(key) && !isDown(game, place, key) && !lostReason(game, place, key) && isAbout(game, place, key, hours) && !(board && busyOnBoard(game, place, key, "workshop")));
+}
+// Who mends at a place, first to last, as its health file has them. Never the player.
+function mendersOf(game, place, shop) {
   const keys = shop.menders.flatMap((one) => (one.post ? [holderKey(game, place, one.post)] : onJob(game, place, one.job)));
-  return [...new Set(keys)].filter((key) => key && key !== YOU && !busy.has(key) && !isDown(game, place, key) && !lostReason(game, place, key) && isAbout(game, place, key, hours));
+  return [...new Set(keys)].filter((key) => key && key !== YOU);
 }
 // Everyone at a place who's lost a limb, had it seen to and has nothing fitted: by body key, with the parts wanted.
 function wantingLimbs(game, place) {
@@ -180,7 +189,7 @@ export function advanceWorkshop(game, place, now = nowOf(game)) {
   }
   for (let step = 0; step < 400; step += 1) {
     for (const [id, job] of Object.entries(state.jobs)) {
-      if (job.until > t) continue;
+      if (job.until === null || job.until > t) continue;
       delete state.jobs[id];
       if (job.kind === "mend") {
         const wound = woundOf(game, job.key, job);
@@ -201,6 +210,12 @@ export function advanceWorkshop(game, place, now = nowOf(game)) {
     }
     const dark = !roomPowered(game, place, shop.room);
     const free = dark ? [] : mendersFree(game, place, shop, t, state);
+    // What was set down is taken up again first, where it was left.
+    for (const job of Object.values(state.jobs)) {
+      if (job.by || !free.length) continue;
+      Object.assign(job, { by: free.shift(), since: t, until: t + WALK_HOURS + (job.left ?? 0) });
+      delete job.left;
+    }
     // Synthetics first, the worst off first.
     const waiting = patientsAt(game, place, shop, t).filter((key) => !state.jobs[`mend:${key}`] && waitingMending(game, key, shop.mending).length);
     for (const key of waiting) {
@@ -232,7 +247,7 @@ export function advanceWorkshop(game, place, now = nowOf(game)) {
       const minutes = recipe.minutes / speedOf(game, place, [by], "engineering");
       state.jobs[`build:${key}:${part}`] = { kind: "build", key, by, part, crates: recipe.crates, since: t, until: t + WALK_HOURS + minutes / 60 };
     }
-    const next = Math.min(Infinity, ...Object.values(state.jobs).map((job) => job.until));
+    const next = Math.min(Infinity, ...Object.values(state.jobs).filter((job) => job.until !== null).map((job) => job.until));
     if (next > now) break;
     t = Math.max(t, next);
   }
@@ -245,13 +260,81 @@ export function workshopDetour(game, place) {
   const shop = workshopOf(place);
   const jobs = Object.values(game.workshop?.[place]?.jobs ?? {});
   if (!shop?.room || !jobs.length) return null;
-  const at = new Map(jobs.map((job) => [job.by, job]));
-  const room = shop.roomName.replace(/^The /, "the ");
+  const at = new Map(jobs.filter((job) => job.by).map((job) => [job.by, job]));
+  if (!at.size) return null;
   return (who) => {
     const job = at.get(who);
     if (!job) return null;
-    return { where: `@${shop.room}`, doing: job.kind === "mend" ? `mending ${whose(game, place, job.key)} ${job.wound.replace(/_/g, " ")} in ${room}` : `building an artificial ${PART_WORDS[job.part]} in ${room}` };
+    return { where: `@${shop.room}`, doing: jobWords(game, place, shop, job) };
   };
+}
+// What a job has its mender doing, in words.
+function jobWords(game, place, shop, job) {
+  const room = shop.roomName.replace(/^The /, "the ");
+  return job.kind === "mend" ? `mending ${whose(game, place, job.key)} ${job.wound.replace(/_/g, " ")} in ${room}` : `building an artificial ${PART_WORDS[job.part]} in ${room}`;
+}
+
+// ---- For the place's work board (src/work.js) --------------------------------------------------------------
+
+// A job set down: what's left of it is kept, and the next free mender takes it up where it was.
+function setDown(game, place, id) {
+  const job = game.workshop?.[place]?.jobs?.[id];
+  if (!job?.by) return;
+  Object.assign(job, { by: null, left: Math.max(0, job.until - nowOf(game)), until: null });
+}
+// Everyone the workshop's work is for.
+export function workshopHands(game, place) {
+  const shop = workshopOf(place);
+  return shop?.room ? mendersOf(game, place, shop) : [];
+}
+// What the workshop has people doing, as the work board sees it: each { kind, by, doing, drop }, drop being how the
+// board takes them off it for something more urgent.
+const NO_WORK = Object.freeze([]);
+export function workshopWork(game, place) {
+  const jobs = game.workshop?.[place]?.jobs;
+  let out = null;
+  for (const id in jobs ?? {}) {
+    const job = jobs[id];
+    if (!job.by) continue;
+    const shop = workshopOf(place);
+    if (!shop) break;
+    (out ??= []).push({ kind: "workshop", by: job.by, doing: jobWords(game, place, shop, job), drop: () => setDown(game, place, id) });
+  }
+  return out ?? NO_WORK;
+}
+// The workshop's work for the Work page: what's being mended or built, what's been set down, and whoever's waiting.
+// Each is { id, kind, what, why, by, since, doing, stuck, people, also }, as the medbay's are (src/medbay.js).
+// Reading this changes nothing.
+export function workshopRows(game, place) {
+  const shop = workshopOf(place);
+  if (!shop?.room) return [];
+  const state = game.workshop?.[place] ?? { jobs: {}, ready: {} };
+  const now = nowOf(game);
+  const rows = [];
+  let people = null;
+  const menders = () => (people ??= mendersOf(game, place, shop));
+  const room = shop.roomName.replace(/^The /, "the ");
+  const dark = !roomPowered(game, place, shop.room);
+  const stuck = dark ? `${room} has no power` : null;
+  const whatOf = (job) => (job.kind === "mend" ? `Mend ${whose(game, place, job.key)} ${job.wound.replace(/_/g, " ")}` : `Build an artificial ${PART_WORDS[job.part]} for ${nameOf(game, place, job.key)}`);
+  for (const [id, job] of Object.entries(state.jobs ?? {})) {
+    if (job.by) {
+      const minutes = Math.max(1, Math.round((job.until - now) * 60));
+      rows.push({ id: `workshop:${id}`, kind: "workshop", what: whatOf(job), why: null, by: job.by, since: job.since, doing: `at it in ${room}, ${minutes >= 90 ? `${Math.round(minutes / 60)} hours` : `${minutes} minute${minutes === 1 ? "" : "s"}`} left`, stuck: null, people: [], also: null });
+    } else rows.push({ id: `workshop:${id}`, kind: "workshop", what: whatOf(job), why: "set down on the bench", by: null, since: null, doing: null, stuck, people: menders(), also: null });
+  }
+  // Whoever's waiting with nothing begun: synthetics to be mended, then limbs to be built.
+  const short = state.short ? "there aren't the parts crates for it" : null;
+  for (const key of patientsAt(game, place, shop, now)) {
+    if (state.jobs?.[`mend:${key}`]) continue;
+    const wound = waitingMending(game, key, shop.mending)[0];
+    if (wound) rows.push({ id: `workshop:mend:${key}`, kind: "workshop", what: `Mend ${whose(game, place, key)} ${wound.kind.replace(/_/g, " ")}`, why: null, by: null, since: null, doing: null, stuck: stuck ?? short, people: menders(), also: null });
+  }
+  for (const { key, part } of wantingLimbs(game, place)) {
+    if (!shop.recipes[limbOf(part)] || state.jobs?.[`build:${key}:${part}`] || state.ready?.[key]) continue;
+    rows.push({ id: `workshop:build:${key}:${part}`, kind: "workshop", what: `Build an artificial ${PART_WORDS[part]} for ${nameOf(game, place, key)}`, why: null, by: null, since: null, doing: null, stuck: stuck ?? short, people: menders(), also: null });
+  }
+  return rows;
 }
 
 // An artificial limb ready for someone, for the medbay to fit: its part, or null.
@@ -285,9 +368,14 @@ export function workshopView(game, place) {
     const minutes = Math.max(1, Math.round((job.until - now) * 60));
     return minutes >= 90 ? `${Math.round(minutes / 60)} hours left` : `${minutes} minutes left`;
   };
-  const jobs = Object.values(state.jobs ?? {}).map((job) => (job.kind === "mend"
-    ? `${menderName(game, place, job.by)} is mending ${whose(game, place, job.key)} ${job.wound.replace(/_/g, " ")}, ${left(job)}`
-    : `${menderName(game, place, job.by)} is building an artificial ${PART_WORDS[job.part]} for ${nameOf(game, place, job.key)}, ${left(job)}`));
+  const upper = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+  const jobs = Object.values(state.jobs ?? {}).map((job) => (!job.by
+    ? (job.kind === "mend"
+      ? `${upper(whose(game, place, job.key))} ${job.wound.replace(/_/g, " ")} is set down on the bench, waiting for a free hand`
+      : `An artificial ${PART_WORDS[job.part]} for ${nameOf(game, place, job.key)} is set down part built, waiting for a free hand`)
+    : job.kind === "mend"
+      ? `${menderName(game, place, job.by)} is mending ${whose(game, place, job.key)} ${job.wound.replace(/_/g, " ")}, ${left(job)}`
+      : `${menderName(game, place, job.by)} is building an artificial ${PART_WORDS[job.part]} for ${nameOf(game, place, job.key)}, ${left(job)}`));
   const waiting = wantingLimbs(game, place).filter(({ key, part }) => !state.jobs?.[`build:${key}:${part}`] && !state.ready?.[key]).map(({ key, part }) => `${nameOf(game, place, key)} is waiting for an artificial ${PART_WORDS[part]}`);
   const ready = Object.entries(state.ready ?? {}).map(([key, one]) => `An artificial ${PART_WORDS[one.part]} for ${nameOf(game, place, key)} is ready to be fitted in the medbay`);
   return {

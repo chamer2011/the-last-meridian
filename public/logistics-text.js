@@ -17,6 +17,7 @@ export const WORK_KINDS = [
   ["carry_urgent", "urgent carrying"],
   ["repair_critical", "a repair the ship can't do without"],
   ["treat", "treating someone"],
+  ["dead", "carrying the dead"],
   ["carry", "carrying"],
   ["repair", "a repair"],
   ["workshop", "mending in the workshop"],

@@ -40,6 +40,7 @@ Urgency:
 - urgent carrying
 - a repair the ship can't do without
 - treating someone
+- carrying the dead
 - carrying
 - a repair
 - mending in the workshop

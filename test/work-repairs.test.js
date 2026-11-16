@@ -110,7 +110,7 @@ test("something broken goes, in its last hour, to the first engineer who's free,
   assert.deepEqual([mending(game, CAMERA).by, mending(game, CAMERA).kind], ["marrow", "repair"], "the chief engineer is the first the board asks");
   assert.equal(jobs(game).length, 1);
   const shown = row(game, `repair:${CAMERA}`);
-  assert.match(shown.status, /^Dunn Marrow is fetching a parts crate from the parts lockers for the camera, since 10:\d\d$/);
+  assert.match(shown.status, /^Chief Engineer Marrow is fetching a parts crate from the parts lockers for the camera, since 10:\d\d$/);
   assert.deepEqual([shown.busy, shown.stuck, shown.canTake, shown.mark, shown.by, shown.tip], [true, false, false, "", "the engineers", "Mended by the engineers, the first of them who's free."]);
   assert.match(whereNow(game, "marrow"), /^fetching a parts crate from the parts lockers for the camera/);
   // Half an hour on they've left the store for it (how soon they're there goes by their own pace: a made-up body
@@ -156,7 +156,7 @@ test("a tech drops a broken speaker for the generator's fuel, which is clearly m
   breakNow(game, SPEAKER);
   run(game, 5);
   assert.deepEqual([mending(game, CAMERA).by, mending(game, SPEAKER).by], ["marrow", only]);
-  // The rack down to its last cell is urgent carrying, four lines above a repair, and only the techs carry for it.
+  // The rack down to its last cell is urgent carrying, five lines above a repair, and only the techs carry for it.
   take(game, "fuel_rack", "fuel_cell", 5);
   run(game, 5);
   assert.deepEqual([carrying(game, "fuel_rack")?.by, carrying(game, "fuel_rack")?.kind], [only, "carry_urgent"], "the tech has left the speaker for the fuel");
@@ -201,7 +201,7 @@ test("a repair the ship can't do without takes an engineer off a lesser one, and
   breakNow(game, SPEAKER);
   run(game, 5);
   assert.deepEqual([mending(game, CAMERA).by, mending(game, SPEAKER).by], ["marrow", only]);
-  // A junction box carries the power. Both engineers are at ordinary repairs, three lines below it.
+  // A junction box carries the power. Both engineers are at ordinary repairs, four lines below it.
   breakNow(game, BOX);
   run(game, 5);
   const on = mending(game, BOX);
@@ -339,7 +339,7 @@ test("I'll do it holds a repair for the player: the engineers leave it, and it's
   assert.ok(later.includes("[WORK] The speaker in The Bridge is still broken, so the engineers take the job back."), later.join(" | "));
   run(game, 5);
   assert.ok(mending(game, SPEAKER)?.by, "and one of them is on it");
-  assert.throws(() => workCommand(game, "meridian", { action: "mine", id: other }), /^Error: (Dunn Marrow|Tech \w+) is already on it\.$/);
+  assert.throws(() => workCommand(game, "meridian", { action: "mine", id: other }), /^Error: (Chief Engineer Marrow|Tech \w+) is already on it\.$/);
   breakNow(game, AFT);
   workCommand(game, "meridian", { action: "mine", id: `repair:${AFT}` });
   assert.equal(workCommand(game, "meridian", { action: "leave", id: `repair:${AFT}` }).message, "The camera in The Aft Holds is the engineers' to mend again.");
