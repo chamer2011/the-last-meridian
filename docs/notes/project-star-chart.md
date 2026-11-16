@@ -127,6 +127,17 @@
   files (course.txt, fleet_manifest.txt), Voss's letter and its sensor sweep, which still speak of the fleet and the
   signal. The deck was changed by swapping that one line of its file, nothing else in it; the tests' kept copy of the
   ship still has the old words, which no test reads.
+- **The computer's two files and Voss's letter, rewritten at their "Yes, rewrite them" after that.** `course.txt` now
+  says "The course as the bridge keeps it: where the Meridian is, where she's bound next, and how many jumps of fuel
+  are left in the tank. Whoever has the helm updates it when they remember, which is most days." `fleet_manifest.txt`
+  is `manifest.txt` now: "The Meridian's manifest: what's in her stores and her holds, and the day each was last
+  counted. Half the entries are in Voss's hand, and hers are the ones that are right." Voss's letter: "The list is on
+  the table. What we're shortest of, and the day each of them runs out if nothing changes. I'd rather you read it than
+  heard it from Fenn." All my drafts. Fenn (Garrick Fenn, the journalist) is kept, since the line doesn't lean on the
+  fleet; nothing says what became of the fleet, which is theirs to write. A save that had read `fleet_manifest.txt`
+  finds `manifest.txt` unread, and keeps the old words in What you know. `test/computers.test.js` opens the file by its
+  new name. So the bullet above is out of date on these three: what's still left as it was is the thing's `use` and
+  `used` lines on the deck, and the sensor sweep program, which speaks of the signal.
 - **Not in step 1:** staying aboard after a jump and the boat (step 2); the menu's removal and passage at the ports
   (step 3); a dark bridge, the helm jumping her by hand, and saying why Engage is refused before it's pressed when the
   engines are down or the clamps locked (step 4; until then the refusal comes back as a line when Engage is pressed).

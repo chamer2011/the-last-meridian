@@ -15,11 +15,11 @@ What the player sees:
 NAVCOM 7, the ship's main system, under the scratched glass of the plot table. It keeps the Navy's chart and the ship's log, and it's the captain's alone. Charts, on its desktop, opens the chart: every place you know of, the Meridian among them, and the course you plot drawn between.
 
 Files:
-course.txt: The course as the bridge keeps it: where the fleet is, where it's going, and how many jumps of fuel are in the tanks. Pell updates it when he remembers, which is most days.
-fleet_manifest.txt: Forty-one ships, with what each carries, who captains it, and the day it last reported. Half the entries are in Voss's hand, and hers are the ones that are right.
+course.txt: The course as the bridge keeps it: where the Meridian is, where she's bound next, and how many jumps of fuel are left in the tank. Whoever has the helm updates it when they remember, which is most days.
+manifest.txt: The Meridian's manifest: what's in her stores and her holds, and the day each was last counted. Half the entries are in Voss's hand, and hers are the ones that are right.
 
 Mail:
-From Voss to the captain: The list is on the table. Which ships can't keep up, and the day we stop trying to make them. I'd rather you read it than heard it from Fenn.
+From Voss to the captain: The list is on the table. What we're shortest of, and the day each of them runs out if nothing changes. I'd rather you read it than heard it from Fenn.
 
 Logs:
 - berths

@@ -152,8 +152,8 @@ test("the player's own computers open with no hack, and reading, running and log
   computerCommand(game, { action: "program", id: "log_the_days_orders" });
   assert.equal((game.journal ?? []).length, journalBefore + 1);
   // Typed commands work too.
-  computerCommand(game, { action: "type", text: "cat fleet_manifest" });
-  assert.equal(game.computer.screen.title, "fleet_manifest.txt");
+  computerCommand(game, { action: "type", text: "cat manifest" });
+  assert.equal(game.computer.screen.title, "manifest.txt");
   computerCommand(game, { action: "type", text: "mail" });
   assert.equal(game.computer.screen.kind, "mail");
   // Logging off: a line in the story, and a little time gone.
