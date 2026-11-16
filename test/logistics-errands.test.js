@@ -16,7 +16,8 @@ process.env.GAME_LOGISTICS_DIR = logisticsDir;
 
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const bag = await import("../src/bag.js");
-const { errandDetour, errandsView, logisticsOf, logisticsProblems, storesView } = await import("../src/logistics.js");
+const { logisticsOf, logisticsProblems, storesView } = await import("../src/logistics.js");
+const { workDetour, workView } = await import("../src/work.js");
 const { clockRuns, passTime, publicState } = await import("../src/rules.js");
 const { peopleAboard, rosterOf, whereNow } = await import("../src/life.js");
 const { clearMaps } = await import("../src/walk.js");
@@ -31,7 +32,7 @@ const take = (game, storeId, item, n) => bag.storeTake(game, storeOf(storeId).ke
 const put = (game, storeId, item, n) => bag.storePut(game, storeOf(storeId).key, storeOf(storeId).holds, item, n);
 // The quartermaster's errand: Brandt, while she holds the post.
 const BRANDT = "quartermaster:ration_crate";
-const errand = (game, id) => errandsView(game, "meridian").find((one) => one.id === id);
+const errand = (game, id) => workView(game, "meridian").find((one) => one.id === id);
 // A quarter of an hour at a time, in the five-minute pieces the clock is counted in, noting what Brandt's up to.
 function watch(game, minutes, who = "odessa") {
   const seen = [];
@@ -88,7 +89,7 @@ test("the Meridian's errands name their people, stores and items, and the checke
 
 test("when the pantry runs short, Brandt goes down to the lighter bay for crates, two at a time, and then back to her day", () => {
   const game = newGame();
-  assert.equal(errand(game, BRANDT).status, "about their day");
+  assert.equal(errand(game, BRANDT).status, "nothing to carry");
   take(game, "pantry", "ration_crate", 12);
   const seen = watch(game, 90);
   assert.ok(seen.some((line) => /fetching ration crates from the shuttle stores/.test(line)), seen.join("\n"));
@@ -96,9 +97,9 @@ test("when the pantry runs short, Brandt goes down to the lighter bay for crates
   assert.ok(seen.some((line) => /carrying 2 ration crates to the pantry/.test(line)), seen.join("\n"));
   assert.equal(count(game, "pantry", "ration_crate"), 4, "two trips of two, and four is enough");
   assert.equal(count(game, "shuttle_stores", "ration_crate"), 16);
-  assert.equal(errand(game, BRANDT).status, "about their day");
+  assert.equal(errand(game, BRANDT).status, "nothing to carry");
   assert.match(whereNow(game, "odessa"), /counting the ration crates|watching the sittings|eating/);
-  assert.equal(errandDetour(game, "meridian"), null, "nobody's on an errand once the pantry's right");
+  assert.equal(workDetour(game, "meridian"), null, "nobody's on an errand once the pantry's right");
 });
 
 test("with nothing to fetch she waits at the shuttle stores, her line and the Ship menu say so, and when crates come she carries them", () => {
@@ -107,7 +108,7 @@ test("with nothing to fetch she waits at the shuttle stores, her line and the Sh
   take(game, "shuttle_stores", "ration_crate", 20);
   watch(game, 30);
   assert.equal(errand(game, BRANDT).status, "waiting at the shuttle stores for ration crates");
-  assert.equal(publicState(game).ship.errands.find((one) => one.id === BRANDT).waiting, true);
+  assert.equal(publicState(game).ship.work.find((one) => one.id === BRANDT).waiting, true);
   assert.match(whereNow(game, "odessa"), /waiting at the shuttle stores for ration crates, at the Lighter Bay/);
   assert.ok(peopleAboard(game, "meridian", "deck3").some((one) => one.id === "odessa" && /waiting at the shuttle stores/.test(one.doing)), "she's standing in the lighter bay");
   put(game, "shuttle_stores", "ration_crate", 5);
@@ -123,7 +124,7 @@ test("nobody runs an errand in their sleep, and the day's other errands go the s
   clockRuns(asleep, 1);
   take(asleep, "pantry", "ration_crate", 12);
   watch(asleep, 15);
-  assert.equal(errand(asleep, BRANDT).status, "about their day", "Brandt sleeps until five");
+  assert.equal(errand(asleep, BRANDT).status, "nobody free: Quartermaster Brandt is asleep", "Brandt sleeps until five, and the board says so");
   assert.equal(count(asleep, "pantry", "ration_crate"), 0);
   asleep.clock.hours = 24 + 6;
   watch(asleep, 5);
@@ -146,16 +147,18 @@ test("nobody runs an errand in their sleep, and the day's other errands go the s
 
 test("away from the ship, the errands still get done, as everyone's day says, and the Ship menu lists them all", () => {
   const game = newGame();
-  const stores = publicState(game).ship.errands;
-  assert.deepEqual(stores.map((one) => [one.who, one.status, one.busy]), [["A tech", "about their day", false], ["Quartermaster Brandt", "about their day", false], ["A cook", "about their day", false], ["A tech", "about their day", false]]);
+  const stores = publicState(game).ship.work;
+  assert.deepEqual(stores.map((one) => [one.who, one.status, one.busy]), [["A tech", "nothing to carry", false], ["Quartermaster Brandt", "nothing to carry", false], ["A cook", "nothing to carry", false], ["A tech", "nothing to carry", false]]);
   assert.equal(stores[1].does, "ration crates from the shuttle stores to the pantry when under 4, 2 at a time");
   const before = JSON.stringify(game);
   publicState(game);
   assert.equal(JSON.stringify(game), before, "reading the errands writes nothing");
-  // With the captain elsewhere, the ship's people are where their days say, so a trip takes its minutes but no walking.
+  // With the captain elsewhere nobody's walked step by step, and a trip still takes the minutes of its walk: two
+  // trips fit in two hours whoever carries, and no longer in one if Brandt's knee is bad (test/work-board has the
+  // minutes).
   game.location = "haven";
   take(game, "pantry", "ration_crate", 12);
-  passTime(game, 1);
+  passTime(game, 2);
   assert.equal(count(game, "pantry", "ration_crate"), 4);
   assert.equal(count(game, "shuttle_stores", "ration_crate"), 16);
 });

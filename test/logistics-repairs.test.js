@@ -17,7 +17,8 @@ process.env.GAME_LOGISTICS_DIR = logisticsDir;
 
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const bag = await import("../src/bag.js");
-const { countAboard, errandsView, logisticsOf, logisticsProblems, putAboard, repairsView, storesView, takeAboard } = await import("../src/logistics.js");
+const { countAboard, logisticsOf, logisticsProblems, putAboard, repairsView, storesView, takeAboard } = await import("../src/logistics.js");
+const { workView } = await import("../src/work.js");
 const { clockRuns, passTime, publicState } = await import("../src/rules.js");
 const sys = await import("../src/systems.js");
 const { whereNow } = await import("../src/life.js");
@@ -185,7 +186,7 @@ test("Tech Sami keeps the parts lockers up from the shuttle stores, one crate at
   game.clock.hours = 9;
   clockRuns(game, 1);
   take(game, "parts_lockers", "parts_crate", 5);
-  const errand = errandsView(game, "meridian").find((one) => one.id === "tech:parts_crate");
+  const errand = workView(game, "meridian").find((one) => one.id === "tech:parts_crate");
   assert.equal(errand.does, "parts crates from the shuttle stores to the parts lockers when under 2, 1 at a time");
   for (let gone = 0; gone < 90; gone += 5) clockRuns(game, 5);
   assert.equal(count(game, "parts_lockers"), 2, "one trip brings the lockers to two, which is enough");

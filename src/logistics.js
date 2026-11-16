@@ -11,15 +11,16 @@ import { handsFree } from "./body.js";
 import { ITEMS, LOCATIONS } from "./data.js";
 import { storeCounts, storePut, storeTake } from "./bag.js";
 import { findCharacter } from "./campaign.js";
-import { hasReached, isAbout, rosterOf, usuallyIn, whoIsIn } from "./life.js";
+import { rosterOf, usuallyIn, whoIsIn } from "./life.js";
 import { claimedSquares, damageKinds, floorSpot, powerBalance, roomPowered, systemsOf, waitingForParts } from "./systems.js";
-import { YOU, holderKey, jobById, jobByWords, lostReason, mutinyStage, onJob, personCalled, postAndName, postByWords, speedOf, tallyDuty } from "./command.js";
+import { YOU, jobById, jobByWords, mutinyStage, postByWords, speedOf, tallyDuty } from "./command.js";
 import { mapFor, roomHere, roomsOf, roomsOn, thingsIn } from "./walk.js";
 import { LOGISTICS_FILE_PROBLEMS, WORLD_LOGISTICS } from "./world.js";
 import { everyWords, readErrandLine, readLoadsLine, readMachineLine, readRefillLine, readStoreLine, slugOf } from "../public/logistics-text.js";
 import { KNOWN_SYSTEMS, SYSTEM_TITLES } from "../public/systems-text.js";
 import { SHIP_DATA } from "./world.js";
 import { refillsHeld } from "./room-hooks.js";
+import { runBoard } from "./work.js";
 
 const plain = (words) => String(words ?? "").toLowerCase().replace(/['’]/g, "").replace(/^the\s+/, "").replace(/\s+/g, " ").trim();
 const upperFirst = (text) => (text ? text[0].toUpperCase() + text.slice(1) : "");
@@ -31,8 +32,6 @@ const DEFAULT_SITTINGS = { at: [6 * 60, 7 * 60 + 30, 18 * 60, 19 * 60 + 30], min
 // The clock is stepped through in pieces this long, so that who's at a machine and whether there's a sitting on are
 // looked at often enough, however far the clock jumps at once.
 const CHUNK = 5;
-// How long a walk across the ship is allowed to take before an errand counts its person as arrived anyway.
-const WALK_MINUTES = 15;
 const ORDINALS = ["first", "second", "third", "fourth", "fifth", "sixth"];
 const clockWords = (minutes) => `${String(Math.floor(minutes / 60) % 24).padStart(2, "0")}:${String(Math.round(minutes) % 60).padStart(2, "0")}`;
 
@@ -47,7 +46,7 @@ export function itemByWords(words) {
   return null;
 }
 
-const itemWords = (id, n) => {
+export const itemWords = (id, n) => {
   const name = (ITEMS[id]?.name ?? id).toLowerCase();
   return n === 1 || /produce$/.test(name) ? name : `${name}s`;
 };
@@ -483,7 +482,7 @@ function compileLogistics(place) {
 
 // ---- The counts -------------------------------------------------------------------------------------
 
-const storeById = (model, id) => model.stores.find((store) => store.id === id) ?? null;
+export const storeById = (model, id) => model.stores.find((store) => store.id === id) ?? null;
 // What a store of sittings holds now: kept in the save once anything's moved, and the file's number before that.
 export const countOf = (game, store) => (store.count ? game.stores?.[store.key]?.count ?? store.count.n : null);
 function setCount(game, store, n) {
@@ -644,94 +643,10 @@ function stateOf(game, place) {
 }
 
 // ---- The errands ----------------------------------------------------------------------------------
+// Who carries what between the stores, and when, is the work board's (src/work.js): this file reads the Errands
+// lines, and its clock runs the board with everything else.
 
 const loadWords = (item, n) => `${n} ${itemWords(item, n)}`;
-// The spot an errand has its person at: beside the store they fetch from, or beside the one they carry to.
-const errandWhere = (e, s) => `store:${s.phase === "carrying" || s.phase === "unloading" ? e.to : e.from}`;
-// What an errand's person is doing, in words, from where it's got to.
-function errandDoing(model, e, s) {
-  const from = storeById(model, e.from);
-  const to = storeById(model, e.to);
-  if (s.phase === "going") return `fetching ${itemWords(e.item, 2)} from the ${from.name}`;
-  if (s.phase === "loading") return `taking ${itemWords(e.item, 2)} from the ${from.name}`;
-  if (s.phase === "waiting") return `waiting at the ${from.name} for ${itemWords(e.item, 2)}`;
-  if (s.phase === "carrying") return `carrying ${loadWords(s.load.item, s.load.n)} to the ${to.name}`;
-  return `waiting at the ${to.name} for room for ${loadWords(s.load.item, s.load.n)}`;
-}
-
-// The errands over one piece of the clock. One starts when the store it keeps up is short and its person is awake and
-// about: they go to the store they fetch from, stand there a minute and take what they can carry, or wait there when
-// there's nothing, carry it over and put it in, and go back to their day; and again while the store's still short.
-// Who does an errand in a game: whoever set out on it; or else the person it names, or whoever holds the post it
-// names. An errand that names a job has nobody until someone doing the job is free to go.
-const carrierOf = (game, place, e, s = null) => s?.by ?? (e.post ? holderKey(game, place, e.post) : e.job ? null : e.key);
-// Someone doing a job, awake, at their post, with a hand that isn't hurt too badly to carry (src/body.js), and not
-// already carrying something else.
-function freeHand(game, place, state, job, hours) {
-  const busy = new Set(Object.values(state.errands ?? {}).map((one) => one.by).filter(Boolean));
-  return onJob(game, place, job).find((key) => key !== YOU && !busy.has(key) && !lostReason(game, place, key) && handsFree(game, place, key) && isAbout(game, place, key, hours)) ?? null;
-}
-
-function runErrands(game, place, model, state, t) {
-  state.errands ??= {};
-  for (const e of model.errands) {
-    const from = storeById(model, e.from);
-    const to = storeById(model, e.to);
-    const s = state.errands[e.id];
-    const have = () => storeCounts(game, to.key, to.holds)[e.item] ?? 0;
-    const room = () => Math.max(0, (to.holds[e.item] ?? 0) - have());
-    if (!s) {
-      if (have() >= e.under) continue;
-      const who = e.job ? freeHand(game, place, state, e.job, t / 60) : carrierOf(game, place, e);
-      if (!who || !isAbout(game, place, who, t / 60) || !handsFree(game, place, who)) continue;
-      state.errands[e.id] = { phase: "going", since: t, load: null, by: who };
-      continue;
-    }
-    const key = carrierOf(game, place, e, s);
-    if (!key) {
-      delete state.errands[e.id];
-      continue;
-    }
-    // They've arrived when their walk has got them there, or when a walk's worth of time has gone by since they set
-    // out: over a long jump of the clock nobody is walked minute by minute, and the errand still has to get done.
-    // Only asked on the way there and back, since it's asked every five minutes.
-    const there = () => t - s.since >= WALK_MINUTES || hasReached(game, place, key, errandWhere(e, s));
-    if (s.phase === "going") {
-      if (there()) Object.assign(s, { phase: "loading", since: t });
-    } else if (s.phase === "loading" || s.phase === "waiting") {
-      if (s.phase === "loading" && t - s.since < CHUNK) continue;
-      const want = Math.min(e.each, room());
-      if (want <= 0) {
-        delete state.errands[e.id];
-        continue;
-      }
-      const took = storeTake(game, from.key, from.holds, e.item, want);
-      if (took <= 0) {
-        s.phase = "waiting";
-        continue;
-      }
-      Object.assign(s, { phase: "carrying", since: t, load: { item: e.item, n: took } });
-    } else if (there()) {
-      s.load.n -= storePut(game, to.key, to.holds, s.load.item, s.load.n);
-      if (s.load.n > 0) s.phase = "unloading";
-      else delete state.errands[e.id];
-    }
-  }
-}
-
-// What the errands have someone doing and where, for the life engine's walks: null for anyone not on one.
-export function errandDetour(game, place) {
-  const model = logisticsOf(place);
-  const errands = game.logistics?.[place]?.errands;
-  if (!model?.errands?.length || !errands || !Object.keys(errands).length) return null;
-  return (key) => {
-    for (const e of model.errands) {
-      const s = errands[e.id];
-      if (s && carrierOf(game, place, e, s) === key) return { where: errandWhere(e, s), doing: errandDoing(model, e, s) };
-    }
-    return null;
-  };
-}
 
 // Who's at work in a room at a moment: the player standing there, and anyone whose day puts them there, awake.
 export function workersIn(game, place, roomId, hours) {
@@ -1035,7 +950,7 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
       }
       serveMeals(game, place, model, state, t, CHUNK, notes);
       runRefills(game, place, model, state, t);
-      runErrands(game, place, model, state, t);
+      runBoard(game, place, model, state, t, CHUNK);
       // What the posts' duty counts: the minutes the generator was short of the loads, and the minutes errands stood
       // waiting at an empty store.
       const supply = powerSupply(game, place);
@@ -1119,28 +1034,6 @@ export function machinesView(game, place) {
     // A full store or nobody there at night is how things are; no power or nothing left to work from is a want.
     const bad = Boolean(s?.waiting) && (s.waiting === "no power" || / ha(?:s|ve) no /.test(s.waiting));
     return { id: m.id, name: upperFirst(m.name), room: m.roomName, does, status, waiting: Boolean(s?.waiting) || !m.runs, bad, made: s?.made ?? 0, runs: m.runs, generator: m.generator };
-  });
-}
-
-// Every errand with who does it, what it is, and where they've got to. Reading this changes nothing.
-export function errandsView(game, place) {
-  const model = logisticsOf(place);
-  if (!model) return [];
-  const errands = game.logistics?.[place]?.errands ?? {};
-  return model.errands.map((e) => {
-    const from = storeById(model, e.from);
-    const to = storeById(model, e.to);
-    const s = errands[e.id] ?? null;
-    return {
-      id: e.id,
-      who: e.post ? postAndName(game, place, e.post) ?? `Nobody: ${e.who} is nobody's post`
-        : e.job ? (s?.by ? personCalled(game, s.by) : `A ${jobById(place, e.job)?.title ?? e.job}`)
-        : e.who,
-      does: `${itemWords(e.item, 2)} from the ${from.name} to the ${to.name} when under ${e.under}, ${e.each} at a time`,
-      status: s ? errandDoing(model, e, s) : "about their day",
-      busy: Boolean(s),
-      waiting: Boolean(s && (s.phase === "waiting" || s.phase === "unloading")),
-    };
   });
 }
 

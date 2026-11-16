@@ -17,7 +17,8 @@ process.env.GAME_COMMAND_DIR = commandDir;
 
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const cmd = await import("../src/command.js");
-const { countAboard, errandDetour, errandsView, fillStores, logisticsOf, putAboard, takeAboard } = await import("../src/logistics.js");
+const { countAboard, fillStores, logisticsOf, putAboard, takeAboard } = await import("../src/logistics.js");
+const { workDetour, workView } = await import("../src/work.js");
 const { migrateGame } = await import("../src/migrate.js");
 const { passTime, publicState } = await import("../src/rules.js");
 const { changeCommand, chairOf, shipLedger } = await import("../src/ship.js");
@@ -218,7 +219,7 @@ test("the quartermaster's errand is carried by whoever holds the post", () => {
   const errand = logisticsOf("meridian").errands.find((one) => one.post === "quartermaster");
   assert.deepEqual([errand.id, errand.key, errand.item, errand.from, errand.to], ["quartermaster:ration_crate", null, "ration_crate", "shuttle_stores", "pantry"]);
   const game = newGame();
-  const shown = () => errandsView(game, "meridian").find((one) => one.id === "quartermaster:ration_crate");
+  const shown = () => workView(game, "meridian").find((one) => one.id === "quartermaster:ration_crate");
   assert.equal(shown().who, "Quartermaster Brandt");
   cmd.setHolder(game, "meridian", "quartermaster", "tobin");
   assert.equal(shown().who, "Quartermaster Hask");
@@ -228,8 +229,8 @@ test("the quartermaster's errand is carried by whoever holds the post", () => {
   bag.storeTake(game, pantry.key, pantry.holds, "ration_crate", 12);
   passTime(game, 0.2);
   assert.ok(game.logistics.meridian.errands["quartermaster:ration_crate"], "the errand's begun");
-  assert.ok(errandDetour(game, "meridian")("tobin"), "and it's Hask who goes");
-  assert.equal(errandDetour(game, "meridian")("odessa"), null, "not Brandt");
+  assert.ok(workDetour(game, "meridian")("tobin"), "and it's Hask who goes");
+  assert.equal(workDetour(game, "meridian")("odessa"), null, "not Brandt");
   // With nobody in the post, nobody goes.
   const empty = newGame();
   cmd.setHolder(empty, "meridian", "quartermaster", null);
@@ -238,7 +239,7 @@ test("the quartermaster's errand is carried by whoever holds the post", () => {
   bag.storeTake(empty, pantry.key, pantry.holds, "ration_crate", 12);
   passTime(empty, 0.5);
   assert.equal(empty.logistics.meridian.errands?.["quartermaster:ration_crate"], undefined);
-  assert.match(errandsView(empty, "meridian").find((one) => one.id === "quartermaster:ration_crate").who, /^Nobody/);
+  assert.match(workView(empty, "meridian").find((one) => one.id === "quartermaster:ration_crate").who, /^Nobody/);
 });
 
 test("the story giving command away or taking it moves the captain's post, and the chair asks the post", () => {

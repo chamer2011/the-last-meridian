@@ -1266,6 +1266,42 @@ function driftAir(game, model, state, minutes, here) {
   return lines;
 }
 
+// Who a place's systems have called to their duty right now: the guards while its alarm rings and can be heard, and
+// an engineer for each repair in its last hour. Null when nobody is.
+function calledNow(game, place, model, state, t) {
+  const ringing = state.alarm?.ringing?.room && commsUp(game, place) ? state.alarm.ringing.room : null;
+  const due = Object.entries(state.parts).filter(([id, s]) => s.fixAt && s.fixAt - t <= 1 && model.parts[id]).sort((a, b) => a[1].fixAt - b[1].fixAt);
+  if (!ringing && !due.length) return null;
+  const fixing = {};
+  const engineers = staffOf(game, place, model.engineers);
+  due.forEach(([id, s], i) => {
+    const key = engineers[i % Math.max(1, engineers.length)];
+    if (key && !fixing[key]) fixing[key] = { part: model.parts[id], s };
+  });
+  return { ringing, guards: ringing ? staffOf(game, place, model.guards) : [], fixing };
+}
+// Where their duty has one of them, or null for anyone it hasn't called.
+function dutyTurn(game, place, called, key, t) {
+  if (!called) return null;
+  if (called.ringing && called.guards.includes(key)) return { where: `@${called.ringing}`, doing: `answering the alarm in ${lowerFirst(roomNameOf(place, called.ringing))}` };
+  if (!called.fixing[key]) return null;
+  const { part, s } = called.fixing[key];
+  // A repair that takes parts spends the first half of its hour fetching them from the stores.
+  const store = s.fixAt - t > 0.5 ? repairStore(game, place, s.damage) : null;
+  if (store) return { where: `store:${store.id}`, doing: `fetching ${repairPartsWords(place, s.damage)} from the ${store.name} for the ${part.name}` };
+  return { where: `@${part.room}`, doing: `fixing the ${part.name}` };
+}
+// The same for the ship's work board (src/work.js), which gives nobody a job while their duty has them: the guards
+// at an alarm and the engineers at a repair, and not whoever's getting out of bad air. Null when nobody's called.
+export function dutyDetour(game, place) {
+  const model = systemsOf(place);
+  const state = game.systems?.[place];
+  if (!model || !state) return null;
+  const t = hoursNow(game);
+  const called = calledNow(game, place, model, state, t);
+  return called ? (key) => dutyTurn(game, place, called, key, t) : null;
+}
+
 // Where someone goes instead of where their day sends them: the guards to the alarm, an engineer to what's due to be
 // fixed, and anyone headed for a room with bad air to the nearest room with good air. Asleep, people only notice
 // once it's bad. src/life.js asks this for each person, with the room their day has them going to.
@@ -1275,15 +1311,7 @@ export function detourFor(game, place) {
   if (!model || !state) return null;
   const t = hoursNow(game);
   const limits = airLimits();
-  const ringing = state.alarm?.ringing?.room && commsUp(game, place) ? state.alarm.ringing.room : null;
-  const due = Object.entries(state.parts).filter(([id, s]) => s.fixAt && s.fixAt - t <= 1 && model.parts[id]).sort((a, b) => a[1].fixAt - b[1].fixAt);
-  const fixing = {};
-  const engineers = staffOf(game, place, model.engineers);
-  const guards = staffOf(game, place, model.guards);
-  due.forEach(([id, s], i) => {
-    const key = engineers[i % Math.max(1, engineers.length)];
-    if (key && !fixing[key]) fixing[key] = { part: model.parts[id], s };
-  });
+  const called = calledNow(game, place, model, state, t);
   const map = mapFor(place);
   const goodAirFrom = (room) => {
     const seen = new Set([room]);
@@ -1300,14 +1328,8 @@ export function detourFor(game, place) {
     return null;
   };
   return (key, room, asleep) => {
-    if (ringing && guards.includes(key)) return { where: `@${ringing}`, doing: `answering the alarm in ${lowerFirst(roomNameOf(place, ringing))}` };
-    if (fixing[key]) {
-      const { part, s } = fixing[key];
-      // A repair that takes parts spends the first half of its hour fetching them from the stores.
-      const store = s.fixAt - t > 0.5 ? repairStore(game, place, s.damage) : null;
-      if (store) return { where: `store:${store.id}`, doing: `fetching ${repairPartsWords(place, s.damage)} from the ${store.name} for the ${part.name}` };
-      return { where: `@${part.room}`, doing: `fixing the ${part.name}` };
-    }
+    const duty = dutyTurn(game, place, called, key, t);
+    if (duty) return duty;
     const q = room ? state.air[room] ?? 100 : 100;
     if (q >= limits.thin || (asleep && q >= limits.bad)) return null;
     const away = goodAirFrom(room);

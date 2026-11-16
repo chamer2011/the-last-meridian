@@ -8,7 +8,8 @@
 // world/life/ has one file for each place whose people live their days, named after the place.
 
 import { LOCATIONS } from "./data.js";
-import { errandDetour, logisticsOf, mealWords } from "./logistics.js";
+import { logisticsOf, mealWords } from "./logistics.js";
+import { workDetour } from "./work.js";
 import { atPost, canStand, findPath, mapFor, roomOf, seedFrom } from "./walk.js";
 import { detourFor, doorLocked, partSquares } from "./systems.js";
 import { detourExtras } from "./room-hooks.js";
@@ -83,17 +84,22 @@ function lifeFileFor(place) {
   return lifeFiles.get(place);
 }
 
+// How far it is from one square of a place to another, as walkLength below works it out: kept, since rooms don't move.
+const lengths = new Map();
+
 // Read again after a place's systems change, since parts on the floor change where people can stand.
 export function clearLife() {
   lifeFiles.clear();
   settledAt.clear();
   usual.clear();
+  lengths.clear();
 }
 // One place's, once the player has left it and its map is let go of (keepOnly in src/walk.js): read again with the map.
 export function forgetLife(place) {
   lifeFiles.delete(place);
   for (const key of [...settledAt.keys()]) if (key.startsWith(`${place}@`)) settledAt.delete(key);
   for (const key of [...usual.keys()]) if (key.startsWith(`${place}/`)) usual.delete(key);
+  for (const key of [...lengths.keys()]) if (key.startsWith(`${place}|`)) lengths.delete(key);
 }
 
 export const livesHere = (place) => Boolean(lifeFileFor(place) && mapFor(place));
@@ -187,20 +193,24 @@ function planFor(map, file, entry, hours, detour) {
 }
 
 // Everything that turns someone aside from their day: the place's systems first (the alarm, a repair, bad air), then
-// the ship's errands, then the morning queue at the medbay. Null when nothing's going on.
+// the ship's work board, then the morning queue at the medbay. Null when nothing's going on.
 function detoursFor(game, place) {
   // Whoever's down, and whoever's gone to help them, comes before anything else (src/medbay.js).
   const down = medbayDetour(game, place);
   const systems = detourFor(game, place);
-  const errands = errandDetour(game, place);
+  // Whoever's carrying for the ship's work board (src/work.js).
+  const work = workDetour(game, place);
   // Whoever's mending or building in the workshop (src/workshop.js).
   const workshop = workshopDetour(game, place);
   const queue = queueDetour(game, place);
   // And wherever the parts of the game that add to a room send someone (src/room-hooks.js): after someone down and
-  // the place's systems, before the errands.
+  // the place's systems, before the board.
   const extras = detourExtras(game, place);
-  if (!down && !systems && !extras && !errands && !workshop && !queue) return null;
-  return (key, room, asleep) => down?.(key, room, asleep) ?? systems?.(key, room, asleep) ?? extras?.(key, room, asleep) ?? errands?.(key, room, asleep) ?? workshop?.(key, room, asleep) ?? queue?.(key, room, asleep) ?? null;
+  if (!down && !systems && !extras && !work && !workshop && !queue) return null;
+  // Someone carrying for the board keeps at it through bad air (a ship with no power has no air, and the cell that
+  // brings both back still has to be carried): the systems are asked about them as if they were headed for no room,
+  // so only an alarm or a repair turns them aside, and the board hands their job back when one does.
+  return (key, room, asleep) => down?.(key, room, asleep) ?? systems?.(key, work?.(key) ? null : room, asleep) ?? extras?.(key, room, asleep) ?? work?.(key) ?? workshop?.(key, room, asleep) ?? queue?.(key, room, asleep) ?? null;
 }
 
 // In the morning, whoever's hurt and on their feet goes and waits at the medbay, as the place's health file says
@@ -267,13 +277,16 @@ export function sleepersOf(place) {
   }).filter((one) => one.squares.length);
 }
 
-// Whether someone's awake and about at a time, as their day has it, and here at all.
-export function isAbout(game, place, key, hours) {
+// Why someone isn't up and about at a time, as their day has it, in a word: away, asleep, or out of sight. Null when
+// they are.
+export function notAbout(game, place, key, hours) {
   const entry = rosterFor(game, place).find((one) => one.key === key);
-  if (!entry || (entry.id && !atPost(game, entry.id))) return false;
+  if (!entry || (entry.id && !atPost(game, entry.id))) return "away";
   const plan = planAt(entry, hours);
-  return !plan.block.asleep && !plan.block.hidden;
+  return plan.block.asleep ? "asleep" : plan.block.hidden ? "out of sight" : null;
 }
+// Whether someone's awake and about at a time, as their day has it, and here at all.
+export const isAbout = (game, place, key, hours) => notAbout(game, place, key, hours) === null;
 
 // Whether someone's walk has brought them to where a detour sent them. Where the captain isn't, everyone is where
 // their day says, so they're there already.
@@ -618,6 +631,65 @@ function walkOn(map, state, steps) {
     else Object.assign(state, { level: next.to, x: next.x, y: next.y });
     if (!state.path.length) state.path = null;
   }
+}
+
+// How many squares the way from one square of a place to another is, through its doors and stairs, the way anyone
+// would walk it: for whatever needs to know how long a walk takes without walking it (the ship's work board,
+// src/work.js). Null when there's no way.
+export function walkLength(place, from, to) {
+  const map = mapFor(place);
+  if (!map || !from || !to || !map.levels[from.level] || !map.levels[to.level]) return null;
+  const key = `${place}|${from.level}:${from.x},${from.y}|${to.level}:${to.x},${to.y}`;
+  if (!lengths.has(key)) {
+    if (lengths.size > 600) lengths.clear();
+    const state = { level: from.level, x: from.x, y: from.y, goal: { level: to.level, x: to.x, y: to.y } };
+    let squares = 0;
+    // A stretch a level: nowhere is more than a few decks from anywhere.
+    for (let stretches = 0; stretches < 12 && squares !== null && !atGoal(state); stretches += 1) {
+      const stretch = nextStretch(map, state);
+      if (!stretch?.length) squares = null;
+      else {
+        squares += stretch.length;
+        const end = stretch.at(-1);
+        if (Array.isArray(end)) [state.x, state.y] = end;
+        else Object.assign(state, { level: end.to, x: end.x, y: end.y });
+      }
+    }
+    lengths.set(key, squares !== null && atGoal(state) ? squares : null);
+  }
+  return lengths.get(key);
+}
+
+// About where someone is: where they're standing if the captain's at their place, and otherwise where their day has
+// them at that hour. Null for someone with no day here, or a step of a day that names nowhere.
+export function standsAt(game, place, key, hours = game.clock.hours) {
+  const state = place === game.location ? game.life?.places?.[place]?.[key] : null;
+  if (state) return { level: state.level, x: state.x, y: state.y };
+  const file = lifeFileFor(place);
+  const map = mapFor(place);
+  const entry = file && map ? rosterFor(game, place).find((one) => one.key === key) : null;
+  if (!entry) return null;
+  const { where } = planAt(entry, hours);
+  if (!where) return null;
+  if (where === "post") return postOf(map, entry.home ?? entry.id);
+  if (/^[@>]/.test(where)) {
+    const room = roomOf(map, where.slice(1));
+    return room?.start ? { level: room.levelId, x: room.start.x, y: room.start.y } : null;
+  }
+  return file.spots[where] ?? file.groups[where]?.[0] ?? null;
+}
+
+// How many minutes someone's walk takes, from one spot the place's file knows to another (the square beside a store
+// is one), or from where they are when it names no spot to start from: the squares of the way at the pace their legs
+// allow. Null when there's no telling.
+export function walkMinutes(game, place, key, from, to, hours = game.clock.hours) {
+  const file = lifeFileFor(place);
+  if (!file) return null;
+  const squares = walkLength(place, from ? file.spots[from] : standsAt(game, place, key, hours), file.spots[to]);
+  if (squares === null) return null;
+  const entry = rosterFor(game, place).find((one) => one.key === key);
+  const pace = entry ? paceOf(bodyOf(game, entry.id ? { id: entry.id } : { name: entry.name, place })) : 1;
+  return squares / (SQUARES_A_MINUTE * Math.max(0.1, pace));
 }
 
 // ---- The clock moves ---------------------------------------------------------------

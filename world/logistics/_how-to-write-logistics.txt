@@ -143,6 +143,13 @@ the other store has room for), walk back, put them in, and go back to their day;
 short. If there's nothing to fetch, they stand at the store and wait, and their line says so. The Ship menu
 lists every errand with where its person has got to.
 
+Carrying is given out by the ship's work board, which sends nobody who's already taken by something more
+pressing: someone in the last hour of a repair, answering an alarm, down or carrying the fallen, or walking
+with the captain. The next of their job goes instead, and with nobody free the job waits. A carrier who's
+called away hands the job back: whatever they'd loaded is set down, and the next free hand carries it on.
+A walk takes as long as the way through the decks is. The Ship menu's Work lines say who's on each job and
+since when, or why nobody is.
+
 LOADS
 -----
 

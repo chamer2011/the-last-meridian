@@ -63,9 +63,10 @@ function storesSection(s) {
   const machine = (m) => el("div", { class: "menu-row small" },
     el("span", {}, m.name, el("span", { class: "muted" }, `, ${m.room}: ${m.does}`)),
     el("span", { class: m.bad ? "tone-bad" : m.runs ? "" : "muted" }, m.status));
-  const errand = (e) => el("div", { class: "menu-row small" },
-    el("span", {}, e.who, el("span", { class: "muted" }, `: ${e.does}`)),
-    el("span", { class: e.waiting ? "tone-bad" : e.busy ? "" : "muted" }, e.status));
+  // A job on the ship's work board: who's on it or would be, what it carries, and where it's got to or why nobody's on it.
+  const job = (j) => el("div", { class: "menu-row small" },
+    el("span", {}, j.who, el("span", { class: "muted" }, `: ${j.does}`)),
+    el("span", { class: j.waiting || j.stuck ? "tone-bad" : j.busy ? "" : "muted" }, j.since ? `${j.status}, since ${j.since}` : j.status));
   const refill = (r) => el("div", { class: "stack gap-small" },
     el("div", { class: "small" }, r.store, el("span", { class: "muted" }, `: ${r.does}`)),
     muted(r.last ? `Last: ${r.last}` : "Nothing has come aboard yet."));
@@ -79,7 +80,7 @@ function storesSection(s) {
   return section("In the rooms", s.stores.map(line),
     muted("Walk up to any of them and open it beside your pack. What's taken out and put back is kept, and the count here follows it."),
     s.machines?.length ? [el("h4", { class: "small" }, "Machines"), s.machines.map(machine), muted("Each runs on the clock while its room has power and someone's at it, and nothing runs while the clock is paused.")] : null,
-    s.errands?.length ? [el("h4", { class: "small" }, "Errands"), s.errands.map(errand), muted("Each goes when the store they keep up runs short: to the store they fetch from, a minute there, and back with the load. With nothing to fetch, they stand at it and wait.")] : null,
+    s.work?.length ? [el("h4", { class: "small" }, "Work"), s.work.map(job), muted("A job comes up when a store runs short, and whoever's free takes it. Someone called to an alarm, a repair or the fallen hands it back.")] : null,
     s.refills?.length ? [el("h4", { class: "small" }, "Refills"), s.refills.map(refill), muted("The one place things still come from nowhere, until trade off the ship is built. The manifest on the clip in the lighter bay, and the ship's computers, say what came and when.")] : null,
     repairs ? [el("h4", { class: "small" }, "Repairs"), repairs, muted("When something's been damaged, an engineer fetches what the repair takes from the stores and fixes it. With none aboard, it stays broken until some comes.")] : null,
     meals ? [el("h4", { class: "small" }, "The sittings"), meals, muted("Everyone aboard eats from the kettle at the sittings. Whoever finds it empty goes without, and the ship's morale feels that at midnight.")] : null);

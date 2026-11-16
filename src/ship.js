@@ -17,8 +17,9 @@ import { dosesADay, medbayDoses, medbayOf, medbayView } from "./medbay.js";
 import { illnessPenalty, registerStarves } from "./register.js";
 import { illnessKinds } from "./body.js";
 import { workshopView } from "./workshop.js";
-import { countAboard, errandsView, foodADay, machinesView, mealsOfDay, mealsView, putAboard, refilledADay, refillsView, repairsView, storesView, takeAboard } from "./logistics.js";
+import { countAboard, foodADay, machinesView, mealsOfDay, mealsView, putAboard, refilledADay, refillsView, repairsView, storesView, takeAboard } from "./logistics.js";
 import { SHIP_DATA, STAR_MAP } from "./world.js";
+import { workView } from "./work.js";
 import { notePut } from "./puts.js";
 
 const { rules: RULES, rations: RATIONS, supplies: SUPPLIES, text: TEXT, council: COUNCIL, chair: CHAIR, ship: SHIP } = SHIP_DATA;
@@ -819,7 +820,7 @@ export function shipView(game) {
     stores: storesView(game, SHIP_ID),
     machines: machinesView(game, SHIP_ID),
     meals: mealsView(game, SHIP_ID),
-    errands: errandsView(game, SHIP_ID),
+    work: workView(game, SHIP_ID),
     refills: refillsView(game, SHIP_ID),
     repairs: repairsView(game, SHIP_ID),
     // Who's on the medbay's cots and floor, and what the medics are doing (src/medbay.js).

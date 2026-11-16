@@ -18,6 +18,7 @@ const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const cmd = await import("../src/command.js");
 const life = await import("../src/life.js");
 const lg = await import("../src/logistics.js");
+const wk = await import("../src/work.js");
 const bag = await import("../src/bag.js");
 const sys = await import("../src/systems.js");
 const { migrateGame } = await import("../src/migrate.js");
@@ -153,8 +154,8 @@ test("an errand that names a job is carried by whoever does it and is free, and 
   assert.ok(fuel && parts, "both errands begun");
   assert.notEqual(fuel.by, parts.by, "by two different techs");
   assert.ok(cmd.onJob(game, "meridian", "tech").includes(fuel.by));
-  assert.equal(lg.errandsView(game, "meridian").find((one) => one.id === "tech:fuel_cell").who, fuel.by);
-  assert.ok(lg.errandDetour(game, "meridian")(fuel.by));
+  assert.equal(wk.workView(game, "meridian").find((one) => one.id === "tech:fuel_cell").who, fuel.by);
+  assert.ok(wk.workDetour(game, "meridian")(fuel.by));
   // With every tech moved to the deckhands, a new errand finds nobody to carry it.
   const empty = newGame();
   at(empty, 10);
@@ -162,7 +163,7 @@ test("an errand that names a job is carried by whoever does it and is free, and 
   bag.storeTake(empty, store("fuel_rack").key, store("fuel_rack").holds, "fuel_cell", 5);
   minutes(empty, 15);
   assert.equal(empty.logistics.meridian.errands?.["tech:fuel_cell"], undefined);
-  assert.equal(lg.errandsView(empty, "meridian").find((one) => one.id === "tech:fuel_cell").who, "A tech");
+  assert.equal(wk.workView(empty, "meridian").find((one) => one.id === "tech:fuel_cell").who, "A tech");
 });
 
 test("the techs are the engineers and the guards are whoever guards, as the watch bill has them", () => {
