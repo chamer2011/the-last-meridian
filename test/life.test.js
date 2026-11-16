@@ -312,17 +312,25 @@ test("walking gives the same result every time, and carries on the same after sa
   const two = newGame();
   // The same game: bodies are made up from the game's own seed, and a limp slows someone down.
   two.bodySeed = one.bodySeed;
-  for (let i = 0; i < 300; i += 1) {
-    clockRuns(one, 1 / 3);
-    clockRuns(two, 1 / 3);
+  // And the dice held still: while the clock runs in play a fire or a breach can start by chance, in one game and
+  // not the other, and whoever's sent to it walks somewhere else. Just under 1 is "it never happens".
+  const real = Math.random;
+  Math.random = () => 0.99;
+  try {
+    for (let i = 0; i < 300; i += 1) {
+      clockRuns(one, 1 / 3);
+      clockRuns(two, 1 / 3);
+    }
+    assert.deepEqual(one.life, two.life);
+    const loaded = JSON.parse(JSON.stringify(two));
+    for (let i = 0; i < 300; i += 1) {
+      clockRuns(one, 1);
+      clockRuns(loaded, 1);
+    }
+    assert.deepEqual(one.life, loaded.life);
+  } finally {
+    Math.random = real;
   }
-  assert.deepEqual(one.life, two.life);
-  const loaded = JSON.parse(JSON.stringify(two));
-  for (let i = 0; i < 300; i += 1) {
-    clockRuns(one, 1);
-    clockRuns(loaded, 1);
-  }
-  assert.deepEqual(one.life, loaded.life);
 });
 
 test("the dead and the gone aren't seen again", () => {

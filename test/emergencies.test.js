@@ -73,9 +73,10 @@ test("a fire grows, spoils the room's air and breaks something; then the enginee
   const model = systems.systemsOf("meridian");
   assert.equal(model.partsIn.galley.filter((id) => systems.partBroken(game, "meridian", id)).length, 1);
   assert.ok(systems.airIn(game, "meridian", "galley") < 30, `the air's bad: ${systems.airIn(game, "meridian", "galley")}`);
-  // From forty-five minutes the engineers are at it, and by an hour and a half it's out.
+  // The ship's work board sent the chief engineer as soon as it started. From forty-five minutes he has the better
+  // of it, and by an hour and a half it's out.
   withDice(0.99, () => { for (let i = 0; i < 5; i += 1) notes.push(...minutes(game, 10)); });
-  assert.ok(notes.some((one) => /^\[FIRE\] The engineers are at the fire in the Galley\.$/.test(one)));
+  assert.ok(notes.some((one) => /^\[FIRE\] Chief Engineer Marrow is getting the better of the fire in the Galley\.$/.test(one)), notes.filter((one) => one.startsWith("[FIRE]")).join(" | "));
   assert.ok(notes.some((one) => /^\[FIRE\] The fire in the Galley is out: the engineers put it out\.$/.test(one)), notes.filter((one) => one.startsWith("[FIRE]")).join(" | "));
   assert.equal(em.fireIn(game, "meridian", "galley"), null);
   // And the air comes back.
@@ -136,7 +137,7 @@ test("a breach lets a room's air out until it's patched, by hand with a patch or
   const crates = countAboard(left, "meridian", ["parts_crate"]).n;
   em.startBreach(left, "meridian", "boat_bay");
   const notes = withDice(0.99, () => passTime(left, 2.1, "active"));
-  assert.ok(notes.some((one) => /^\[BREACH\] The engineers have patched the hull in the Boat Bay, with a parts crate\.$/.test(one)), notes.join(" | "));
+  assert.ok(notes.some((one) => /^\[BREACH\] Chief Engineer Marrow has patched the hull in the Boat Bay, with a parts crate\.$/.test(one)), notes.join(" | "));
   assert.equal(countAboard(left, "meridian", ["parts_crate"]).n, crates - 1);
 });
 

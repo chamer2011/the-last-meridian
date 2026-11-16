@@ -28,7 +28,21 @@ const cmd = await import("../src/command.js");
 const sys = await import("../src/systems.js");
 const { countAboard, logisticsOf, logisticsProblems, storesView } = await import("../src/logistics.js");
 const { boardView, workCommand } = await import("../src/work.js");
-const { clockRuns, passTime, publicState } = await import("../src/rules.js");
+// The dice are held still while the clock runs here: in play a fire or a breach can start by chance, and an engineer
+// would be sent to it, off whatever these tests are watching. Just under 1 is "it never happens".
+const rules = await import("../src/rules.js");
+function calmly(play) {
+  const real = Math.random;
+  Math.random = () => 0.99;
+  try {
+    return play();
+  } finally {
+    Math.random = real;
+  }
+}
+const clockRuns = (game, minutes) => calmly(() => rules.clockRuns(game, minutes));
+const passTime = (game, hours, activity) => calmly(() => rules.passTime(game, hours, activity));
+const { publicState } = rules;
 const { whereNow } = await import("../src/life.js");
 const { addDetour } = await import("../src/room-hooks.js");
 const { clearLife } = await import("../src/life.js");
@@ -36,7 +50,8 @@ const { clearMaps } = await import("../src/walk.js");
 const { reloadLogistics } = await import("../src/world.js");
 const { WORK_KINDS, parseLogisticsText, readUrgencyLine, writeLogisticsText } = await import("../public/logistics-text.js");
 
-const newGame = (seed = 21) => createGameFromDraft(randomDraft({ seed, archetype: "officer" }));
+// Nothing wears out by itself here, so the only parts crates that go are the ones the tests are about.
+const newGame = (seed = 21) => Object.assign(createGameFromDraft(randomDraft({ seed, archetype: "officer" })), { wearDay: Infinity });
 const storeOf = (id) => logisticsOf("meridian").stores.find((one) => one.id === id);
 const count = (game, storeId, item) => storesView(game, "meridian").find((one) => one.id === storeId).items.find((one) => one.id === item)?.n ?? 0;
 const take = (game, storeId, item, n) => bag.storeTake(game, storeOf(storeId).key, storeOf(storeId).holds, item, n);

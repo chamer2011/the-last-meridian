@@ -31,7 +31,21 @@ const sys = await import("../src/systems.js");
 const medbay = await import("../src/medbay.js");
 const { logisticsOf, storesView } = await import("../src/logistics.js");
 const { workDetour, workView } = await import("../src/work.js");
-const { clockRuns, passTime, publicState } = await import("../src/rules.js");
+// The dice are held still while the clock runs here: in play a fire or a breach can start by chance, and an engineer
+// would be sent to it, off whatever these tests are watching. Just under 1 is "it never happens".
+const rules = await import("../src/rules.js");
+function calmly(play) {
+  const real = Math.random;
+  Math.random = () => 0.99;
+  try {
+    return play();
+  } finally {
+    Math.random = real;
+  }
+}
+const clockRuns = (game, minutes) => calmly(() => rules.clockRuns(game, minutes));
+const passTime = (game, hours, activity) => calmly(() => rules.passTime(game, hours, activity));
+const { publicState } = rules;
 const { standsAt, walkMinutes, whereNow } = await import("../src/life.js");
 const { addDetour } = await import("../src/room-hooks.js");
 

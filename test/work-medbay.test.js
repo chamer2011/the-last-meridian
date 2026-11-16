@@ -33,7 +33,20 @@ const medbay = await import("../src/medbay.js");
 const workshop = await import("../src/workshop.js");
 const { logisticsOf, logisticsProblems, storesView } = await import("../src/logistics.js");
 const { boardView, busyOnBoard } = await import("../src/work.js");
-const { clockRuns, publicState } = await import("../src/rules.js");
+// The dice are held still while the clock runs here: in play a fire or a breach can start by chance, and an engineer
+// would be sent to it, off whatever these tests are watching. Just under 1 is "it never happens".
+const rules = await import("../src/rules.js");
+function calmly(play) {
+  const real = Math.random;
+  Math.random = () => 0.99;
+  try {
+    return play();
+  } finally {
+    Math.random = real;
+  }
+}
+const clockRuns = (game, minutes) => calmly(() => rules.clockRuns(game, minutes));
+const { publicState } = rules;
 const { standsAt } = await import("../src/life.js");
 const { addDetour } = await import("../src/room-hooks.js");
 
@@ -69,6 +82,17 @@ const wound = (game, kind, part, extra = {}) => ({ ...body.newWound(body.kindOf(
 // Something outside the board that takes people, as walking with the player or a brawl would (src/room-hooks.js).
 const wanted = new Set();
 addDetour((game, place) => (place === "meridian" && wanted.size ? (key) => (wanted.has(key) ? { where: "@bridge", doing: "wanted on the bridge" } : null) : null));
+// Nothing comes aboard from nowhere meanwhile, so that what's counted is only what's carried.
+function withoutRefills(play) {
+  const model = logisticsOf("meridian");
+  const refills = model.refills;
+  model.refills = [];
+  try {
+    return play();
+  } finally {
+    model.refills = refills;
+  }
+}
 const without = (keys, play) => {
   for (const key of keys) wanted.add(key);
   try {
@@ -113,7 +137,7 @@ test("a call for someone down is a job on the board: the first nurse goes, the W
   assert.deepEqual(publicState(game).ship.board.jobs.filter((one) => one.id.startsWith("call:")), []);
 });
 
-test("a nurse carrying crates sets them down for someone who's fallen, and carries them on afterwards", () => {
+test("a nurse carrying crates sets them down for someone who's fallen, and carries them on afterwards", () => withoutRefills(() => {
   const game = newGame();
   at(game, 34);
   take(game, "pantry", "ration_crate", 12);
@@ -131,7 +155,7 @@ test("a nurse carrying crates sets them down for someone who's fallen, and carri
   assert.ok(game.down[key].bed);
   assert.ok(count(game, "pantry", "ration_crate") >= 2, "the crates she set down are in the pantry");
   assert.equal(all(), before);
-});
+}));
 
 test("a nurse leaves a patient for someone who's fallen, the next call takes someone else, and nobody's in two places", () => {
   const game = newGame();

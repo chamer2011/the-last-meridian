@@ -1392,6 +1392,18 @@ function dutyTurn(game, place, called, key, t) {
 }
 // The same for the ship's work board (src/work.js), which gives nobody a job while their duty has them: the guards
 // at an alarm and the engineers at a repair, and not whoever's getting out of bad air. Null when nobody's called.
+// The guards answering an alarm, as work the place's board can see (src/work.js): each { kind, by, doing, room },
+// fixed, since nothing takes a guard off an alarm, with a drop that does nothing.
+const NO_GUARDS = Object.freeze([]);
+export function alarmWork(game, place) {
+  const state = game.systems?.[place];
+  if (!state?.alarm?.ringing?.room) return NO_GUARDS;
+  const model = systemsOf(place);
+  if (!model || !commsUp(game, place)) return NO_GUARDS;
+  const room = state.alarm.ringing.room;
+  const doing = `answering the alarm in ${lowerFirst(roomNameOf(place, room))}`;
+  return staffOf(game, place, model.guards).map((key) => ({ kind: "alarm", by: key, doing, room, name: roomNameOf(place, room), seen: Boolean(state.alarm.ringing.seen), fixed: true, drop: () => {} }));
+}
 // The guards answering an alarm, and nobody else: null while nothing rings.
 export function alarmDetour(game, place) {
   const model = systemsOf(place);

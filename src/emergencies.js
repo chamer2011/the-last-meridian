@@ -21,7 +21,7 @@ import { addAirSpoiler, addAreaState, addChecker, addClockWork, addDetour, addOr
 import { addMark } from "./wear.js";
 import { addWounds, keyAt, newWound, woundKindsByName } from "./body.js";
 import { SKILLS } from "./character-data.js";
-import { rememberRequest } from "./command.js";
+import { calledBy, rememberRequest } from "./command.js";
 import { ITEMS, LOCATIONS } from "./data.js";
 import { whoIsIn } from "./life.js";
 import { logisticsOf, takeAboard } from "./logistics.js";
@@ -29,6 +29,7 @@ import { worldDir } from "./paths.js";
 import { changeStress, passTime, practice, removeItem, skillRank } from "./rules.js";
 import { airFlows, alarmRinging, damagePart, doorLocked, foulAir, partBroken, systemsOf } from "./systems.js";
 import { mapFor } from "./walk.js";
+import { boardRuns, troubleCrew } from "./work.js";
 
 export const EMERGENCIES_FILE = process.env.GAME_EMERGENCIES_FILE ?? path.join(worldDir, "emergencies.txt");
 // The clock moved by no more than this since it was last looked at: it's running in play, not being skipped.
@@ -163,6 +164,7 @@ const playerRoom = (game) => {
   return mapFor(game.location)?.levels?.[walk.level]?.roomAt(walk.x, walk.y) ?? null;
 };
 const told = (game, place, lines) => (game.location === place ? lines : []);
+const upperFirst = (text) => (text ? text[0].toUpperCase() + text.slice(1) : "");
 const wound = (name, part) => newWound(woundKindsByName(name).find((kind) => kind.parts.includes(part)), part);
 const pickOf = (list) => list[Math.floor(Math.random() * list.length)];
 
@@ -188,11 +190,16 @@ function stepFire(game, fire, t, latest) {
   const rules = emergenciesModel().fire;
   const lines = [];
   const starved = !airFlows(game, fire.place, fire.room);
-  const crew = (systemsOf(fire.place)?.engineers?.length ?? 0) > 0 && (t - fire.since) * 60 >= rules.engineers;
+  // The engineers are at it from the time the file gives. Where the place has a work board (src/work.js) one of them
+  // has to have been sent and to have got there, and while nobody has, nobody's at it.
+  const board = boardRuns(fire.place);
+  const time = (systemsOf(fire.place)?.engineers?.length ?? 0) > 0 && (t - fire.since) * 60 >= rules.engineers;
+  const sent = time && board ? troubleCrew(game, fire.place, "fire", fire.room, t) : null;
+  const crew = time && (!board || Boolean(sent));
   if (crew && !fire.crew) {
     fire.crew = true;
-    lines.push(`[FIRE] The engineers are at the fire in ${roomName(fire.place, fire.room)}.`);
-  }
+    lines.push(sent ? `[FIRE] ${upperFirst(calledBy(game, fire.place, sent))} is getting the better of the fire in ${roomName(fire.place, fire.room)}.` : `[FIRE] The engineers are at the fire in ${roomName(fire.place, fire.room)}.`);
+  } else if (!crew && fire.crew && board) fire.crew = false;
   if (starved || crew) fire.size -= (starved ? 1 : 0) + (crew ? 1 : 0);
   // A go at it by hand holds it for the step it was fought in.
   else if (fire.fought !== undefined && (t - fire.fought) * 60 < rules.step) return lines;
@@ -241,6 +248,57 @@ export function startBrawl(game, place, room, at = nowOf(game)) {
 
 // ---- The clock ----------------------------------------------------------------------------------------
 
+// What's burning burns on, a step at a time, up to a time, however much of it went by: everywhere, or at one place.
+// A place's work board calls this as its own clock moves (src/work.js), so that whoever was sent to a fire is free
+// again as soon as it's out; each step is taken once, whoever asks.
+export function burnOn(game, until, place = null) {
+  const model = emergenciesModel();
+  const lines = [];
+  if (!model?.fire) return lines;
+  const now = nowOf(game);
+  const step = model.fire.step / 60;
+  for (const fire of Object.values(game.emergencies?.fires ?? {})) {
+    if (place && fire.place !== place) continue;
+    for (let i = 0; i < 400 && fire.at + step <= until && fireIn(game, fire.place, fire.room) === fire; i += 1) {
+      fire.at += step;
+      lines.push(...stepFire(game, fire, fire.at, fire.at + step > now));
+    }
+  }
+  return lines;
+}
+// The engineers patch a breach, with a parts crate out of the stores: the lines for the story, and whether it's
+// done. With no crate aboard it waits, and that's said once. Whoever the place's board sent is named.
+export function patchBreach(game, place, room, who = null) {
+  const breach = breachIn(game, place, room);
+  if (!breach) return { done: true, lines: [] };
+  const name = who ? upperFirst(calledBy(game, place, who)) : "The engineers";
+  if (takeAboard(game, place, "parts_crate", 1) < 1) {
+    const lines = breach.waiting ? [] : told(game, place, [`[BREACH] ${name} can't patch ${roomName(place, room)}: there isn't a parts crate aboard.`]);
+    breach.waiting = true;
+    return { done: false, lines };
+  }
+  delete game.emergencies.breaches[keyOf(place, room)];
+  return { done: true, lines: told(game, place, [`[BREACH] ${name} ${who ? "has" : "have"} patched the hull in ${roomName(place, room)}, with a parts crate.`]) };
+}
+// The fires and the breaches at a place, for its work board: each with its room, since when, how long the file
+// gives the engineers, and for the page how big the fire is or whether the breach waits for a crate.
+const NO_TROUBLE = Object.freeze([]);
+export function troublesAt(game, place) {
+  const state = game.emergencies;
+  if (!state) return NO_TROUBLE;
+  const model = emergenciesModel();
+  let out = null;
+  for (const key in state.fires ?? {}) {
+    const fire = state.fires[key];
+    if (fire.place === place && model?.fire) (out ??= []).push({ kind: "fire", room: fire.room, name: roomName(place, fire.room), since: fire.since, minutes: model.fire.engineers, words: SIZES[Math.min(fire.size, SIZES.length - 1)] });
+  }
+  for (const key in state.breaches ?? {}) {
+    const breach = state.breaches[key];
+    if (breach.place === place && model?.breach) (out ??= []).push({ kind: "breach", room: breach.room, name: roomName(place, breach.room), since: breach.since, minutes: model.breach.engineers, waiting: Boolean(breach.waiting) });
+  }
+  return out ?? NO_TROUBLE;
+}
+
 addClockWork((game) => {
   const model = emergenciesModel();
   if (!model) return [];
@@ -248,23 +306,12 @@ addClockWork((game) => {
   const lines = [];
   const state = game.emergencies;
   // What's burning burns on, a step at a time, however much time went by.
-  for (const fire of Object.values(state?.fires ?? {})) {
-    const step = model.fire.step / 60;
-    for (let i = 0; i < 400 && fire.at + step <= now && fireIn(game, fire.place, fire.room) === fire; i += 1) {
-      fire.at += step;
-      lines.push(...stepFire(game, fire, fire.at, fire.at + step > now));
-    }
-  }
-  // The engineers patch a breach in time, with a parts crate out of the stores; with none, it waits.
+  lines.push(...burnOn(game, now));
+  // The engineers patch a breach in time, with a parts crate out of the stores; with none, it waits. Where the place
+  // has a work board, it's whoever the board sent who patches it, when they've got there (src/work.js).
   for (const breach of Object.values(state?.breaches ?? {})) {
-    if (!model.breach || (now - breach.since) * 60 < model.breach.engineers || !(systemsOf(breach.place)?.engineers?.length > 0)) continue;
-    if (takeAboard(game, breach.place, "parts_crate", 1) < 1) {
-      if (!breach.waiting) lines.push(...told(game, breach.place, [`[BREACH] The engineers can't patch ${roomName(breach.place, breach.room)}: there isn't a parts crate aboard.`]));
-      breach.waiting = true;
-      continue;
-    }
-    delete state.breaches[keyOf(breach.place, breach.room)];
-    lines.push(...told(game, breach.place, [`[BREACH] The engineers have patched the hull in ${roomName(breach.place, breach.room)}, with a parts crate.`]));
+    if (!model.breach || boardRuns(breach.place) || (now - breach.since) * 60 < model.breach.engineers || !(systemsOf(breach.place)?.engineers?.length > 0)) continue;
+    lines.push(...patchBreach(game, breach.place, breach.room).lines);
   }
   // A brawl nobody stopped ends with both of them hurt.
   const brawl = state?.brawl;

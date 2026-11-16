@@ -680,12 +680,18 @@ export function standsAt(game, place, key, hours = game.clock.hours) {
 }
 
 // How many minutes someone's walk takes, from one spot the place's file knows to another (the square beside a store
-// is one), or from where they are when it names no spot to start from: the squares of the way at the pace their legs
-// allow. Null when there's no telling.
+// is one) or to a room (@ and its id), or from where they are when it names no spot to start from: the squares of
+// the way at the pace their legs allow. Null when there's no telling.
 export function walkMinutes(game, place, key, from, to, hours = game.clock.hours) {
   const file = lifeFileFor(place);
   if (!file) return null;
-  const squares = walkLength(place, from ? file.spots[from] : standsAt(game, place, key, hours), file.spots[to]);
+  // A spot the file knows, or a room, written @ and its id: the square people come into it at.
+  const spotOf = (where) => {
+    if (!/^@/.test(where)) return file.spots[where];
+    const room = roomOf(mapFor(place), where.slice(1));
+    return room?.start ? { level: room.levelId, x: room.start.x, y: room.start.y } : null;
+  };
+  const squares = walkLength(place, from ? spotOf(from) : standsAt(game, place, key, hours), spotOf(to));
   if (squares === null) return null;
   const entry = rosterFor(game, place).find((one) => one.key === key);
   const pace = entry ? paceOf(bodyOf(game, entry.id ? { id: entry.id } : { name: entry.name, place })) : 1;

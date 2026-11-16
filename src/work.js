@@ -17,6 +17,10 @@
 // and then works at it (src/systems.js walks them and says what they're doing). A repair nobody can take waits: its
 // hour starts when someone does. One of the power or the air is a repair the ship can't do without.
 //
+// Fires and breaches. An engineer is sent to each, walks there, and is on that job until the fire's out or the
+// hull's patched (src/emergencies.js says when that is: never sooner than the time its file gives, and not at all
+// while nobody's got there). The guards answering an alarm are on a job too, which nothing takes them off.
+//
 // The medbay and the workshop. They keep their own records of who's carrying whom, who's treating whom and what's
 // on the bench (src/medbay.js, src/workshop.js), and the board reads those as jobs like its own: whoever's on one is
 // on a job, and can be taken off it for something clearly more urgent. Who answers a call for someone down is the
@@ -50,11 +54,12 @@ import { storeCounts, storePut, storeTake } from "./bag.js";
 import { YOU, calledBy, holderKey, lostReason, onJob, postById, speedOf } from "./command.js";
 import { ITEMS } from "./data.js";
 import { hasReached, notAbout, walkMinutes } from "./life.js";
-import { countOf, itemWords, logisticsOf, machineStarved, putAboard, storeById, tripOf } from "./logistics.js";
+import { burnOn, patchBreach, troublesAt } from "./emergencies.js";
+import { countAboard, countOf, itemWords, logisticsOf, machineStarved, putAboard, storeById, tripOf } from "./logistics.js";
 import { downAt, downRecord, medbayCalled, medbayHands, medbayOf, medbayRows, medbayWork } from "./medbay.js";
 import { workshopHands, workshopRows, workshopWork } from "./workshop.js";
 import { detourExtras } from "./room-hooks.js";
-import { alarmDetour, anyWaitingForParts, dutyDetour, engineersOf, finishRepair, holdRepair, repairNow, repairsDue, repairsWaiting, waitingForParts } from "./systems.js";
+import { alarmWork, anyWaitingForParts, dutyDetour, engineersOf, finishRepair, holdRepair, repairNow, repairsDue, repairsWaiting, waitingForParts } from "./systems.js";
 import { worthOf } from "./worth.js";
 
 // How long a walk is taken to be when there's no telling how far it is.
@@ -129,6 +134,7 @@ const whereOf = (j) => `store:${j.phase === "carrying" || j.phase === "unloading
 function doingWords(model, j) {
   if (j.doing) return j.doing;
   if (j.ref) return `mending ${j.what ?? "what's broken"}`;
+  if (j.room) return j.kind === "fire" ? `fighting the fire in ${j.what}` : `patching the hull in ${j.what}`;
   const from = storeById(model, j.from);
   const to = storeById(model, j.to);
   if (j.phase === "going") return `fetching ${itemWords(j.item, 2)} from the ${from?.name ?? "stores"}`;
@@ -138,27 +144,28 @@ function doingWords(model, j) {
 }
 
 // Who something outside the board has taken, with what they're doing about it: whoever's hurt and making their own
-// way to the medbay (src/medbay.js), the guards at an alarm (src/systems.js), and whoever's walking with the player,
-// sent to the medbay or in a brawl (src/room-hooks.js). (Whoever's down is lost to their job altogether, which the
-// chain of command says, and whoever's gone to help them is on a job of the board's.) Bad air isn't one of them: a
-// ship with no power has no air, and someone still has to carry the cell that brings both back.
+// way to the medbay (src/medbay.js), and whoever's walking with the player, sent to the medbay or in a brawl
+// (src/room-hooks.js). (Whoever's down is lost to their job altogether, which the chain of command says, and
+// whoever's gone to help them, or to an alarm, is on a job of the board's.) Bad air isn't one of them: a ship with
+// no power has no air, and someone still has to carry the cell that brings both back.
 function holdsAt(game, place) {
-  const alarm = alarmDetour(game, place);
   const extras = detourExtras(game, place);
   let walking = false;
   for (const key in game.down ?? {}) if (game.down[key].place === place && game.down[key].going) walking = true;
-  if (!alarm && !extras && !walking) return NOBODY_HELD;
-  return (key) => (walking && downRecord(game, place, key)?.going ? `making their own way to ${medbayCalled(place)}` : null) ?? (alarm?.(key) ?? extras?.(key, null, false))?.doing ?? null;
+  if (!extras && !walking) return NOBODY_HELD;
+  return (key) => (walking && downRecord(game, place, key)?.going ? `making their own way to ${medbayCalled(place)}` : null) ?? extras?.(key, null, false)?.doing ?? null;
 }
 
 // The work other parts of the game keep their own records of, as jobs like the board's own: whoever's answering a
-// call or treating someone (src/medbay.js), and whoever's at the workshop's bench (src/workshop.js). Each is
-// { kind, by, doing, drop }, drop being how they're taken off it.
+// call or treating someone (src/medbay.js), whoever's at the workshop's bench (src/workshop.js), and the guards
+// answering an alarm (src/systems.js). Each is { kind, by, doing, drop }, drop being how they're taken off it, and
+// fixed when nothing does.
 const NO_OTHERS = Object.freeze([]);
 function othersWork(game, place) {
   const medbay = medbayWork(game, place);
   const workshop = workshopWork(game, place);
-  return medbay.length || workshop.length ? [...medbay, ...workshop] : NO_OTHERS;
+  const alarm = alarmWork(game, place);
+  return medbay.length || workshop.length || alarm.length ? [...alarm, ...medbay, ...workshop] : NO_OTHERS;
 }
 
 // The board as it stands at a moment: its own jobs, the work kept elsewhere, and who's taken by something outside
@@ -223,7 +230,7 @@ function handFor(at, people, kind, { inOrder = false, dry = false } = {}) {
   // What someone would leave for this: the job they're on, when it's clearly less urgent and nothing else keeps them.
   const lesser = (key) => {
     const theirs = at.taken(key);
-    return theirs && rankOf(model, kindOfJob(theirs)) - rank >= CLEARLY && onlyBusy(at, key) ? theirs : null;
+    return theirs && !theirs.fixed && rankOf(model, kindOfJob(theirs)) - rank >= CLEARLY && onlyBusy(at, key) ? theirs : null;
   };
   const leaving = (key, job) => {
     if (!dry) at.release(job);
@@ -690,6 +697,59 @@ function repairAsks(ctx, waiting) {
   return asks;
 }
 
+// ---- Fires and breaches -----------------------------------------------------------------------------------
+
+// Whoever the board sent to a fire or a breach, once they've got there: their key, or null while nobody has. What
+// burns and what leaks asks this (src/emergencies.js). It goes by the time of the walk, so it comes out the same
+// however the clock is cut.
+export function troubleCrew(game, place, kind, room, hours) {
+  const j = jobsAt(game, place).find((one) => one.kind === kind && one.room === room && one.by);
+  return j && hours * 60 >= j.took + (j.walk ?? WALK_MINUTES) - 1e-6 ? j.by : null;
+}
+
+// The engineers at fires and breaches, over one piece of the clock: a job whose fire is out or whose hull is patched
+// is over, and a breach is patched once whoever was sent has got there and the time the file gives has gone by
+// since the plate went, if there's a parts crate aboard to do it with.
+function tendTroubles(ctx, troubles) {
+  const { game, place, t, chunk, jobs, notes } = ctx;
+  const end = t + chunk;
+  for (const j of jobs.filter((one) => one.room)) {
+    const trouble = troubles.find((one) => one.kind === j.kind && one.room === j.room);
+    if (!trouble) ctx.over(j);
+    else if (j.kind === "breach" && end >= j.took + (j.walk ?? WALK_MINUTES) && end >= trouble.since * 60 + trouble.minutes) {
+      const { lines } = patchBreach(game, place, j.room, j.by);
+      if (notes) notes.push(...lines);
+      ctx.over(j);
+    }
+  }
+}
+
+// A fire or a breach with nobody on it asks for an engineer, who walks there. A breach that's waited for a parts
+// crate asks again once there's one aboard.
+function troubleAsks(ctx, troubles) {
+  const { game, place, model, t, hours, jobs } = ctx;
+  let people = null;
+  let crates = null;
+  const asks = [];
+  troubles.forEach((trouble, order) => {
+    if (jobs.some((j) => j.room === trouble.room && j.kind === trouble.kind)) return;
+    if (trouble.waiting && !((crates ??= countAboard(game, place, ["parts_crate"])?.n ?? 0) > 0)) return;
+    asks.push({
+      rank: rankOf(model, trouble.kind),
+      order: 3000 + order,
+      counts: "repairs",
+      raise() {
+        const who = handFor(ctx, (people ??= menders(game, place)), trouble.kind)?.key ?? null;
+        // A fire or a breach with nobody to send to it is what the duty counts.
+        if (!who) return 1;
+        jobs.push({ id: ctx.next(), kind: trouble.kind, room: trouble.room, what: trouble.name, by: who, took: t, since: t, walk: walkFor(game, place, who, null, `@${trouble.room}`, hours) });
+        return 0;
+      },
+    });
+  });
+  return asks;
+}
+
 // ---- The board's clock ------------------------------------------------------------------------------------
 
 // The board over one piece of the clock, as long as chunk minutes: the officers look if it's time, whoever can't go
@@ -731,18 +791,31 @@ export function runBoard(game, place, model, state, t, chunk, notes = null) {
   const ctx = acting(game, place, model, state, t, chunk, notes);
   // Whoever's lost to their work, or called to something outside the board, hands back what the medbay or the
   // workshop had them at, as they do a job of the board's own.
-  for (const o of ctx.others()) if (lostReason(game, place, o.by) || ctx.held(o.by)) ctx.release(o);
-  if (!jobs.length && !model.wants.length && !systems) return NOTHING_LEFT;
+  const kept = ctx.others();
+  for (const o of kept) if (!o.fixed && (lostReason(game, place, o.by) || ctx.held(o.by))) ctx.release(o);
+  // What's burning burns on as the board's clock moves, so that whoever's at a fire is free the moment it's out.
+  const burning = Boolean(game.emergencies) && (Object.keys(game.emergencies.fires ?? {}).length > 0 || Object.keys(game.emergencies.breaches ?? {}).length > 0);
+  if (burning) {
+    const lines = burnOn(game, (t + chunk) / 60, place);
+    if (notes) notes.push(...lines);
+  }
+  let troubles = burning ? troublesAt(game, place) : [];
+  if (!jobs.length && !model.wants.length && !systems && !troubles.length) return NOTHING_LEFT;
   const deciding = Boolean(model.deciders?.first || model.deciders?.levels);
   if (deciding && Math.floor(t / LOOK_EVERY) !== Math.floor((t - chunk) / LOOK_EVERY)) officersLook(game, place, model, state, t);
   tendMine(game, place, model, state, t, notes);
-  // Whoever has been called to something outside the board, or can't go on, hands their job back.
-  for (const j of [...jobs]) if (j.by && (lostReason(game, place, j.by) || !handsFree(game, place, j.by) || ctx.held(j.by))) ctx.release(j);
-  for (const j of [...jobs]) if (!j.ref) tendCarry(ctx, j);
+  // Whoever has been called to something outside the board, or can't go on, hands their job back; and so does
+  // whoever another part of the game has taken for work of its own, as the alarm takes its guards.
+  for (const j of [...jobs]) if (j.by && (lostReason(game, place, j.by) || !handsFree(game, place, j.by) || ctx.held(j.by) || ctx.others().some((o) => o.by === j.by))) ctx.release(j);
+  for (const j of [...jobs]) if (j.to) tendCarry(ctx, j);
   if (jobs.some((j) => j.ref)) tendRepairs(ctx);
+  if (troubles.length || jobs.some((j) => j.room)) {
+    tendTroubles(ctx, troubles);
+    if (burning) troubles = troublesAt(game, place);
+  }
   // What's broken and due within the hour, once whatever was finished just now is out of the way.
   const due = systems ? repairsDue(game, place, hours + 1) : [];
-  const asks = [...loadAsks(ctx), ...carryAsks(ctx), ...(due.length ? repairAsks(ctx, due) : [])];
+  const asks = [...loadAsks(ctx), ...carryAsks(ctx), ...(due.length ? repairAsks(ctx, due) : []), ...(troubles.length ? troubleAsks(ctx, troubles) : [])];
   if (!asks.length) return NOTHING_LEFT;
   if (asks.length > 1) asks.sort((a, b) => a.rank - b.rank || a.order - b.order);
   let left = null;
@@ -753,15 +826,19 @@ export function runBoard(game, place, model, state, t, chunk, notes = null) {
   return left ?? NOTHING_LEFT;
 }
 
-// What the board has someone carrying and where, for the life engine's walks: null when nobody is. (Whoever's
-// mending is walked by the systems, which know where the spare and the part are.)
+// What the board has someone carrying and where, or which fire or breach it's sent them to, for the life engine's
+// walks: null when it's sent nobody anywhere. (Whoever's mending is walked by the systems, which know where the
+// spare and the part are.)
 export function workDetour(game, place) {
   const jobs = jobsAt(game, place);
   if (!jobs.length) return null;
   const model = logisticsOf(place);
   if (!model) return null;
   const mine = new Map();
-  for (const j of jobs) if (j.by && !j.ref) mine.set(j.by, { where: whereOf(j), doing: doingWords(model, j) });
+  for (const j of jobs) {
+    if (!j.by || j.ref) continue;
+    mine.set(j.by, { where: j.room ? `@${j.room}` : whereOf(j), doing: doingWords(model, j) });
+  }
   return mine.size ? (key) => mine.get(key) ?? null : null;
 }
 
@@ -861,6 +938,45 @@ function keptRows(at, kept, firstPart, now) {
       busy: Boolean(row.by), stuck: !row.by && Boolean(row.stuck ?? nobody), mine: false, canTake: false,
     };
   });
+}
+
+// The fires and the breaches as the Work page's rows: who's been sent to each, or why nobody has.
+function troubleRows(at, engineers) {
+  const { game, place, model, jobs } = at;
+  let crates = null;
+  return troublesAt(game, place).map((trouble, order) => {
+    const j = jobs.find((one) => one.kind === trouble.kind && one.room === trouble.room && one.by) ?? null;
+    const noCrate = !j && trouble.waiting && !((crates ??= countAboard(game, place, ["parts_crate"])?.n ?? 0) > 0);
+    const nobody = j || noCrate ? null : whyNobodyOf(at, engineers, { wake: true, nobody: "there's nobody to send" });
+    return {
+      rank: rankOf(model, trouble.kind), order: 3000 + order,
+      id: `${trouble.kind}:${trouble.room}`, mark: "!!",
+      what: trouble.kind === "fire" ? `Fight the fire in ${trouble.name}` : `Patch the hull in ${trouble.name}`,
+      why: trouble.kind === "fire" ? `it's ${trouble.words}` : "the air's going out of it",
+      status: j ? `${nameAt(game, place, j.by)} is ${doingWords(model, j)}, since ${clockWords(j.took)}` : noCrate ? "waiting for a parts crate: there's none aboard" : nobody ?? "about to be taken up",
+      by: "the engineers", tip: "Seen to by the engineers, the first of them who's free; anyone's woken for it.",
+      busy: Boolean(j), stuck: !j && Boolean(noCrate || nobody), mine: false, canTake: false,
+    };
+  });
+}
+// An alarm as the Work page's row: the guards answering it.
+function alarmRows(at) {
+  const { game, place, model } = at;
+  const guards = alarmWork(game, place);
+  const ringing = game.systems?.[place]?.alarm?.ringing ?? null;
+  if (!guards.length && !ringing?.room) return [];
+  const names = guards.map((one) => nameAt(game, place, one.by));
+  const listed = names.length < 2 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+  const room = guards[0]?.name ?? null;
+  return [{
+    rank: rankOf(model, "alarm"), order: 4000,
+    id: `alarm:${guards[0]?.room ?? ringing.room}`, mark: "!!",
+    what: room ? `Answer the alarm in ${room}` : "Answer the alarm",
+    why: guards[0]?.seen || ringing?.seen ? "someone was caught on camera" : null,
+    status: guards.length ? `${listed} ${guards.length === 1 ? "is" : "are"} answering it` : "nobody hears it: there's nobody to answer, or the relay's down",
+    by: "the guards", tip: "Answered by the guards, all of them.",
+    busy: guards.length > 0, stuck: !guards.length, mine: false, canTake: false,
+  }];
 }
 
 // The Work page: the officers' orders, every store with what it has against what it wants and what's on its way,
@@ -971,6 +1087,6 @@ export function boardView(game, place) {
         }),
       };
     }),
-    jobs: [...carrying, ...mending, ...keptRows(at, kept, firstPart, now)].sort((a, b) => a.rank - b.rank || a.order - b.order).map(({ rank, order, ...job }) => job),
+    jobs: [...carrying, ...mending, ...keptRows(at, kept, firstPart, now), ...troubleRows(at, engineers), ...alarmRows(at)].sort((a, b) => a.rank - b.rank || a.order - b.order).map(({ rank, order, ...job }) => job),
   };
 }

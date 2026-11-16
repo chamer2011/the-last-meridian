@@ -7,11 +7,15 @@ draft: the AI's, not yet edited by the owner
 #
 # A fire grows by one every so often, up to its most. From a size, each time it grows it breaks something in the room;
 # at a size it spreads once through a door that isn't locked. It spoils the room's air, so people leave. It shrinks
-# while the room's air is shut off (the vent sealed, or the air plant stopped), while the engineers are at it (they
-# come by themselves after a while), and each time you fight it by hand, which practises a skill and can burn you.
+# while the room's air is shut off (the vent sealed, or the air plant stopped), while the engineers are at it, and
+# each time you fight it by hand, which practises a skill and can burn you. The engineers line is how long after it
+# starts they have the better of it. Aboard a ship with a work board (world/logistics) one of them is sent the
+# moment it starts and has to get there first, so with nobody able to come nobody's at it; anywhere else they're
+# counted as there from that time.
 #
 # A breach lets a room's air out until it's patched: by you, with an emergency hull patch or a parts crate, or by the
-# engineers after a while, with a parts crate out of the ship's stores.
+# engineers after a while, with a parts crate out of the ship's stores (aboard a ship with a work board, by the one
+# of them it sent, once they've got there and the time is up).
 #
 # A brawl is two people coming to blows at a sitting, on short rations with morale low. Step between them (a skill
 # against a number) and it's over; leave it, and after a while they've both been hurt.

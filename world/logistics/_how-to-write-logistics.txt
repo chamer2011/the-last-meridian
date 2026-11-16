@@ -264,9 +264,11 @@ day there, such as a beaten mutineer, is carried in their turn). A patient who's
 lesser work in the same way, and a medic or a mender who's on other work for the board is left to it. Work
 left at the workshop's bench is set down with what was left of it kept, and taken up again where it was.
 
-The fire, the breach and the alarm lines are read and kept, and count from the day those join the board:
-until then the engineers are counted as at a fire after the time world/emergencies.txt gives, and the guards
-answer an alarm as they always have.
+A fire and a breach are the board's own jobs too: an engineer (the place's systems file says who they are) is
+sent to each the moment it starts, walks there, and is on it until the fire's out or the hull's patched.
+world/emergencies.txt still says how long each takes, counted from when it started: a fire can't be turned
+sooner, and isn't fought at all while nobody's got there. The guards answering an alarm are on a job as well,
+which nothing takes them off, and carry nothing meanwhile.
 
 LOADS
 -----
