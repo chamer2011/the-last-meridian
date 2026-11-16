@@ -7,7 +7,7 @@
 import { el } from "./dom.js";
 import { FURNITURE_BY_ID, footprintOf, squaresOf } from "./furniture.js";
 import { hideLoading, showLoading } from "./loading.js";
-import { PACK_FIGURE, PIXEL_UNIT, drawPixelCrate, drawPixelDoor, drawPixelFixture, drawPixelFloors, drawPixelLowWall, drawPixelMachine, drawPixelPiece, drawPixelWall, packBed, packKey, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim } from "./pixel-art.js";
+import { PACK_FIGURE, PIXEL_UNIT, drawPixelCrate, drawPixelDoor, drawPixelFixture, drawPixelFloors, drawPixelLowWall, drawPixelMachine, drawPixelPiece, drawPixelStairs, drawPixelWall, packBed, packKey, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim, stairsUp } from "./pixel-art.js";
 
 // A console square is about twice as tall as it's wide, so two columns make one tile.
 export const CELL_WIDTH = 0.5;
@@ -363,6 +363,25 @@ export function buildScene(view) {
   }
   // Furniture (public/furniture.js), as blocks of its own, with the light some of it gives off.
   const furniture = furnish(view, { kinds, heights, blocks, painted: (x, y) => runs.some((run) => run.y === y && x >= run.x && x < run.x + run.length), unpowered: unpoweredAt });
+  // A deck's stairs stand where the plan has their row of posts (stairsOf, below): one block each beside the posts,
+  // which only the pixel-art view draws, in the posts' place.
+  const stairs = stairsOf(view, styles);
+  for (const stair of stairs) {
+    for (const block of blocks) if (block.style === "post" && block.y === stair.y && block.x >= stair.x0 && block.x < stair.x1) block.stair = true;
+    const [x0, x1] = [stair.x0 * CELL_WIDTH, stair.x1 * CELL_WIDTH];
+    const up = stair.way === "up" ? stairsUp({ x0, x1 }) : null;
+    // What stands up is as long as its flights and its landing; a well is flat, and drawn before anything near it.
+    const [from, to, top] = up ? [up.top - up.landing, up.foot, up.high + 0.3] : [x0, x1, 0];
+    const span = { minU: Infinity, maxU: -Infinity, minV: Infinity, maxV: -Infinity };
+    for (const wx of [from, to]) for (const wy of [stair.y, stair.y + 1]) for (const z of [0, top]) {
+      const { u, v } = project(wx, wy, z);
+      span.minU = Math.min(span.minU, u);
+      span.maxU = Math.max(span.maxU, u);
+      span.minV = Math.min(span.minV, v);
+      span.maxV = Math.max(span.maxV, v);
+    }
+    blocks.push({ type: "block", style: "stairs", way: stair.way, x: stair.x0, y: stair.y, x0, y0: stair.y, x1, y1: stair.y + 1, h: top, seed: 0, mark: " ", right: 0, left: 0, back: 0, side: 0, depth: up ? (from + to) / 2 + stair.y + 0.5 : x0 + stair.y, span, ...(light[stair.y]?.[stair.x0] ? { light: true } : {}) });
+  }
   blocks.sort((a, b) => a.depth - b.depth);
 
   // A room on fire burns on a few of its squares, more as it grows: each a flicker on the floor with light of its own,
@@ -1429,7 +1448,14 @@ function drawBlock(painter, block, materials) {
     ctx.stroke();
     return;
   }
+  if (style === "stairs") {
+    // A deck's stairs are the pack's in the pixel-art view (public/pixel-art.js); in any other, the row of posts.
+    drawPixelStairs(painter, block, block.light ? { look: "light" } : {});
+    return;
+  }
   if (style === "post") {
+    // The posts of a stair give way to the pack's stairs in the pixel-art view.
+    if (block.stair && pixelArtOn()) return;
     // Thinner than the square it's on, and round, as far as anyone can tell at this size.
     const inset = 0.09;
     const left = x0 + inset;
@@ -2423,7 +2449,7 @@ function drawTile(room, tx, ty) {
       sctx.fill();
       continue;
     }
-    if (block.style === "plants" || block.style === "lamp" || block.wx !== undefined) continue;
+    if (block.style === "plants" || block.style === "lamp" || block.style === "stairs" || block.wx !== undefined) continue;
     if (!reaches(block.span, unit * 1.5)) continue;
     const x0 = block.x * CELL_WIDTH;
     const x1 = x0 + CELL_WIDTH;
@@ -4207,6 +4233,36 @@ function drawPackSleepers(painter, piece, sleepers, bed) {
     drawSleeperHead(painter, one, ...at(wx, wy, z + 0.09), r);
     ctx.globalAlpha = 1;
   });
+}
+
+// The stairs of a deck: a run of four posts or more along a row of the plan, in a room with a way up or down (a way
+// out of that room whose words begin "Up" or "Down"), is where its staircase stands. Each is { x0, x1, y, way }: the
+// squares it takes (x1 isn't one of them) and "up" or "down". A room with both ways has a stair for each, on the half
+// of the run that's on the side its own way out is. styles is the scene's, a row of squares at a time.
+export function stairsOf(view, styles) {
+  const areas = view.areas ?? [];
+  if (!areas.length) return [];
+  const roomAt = (x, y) => areas.filter((area) => x >= area.x && x < area.x + area.w && y >= area.y && y < area.y + area.h).sort((a, b) => a.w * a.h - b.w * b.h)[0] ?? null;
+  const wayOf = (exit) => (/^\s*up\b/i.test(exit.label ?? "") ? "up" : /^\s*down\b/i.test(exit.label ?? "") ? "down" : null);
+  const found = [];
+  styles.forEach((row, y) => {
+    for (let x = 0; x < row.length; x += 1) {
+      if (row[x] !== "post") continue;
+      let end = x;
+      while (row[end + 1] === "post") end += 1;
+      const room = end - x + 1 >= 4 ? roomAt(x, y) : null;
+      const ways = room ? (view.exits ?? []).filter((exit) => exit.room === room.id && wayOf(exit)) : [];
+      const up = ways.find((exit) => wayOf(exit) === "up");
+      const down = ways.find((exit) => wayOf(exit) === "down");
+      if (up && down) {
+        const half = x + Math.ceil((end - x + 1) / 2);
+        const first = up.x <= down.x ? "up" : "down";
+        found.push({ x0: x, x1: half, y, way: first }, { x0: half, x1: end + 1, y, way: first === "up" ? "down" : "up" });
+      } else if (up || down) found.push({ x0: x, x1: end + 1, y, way: up ? "up" : "down" });
+      x = end;
+    }
+  });
+  return found;
 }
 
 // The look a piece of furniture is drawn in by the pixel-art view, where its room has one of its own.

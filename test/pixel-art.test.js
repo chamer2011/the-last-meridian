@@ -5,8 +5,10 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { PACK_FIGURE, doorPicture, lightDim, machineAt, mapping, packBed, pieceWay, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim, solidBox, standingPoint, steelOf } from "../public/pixel-art.js";
-import { figureUnit, sittingIn } from "../public/iso.js";
+import { FLIGHT, PACK_FIGURE, doorPicture, lightDim, machineAt, mapping, packBed, pieceWay, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim, solidBox, stairsUp, standingPoint, steelOf } from "../public/pixel-art.js";
+import { buildScene, figureUnit, sittingIn, stairsOf } from "../public/iso.js";
+import { createGameFromDraft, randomDraft } from "../src/creator.js";
+import { placeLevels } from "../src/walk.js";
 import { setPackFurniture } from "../public/furniture.js";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -207,6 +209,41 @@ test("people lie in the packs' beds: one in a bed, two in a bunk or a wide bed, 
     assert.ok(sittingIn({ kind: "interiors/Bedroom/Bed_J_4", facing: "e", x0: 4, y0: 2, x1: 5, y1: 3 }, 4.25, 2.5).wy > 2.5);
   } finally {
     setPackFurniture([]);
+  }
+});
+
+test("a row of posts in a room with a way up or down is where its stairs stand", () => {
+  const row = (posts) => Array.from({ length: 16 }, (_, x) => (posts.includes(x) ? "post" : null));
+  const styles = [row([]), row([2, 3, 4, 5, 6, 7, 10, 11]), row([])];
+  const room = { id: "stair", x: 0, y: 0, w: 16, h: 3 };
+  const down = { room: "stair", x: 4, y: 2, label: "Down to deck 2" };
+  const up = { room: "stair", x: 9, y: 0, label: "Up to deck 1" };
+  // Six posts and a way down: one stair, all of the run. Two posts are lockers, whatever the room.
+  assert.deepEqual(stairsOf({ areas: [room], exits: [down] }, styles), [{ x0: 2, x1: 8, y: 1, way: "down" }]);
+  assert.deepEqual(stairsOf({ areas: [room], exits: [up] }, styles), [{ x0: 2, x1: 8, y: 1, way: "up" }]);
+  // Both ways: a stair each, on the half of the run that's on its own way's side.
+  assert.deepEqual(stairsOf({ areas: [room], exits: [down, up] }, styles), [{ x0: 2, x1: 5, y: 1, way: "down" }, { x0: 5, x1: 8, y: 1, way: "up" }]);
+  assert.deepEqual(stairsOf({ areas: [room], exits: [{ ...down, x: 12 }, { ...up, x: 1 }] }, styles).map((one) => one.way), ["up", "down"]);
+  // A way out that goes neither up nor down, a way up in another room, or a level with no rooms: only posts.
+  assert.deepEqual(stairsOf({ areas: [room], exits: [{ room: "stair", x: 4, y: 2, label: "To the docks" }] }, styles), []);
+  assert.deepEqual(stairsOf({ areas: [room], exits: [{ ...down, room: "elsewhere" }] }, styles), []);
+  assert.deepEqual(stairsOf({ exits: [down] }, styles), []);
+  // Going up, it's two flights and a landing within its place, the second flight from the top of the first.
+  const stood = stairsUp({ x0: 10, x1: 13 });
+  assert.ok(stood.top - stood.landing >= 10 && stood.foot <= 13);
+  assert.ok(Math.abs(stood.foot - stood.mid - FLIGHT.run) < 1e-9 && Math.abs(stood.mid - stood.top - FLIGHT.run) < 1e-9);
+  assert.equal(stood.high, FLIGHT.rise * 2);
+  assert.ok(stood.high < 1.7, "it stops short of the top of the walls");
+  // Half a run (a room with both ways) still holds it.
+  const tight = stairsUp({ x0: 10, x1: 11.5 });
+  assert.ok(tight.top - tight.landing >= 10 && tight.foot <= 11.5);
+  // In the scene each stair is a block of its own beside its posts, which stay for every view but the pixel art.
+  const game = createGameFromDraft({ ...randomDraft(), start: "captain" });
+  for (const view of Object.values(placeLevels(game).levels)) {
+    const scene = buildScene(view);
+    const stairs = stairsOf(view, scene.styles);
+    assert.equal(scene.blocks.filter((block) => block.style === "stairs").length, stairs.length);
+    assert.equal(scene.blocks.filter((block) => block.stair).length, stairs.reduce((sum, one) => sum + one.x1 - one.x0, 0));
   }
 });
 

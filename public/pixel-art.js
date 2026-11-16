@@ -584,6 +584,131 @@ export function drawPixelLowWall(painter, block, { cellWidth, wallAt, look = sta
   return true;
 }
 
+// The pack's stairs: on the level sheet, two rows under each look's walls. The first cell is a flight that rises toward
+// the west (the plan's smaller x), its far rail with it; the second is its near rail, drawn over it cell on cell. (The
+// third and fourth are the same turned to rise north.) top: where the middle of the flight's top edge is in its cell.
+// A flight is run tiles long, rises rise tiles, and is wide tiles across.
+export const FLIGHT = { top: [33, 39], run: 0.625, rise: 0.72, wide: 0.65 };
+const STAIR_STEEL = ["#262e2d", "#161b1b", "#0e1212"];
+
+// One flight with both its rails, at the pack's own size: the middle of its top edge at xTop, yc on the plan, zTop up.
+function drawFlight(painter, look, xTop, yc, zTop, bright = 1) {
+  const { ctx, ratio, at, unit } = painter;
+  const scale = unit / 128;
+  const [px, py] = at(xTop, yc, zTop);
+  const row = (LOOKS[look].wallRow + 2) * 128;
+  const sheet = sheetFor("level", look);
+  ctx.save();
+  ctx.setTransform(ratio * scale, 0, 0, ratio * scale, ratio * (px - scale * FLIGHT.top[0]), ratio * (py - scale * FLIGHT.top[1]));
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  // Down a well it's lit from the deck above it, or it couldn't be made out against the dark.
+  if (bright !== 1) ctx.filter = `brightness(${bright})`;
+  ctx.drawImage(sheet, 0, row, 128, 128, 0, 0, 128, 128);
+  ctx.drawImage(sheet, 128, row, 128, 128, 0, 0, 128, 128);
+  ctx.restore();
+}
+
+// A box of plain steel in the stairs' own dark: its top, its side toward the camera and its side to the right.
+function solid(painter, [x0, y0, x1, y1], z0, z1, [top, front, side] = STAIR_STEEL) {
+  const { ctx, at } = painter;
+  const face = (points, colour) => {
+    ctx.beginPath();
+    for (const point of points) ctx.lineTo(...point);
+    ctx.closePath();
+    ctx.fillStyle = colour;
+    ctx.fill();
+  };
+  face([at(x1, y0, z1), at(x1, y1, z1), at(x1, y1, z0), at(x1, y0, z0)], side);
+  face([at(x0, y1, z1), at(x1, y1, z1), at(x1, y1, z0), at(x0, y1, z0)], front);
+  face([at(x0, y0, z1), at(x1, y0, z1), at(x1, y1, z1), at(x0, y1, z1)], top);
+}
+
+// How a staircase going up stands in its place: two flights, the second from the top of the first, to a landing as high
+// as the walls nearly are; in the middle of its place along it, its foot at the east end. All along the plan's x.
+export function stairsUp({ x0, x1 }) {
+  const landing = Math.min(0.45, Math.max(0.15, x1 - x0 - FLIGHT.run * 2 - 0.1));
+  const foot = (x0 + x1) / 2 + (FLIGHT.run * 2 + landing) / 2;
+  return { foot, mid: foot - FLIGHT.run, top: foot - FLIGHT.run * 2, landing, high: FLIGHT.rise * 2 };
+}
+
+// A deck's stairs, in the pixel-art view, where the plan has their row of posts (stairsOf in public/iso.js finds them;
+// stair is { way, x0, y0, x1, y1 } in tiles). The way down is a well in the deck with the pack's flight going down into
+// it from its west end, hazard paint along its near edges; the way up is two of the pack's flights, one from the top
+// of the other, to a landing on posts. False if the test isn't on, and the game draws its posts.
+export function drawPixelStairs(painter, stair, { look = state.look } = {}) {
+  if (!pixelArtOn()) return false;
+  const { ctx, at } = painter;
+  const yc = (stair.y0 + stair.y1) / 2;
+  const half = FLIGHT.wide / 2;
+  if (stair.way === "up") {
+    const { mid, top, landing, high } = stairsUp(stair);
+    const post = (x, y, h) => solid(painter, [x - 0.03, y - 0.03, x + 0.03, y + 0.03], 0, h);
+    for (const [x, h] of [[top - landing, high], [top, high], [mid, FLIGHT.rise]]) post(x, yc - half, h);
+    solid(painter, [top - landing, yc - half, top, yc + half], high - 0.06, high);
+    drawFlight(painter, look, top, yc, high);
+    drawFlight(painter, look, mid, yc, FLIGHT.rise);
+    for (const [x, h] of [[top - landing, high], [top, high], [mid, FLIGHT.rise]]) post(x, yc + half, h);
+    return true;
+  }
+  // The well: all of the stairs' place but a rim. What's below the deck is seen only through its mouth.
+  const [ax, ay, bx, by] = [stair.x0 + 0.06, stair.y0 + 0.14, stair.x1 - 0.06, stair.y1 - 0.14];
+  const mouth = [at(ax, ay), at(bx, ay), at(bx, by), at(ax, by)];
+  const trace = (points) => {
+    ctx.beginPath();
+    for (const point of points) ctx.lineTo(...point);
+    ctx.closePath();
+  };
+  ctx.save();
+  trace(mouth);
+  ctx.clip();
+  ctx.fillStyle = "#040606";
+  ctx.fill();
+  // Its far walls, going down into the dark.
+  const deep = 1.6;
+  const wall = (from, to, colour) => {
+    const [a, b, c, d] = [at(...from, 0), at(...to, 0), at(...to, -deep), at(...from, -deep)];
+    const shade = ctx.createLinearGradient(a[0], a[1], d[0], d[1]);
+    shade.addColorStop(0, colour);
+    shade.addColorStop(0.75, "#040606");
+    trace([a, b, c, d]);
+    ctx.fillStyle = shade;
+    ctx.fill();
+  };
+  wall([ax, ay], [bx, ay], "#2a3534");
+  wall([ax, by], [ax, ay], "#1a2221");
+  drawFlight(painter, look, ax + 0.1, yc, 0, 1.7);
+  // Darker the further down it goes.
+  const [from, to] = [at(ax, yc), at(ax + 1.5, yc + 1.2)];
+  const dark = ctx.createLinearGradient(from[0], from[1], to[0], to[1]);
+  dark.addColorStop(0, "rgba(2,4,4,0)");
+  dark.addColorStop(0.3, "rgba(2,4,4,0)");
+  dark.addColorStop(1, "rgba(2,4,4,.9)");
+  trace(mouth);
+  ctx.fillStyle = dark;
+  ctx.fill();
+  ctx.restore();
+  // A lip round the mouth, and hazard paint along the two edges nearest the camera.
+  ctx.lineWidth = Math.max(1, painter.unit * 0.02);
+  ctx.strokeStyle = "#2c3534";
+  trace(mouth);
+  ctx.stroke();
+  const stripes = (from2, to2) => {
+    const steps = Math.max(2, Math.round(Math.hypot(to2[0] - from2[0], to2[1] - from2[1]) / 0.16));
+    for (let i = 0; i < steps; i += 1) {
+      const p = (t) => [from2[0] + (to2[0] - from2[0]) * t, from2[1] + (to2[1] - from2[1]) * t];
+      const [a, b] = [p(i / steps), p((i + 1) / steps)];
+      const out = from2[1] === to2[1] ? [0, 0.07] : [0.07, 0];
+      trace([at(a[0], a[1]), at(b[0], b[1]), at(b[0] + out[0], b[1] + out[1]), at(a[0] + out[0], a[1] + out[1])]);
+      ctx.fillStyle = i % 2 ? "#1a1c18" : "#b89a2c";
+      ctx.fill();
+    }
+  };
+  stripes([ax, by], [bx, by]);
+  stripes([bx, ay], [bx, by]);
+  return true;
+}
+
 // Which of a door's sixteen pictures it shows: shut and red when locked, shut and green when shut, then one of the six
 // sliding open by how far open it is.
 export function doorPicture(open, locked = false) {
