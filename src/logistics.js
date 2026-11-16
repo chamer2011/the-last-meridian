@@ -158,6 +158,15 @@ function compileLogistics(place) {
     if (!item) at(file.trip.line ?? null, `there's no item called ${what} in world/items, for a trip to carry`);
     else model.trip[item] = n;
   }
+  // Who decides what comes first on the work board, and how much each store should want: a post each, and how often
+  // whoever holds it looks. Without the lines nobody decides: jobs go as they come, and stores want what's written.
+  model.deciders = {};
+  for (const [what, words, said] of [["first", "what comes first", file.first], ["levels", "what stores want", file.levels]]) {
+    if (!said) continue;
+    const post = postByWords(place, said.who) ?? postByWords(place, String(said.who).replace(/^the\s+/i, ""));
+    if (!post) at(said.line ?? null, `${said.who} isn't a post in world/command, to decide ${words}`);
+    else model.deciders[what] = { post, every: said.every, words: said.who };
+  }
   const taken = new Map();
   for (const raw of file.stores ?? []) {
     const line = raw.line ?? null;
@@ -1066,7 +1075,7 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
       runRefills(game, place, model, state, t);
       // The board says how many urgent jobs it couldn't give to anyone: something a store is badly short of, that
       // some other store could spare, with nobody able to carry it. That's what counts as an errand left waiting.
-      const waiting = runBoard(game, place, model, state, t, CHUNK);
+      const waiting = runBoard(game, place, model, state, t, CHUNK, notes);
       // What the posts' duty counts: the minutes the generator was short of the loads, and the minutes urgent jobs
       // stood with nobody on them.
       const supply = powerSupply(game, place);

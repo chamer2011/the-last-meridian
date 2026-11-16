@@ -366,6 +366,30 @@ button.watch-person.moving { background: var(--warn); color: var(--bg); }
 .watch-moving { color: var(--warn); }
 @media (max-width: 640px) { .watch-row { grid-template-columns: 1fr; } }
 .menu-row { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
+/* The Work page (public/work.js): the officers' orders, a row a store with squares for what it has against what it
+   wants, and a row a job. */
+.work-page { display: grid; gap: 14px; }
+.work-top { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.work-orders { display: grid; gap: 4px; padding: 8px 10px; border: 1px solid var(--line); }
+.work-first strong { color: var(--bright); }
+.work-first .work-part { color: var(--warn); }
+.work-row { display: grid; grid-template-columns: minmax(12ch, 22ch) minmax(22ch, 34ch) minmax(0, 1fr); gap: 2px 14px; align-items: baseline; padding: 3px 0; }
+.work-name { color: var(--bright); }
+.work-count { white-space: nowrap; }
+.work-squares { display: inline-flex; gap: 2px; vertical-align: -1px; margin-right: 4px; min-width: 142px; }
+.work-squares i { width: 8px; height: 10px; border: 1px solid transparent; }
+.work-squares i.on { background: var(--bright); border-color: var(--bright); }
+.work-squares i.over { background: var(--muted); border-color: var(--muted); }
+.work-squares i.want { border-color: var(--muted); }
+.work-job { display: grid; grid-template-columns: 2.5ch minmax(0, 1.1fr) minmax(0, 1.4fr) auto; gap: 2px 12px; align-items: baseline; padding: 4px 0; border-top: 1px solid var(--line); }
+.work-mark { font-weight: bold; }
+.work-what { color: var(--bright); }
+@media (max-width: 900px) {
+  .work-row { grid-template-columns: minmax(0, 1fr); }
+  .work-row .work-name:empty { display: none; }
+  .work-job { grid-template-columns: 2.5ch minmax(0, 1fr); }
+  .work-job .work-status, .work-job button { grid-column: 2; justify-self: start; }
+}
 .menu-row strong { color: var(--bright); }
 .menu-entry { display: flex; flex-direction: column; gap: 2px; padding-bottom: 6px; border-bottom: 1px dotted var(--line); min-width: 0; }
 .menu-entry strong { color: var(--bright); }

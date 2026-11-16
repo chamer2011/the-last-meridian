@@ -13,10 +13,13 @@ import { test } from "node:test";
 process.env.GAME_DATA_DIR ??= fs.mkdtempSync(path.join(os.tmpdir(), "meridian-work-board-"));
 const logisticsDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-work-board-files-"));
 const OWN = fs.readFileSync(new URL("../world/logistics/meridian.txt", import.meta.url), "utf8");
+// Nobody decides what comes first or what the stores want here either (test/work-page has the officers).
 const FILE = OWN
   .replace("carried by the deckhands, the techs, the spare hands: A rack", "carried by the techs: A rack")
-  .replace("carried by the deckhands, the cooks, the quartermaster, the spare hands", "carried by the quartermaster");
-assert.ok(FILE.includes("carried by the techs: A rack") && FILE.includes("wants 4 of each; carried by the quartermaster:"), "the ship's file is written as this test expects");
+  .replace("carried by the deckhands, the cooks, the quartermaster, the spare hands", "carried by the quartermaster")
+  .replace("what comes first: the first officer, every hour\n", "")
+  .replace("what stores want: the quartermaster, every 4 hours\n", "");
+assert.ok(FILE.includes("carried by the techs: A rack") && FILE.includes("wants 4 of each; carried by the quartermaster:") && !/what comes first|what stores want/.test(FILE), "the ship's file is written as this test expects");
 fs.writeFileSync(path.join(logisticsDir, "meridian.txt"), FILE);
 process.env.GAME_LOGISTICS_DIR = logisticsDir;
 

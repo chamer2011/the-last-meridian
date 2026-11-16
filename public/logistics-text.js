@@ -19,7 +19,25 @@ export const LOGISTICS_HEADER = [
   { key: "salvage makes", path: "making", type: "making" },
   { key: "carried by", path: "carriers", type: "carriers" },
   { key: "a trip carries", path: "trip", type: "trip" },
+  { key: "what comes first", path: "first", type: "decider" },
+  { key: "what stores want", path: "levels", type: "decider" },
 ];
+
+// "the first officer, every hour": the post that decides something on the work board, and how often whoever holds
+// it looks at how the ship stands (sooner or later by their skill).
+export function readDecider(words) {
+  let text = String(words ?? "").trim().replace(/\.$/, "");
+  let every = null;
+  text = text.replace(/,?\s*(?:looking\s+)?every\s+(?:(\d+)\s+)?(minutes?|hours?|days?)\b/i, (_, n, unit) => {
+    every = (Number(n) || 1) * (/^min/i.test(unit) ? 1 : /^hour/i.test(unit) ? 60 : 1440);
+    return "";
+  }).trim().replace(/,\s*$/, "");
+  const who = text.replace(/^(?:decided\s+)?by\s+/i, "").trim();
+  if (!who) return { problem: "this line needs the post that decides, such as the first officer, every hour" };
+  if (!every) return { problem: `"${words}" needs to say how often they look, such as the first officer, every hour` };
+  return { who, every };
+}
+export const writeDecider = (one) => `${one.who}, every ${everyWords(one.every)}`;
 
 // "06:00, 12:00, 18:00, 22:00, each 90 minutes": when the whole ship eats, and how long each sitting lasts.
 export function readSittings(words) {
@@ -124,6 +142,10 @@ export function parseLogisticsText(text, id = "it") {
         else set(value, known.path, { list, line: n });
       } else if (known.type === "trip") {
         const read = readTrip(words);
+        if (read.problem) problem(n, read.problem);
+        else set(value, known.path, { ...read, line: n });
+      } else if (known.type === "decider") {
+        const read = readDecider(words);
         if (read.problem) problem(n, read.problem);
         else set(value, known.path, { ...read, line: n });
       } else set(value, known.path, words);
@@ -422,7 +444,7 @@ export function writeLogisticsText(value) {
   for (const field of LOGISTICS_HEADER) {
     const one = get(value, field.path);
     if (one === undefined || one === null || one === "") continue;
-    out.push(`${field.key}: ${field.type === "sittings" ? writeSittings(one) : field.type === "repair" ? writeRepair(one) : field.type === "making" ? writeMaking(one) : field.type === "carriers" ? one.list.join(", ") : field.type === "trip" ? writeTrip(one) : one}${field.type === "number" ? ` ${field.unit}` : ""}`);
+    out.push(`${field.key}: ${field.type === "sittings" ? writeSittings(one) : field.type === "repair" ? writeRepair(one) : field.type === "making" ? writeMaking(one) : field.type === "carriers" ? one.list.join(", ") : field.type === "trip" ? writeTrip(one) : field.type === "decider" ? writeDecider(one) : one}${field.type === "number" ? ` ${field.unit}` : ""}`);
   }
   for (const part of LOGISTICS_PARTS) {
     const lines = value[part] ?? [];

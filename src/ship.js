@@ -20,7 +20,7 @@ import { workshopView } from "./workshop.js";
 import { countAboard, foodADay, machinesView, mealsOfDay, mealsView, putAboard, refilledADay, refillsView, repairsView, storesView, takeAboard, usedFrom, worthAboard } from "./logistics.js";
 import { worthOf } from "./worth.js";
 import { SHIP_DATA, STAR_MAP } from "./world.js";
-import { workView } from "./work.js";
+import { boardView, workView } from "./work.js";
 import { notePut } from "./puts.js";
 
 const { rules: RULES, rations: RATIONS, supplies: SUPPLIES, text: TEXT, council: COUNCIL, chair: CHAIR, ship: SHIP } = SHIP_DATA;
@@ -836,6 +836,8 @@ export function shipView(game) {
     machines: machinesView(game, SHIP_ID),
     meals: mealsView(game, SHIP_ID),
     work: workView(game, SHIP_ID),
+    // The work board as the Work page shows it: the officers' orders, the stores and the jobs (src/work.js).
+    board: boardView(game, SHIP_ID),
     refills: refillsView(game, SHIP_ID),
     repairs: repairsView(game, SHIP_ID),
     // Who's on the medbay's cots and floor, and what the medics are doing (src/medbay.js).

@@ -67,11 +67,6 @@ function storesSection(s) {
   const machine = (m) => el("div", { class: "menu-row small" },
     el("span", {}, m.name, el("span", { class: "muted" }, `, ${m.room}: ${m.does}`)),
     el("span", { class: m.bad ? "tone-bad" : m.runs ? "" : "muted" }, m.status));
-  // Something a store wants, on the ship's work board: what it has against what it wants, who's carrying for it and
-  // since when, or why nobody is. Who carries for it is on the line's tip.
-  const job = (j) => el("div", { class: "menu-row small", title: `Carried by ${j.by}.` },
-    el("span", {}, j.store, el("span", { class: "muted" }, `: ${j.does}`), j.urgent ? el("span", { class: "tone-bad" }, `, ${j.urgent}`) : null),
-    el("span", { class: j.waiting || j.stuck ? "tone-bad" : j.busy ? "" : "muted" }, j.status));
   const refill = (r) => el("div", { class: "stack gap-small" },
     el("div", { class: "small" }, r.store, el("span", { class: "muted" }, `: ${r.does}`)),
     muted(r.last ? `Last: ${r.last}` : "Nothing has come aboard yet."));
@@ -85,7 +80,7 @@ function storesSection(s) {
   return section("In the rooms", s.stores.map(line),
     muted("Walk up to any of them and open it beside your pack. What's taken out and put back is kept, and the count here follows it."),
     s.machines?.length ? [el("h4", { class: "small" }, "Machines"), s.machines.map(machine), muted("Each runs on the clock while its room has power and someone's at it, and nothing runs while the clock is paused.")] : null,
-    s.work?.length ? [el("h4", { class: "small" }, "Work"), s.work.map(job), muted("A job comes up when a store has fewer of something than it wants. The first of its carriers who's free fetches it from the nearest store that can spare it, the deckhands before anyone else. Someone called to an alarm, a repair or the fallen hands the job back.")] : null,
+    s.work?.length ? [el("h4", { class: "small" }, "Work"), muted(`${s.work.filter((one) => one.short).length || "No"} ${s.work.filter((one) => one.short).length === 1 ? "store is" : "stores are"} short of something ${s.work.filter((one) => one.short).length === 1 ? "it wants" : "they want"}. Who's carrying, what's stuck and what the officers have put first are on the Work page.`)] : null,
     s.refills?.length ? [el("h4", { class: "small" }, "Refills"), s.refills.map(refill), muted("The one place things still come from nowhere, until trade off the ship is built. The manifest on the clip in the lighter bay, and the ship's computers, say what came and when.")] : null,
     repairs ? [el("h4", { class: "small" }, "Repairs"), repairs, muted("When something's been damaged, an engineer fetches what the repair takes from the stores and fixes it. With none aboard, it stays broken until some comes.")] : null,
     meals ? [el("h4", { class: "small" }, "The sittings"), meals, muted("Everyone aboard eats from the kettle at the sittings. Whoever finds it empty goes without, and the ship's morale feels that at midnight.")] : null);

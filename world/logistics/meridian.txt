@@ -7,6 +7,8 @@ a repair takes: 1 parts crate, from the parts lockers or the shuttle stores, for
 salvage makes: 1 parts crate from 10 salvage, in The Repair Bay, in 2 hours, into the parts lockers
 carried by: the deckhands, the spare hands
 a trip carries: 2 ration crates, 2 fuel cells, 4 produce, 1 parts crate, 1 medicine crate
+what comes first: the first officer, every hour
+what stores want: the quartermaster, every 4 hours
 
 Stores:
 - shuttle stores in The Lighter Bay: holds 20 ration crates, 12 fuel cells, 6 parts crates: Crates strapped down where the lighter unloads them, with the manifest on a clip.

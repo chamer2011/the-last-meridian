@@ -21,6 +21,7 @@ import { findCharacter } from "./campaign.js";
 import { YOU, commandOf, jobById, jobOf, rememberRequest } from "./command.js";
 import { ITEMS } from "./data.js";
 import { logisticsOf, stockOf, tripOf } from "./logistics.js";
+import { wantedNow } from "./work.js";
 import { treatByHand, treatableByHand } from "./medbay.js";
 import { putsOf } from "./puts.js";
 import { jobHere } from "./role.js";
@@ -210,7 +211,7 @@ addClockWork((game) => {
       const want = model.wants.find((one) => `want:${one.store}:${one.item}` === key);
       const store = model.stores.find((one) => one.id === want.store);
       // It had fewer than it wants before this load went in.
-      if ((stockOf(game, SHIP, want.item, store.name) ?? 0) - more >= want.wants) continue;
+      if ((stockOf(game, SHIP, want.item, store.name) ?? 0) - more >= wantedNow(game, SHIP, want)) continue;
       for (let i = 0; i < Math.min(3, Math.ceil(more / tripOf(model, want.item))); i += 1) notes.push(...piece(game, mine.id, `${counted(want.item, more)} carried to the ${store.name}.`));
     }
   }

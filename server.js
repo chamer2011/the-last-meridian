@@ -18,6 +18,7 @@ import { goLive, liveOrder, liveTick } from "./src/live-fight.js";
 import { buildCharacter, createGameFromDraft, creatorSetup, randomDraft } from "./src/creator.js";
 import { shipCommand } from "./src/ship.js";
 import { commandCommand } from "./src/command.js";
+import { workCommand } from "./src/work.js";
 import { noteLoreSeen } from "./src/lore.js";
 import { migrateGame } from "./src/migrate.js";
 import { StoryError, writtenTurn } from "./src/scenes.js";
@@ -405,6 +406,12 @@ async function handleApi(req, res, route) {
     if (notes.length) log("notice", notes.join("\n"));
     autosave();
     return json(res, 200, { game: publicState(game), message: said });
+  }
+  // The work board: the player taking a job nobody's on, or giving one back.
+  if (route === "/api/work") {
+    const { message } = workCommand(requireGame(), "meridian", body);
+    autosave();
+    return json(res, 200, { game: publicState(game), message });
   }
   if (route === "/api/command") {
     const { message, notes = [] } = commandCommand(requireGame(), body);

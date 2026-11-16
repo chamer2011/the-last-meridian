@@ -7,6 +7,7 @@ import { fightNode, fightOpen, focusFight, initFight, resetFight, startSim } fro
 import { initMap } from "./map.js";
 import { initShip } from "./ship.js";
 import { initCommand } from "./command.js";
+import { initWork } from "./work.js";
 import { initRig } from "./rig.js";
 import { openBoard } from "./board.js";
 import { openMapEditor } from "./mapedit.js";
@@ -772,6 +773,7 @@ initCheck({ ui, render, sendChat, openMenu, closeMenu });
 initMap({ ui, render, runAction, renderMenus, openMenu, closeMenu });
 initShip({ ui, render, runAction, renderMenus, openMenu, closeMenu });
 initCommand({ ui, render, runAction, closeMenu, openPersonSheet });
+initWork({ ui, render, runAction });
 initRig({ ui, runAction, renderMenus: () => renderMenus() });
 initWalk({
   ui,

@@ -37,6 +37,8 @@ THE FILE
                                                      see REPAIRS)
     carried by: the deckhands, the spare hands       (who carries for a store that doesn't say: see CARRYING)
     a trip carries: 2 ration crates, 2 fuel cells, 4 produce    (how many of a thing one person carries at a time)
+    what comes first: the first officer, every hour  (who decides which part of the ship is seen to first, and
+    what stores want: the quartermaster, every 4 hours   who raises what a store wants: see THE OFFICERS' ORDERS)
 
     Stores:
     - shuttle stores in The Lighter Bay: holds 20 ration crates, 12 fuel cells
@@ -176,6 +178,39 @@ each store has against what it wants, who's carrying for it and since when, or w
 
 An older file's Errands part (who carries what from which store to which) isn't read any more, and the
 checker says so.
+
+THE OFFICERS' ORDERS
+--------------------
+
+Two lines at the top say who runs the work board, since the captain doesn't:
+
+    what comes first: the first officer, every hour
+    what stores want: the quartermaster, every 4 hours
+
+Each names a post from the place's chain of command (world/command), and how often whoever holds it looks at
+how things stand: every hour, every 4 hours, every 30 minutes. Someone good at the post's own skill looks
+sooner, and someone who isn't looks later (the command file's each point of skill line says by how much).
+Someone new in the post looks at once.
+
+what comes first: when its holder looks, they put one part of the ship first. The medbay, when people are
+lying where they fell, or waiting with no medicine to give them. The engines, when the generator has stopped,
+or is on its last cell, or its store is under its urgent mark. The galley, when the kettle is empty, the cooks
+have nothing to cook, or people went hungry today. Repairs, when they're waiting for parts. It's whichever is in
+the most trouble, and none of them when nothing's pressing. What a store wants belongs to the part that uses it:
+medicine to the medbay, what the generator burns to the engines, what the galley cooks from to the galley, what
+repairs take to repairs. Jobs in the part that's first go before the rest, after the urgent ones, which matters
+when there are more jobs than free hands.
+
+what stores want: when its holder looks, a store that ran low since their last look (its want was urgent) wants
+a trip's worth more from then on, up to what it holds, and one that was raised and has been quiet for three
+days is eased back a step, down to what its line says.
+
+With nobody in the post, or its holder dead, locked up or laid up when their look comes, nobody decides: jobs
+go as they come, and the stores want what they wanted. Leave a line out and nobody ever decides that. The Work
+page says whose order stands, since when and why.
+
+The player can take any job nobody's on, from the Work page (I'll do it): the crew leaves it alone for two
+hours, or three quarters of an hour if it's urgent, and takes it back after that.
 
 LOADS
 -----

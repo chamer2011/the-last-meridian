@@ -6,6 +6,7 @@ import { api, columns, el, folded, meter, signed, strainMeter } from "./dom.js";
 import { mapMenu } from "./map.js";
 import { shipMenu } from "./ship.js";
 import { commandMenu } from "./command.js";
+import { workMenu } from "./work.js";
 import { dealerSections, rigMenu } from "./rig.js";
 import { oddsFor } from "./story.js";
 import { pixelArtFound, pixelFurnitureFound } from "./pixel-art.js";
@@ -351,6 +352,7 @@ export const MENUS = {
   codex: { label: "What you know", command: "codex", about: "Places, factions, ships and ideas you've come across", view: codexMenu },
   inventory: { label: "Inventory", command: "inv", about: "What you're carrying and wearing, on a grid, or press I", window: "bag" },
   ship: { label: "Ship", command: "ship", about: "The Meridian: her stores, rations, orders, systems and crew. If you aren't the captain, how she stands", view: shipMenu },
+  work: { label: "Work", command: "work", about: "The ship's work board: what each store has against what it wants, who's carrying, what's stuck and why, and what the officers have put first", view: workMenu },
   command: { label: "Command", command: "command", about: "Who holds each post aboard the Meridian, who chose them, and since when", view: commandMenu },
   map: { label: "Star map", command: "map", about: "The chart of known space, and setting course", view: mapMenu },
   rig: { label: "Rig", command: "rig", about: "Your pocket computer: the programs on it, loading them, and writing new ones at the Repair Bay's bench", view: rigMenu },
@@ -363,7 +365,7 @@ export const MENUS = {
 // The groups the menus sit in on the rail, each under its own heading.
 export const MENU_GROUPS = [
   { title: "The story", ids: ["leads", "board", "people", "codex", "bestiary"] },
-  { title: "The ship", ids: ["ship", "command", "map"] },
+  { title: "The ship", ids: ["ship", "work", "command", "map"] },
   { title: "Gear", ids: ["inventory", "rig", "market"] },
   { title: "Game", ids: ["mapedit", "settings"] },
 ];

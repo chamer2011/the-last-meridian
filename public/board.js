@@ -9,7 +9,7 @@ import { el } from "./dom.js";
 import { writeStoryText } from "./story-text.js";
 import { LINE_PHRASES, PERK_NUMBERS, SPECS, writeWorldText } from "./world-text.js";
 import { KNOWN_SYSTEMS, readComputerLine, systemIdOf, writeSystemsText } from "./systems-text.js";
-import { LOGISTICS_PARTS, PART_TITLES, readCarriers, readLoadsLine, readMachineLine, readMaking, readRefillLine, readRepair, readSittings, readStoreLine, readTrip, writeLogisticsText, writeMaking, writeRepair, writeSittings, writeStoreLine, writeTrip } from "./logistics-text.js";
+import { LOGISTICS_PARTS, PART_TITLES, readCarriers, readDecider, readLoadsLine, readMachineLine, readMaking, readRefillLine, readRepair, readSittings, readStoreLine, readTrip, writeLogisticsText, writeMaking, writeRepair, writeDecider, writeSittings, writeStoreLine, writeTrip } from "./logistics-text.js";
 import { COMMAND_HEADER, SPARE, readHolderLine, readJobLine, readPostLine, readWorkersLine, slugOf, writeCommandText, writeJobLine, writePostLine } from "./command-text.js";
 import { CARE, MEDBAY_KEYS, PARTS, readAccidentLine, readAccidents, readHitLine, readKindLine, readMendingLine, readOldMarks, readQueue, readShare, readStartLine, readTreatmentLine, readWeaponLine, writeHealthText, writeWoundsText } from "./health-text.js";
 
@@ -473,7 +473,7 @@ function logisticsGraph() {
   const list = [], ws = [];
   const add = (node) => { list.push(node); return node.id; };
   const numbers = P.numbers ?? {};
-  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${numbers.eats ? `Everyone aboard eats ${numbers.eats} sittings a day. ` : ""}${numbers.crateFeeds ? `A crate feeds ${numbers.crateFeeds} sittings. ` : ""}${P.sittings ? `Sittings at ${writeSittings(P.sittings)}. ` : "Four sittings a day unless this says otherwise. "}${P.repair?.n ? `A repair takes ${writeRepair(P.repair)}.` : "A repair takes nothing."}${P.making?.n ? ` Salvage makes ${writeMaking(P.making)}.` : ""}${P.carriers?.list?.length ? ` A store that doesn't say is carried for by ${P.carriers.list.join(", then ")}.` : ""}${P.trip?.list?.length ? ` A trip carries ${writeTrip(P.trip)}.` : ""}`, label: "The numbers at the top" });
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${numbers.eats ? `Everyone aboard eats ${numbers.eats} sittings a day. ` : ""}${numbers.crateFeeds ? `A crate feeds ${numbers.crateFeeds} sittings. ` : ""}${P.sittings ? `Sittings at ${writeSittings(P.sittings)}. ` : "Four sittings a day unless this says otherwise. "}${P.repair?.n ? `A repair takes ${writeRepair(P.repair)}.` : "A repair takes nothing."}${P.making?.n ? ` Salvage makes ${writeMaking(P.making)}.` : ""}${P.carriers?.list?.length ? ` A store that doesn't say is carried for by ${P.carriers.list.join(", then ")}.` : ""}${P.trip?.list?.length ? ` A trip carries ${writeTrip(P.trip)}.` : ""}${P.first ? ` What comes first is decided by ${writeDecider(P.first)}.` : ""}${P.levels ? ` What the stores want is set by ${writeDecider(P.levels)}.` : ""}`, label: "The numbers at the top" });
   const stores = (P.stores ?? []).map((one, i) => {
     const read = readStoreLine(one.text ?? one);
     const placed = (L.stores ?? []).find((s) => s.name === read.name);
@@ -1426,6 +1426,8 @@ function inspectLogisticsAbout(inspector) {
   const making = textBox("edit-making", P.making ? writeMaking(P.making) : "");
   const carriers = textBox("edit-carriers", P.carriers?.list?.join(", ") ?? "");
   const trip = textBox("edit-trip", P.trip ? writeTrip(P.trip) : "");
+  const first = textBox("edit-first", P.first ? writeDecider(P.first) : "");
+  const levels = textBox("edit-levels", P.levels ? writeDecider(P.levels) : "");
   const trouble = el("div", { class: "hint tone-bad" });
   fill(inspector, h2("The numbers at the top"),
     el("label", { for: "edit-title" }, "The place's name"), name,
@@ -1437,6 +1439,8 @@ function inspectLogisticsAbout(inspector) {
     el("label", { for: "edit-making" }, "salvage makes: what the bench makes from how much salvage, the room it's made in, how long it takes, and the store it goes into (empty for nothing)"), making,
     el("label", { for: "edit-carriers" }, "carried by: who carries for a store whose own line doesn't say, first to last (jobs, posts, the spare hands)"), carriers,
     el("label", { for: "edit-trip" }, "a trip carries: how many of each thing one person carries at a time (anything not named goes one at a time)"), trip,
+    el("label", { for: "edit-first" }, "what comes first: the post that decides which part of the ship the work board sees to first, and how often they look (empty for nobody: jobs go as they come)"), first,
+    el("label", { for: "edit-levels" }, "what stores want: the post that raises what a store wants after it has run low, and how often they look (empty for nobody: stores want what their lines say)"), levels,
     trouble,
     row(button("Keep", () => {
       const read = sittings.value.trim() ? readSittings(sittings.value) : null;
@@ -1460,6 +1464,12 @@ function inspectLogisticsAbout(inspector) {
         return;
       }
       const who = readCarriers(carriers.value);
+      const leads = first.value.trim() ? readDecider(first.value) : null;
+      const sets = levels.value.trim() ? readDecider(levels.value) : null;
+      if (leads?.problem || sets?.problem) {
+        trouble.textContent = leads?.problem ?? sets.problem;
+        return;
+      }
       P.name = name.value.trim() || P.name;
       if (draft.value.trim()) P.draft = draft.value.trim();
       else delete P.draft;
@@ -1476,6 +1486,10 @@ function inspectLogisticsAbout(inspector) {
       else delete P.carriers;
       if (load) P.trip = load;
       else delete P.trip;
+      if (leads) P.first = leads;
+      else delete P.first;
+      if (sets) P.levels = sets;
+      else delete P.levels;
       changed();
     }), button("Undo", () => inspect())),
     hint(`The file is world/logistics/${state.id}.txt. Every part of it is played: the stores and what they want, the machines, the sittings, the loads, the refills, the repairs and what salvage makes. The how-to there says how each is written.`));
