@@ -24,7 +24,7 @@ export const furnitureFile = () => process.env.GAME_FURNITURE_FILE || path.join(
 // hangs).
 export const WHATS = [
   { id: "seat", words: "a seat", blocks: false, high: 0.5 },
-  { id: "bed", words: "a bed", blocks: true, high: 0.5 },
+  { id: "bed", words: "a bed", blocks: false, high: 0.5 },
   { id: "table", words: "a table", blocks: true, high: 0.75 },
   { id: "stand", words: "stands on the floor", blocks: true, high: 1 },
   { id: "opens", words: "something to open", blocks: true, high: 1.3 },
@@ -227,7 +227,7 @@ function asFurniture(id, name, facts) {
   return {
     id, name, about: `${ABOUT[facts.what]}, from the packs`, pack: true, what: facts.what,
     size: [facts.across * 0.5, facts.down], blocks: facts.blocks, high: facts.high,
-    ...(facts.what === "seat" ? { seat: true } : {}), ...(facts.what === "wall" ? { wall: true } : {}),
+    ...(facts.what === "seat" ? { seat: true } : {}), ...(facts.what === "bed" ? { bed: true } : {}), ...(facts.what === "wall" ? { wall: true } : {}),
     ...(facts.what === "opens" ? { opens: facts.like } : {}), ...(facts.lit ? { lit: facts.lit } : {}),
     ...(facts.steel ? { steel: true } : {}),
   };

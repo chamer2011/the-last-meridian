@@ -179,6 +179,8 @@ test("what a piece is guessed to be comes from where it is in the packs, and its
   // Without its picture a piece still has a kind, and the size its kind usually has.
   assert.deepEqual(furniture.guessFurniture({ id: "interiors/Tables/Table_99", pictures: [] }), { what: "table", like: null, across: 1, down: 1, high: 0.75, blocks: true, lit: null, steel: false });
   assert.equal(furniture.guessFurniture({ id: "isospace/bunk", pictures: [] }).what, "bed");
+  // A bed is somewhere to be, like a seat: people lie in it, and it isn't in the way.
+  assert.equal(furniture.guessFurniture({ id: "isospace/bunk", pictures: [] }).blocks, false);
   assert.equal(furniture.guessFurniture({ id: "interiors/Somewhere/New_Thing", pictures: [] }).what, "stand");
 });
 

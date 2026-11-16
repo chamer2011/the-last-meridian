@@ -7,7 +7,7 @@
 import { el } from "./dom.js";
 import { FURNITURE_BY_ID, footprintOf, squaresOf } from "./furniture.js";
 import { hideLoading, showLoading } from "./loading.js";
-import { PACK_FIGURE, PIXEL_UNIT, drawPixelCrate, drawPixelDoor, drawPixelFixture, drawPixelFloors, drawPixelLowWall, drawPixelMachine, drawPixelPiece, drawPixelWall, packKey, pixelArtOn, pixelBunk, pixelDoorDepth, pixelKey, setLightDim } from "./pixel-art.js";
+import { PACK_FIGURE, PIXEL_UNIT, drawPixelCrate, drawPixelDoor, drawPixelFixture, drawPixelFloors, drawPixelLowWall, drawPixelMachine, drawPixelPiece, drawPixelWall, packBed, packKey, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim } from "./pixel-art.js";
 
 // A console square is about twice as tall as it's wide, so two columns make one tile.
 export const CELL_WIDTH = 0.5;
@@ -3382,7 +3382,8 @@ function draw(now, dt) {
     const lying = person.asleep || person.down;
     if (lying && !person.carried && !shown.walking) {
       const bed = restingOn(scene, wx, wy);
-      const room = !FURNITURE_BY_ID[bed?.kind]?.bed ? 0 : bed.kind === "bunk" ? 2 : 1;
+      // A bed of the packs, or one they draw, says how many it takes (public/pixel-art.js).
+      const room = !FURNITURE_BY_ID[bed?.kind]?.bed ? 0 : packBed(bed)?.places.length ?? (bed.kind === "bunk" ? 2 : 1);
       if (room && (beds.get(bed)?.length ?? 0) < room) {
         if (!beds.has(bed)) beds.set(bed, []);
         beds.get(bed).push({ person, look: shown.look, mark: person.down && !person.onCot && !person.carried && !person.dead });
@@ -3461,15 +3462,16 @@ function draw(now, dt) {
     if (item.type === "block") drawBlock(painter, item, iso.materials);
     else if (item.type === "seatback") {
       // In the pixel-art test a chair seen from behind is one picture, so all of it goes over whoever's sitting in it.
-      // The pack's bunk is one picture too, but it's behind whoever sits on its edge, so nothing of it goes over them.
-      if (item.tag === "over" && pixelBunk(item.block.kind)) continue;
+      // A bed the packs draw is one picture too, but it's behind whoever sits on its edge: nothing of it goes over them.
+      if (item.tag === "over" && packBed(item.block)?.pictured) continue;
       if (!drawPixelPiece(painter, item.block, { wallHeight: WALL_HEIGHT, ...lookOfPiece(item.block) })) drawPiece(painter, item.block, { only: item.tag ?? "back", sleepers: beds.get(item.block) ?? null });
     }
     else if (item.type === "prop") item.draw();
     else if (item.type === "bed") {
       for (const one of item.sleepers) one.ring = hoverKey === `person:${one.person.key}` ? "rgba(255,250,220,.9)" : null;
-      // The pack's bunk is in the room's picture already: only whoever's asleep in it is drawn, into it.
-      if (pixelBunk(item.block.kind)) drawPackSleepers(painter, item.block, item.sleepers);
+      // A bed of the packs is in the room's picture already: only whoever's asleep in it is drawn, into it.
+      const packs = packBed(item.block);
+      if (packs) drawPackSleepers(painter, item.block, item.sleepers, packs);
       else drawPiece(painter, item.block, { sleepers: item.sleepers });
       for (const one of item.sleepers) {
         if (!one.at) continue;
@@ -3838,6 +3840,19 @@ export function sittingIn(seat, wx, wy) {
   const kind = FURNITURE_BY_ID[seat?.kind];
   if (!kind?.seat && !kind?.bed) return null;
   if (kind.bed) {
+    // A bed of the packs, or one they draw: on the side of it the camera sees, where they are along it. Its picture is
+    // narrower than its place on the floor; as a plain shape it fills it.
+    const packs = packBed(seat);
+    if (packs) {
+      const along = (value, middle) => Math.min(middle + packs.head, Math.max(middle - packs.head, value));
+      const top = (packs.places[0]?.z ?? 0.3) + 0.08;
+      return {
+        wx: packs.run === "x" ? along(wx, packs.cx) : packs.pictured ? packs.cx + 0.3 : seat.x1 - 0.14,
+        wy: packs.run === "y" ? along(wy, packs.cy) : packs.pictured ? packs.cy + 0.34 : seat.y1 - 0.2,
+        pose: { seated: true, raise: Math.max(-0.25, top - 0.49), ...FACING_POSE[packs.run === "y" ? "e" : "s"] },
+        over: null,
+      };
+    }
     const face = seat.facing === "e" || seat.facing === "w" ? "s" : "e";
     return {
       wx: face === "e" ? seat.x1 - 0.14 : wx,
@@ -4125,40 +4140,72 @@ export function wornPaths(view, kinds) {
   return paths;
 }
 
-// Whoever's asleep in a bunk the packs draw: the piece is two of the pack's bunks end to end, and they're in the far
-// one, the first of them in its lower bed and the second in its upper. Each is a head on the pillow and a blanket over
-// the rest, at the packs' own size; where the head was drawn is left on them, as the game's own bunks leave it.
-function drawPackSleepers(painter, piece, sleepers) {
+// Someone's head on a pillow: their face and hair, a ring round whoever the pointer's on, and a red cross over someone
+// down where they fell. Where it was drawn is left on them.
+function drawSleeperHead(painter, one, hx, hy, r) {
+  const { ctx, unit } = painter;
+  ctx.fillStyle = one.look.skin;
+  ctx.beginPath();
+  ctx.arc(hx, hy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = one.look.hair ?? "#2a2420";
+  ctx.beginPath();
+  ctx.arc(hx, hy - r * 0.1, r * 1.02, Math.PI * 0.95, Math.PI * 2.05);
+  ctx.closePath();
+  ctx.fill();
+  if (one.ring) {
+    ctx.strokeStyle = one.ring;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(hx, hy, r * 1.8, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  if (one.mark) {
+    // Down where they fell, as on the floor: a red cross over them.
+    const s = unit / 34;
+    ctx.lineCap = "round";
+    for (const [width, colourOf] of [[3.6, "rgba(20,6,4,.85)"], [2, "#ff6b5b"]]) {
+      ctx.lineWidth = width * s;
+      ctx.strokeStyle = colourOf;
+      ctx.beginPath();
+      ctx.moveTo(hx, hy - 16 * s);
+      ctx.lineTo(hx, hy - 8 * s);
+      ctx.moveTo(hx - 4 * s, hy - 12 * s);
+      ctx.lineTo(hx + 4 * s, hy - 12 * s);
+      ctx.stroke();
+    }
+  }
+  one.at = [hx, hy];
+}
+
+// The shape of someone under the bedding of a bed the packs draw: its own blanket, a little lighter on top of them and
+// darker down their sides.
+function drawUnderBedding(painter, [x0, y0, x1, y1], z0, z1) {
+  const { ctx, at } = painter;
+  polygon(ctx, [at(x1, y0, z1), at(x1, y1, z1), at(x1, y1, z0), at(x1, y0, z0)], "rgba(0,0,0,.3)");
+  polygon(ctx, [at(x0, y1, z1), at(x1, y1, z1), at(x1, y1, z0), at(x0, y1, z0)], "rgba(0,0,0,.2)");
+  polygon(ctx, [at(x0, y0, z1), at(x1, y0, z1), at(x1, y1, z1), at(x0, y1, z1)], "rgba(255,255,255,.16)");
+}
+
+// Whoever's asleep in a bed of the packs, or one they draw (bed is what packBed says of it, public/pixel-art.js): each
+// a head on the pillow and the rest of them under the bedding, at the packs' own size in their picture, and the game's
+// on a plain shape. In the pack's bunk each has a blanket of their own; under a pod's lid they're seen through it.
+function drawPackSleepers(painter, piece, sleepers, bed) {
   const { ctx, at, unit } = painter;
-  const down = piece.y1 - piece.y0 > piece.x1 - piece.x0;
-  const cx = down ? (piece.x0 + piece.x1) / 2 : piece.x0 + (piece.x1 - piece.x0) / 4;
-  const cy = down ? piece.y0 + (piece.y1 - piece.y0) / 4 : (piece.y0 + piece.y1) / 2;
   const random = randomFrom(`piece${piece.x0},${piece.y0}`);
-  const [long, wide] = [0.3, 0.1];
-  [0.2, 0.62].forEach((z, i) => {
+  const r = unit * (bed.pictured ? 0.062 : 0.078);
+  const wide = bed.pictured ? 0.1 : 0.14;
+  bed.places.forEach(({ wx, wy, z }, i) => {
+    // A colour for every place, so whoever's in the upper bed keeps theirs when the lower one's empty.
     const colour = BLANKETS[Math.floor(random() * BLANKETS.length)];
     const one = sleepers?.[i];
     if (!one) return;
-    box(painter, down ? [cx - wide, cy - long + 0.16, cx + wide, cy + long] : [cx - long + 0.16, cy - wide, cx + long, cy + wide], z, z + 0.07, ...shades(scaled(colour, 1.15)));
-    const [hx, hy] = down ? at(cx, cy - long + 0.06, z + 0.09) : at(cx - long + 0.06, cy, z + 0.09);
-    const r = unit * 0.062;
-    ctx.fillStyle = one.look.skin;
-    ctx.beginPath();
-    ctx.arc(hx, hy, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = one.look.hair ?? "#2a2420";
-    ctx.beginPath();
-    ctx.arc(hx, hy - r * 0.1, r * 1.02, Math.PI * 0.95, Math.PI * 2.05);
-    ctx.closePath();
-    ctx.fill();
-    if (one.ring) {
-      ctx.strokeStyle = one.ring;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(hx, hy, r * 1.8, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    one.at = [hx, hy];
+    const rect = bed.run === "y" ? [wx - wide, wy + 0.1, wx + wide, wy + bed.long] : [wx + 0.1, wy - wide, wx + bed.long, wy + wide];
+    if (bed.under) ctx.globalAlpha = 0.5;
+    if (bed.blankets) box(painter, rect, z, z + 0.07, ...shades(scaled(colour, 1.15)));
+    else drawUnderBedding(painter, rect, z, z + 0.07);
+    drawSleeperHead(painter, one, ...at(wx, wy, z + 0.09), r);
+    ctx.globalAlpha = 1;
   });
 }
 
@@ -4344,40 +4391,7 @@ function drawPiece(painter, piece, { only = null, sleepers = null } = {}) {
       // Someone lying in a bed: their head on the pillow, their shoulders in their coat, the blanket over the rest.
       const lieIn = (z, colour, rank, one, tag) => {
         put(part(-0.1, 0.1, -0.86, -0.66), z, z + 0.02, null, () => {
-          const [hx, hy] = point(0, -0.76, z + 0.13);
-          const r = unit * 0.078;
-          ctx.fillStyle = one.look.skin;
-          ctx.beginPath();
-          ctx.arc(hx, hy, r, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = one.look.hair ?? "#2a2420";
-          ctx.beginPath();
-          ctx.arc(hx, hy - r * 0.1, r * 1.02, Math.PI * 0.95, Math.PI * 2.05);
-          ctx.closePath();
-          ctx.fill();
-          if (one.ring) {
-            ctx.strokeStyle = one.ring;
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.arc(hx, hy, r * 1.8, 0, Math.PI * 2);
-            ctx.stroke();
-          }
-          if (one.mark) {
-            // Down where they fell, as on the floor: a red cross over them.
-            const s = unit / 34;
-            ctx.lineCap = "round";
-            for (const [width, colourOf] of [[3.6, "rgba(20,6,4,.85)"], [2, "#ff6b5b"]]) {
-              ctx.lineWidth = width * s;
-              ctx.strokeStyle = colourOf;
-              ctx.beginPath();
-              ctx.moveTo(hx, hy - 16 * s);
-              ctx.lineTo(hx, hy - 8 * s);
-              ctx.moveTo(hx - 4 * s, hy - 12 * s);
-              ctx.lineTo(hx + 4 * s, hy - 12 * s);
-              ctx.stroke();
-            }
-          }
-          one.at = [hx, hy];
+          drawSleeperHead(painter, one, ...point(0, -0.76, z + 0.13), unit * 0.078);
         }, { rank, tag });
         put(part(-0.3, 0.3, -0.64, -0.42), z, z + 0.15, shades(one.look.coat), null, { rank, tag });
         put(part(-0.29, 0.29, -0.44, 0.8), z, z + 0.12, shades(scaled(colour, 1.12)), null, { rank, tag });

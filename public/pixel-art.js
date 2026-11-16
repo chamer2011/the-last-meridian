@@ -62,6 +62,9 @@ const PIECES = {
   // A bunk is the pack's, which is a tile long where the game's is two: two of them end to end. Its picture runs along
   // the plan's rows as it's drawn (lengthways), so it's turned round for a bunk that runs down the plan's columns.
   bunk: [{ picture: cell(4, 0), times: 2, lengthways: true }],
+  // A sickbay cot is the second pack's plain bed, its wooden frame drawn in steel (STEEL_FILES): one, in the middle of
+  // the cot's place, which is longer than it is.
+  cot: [{ picture: from("Bedroom/Bed_G_4.png") }],
   // The lamp on a wall that lights a room, and goes dark with the room's power.
   "plan-lamp": [{ picture: from("Lamps/Lamp_Modern.png") }],
   "plan-console": [{ picture: cell(7, 1) }],
@@ -75,7 +78,7 @@ const WALL_PACK_HEIGHT = 1.375;
 export const PACK_FIGURE = WALL_PACK_HEIGHT / 1.7;
 // The game's own furniture whose picture in the packs is wood or orange, and is drawn in steel: the benches and the
 // washbasins' cabinets. (A piece of the packs put on a deck as itself says so in world/furniture.txt, "in steel".)
-const STEEL_FILES = new Set(["Tables/Table_Corridor.png", "Bathroom/WC_Tap_Ani/Wc_Tap_1.png"]);
+const STEEL_FILES = new Set(["Tables/Table_Corridor.png", "Bathroom/WC_Tap_Ani/Wc_Tap_1.png", "Bedroom/Bed_G_4.png"]);
 
 // Wood and orange turned to worn steel: a colour between red-orange and yellow-brown, strong enough to be one, keeps
 // how light it is, a little darkened, and takes the ship's blue-grey. Anything else is left as it was (null).
@@ -695,12 +698,15 @@ export function drawPixelPiece(painter, piece, { wallHeight, look = state.look }
 // Which of a bank's squares a console of the plan stands on, and what's drawn there. A bank is a run of console squares
 // along a row: the pack's control console is a tile across, which is two squares, so there's one to each two squares
 // from the bank's left end, and its narrower terminal desk on an odd last square, or on a square with none beside it.
-// The second square of a pair has nothing of its own. isMachine(x, y) says whether a square is a console's.
+// The second square of a pair has nothing of its own. A run with more of the same above or below it is no bank of
+// consoles but one big machine (the ship's boat, an engine): block is true, and the game draws that itself.
+// isMachine(x, y) says whether a square is a console's.
 export function machineAt(x, y, isMachine) {
   let start = x;
   while (isMachine(start - 1, y)) start -= 1;
   let end = x;
   while (isMachine(end + 1, y)) end += 1;
+  for (let at = start; at <= end; at += 1) if (isMachine(at, y - 1) || isMachine(at, y + 1)) return { draw: null, block: true, start, end };
   const nth = x - start;
   if (nth % 2 === 1) return { draw: null, start, end };
   return x + 1 <= end ? { draw: "plan-console", across: 2, start, end } : { draw: "plan-terminal", across: 1, start, end };
@@ -714,6 +720,7 @@ export function drawPixelMachine(painter, block, { cellWidth, isMachine, floorAt
   if (!pixelArtOn()) return false;
   const { x, y } = block;
   const found = machineAt(x, y, isMachine);
+  if (found.block) return false;
   const way = pieceWay(found.draw ?? "plan-console");
   if (!way) return false;
   if (!found.draw) return true;
@@ -724,9 +731,57 @@ export function drawPixelMachine(painter, block, { cellWidth, isMachine, floorAt
   return true;
 }
 
-// Whether a bunk is drawn as the pack's now: whoever's asleep in one is then drawn into the pack's picture by the room
-// view, and not with the game's own bunk.
-export const pixelBunk = (kind) => kind === "bunk" && pixelArtOn() && Boolean(pieceWay("bunk"));
+// How people lie in each bed the packs draw. runs: which way its picture runs as it's drawn, along the plan's rows
+// ("x") or down its columns ("y"), its pillow at the far end; turned round, it's the other. head: how far from its
+// middle the pillow is, in tiles. tiers: how high the bedding is, for each bed one above another. abreast: how many lie
+// side by side. under: whoever's in it is seen through its lid. blankets: each has a blanket of their own colour over
+// them (the pack's bunk has no bedding to show anyone under).
+const BUNK_PLAN = { runs: "x", head: 0.24, tiers: [0.2, 0.62], blankets: true };
+const BED_PLAN = { runs: "y", head: 0.38, tiers: [0.3] };
+function bedPlan(id) {
+  if (id === "isospace/bunk") return BUNK_PLAN;
+  if (id === "isospace/pod") return { runs: "y", head: 0.16, tiers: [0.24], under: true };
+  if (id.endsWith("Bed_M_4")) return { runs: "y", head: 0.72, tiers: [0.3], abreast: 2 };
+  // A mattress on the floor.
+  if (["Bed_A_4", "Bed_B_4", "Bed_C_4"].some((one) => id.endsWith(one))) return { ...BED_PLAN, tiers: [0.09] };
+  return BED_PLAN;
+}
+// The game's own beds that the packs draw: a bunk is the pack's twice, end to end, with people in the far one.
+const OWN_BEDS = { bunk: { ...BUNK_PLAN, twice: true }, cot: BED_PLAN };
+
+// A bed the packs have something to say about: a piece of the packs that's a bed, in any view, or one of the game's own
+// beds while the packs are drawing it. For each of those who can lie in it, where their head is (wx, wy on the floor,
+// z up); run, the way they lie from there ("x" or "y", toward the bigger end) and long, how far; cx, cy, the bed's
+// middle; under and blankets as above; and pictured, whether the bed is the pack's picture now or a plain shape, on
+// whose top everyone lies side by side. Null for any other piece.
+export function packBed(piece) {
+  const kind = FURNITURE_BY_ID[piece?.kind];
+  const sideways = piece?.facing === "e" || piece?.facing === "w";
+  let plan;
+  let flipped = sideways;
+  let pictured = false;
+  if (kind?.pack) {
+    if (kind.what !== "bed") return null;
+    plan = bedPlan(piece.kind);
+    pictured = pixelArtOn() && Boolean(pieceWay(piece.kind, piece.facing ?? "s"));
+  } else if (OWN_BEDS[piece?.kind]) {
+    if (!pixelArtOn() || !pieceWay(piece.kind)) return null;
+    plan = OWN_BEDS[piece.kind];
+    if (PIECES[piece.kind][0].lengthways) flipped = !sideways;
+    pictured = true;
+  } else return null;
+  const run = (plan.runs === "x") !== flipped ? "x" : "y";
+  let cx = (piece.x0 + piece.x1) / 2;
+  let cy = (piece.y0 + piece.y1) / 2;
+  if (plan.twice && run === "y") cy = piece.y0 + (piece.y1 - piece.y0) / 4;
+  if (plan.twice && run === "x") cx = piece.x0 + (piece.x1 - piece.x0) / 4;
+  const beside = plan.abreast === 2 ? [-0.28, 0.28] : [0];
+  const tiers = pictured ? plan.tiers : [kind?.high ?? 0.5];
+  const across = pictured ? beside : plan.tiers.length * beside.length === 2 ? [-0.2, 0.2] : [0];
+  const places = [];
+  for (const z of tiers) for (const off of across) places.push(run === "y" ? { wx: cx + off, wy: cy - plan.head, z } : { wx: cx - plan.head, wy: cy + off, z });
+  return { run, places, cx, cy, head: plan.head, long: plan.head * 2 + 0.06, under: Boolean(plan.under) && pictured, blankets: Boolean(plan.blankets) || !pictured, pictured };
+}
 
 // A lamp on a wall, as the pack's strip light: on the face of the wall the room sees, so high up it, dark when the
 // room's lights are out. False if the test isn't on or the picture isn't there.

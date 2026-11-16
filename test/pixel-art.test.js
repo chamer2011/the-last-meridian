@@ -5,8 +5,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { PACK_FIGURE, doorPicture, lightDim, machineAt, mapping, pieceWay, pixelArtOn, pixelBunk, pixelDoorDepth, pixelKey, setLightDim, solidBox, standingPoint, steelOf } from "../public/pixel-art.js";
-import { figureUnit } from "../public/iso.js";
+import { PACK_FIGURE, doorPicture, lightDim, machineAt, mapping, packBed, pieceWay, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim, solidBox, standingPoint, steelOf } from "../public/pixel-art.js";
+import { figureUnit, sittingIn } from "../public/iso.js";
+import { setPackFurniture } from "../public/furniture.js";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const apply = (m, [x, y]) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
@@ -78,9 +79,11 @@ test("without the second pack the first pack's own pieces stand in, and the rest
   assert.equal(pieceWay("long-table", "s", 0, firstOnly), null);
   // A desk's terminal is the dark one or the light one, by look.
   assert.notEqual(pieceWay("desk", "s", 0, { look: "dark", has: () => true }).picture.id, pieceWay("desk", "s", 0, { look: "light", has: () => true }).picture.id);
-  // A bunk is the first pack's, with whoever's asleep drawn into it; a cot is still the game's own.
+  // A bunk is the first pack's, with whoever's asleep drawn into it; a cot is the second pack's plain bed, and without
+  // that pack still the game's own.
   assert.equal(pieceWay("bunk", "s", 0, firstOnly).picture.sheet, "assets");
-  assert.equal(pieceWay("cot", "s", 0, both), null);
+  assert.match(pieceWay("cot", "s", 0, both).picture.file, /Bed_G_4/);
+  assert.equal(pieceWay("cot", "s", 0, firstOnly), null);
 });
 
 test("a plant is one of a few, the same one every time for the same piece", () => {
@@ -147,6 +150,12 @@ test("a bank of consoles on the plan is a control console to each two squares, a
   assert.deepEqual([10, 11].map((x) => machineAt(x, 3, bank([10, 11])).draw), ["plan-console", null]);
   // The packs have a picture for each.
   assert.ok(pieceWay("plan-console", "s", 0, both) && pieceWay("plan-terminal", "s", 0, both));
+  // A run with more of the same above or below it is one big machine, like the ship's boat: the game draws it itself.
+  const boat = (bx, by) => (by === 3 && bx >= 5 && bx <= 6) || (by === 4 && bx >= 4 && bx <= 7);
+  assert.equal(machineAt(5, 3, boat).block, true);
+  assert.equal(machineAt(4, 4, boat).block, true);
+  assert.equal(machineAt(4, 4, boat).draw, null);
+  assert.equal(machineAt(4, 3, five).block, undefined);
 });
 
 test("a bunk is two of the pack's end to end, turned to run the way the game's bunk does", () => {
@@ -160,10 +169,45 @@ test("a bunk is two of the pack's end to end, turned to run the way the game's b
   // Any other piece with one picture is the other way about: turned round to face east or west.
   assert.equal(pieceWay("plot-table", "s", 0, both).flip, false);
   assert.equal(pieceWay("plot-table", "e", 0, both).flip, true);
-  // Until the view is on, the game's own bunk is drawn, sleepers and all; and the wall lamp has its picture.
-  assert.equal(pixelBunk("bunk"), false);
-  assert.equal(pixelBunk("cot"), false);
+  // Until the view is on, the game's own bunk and cot are drawn, sleepers and all; and the wall lamp has its picture.
+  assert.equal(packBed({ kind: "bunk", facing: "s", x0: 4, y0: 2, x1: 5, y1: 4 }), null);
+  assert.equal(packBed({ kind: "cot", facing: "s", x0: 4, y0: 2, x1: 5, y1: 4 }), null);
   assert.ok(pieceWay("plan-lamp", "s", 0, both));
+});
+
+test("people lie in the packs' beds: one in a bed, two in a bunk or a wide bed, their heads at the far end of it", () => {
+  const bed = (id, across, down, high) => ({ id, name: id, pack: true, what: "bed", bed: true, size: [across * 0.5, down], blocks: false, high });
+  setPackFurniture([bed("interiors/Bedroom/Bed_J_4", 2, 1, 0.55), bed("interiors/Bedroom/Bed_C_4", 2, 1, 0.15), bed("interiors/Bedroom/Bed_M_4", 3, 2, 0.55), bed("isospace/bunk", 2, 1, 0.65), bed("isospace/pod", 1, 1, 0.45), { id: "interiors/Chairs/GChair_9", name: "chair", pack: true, what: "seat", seat: true, size: [0.5, 1], blocks: false, high: 0.5 }]);
+  try {
+    // A bed as its picture is drawn runs down the plan's columns, with its pillow at the far (north) end.
+    const down = packBed({ kind: "interiors/Bedroom/Bed_J_4", facing: "s", x0: 4, y0: 2, x1: 5, y1: 3 });
+    assert.equal(down.run, "y");
+    assert.equal(down.places.length, 1);
+    assert.ok(down.places[0].wy < 2.5 && down.places[0].wy > 2 && down.places[0].wx === 4.5);
+    // Turned to face east or west, it runs along the rows, its pillow at the far (west) end.
+    const along = packBed({ kind: "interiors/Bedroom/Bed_J_4", facing: "e", x0: 4, y0: 2, x1: 5, y1: 3 });
+    assert.equal(along.run, "x");
+    assert.ok(along.places[0].wx < 4.5 && along.places[0].wy === 2.5);
+    // The pack's bunk is drawn along the rows, so it's the other way about; it takes two, and so does the wide bed.
+    assert.equal(packBed({ kind: "isospace/bunk", facing: "s", x0: 4, y0: 2, x1: 5, y1: 3 }).run, "x");
+    assert.equal(packBed({ kind: "isospace/bunk", facing: "e", x0: 4, y0: 2, x1: 5, y1: 3 }).run, "y");
+    assert.equal(packBed({ kind: "isospace/bunk", facing: "s", x0: 4, y0: 2, x1: 5, y1: 3 }).places.length, 2);
+    assert.equal(packBed({ kind: "interiors/Bedroom/Bed_M_4", facing: "s", x0: 4, y0: 2, x1: 5.5, y1: 4 }).places.length, 2);
+    assert.equal(packBed({ kind: "isospace/pod", facing: "s", x0: 4, y0: 2, x1: 4.5, y1: 3 }).places.length, 1);
+    // Until the packs draw it, it's a plain shape, and whoever's in it lies on top of that under a blanket.
+    assert.equal(down.pictured, false);
+    assert.equal(down.places[0].z, 0.55);
+    assert.equal(down.blankets, true);
+    // A seat of the packs is no bed.
+    assert.equal(packBed({ kind: "interiors/Chairs/GChair_9", facing: "s", x0: 4, y0: 2, x1: 4.5, y1: 3 }), null);
+    assert.equal(packBed(null), null);
+    // Awake on it, they sit on the side of it the camera sees: the east side of one that runs down the columns.
+    const sitting = sittingIn({ kind: "interiors/Bedroom/Bed_J_4", facing: "s", x0: 4, y0: 2, x1: 5, y1: 3 }, 4.25, 2.5);
+    assert.ok(sitting.pose.seated && sitting.wx > 4.5 && sitting.over === null);
+    assert.ok(sittingIn({ kind: "interiors/Bedroom/Bed_J_4", facing: "e", x0: 4, y0: 2, x1: 5, y1: 3 }, 4.25, 2.5).wy > 2.5);
+  } finally {
+    setPackFurniture([]);
+  }
 });
 
 test("the view draws as it always has until Settings turns the test on", () => {
