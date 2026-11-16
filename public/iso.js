@@ -217,7 +217,8 @@ export function buildScene(view) {
     for (let distance = 1; distance <= HULL_REACH && ring.length; distance += 1) {
       const next = [];
       for (const [cx, cy] of ring) {
-        for (const [nx, ny] of [[cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]]) {
+        // To the squares at its corners as well as beside it, so the skin turns a corner of the hull square and not in steps.
+        for (const [nx, ny] of [[cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1], [cx + 1, cy + 1], [cx - 1, cy + 1], [cx + 1, cy - 1], [cx - 1, cy - 1]]) {
           if (!outside(nx, ny) || hull[ny][nx]) continue;
           hull[ny][nx] = distance;
           kinds[ny][nx] = "hull";
@@ -3965,7 +3966,23 @@ function drawPlainPiece(painter, piece, kind, only) {
     return;
   }
   if (only) return;
-  box(painter, rect, 0, Math.max(0.1, kind.high ?? 1), ...shades(glow ?? (kind.what === "table" ? KIT.laminate : kind.what === "bed" ? "#5a6a78" : KIT.steel)));
+  const high = Math.max(0.1, kind.high ?? 1);
+  if (!glow) {
+    box(painter, rect, 0, high, ...shades(kind.what === "table" ? KIT.laminate : kind.what === "bed" ? "#5a6a78" : KIT.steel));
+    return;
+  }
+  // Something lit is a dark cabinet with its light on it, as the game's own desks and screens are: a screen let into
+  // the top of what's low enough to look down on, a strip up the front of what's taller.
+  box(painter, rect, 0, high, KIT.frame, KIT.frameDark, KIT.frameDeep);
+  if (high <= 1.05) {
+    const in0 = Math.min(0.09, (rect[2] - rect[0]) / 4);
+    const in1 = Math.min(0.14, (rect[3] - rect[1]) / 4);
+    polygon(ctx, [at(rect[0] + in0, rect[1] + in1, high + 0.004), at(rect[2] - in0, rect[1] + in1, high + 0.004), at(rect[2] - in0, rect[3] - in1, high + 0.004), at(rect[0] + in0, rect[3] - in1, high + 0.004)], glow);
+  } else {
+    const mx = (rect[0] + rect[2]) / 2;
+    const wide = Math.min(0.07, (rect[2] - rect[0]) / 4);
+    polygon(ctx, [at(mx - wide, rect[3] + 0.003, high * 0.3), at(mx + wide, rect[3] + 0.003, high * 0.3), at(mx + wide, rect[3] + 0.003, high * 0.88), at(mx - wide, rect[3] + 0.003, high * 0.88)], glow);
+  }
 }
 
 function drawPiece(painter, piece, { only = null, sleepers = null } = {}) {

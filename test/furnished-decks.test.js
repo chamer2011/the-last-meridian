@@ -17,7 +17,9 @@ const { deckProblems } = await import("../src/map-editor.js");
 
 const decks = () => WORLD_MAPS.meridian.levels;
 // A window or a screen is on a wall square, and belongs to the room below it.
-const inRoom = (level, room, kind) => level.furniture.filter((piece) => piece.kind === kind && level.areaAt(piece.x, piece.y + (FURNITURE_BY_ID[kind].wall ? 1 : 0)) === room);
+// What's in a room: for something on a wall, the room whose floor is in front of it, below it or to its right.
+const inRoom = (level, room, kind) => level.furniture.filter((piece) => piece.kind === kind && (FURNITURE_BY_ID[kind].wall ? level.areaAt(piece.x, piece.y + 1) === room || level.areaAt(piece.x + 1, piece.y) === room : level.areaAt(piece.x, piece.y) === room));
+const seatsIn = (level, room) => level.furniture.filter((piece) => FURNITURE_BY_ID[piece.kind].seat && level.areaAt(piece.x, piece.y) === room);
 
 test("every deck is furnished, and the game finds nothing wrong with any of it", () => {
   assert.deepEqual(MAP_FILE_PROBLEMS, []);
@@ -38,7 +40,7 @@ test("the beds and tables that were drawn as consoles are cots, bunks and tables
   assert.ok(inRoom(deck1, "wardroom", "long-table").length >= 2, "the wardroom has its table");
   assert.ok(inRoom(deck1, "quiet", "bench").length >= 4, "the Quiet Room has its benches");
   assert.ok(inRoom(deck1, "bridge", "window").length >= 6, "the bridge has its forward windows");
-  assert.ok(inRoom(deck1, "bridge", "chair").length >= 10, "the bridge has chairs at its consoles");
+  assert.ok(seatsIn(deck1, "bridge").length >= 10, "the bridge has seats at its consoles");
   // A bed is somewhere to lie: its squares can be stood on, unlike a table's.
   for (const piece of inRoom(deck2, "medbay", "cot")) for (const [x, y] of squaresOf(piece)) assert.ok(canStand(deck2, x, y), `cot square ${x},${y}`);
   const table = inRoom(deck2, "mess", "long-table")[0];

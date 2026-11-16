@@ -14,6 +14,7 @@ const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 const { combatAction, publicState, startCombat } = await import("../src/rules.js");
 const live = await import("../src/live-fight.js");
 const { walkView, walkCommand } = await import("../src/walk.js");
+const { FURNITURE_BY_ID, squaresOf } = await import("../public/furniture.js");
 
 const newGame = (seed = 21) => {
   const game = createGameFromDraft(randomDraft({ seed, archetype: "officer" }));
@@ -133,11 +134,14 @@ test("the player walks where they're sent, and stays where the fight ended", () 
   for (const enemy of c.enemies) enemy.hp = 4;
   game.hp = 300;
   const start = { x: c.live.you.x, y: c.live.you.y };
-  live.liveOrder(game, { type: "move", x: start.x - 4, y: start.y + 1 });
+  // Somewhere a few squares off that can be stood on, whatever the bridge has standing in it.
+  const round = walkView(game).floor;
+  const to = [[-4, 1], [4, 2], [3, -2], [-3, -2], [2, 3], [-2, 3]].map(([dx, dy]) => ({ x: start.x + dx, y: start.y + dy })).find((one) => round[one.y]?.[one.x] === ".");
+  live.liveOrder(game, { type: "move", x: to.x, y: to.y });
   assert.ok(c.live.you.path.length > 0);
-  assert.deepEqual(live.liveView(game).you.to, { x: start.x - 4, y: start.y + 1 });
-  run(game, 2);
-  assert.deepEqual({ x: c.live.you.x, y: c.live.you.y }, { x: start.x - 4, y: start.y + 1 });
+  assert.deepEqual(live.liveView(game).you.to, to);
+  run(game, 3);
+  assert.deepEqual({ x: c.live.you.x, y: c.live.you.y }, to);
   const { outcome } = run(game, 120, { orders: shootWhoeverCanBeSeen(game) });
   assert.ok(outcome.over);
   // Wherever the fight took them, they're standing there in the room afterwards.
@@ -157,9 +161,15 @@ test("walls stop shots, and what's lower is cover, worth 3 to defense", () => {
   const sight = live.liveView(game).sight[enemy.key];
   assert.equal(sight.ok, false);
   assert.equal(sight.why, "no line of fire");
-  // Someone just behind the consoles on line 11 is in cover from the player, standing on line 15.
-  enemy.live.x = 31;
-  enemy.live.y = 10;
+  // Someone just beyond something low on the player's own row is in cover from them: the far side of the nearest
+  // piece of furniture that's in the way and has floor behind it.
+  const you = live.liveView(game).you;
+  const room = walkView(game);
+  const low = room.furniture.filter((piece) => FURNITURE_BY_ID[piece.kind].blocks && !FURNITURE_BY_ID[piece.kind].wall).flatMap((piece) => squaresOf(piece)).filter(([, y]) => y === Math.round(you.y)).map(([x]) => x);
+  const beyond = low.map((x) => x + Math.sign(x - you.x)).filter((x) => room.floor[Math.round(you.y)]?.[x] === ".").sort((a, b) => Math.abs(a - you.x) - Math.abs(b - you.x))[0];
+  assert.ok(Number.isInteger(beyond), "something low stands on the player's row, with floor beyond it");
+  enemy.live.x = beyond;
+  enemy.live.y = Math.round(you.y);
   const behind = live.liveView(game).sight[enemy.key];
   assert.equal(behind.ok, true);
   assert.equal(behind.cover, true);

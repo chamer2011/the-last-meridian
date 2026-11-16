@@ -42,15 +42,18 @@ test("a chair, a bench and the command chair are seats, a bunk and a cot are bed
   assert.ok(squaresOf(table).every(([x, y]) => !deck2.seats.has(`${x},${y}`)));
 });
 
+// A seat of any kind, the game's own chair or one from the packs: the bridge's stations have had both.
+const seatAt = (level, x, y) => Boolean(FURNITURE_BY_ID[kindAt(level, x, y)]?.seat);
+
 test("where people's days have them sitting or sleeping is on a seat or a bed", () => {
   const deck1 = MAP.levels.deck1;
   const deck2 = MAP.levels.deck2;
   // The helm and comms, at their consoles, and the night watch in the same chairs.
   for (const id of ["pell", "iven"]) {
     const home = deck1.homes.find((one) => one.id === id);
-    assert.equal(kindAt(deck1, home.x, home.y), "chair", `${id}'s post`);
+    assert.ok(seatAt(deck1, home.x, home.y), `${id}'s post`);
   }
-  for (const name of ["helm-night", "comms-night", "ready-room"]) assert.equal(kindAt(deck1, spot(name)[1], spot(name)[2]), "chair", name);
+  for (const name of ["helm-night", "comms-night", "ready-room"]) assert.ok(seatAt(deck1, spot(name)[1], spot(name)[2]), name);
   // The officers' cabins: their spot is their bunk.
   for (const name of Object.keys(LIFE.spots).filter((one) => one.startsWith("cabin-"))) assert.equal(kindAt(deck1, spot(name)[1], spot(name)[2]), "bunk", name);
   // Everyone's seat at the mess tables has a chair, and every sleeping place in the Hot Bunks is in a bunk.
@@ -83,7 +86,7 @@ test("someone in a seat or a bed takes only its square, so the officers at a mes
   assert.ok(sleepers.length >= 10);
   for (const one of sleepers) assert.equal(kindAt(deck2, one.x, one.y), "bunk", `${one.id ?? one.name} at ${one.x},${one.y}`);
   const watch = peopleAboard(night, "meridian", "deck1").filter((one) => !one.asleep && deck1.roomAt(one.x, one.y) === "bridge");
-  assert.ok(watch.some((one) => kindAt(deck1, one.x, one.y) === "chair"), "someone on watch in a bridge chair");
+  assert.ok(watch.some((one) => seatAt(deck1, one.x, one.y)), "someone on watch in a bridge seat");
 });
 
 test("the picture sits someone in a chair the way it faces, along a bench where they are, and on the edge of a bed", () => {
@@ -117,7 +120,7 @@ test("in the room's picture, the helm sits in her chair and the laid up lie in t
   const scene = buildScene(bridge);
   const pell = bridge.people.find((one) => one.key === "pell");
   const chair = restingOn(scene, cellCentre(pell.x, pell.y).wx, cellCentre(pell.x, pell.y).wy);
-  assert.equal(chair?.kind, "chair");
+  assert.ok(FURNITURE_BY_ID[chair?.kind]?.seat, "the helm's seat");
   assert.equal(sittingIn(chair, cellCentre(pell.x, pell.y).wx, cellCentre(pell.x, pell.y).wy).pose.back, true);
   for (let i = 0; i < 4 && walkView(game).here?.id !== "medbay"; i += 1) walkCommand(game, { action: "go", to: "room:medbay" });
   const medbay = walkView(game);

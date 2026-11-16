@@ -12,7 +12,7 @@
  "infinite": false,
  "compressionlevel": -1,
  "nextlayerid": 7,
- "nextobjectid": 194,
+ "nextobjectid": 223,
  "properties": [
   {
    "name": "name",
@@ -292,7 +292,7 @@
     0,
     0,
     0,
-    12,
+    0,
     12,
     12,
     12,
@@ -364,7 +364,7 @@
     0,
     0,
     0,
-    12,
+    0,
     12,
     12,
     12,
@@ -435,8 +435,8 @@
     0,
     0,
     0,
-    12,
-    12,
+    0,
+    0,
     12,
     12,
     12,
@@ -506,9 +506,9 @@
     0,
     0,
     0,
-    12,
-    12,
-    12,
+    0,
+    0,
+    0,
     12,
     12,
     12,
@@ -578,9 +578,9 @@
     0,
     0,
     0,
-    12,
-    12,
-    12,
+    0,
+    0,
+    0,
     12,
     12,
     12,
@@ -649,10 +649,10 @@
     0,
     0,
     0,
-    12,
-    12,
-    12,
-    12,
+    0,
+    0,
+    0,
+    0,
     12,
     12,
     12,
@@ -721,10 +721,10 @@
     0,
     0,
     0,
-    12,
-    12,
-    12,
-    12,
+    0,
+    0,
+    0,
+    0,
     12,
     12,
     12,
@@ -792,11 +792,11 @@
     0,
     0,
     0,
-    12,
-    12,
-    12,
-    12,
-    12,
+    0,
+    0,
+    0,
+    0,
+    0,
     12,
     12,
     12,
@@ -864,25 +864,25 @@
     0,
     0,
     0,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
     12,
     12,
     12,
     12,
+    0,
+    0,
+    0,
+    0,
     12,
+    0,
+    0,
     12,
     12,
     12,
@@ -935,8 +935,8 @@
     0,
     0,
     0,
-    12,
-    12,
+    0,
+    0,
     12,
     12,
     12,
@@ -1007,8 +1007,8 @@
     0,
     0,
     0,
-    12,
-    12,
+    0,
+    0,
     12,
     12,
     12,
@@ -1078,9 +1078,9 @@
     0,
     0,
     0,
-    12,
-    12,
-    12,
+    0,
+    0,
+    0,
     12,
     12,
     12,
@@ -1150,9 +1150,9 @@
     0,
     0,
     0,
-    12,
-    12,
-    12,
+    0,
+    0,
+    0,
     12,
     12,
     12,
@@ -1222,9 +1222,9 @@
     0,
     0,
     0,
-    12,
-    12,
-    12,
+    0,
+    0,
+    0,
     12,
     12,
     12,
@@ -1294,9 +1294,9 @@
     0,
     0,
     0,
-    12,
-    12,
-    12,
+    0,
+    0,
+    0,
     12,
     12,
     12,
@@ -1367,8 +1367,8 @@
     0,
     0,
     0,
-    12,
-    12,
+    0,
+    0,
     12,
     12,
     12,
@@ -1435,30 +1435,18 @@
     12,
     12,
     12,
-    0,
     0,
     0,
     0,
-    12,
-    12,
-    12,
     0,
     0,
     0,
     12,
-    0,
-    0,
-    0,
     12,
     12,
     12,
     12,
     12,
-    0,
-    0,
-    0,
-    0,
-    0,
     12,
     12,
     12,
@@ -1470,12 +1458,10 @@
     12,
     12,
     12,
-    0,
     12,
     12,
     12,
     12,
-    0,
     12,
     12,
     12,
@@ -1483,8 +1469,8 @@
     12,
     12,
     12,
-    0,
     12,
+    0,
     12,
     12,
     12,
@@ -1494,25 +1480,22 @@
     12,
     12,
     12,
-    0,
-    0,
     12,
     12,
     12,
+    0,
     12,
     12,
     12,
     12,
     12,
+    0,
     12,
     12,
     12,
-    0,
-    0,
-    0,
+    12,
     0,
     0,
-    12,
     12,
     12,
     12,
@@ -1524,13 +1507,30 @@
     12,
     12,
     12,
-    12,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
     12,
     12,
     12,
     12,
+    0,
+    0,
+    0,
+    0,
     12,
     0,
+    0,
     12,
     12,
     12,
@@ -1584,10 +1584,11 @@
     0,
     0,
     0,
-    12,
-    12,
-    12,
-    12,
+    0,
+    0,
+    0,
+    0,
+    0,
     12,
     12,
     12,
@@ -1602,7 +1603,6 @@
     12,
     12,
     12,
-    0,
     12,
     12,
     12,
@@ -1657,9 +1657,10 @@
     0,
     0,
     0,
-    12,
-    12,
-    12,
+    0,
+    0,
+    0,
+    0,
     12,
     12,
     12,
@@ -1674,7 +1675,6 @@
     12,
     12,
     12,
-    0,
     12,
     12,
     12,
@@ -1729,9 +1729,10 @@
     0,
     0,
     0,
-    12,
-    12,
-    12,
+    0,
+    0,
+    0,
+    0,
     12,
     12,
     12,
@@ -1746,7 +1747,6 @@
     12,
     12,
     12,
-    0,
     12,
     12,
     12,
@@ -1802,8 +1802,9 @@
     0,
     0,
     0,
-    12,
-    12,
+    0,
+    0,
+    0,
     12,
     12,
     12,
@@ -1818,7 +1819,6 @@
     12,
     12,
     12,
-    0,
     12,
     12,
     12,
@@ -1874,8 +1874,9 @@
     0,
     0,
     0,
-    12,
-    12,
+    0,
+    0,
+    0,
     12,
     12,
     12,
@@ -1890,7 +1891,6 @@
     12,
     12,
     12,
-    0,
     12,
     12,
     12,
@@ -1947,7 +1947,8 @@
     0,
     0,
     0,
-    12,
+    0,
+    0,
     12,
     12,
     12,
@@ -1962,7 +1963,6 @@
     12,
     12,
     12,
-    0,
     12,
     12,
     12,
@@ -2011,8 +2011,6 @@
     12,
     12,
     12,
-    0,
-    0,
     0,
     0,
     0,
@@ -2023,18 +2021,15 @@
     0,
     0,
     0,
-    0,
-    0,
     12,
     12,
     12,
     12,
     12,
-    0,
-    0,
-    0,
-    0,
-    0,
+    12,
+    12,
+    12,
+    12,
     12,
     12,
     12,
@@ -2046,6 +2041,11 @@
     12,
     12,
     12,
+    12,
+    12,
+    12,
+    12,
+    12,
     0,
     12,
     12,
@@ -2092,7 +2092,7 @@
     0,
     0,
     0,
-    12,
+    0,
     12,
     12,
     12,
@@ -2465,7 +2465,7 @@
     0,
     0,
     0,
-    0,
+    5,
     6,
     6,
     6,
@@ -2547,7 +2547,7 @@
     0,
     0,
     0,
-    0,
+    17,
     0,
     0,
     0,
@@ -2609,7 +2609,7 @@
     0,
     0,
     0,
-    16,
+    5,
     0,
     0,
     0,
@@ -2619,7 +2619,7 @@
     0,
     0,
     0,
-    0,
+    17,
     0,
     0,
     0,
@@ -2680,6 +2680,7 @@
     0,
     0,
     0,
+    0,
     5,
     0,
     0,
@@ -2690,8 +2691,7 @@
     0,
     0,
     0,
-    0,
-    0,
+    17,
     0,
     0,
     0,
@@ -2752,7 +2752,8 @@
     0,
     0,
     0,
-    16,
+    0,
+    5,
     0,
     0,
     0,
@@ -2762,8 +2763,7 @@
     0,
     0,
     0,
-    0,
-    0,
+    17,
     0,
     0,
     0,
@@ -2823,7 +2823,9 @@
     0,
     0,
     0,
-    16,
+    0,
+    0,
+    5,
     0,
     0,
     0,
@@ -2833,9 +2835,7 @@
     0,
     0,
     0,
-    0,
-    0,
-    0,
+    17,
     0,
     0,
     0,
@@ -2894,20 +2894,20 @@
     0,
     0,
     0,
+    0,
+    0,
+    0,
     5,
     0,
     0,
     0,
-    18,
-    14,
-    14,
-    14,
-    14,
-    14,
-    19,
     0,
     0,
     0,
+    0,
+    0,
+    0,
+    17,
     0,
     0,
     0,
@@ -2966,7 +2966,10 @@
     0,
     0,
     0,
-    16,
+    0,
+    0,
+    0,
+    5,
     0,
     0,
     0,
@@ -2976,10 +2979,7 @@
     0,
     0,
     0,
-    0,
-    0,
-    0,
-    0,
+    17,
     0,
     0,
     0,
@@ -3037,6 +3037,10 @@
     0,
     0,
     0,
+    0,
+    0,
+    0,
+    0,
     5,
     0,
     0,
@@ -3047,11 +3051,7 @@
     0,
     0,
     0,
-    0,
-    0,
-    0,
-    0,
-    0,
+    17,
     0,
     0,
     0,
@@ -3109,7 +3109,11 @@
     9,
     0,
     0,
-    16,
+    0,
+    0,
+    0,
+    0,
+    5,
     0,
     0,
     0,
@@ -3119,11 +3123,7 @@
     0,
     0,
     0,
-    0,
-    0,
-    0,
-    0,
-    0,
+    17,
     0,
     0,
     0,
@@ -3180,26 +3180,26 @@
     0,
     0,
     0,
+    0,
     5,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    27,
-    14,
-    14,
-    19,
-    0,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
     0,
     0,
     0,
     17,
+    6,
+    6,
+    6,
+    6,
+    92,
+    6,
+    6,
     16,
     0,
     0,
@@ -3252,8 +3252,8 @@
     0,
     0,
     0,
-    16,
     0,
+    5,
     0,
     0,
     0,
@@ -3323,9 +3323,9 @@
     0,
     9,
     0,
+    0,
+    0,
     5,
-    0,
-    0,
     0,
     0,
     0,
@@ -3395,9 +3395,9 @@
     0,
     0,
     0,
-    16,
     0,
     0,
+    5,
     0,
     0,
     0,
@@ -3466,82 +3466,10 @@
     17,
     0,
     0,
-    5,
     0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    97,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    31,
-    0,
-    0,
-    93,
-    14,
-    14,
-    14,
-    94,
-    0,
-    0,
-    17,
     0,
     0,
     5,
-    0,
-    0,
-    0,
     0,
     0,
     0,
@@ -3611,9 +3539,81 @@
     0,
     0,
     0,
-    16,
     0,
     0,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    97,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    31,
+    0,
+    0,
+    93,
+    14,
+    14,
+    14,
+    94,
+    0,
+    0,
+    17,
+    0,
+    0,
+    0,
+    0,
+    0,
+    5,
     0,
     0,
     0,
@@ -3683,6 +3683,8 @@
     0,
     0,
     0,
+    0,
+    0,
     5,
     0,
     0,
@@ -3695,10 +3697,8 @@
     0,
     0,
     0,
-    27,
-    14,
-    14,
-    19,
+    0,
+    0,
     0,
     0,
     0,
@@ -3756,27 +3756,16 @@
     0,
     11,
     0,
-    16,
     0,
-    0,
-    6,
-    6,
-    6,
-    90,
-    6,
-    6,
-    6,
+    5,
     0,
     0,
     0,
     0,
-    17,
-    6,
-    6,
-    6,
-    6,
-    6,
-    16,
+    0,
+    0,
+    0,
+    0,
     0,
     0,
     0,
@@ -3787,32 +3776,6 @@
     0,
     0,
     17,
-    6,
-    0,
-    0,
-    0,
-    0,
-    6,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    6,
-    0,
-    0,
-    0,
-    0,
-    0,
-    6,
-    0,
-    0,
-    0,
-    0,
-    6,
-    6,
     16,
     0,
     0,
@@ -3824,29 +3787,66 @@
     0,
     0,
     17,
+    6,
+    0,
+    0,
+    0,
+    0,
+    6,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    6,
+    0,
+    0,
+    0,
+    0,
+    0,
+    6,
+    0,
+    0,
+    0,
+    0,
+    6,
+    6,
+    16,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    17,
+    0,
     0,
     0,
     0,
     0,
     5,
-    0,
-    0,
-    16,
-    0,
-    0,
-    0,
-    0,
-    0,
-    17,
-    0,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
     0,
     0,
     0,
     17,
-    0,
-    0,
-    0,
-    0,
+    6,
+    6,
+    6,
+    6,
+    92,
+    6,
     6,
     16,
     0,
@@ -3901,9 +3901,15 @@
     0,
     8,
     0,
-    16,
     0,
-    16,
+    0,
+    0,
+    0,
+    5,
+    0,
+    0,
+    0,
+    0,
     0,
     0,
     0,
@@ -3913,13 +3919,7 @@
     0,
     0,
     0,
-    0,
     17,
-    0,
-    0,
-    0,
-    0,
-    6,
     16,
     0,
     0,
@@ -3973,64 +3973,12 @@
     0,
     0,
     0,
+    0,
+    0,
+    0,
+    0,
     5,
     0,
-    16,
-    0,
-    0,
-    0,
-    0,
-    0,
-    17,
-    0,
-    0,
-    0,
-    0,
-    17,
-    0,
-    0,
-    0,
-    0,
-    6,
-    16,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    17,
-    6,
-    0,
-    0,
-    0,
-    0,
-    6,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    6,
-    0,
-    0,
-    0,
-    0,
-    0,
-    6,
-    0,
-    0,
-    0,
-    0,
-    6,
-    6,
-    16,
-    0,
     0,
     0,
     0,
@@ -4043,14 +3991,52 @@
     0,
     0,
     0,
-    0,
-    0,
-    0,
+    17,
     16,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    17,
+    6,
+    0,
+    0,
+    0,
+    0,
+    6,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    6,
+    0,
+    0,
+    0,
+    0,
+    0,
+    6,
+    0,
+    0,
+    0,
+    0,
+    6,
+    6,
     16,
-    27,
-    14,
-    20,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
     0,
     0,
     17,
@@ -4058,12 +4044,26 @@
     0,
     0,
     0,
-    97,
     0,
     0,
     0,
     0,
-    6,
+    0,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    17,
+    0,
+    0,
+    0,
+    17,
     16,
     0,
     0,
@@ -4118,24 +4118,24 @@
     9,
     0,
     0,
+    0,
+    0,
+    0,
     5,
-    16,
+    0,
+    0,
+    0,
+    0,
     0,
     0,
     0,
     0,
     0,
     17,
-    27,
-    14,
-    14,
-    20,
+    0,
+    0,
+    0,
     17,
-    0,
-    0,
-    0,
-    0,
-    6,
     16,
     0,
     0,
@@ -4191,24 +4191,9 @@
     0,
     0,
     0,
-    16,
-    27,
-    14,
-    20,
     0,
     0,
-    17,
-    0,
-    0,
-    0,
-    0,
-    17,
-    18,
-    14,
-    19,
-    0,
-    6,
-    16,
+    5,
     0,
     0,
     0,
@@ -4219,32 +4204,10 @@
     0,
     0,
     17,
-    6,
     0,
     0,
     0,
-    0,
-    6,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    6,
-    0,
-    0,
-    0,
-    0,
-    0,
-    6,
-    0,
-    0,
-    0,
-    0,
-    6,
-    6,
+    17,
     16,
     0,
     0,
@@ -4256,30 +4219,67 @@
     0,
     0,
     17,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    16,
-    0,
-    0,
-    0,
-    0,
-    17,
-    0,
-    0,
-    0,
-    0,
-    17,
+    6,
     0,
     0,
     0,
     0,
     6,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    6,
+    0,
+    0,
+    0,
+    0,
+    0,
+    6,
+    0,
+    0,
+    0,
+    0,
+    6,
+    6,
+    16,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    17,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    17,
+    0,
+    0,
+    0,
+    17,
     16,
     0,
     0,
@@ -4336,22 +4336,22 @@
     0,
     0,
     0,
+    0,
     5,
-    6,
-    6,
-    6,
-    6,
-    6,
+    0,
+    0,
+    0,
+    0,
+    0,
     0,
     0,
     0,
     0,
     17,
-    6,
-    6,
-    6,
-    6,
-    6,
+    0,
+    0,
+    0,
+    17,
     16,
     0,
     0,
@@ -4409,7 +4409,7 @@
     0,
     9,
     0,
-    16,
+    5,
     0,
     0,
     0,
@@ -4419,7 +4419,7 @@
     0,
     0,
     0,
-    0,
+    17,
     0,
     0,
     0,
@@ -4491,7 +4491,7 @@
     0,
     0,
     0,
-    0,
+    17,
     0,
     0,
     0,
@@ -4553,7 +4553,7 @@
     0,
     0,
     0,
-    0,
+    5,
     6,
     6,
     6,
@@ -4699,103 +4699,11 @@
    "objects": [
     {
      "id": 1,
-     "name": "The forward viewport",
-     "type": "",
-     "gid": 2,
-     "x": 784,
-     "y": 416,
-     "width": 40,
-     "height": 56,
-     "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "look",
-       "type": "string",
-       "value": "Stars, and the running lights of the ships nearest you. It's the coldest place on the ship, and everyone on the bridge has decided not to stand next to it."
-      },
-      {
-       "name": "use",
-       "type": "string",
-       "value": "I stand at the viewport for a minute and look at the fleet."
-      },
-      {
-       "name": "used",
-       "type": "string",
-       "value": "You stand there a minute. The running lights of the nearest ships, and past them, nothing with a name. Nobody on the bridge comes to stand next to you, and after a minute you understand why."
-      },
-      {
-       "name": "mark",
-       "type": "string",
-       "value": "v"
-      }
-     ]
-    },
-    {
-     "id": 2,
-     "name": "Pell",
-     "type": "",
-     "gid": 1,
-     "x": 784,
-     "y": 544,
-     "width": 48,
-     "height": 96,
-     "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "person",
-       "type": "string",
-       "value": "pell"
-      },
-      {
-       "name": "asks",
-       "type": "string",
-       "value": "How's she handling, Ensign?\nWhen did you last sleep?"
-      },
-      {
-       "name": "mark",
-       "type": "string",
-       "value": "P"
-      }
-     ]
-    },
-    {
-     "id": 3,
-     "name": "Sorel",
-     "type": "",
-     "gid": 1,
-     "x": 1072,
-     "y": 800,
-     "width": 48,
-     "height": 96,
-     "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "person",
-       "type": "string",
-       "value": "iven"
-      },
-      {
-       "name": "asks",
-       "type": "string",
-       "value": "Anything on comms, Lieutenant?\nYou look like you could use a break."
-      },
-      {
-       "name": "mark",
-       "type": "string",
-       "value": "I"
-      }
-     ]
-    },
-    {
-     "id": 4,
      "name": "Data chip in the comms tray",
      "type": "",
      "gid": 2,
-     "x": 1296,
-     "y": 864,
+     "x": 656,
+     "y": 288,
      "width": 40,
      "height": 56,
      "rotation": 0,
@@ -4829,24 +4737,167 @@
      ]
     },
     {
-     "id": 5,
-     "name": "Start",
+     "id": 2,
+     "name": "Sorel",
      "type": "",
-     "gid": 4,
-     "x": 816,
-     "y": 992,
-     "width": 40,
-     "height": 64,
+     "gid": 1,
+     "x": 720,
+     "y": 416,
+     "width": 48,
+     "height": 96,
      "rotation": 0,
-     "visible": true
+     "visible": true,
+     "properties": [
+      {
+       "name": "person",
+       "type": "string",
+       "value": "iven"
+      },
+      {
+       "name": "asks",
+       "type": "string",
+       "value": "Anything on comms, Lieutenant?\nYou look like you could use a break."
+      },
+      {
+       "name": "mark",
+       "type": "string",
+       "value": "I"
+      }
+     ]
+    },
+    {
+     "id": 3,
+     "name": "Ready room locker",
+     "type": "",
+     "gid": 2,
+     "x": 1264,
+     "y": 672,
+     "width": 40,
+     "height": 56,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "look",
+       "type": "string",
+       "value": "The old captain's locker, just inside the ready room, with a private seal still on it. Nobody's opened it since the Fall, or nobody's admitted to it."
+      },
+      {
+       "name": "use",
+       "type": "string",
+       "value": "I go into the ready room and try the old captain's sealed locker."
+      },
+      {
+       "name": "used",
+       "type": "string",
+       "value": "The seal holds. It's the old captain's, and nobody has the code, or nobody's admitting to it. Marrow could cut it. You'd have to decide to ask him."
+      },
+      {
+       "name": "mark",
+       "type": "string",
+       "value": "l"
+      }
+     ]
+    },
+    {
+     "id": 4,
+     "name": "The forward viewport",
+     "type": "",
+     "gid": 2,
+     "x": 368,
+     "y": 800,
+     "width": 40,
+     "height": 56,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "look",
+       "type": "string",
+       "value": "Stars, and the running lights of the ships nearest you. It's the coldest place on the ship, and everyone on the bridge has decided not to stand next to it."
+      },
+      {
+       "name": "use",
+       "type": "string",
+       "value": "I stand at the viewport for a minute and look at the fleet."
+      },
+      {
+       "name": "used",
+       "type": "string",
+       "value": "You stand there a minute. The running lights of the nearest ships, and past them, nothing with a name. Nobody on the bridge comes to stand next to you, and after a minute you understand why."
+      },
+      {
+       "name": "mark",
+       "type": "string",
+       "value": "v"
+      }
+     ]
+    },
+    {
+     "id": 5,
+     "name": "Reddick",
+     "type": "",
+     "gid": 1,
+     "x": 1040,
+     "y": 928,
+     "width": 48,
+     "height": 96,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "person",
+       "type": "string",
+       "value": "reddick"
+      },
+      {
+       "name": "asks",
+       "type": "string",
+       "value": "How long have we really got, Captain?\nIs there anything a hand can do?"
+      },
+      {
+       "name": "mark",
+       "type": "string",
+       "value": "R"
+      }
+     ]
     },
     {
      "id": 6,
+     "name": "Pell",
+     "type": "",
+     "gid": 1,
+     "x": 464,
+     "y": 992,
+     "width": 48,
+     "height": 96,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "person",
+       "type": "string",
+       "value": "pell"
+      },
+      {
+       "name": "asks",
+       "type": "string",
+       "value": "How's she handling, Ensign?\nWhen did you last sleep?"
+      },
+      {
+       "name": "mark",
+       "type": "string",
+       "value": "P"
+      }
+     ]
+    },
+    {
+     "id": 7,
      "name": "The plot table",
      "type": "",
      "gid": 2,
-     "x": 880,
-     "y": 1056,
+     "x": 656,
+     "y": 992,
      "width": 40,
      "height": 56,
      "rotation": 0,
@@ -4875,220 +4926,24 @@
      ]
     },
     {
-     "id": 7,
-     "name": "Hot-bunk slate",
-     "type": "",
-     "gid": 2,
-     "x": 1904,
-     "y": 1056,
-     "width": 40,
-     "height": 56,
-     "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "look",
-       "type": "string",
-       "value": "Bunk hours, traded and re-traded in a dozen hands. Nine hundred people on a ship built for three hundred, and a hot bunk is worth more than money."
-      },
-      {
-       "name": "use",
-       "type": "string",
-       "value": "I read the hot-bunk slate and ask who's going without."
-      },
-      {
-       "name": "mark",
-       "type": "string",
-       "value": "s"
-      }
-     ]
-    },
-    {
      "id": 8,
-     "name": "Roe",
+     "name": "Start",
      "type": "",
-     "gid": 1,
-     "x": 2992,
-     "y": 1056,
-     "width": 48,
-     "height": 96,
+     "gid": 4,
+     "x": 816,
+     "y": 992,
+     "width": 40,
+     "height": 64,
      "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "person",
-       "type": "string",
-       "value": "bastian"
-      },
-      {
-       "name": "asks",
-       "type": "string",
-       "value": "How are people holding up, Father?\nWho are you here for today?"
-      },
-      {
-       "name": "mark",
-       "type": "string",
-       "value": "A"
-      }
-     ]
+     "visible": true
     },
     {
      "id": 9,
-     "name": "Voss",
-     "type": "",
-     "gid": 1,
-     "x": 976,
-     "y": 1120,
-     "width": 48,
-     "height": 96,
-     "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "person",
-       "type": "string",
-       "value": "voss"
-      },
-      {
-       "name": "asks",
-       "type": "string",
-       "value": "What's our real situation, Commander?\nIs there anything I should be worried about?"
-      },
-      {
-       "name": "mark",
-       "type": "string",
-       "value": "V"
-      }
-     ]
-    },
-    {
-     "id": 10,
-     "name": "The chalked names",
-     "type": "",
-     "gid": 2,
-     "x": 2448,
-     "y": 1120,
-     "width": 40,
-     "height": 56,
-     "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "look",
-       "type": "string",
-       "value": "Names in chalk from the deck to the overhead, in dozens of different hands. Nobody ordered it, and nobody dares wash it."
-      },
-      {
-       "name": "use",
-       "type": "string",
-       "value": "I stop at the Names Bulkhead and read the names, taking my time."
-      },
-      {
-       "name": "mark",
-       "type": "string",
-       "value": "n"
-      }
-     ]
-    },
-    {
-     "id": 11,
-     "name": "Stub of chalk",
-     "type": "",
-     "gid": 2,
-     "x": 2896,
-     "y": 1120,
-     "width": 40,
-     "height": 56,
-     "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "look",
-       "type": "string",
-       "value": "A stub of chalk on a pipe bracket, worn down to a thumbnail. Someone will need it tomorrow."
-      },
-      {
-       "name": "use",
-       "type": "string",
-       "value": "I take the chalk and add a name I've been carrying."
-      },
-      {
-       "name": "mark",
-       "type": "string",
-       "value": "w"
-      }
-     ]
-    },
-    {
-     "id": 12,
-     "name": "Old Concord medal",
-     "type": "",
-     "gid": 2,
-     "x": 3152,
-     "y": 1120,
-     "width": 40,
-     "height": 56,
-     "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "item",
-       "type": "string",
-       "value": "old_concord_medal"
-      },
-      {
-       "name": "look",
-       "type": "string",
-       "value": "A Concord service medal, hung from a pipe under one of the names. Its ribbon has gone grey."
-      },
-      {
-       "name": "use",
-       "type": "string",
-       "value": "I take down the old Concord medal and ask who it belongs to."
-      },
-      {
-       "name": "mark",
-       "type": "string",
-       "value": "m"
-      }
-     ]
-    },
-    {
-     "id": 13,
-     "name": "Vey",
-     "type": "",
-     "gid": 1,
-     "x": 272,
-     "y": 1184,
-     "width": 48,
-     "height": 96,
-     "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "person",
-       "type": "string",
-       "value": "lira"
-      },
-      {
-       "name": "asks",
-       "type": "string",
-       "value": "What are the sensors showing, Ensign?\nHow are you holding up in the pit?"
-      },
-      {
-       "name": "mark",
-       "type": "string",
-       "value": "L"
-      }
-     ]
-    },
-    {
-     "id": 14,
      "name": "Cracked repeater",
      "type": "",
      "gid": 2,
-     "x": 656,
-     "y": 1184,
+     "x": 848,
+     "y": 992,
      "width": 40,
      "height": 56,
      "rotation": 0,
@@ -5110,6 +4965,11 @@
        "value": "You read round the split. Forty-one returns, and beyond them, where the Beacon's bearing would be, a smear the repeater can't resolve and won't let go of."
       },
       {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      },
+      {
        "name": "mark",
        "type": "string",
        "value": "r"
@@ -5117,12 +4977,12 @@
      ]
     },
     {
-     "id": 15,
+     "id": 10,
      "name": "The captain's chair",
      "type": "",
      "gid": 2,
-     "x": 784,
-     "y": 1184,
+     "x": 912,
+     "y": 992,
      "width": 40,
      "height": 56,
      "rotation": 0,
@@ -5159,6 +5019,11 @@
        "value": "You get as far as the armrest before Commander Voss looks up. You find you've stepped back."
       },
       {
+       "name": "facing",
+       "type": "string",
+       "value": "w"
+      },
+      {
        "name": "mark",
        "type": "string",
        "value": "c"
@@ -5166,70 +5031,12 @@
      ]
     },
     {
-     "id": 16,
-     "name": "Reddick",
-     "type": "",
-     "gid": 1,
-     "x": 752,
-     "y": 1312,
-     "width": 48,
-     "height": 96,
-     "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "person",
-       "type": "string",
-       "value": "reddick"
-      },
-      {
-       "name": "asks",
-       "type": "string",
-       "value": "How long have we really got, Captain?\nIs there anything a hand can do?"
-      },
-      {
-       "name": "mark",
-       "type": "string",
-       "value": "R"
-      }
-     ]
-    },
-    {
-     "id": 17,
-     "name": "Marchetti",
-     "type": "",
-     "gid": 1,
-     "x": 784,
-     "y": 1312,
-     "width": 48,
-     "height": 96,
-     "rotation": 0,
-     "visible": true,
-     "properties": [
-      {
-       "name": "person",
-       "type": "string",
-       "value": "marchetti"
-      },
-      {
-       "name": "asks",
-       "type": "string",
-       "value": "Where are we going next, Captain?\nHow are the guns holding up?"
-      },
-      {
-       "name": "mark",
-       "type": "string",
-       "value": "M"
-      }
-     ]
-    },
-    {
-     "id": 18,
+     "id": 11,
      "name": "Lund",
      "type": "",
      "gid": 1,
-     "x": 848,
-     "y": 1312,
+     "x": 1072,
+     "y": 992,
      "width": 48,
      "height": 96,
      "rotation": 0,
@@ -5253,12 +5060,41 @@
      ]
     },
     {
-     "id": 19,
-     "name": "Ready room locker",
+     "id": 12,
+     "name": "Voss",
+     "type": "",
+     "gid": 1,
+     "x": 912,
+     "y": 1056,
+     "width": 48,
+     "height": 96,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "person",
+       "type": "string",
+       "value": "voss"
+      },
+      {
+       "name": "asks",
+       "type": "string",
+       "value": "What's our real situation, Commander?\nIs there anything I should be worried about?"
+      },
+      {
+       "name": "mark",
+       "type": "string",
+       "value": "V"
+      }
+     ]
+    },
+    {
+     "id": 13,
+     "name": "Hot-bunk slate",
      "type": "",
      "gid": 2,
-     "x": 1328,
-     "y": 1568,
+     "x": 1904,
+     "y": 1056,
      "width": 40,
      "height": 56,
      "rotation": 0,
@@ -5267,22 +5103,196 @@
       {
        "name": "look",
        "type": "string",
-       "value": "The old captain's locker, just inside the ready room, with a private seal still on it. Nobody's opened it since the Fall, or nobody's admitted to it."
+       "value": "Bunk hours, traded and re-traded in a dozen hands. Nine hundred people on a ship built for three hundred, and a hot bunk is worth more than money."
       },
       {
        "name": "use",
        "type": "string",
-       "value": "I go into the ready room and try the old captain's sealed locker."
-      },
-      {
-       "name": "used",
-       "type": "string",
-       "value": "The seal holds. It's the old captain's, and nobody has the code, or nobody's admitting to it. Marrow could cut it. You'd have to decide to ask him."
+       "value": "I read the hot-bunk slate and ask who's going without."
       },
       {
        "name": "mark",
        "type": "string",
-       "value": "l"
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 14,
+     "name": "Roe",
+     "type": "",
+     "gid": 1,
+     "x": 2992,
+     "y": 1056,
+     "width": 48,
+     "height": 96,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "person",
+       "type": "string",
+       "value": "bastian"
+      },
+      {
+       "name": "asks",
+       "type": "string",
+       "value": "How are people holding up, Father?\nWho are you here for today?"
+      },
+      {
+       "name": "mark",
+       "type": "string",
+       "value": "A"
+      }
+     ]
+    },
+    {
+     "id": 15,
+     "name": "Marchetti",
+     "type": "",
+     "gid": 1,
+     "x": 1040,
+     "y": 1120,
+     "width": 48,
+     "height": 96,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "person",
+       "type": "string",
+       "value": "marchetti"
+      },
+      {
+       "name": "asks",
+       "type": "string",
+       "value": "Where are we going next, Captain?\nHow are the guns holding up?"
+      },
+      {
+       "name": "mark",
+       "type": "string",
+       "value": "M"
+      }
+     ]
+    },
+    {
+     "id": 16,
+     "name": "The chalked names",
+     "type": "",
+     "gid": 2,
+     "x": 2448,
+     "y": 1120,
+     "width": 40,
+     "height": 56,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "look",
+       "type": "string",
+       "value": "Names in chalk from the deck to the overhead, in dozens of different hands. Nobody ordered it, and nobody dares wash it."
+      },
+      {
+       "name": "use",
+       "type": "string",
+       "value": "I stop at the Names Bulkhead and read the names, taking my time."
+      },
+      {
+       "name": "mark",
+       "type": "string",
+       "value": "n"
+      }
+     ]
+    },
+    {
+     "id": 17,
+     "name": "Stub of chalk",
+     "type": "",
+     "gid": 2,
+     "x": 2896,
+     "y": 1120,
+     "width": 40,
+     "height": 56,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "look",
+       "type": "string",
+       "value": "A stub of chalk on a pipe bracket, worn down to a thumbnail. Someone will need it tomorrow."
+      },
+      {
+       "name": "use",
+       "type": "string",
+       "value": "I take the chalk and add a name I've been carrying."
+      },
+      {
+       "name": "mark",
+       "type": "string",
+       "value": "w"
+      }
+     ]
+    },
+    {
+     "id": 18,
+     "name": "Old Concord medal",
+     "type": "",
+     "gid": 2,
+     "x": 3152,
+     "y": 1120,
+     "width": 40,
+     "height": 56,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "item",
+       "type": "string",
+       "value": "old_concord_medal"
+      },
+      {
+       "name": "look",
+       "type": "string",
+       "value": "A Concord service medal, hung from a pipe under one of the names. Its ribbon has gone grey."
+      },
+      {
+       "name": "use",
+       "type": "string",
+       "value": "I take down the old Concord medal and ask who it belongs to."
+      },
+      {
+       "name": "mark",
+       "type": "string",
+       "value": "m"
+      }
+     ]
+    },
+    {
+     "id": 19,
+     "name": "Vey",
+     "type": "",
+     "gid": 1,
+     "x": 720,
+     "y": 1632,
+     "width": 48,
+     "height": 96,
+     "rotation": 0,
+     "visible": true,
+     "properties": [
+      {
+       "name": "person",
+       "type": "string",
+       "value": "lira"
+      },
+      {
+       "name": "asks",
+       "type": "string",
+       "value": "What are the sensors showing, Ensign?\nHow are you holding up in the pit?"
+      },
+      {
+       "name": "mark",
+       "type": "string",
+       "value": "L"
       }
      ]
     },
@@ -5700,8 +5710,8 @@
      "id": 42,
      "name": "",
      "type": "Label",
-     "x": 704,
-     "y": 256,
+     "x": 992,
+     "y": 832,
      "width": 90,
      "height": 20,
      "rotation": 0,
@@ -5717,8 +5727,8 @@
      "id": 43,
      "name": "",
      "type": "Label",
-     "x": 448,
-     "y": 1344,
+     "x": 800,
+     "y": 1728,
      "width": 90,
      "height": 20,
      "rotation": 0,
@@ -5734,8 +5744,8 @@
      "id": 44,
      "name": "",
      "type": "Label",
-     "x": 1152,
-     "y": 1344,
+     "x": 1216,
+     "y": 384,
      "width": 90,
      "height": 20,
      "rotation": 0,
@@ -6035,9 +6045,9 @@
      "id": 61,
      "name": "The Bridge",
      "type": "Room",
-     "x": 96,
+     "x": 320,
      "y": 128,
-     "width": 1344,
+     "width": 1120,
      "height": 1792,
      "rotation": 0,
      "visible": true,
@@ -6303,9 +6313,9 @@
    "objects": [
     {
      "id": 72,
-     "name": "window",
+     "name": "interiors/Office/Fire_Extinguisher",
      "type": "Furniture",
-     "x": 656,
+     "x": 624,
      "y": 96,
      "width": 0,
      "height": 0,
@@ -6322,102 +6332,7 @@
     },
     {
      "id": 73,
-     "name": "window",
-     "type": "Furniture",
-     "x": 688,
-     "y": 96,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "s"
-      }
-     ]
-    },
-    {
-     "id": 74,
-     "name": "window",
-     "type": "Furniture",
-     "x": 720,
-     "y": 96,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "s"
-      }
-     ]
-    },
-    {
-     "id": 75,
-     "name": "window",
-     "type": "Furniture",
-     "x": 752,
-     "y": 96,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "s"
-      }
-     ]
-    },
-    {
-     "id": 76,
-     "name": "window",
-     "type": "Furniture",
-     "x": 784,
-     "y": 96,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "s"
-      }
-     ]
-    },
-    {
-     "id": 77,
-     "name": "window",
-     "type": "Furniture",
-     "x": 816,
-     "y": 96,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "s"
-      }
-     ]
-    },
-    {
-     "id": 78,
-     "name": "window",
+     "name": "interiors/Office/Medical_Kit_Ani",
      "type": "Furniture",
      "x": 848,
      "y": 96,
@@ -6435,10 +6350,105 @@
      ]
     },
     {
-     "id": 79,
-     "name": "window",
+     "id": 74,
+     "name": "interiors/Lab/Cable_Horizontal_1",
      "type": "Furniture",
-     "x": 880,
+     "x": 912,
+     "y": 96,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 75,
+     "name": "interiors/Lab/Cable_Horizontal_2",
+     "type": "Furniture",
+     "x": 976,
+     "y": 96,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 76,
+     "name": "interiors/Lab/Cable_Horizontal_1",
+     "type": "Furniture",
+     "x": 1040,
+     "y": 96,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 77,
+     "name": "interiors/Lab/Cable_Horizontal_2",
+     "type": "Furniture",
+     "x": 1104,
+     "y": 96,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 78,
+     "name": "interiors/Wall_Decoration/Poster_6",
+     "type": "Furniture",
+     "x": 1168,
+     "y": 96,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 79,
+     "name": "wall-screen",
+     "type": "Furniture",
+     "x": 2288,
      "y": 96,
      "width": 0,
      "height": 0,
@@ -6455,9 +6465,9 @@
     },
     {
      "id": 80,
-     "name": "window",
+     "name": "wall-screen",
      "type": "Furniture",
-     "x": 912,
+     "x": 2416,
      "y": 96,
      "width": 0,
      "height": 0,
@@ -6476,82 +6486,6 @@
      "id": 81,
      "name": "wall-screen",
      "type": "Furniture",
-     "x": 1136,
-     "y": 96,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "s"
-      }
-     ]
-    },
-    {
-     "id": 82,
-     "name": "wall-screen",
-     "type": "Furniture",
-     "x": 1296,
-     "y": 96,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "s"
-      }
-     ]
-    },
-    {
-     "id": 83,
-     "name": "wall-screen",
-     "type": "Furniture",
-     "x": 2288,
-     "y": 96,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "s"
-      }
-     ]
-    },
-    {
-     "id": 84,
-     "name": "wall-screen",
-     "type": "Furniture",
-     "x": 2416,
-     "y": 96,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "s"
-      }
-     ]
-    },
-    {
-     "id": 85,
-     "name": "wall-screen",
-     "type": "Furniture",
      "x": 2544,
      "y": 96,
      "width": 0,
@@ -6568,10 +6502,86 @@
      ]
     },
     {
-     "id": 86,
-     "name": "plant",
+     "id": 82,
+     "name": "interiors/Lab/Server_2",
      "type": "Furniture",
-     "x": 1424,
+     "x": 912,
+     "y": 160,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 83,
+     "name": "isospace/rack-dark",
+     "type": "Furniture",
+     "x": 976,
+     "y": 160,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 84,
+     "name": "interiors/Lab/Server_2",
+     "type": "Furniture",
+     "x": 1040,
+     "y": 160,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 85,
+     "name": "isospace/rack-dark",
+     "type": "Furniture",
+     "x": 1104,
+     "y": 160,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 86,
+     "name": "interiors/Chairs/Office_Main_Chair",
+     "type": "Furniture",
+     "x": 1296,
      "y": 160,
      "width": 0,
      "height": 0,
@@ -6590,7 +6600,7 @@
      "id": 87,
      "name": "shelf",
      "type": "Furniture",
-     "x": 1584,
+     "x": 1360,
      "y": 160,
      "width": 0,
      "height": 0,
@@ -6609,7 +6619,7 @@
      "id": 88,
      "name": "shelf",
      "type": "Furniture",
-     "x": 2032,
+     "x": 1584,
      "y": 160,
      "width": 0,
      "height": 0,
@@ -6626,6 +6636,82 @@
     },
     {
      "id": 89,
+     "name": "shelf",
+     "type": "Furniture",
+     "x": 2032,
+     "y": 160,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 90,
+     "name": "interiors/Computer/MacBook_Ani",
+     "type": "Furniture",
+     "x": 1264,
+     "y": 224,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 91,
+     "name": "interiors/Desks/Office_Main_Table_Desk",
+     "type": "Furniture",
+     "x": 1264,
+     "y": 224,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 92,
+     "name": "interiors/Kitchen/Mug_Red",
+     "type": "Furniture",
+     "x": 1328,
+     "y": 224,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 93,
      "name": "plot-table",
      "type": "Furniture",
      "x": 1808,
@@ -6644,7 +6730,7 @@
      ]
     },
     {
-     "id": 90,
+     "id": 94,
      "name": "shelf",
      "type": "Furniture",
      "x": 3952,
@@ -6663,7 +6749,7 @@
      ]
     },
     {
-     "id": 91,
+     "id": 95,
      "name": "locker",
      "type": "Furniture",
      "x": 4144,
@@ -6682,7 +6768,64 @@
      ]
     },
     {
-     "id": 92,
+     "id": 96,
+     "name": "wall-screen",
+     "type": "Furniture",
+     "x": 560,
+     "y": 352,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 97,
+     "name": "isospace/console",
+     "type": "Furniture",
+     "x": 656,
+     "y": 352,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 98,
+     "name": "interiors/Chairs/GChair_9",
+     "type": "Furniture",
+     "x": 720,
+     "y": 352,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "w"
+      }
+     ]
+    },
+    {
+     "id": 99,
      "name": "bunk",
      "type": "Furniture",
      "x": 2736,
@@ -6701,7 +6844,7 @@
      ]
     },
     {
-     "id": 93,
+     "id": 100,
      "name": "locker",
      "type": "Furniture",
      "x": 2864,
@@ -6720,7 +6863,7 @@
      ]
     },
     {
-     "id": 94,
+     "id": 101,
      "name": "bunk",
      "type": "Furniture",
      "x": 2928,
@@ -6739,7 +6882,7 @@
      ]
     },
     {
-     "id": 95,
+     "id": 102,
      "name": "locker",
      "type": "Furniture",
      "x": 3056,
@@ -6758,7 +6901,7 @@
      ]
     },
     {
-     "id": 96,
+     "id": 103,
      "name": "bunk",
      "type": "Furniture",
      "x": 3120,
@@ -6777,7 +6920,7 @@
      ]
     },
     {
-     "id": 97,
+     "id": 104,
      "name": "locker",
      "type": "Furniture",
      "x": 3248,
@@ -6796,7 +6939,7 @@
      ]
     },
     {
-     "id": 98,
+     "id": 105,
      "name": "bunk",
      "type": "Furniture",
      "x": 3312,
@@ -6815,7 +6958,7 @@
      ]
     },
     {
-     "id": 99,
+     "id": 106,
      "name": "locker",
      "type": "Furniture",
      "x": 3440,
@@ -6834,7 +6977,7 @@
      ]
     },
     {
-     "id": 100,
+     "id": 107,
      "name": "bunk",
      "type": "Furniture",
      "x": 3504,
@@ -6853,7 +6996,7 @@
      ]
     },
     {
-     "id": 101,
+     "id": 108,
      "name": "locker",
      "type": "Furniture",
      "x": 3632,
@@ -6872,7 +7015,7 @@
      ]
     },
     {
-     "id": 102,
+     "id": 109,
      "name": "bunk",
      "type": "Furniture",
      "x": 3696,
@@ -6891,7 +7034,7 @@
      ]
     },
     {
-     "id": 103,
+     "id": 110,
      "name": "locker",
      "type": "Furniture",
      "x": 3824,
@@ -6910,7 +7053,121 @@
      ]
     },
     {
-     "id": 104,
+     "id": 111,
+     "name": "wall-screen",
+     "type": "Furniture",
+     "x": 560,
+     "y": 416,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 112,
+     "name": "isospace/console",
+     "type": "Furniture",
+     "x": 656,
+     "y": 416,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 113,
+     "name": "interiors/Chairs/GChair_9",
+     "type": "Furniture",
+     "x": 720,
+     "y": 416,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "w"
+      }
+     ]
+    },
+    {
+     "id": 114,
+     "name": "wall-screen",
+     "type": "Furniture",
+     "x": 560,
+     "y": 480,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 115,
+     "name": "isospace/console",
+     "type": "Furniture",
+     "x": 656,
+     "y": 480,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 116,
+     "name": "interiors/Chairs/GChair_9",
+     "type": "Furniture",
+     "x": 720,
+     "y": 480,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "w"
+      }
+     ]
+    },
+    {
+     "id": 117,
      "name": "chair",
      "type": "Furniture",
      "x": 3984,
@@ -6929,7 +7186,7 @@
      ]
     },
     {
-     "id": 105,
+     "id": 118,
      "name": "chair",
      "type": "Furniture",
      "x": 4048,
@@ -6948,102 +7205,7 @@
      ]
     },
     {
-     "id": 106,
-     "name": "chair",
-     "type": "Furniture",
-     "x": 656,
-     "y": 544,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "n"
-      }
-     ]
-    },
-    {
-     "id": 107,
-     "name": "chair",
-     "type": "Furniture",
-     "x": 720,
-     "y": 544,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "n"
-      }
-     ]
-    },
-    {
-     "id": 108,
-     "name": "chair",
-     "type": "Furniture",
-     "x": 784,
-     "y": 544,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "n"
-      }
-     ]
-    },
-    {
-     "id": 109,
-     "name": "chair",
-     "type": "Furniture",
-     "x": 848,
-     "y": 544,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "n"
-      }
-     ]
-    },
-    {
-     "id": 110,
-     "name": "chair",
-     "type": "Furniture",
-     "x": 912,
-     "y": 544,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "n"
-      }
-     ]
-    },
-    {
-     "id": 111,
+     "id": 119,
      "name": "chair",
      "type": "Furniture",
      "x": 1712,
@@ -7062,7 +7224,7 @@
      ]
     },
     {
-     "id": 112,
+     "id": 120,
      "name": "chair",
      "type": "Furniture",
      "x": 1776,
@@ -7081,7 +7243,7 @@
      ]
     },
     {
-     "id": 113,
+     "id": 121,
      "name": "chair",
      "type": "Furniture",
      "x": 1840,
@@ -7100,7 +7262,7 @@
      ]
     },
     {
-     "id": 114,
+     "id": 122,
      "name": "chair",
      "type": "Furniture",
      "x": 2288,
@@ -7119,7 +7281,7 @@
      ]
     },
     {
-     "id": 115,
+     "id": 123,
      "name": "chair",
      "type": "Furniture",
      "x": 2352,
@@ -7138,7 +7300,7 @@
      ]
     },
     {
-     "id": 116,
+     "id": 124,
      "name": "chair",
      "type": "Furniture",
      "x": 2512,
@@ -7157,7 +7319,7 @@
      ]
     },
     {
-     "id": 117,
+     "id": 125,
      "name": "chair",
      "type": "Furniture",
      "x": 2576,
@@ -7176,7 +7338,7 @@
      ]
     },
     {
-     "id": 118,
+     "id": 126,
      "name": "chair",
      "type": "Furniture",
      "x": 2800,
@@ -7195,7 +7357,7 @@
      ]
     },
     {
-     "id": 119,
+     "id": 127,
      "name": "chair",
      "type": "Furniture",
      "x": 3184,
@@ -7214,7 +7376,7 @@
      ]
     },
     {
-     "id": 120,
+     "id": 128,
      "name": "chair",
      "type": "Furniture",
      "x": 3568,
@@ -7233,7 +7395,26 @@
      ]
     },
     {
-     "id": 121,
+     "id": 129,
+     "name": "plant",
+     "type": "Furniture",
+     "x": 1232,
+     "y": 672,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 130,
      "name": "chair",
      "type": "Furniture",
      "x": 1616,
@@ -7252,7 +7433,7 @@
      ]
     },
     {
-     "id": 122,
+     "id": 131,
      "name": "chair",
      "type": "Furniture",
      "x": 1968,
@@ -7271,7 +7452,7 @@
      ]
     },
     {
-     "id": 123,
+     "id": 132,
      "name": "chair",
      "type": "Furniture",
      "x": 2992,
@@ -7290,7 +7471,7 @@
      ]
     },
     {
-     "id": 124,
+     "id": 133,
      "name": "chair",
      "type": "Furniture",
      "x": 3376,
@@ -7309,7 +7490,7 @@
      ]
     },
     {
-     "id": 125,
+     "id": 134,
      "name": "chair",
      "type": "Furniture",
      "x": 3760,
@@ -7328,10 +7509,10 @@
      ]
     },
     {
-     "id": 126,
-     "name": "chair",
+     "id": 135,
+     "name": "window",
      "type": "Furniture",
-     "x": 944,
+     "x": 304,
      "y": 800,
      "width": 0,
      "height": 0,
@@ -7342,15 +7523,15 @@
       {
        "name": "facing",
        "type": "string",
-       "value": "n"
+       "value": "e"
       }
      ]
     },
     {
-     "id": 127,
-     "name": "chair",
+     "id": 136,
+     "name": "plant",
      "type": "Furniture",
-     "x": 1008,
+     "x": 1232,
      "y": 800,
      "width": 0,
      "height": 0,
@@ -7361,50 +7542,12 @@
       {
        "name": "facing",
        "type": "string",
-       "value": "n"
+       "value": "s"
       }
      ]
     },
     {
-     "id": 128,
-     "name": "interiors/Chairs/Office_Main_Chair",
-     "type": "Furniture",
-     "x": 1040,
-     "y": 800,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "n"
-      }
-     ]
-    },
-    {
-     "id": 129,
-     "name": "chair",
-     "type": "Furniture",
-     "x": 1072,
-     "y": 800,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "n"
-      }
-     ]
-    },
-    {
-     "id": 130,
+     "id": 137,
      "name": "chair",
      "type": "Furniture",
      "x": 2288,
@@ -7423,7 +7566,7 @@
      ]
     },
     {
-     "id": 131,
+     "id": 138,
      "name": "chair",
      "type": "Furniture",
      "x": 2352,
@@ -7442,7 +7585,7 @@
      ]
     },
     {
-     "id": 132,
+     "id": 139,
      "name": "chair",
      "type": "Furniture",
      "x": 2416,
@@ -7461,7 +7604,7 @@
      ]
     },
     {
-     "id": 133,
+     "id": 140,
      "name": "chair",
      "type": "Furniture",
      "x": 2480,
@@ -7480,7 +7623,7 @@
      ]
     },
     {
-     "id": 134,
+     "id": 141,
      "name": "chair",
      "type": "Furniture",
      "x": 2544,
@@ -7499,7 +7642,26 @@
      ]
     },
     {
-     "id": 135,
+     "id": 142,
+     "name": "window",
+     "type": "Furniture",
+     "x": 304,
+     "y": 864,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 143,
      "name": "wall-screen",
      "type": "Furniture",
      "x": 1680,
@@ -7518,7 +7680,7 @@
      ]
     },
     {
-     "id": 136,
+     "id": 144,
      "name": "wall-screen",
      "type": "Furniture",
      "x": 2128,
@@ -7537,7 +7699,7 @@
      ]
     },
     {
-     "id": 137,
+     "id": 145,
      "name": "wall-screen",
      "type": "Furniture",
      "x": 2704,
@@ -7556,7 +7718,7 @@
      ]
     },
     {
-     "id": 138,
+     "id": 146,
      "name": "wall-screen",
      "type": "Furniture",
      "x": 3280,
@@ -7575,7 +7737,7 @@
      ]
     },
     {
-     "id": 139,
+     "id": 147,
      "name": "wall-screen",
      "type": "Furniture",
      "x": 3728,
@@ -7594,7 +7756,64 @@
      ]
     },
     {
-     "id": 140,
+     "id": 148,
+     "name": "window",
+     "type": "Furniture",
+     "x": 304,
+     "y": 928,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 149,
+     "name": "isospace/console",
+     "type": "Furniture",
+     "x": 400,
+     "y": 928,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 150,
+     "name": "interiors/Chairs/GChair_9",
+     "type": "Furniture",
+     "x": 464,
+     "y": 928,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "w"
+      }
+     ]
+    },
+    {
+     "id": 151,
      "name": "plant",
      "type": "Furniture",
      "x": 1520,
@@ -7613,7 +7832,273 @@
      ]
     },
     {
-     "id": 141,
+     "id": 152,
+     "name": "window",
+     "type": "Furniture",
+     "x": 304,
+     "y": 992,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 153,
+     "name": "isospace/console",
+     "type": "Furniture",
+     "x": 400,
+     "y": 992,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 154,
+     "name": "interiors/Chairs/GChair_9",
+     "type": "Furniture",
+     "x": 464,
+     "y": 992,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "w"
+      }
+     ]
+    },
+    {
+     "id": 155,
+     "name": "interiors/Carpets/Carpet_Modern",
+     "type": "Furniture",
+     "x": 752,
+     "y": 992,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 156,
+     "name": "window",
+     "type": "Furniture",
+     "x": 304,
+     "y": 1056,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 157,
+     "name": "isospace/console",
+     "type": "Furniture",
+     "x": 400,
+     "y": 1056,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 158,
+     "name": "interiors/Chairs/GChair_9",
+     "type": "Furniture",
+     "x": 464,
+     "y": 1056,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "w"
+      }
+     ]
+    },
+    {
+     "id": 159,
+     "name": "plot-table",
+     "type": "Furniture",
+     "x": 656,
+     "y": 1056,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 160,
+     "name": "interiors/Carpets/Carpet_Modern",
+     "type": "Furniture",
+     "x": 752,
+     "y": 1056,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 161,
+     "name": "screen",
+     "type": "Furniture",
+     "x": 848,
+     "y": 1056,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 162,
+     "name": "command-chair",
+     "type": "Furniture",
+     "x": 912,
+     "y": 1056,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "w"
+      }
+     ]
+    },
+    {
+     "id": 163,
+     "name": "window",
+     "type": "Furniture",
+     "x": 304,
+     "y": 1120,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 164,
+     "name": "isospace/console",
+     "type": "Furniture",
+     "x": 400,
+     "y": 1120,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 165,
+     "name": "interiors/Chairs/GChair_9",
+     "type": "Furniture",
+     "x": 464,
+     "y": 1120,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "w"
+      }
+     ]
+    },
+    {
+     "id": 166,
      "name": "plant",
      "type": "Furniture",
      "x": 3792,
@@ -7632,7 +8117,26 @@
      ]
     },
     {
-     "id": 142,
+     "id": 167,
+     "name": "window",
+     "type": "Furniture",
+     "x": 304,
+     "y": 1184,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 168,
      "name": "wall-screen",
      "type": "Furniture",
      "x": 1712,
@@ -7651,10 +8155,29 @@
      ]
     },
     {
-     "id": 143,
-     "name": "chair",
+     "id": 169,
+     "name": "window",
      "type": "Furniture",
-     "x": 944,
+     "x": 304,
+     "y": 1248,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 170,
+     "name": "plant",
+     "type": "Furniture",
+     "x": 1232,
      "y": 1248,
      "width": 0,
      "height": 0,
@@ -7670,45 +8193,7 @@
      ]
     },
     {
-     "id": 144,
-     "name": "chair",
-     "type": "Furniture",
-     "x": 1008,
-     "y": 1248,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "n"
-      }
-     ]
-    },
-    {
-     "id": 145,
-     "name": "chair",
-     "type": "Furniture",
-     "x": 1072,
-     "y": 1248,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "n"
-      }
-     ]
-    },
-    {
-     "id": 146,
+     "id": 171,
      "name": "shelf",
      "type": "Furniture",
      "x": 1584,
@@ -7727,7 +8212,7 @@
      ]
     },
     {
-     "id": 147,
+     "id": 172,
      "name": "shelf",
      "type": "Furniture",
      "x": 2032,
@@ -7746,7 +8231,7 @@
      ]
     },
     {
-     "id": 148,
+     "id": 173,
      "name": "plant",
      "type": "Furniture",
      "x": 2608,
@@ -7765,7 +8250,7 @@
      ]
     },
     {
-     "id": 149,
+     "id": 174,
      "name": "plant",
      "type": "Furniture",
      "x": 2960,
@@ -7784,7 +8269,7 @@
      ]
     },
     {
-     "id": 150,
+     "id": 175,
      "name": "basin",
      "type": "Furniture",
      "x": 3120,
@@ -7803,7 +8288,7 @@
      ]
     },
     {
-     "id": 151,
+     "id": 176,
      "name": "basin",
      "type": "Furniture",
      "x": 3152,
@@ -7822,7 +8307,7 @@
      ]
     },
     {
-     "id": 152,
+     "id": 177,
      "name": "basin",
      "type": "Furniture",
      "x": 3280,
@@ -7841,7 +8326,7 @@
      ]
     },
     {
-     "id": 153,
+     "id": 178,
      "name": "basin",
      "type": "Furniture",
      "x": 3312,
@@ -7860,7 +8345,7 @@
      ]
     },
     {
-     "id": 154,
+     "id": 179,
      "name": "basin",
      "type": "Furniture",
      "x": 3344,
@@ -7879,30 +8364,11 @@
      ]
     },
     {
-     "id": 155,
-     "name": "shelf",
-     "type": "Furniture",
-     "x": 1168,
-     "y": 1312,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "s"
-      }
-     ]
-    },
-    {
-     "id": 156,
+     "id": 180,
      "name": "plant",
      "type": "Furniture",
-     "x": 1328,
-     "y": 1312,
+     "x": 1232,
+     "y": 1376,
      "width": 0,
      "height": 0,
      "rotation": 0,
@@ -7917,7 +8383,7 @@
      ]
     },
     {
-     "id": 157,
+     "id": 181,
      "name": "chair",
      "type": "Furniture",
      "x": 1616,
@@ -7936,7 +8402,7 @@
      ]
     },
     {
-     "id": 158,
+     "id": 182,
      "name": "chair",
      "type": "Furniture",
      "x": 1680,
@@ -7955,7 +8421,7 @@
      ]
     },
     {
-     "id": 159,
+     "id": 183,
      "name": "chair",
      "type": "Furniture",
      "x": 1744,
@@ -7974,7 +8440,7 @@
      ]
     },
     {
-     "id": 160,
+     "id": 184,
      "name": "chair",
      "type": "Furniture",
      "x": 1808,
@@ -7993,7 +8459,7 @@
      ]
     },
     {
-     "id": 161,
+     "id": 185,
      "name": "chair",
      "type": "Furniture",
      "x": 1872,
@@ -8012,27 +8478,8 @@
      ]
     },
     {
-     "id": 162,
-     "name": "chair",
-     "type": "Furniture",
-     "x": 496,
-     "y": 1568,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "n"
-      }
-     ]
-    },
-    {
-     "id": 163,
-     "name": "chair",
+     "id": 186,
+     "name": "wall-screen",
      "type": "Furniture",
      "x": 560,
      "y": 1568,
@@ -8045,12 +8492,50 @@
       {
        "name": "facing",
        "type": "string",
-       "value": "n"
+       "value": "e"
       }
      ]
     },
     {
-     "id": 164,
+     "id": 187,
+     "name": "isospace/console",
+     "type": "Furniture",
+     "x": 656,
+     "y": 1568,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "e"
+      }
+     ]
+    },
+    {
+     "id": 188,
+     "name": "interiors/Chairs/GChair_9",
+     "type": "Furniture",
+     "x": 720,
+     "y": 1568,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "w"
+      }
+     ]
+    },
+    {
+     "id": 189,
      "name": "long-table",
      "type": "Furniture",
      "x": 1616,
@@ -8069,7 +8554,7 @@
      ]
     },
     {
-     "id": 165,
+     "id": 190,
      "name": "long-table",
      "type": "Furniture",
      "x": 1744,
@@ -8088,7 +8573,7 @@
      ]
     },
     {
-     "id": 166,
+     "id": 191,
      "name": "table",
      "type": "Furniture",
      "x": 1872,
@@ -8107,7 +8592,7 @@
      ]
     },
     {
-     "id": 167,
+     "id": 192,
      "name": "bench",
      "type": "Furniture",
      "x": 2640,
@@ -8126,7 +8611,7 @@
      ]
     },
     {
-     "id": 168,
+     "id": 193,
      "name": "bench",
      "type": "Furniture",
      "x": 2832,
@@ -8145,10 +8630,10 @@
      ]
     },
     {
-     "id": 169,
-     "name": "chair",
+     "id": 194,
+     "name": "wall-screen",
      "type": "Furniture",
-     "x": 880,
+     "x": 560,
      "y": 1632,
      "width": 0,
      "height": 0,
@@ -8159,15 +8644,15 @@
       {
        "name": "facing",
        "type": "string",
-       "value": "n"
+       "value": "e"
       }
      ]
     },
     {
-     "id": 170,
-     "name": "chair",
+     "id": 195,
+     "name": "isospace/console",
      "type": "Furniture",
-     "x": 944,
+     "x": 656,
      "y": 1632,
      "width": 0,
      "height": 0,
@@ -8178,15 +8663,15 @@
       {
        "name": "facing",
        "type": "string",
-       "value": "n"
+       "value": "e"
       }
      ]
     },
     {
-     "id": 171,
-     "name": "chair",
+     "id": 196,
+     "name": "interiors/Chairs/GChair_9",
      "type": "Furniture",
-     "x": 1008,
+     "x": 720,
      "y": 1632,
      "width": 0,
      "height": 0,
@@ -8197,12 +8682,12 @@
       {
        "name": "facing",
        "type": "string",
-       "value": "n"
+       "value": "w"
       }
      ]
     },
     {
-     "id": 172,
+     "id": 197,
      "name": "chair",
      "type": "Furniture",
      "x": 1648,
@@ -8221,7 +8706,7 @@
      ]
     },
     {
-     "id": 173,
+     "id": 198,
      "name": "chair",
      "type": "Furniture",
      "x": 1712,
@@ -8240,7 +8725,7 @@
      ]
     },
     {
-     "id": 174,
+     "id": 199,
      "name": "chair",
      "type": "Furniture",
      "x": 1776,
@@ -8259,7 +8744,7 @@
      ]
     },
     {
-     "id": 175,
+     "id": 200,
      "name": "chair",
      "type": "Furniture",
      "x": 1840,
@@ -8278,7 +8763,7 @@
      ]
     },
     {
-     "id": 176,
+     "id": 201,
      "name": "chair",
      "type": "Furniture",
      "x": 1904,
@@ -8297,27 +8782,8 @@
      ]
     },
     {
-     "id": 177,
-     "name": "chair",
-     "type": "Furniture",
-     "x": 496,
-     "y": 1696,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "n"
-      }
-     ]
-    },
-    {
-     "id": 178,
-     "name": "chair",
+     "id": 202,
+     "name": "wall-screen",
      "type": "Furniture",
      "x": 560,
      "y": 1696,
@@ -8330,15 +8796,15 @@
       {
        "name": "facing",
        "type": "string",
-       "value": "n"
+       "value": "e"
       }
      ]
     },
     {
-     "id": 179,
-     "name": "chair",
+     "id": 203,
+     "name": "isospace/console",
      "type": "Furniture",
-     "x": 1232,
+     "x": 656,
      "y": 1696,
      "width": 0,
      "height": 0,
@@ -8349,15 +8815,34 @@
       {
        "name": "facing",
        "type": "string",
-       "value": "n"
+       "value": "e"
       }
      ]
     },
     {
-     "id": 180,
+     "id": 204,
+     "name": "interiors/Chairs/GChair_9",
+     "type": "Furniture",
+     "x": 720,
+     "y": 1696,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "w"
+      }
+     ]
+    },
+    {
+     "id": 205,
      "name": "cot",
      "type": "Furniture",
-     "x": 1072,
+     "x": 1264,
      "y": 1760,
      "width": 0,
      "height": 0,
@@ -8373,7 +8858,7 @@
      ]
     },
     {
-     "id": 181,
+     "id": 206,
      "name": "bench",
      "type": "Furniture",
      "x": 2640,
@@ -8392,7 +8877,7 @@
      ]
     },
     {
-     "id": 182,
+     "id": 207,
      "name": "bench",
      "type": "Furniture",
      "x": 2832,
@@ -8411,7 +8896,7 @@
      ]
     },
     {
-     "id": 183,
+     "id": 208,
      "name": "barrel",
      "type": "Furniture",
      "x": 4304,
@@ -8430,7 +8915,7 @@
      ]
     },
     {
-     "id": 184,
+     "id": 209,
      "name": "barrel",
      "type": "Furniture",
      "x": 4336,
@@ -8449,7 +8934,7 @@
      ]
     },
     {
-     "id": 185,
+     "id": 210,
      "name": "barrel",
      "type": "Furniture",
      "x": 4432,
@@ -8468,10 +8953,10 @@
      ]
     },
     {
-     "id": 186,
-     "name": "plant",
+     "id": 211,
+     "name": "chair",
      "type": "Furniture",
-     "x": 560,
+     "x": 1360,
      "y": 1824,
      "width": 0,
      "height": 0,
@@ -8487,26 +8972,7 @@
      ]
     },
     {
-     "id": 187,
-     "name": "plant",
-     "type": "Furniture",
-     "x": 1424,
-     "y": 1824,
-     "width": 0,
-     "height": 0,
-     "rotation": 0,
-     "visible": true,
-     "point": true,
-     "properties": [
-      {
-       "name": "facing",
-       "type": "string",
-       "value": "s"
-      }
-     ]
-    },
-    {
-     "id": 188,
+     "id": 212,
      "name": "barrel",
      "type": "Furniture",
      "x": 4304,
@@ -8525,7 +8991,7 @@
      ]
     },
     {
-     "id": 189,
+     "id": 213,
      "name": "barrel",
      "type": "Furniture",
      "x": 4432,
@@ -8544,7 +9010,102 @@
      ]
     },
     {
-     "id": 190,
+     "id": 214,
+     "name": "isospace/cases",
+     "type": "Furniture",
+     "x": 912,
+     "y": 1888,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 215,
+     "name": "isospace/crate-dark",
+     "type": "Furniture",
+     "x": 976,
+     "y": 1888,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 216,
+     "name": "isospace/drums",
+     "type": "Furniture",
+     "x": 1040,
+     "y": 1888,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 217,
+     "name": "isospace/crate-dark",
+     "type": "Furniture",
+     "x": 1104,
+     "y": 1888,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 218,
+     "name": "table",
+     "type": "Furniture",
+     "x": 1360,
+     "y": 1888,
+     "width": 0,
+     "height": 0,
+     "rotation": 0,
+     "visible": true,
+     "point": true,
+     "properties": [
+      {
+       "name": "facing",
+       "type": "string",
+       "value": "s"
+      }
+     ]
+    },
+    {
+     "id": 219,
      "name": "plant",
      "type": "Furniture",
      "x": 1552,
@@ -8563,7 +9124,7 @@
      ]
     },
     {
-     "id": 191,
+     "id": 220,
      "name": "plant",
      "type": "Furniture",
      "x": 2096,
@@ -8582,7 +9143,7 @@
      ]
     },
     {
-     "id": 192,
+     "id": 221,
      "name": "plant",
      "type": "Furniture",
      "x": 2608,
@@ -8601,7 +9162,7 @@
      ]
     },
     {
-     "id": 193,
+     "id": 222,
      "name": "plant",
      "type": "Furniture",
      "x": 2960,

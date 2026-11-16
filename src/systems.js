@@ -27,6 +27,7 @@ import { notePut } from "./puts.js";
 import { airSpoiled, partExtras } from "./room-hooks.js";
 import { SYSTEMS_DEFAULTS, SYSTEMS_FILE_PROBLEMS, WORLD_CHARACTERS, WORLD_COMPUTERS, WORLD_LIFE, WORLD_SYSTEMS } from "./world.js";
 import { KNOWN_SYSTEMS, SYSTEM_TITLES, readComputerLine, readDoorLine, readLocksLine, readPartLine, slugOf } from "../public/systems-text.js";
+import { FURNITURE_BY_ID } from "../public/furniture.js";
 
 const D = () => SYSTEMS_DEFAULTS ?? {};
 const NORMAL = Object.freeze({});
@@ -91,14 +92,24 @@ export function wallSpots(level, claimed = new Set(), area = null) {
   const walkable = (x, y) => Boolean(level.open[y]?.[x]) && !level.solid.has(`${x},${y}`) && inArea(x, y);
   const wall = (x, y) => level.layers.walls[y]?.[x] === "#";
   const nearExit = (x, y) => level.exits.some((exit) => Math.abs(exit.x - x) <= 1 && Math.abs(exit.y - y) <= 1);
+  // A wall with floor behind it or to its left is one the room view cuts down to a kerb (public/iso.js): what hangs
+  // on it hangs in the air. Each spot says so, and whoever shares the walls out can keep to the ones that stand.
+  const floor = (x, y) => Boolean(level.open[y]?.[x]);
+  const low = (x, y) => floor(x, y - 1) || floor(x - 1, y) || floor(x - 1, y - 1);
   const [x0, x1, y0, y1] = area ? [Math.max(0, area.x - 1), Math.min(level.width - 1, area.x + area.w), Math.max(0, area.y - 1), Math.min(level.height - 1, area.y + area.h)] : [0, level.width - 1, 0, level.height - 1];
   for (let y = y0; y <= y1; y += 1) {
-    for (let x = x0; x <= x1; x += 1) if (wall(x, y) && !nearExit(x, y) && !claimed.has(`${x},${y}`) && walkable(x, y + 1)) spots.push({ x, y, face: "back" });
+    for (let x = x0; x <= x1; x += 1) if (wall(x, y) && !nearExit(x, y) && !claimed.has(`${x},${y}`) && walkable(x, y + 1)) spots.push({ x, y, face: "back", ...(low(x, y) ? { low: true } : {}) });
   }
   for (let x = x0; x <= x1; x += 1) {
-    for (let y = y0; y <= y1; y += 1) if (wall(x, y) && !nearExit(x, y) && !claimed.has(`${x},${y}`) && !walkable(x, y + 1) && walkable(x + 1, y)) spots.push({ x, y, face: "side" });
+    for (let y = y0; y <= y1; y += 1) if (wall(x, y) && !nearExit(x, y) && !claimed.has(`${x},${y}`) && !walkable(x, y + 1) && walkable(x + 1, y)) spots.push({ x, y, face: "side", ...(low(x, y) ? { low: true } : {}) });
   }
   return spots;
+}
+
+// The squares of wall the deck's own fittings hang on: a window, a screen, a sign. No part of the systems goes over
+// one, or the room view would have to leave the fitting out to show the part.
+export function fittedSquares(level) {
+  return new Set((level.furniture ?? []).filter((piece) => FURNITURE_BY_ID[piece.kind]?.wall).map((piece) => `${piece.x},${piece.y}`));
 }
 
 // Where a door's keypad goes: on a wall beside one of the doorways into its room, the nearest free one within three
@@ -111,8 +122,9 @@ function panelSpot(place, map, entry, takenOn) {
     if (!squares.length) return;
     tried.push([level, squares, outside]);
     const taken = takenOn.get(level.id) ?? new Set();
+    const fitted = fittedSquares(level);
     for (const spot of wallSpots(level, claimedSquares(place, map, level))) {
-      if (taken.has(`${spot.x},${spot.y}`)) continue;
+      if (taken.has(`${spot.x},${spot.y}`) || fitted.has(`${spot.x},${spot.y}`)) continue;
       const near = Math.min(...squares.map(([x, y]) => Math.max(Math.abs(x - spot.x), Math.abs(y - spot.y))));
       if (near > 3) continue;
       // The room it's in is the one whose floor is in front of it: a room drawn on a deck, the deck's own floor, or a
@@ -564,7 +576,11 @@ function compileSystems(place) {
     const entry = roomOf(map, room);
     const { level, area } = entry;
     const claimed = claimedSquares(place, map, level);
-    const walls = wallSpots(level, claimed, area);
+    const every = wallSpots(level, claimed, area);
+    const fitted = fittedSquares(level);
+    // On walls that stand full height, where the room has one free for each of its parts; else on any of its walls.
+    const standing = every.filter((one) => !one.low && !fitted.has(`${one.x},${one.y}`));
+    const walls = standing.length >= ids.length ? standing : every;
     if (!takenOn.has(level.id)) takenOn.set(level.id, new Set());
     const taken = takenOn.get(level.id);
     ids.forEach((id, i) => {
@@ -574,7 +590,7 @@ function compileSystems(place) {
         const first = Math.floor(((i + 0.5) * walls.length) / ids.length);
         for (let k = 0; k < walls.length && !spot; k += 1) {
           const one = walls[(first + k) % walls.length];
-          if (!taken.has(`${one.x},${one.y}`)) spot = one;
+          if (!taken.has(`${one.x},${one.y}`) && !fitted.has(`${one.x},${one.y}`)) spot = one;
         }
       }
       spot ??= floorSpot(level, taken, i, ids.length, claimed, area);

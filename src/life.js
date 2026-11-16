@@ -512,12 +512,45 @@ function settledPlace(game, place, hours) {
   return settledAt.get(key);
 }
 
+// A short mark of a place as it's drawn: where anyone can walk on each level, its furniture, where people are posted
+// and the spots their days send them to. A save keeps the mark of the place its people were settled in, so that when
+// the place has been redrawn since (a wall where someone stood, a station moved across the room) they're settled
+// afresh where their day puts them now, and nobody's left standing where the deck used to be.
+const drawnMarks = new WeakMap();
+function drawnMark(place) {
+  const map = mapFor(place);
+  const life = lifeFileFor(place);
+  if (!map || !life) return null;
+  if (!drawnMarks.has(map)) {
+    let hash = 2166136261;
+    const add = (text) => {
+      for (let i = 0; i < text.length; i += 1) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619);
+    };
+    for (const id of Object.keys(map.levels).sort()) {
+      const level = map.levels[id];
+      add(id);
+      for (const row of level.open) add(row.map((open) => (open ? "1" : "0")).join(""));
+      add(JSON.stringify(level.furniture ?? []));
+      add(JSON.stringify((level.homes ?? []).map((home) => [home.id, home.x, home.y])));
+    }
+    add(JSON.stringify(Object.entries(life.spots).map(([name, spot]) => [name, spot.level, spot.x, spot.y])));
+    drawnMarks.set(map, (hash >>> 0).toString(36));
+  }
+  return drawnMarks.get(map);
+}
+// Whether a place has been redrawn since the save's people were settled in it. A save from before marks were kept
+// counts as redrawn: its people are settled once more, where their day has them at that hour anyway.
+const redrawnSince = (game, place) => {
+  const mark = drawnMark(place);
+  return mark !== null && game.life?.drawn?.[place] !== mark;
+};
+
 // Only looking at this changes nothing, so showing the game can't change the save. A save with people on levels that
-// are gone, from before a place's map was redrawn, shows them settled afresh until the clock moves.
+// are gone, or in a place that's been redrawn since, shows them settled afresh until the clock moves.
 function peopleOf(game, place) {
   const saved = game.life?.places[place];
   const map = mapFor(place);
-  if (saved && !Object.values(saved).some((state) => !map?.levels[state.level])) return saved;
+  if (saved && !Object.values(saved).some((state) => !map?.levels[state.level]) && !redrawnSince(game, place)) return saved;
   // Whoever's down lies where they are from the start (src/medbay.js).
   return laidWhereTheyAre(game, place, settledPlace(game, place, game.clock.hours));
 }
@@ -528,9 +561,11 @@ export function lifeOf(game) {
   // A save from before a place's map was redrawn has everyone on levels that are gone: they're settled afresh.
   for (const [place, people] of Object.entries(game.life.places)) {
     const map = mapFor(place);
-    if (map && Object.values(people).some((state) => !map.levels[state.level] || !map.levels[state.goal?.level])) delete game.life.places[place];
+    if (map && (Object.values(people).some((state) => !map.levels[state.level] || !map.levels[state.goal?.level]) || redrawnSince(game, place))) delete game.life.places[place];
   }
   if (livesHere(game.location)) game.life.places[game.location] ??= structuredClone(peopleOf(game, game.location));
+  // Everyone still here stands in the place as it's drawn now.
+  game.life.drawn = Object.fromEntries(Object.keys(game.life.places).map((place) => [place, drawnMark(place)]).filter(([, mark]) => mark !== null));
   return game.life;
 }
 

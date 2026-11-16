@@ -625,12 +625,15 @@ test("a click on a wall walks to the nearest floor, and a click out in space doe
 test("the arrow keys move one square, stop at walls, and walking into someone means talking to them", () => {
   const game = newGame();
   const voss = person(game, "voss");
-  standOn(game, voss.x - 1, voss.y);
+  // Beside Voss, on whichever side has two squares of floor running away from him.
+  const round = walkView(game).floor;
+  const [sx, sy] = [[-1, 0], [1, 0], [0, 1], [0, -1]].find(([dx, dy]) => round[voss.y + dy]?.[voss.x + dx] === "." && round[voss.y + 2 * dy]?.[voss.x + 2 * dx] === ".");
+  standOn(game, voss.x + sx, voss.y + sy);
   const start = spot(game);
-  const up = walkCommand(game, { action: "step", dx: -1, dy: 0 });
-  assert.deepEqual(up.walk.captain, { x: start.x - 1, y: start.y });
-  walkCommand(game, { action: "step", dx: 1, dy: 0 });
-  const bump = walkCommand(game, { action: "step", dx: 1, dy: 0 });
+  const up = walkCommand(game, { action: "step", dx: sx, dy: sy });
+  assert.deepEqual(up.walk.captain, { x: start.x + sx, y: start.y + sy });
+  walkCommand(game, { action: "step", dx: -sx, dy: -sy });
+  const bump = walkCommand(game, { action: "step", dx: -sx, dy: -sy });
   assert.deepEqual(bump.path, []);
   assert.deepEqual(bump.arrived, { kind: "person", key: "voss" });
   assert.deepEqual(spot(game), start, "bumping into someone doesn't move you");

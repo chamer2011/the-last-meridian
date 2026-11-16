@@ -257,40 +257,40 @@ Walls and what hangs on them
 - Air unit on a wall [interiors/Office/AC]: hangs on a wall
 - Air unit on a wall, long [interiors/Living Roon/AirCC]: hangs on a wall
 - Air unit, small [interiors/Lab/Ac_Big_1]: hangs on a wall
-- Big wall screen, lit [interiors/Televisions_TV/BigTv_Ani]: hangs on a wall, glows #86dcff
+- Big wall screen, lit [interiors/Televisions_TV/BigTv_Ani]: hangs on a wall, 1.05 high, glows #86dcff
 - Board with a bar chart [interiors/Wall_Decoration/Poster_3]: hangs on a wall
-- Cables along a wall [interiors/Lab/Cable_Horizontal_1]: hangs on a wall
-- Cables along a wall, in a tray [interiors/Lab/Cable_Horizontal_2]: hangs on a wall
+- Cables along a wall [interiors/Lab/Cable_Horizontal_1]: hangs on a wall, 1.4 high
+- Cables along a wall, in a tray [interiors/Lab/Cable_Horizontal_2]: hangs on a wall, 1.4 high
 - Cables up a wall [interiors/Lab/Cable_Vertical]: hangs on a wall
 - Chart on paper [interiors/Wall_Decoration/Poster_2]: hangs on a wall
 - Corkboard, pale frame [interiors/Office/Corkboard_1]: hangs on a wall
 - Corkboard, wooden frame [interiors/Office/Corkboard_2]: hangs on a wall
 - Diploma [interiors/Office/Diploma]: hangs on a wall
 - Dome camera [interiors/Lab/Camera_2]: hangs on a wall
-- Fire extinguisher [interiors/Office/Fire_Extinguisher]: hangs on a wall
+- Fire extinguisher [interiors/Office/Fire_Extinguisher]: hangs on a wall, 0.6 high
 - Fire point sign [interiors/Wall_Decoration/Poster_Fire]: hangs on a wall
 - Flow chart [interiors/Wall_Decoration/Poster_4]: hangs on a wall
 - Framed print, green and red [interiors/Wall_Decoration/Picture_Modern_2]: hangs on a wall
 - Framed print, yellow and blue [interiors/Wall_Decoration/Picture_Modern_1]: hangs on a wall
 - Glass wall [interiors/Office/Glass_Wall]: stands on the floor, 1 by 2, 2 high
 - Grandfather clock [interiors/Clocks/Grandfather_Clock]: stands on the floor, 1 by 1, 1.9 high
-- Hazard sign, yellow [interiors/Wall_Decoration/Poster_6]: hangs on a wall
+- Hazard sign, yellow [interiors/Wall_Decoration/Poster_6]: hangs on a wall, 1.05 high
 - Map on a wall [interiors/Wall_Decoration/Poster_Map_6]: hangs on a wall
 - Medical sign [interiors/Wall_Decoration/Poster_Medical]: hangs on a wall
 - Notice with charts [interiors/Wall_Decoration/Poster_5]: hangs on a wall
 - Photos and notes pinned up [interiors/Office/Photos_2]: hangs on a wall
 - Photos pinned up [interiors/Office/Photos_1]: hangs on a wall
-- Pipe along a wall [interiors/Lab/Pipe_Horizontal]: hangs on a wall
+- Pipe along a wall [interiors/Lab/Pipe_Horizontal]: hangs on a wall, 1.45 high
 - Pipe up a wall [interiors/Lab/Pipe_Vertical]: hangs on a wall
-- Pipe with a junction box [interiors/Lab/Pipe_Horizontal_Box]: hangs on a wall
+- Pipe with a junction box [interiors/Lab/Pipe_Horizontal_Box]: hangs on a wall, 1.45 high
 - Pipe, corner [interiors/Lab/Pipe_Corner]: hangs on a wall
 - Portrait of a cat [interiors/Wall_Decoration/Picture_Cat]: hangs on a wall
 - Poster, doughnut [interiors/Wall_Decoration/Poster_17]: hangs on a wall
 - Poster, game symbols [interiors/Wall_Decoration/Poster_16]: hangs on a wall
 - Screen with a player under it [interiors/Televisions_TV/Tv_DVD_Ani]: stands on the floor, 1 by 1, 0.85 high, glows #86dcff
 - Security camera, turning [interiors/Lab/Camera_1]: hangs on a wall
-- Sign with an arrow [interiors/Wall_Decoration/Poster_1]: hangs on a wall
-- Small wall screen [interiors/Lab/Screen_Small]: hangs on a wall, glows #86dcff
+- Sign with an arrow [interiors/Wall_Decoration/Poster_1]: hangs on a wall, 1.05 high
+- Small wall screen [interiors/Lab/Screen_Small]: hangs on a wall, 1.05 high, glows #86dcff
 - Splashback [interiors/Kitchen/Wall_Protection]: hangs on a wall
 - Vent grille [interiors/Office/Long_Rack]: hangs on a wall
 - Vent grille, small [interiors/Kitchen/Rack]: hangs on a wall
