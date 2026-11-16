@@ -7,7 +7,7 @@
 import { el } from "./dom.js";
 import { FURNITURE_BY_ID, footprintOf, squaresOf } from "./furniture.js";
 import { hideLoading, showLoading } from "./loading.js";
-import { PACK_FIGURE, PIXEL_UNIT, drawPixelCrate, drawPixelDoor, drawPixelFixture, drawPixelFloors, drawPixelLowWall, drawPixelMachine, drawPixelPart, drawPixelPiece, drawPixelStairs, drawPixelWall, drawPixelWallRun, packBed, packKey, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim, stairsUp } from "./pixel-art.js";
+import { PACK_FIGURE, PIXEL_UNIT, cameraTurns, drawPixelBigMachine, drawPixelCrate, drawPixelDoor, drawPixelFixture, drawPixelFloors, drawPixelLowWall, drawPixelMachine, drawPixelPart, drawPixelPiece, drawPixelPost, drawPixelRail, drawPixelScrap, drawPixelStairs, drawPixelStood, drawPixelTank, drawPixelThing, drawPixelWall, drawPixelWallRun, machineAt, packBed, packKey, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim, stairsUp } from "./pixel-art.js";
 
 // A console square is about twice as tall as it's wide, so two columns make one tile.
 export const CELL_WIDTH = 0.5;
@@ -384,6 +384,77 @@ export function buildScene(view) {
     }
     blocks.push({ type: "block", style: "stairs", way: stair.way, x: stair.x0, y: stair.y, x0, y0: stair.y, x1, y1: stair.y + 1, h: top, seed: 0, mark: " ", right: 0, left: 0, back: 0, side: 0, depth: up ? (from + to) / 2 + stair.y + 0.5 : x0 + stair.y, span, ...(light[stair.y]?.[stair.x0] ? { light: true } : {}) });
   }
+  // Big machines, for the pixel-art view (public/pixel-art.js). A machine square with more of its kind above or below
+  // it is part of one. Beside the burning heart of an engine (a run of glow between two machines, or a round mark
+  // between two) it's pumps, and tanks stand in the heart; anywhere else it's hull, like the ship's boat. The floor
+  // along a big machine's foot is painted with hazard stripes, and an engine has a rail round it. None of it changes
+  // what stands where: the tanks and rails are blocks of their own that only that view draws.
+  const machineHere = (x, y) => styles[y]?.[x] === "machine";
+  const roundAt = (x, y) => marks[y]?.[x] === "0" && machineHere(x - 1, y) && machineHere(x + 1, y);
+  const heartAt = (x, y) => {
+    if (roundAt(x, y)) return { from: x, to: x };
+    if (kinds[y]?.[x] !== "glow") return null;
+    let from = x;
+    while (kinds[y]?.[from - 1] === "glow") from -= 1;
+    let to = x;
+    while (kinds[y]?.[to + 1] === "glow") to += 1;
+    return machineHere(from - 1, y) && machineHere(to + 1, y) ? { from, to } : null;
+  };
+  const big = new Map();
+  for (const block of blocks) {
+    const { x, y } = block;
+    if (block.style === "machine") {
+      const side = heartAt(x + 1, y) ? "e" : heartAt(x - 1, y) ? "w" : null;
+      if (side) Object.assign(block, { big: "engine", heartSide: side });
+      else if (machineAt(x, y, machineHere).block) block.big = "hull";
+      if (block.big) big.set(`${x},${y}`, block.big);
+    } else if (roundAt(x, y)) {
+      block.tank = true;
+      big.set(`${x},${y}`, "heart");
+    }
+  }
+  for (let y = 0; y < lines; y += 1) {
+    for (let x = 0; x < cols; x += 1) {
+      const heart = kinds[y][x] === "glow" ? heartAt(x, y) : null;
+      if (!heart) continue;
+      big.set(`${x},${y}`, "heart");
+      // A tank on every other square of the heart, from its first.
+      if ((x - heart.from) % 2 === 0) blocks.push({ type: "block", style: "tank", x, y, h: 1.1, seed: hashOf(x, y), mark: " ", right: 0, left: 0, back: 0, side: 0, depth: (x + 0.5) * CELL_WIDTH + y + 0.5, span: spanOf(x, y, 1.2) });
+    }
+  }
+  // The ship's boat: a stretch of hull with a middle to it has a well there, with the pack's control console at its
+  // forward end and two seats behind it, facing forward.
+  const hullAt = (x, y) => big.get(`${x},${y}`) === "hull";
+  const wells = blocks.filter((block) => block.big === "hull" && hullAt(block.x - 1, block.y) && hullAt(block.x + 1, block.y) && hullAt(block.x, block.y - 1) && hullAt(block.x, block.y + 1));
+  for (const block of wells) block.inner = true;
+  if (wells.length >= 8) {
+    const rows = wells.map((block) => block.y);
+    const cy = (Math.min(...rows) + Math.max(...rows) + 1) / 2;
+    const bow = Math.min(...wells.filter((block) => block.y === Math.floor(cy)).map((block) => block.x)) * CELL_WIDTH;
+    const stand = (piece, cx, facing) => {
+      const [sx, sy] = [Math.floor(cx / CELL_WIDTH), Math.floor(cy)];
+      const lift = wells.find((block) => block.x === sx && block.y === sy)?.h ?? 0.46;
+      blocks.push({ type: "block", style: "stood", piece, facing, cx, cy, lift, x: sx, y: sy, h: lift + 0.9, seed: 0, mark: " ", right: 0, left: 0, back: 0, side: 0, depth: cx + cy + 0.45, span: spanOf(sx, sy, lift + 1) });
+    };
+    stand("plan-console", bow + 0.5, "e");
+    stand("command-chair", bow + 1.25, "w");
+    stand("command-chair", bow + 2, "w");
+  }
+  const striped = new Map();
+  for (const [key, what] of big) {
+    const [x, y] = key.split(",").map(Number);
+    for (const [edge, nx, ny, from] of [["n", x, y - 1, "s"], ["s", x, y + 1, "n"], ["w", x - 1, y, "e"], ["e", x + 1, y, "w"]]) {
+      if (!walkable(kinds[ny]?.[nx])) continue;
+      striped.set(`${nx},${ny}`, (striped.get(`${nx},${ny}`) ?? "") + from);
+      if (what === "hull") continue;
+      const depth = { n: (x + 0.5) * CELL_WIDTH + y + 0.01, s: (x + 0.5) * CELL_WIDTH + y + 0.99, w: x * CELL_WIDTH + y + 0.51, e: (x + 1) * CELL_WIDTH + y + 0.49 }[edge];
+      blocks.push({ type: "block", style: "rail", edge, x, y, h: 0.5, seed: 0, mark: " ", right: 0, left: 0, back: 0, side: 0, depth, span: spanOf(x, y, 0.6) });
+    }
+  }
+  for (const cell of ground) {
+    const sides = striped.get(`${cell.x},${cell.y}`);
+    if (sides) cell.hazard = sides;
+  }
   blocks.sort((a, b) => a.depth - b.depth);
 
   // A room on fire burns on a few of its squares, more as it grows: each a flicker on the floor with light of its own,
@@ -529,6 +600,8 @@ export function buildScene(view) {
     // How worn and cluttered the place looks, 0 to 3 each, where it's said (the ship: src/wear.js).
     wear: view.wear ?? null,
     light,
+    // Which squares are part of a big machine, and what part ("engine", "heart" or "hull"), for the pixel-art view.
+    big,
     // The wall squares with something on them (a window, a screen, a part of the systems, a lamp, painted words), so
     // the pixel-art view runs its pipes and cables along the bare ones only.
     fitted: new Set([
@@ -1473,9 +1546,26 @@ function drawBlock(painter, block, materials) {
     drawPixelStairs(painter, block, block.light ? { look: "light" } : {});
     return;
   }
+  // What only the pixel-art view draws: a rail round an engine, a tank standing in its heart.
+  if (style === "rail") {
+    drawPixelRail(painter, block, { cellWidth: CELL_WIDTH });
+    return;
+  }
+  if (style === "tank") {
+    drawPixelTank(painter, block, { cellWidth: CELL_WIDTH });
+    return;
+  }
+  if (style === "stood") {
+    drawPixelStood(painter, block);
+    return;
+  }
   if (style === "post") {
     // The posts of a stair give way to the pack's stairs in the pixel-art view.
     if (block.stair && pixelArtOn()) return;
+    // Any other is the packs' locker there, its door toward the floor in front of it, or the floor to its right.
+    const floorAt = (fx, fy) => walkable(iso.scene?.kinds[fy]?.[fx]);
+    // (An upright one only: a brace drawn slanting stays a brace.)
+    if (block.mark === "|" && drawPixelPost(painter, block, { cellWidth: CELL_WIDTH, flip: !floorAt(x, y + 1) && floorAt(x + 1, y) })) return;
     // Thinner than the square it's on, and round, as far as anyone can tell at this size.
     const inset = 0.09;
     const left = x0 + inset;
@@ -1498,6 +1588,15 @@ function drawBlock(painter, block, materials) {
     return;
   }
   if (style === "crate" && drawPixelCrate(painter, block, { cellWidth: CELL_WIDTH, wallHeight: WALL_HEIGHT, ...(iso.scene?.light?.[y]?.[x] ? { look: "light" } : {}) })) return;
+  // In the pixel-art view a big machine is the pack's pumps or a length of dark hull, the round thing between two pumps
+  // a tank, and a heap of scrap its drums and cases (public/pixel-art.js).
+  if (block.tank && drawPixelTank(painter, block, { cellWidth: CELL_WIDTH })) return;
+  if (style === "scrap" && drawPixelScrap(painter, block, { cellWidth: CELL_WIDTH })) return;
+  if (style === "machine" && block.big) {
+    const { heights, big } = iso.scene ?? {};
+    const hull = (wx) => big?.get(`${wx},${y}`) === "hull" && heights?.[y]?.[wx] === h && (heights?.[y + 1]?.[wx] ?? 0) < h;
+    if (drawPixelBigMachine(painter, block, { cellWidth: CELL_WIDTH, flip: block.heartSide === "w", sameRight: hull(x + 1), sameLeft: hull(x - 1) })) return;
+  }
   // A console of the plan, in the pixel-art view, is the pack's (public/pixel-art.js).
   if (style === "machine" && drawPixelMachine(painter, block, { cellWidth: CELL_WIDTH, isMachine: (mx, my) => iso.scene?.styles[my]?.[mx] === "machine", floorAt: (fx, fy) => walkable(iso.scene?.kinds[fy]?.[fx]) })) return;
   const side = { crate: materials.crate, rock: materials.rock, ice: materials.ice, scrap: materials.scrap, body: materials.body[Math.floor(block.seed * 2)], bench: materials.body[Math.floor(block.seed * 2)], dais: materials.body[0] }[style] ?? materials.steel;
@@ -1680,6 +1779,7 @@ function partFace(painter, thing, z0, z1, inset) {
 // What the game still puts on a part the pack draws (public/pixel-art.js), to show how it stands: a junction box's
 // light and the slash across one that's cut, the tape over a sealed vent, the cloth over a covered camera, and the
 // colour of a keypad's screen (green, red once its door is locked, dark with no power).
+const UNIT_LIGHTS = { relay: "#60d090", "nav core": "#6aa0e0", "air plant": "#88c0c0", engines: "#d07038" };
 function drawPartMarks(painter, thing, { at: [px, py], turn }) {
   const { ctx, unit } = painter;
   const { kind, word, works, locked } = thing.part;
@@ -1703,12 +1803,16 @@ function drawPartMarks(painter, thing, { at: [px, py], turn }) {
     dot(0.085, -0.045, 0.014, works ? "#60d070" : "#5a1a14");
     if (word === "cut") slash("#d04030", 2);
   } else if (kind === "vent" && word === "sealed") slash("#8a7a50", Math.max(3, unit * 0.06));
-  else if (kind === "camera" && word === "covered") dot(-0.05, 0.01, 0.055, "#7a7466");
+  else if (kind === "camera" && word === "covered") dot(0, 0, 0.06, "#7a7466");
   else if (kind === "door panel") dot(0, 0, 0.028, !works ? "rgba(8,10,10,.85)" : locked ? "rgba(220,60,40,.8)" : "rgba(110,224,138,.75)");
+  else if (kind === "speaker" && word === "cut") slash("#c8c0b0", 1.5);
+  // A big unit has one light over it: its own colour while it works, amber if it's jammed, dark red if it's dead.
+  else if (UNIT_LIGHTS[kind]) dot(0, 0, 0.016, works ? UNIT_LIGHTS[kind] : word === "jammed" ? "#d8a040" : "#5a1a14");
 }
 
 function drawPart(painter, thing) {
   // In the pixel-art view a part on a wall is the pack's fitting where it has one, with the game's marks over it.
+  if (cameraTurns(thing.part) && drawPixelPart(painter, thing, { cellWidth: CELL_WIDTH, draw: false })) return;
   const fitted = drawPixelPart(painter, thing, { cellWidth: CELL_WIDTH });
   if (fitted) {
     drawPartMarks(painter, thing, fitted);
@@ -1817,6 +1921,17 @@ function drawPart(painter, thing) {
   }
 }
 
+// The pack's camera at one of its sixteen turns, with its red light on its body.
+function cameraProp(painter, thing, frame, blink) {
+  const fitted = drawPixelPart(painter, thing, { cellWidth: CELL_WIDTH, frame });
+  if (!fitted) return;
+  const { ctx, unit } = painter;
+  ctx.fillStyle = blink ? "#ff3020" : "#5a1810";
+  ctx.beginPath();
+  ctx.arc(fitted.at[0], fitted.at[1] - unit * 0.035, Math.max(1.2, unit * 0.014), 0, Math.PI * 2);
+  ctx.fill();
+}
+
 // What moves on a part: a watching camera's red light, a ringing speaker, a screen.
 function drawPartLights(painter, now, view) {
   const { ctx, at, unit } = painter;
@@ -1831,9 +1946,9 @@ function drawPartLights(painter, now, view) {
     const { corners, point } = partFace(painter, thing, z0, z1, look.inset);
     if (part.kind === "camera") {
       const on = iso.calm || Math.floor(now / 700 + thing.x) % 2 === 0;
-      // On the pack's camera the light is on its body, by the lens.
-      const fitted = drawPixelPart(painter, thing, { cellWidth: CELL_WIDTH, draw: false });
-      const [px, py] = fitted ? [fitted.at[0] - unit * 0.035 * fitted.turn, fitted.at[1] - unit * 0.03] : point(0.8, 0.4);
+      // The pack's camera is drawn with its light every frame, as it turns (cameraProp, below).
+      if (drawPixelPart(painter, thing, { cellWidth: CELL_WIDTH, draw: false })) continue;
+      const [px, py] = point(0.8, 0.4);
       ctx.fillStyle = on ? "#ff3020" : "#5a1810";
       ctx.beginPath();
       ctx.arc(px, py, Math.max(1.2, unit * 0.014), 0, Math.PI * 2);
@@ -1841,8 +1956,11 @@ function drawPartLights(painter, now, view) {
     } else if (part.kind === "speaker" && part.ringing) {
       const beat = iso.calm ? 0.6 : 0.5 + 0.5 * Math.sin(now / 160);
       ctx.fillStyle = `rgba(255,40,24,${0.35 + beat * 0.5})`;
+      // The pack's alarm is a dome, lit red all over while it rings.
+      const dome = drawPixelPart(painter, thing, { cellWidth: CELL_WIDTH, draw: false });
       ctx.beginPath();
-      corners.forEach((one, i) => (i ? ctx.lineTo(...one) : ctx.moveTo(...one)));
+      if (dome) ctx.arc(dome.at[0], dome.at[1], unit * 0.1, 0, Math.PI * 2);
+      else corners.forEach((one, i) => (i ? ctx.lineTo(...one) : ctx.moveTo(...one)));
       ctx.closePath();
       ctx.fill();
     } else if (part.kind === "console") {
@@ -1865,6 +1983,8 @@ function drawThing(painter, thing) {
   // stores as what's in it, every frame (drawStoreCrates); a container that's a piece of the deck's furniture is that
   // piece, drawn already.
   if (thing.looks || thing.stock?.goods || thing.onPiece) return;
+  // In the pixel-art view it's the packs' piece for what its name says it is, or a small case (public/pixel-art.js).
+  if (drawPixelThing(painter, thing, { cellWidth: CELL_WIDTH })) return;
   const { ctx, at } = painter;
   const x0 = thing.x * CELL_WIDTH + 0.05;
   const x1 = x0 + CELL_WIDTH - 0.1;
@@ -2394,7 +2514,7 @@ function drawTile(room, tx, ty) {
   }
   // The pixel-art test lays its own floor tiles in place of the game's (public/pixel-art.js).
   if (pixelArtOn()) {
-    drawPixelFloors(painter, [...byLook.values()].flat().map((cell) => ({ x: cell.x, y: cell.y, passage: !!cell.passage, second: cell.kind === "floor" && cell.mark !== " " && cell.mark !== mainFloor, ...(cell.light ? { look: "light" } : {}) })), CELL_WIDTH);
+    drawPixelFloors(painter, [...byLook.values()].flat().map((cell) => ({ x: cell.x, y: cell.y, passage: !!cell.passage, second: cell.kind === "floor" && cell.mark !== " " && cell.mark !== mainFloor, ...(cell.light ? { look: "light" } : {}), ...(cell.hazard ? { hazard: cell.hazard } : {}) })), CELL_WIDTH);
     byLook.clear();
   }
   for (const [image, cells] of byLook) {
@@ -2507,7 +2627,7 @@ function drawTile(room, tx, ty) {
       sctx.fill();
       continue;
     }
-    if (block.style === "plants" || block.style === "lamp" || block.style === "stairs" || block.wx !== undefined) continue;
+    if (block.style === "plants" || block.style === "lamp" || block.style === "stairs" || block.style === "rail" || block.style === "tank" || block.style === "stood" || block.wx !== undefined) continue;
     if (!reaches(block.span, unit * 1.5)) continue;
     const x0 = block.x * CELL_WIDTH;
     const x1 = x0 + CELL_WIDTH;
@@ -3505,6 +3625,18 @@ function draw(now, dt) {
     }
     if (open > 0.97 || !painter.seen(at(wx, wy, 0.8), unit * 2)) continue;
     props.push({ type: "prop", draw: () => drawDoorPanels(painter, door, open, scene.style), depth: wx + wy - 0.39, span: uvBox(door.x, door.y, door.x + 1, door.y + 1, WALL_HEIGHT) });
+  }
+  // A camera that works turns on its bracket in the pixel-art view (the pack draws it sixteen ways), slowly, each from
+  // its own place in the round; with it, its red light.
+  if (pixelArtOn()) {
+    for (const thing of view.things ?? []) {
+      if (!cameraTurns(thing.part)) continue;
+      const { wx, wy } = cellCentre(thing.x, thing.y);
+      if (!painter.seen(at(wx, wy, 1.4), unit * 2)) continue;
+      const frame = iso.calm ? 0 : Math.floor(now / 420 + thing.x * 5 + thing.y * 3) % 16;
+      const blink = iso.calm || Math.floor(now / 700 + thing.x) % 2 === 0;
+      props.push({ type: "prop", draw: () => cameraProp(painter, thing, frame, blink), depth: wx + wy + 0.02, span: uvBox(thing.x - 1, thing.y - 1, thing.x + 2, thing.y + 2, WALL_HEIGHT) });
+    }
   }
   for (const thing of view.things ?? []) {
     if (!thing.stock?.goods || thing.looks) continue;

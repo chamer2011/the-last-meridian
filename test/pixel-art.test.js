@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { FLIGHT, PACK_FIGURE, doorPicture, lightDim, machineAt, mapping, packBed, pieceWay, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim, solidBox, stairsUp, standingPoint, steelOf } from "../public/pixel-art.js";
+import { FLIGHT, PACK_FIGURE, cameraTurns, doorPicture, lightDim, machineAt, mapping, packBed, partPicture, pieceWay, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim, solidBox, stairsUp, standingPoint, steelOf, thingPicture } from "../public/pixel-art.js";
 import { buildScene, figureUnit, sittingIn, stairsOf } from "../public/iso.js";
 import { createGameFromDraft, randomDraft } from "../src/creator.js";
 import { placeLevels } from "../src/walk.js";
@@ -248,6 +248,88 @@ test("a row of posts in a room with a way up or down is where its stairs stand",
     const stairs = stairsOf(view, scene.styles);
     assert.equal(scene.blocks.filter((block) => block.style === "stairs").length, stairs.length);
     assert.equal(scene.blocks.filter((block) => block.stair).length, stairs.reduce((sum, one) => sum + one.x1 - one.x0, 0));
+  }
+});
+
+test("a thing that's none of the game's furniture is the packs' piece for what its name says, by whole words", () => {
+  assert.equal(thingPicture("The reactor"), "thing:tank");
+  assert.equal(thingPicture("Coolant tanks"), "thing:tank");
+  // The line that knows more of the name comes first: the reactor's gauges are a terminal, its controller a rack.
+  assert.equal(thingPicture("Reactor gauges"), "thing:terminal");
+  assert.equal(thingPicture("The reactor safety controller"), "thing:rack");
+  assert.equal(thingPicture("The captain's sea chest"), "thing:box");
+  assert.equal(thingPicture("The scan bed"), "thing:pod");
+  assert.equal(thingPicture("The tea urn"), "thing:urn");
+  assert.equal(thingPicture("A photograph in a rack frame"), "thing:frame");
+  assert.equal(thingPicture("Sitting rota"), "thing:paper");
+  assert.equal(thingPicture("Data chip in the comms tray"), "thing:chip");
+  // Somewhere to look, not an object: nothing's drawn, only its mark.
+  assert.equal(thingPicture("The forward viewport"), null);
+  assert.equal(thingPicture("The chalked names"), null);
+  // Whole words only, and anything no line knows is a small case.
+  assert.equal(thingPicture("A tankard"), "thing:case");
+  assert.equal(thingPicture("Something nobody named"), "thing:case");
+  assert.equal(thingPicture(undefined), "thing:case");
+  for (const piece of ["thing:case", "thing:box", "thing:tank", "thing:rack", "thing:terminal", "thing:pod", "thing:urn", "thing:paper", "thing:frame", "thing:chip", "thing:small"]) assert.ok(pieceWay(piece, "s", 0, both), piece);
+});
+
+test("the systems' parts are the packs' where they have one: fittings on walls, big units standing, a camera that turns", () => {
+  const wall = (kind, more = {}) => ({ kind, mount: "wall", face: "back", works: true, word: "on", ...more });
+  assert.equal(partPicture(wall("speaker")), "part:alarm");
+  assert.equal(partPicture(wall("camera")), "part:camera");
+  assert.equal(partPicture(wall("light switch")), "part:switch-on");
+  assert.equal(partPicture(wall("light switch", { word: "off", works: false })), "part:switch-off");
+  assert.equal(partPicture(wall("light switch", { works: false, word: "dead" })), "part:switch-dead");
+  // A big unit stands at the foot of its wall, or on its own square where there's no wall; a fitting needs a wall.
+  for (const [kind, piece] of [["relay", "part:relay"], ["nav core", "part:core"], ["air plant", "part:air"], ["engines", "part:engines"]]) {
+    assert.equal(partPicture(wall(kind)), piece);
+    assert.equal(partPicture(wall(kind, { mount: "floor" })), piece);
+    assert.ok(pieceWay(piece, "s", 0, both), piece);
+  }
+  assert.equal(partPicture(wall("vent", { mount: "floor" })), null);
+  // What the packs have nothing for stays the game's own.
+  assert.equal(partPicture(wall("console")), null);
+  assert.equal(partPicture(wall("docking clamps")), null);
+  assert.equal(partPicture(null), null);
+  // A camera turns while it works and nothing's over it.
+  assert.equal(cameraTurns(wall("camera")), true);
+  assert.equal(cameraTurns(wall("camera", { word: "covered" })), false);
+  assert.equal(cameraTurns(wall("camera", { works: false })), false);
+  assert.equal(cameraTurns(wall("camera", { mount: "floor" })), false);
+  assert.equal(cameraTurns(wall("speaker")), false);
+  assert.ok(pieceWay("part:turning", "s", 0.99, both).picture.id.endsWith("#15"));
+});
+
+test("a big machine is pumps round a burning heart or a length of hull, with paint at its foot and a rail round an engine", () => {
+  const game = createGameFromDraft({ ...randomDraft(), start: "captain" });
+  for (const view of Object.values(placeLevels(game).levels)) {
+    const scene = buildScene(view);
+    const at = (x, y) => scene.big.get(`${x},${y}`);
+    const floor = (x, y) => ["floor", "door"].includes(scene.kinds[y]?.[x]);
+    for (const block of scene.blocks) {
+      const { x, y } = block;
+      // An engine's pumps are beside its heart, on the side they say; nothing else is.
+      if (block.big === "engine") assert.equal(at(block.heartSide === "e" ? x + 1 : x - 1, y), "heart", `pumps at ${x},${y}`);
+      if (block.big === "hull") assert.ok(scene.styles[y - 1]?.[x] === "machine" || scene.styles[y + 1]?.[x] === "machine" || [x - 1, x + 1].some((nx) => at(nx, y) === "hull"), `hull at ${x},${y}`);
+      // A tank stands only in a heart, a rail only on a machine's edge that has floor beyond it.
+      if (block.style === "tank") assert.equal(at(x, y), "heart");
+      if (block.style === "rail") {
+        assert.ok(["engine", "heart"].includes(at(x, y)), `rail at ${x},${y}`);
+        const [nx, ny] = { n: [x, y - 1], s: [x, y + 1], w: [x - 1, y], e: [x + 1, y] }[block.edge];
+        assert.ok(floor(nx, ny), `rail at ${x},${y} ${block.edge}`);
+      }
+      // The boat's console and seats stand in its well.
+      if (block.style === "stood") assert.equal(at(block.x, block.y), "hull");
+      if (block.inner) assert.ok([[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]].every(([nx, ny]) => at(nx, ny) === "hull"));
+    }
+    // Hazard paint is on floor, along the sides a big machine is on.
+    for (const cell of scene.ground.filter((one) => one.hazard)) {
+      assert.ok(floor(cell.x, cell.y), `paint at ${cell.x},${cell.y}`);
+      for (const side of cell.hazard) {
+        const [nx, ny] = { n: [cell.x, cell.y - 1], s: [cell.x, cell.y + 1], w: [cell.x - 1, cell.y], e: [cell.x + 1, cell.y] }[side];
+        assert.ok(at(nx, ny), `paint at ${cell.x},${cell.y} toward ${side}`);
+      }
+    }
   }
 });
 

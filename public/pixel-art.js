@@ -72,6 +72,11 @@ const PIECES = {
   "plan-terminal": [{ picture: cell(5, 0) }],
   // In a galley a bank is its counters and stoves: the second pack's kitchen unit, its wood drawn in steel, and its stove.
   "plan-counter": [{ picture: from("Kitchen/Kitchen_A_Tile.png") }],
+  // A big machine's parts: the pump units either side of an engine's burning heart, the tanks with lit cores that stand
+  // in it, and what a heap of scrap is (a stack of drums or a pile of cases).
+  "plan-pump": [{ picture: cell(6, 0) }],
+  "plan-tank": [{ picture: cell(3, 1) }],
+  "plan-scrap": [{ any: [cell(1, 0), cell(2, 0)] }],
   "plan-stove": [{ picture: from("Kitchen/Oven.png") }],
   // The parts of a place's systems that hang on its walls, where the second pack has a fitting for one: a camera on
   // its bracket (the first picture of the pack's sixteen of it turning), a switch with its green light on, its red
@@ -83,6 +88,27 @@ const PIECES = {
   "part:vent": [{ picture: from("Kitchen/Rack.png") }],
   "part:box": [{ picture: from("Lab/Pipe_Horizontal_Box.png") }],
   "part:keypad": [{ picture: from("Lab/Screen_Small.png") }],
+  // The camera's sixteen pictures as it turns; the alarm's light, a dome; and the big units, which stand at the foot of
+  // their wall: the comms relay a rack of lights, the navigation core a glass-fronted cabinet, the air plant a standing
+  // unit with its duct, the engines' own part a pump unit. The first pack's rack stands in without the second pack.
+  "part:turning": [{ any: Array.from({ length: 16 }, (_, n) => ({ id: `Lab/Camera_1_Ani.png#${n}`, file: "Lab/Camera_1_Ani.png", x: (n % 4) * 64, y: Math.floor(n / 4) * 64, w: 64, h: 64 })) }],
+  "part:alarm": [{ picture: from("Lab/Camera_2.png") }],
+  "part:relay": [{ picture: { id: "Lab/Server_1.png#0", file: "Lab/Server_1.png", x: 0, y: 0, w: 128, h: 128 } }, { picture: cell(7, 0) }],
+  "part:core": [{ picture: from("Lab/Server_2_A.png") }, { picture: cell(7, 0) }],
+  "part:air": [{ picture: from("Lab/Ac_Big_2.png") }],
+  "part:engines": [{ picture: cell(6, 0) }],
+  // What a thing that's none of the game's furniture is drawn as, by its name (thingPicture, below).
+  "thing:case": [{ picture: from("Lab/Tool_Box_A.png") }],
+  "thing:box": [{ picture: from("Office/White_Box.png") }],
+  "thing:tank": [{ picture: cell(3, 1) }],
+  "thing:rack": [{ picture: cell(7, 0) }],
+  "thing:terminal": [{ picture: cell(5, 0) }],
+  "thing:pod": [{ picture: cell(0, 1) }],
+  "thing:urn": [{ picture: from("Tables/Office_Kitchen_Table.png"), on: from("Kitchen/Ketel_7.png"), lift: 0.48 }],
+  "thing:paper": [{ picture: from("Office/Paper_1.png") }],
+  "thing:frame": [{ picture: from("Office/Picture_Frame.png") }],
+  "thing:chip": [{ picture: from("Lab/Tools_Electric.png") }],
+  "thing:small": [{ picture: from("Lab/Plastic_Box_2_Full.png") }],
   // What runs along a bare stretch of wall: a pipe, a bundle of cables, cables in a tray.
   "run:pipe": [{ picture: from("Lab/Pipe_Horizontal.png") }],
   "run:cable": [{ picture: from("Lab/Cable_Horizontal_2.png") }],
@@ -460,6 +486,8 @@ export function drawPixelFloors(painter, cells, cellWidth) {
   const mine = theirs.length ? cells.filter((cell) => cell.look !== other) : cells;
   if (mine.length) layFloor(painter, mine, cellWidth, state.look);
   if (theirs.length) layFloor(painter, theirs, cellWidth, other);
+  // Hazard paint on the floor along the foot of a big machine.
+  for (const cell of cells) if (cell.hazard) paintHazard(painter, cell, cellWidth);
 }
 function layFloor(painter, cells, cellWidth, which) {
   const { ctx, at } = painter;
@@ -727,19 +755,8 @@ export function drawPixelStairs(painter, stair, { look = state.look } = {}) {
   ctx.strokeStyle = "#2c3534";
   trace(mouth);
   ctx.stroke();
-  const stripes = (from2, to2) => {
-    const steps = Math.max(2, Math.round(Math.hypot(to2[0] - from2[0], to2[1] - from2[1]) / 0.16));
-    for (let i = 0; i < steps; i += 1) {
-      const p = (t) => [from2[0] + (to2[0] - from2[0]) * t, from2[1] + (to2[1] - from2[1]) * t];
-      const [a, b] = [p(i / steps), p((i + 1) / steps)];
-      const out = from2[1] === to2[1] ? [0, 0.07] : [0.07, 0];
-      trace([at(a[0], a[1]), at(b[0], b[1]), at(b[0] + out[0], b[1] + out[1]), at(a[0] + out[0], a[1] + out[1])]);
-      ctx.fillStyle = i % 2 ? "#1a1c18" : "#b89a2c";
-      ctx.fill();
-    }
-  };
-  stripes([ax, by], [bx, by]);
-  stripes([bx, ay], [bx, by]);
+  hazardBand(painter, [ax, by], [bx, by], 0.07);
+  hazardBand(painter, [bx, ay], [bx, by], 0.07);
   return true;
 }
 
@@ -805,13 +822,14 @@ export function pieceWay(kind, facing = "s", seed = 0, { look = state.look, has 
 
 // One picture of a piece, stood with its middle on a point of the floor (cx, cy, in tiles) or so far above it, at the
 // pack's own size: half its pixels at 64 a tile, so they stay even.
-function drawPicture(painter, picture, cx, cy, { flip = false, lift = 0, wallHeight, middle = false, look = null, dim = false }) {
+function drawPicture(painter, picture, cx, cy, { flip = false, lift = 0, wallHeight, middle = false, anchor = null, look = null, dim = false }) {
   const box = state.boxes[picture.id];
   const { ctx, ratio, at, unit } = painter;
   const scale = unit / 128;
   const turn = flip ? -1 : 1;
   // What's hung on a wall is placed by its middle; anything else by where it stands.
-  const [ax, ay] = middle ? [(box.x0 + box.x1 + 1) / 2, (box.y0 + box.y1 + 1) / 2] : standingPoint(box);
+  // (Or by a point of the picture's own, where it has to stay put from one picture to the next: a camera's bracket.)
+  const [ax, ay] = anchor ?? (middle ? [(box.x0 + box.x1 + 1) / 2, (box.y0 + box.y1 + 1) / 2] : standingPoint(box));
   const [px, py] = at(cx, cy, lift);
   const image = picture.file ? state.files[picture.file] : sheetFor(picture.sheet, look ?? state.look);
   ctx.save();
@@ -958,36 +976,69 @@ export function drawPixelFixture(painter, { x, y, face, off }, { cellWidth, high
   return true;
 }
 
-// How high up its wall each of those parts hangs (the middle of it, in tiles), and which wall its picture was drawn
-// for where its pixels don't say (a camera sticks out from its wall; a wall along the plan's rows, in the pack).
-const PART_HANG = { camera: { lift: 1.4, lean: "s" }, "light switch": { lift: 0.8 }, vent: { lift: 0.32 }, "junction box": { lift: 0.78 }, "door panel": { lift: 0.82 } };
-const PART_PICTURES = { camera: "part:camera", vent: "part:vent", "junction box": "part:box", "door panel": "part:keypad" };
+// How each of those parts is put up. A fitting hangs on its wall by its middle, lift tiles up, turned by which wall its
+// picture was drawn for (lean, where its pixels don't say). A camera hangs by the plate of its bracket (hung, in pixels
+// of its picture), so that it stays put as it turns. A big unit stands on the floor (stand): against its wall, let a
+// little way into it so there's room to stand in front of it, or on its own square where there's no wall; front is the
+// way its picture's front looks ("s" or "e"), and high how tall it is, for the light the game puts over it.
+const PART_HANG = {
+  camera: { lift: 1.4, lean: "s", hung: [58, 32.5] },
+  "light switch": { lift: 0.8 },
+  vent: { lift: 0.32 },
+  "junction box": { lift: 0.78 },
+  "door panel": { lift: 0.82 },
+  speaker: { lift: 1.3 },
+  relay: { stand: true, front: "s", high: 1.2 },
+  "nav core": { stand: true, front: "s", high: 1.25 },
+  "air plant": { stand: true, front: "s", high: 1.35 },
+  engines: { stand: true, front: "e", high: 0.75 },
+};
+const PART_PICTURES = { camera: "part:camera", vent: "part:vent", "junction box": "part:box", "door panel": "part:keypad", speaker: "part:alarm", relay: "part:relay", "nav core": "part:core", "air plant": "part:air", engines: "part:engines" };
 
-// Which of the pack's fittings a part of the systems is drawn as, by what it is and how it stands: a switch shows its
-// green light on, its red one off, and neither with no power. Null for a part the packs have nothing for (a speaker,
-// the big units), and for one that stands on the floor.
+// Which of the packs' pieces a part of the systems is drawn as, by what it is and how it stands: a switch shows its
+// green light on, its red one off, and neither with no power. Null for a part the packs have nothing for (a wall
+// console, docking clamps), and for a fitting that isn't on a wall.
 export function partPicture(part) {
-  if (!part || part.mount !== "wall" || !PART_HANG[part.kind]) return null;
+  const hang = part && PART_HANG[part.kind];
+  if (!hang || (part.mount !== "wall" && !hang.stand)) return null;
   if (part.kind === "light switch") return part.word === "off" ? "part:switch-off" : part.works ? "part:switch-on" : "part:switch-dead";
   return PART_PICTURES[part.kind];
 }
 
-// A part of the systems on a wall, as the pack's fitting: on the face of the wall the room sees, turned round if it
-// was drawn for the other kind of wall, dark and dull when it isn't working. Gives back where its middle is on the
-// screen and which way it's turned (turn, 1 or -1), for the marks and lights the game puts on it; null if the test
-// isn't on or the packs have no picture for it, and the game draws its own. With draw false it only says where.
-export function drawPixelPart(painter, thing, { cellWidth, draw = true }) {
+// Whether a camera turns on its bracket: one on a wall that works and has nothing over it.
+export const cameraTurns = (part) => Boolean(part && part.kind === "camera" && part.mount === "wall" && part.works && part.word !== "covered");
+
+// A part of the systems as the packs' piece: a fitting on the face of the wall the room sees, a big unit standing at
+// the foot of it; dark and dull when it isn't working. frame picks which of a camera's sixteen pictures. Gives back
+// where the game's own mark for it goes on the screen (a fitting's middle, the top of a unit) and which way it's turned
+// (turn, 1 or -1); null if the test isn't on or the packs have no picture for it, and the game draws its own. With
+// draw false it only says where.
+export function drawPixelPart(painter, thing, { cellWidth, draw = true, frame = 0 }) {
   if (!pixelArtOn()) return null;
-  const id = partPicture(thing.part);
+  const { part } = thing;
+  const id = partPicture(part);
   const way = id && pieceWay(id);
   if (!way) return null;
-  const { lift, lean: said } = PART_HANG[thing.part.kind];
-  const side = thing.part.face === "side";
+  const hang = PART_HANG[part.kind];
+  const side = part.face === "side";
+  const dim = !part.works && part.kind !== "light switch";
+  if (hang.stand) {
+    const onWall = part.mount === "wall";
+    const [sx, sy] = !onWall ? [(thing.x + 0.5) * cellWidth, thing.y + 0.5] : side ? [(thing.x + 1) * cellWidth + 0.06, thing.y + 0.5] : [(thing.x + 0.5) * cellWidth, thing.y + 1.06];
+    const flip = onWall && (side ? "e" : "s") !== hang.front;
+    if (draw) drawPicture(painter, way.picture, sx, sy, { flip, dim });
+    return { at: painter.at(sx, sy, hang.high), turn: flip ? -1 : 1 };
+  }
   const [wx, wy] = side ? [(thing.x + 1) * cellWidth + 0.04, thing.y + 0.5] : [(thing.x + 0.5) * cellWidth, thing.y + 1.04];
-  const lean = said ?? state.boxes[way.picture.id].slant;
+  const turning = part.kind === "camera" ? PIECES["part:turning"][0].any[frame] : null;
+  const picture = turning && state.boxes[turning.id] ? turning : way.picture;
+  const lean = hang.lean ?? state.boxes[picture.id].slant;
   const flip = Boolean(lean) && lean !== (side ? "e" : "s");
-  if (draw) drawPicture(painter, way.picture, wx, wy, { flip, lift, middle: true, dim: !thing.part.works && thing.part.kind !== "light switch" });
-  return { at: painter.at(wx, wy, lift), turn: flip ? -1 : 1 };
+  if (draw) drawPicture(painter, picture, wx, wy, { flip, lift: hang.lift, middle: !hang.hung, anchor: hang.hung ?? null, dim });
+  // A camera's body is out from its plate, toward the room.
+  const [px, py] = painter.at(wx, wy, hang.lift);
+  const out = hang.hung ? painter.unit * 0.17 * (flip ? 1 : -1) : 0;
+  return { at: [px + out, py + (hang.hung ? painter.unit * 0.02 : 0)], turn: flip ? -1 : 1 };
 }
 
 // What runs along a bare stretch of wall, high up: a pipe, cables, or cables in a tray.
@@ -1018,6 +1069,168 @@ export function drawPixelWallRun(painter, block, { cellWidth, south, east }) {
   if (along) hang(along, (x + 0.5) * cellWidth, y + 1.04, "s");
   const down = east && wallRun(x, y, "e");
   if (down) for (const part of [0.25, 0.75]) hang(down, (x + 1) * cellWidth + 0.04, y + part, "e");
+}
+
+// ---- Big machines, posts and scrap ----------------------------------------------------------------------------------
+
+// Hazard paint: yellow and black along a line on the floor (from and to, in tiles), wide tiles to one side of it (the
+// far side, with a number below nothing). The stripes go by where they are on the deck, so they meet from square to
+// square.
+const HAZARD = ["#b89a2c", "#1a1c18"];
+const HAZARD_STEP = 0.125;
+export function hazardBand(painter, [fx, fy], [tx, ty], wide = 0.07) {
+  const { ctx, at } = painter;
+  const alongX = fy === ty;
+  const [a, b] = alongX ? [Math.min(fx, tx), Math.max(fx, tx)] : [Math.min(fy, ty), Math.max(fy, ty)];
+  for (let s = Math.floor(a / HAZARD_STEP + 1e-6); s * HAZARD_STEP < b - 1e-6; s += 1) {
+    const [p, q] = [Math.max(a, s * HAZARD_STEP), Math.min(b, (s + 1) * HAZARD_STEP)];
+    const corners = alongX ? [[p, fy], [q, fy], [q, fy + wide], [p, fy + wide]] : [[fx, p], [fx, q], [fx + wide, q], [fx + wide, p]];
+    ctx.beginPath();
+    for (const [wx, wy] of corners) ctx.lineTo(...at(wx, wy));
+    ctx.closePath();
+    ctx.fillStyle = HAZARD[((s % 2) + 2) % 2];
+    ctx.fill();
+  }
+}
+
+// The hazard paint on a square of floor beside a big machine: along each of its edges the machine is on (hazard is
+// some of "n", "s", "e" and "w").
+function paintHazard(painter, cell, cellWidth) {
+  const x0 = cell.x * cellWidth;
+  const x1 = x0 + cellWidth;
+  if (cell.hazard.includes("n")) hazardBand(painter, [x0, cell.y], [x1, cell.y], 0.07);
+  if (cell.hazard.includes("s")) hazardBand(painter, [x0, cell.y + 1], [x1, cell.y + 1], -0.07);
+  if (cell.hazard.includes("w")) hazardBand(painter, [x0, cell.y], [x0, cell.y + 1], 0.07);
+  if (cell.hazard.includes("e")) hazardBand(painter, [x1, cell.y], [x1, cell.y + 1], -0.07);
+}
+
+// A rail along one edge of a square (edge is "n", "s", "e" or "w"): a length of the pack's low wall with its post,
+// standing on the line between a machine and the floor beside it. Along the plan's rows a length is a tile, which is
+// two squares, so each square shows its own half.
+export function drawPixelRail(painter, block, { cellWidth, look = state.look }) {
+  if (!pixelArtOn()) return false;
+  const { ctx, at } = painter;
+  const { x, y, edge } = block;
+  const row = LOOKS[look].wallRow + 1;
+  const x0 = x * cellWidth;
+  const x1 = x0 + cellWidth;
+  if (edge === "n" || edge === "s") {
+    const wy = edge === "n" ? y : y + 1;
+    const tile = Math.floor(x0 + 1e-6);
+    ctx.save();
+    ctx.beginPath();
+    for (const point of [at(x0, wy + 0.2, -0.05), at(x1, wy + 0.2, -0.05), at(x1, wy - 0.2, 0.8), at(x0, wy - 0.2, 0.8)]) ctx.lineTo(...point);
+    ctx.closePath();
+    ctx.clip();
+    drawStretch(painter, row, LOW_DOWN_RIGHT, [at(tile, wy, 0), at(tile + 1, wy, 0), at(tile, wy, 1)], look);
+    ctx.restore();
+  } else {
+    const wx = edge === "w" ? x0 : x1;
+    drawStretch(painter, row, LOW_DOWN_LEFT, [at(wx, y, 0), at(wx, y + 1, 0), at(wx, y, 1)], look);
+  }
+  return true;
+}
+
+// What a big machine's square is drawn as: one beside the burning heart of an engine (block.big "engine") is two of the
+// pack's pump units, one behind the other, their pipes toward the heart; any other (the ship's boat) is a length of
+// dark hull, as a wall of the pack's that's only as high as the machine is. sameRight and sameLeft say whether the
+// squares beside it are hull of the same height showing the same face. False if the test isn't on.
+export function drawPixelBigMachine(painter, block, { cellWidth, flip = false, sameRight = false, sameLeft = false }) {
+  if (!pixelArtOn()) return false;
+  if (block.big !== "engine") {
+    if (!drawPixelWall(painter, block, { cellWidth, sameWallRight: sameRight, sameWallLeft: sameLeft })) return false;
+    // The middle of a stretch of hull is its well, darker than its rim.
+    if (block.inner) {
+      const { ctx, at } = painter;
+      const [x0, x1, h] = [block.x * cellWidth, (block.x + 1) * cellWidth, block.h];
+      ctx.beginPath();
+      for (const point of [at(x0, block.y, h), at(x1, block.y, h), at(x1, block.y + 1, h), at(x0, block.y + 1, h)]) ctx.lineTo(...point);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(6,10,12,.62)";
+      ctx.fill();
+    }
+    return true;
+  }
+  const way = pieceWay("plan-pump");
+  if (!way) return false;
+  for (const part of [0.27, 0.73]) drawPicture(painter, way.picture, (block.x + 0.5) * cellWidth, block.y + part, { flip });
+  return true;
+}
+
+// A piece of the packs the room view stands somewhere itself (the console and the seats in the well of the ship's
+// boat): by its name in PIECES, the way it faces, where its middle is on the plan and how high it stands.
+export function drawPixelStood(painter, { piece, facing = "s", cx, cy, lift = 0 }) {
+  if (!pixelArtOn()) return false;
+  const way = pieceWay(piece, facing);
+  if (!way) return false;
+  drawPicture(painter, way.picture, cx, cy, { flip: way.flip, lift });
+  return true;
+}
+
+// One of the pack's tanks with a lit core, standing on a square of an engine's burning heart.
+export function drawPixelTank(painter, block, { cellWidth }) {
+  if (!pixelArtOn()) return false;
+  const way = pieceWay("plan-tank");
+  if (!way) return false;
+  drawPicture(painter, way.picture, (block.x + 0.5) * cellWidth, block.y + 0.5, {});
+  return true;
+}
+
+// Something tall and narrow on the plan (the Map editor's Locker) is the packs' locker, its door toward the floor.
+export function drawPixelPost(painter, block, { cellWidth, flip = false }) {
+  if (!pixelArtOn()) return false;
+  const way = pieceWay("locker", flip ? "e" : "s");
+  if (!way) return false;
+  drawPicture(painter, way.picture, (block.x + 0.5) * cellWidth, block.y + 0.5, { flip: way.flip });
+  return true;
+}
+
+// A heap of scrap on the plan is the pack's stack of drums or its pile of cases, the same one every time.
+export function drawPixelScrap(painter, block, { cellWidth }) {
+  if (!pixelArtOn()) return false;
+  const way = pieceWay("plan-scrap", "s", block.seed ?? 0);
+  if (!way) return false;
+  drawPicture(painter, way.picture, (block.x + 0.5) * cellWidth, block.y + 0.5, {});
+  return true;
+}
+
+// ---- Things by their names ------------------------------------------------------------------------------------------
+
+// What a thing that's none of the game's furniture is drawn as, by the words in its name: the first line with one of
+// its words in the name, as whole words. null is nothing at all, for what's somewhere to look and not an object (only
+// its mark shows there). Anything no line knows is a small case.
+const THING_WORDS = [
+  [["viewport", "chalked names", "queue", "empty hold", "frame thirty", "duct"], null],
+  [["gauges", "gauge"], "thing:terminal"],
+  [["capacitor", "controller"], "thing:rack"],
+  [["scan bed"], "thing:pod"],
+  [["reactor", "coolant", "tank", "tanks"], "thing:tank"],
+  [["urn", "kettle", "samovar"], "thing:urn"],
+  [["chest", "footlocker", "trunk", "crate", "sack", "bedroll", "bedrolls", "patches", "bundle"], "thing:box"],
+  [["photograph", "picture", "portrait"], "thing:frame"],
+  [["rota", "slate", "manifest", "list", "ledger", "notice", "letter", "papers"], "thing:paper"],
+  [["chip", "circuit"], "thing:chip"],
+  [["chalk", "medal", "tabs", "tool roll", "coin"], "thing:small"],
+];
+export function thingPicture(name) {
+  const words = ` ${String(name ?? "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean).join(" ")} `;
+  for (const [any, piece] of THING_WORDS) if (any.some((word) => words.includes(` ${word} `))) return piece;
+  return "thing:case";
+}
+
+// A thing on the floor that's none of the game's furniture, as the packs' piece for what its name says it is; true if
+// it's been seen to (drawn, or nothing to draw), false if the test isn't on or the picture isn't there, and the game
+// draws its plain box.
+export function drawPixelThing(painter, thing, { cellWidth }) {
+  if (!pixelArtOn()) return false;
+  const piece = thingPicture(thing.name);
+  if (piece === null) return true;
+  const way = pieceWay(piece);
+  if (!way) return false;
+  const [cx, cy] = [(thing.x + 0.5) * cellWidth, thing.y + 0.5];
+  drawPicture(painter, way.picture, cx, cy, {});
+  if (way.on) drawPicture(painter, way.on, cx, cy, { lift: way.lift });
+  return true;
 }
 
 // A crate on the plan, on its square.
