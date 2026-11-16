@@ -8,18 +8,23 @@ import net from "node:net";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { app, BrowserWindow, dialog, Menu, nativeTheme, screen, shell } from "electron";
-import { OLD_NAME, chooseHome, isGameFolder, looksLikeTheGame, oldFilesToTakeOver, windowPlace } from "./choices.js";
+import { OLD_NAME, appIdentity, chooseHome, isGameFolder, looksLikeTheGame, oldFilesToTakeOver, windowPlace } from "./choices.js";
 
-const NAME = "Almagest Explorer's";
-const PORT = Number(process.env.PORT) || 3210;
 const PAGE_COLOR = "#050a07";
 const appDir = path.dirname(fileURLToPath(import.meta.url));
 const bundled = path.dirname(appDir);
 const LONGEST_TURN = 5 * 60 * 1000;
+// What app/build.js built into this app: where the game's folder is on this computer, whether this is the second copy
+// (app/choices.js), and where that copy finds the bought art.
+const built = readBuilt();
+const ME = appIdentity(built);
+const NAME = ME.name;
+const PORT = Number(process.env.PORT) || ME.port;
 
 app.setName(NAME);
-// The id is kept from the old name on purpose: a new installer then replaces the old app instead of sitting beside it.
-app.setAppUserModelId("com.lastmeridian.game");
+// The first app's id is kept from the old name on purpose: a new installer then replaces the old app instead of
+// sitting beside it. A copy has an id of its own, so it sits beside the first.
+app.setAppUserModelId(ME.id);
 takeOverOldFiles();
 // The title bar matches the game's dark screen.
 nativeTheme.themeSource = "dark";
@@ -76,11 +81,11 @@ function remember(changes) {
 
 // ---- Which copy of the game to run ----------------------------------------
 
-function builtHome() {
+function readBuilt() {
   try {
-    return JSON.parse(fs.readFileSync(path.join(bundled, "package.json"), "utf8")).gameHome ?? null;
+    return JSON.parse(fs.readFileSync(path.join(bundled, "package.json"), "utf8"));
   } catch {
-    return null;
+    return {};
   }
 }
 
@@ -109,13 +114,17 @@ function askWhereItWent(lost) {
 
 function chooseRoot() {
   if (!app.isPackaged) return bundled;
-  let choice = chooseHome({ remembered: recall().home ?? null, built: builtHome(), exists: fs.existsSync });
+  let choice = chooseHome({ remembered: recall().home ?? null, built: built.gameHome ?? null, exists: fs.existsSync });
   if (choice.lost) choice = askWhereItWent(choice.lost);
   if (choice.quit) return null;
   remember({ home: choice.home });
   // Without the folder, the copy inside the app can't keep its saves in itself, because that's read-only.
   if (!choice.home) process.env.GAME_DATA_DIR ||= path.join(app.getPath("userData"), "data");
-  return choice.home ?? bundled;
+  const root = choice.home ?? bundled;
+  // The bought art never goes in an installer, so a copy made on this computer may have been told where it is.
+  const art = built.licensedDir;
+  if (art && !fs.existsSync(path.join(root, "licensed")) && fs.existsSync(art)) process.env.GAME_LICENSED_DIR ||= art;
+  return root;
 }
 
 // The app was called The Last Meridian until version 0.5.0, and kept its files under that name. The first time it
@@ -125,7 +134,7 @@ function takeOverOldFiles() {
   if (app.commandLine.hasSwitch("user-data-dir")) return;
   const mine = app.getPath("userData");
   const old = path.join(app.getPath("appData"), OLD_NAME);
-  if (!oldFilesToTakeOver({ mine, old, exists: fs.existsSync })) return;
+  if (!oldFilesToTakeOver({ mine, old, exists: fs.existsSync, copy: ME.copy })) return;
   try {
     fs.cpSync(old, mine, { recursive: true, force: false, errorOnExist: false });
   } catch (err) {

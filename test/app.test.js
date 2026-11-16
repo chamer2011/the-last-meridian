@@ -8,7 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { after, test } from "node:test";
-import { chooseHome, isGameFolder, looksLikeTheGame, oldFilesToTakeOver, windowPlace } from "../app/choices.js";
+import { COPY_APP, MAIN_APP, appIdentity, chooseHome, installerSettings, isGameFolder, looksLikeTheGame, oldFilesToTakeOver, windowPlace } from "../app/choices.js";
 import { projectDir } from "../src/paths.js";
 
 const pack = JSON.parse(fs.readFileSync(path.join(projectDir, "package.json"), "utf8"));
@@ -63,6 +63,23 @@ test("the app knows the game under its old name too, and takes over the old name
   assert.equal(oldFilesToTakeOver({ mine, old, exists: has() }), false, "nothing to take over");
 });
 
+test("a second copy of the game is an app of its own beside the first, and takes nothing over from it", () => {
+  assert.equal(appIdentity({}), MAIN_APP);
+  assert.equal(appIdentity({ gameHome: here }), MAIN_APP);
+  assert.equal(appIdentity({ gameCopy: true }), COPY_APP);
+  assert.equal(MAIN_APP.name, pack.build.productName, "the first app is the one package.json describes");
+  assert.equal(MAIN_APP.id, pack.build.appId);
+  assert.equal(MAIN_APP.port, 3210);
+  for (const key of ["name", "id", "port"]) assert.notEqual(COPY_APP[key], MAIN_APP[key], `the copy's ${key} is its own`);
+  assert.notEqual(COPY_APP.packageName, pack.name, "so it's installed in a folder of its own");
+  assert.notEqual(COPY_APP.executable, pack.build.executableName);
+  assert.notEqual(COPY_APP.installer, pack.build.nsis.artifactName);
+  assert.ok(/^[-_+0-9a-zA-Z .]+$/.test(COPY_APP.executable), "a file name Windows takes, with no apostrophe");
+  const mine = "C:/Users/someone/AppData/Roaming/Almagest Explorer's (copy)";
+  const old = "C:/Users/someone/AppData/Roaming/The Last Meridian";
+  assert.equal(oldFilesToTakeOver({ mine, old, exists: (file) => file === old, copy: true }), false, "the old files are the first app's, and would send it to the first app's folder");
+});
+
 // ---- Where the window opens --------------------------------------------------
 
 const wide = { x: 0, y: 0, width: 1920, height: 1040 };
@@ -108,6 +125,30 @@ test("the installer can't contain your saves or your API key", () => {
     assert.ok(!pattern.includes("**/*"), `${pattern} could take in anything`);
   }
   for (const needed of ["app/**", "public/**", "src/**", "world/**", "server.js", "package.json", "LICENSE", "STORY-AND-WORLD.md"]) assert.ok(files.includes(needed), `${needed} needs to go in`);
+});
+
+test("the owner's installer remembers this folder, one for others leaves it out, and a copy has a name and the rest of its own", () => {
+  const settings = pack.build;
+  assert.deepEqual(installerSettings(settings, { home: here }).extraMetadata, { gameHome: here });
+  assert.deepEqual(installerSettings(settings, { home: here, forOthers: true }).extraMetadata, {});
+  assert.equal(installerSettings(settings, { home: here }).appId, settings.appId);
+  const copy = installerSettings(settings, { home: here, copy: true });
+  assert.equal(copy.appId, COPY_APP.id, "so installing it doesn't replace the first app");
+  assert.equal(copy.productName, COPY_APP.name);
+  assert.equal(copy.executableName, COPY_APP.executable);
+  assert.equal(copy.nsis.artifactName, COPY_APP.installer);
+  assert.equal(copy.nsis.shortcutName, COPY_APP.name);
+  assert.equal(copy.nsis.perMachine, false);
+  assert.equal(copy.directories.output, COPY_APP.output, "and it doesn't write over the first app's installer");
+  assert.notEqual(copy.directories.output, settings.directories.output);
+  assert.deepEqual(copy.files, settings.files, "the same files go in, so never saves");
+  assert.deepEqual(copy.extraMetadata, { gameHome: here, name: COPY_APP.packageName, productName: COPY_APP.name, gameCopy: true }, "it plays the folder it was made from");
+  assert.equal(appIdentity(copy.extraMetadata), COPY_APP);
+  assert.equal(installerSettings(settings, { home: here, copy: true, forOthers: true }).extraMetadata.gameHome, undefined, "or the game inside it");
+  assert.equal(installerSettings(settings, { home: here, copy: true, licensed: "D:/Art" }).extraMetadata.licensedDir, "D:/Art", "and the bought art stays where it is");
+  assert.equal(installerSettings(settings, { home: here, licensed: "D:/Art" }).extraMetadata.licensedDir, undefined);
+  assert.equal(settings.appId, "com.lastmeridian.game", "package.json's settings are left as they were");
+  assert.equal(settings.directories.output, "dist");
 });
 
 test("the app's own files are all there, and its icon is one Windows can use", () => {

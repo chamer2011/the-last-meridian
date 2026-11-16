@@ -1077,12 +1077,13 @@ npm install
 npm run build-app
 ```
 
-- **Giving it to someone else:** send them `dist/Almagest-Explorers-Setup.exe`. It holds a copy of the game as it was when it was built, without your saves. On a computer that doesn't have this folder, the app runs that copy, and keeps its saves in `%APPDATA%\Almagest Explorer's\data`. Windows warns about installers from unknown publishers unless you pay for a signing certificate, and each player needs their own API key.
+- **Giving it to someone else:** send them `dist/Almagest-Explorers-Setup.exe`. It holds a copy of the game as it was when it was built, without your saves. On a computer that doesn't have this folder, the app runs that copy, and keeps its saves in `%APPDATA%\Almagest Explorer's\data`. Windows warns about installers from unknown publishers unless you pay for a signing certificate.
+- **A second copy beside it:** `node app/build.js --copy` makes `dist/copy/Almagest-Explorers-Copy-Setup.exe`, which installs a second app, **Almagest Explorer's (copy)**, with an icon of its own. It plays the game from the folder it was made in, with that folder's saves, the way the first app plays this one, so a copy of the game downloaded from GitHub becomes a game that stays as it was while this folder goes on changing. Its settings are its own, in `%APPDATA%\Almagest Explorer's (copy)\`, and so is its port, 3220, so it never plays this folder or shows the first app's game, and the two can be open at once. Installing it leaves the first app as it is, and it's uninstalled on its own. A folder without the bought art can be told where the art is with `--licensed=<folder>`. Don't start that folder's `start-game.bat` while its app is open, because both would save into the same folder.
 - **Moving this folder:** the app asks where it went the next time it opens, because your saves are in it.
 - **What the app keeps for itself:** `%APPDATA%\Almagest Explorer's\` has `game.log`, which is what the black window would have shown, and `app-state.json`, which says where the window was and where this folder is. The game was called The Last Meridian until version 0.5.0, and an app installed under that name kept these in `%APPDATA%\The Last Meridian\`, with the saves of anyone without this folder: the first run under the new name copies them across, and leaves the old folder as it was.
 - **Uninstalling it:** use **Installed apps** in Windows Settings. That only removes the app, and this folder and your saves stay where they are.
 
-`app/main.js` is the app, `app/choices.js` has the decisions it makes when it starts, `app/build.js` makes the installer, and `app/icon.ico` is its icon.
+`app/main.js` is the app, `app/choices.js` has the decisions it makes when it starts and what its installers are made with, `app/build.js` makes them, and `app/icon.ico` is its icon.
 
 ## Carrying on from another computer
 
