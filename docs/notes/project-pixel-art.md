@@ -244,6 +244,34 @@ Asked for as "Start step 7". The same way as deck 1: each room built from its ow
 
 **Checked.** The suite on the kept decks, 1,313 tests, all passing on the final state (a first run had one speed test, `test/stories.test.js`'s "a year of it is quick", at 4.4 s against 4 while another session's tests ran). The eight as-drawn tests, and `npm run check-story`. All 43 of the deck's parts placed, none without a place. On a test copy from the worktree, in headless Edge at 1400 wide, Pixel art: the medbay, the mess at a sitting with people on the benches, the galley with the cooks behind the range, the garden, the port airlock, the armory, the brig, the bunks at night with the crew in them, the stairs, the Overflow; the mess at 810 wide; the medbay in Isometric; the Map editor's own window on the deck. Six days of the ship's routine with nobody steering came out the same, sitting for sitting, on the new decks as on the kept ones. **Not checked:** play by hand; the morning queue with anyone in it (nobody was hurt); a fight, a fire or a breach on the new deck.
 
+## Step 8 of the roadmap: deck 3's ten rooms (2026-11-16)
+
+Asked for as "Start step 8". The same way as decks 1 and 2: each room from its own description (the Crawlways and Engineering have none, so from what's in them), kept where it is and refitted, through the Map editor's save from a layout script (scratch) with the same checks. With this one the whole ship is redrawn. Untried by the owner.
+
+**The bow, squared.** The crawlways' hull stepped a square a row to a point at (8, 15). Now the wings' wall is straight at 16 (rows 1-10 and 21-30) and a nose runs out to 8 between rows 11 and 20 (floor 9-16 by 12-19), on the same rows as the two decks above.
+
+**Engineering's two missing walls.** Where the room widens (rows 7 to 24 reach 140, the rest 132) the plan had no wall across the step: floor stood against open space on rows 7 and 24. There's a wall on row 6 and on row 25 now, from 134 to 141. The one on row 6 stands full height and carries the capacitors.
+
+**Doors.** Two squares wide: stores 51-52, repair 73-74, life support 95-96, stair 109-110 on row 13; holds 55-56, lighter bay 86-87, pumps 111-112 on row 18. The lighter's ramp is fourteen squares (82-95 on row 30), a whole number of tiles; it was thirteen.
+
+**The rooms** (squares as x, y):
+- **The Crawlways** (17-40 by 2-29, and the nose): the ducts as blocks four by three in a plain grid (columns 20-23, 27-30, 34-37; rows 4-6, 9-11, 14-16, 19-21, 24-26; one more in the nose at 13-16 by 14-16) with lanes three wide between them; before, the bow cut the forward ones into odd shapes. The scrap lies where it lay. What the people who live down here have made of it: a camp by the warm bedrolls (a table and stools at (26, 18), pillows, a paper lamp), a stove at (32, 12), a stash at (32, 22), more lamps; grilles, a canvas and lamps on the ducts' near faces, pipes on the hull. Naomi's post, the six places of people's days, the bedrolls, Number two duct and Frame Thirty are where they were.
+- **The Keel Passage**: barrels, drums and cases left along its forward side, clear of the doors. Nothing hangs on its walls, which are cut low, and it has no lamps: "lit badly".
+- **Stores** (43-60 by 2-12): five shelves and two lockers along the hull, the crates two deep in two rows (rows 5-6 and 9-10 at 45-48, 51-54, 57-60), the tally on a table by the door, the parts lockers against the tall wall at (43, 7).
+- **The Repair Bay** (62-85 by 2-12): the long bench under three tool boards on the hull (74-79 on row 2), two benches of instruments (64-69 on rows 6 and 10), "a drone on its cradle" at (74, 7) (the pack's cleaning robot on a tray), the bench for fine work at (80, 6), shelves and lockers, and the "parts in boxes" by the door. The rows of consoles that stood in for benches are gone.
+- **Life Support** (87-103 by 2-12): six tanks, two air handlers and two pumps along the hull under their pipes, the watch's three consoles on row 6 facing them, three more pumps and the water on the near side.
+- **Lower Aft Stair**: the way up moved to the foot of the flight, (113, 3).
+- **The Aft Holds** (43-68 by 19-29): the crates in their rows as they were, the security desk at (44, 20) with its chair and a locker, two tanks and a pump beside the coolant tanks, unmarked crates and drums in the corners. The empty hold is left bare.
+- **The Lighter Bay** (70-104 by 19-29): the landing in front of the ramp kept clear, a pump either side of it; cargo and the loading desk to port, lockers and a bench on the passage side, fuel, a bench of tools and barrels to starboard.
+- **The Pump Room** (106-118 by 19-29): four round tanks either side of the way in (107-109 and 114-116 on rows 24 and 27), four pumps in a row on row 20, a tank at each side.
+- **Engineering** (121-140 by 2-29): the engines and the switchgear where they were; the chief's desk along the hull under DO NOT TOUCH., a shelf and two lockers; the capacitors as three racks on the new wall beside the Capacitor bank; the reactor safety controller at (131, 8) beside the reactor; a bench with a stool by the tool roll (135, 23) and another by Marrow's corner (130, 26); his cot where it was, with a night table.
+
+**Three more things are drawn that the game used to stand itself:** the parts lockers at (43, 7) (the game had them in the stores' cross lane on the new layout), and the two written computers' own things, The security desk at (44, 20) and The reactor safety controller at (131, 8). A save from before finds its parts lockers full once, as with deck 2's pantry. The security desk, being called a desk, also opens like one now. The shuttle stores (71, 24) and the fuel rack (124, 18) are still stood by the game, and landed well.
+
+**What it taught.** A thing's square shows in the editor's plan as whatever its tile's other half is, so one standing in a wall line (the reactor gauges) needs floor put under it by hand before a layout is checked. A duct block is a wall like any other: its top row and left column are cut low and the rest stands full height, so fittings go on a square of its bottom row that isn't its left end. A rug of the packs (a shower tray) under a standing piece makes a plinth: that's the drone's cradle. A thing called a desk opens like a desk, whatever else it is.
+
+**Checked.** The suite on the kept decks, 1,315 tests, all passing. The eight as-drawn tests, and `npm run check-story`. All 37 of the deck's parts placed. The drawn security desk still asks for a logon and the reactor safety controller still says it's sealed; the Repair Bay still offers its two things to do. On a test copy from the worktree, in headless Edge at 1400 wide, Pixel art: the crawlways, stores, the repair bay, life support, the stair, the holds, the lighter bay, the pump room and engineering; the repair bay at 810 wide; engineering in Isometric; the Map editor's own window on the deck. **Not checked:** play by hand; a fire in Engineering or a breach in the Lighter Bay on the new deck; a carrier walking the new stores by eye (the work board's own tests run on the kept decks).
+
 ## Known
 
 - The bow's stepped walls read as a row of separate units, since every step shows its own slab.
@@ -261,3 +289,6 @@ Asked for as "Start step 7". The same way as deck 1: each room built from its ow
 - Deck 2's medbay hall is large and still fairly bare, and its glass screens stand as tall as the room.
 - On deck 2 the cabins' and cells' walls are cut low like every wall with floor behind it, so they read as stalls with doors.
 - A save made before step 7 finds its pantry and medicine cabinet full once (they're drawn things now, with new keys), and containers it had opened on deck 2 are new ones, since the furniture moved.
+- Deck 3's Lighter Bay is mostly bare floor: the landing in front of the ramp is kept clear, and the packs have no lighter to stand on it.
+- The Crawlways' ducts are plain blocks of wall, which is how the game has always drawn them; the packs have no duct.
+- A save made before step 8 finds its parts lockers full once (a drawn thing now, with a new key), and containers it had opened on deck 3 are new ones.
