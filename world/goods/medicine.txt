@@ -1,0 +1,10 @@
+# Medicine
+draft: the AI's, not yet edited by the owner
+stands for: medicine, by its medicine crates
+
+Developed:
+- medicine crates [medicine_crate]: Twenty doses to a crate: what a medbay's cabinet holds.
+- medkits, by the case [medkit]: Kits for one wound, on the spot, a case of them at a time.
+
+Advanced:
+- surgeon's stores, by the case: Surgical kits and synthskin, for the worst cases.

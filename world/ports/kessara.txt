@@ -1,0 +1,35 @@
+# Kessara Drift
+draft: the AI's, not yet edited by the owner
+people: 5,000
+
+Holds:
+- ration crates: usually 1,600, from Maris Deep or Haven Station
+- ration packs: usually 63, from Haven Station
+- fuel cells: usually 380, from Cinder Reach or the Veshti Deepyards
+- jump fuel: usually 340, from Cinder Reach
+- hot cells: usually 19, from the Veshti Deepyards
+- medicine crates: usually 33, from Haven Station
+- medkits: usually 6.3, from Lumen Sanctuary or Vantor Prime
+- parts crates: usually 30
+- circuit boards: usually 120
+- machines: usually 1.3, from the Veshti Deepyards
+- drinking water: usually 500
+- air bottles: usually 63, from Tessen Colony
+- reserve tanks: usually 2.5, from the Veshti Deepyards
+- beer and spirits: usually 250, from Korrath Forge
+- clothes: usually 25, from Haven Station
+- tea and tobacco: usually 38, from Haven Station
+- fine things: usually 2.5, from the Gilded Wheel
+
+Makes:
+- the breakers' yards: 3 parts crates a day
+- the benches in the warren: 12 circuit boards a day
+- the ice-melters: 50 drinking water a day
+
+Uses:
+- its people: 50 ration crates, 2.5 ration packs, 25 drinking water, 10 beer and spirits, 1 clothes, 1.5 tea and tobacco a day
+- its tables: 0.1 fine things a day
+- the raider crews: 7.5 jump fuel, 2.5 air bottles, 0.1 reserve tanks a day
+- its power: 15 fuel cells a day
+- its sick: 1 medicine crates, 0.25 medkits a day
+- its docks and workshops: 1.5 parts crates, 0.25 circuit boards, 0.05 machines, 0.75 hot cells a day

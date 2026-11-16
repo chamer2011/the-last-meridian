@@ -9,6 +9,7 @@ import { parseStoryText } from "../public/story-text.js";
 import { parseSystemsText } from "../public/systems-text.js";
 import { parseLogisticsText } from "../public/logistics-text.js";
 import { parseCommandText } from "../public/command-text.js";
+import { parseGoodsText, parsePortText } from "../public/ports-text.js";
 import { parseHealthText, parseWoundsText } from "../public/health-text.js";
 import { COMPUTER, ENEMY, FACTION, ITEM, PERK, PERSON, PLACE, SPECIES_SPEC, parseWorldText } from "../public/world-text.js";
 
@@ -83,6 +84,31 @@ export function reloadLogistics() {
   }
 }
 reloadLogistics();
+// The world's goods, a tree to a file in world/goods (food, fuel, medicine, parts, water and air, comforts), and what
+// each port holds, makes and uses of them, a port to a file in world/ports: plain text, read by public/ports-text.js
+// and read again when the story board saves one. src/ports.js makes of them what the game plays. Tests point the
+// folders at copies.
+export const GOODS_DIR = process.env.GAME_GOODS_DIR ?? path.join(worldDir, "goods");
+export const PORTS_DIR = process.env.GAME_PORTS_DIR ?? path.join(worldDir, "ports");
+export const WORLD_GOODS = {};
+export const WORLD_PORTS = {};
+export const PORTS_FILE_PROBLEMS = [];
+export function reloadPorts() {
+  for (const key of Object.keys(WORLD_GOODS)) delete WORLD_GOODS[key];
+  for (const key of Object.keys(WORLD_PORTS)) delete WORLD_PORTS[key];
+  PORTS_FILE_PROBLEMS.splice(0);
+  for (const [dir, folder, into, parse] of [[GOODS_DIR, "goods", WORLD_GOODS, parseGoodsText], [PORTS_DIR, "ports", WORLD_PORTS, parsePortText]]) {
+    if (!fs.existsSync(dir)) continue;
+    for (const name of fs.readdirSync(dir).sort()) {
+      if (!name.endsWith(".txt") || name.startsWith("_")) continue;
+      const id = name.slice(0, -".txt".length);
+      const { value, problems } = parse(fs.readFileSync(path.join(dir, name), "utf8"), id);
+      for (const one of problems) PORTS_FILE_PROBLEMS.push(`${folder}/${name}${one.line ? ` (line ${one.line})` : ""}: ${one.message}`);
+      into[id] = value;
+    }
+  }
+}
+reloadPorts();
 // A place's chain of command, as plain text in world/command, read by public/command-text.js: its posts, its jobs,
 // and who holds each post when a game begins. Only the Meridian has a file so far. Tests point the folder at a copy.
 export const COMMAND_DIR = process.env.GAME_COMMAND_DIR ?? path.join(worldDir, "command");

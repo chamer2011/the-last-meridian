@@ -1,0 +1,35 @@
+# Lumen Sanctuary
+draft: the AI's, not yet edited by the owner
+people: 9,000
+
+Holds:
+- ration crates: usually 1,900
+- ration packs: usually 110, from Haven Station
+- provisions: usually 23, from the Gilded Wheel
+- fuel cells: usually 680, from Cinder Reach or the Veshti Deepyards
+- jump fuel: usually 230, from the Veshti Deepyards
+- medicine crates: usually 150
+- medkits: usually 46
+- surgeon's stores: usually 2.3, from Vantor Prime
+- parts crates: usually 68, from Haven Station
+- circuit boards: usually 11, from Kessara Drift
+- machines: usually 2.3, from the Veshti Deepyards
+- drinking water: usually 900
+- beer and spirits: usually 230, from Korrath Forge
+- clothes: usually 45, from Haven Station or Bastion Nine
+- tea and tobacco: usually 68, from Haven Station
+- fine things: usually 4.5, from the Gilded Wheel or Vantor Prime
+
+Makes:
+- the terrace kitchens: 190 ration crates a day
+- the still-houses: 15 medicine crates a day
+- the still-houses' benches: 4.6 medkits a day
+- the Water Courts: 90 drinking water a day
+
+Uses:
+- its people: 90 ration crates, 4.5 ration packs, 45 drinking water, 9 beer and spirits, 1.8 clothes, 2.7 tea and tobacco a day
+- its tables: 0.9 provisions, 0.18 fine things a day
+- ships calling: 9 jump fuel a day
+- its power: 27 fuel cells a day
+- its sick: 1.8 medicine crates, 0.45 medkits, 0.09 surgeon's stores a day
+- its docks and workshops: 2.7 parts crates, 0.45 circuit boards, 0.09 machines a day

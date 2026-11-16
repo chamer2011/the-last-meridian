@@ -1110,7 +1110,7 @@ export function publicState(game) {
     ship: shipView(game),
     command: commandView(game),
     role: roleView(game),
-    world: { here: placeNow(game, game.location), news: newsView(game) },
+    world: { here: placeNow(game, game.location, { full: true }), news: newsView(game) },
     location: { id: game.location, ...place },
     story: { ...storyView(game), record: recordView(game) },
     equipped: game.equipped,

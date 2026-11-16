@@ -1,0 +1,34 @@
+# Cinder Reach
+draft: the AI's, not yet edited by the owner
+people: 8,000
+
+Holds:
+- ration crates: usually 2,000, from Tessen Colony
+- ration packs: usually 100, from Haven Station
+- fuel cells: usually 3,800
+- jump fuel: usually 920
+- hot cells: usually 10, from the Veshti Deepyards
+- medicine crates: usually 40, from Haven Station
+- medkits: usually 10, from Lumen Sanctuary
+- parts crates: usually 96
+- circuit boards: usually 10, from Kessara Drift
+- machines: usually 4, from the Veshti Deepyards
+- drinking water: usually 800
+- air bottles: usually 150, from Tessen Colony
+- reserve tanks: usually 4, from the Veshti Deepyards
+- beer and spirits: usually 200, from Korrath Forge
+- clothes: usually 40, from Haven Station or Bastion Nine
+- tea and tobacco: usually 60, from Haven Station
+
+Makes:
+- the charging sheds: 380 fuel cells a day
+- the Stack: 92 jump fuel a day
+- the company shops: 9.6 parts crates a day
+- the condensers: 80 drinking water a day
+
+Uses:
+- its people: 80 ration crates, 4 ration packs, 40 drinking water, 8 beer and spirits, 1.6 clothes, 2.4 tea and tobacco a day
+- ships calling: 8 jump fuel, 6 air bottles, 0.16 reserve tanks a day
+- its power: 24 fuel cells a day
+- its sick: 1.6 medicine crates, 0.4 medkits a day
+- the mines and the Stack: 4.8 parts crates, 0.4 circuit boards, 0.16 machines, 0.4 hot cells a day

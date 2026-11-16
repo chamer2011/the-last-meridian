@@ -1,0 +1,20 @@
+# Foundry Seven
+draft: the AI's, not yet edited by the owner
+people: 1,200
+
+Holds:
+- fuel cells: usually 180, from Cinder Reach or the Veshti Deepyards
+- hot cells: usually 4.8
+- parts crates: usually 14
+- circuit boards: usually 4.8
+- machines: usually 0.96
+
+Makes:
+- the cell line: 0.48 hot cells a day
+- the rack: 1.4 parts crates a day
+- the Assembly Floor: 0.48 circuit boards a day
+- the long line: 0.1 machines a day
+
+Uses:
+- its power: 7.2 fuel cells a day
+- the Unbound, who are their own upkeep: 0.72 parts crates, 0.24 circuit boards, 0.05 machines, 0.24 hot cells a day

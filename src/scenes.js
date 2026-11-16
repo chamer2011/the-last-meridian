@@ -27,6 +27,7 @@ import { hackFacts } from "./story-rig.js";
 import { workFacts } from "./work-hook.js";
 import { applySystemsEffect, placesWithSystems, systemsOf, systemsProblems } from "./systems.js";
 import { logisticsProblems, placesWithLogistics } from "./logistics.js";
+import { portsCount, portsProblems } from "./ports.js";
 import { healthFiles, healthProblems } from "./body.js";
 import { medbayProblems } from "./medbay.js";
 import { deathFacts, deathProblems } from "./death.js";
@@ -874,9 +875,9 @@ export function allStoryProblems(dir = SCENES_DIR) {
       for (const text of conditions) for (const flag of flagsIn(text)) if (!known.has(flag)) problems.push(`${id}, part ${name}: nothing leaves the fact ${flag}. Set it with * flag in a scene, or name it in a story's facts in world/stories`);
     }
   }
-  problems.push(...STORY_FILE_PROBLEMS, ...WORLD_FILE_PROBLEMS, ...MAP_FILE_PROBLEMS, ...notesProblems(known), ...clockProblems(known), ...computerProblems(), ...systemsProblems(), ...logisticsProblems(), ...commandProblems(), ...healthProblems(), ...medbayProblems(), ...deathProblems(), ...allBattleProblems().problems, ...drawingProblems(), ...checkExtras());
+  problems.push(...STORY_FILE_PROBLEMS, ...WORLD_FILE_PROBLEMS, ...MAP_FILE_PROBLEMS, ...notesProblems(known), ...clockProblems(known), ...computerProblems(), ...systemsProblems(), ...logisticsProblems(), ...portsProblems(), ...commandProblems(), ...healthProblems(), ...medbayProblems(), ...deathProblems(), ...allBattleProblems().problems, ...drawingProblems(), ...checkExtras());
   const drawn = Object.values(WORLD_MAPS).flatMap((map) => Object.values(map.levels ?? {})).filter((level) => level.drawn).length;
-  return { count, requests, stories: Object.keys(WORLD_THREADS).length, computers: Object.keys(WORLD_COMPUTERS).length, systems: placesWithSystems(), logistics: placesWithLogistics(), command: Object.keys(WORLD_COMMAND).length, health: healthFiles(), battles: allBattleProblems().count, drawn, problems, fleet: fleetLeftovers(dir) };
+  return { count, requests, stories: Object.keys(WORLD_THREADS).length, computers: Object.keys(WORLD_COMPUTERS).length, systems: placesWithSystems(), logistics: placesWithLogistics(), ports: portsCount(), command: Object.keys(WORLD_COMMAND).length, health: healthFiles(), battles: allBattleProblems().count, drawn, problems, fleet: fleetLeftovers(dir) };
 }
 
 // The fleet is a thing of the past, and the world's words are the owner's to rework in their own time. This is

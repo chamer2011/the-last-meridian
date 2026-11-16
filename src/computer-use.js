@@ -198,7 +198,11 @@ function logLines(game, session, content, log) {
       worldOf(game);
       const now = placeNow(game, place);
       if (!now?.goods?.length) return [line(`Nothing is counted at ${placeName}.`, "dim")];
-      return [line(`${placeName}, held by ${now.holder}.`, "dim"), ...now.goods.map((good) => line(`${good.name.padEnd(16)} ${good.level}${good.low ? "  (short)" : good.high ? "  (plenty)" : ""}`, good.low ? "warn" : "info"))];
+      // How many of each the port has, where its amounts are real, and under a short one, why.
+      return [line(`${placeName}, held by ${now.holder}.`, "dim"), ...now.goods.flatMap((good) => [
+        line(`${good.name.padEnd(16)} ${good.level}${good.has ? `, ${good.has}` : ""}${good.low ? "  (short)" : good.high ? "  (plenty)" : ""}`, good.low ? "warn" : "info"),
+        ...(good.why ? [line(`${"".padEnd(16)} ${good.why}.`, "dim")] : []),
+      ])];
     }
     case "people": {
       const here = (game.walk?.people ?? []).filter((one) => !one.crowd).map((one) => `${one.name}${one.doing ? `, ${one.doing}` : ""}`);

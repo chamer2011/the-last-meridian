@@ -2,14 +2,16 @@
 // supplies, what they cost, and who has the most say there. It runs at each midnight, on this computer,
 // and the news says what's changed. world/daily.json has the places, the numbers and the words.
 //
-// Each place has a level for each of its supplies, where 100 is normal for that place. Levels drift
-// back toward normal by themselves, or toward whatever the places it depends on can send it, so a
-// shortage at one place reaches the next a few days later, and it all recovers in the end.
+// Each place has a level for each of its supplies, where 100 is what it usually holds. A port with a file
+// in world/ports holds real amounts (src/ports.js): it makes, uses and sends for goods, hauls take days,
+// and the level is how much it has against the usual. A place without one keeps the older rule: its levels
+// drift back toward normal by themselves, or toward whatever the places it depends on can send it.
 
 import { FACTIONS, ITEMS, LOCATIONS } from "./data.js";
 import { isCharted } from "./ship.js";
 import { aboardShip } from "./role.js";
-import { DAILY } from "./world.js";
+import { DAILY, SHIP_DATA } from "./world.js";
+import { amountOf, counted, hasPort, portHolds, portsDay, portsModel, pushOf, usualOf, whyShort } from "./ports.js";
 
 const PLACES = DAILY.places ?? {};
 const GOODS = DAILY.goods ?? {};
@@ -104,12 +106,13 @@ const placeText = (text, place) => text.replaceAll("{place}", LOCATIONS[place]?.
 
 // ---- A day at each place ------------------------------------------------------
 
+// The older rule, for a place with no file in world/ports.
 function supplyDay(world, id, state) {
   const going = state.events.map((event) => EVENTS.find((one) => one.id === event.id)).filter(Boolean);
   for (const [good, from] of Object.entries(PLACES[id].goods ?? {})) {
     const sources = from.map((other) => world.places[other]?.goods[good]).filter((level) => level !== undefined);
     const usual = sources.length ? 100 * (1 - DEPENDS) + DEPENDS * (sources.reduce((sum, level) => sum + level, 0) / sources.length) : 100;
-    const pushed = going.reduce((sum, event) => sum + (event.goods?.[good] ?? 0), 0);
+    const pushed = going.reduce((sum, event) => sum + pushOf(event.goods?.[good] ?? 0), 0);
     // Markets don't jump around at random. They lean one way for days at a time, then the other.
     state.lean ??= {};
     state.lean[good] = Math.round(((state.lean[good] ?? 0) * LEAN_KEEPS + (dice(world) - 0.5) * 2 * SHAKE) * 100) / 100;
@@ -162,10 +165,13 @@ function eventsDay(game, world, id, state, notes) {
   }
 }
 
+// A day everywhere: what's going on at each place, then what every port makes, uses and sends for (they deal with
+// each other, so they go together), then who has the say.
 function runDay(game, world, notes) {
+  for (const [id, state] of Object.entries(world.places)) eventsDay(game, world, id, state, notes);
+  portsDay(world, () => dice(world));
   for (const [id, state] of Object.entries(world.places)) {
-    eventsDay(game, world, id, state, notes);
-    supplyDay(world, id, state);
+    if (!hasPort(id)) supplyDay(world, id, state);
     holdDay(game, world, id, state, notes);
   }
 }
@@ -224,14 +230,25 @@ export function itemFactor(game, item) {
   return swing * standingFactor(game, place);
 }
 
-// What the Meridian buying or selling a lot does to what's left there.
+// How many of a supply the Meridian buys or sells at a time: a lot.
+const lotOf = (good) => SHIP_DATA.supplies?.[good]?.lot ?? 1;
+// What the Meridian buying or selling a lot does to what's left there: at a port with real amounts, that many
+// crates fewer or more; anywhere else, a step of its level.
 export function tradedAt(game, place, good, sold = false) {
   const goods = worldOf(game).places[place]?.goods;
   if (goods?.[good] === undefined) return;
-  goods[good] = round(clampLevel(goods[good] + (sold ? DAILY.lots.sold : DAILY.lots.bought)));
+  const usual = usualOf(place, good);
+  const step = usual ? (lotOf(good) / usual) * 100 * (sold ? 1 : -1) : sold ? DAILY.lots.sold : DAILY.lots.bought;
+  // Kept fine enough that a lot bought is a lot gone, to the crate.
+  goods[good] = usual ? Math.round(clampLevel(goods[good] + step) * 10000) / 10000 : round(clampLevel(goods[good] + step));
 }
 
-export const noneLeft = (game, place, good) => (game.world?.places[place]?.goods[good] ?? 100) < DAILY.lots.none;
+// Whether a place has none left to sell: fewer than a lot, where the amounts are real.
+export function noneLeft(game, place, good) {
+  const level = game.world?.places[place]?.goods[good] ?? 100;
+  const usual = usualOf(place, good);
+  return usual ? (level / 100) * usual < lotOf(good) : level < DAILY.lots.none;
+}
 
 // ---- What the browser gets to see --------------------------------------------
 
@@ -247,13 +264,25 @@ export const inTrouble = (game, id) => Boolean(game.world?.places[id]?.events.so
 // Which faction holds a place now: whoever has taken it as the world's days went by, or whoever its file starts it with.
 export const holderOf = (game, place) => game.world?.places?.[place]?.holder ?? LOCATIONS[place]?.faction ?? null;
 
-export function placeNow(game, id) {
+// full adds everything else a port holds, a tree at a time: a long list, sent only when it's wanted.
+export function placeNow(game, id, { full = false } = {}) {
   const state = game.world?.places[id];
   if (!state) return null;
   const [top, second] = ranked(state);
   const close = second && !PLACES[id].locked && top[1] - second[1] <= 15;
+  // At a port with real amounts: how many of each supply it has, why it's short when it is, and everything else it
+  // holds. A port the player doesn't know of isn't named in the reasons.
+  const model = hasPort(id) ? portsModel() : null;
+  const name = (place) => (knownPlace(game, place) ? LOCATIONS[place]?.name ?? null : null);
+  const real = (good) => {
+    const stood = model?.stands[good];
+    if (!stood || !model.ports[id].holds[stood]) return {};
+    const why = whyShort(game.world, id, stood, name);
+    return { has: counted(model.goods[stood], amountOf(game.world, id, stood, model)), ...(why ? { why } : {}) };
+  };
   return {
-    goods: Object.entries(state.goods).map(([good, level]) => ({ id: good, name: GOODS[good]?.name ?? good, level: levelName(level), low: level < 80, high: level >= 125 })),
+    goods: Object.entries(state.goods).map(([good, level]) => ({ id: good, name: GOODS[good]?.name ?? good, level: levelName(level), low: level < 80, high: level >= 125, ...real(good) })),
+    ...(model && full ? { holds: portHolds(game.world, id, levelName, name) } : {}),
     holder: sideName(id, state.holder),
     changed: state.holder !== topOf(PLACES[id].hold),
     since: state.since ?? null,
@@ -263,6 +292,9 @@ export function placeNow(game, id) {
     trouble: inTrouble(game, id),
   };
 }
+
+// Everything a port the player knows of holds today, for the star map when its fold is opened.
+export const portNow = (game, id) => (knownPlace(game, id) ? placeNow(game, id, { full: true })?.holds ?? [] : []);
 
 export const newsView = (game) => (game.world?.news ?? []).filter((entry) => knownPlace(game, entry.place)).slice(-14).reverse()
   .map((entry) => ({ day: entry.day + 1, place: LOCATIONS[entry.place]?.name ?? entry.place, text: entry.text }));

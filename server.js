@@ -4,6 +4,7 @@
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
+import { portNow } from "./src/daily.js";
 import { boardScene, boardStories, boardStory, boardWorldItem, boardWorldList, checkBoardScene, saveBoardScene, saveBoardStory, saveBoardWorldItem, saveLayout } from "./src/board.js";
 import { deckForEditing, deckLook, editableMaps, tryDeck } from "./src/map-editor.js";
 import { catalogue, licensedDir, setPieces } from "./src/pieces.js";
@@ -339,6 +340,8 @@ async function handleApi(req, res, route) {
   // Every level of the place the player's at, for the page to draw the whole place at once behind its loading screen
   // (public/iso.js). It only reads.
   if (req.method === "GET" && route === "/api/levels") return json(res, 200, placeLevels(requireGame()) ?? { levels: {} });
+  // Everything a port holds today, for the star map when that fold is opened. It only reads.
+  if (req.method === "GET" && route.startsWith("/api/port/")) return json(res, 200, { holds: portNow(requireGame(), route.slice("/api/port/".length)) });
 
   if (req.method !== "POST") return json(res, 404, { error: "Not found." });
   const body = await readBody(req);

@@ -1,0 +1,33 @@
+# Korrath Forge
+draft: the AI's, not yet edited by the owner
+people: 15,000
+
+Holds:
+- ration crates: usually 3,000
+- ration packs: usually 190, from Haven Station
+- fuel cells: usually 1,100, from Cinder Reach or the Veshti Deepyards
+- jump fuel: usually 380, from Cinder Reach
+- hot cells: usually 19, from the Veshti Deepyards
+- medicine crates: usually 75, from Vantor Prime
+- medkits: usually 19, from Vantor Prime or Lumen Sanctuary
+- surgeon's stores: usually 3.8, from Vantor Prime
+- parts crates: usually 570
+- circuit boards: usually 19, from Kessara Drift
+- machines: usually 7.5, from the Veshti Deepyards
+- drinking water: usually 1,500
+- beer and spirits: usually 2,900
+- clothes: usually 75, from Bastion Nine or Haven Station
+- tea and tobacco: usually 110, from Haven Station
+
+Makes:
+- the clan halls' kitchens: 300 ration crates a day
+- the Long Furnaces: 57 parts crates a day
+- the deep wells: 150 drinking water a day
+- the brewers: 290 beer and spirits a day
+
+Uses:
+- its people: 150 ration crates, 7.5 ration packs, 75 drinking water, 30 beer and spirits, 3 clothes, 4.5 tea and tobacco a day
+- ships calling: 15 jump fuel a day
+- its power: 45 fuel cells a day
+- its sick: 3 medicine crates, 0.75 medkits, 0.15 surgeon's stores a day
+- the forges: 9 parts crates, 0.75 circuit boards, 0.3 machines, 0.75 hot cells a day

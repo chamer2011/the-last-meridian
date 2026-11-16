@@ -1,0 +1,32 @@
+# Bastion Nine
+draft: the AI's, not yet edited by the owner
+people: 12,000
+
+Holds:
+- ration crates: usually 3,000, from Vantor Prime
+- ration packs: usually 150, from Vantor Prime or Haven Station
+- fuel cells: usually 900, from Cinder Reach or the Veshti Deepyards
+- jump fuel: usually 150, from Vantor Prime
+- medicine crates: usually 90, from Vantor Prime
+- medkits: usually 15, from Vantor Prime
+- surgeon's stores: usually 3, from Vantor Prime
+- parts crates: usually 90, from Vantor Prime
+- circuit boards: usually 15, from Kessara Drift
+- machines: usually 3, from the Veshti Deepyards
+- drinking water: usually 1,200
+- air bottles: usually 150, from Tessen Colony
+- reserve tanks: usually 6, from the Veshti Deepyards
+- beer and spirits: usually 150, from Korrath Forge
+- clothes: usually 330
+- tea and tobacco: usually 90, from Haven Station
+
+Makes:
+- the fortress cisterns: 120 drinking water a day
+- the contract workrooms: 33 clothes a day
+
+Uses:
+- the garrison and the Line: 120 ration crates, 6 ration packs, 60 drinking water, 6 beer and spirits, 3.6 clothes, 3.6 tea and tobacco a day
+- ships calling: 6 jump fuel, 6 air bottles, 0.24 reserve tanks a day
+- its power: 36 fuel cells a day
+- its sick: 3.6 medicine crates, 0.6 medkits, 0.12 surgeon's stores a day
+- its docks and workshops: 3.6 parts crates, 0.6 circuit boards, 0.12 machines a day

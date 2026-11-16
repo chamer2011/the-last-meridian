@@ -147,7 +147,9 @@ test("a year goes by quickly, everything stays in bounds, and the world does cha
   assert.ok(moved > 30);
   assert.ok(world.news.length > 10, "plenty should have happened in a year");
   assert.ok(world.news.length <= 40, "and the list doesn't grow for ever");
-  assert.ok(JSON.stringify(world).length < 16000, `the save has ${JSON.stringify(world).length} characters of this`);
+  // The ports' other goods and what's on its way between them are kept too, since their amounts are real.
+  assert.ok(JSON.stringify(world).length < 26000, `the save has ${JSON.stringify(world).length} characters of this`);
+  assert.ok(world.hauls.length > 50 && world.hauls.length < 400, `${world.hauls.length} hauls on their way`);
 });
 
 test("the same game gives the same world, even after saving and loading part way", () => {
@@ -289,7 +291,8 @@ test("the ship pays what things cost today, each lot it buys raises the price, a
   assert.equal(game.credits, credits - before.price);
   const after1 = shipView(game).trade.find((one) => one.id === "fuel");
   assert.ok(after1.price > before.price, `${after1.price} after ${before.price}`);
-  game.world.places.haven.goods.fuel = 5;
+  // Down to less than one measure of fuel on the whole station.
+  game.world.places.haven.goods.fuel = 0.1;
   const empty = shipView(game).trade.find((one) => one.id === "fuel");
   assert.equal(empty.none, true);
   assert.throws(() => shipCommand(game, { action: "buy", id: "fuel" }), /any left/);
@@ -412,7 +415,13 @@ test("the map and the menus get what they need, and nothing that gives away what
   const game = at("haven");
   game.world.places.haven.goods.food = 30;
   const shown = publicState(game);
-  assert.deepEqual(shown.world.here.goods.find((good) => good.id === "food"), { id: "food", name: "Food", level: "scarce", low: true, high: false });
+  const food = shown.world.here.goods.find((good) => good.id === "food");
+  assert.deepEqual({ id: food.id, name: food.name, level: food.level, low: food.low, high: food.high }, { id: "food", name: "Food", level: "scarce", low: true, high: false });
+  // How many that is, and why: with Maris Deep, which this captain hasn't heard of, not named.
+  assert.match(food.has, /^[\d,]+ ration crates$/);
+  assert.match(food.why, /Tessen Colony/);
+  assert.ok(!JSON.stringify(shown.world.here).includes("Maris"), "a port that isn't known isn't named");
+  assert.ok(shown.world.here.holds.some((tree) => tree.name === "Comforts"), "and everything else the port holds is there, a tree at a time");
   const entry = shown.locations.find((place) => place.id === "haven");
   assert.ok(entry.now.goods.length);
   assert.equal(shown.factions.find((one) => one.id === "drift").holds.includes("Haven Station"), true);

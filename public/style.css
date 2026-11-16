@@ -823,6 +823,11 @@ body:has(#computer) .pop-notes { visibility: hidden; }
 .map-control { min-width: 0; }
 .map-short { min-width: 0; }
 .map-going { color: var(--warn); }
+/* Why a port is short of something, and where a good comes from: a quieter line under its row. */
+.map-why { padding: 0 0 3px; line-height: 1.35; }
+.map-tree { margin-top: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+.map-holds .menu-row, .map-goods .menu-row { gap: 12px; }
+.map-holds .menu-row > span:last-child, .map-goods .menu-row > span:last-child { text-align: right; }
 .ship-trade { flex-wrap: wrap; gap: 2px 12px; }
 @container shipmenu (max-width: 640px) {
   .map-row { grid-template-columns: minmax(0, 1fr) 4ch 5ch auto; }

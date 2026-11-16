@@ -151,7 +151,7 @@ function ordersSection(g) {
       ? el("div", { class: "stack gap-small" },
         el("div", { class: "small" }, `Trade with ${s.atName}. You have ${g.credits} credits. Prices move with what's left here, and with each lot you buy or sell.`),
         s.trade.map((t) => el("div", { class: "menu-row small ship-trade" },
-          el("span", {}, `${t.amount} of ${t.name.toLowerCase()}`, t.level && el("span", { class: "muted ship-trade-level" }, ` ${t.level}`)),
+          el("span", { title: t.why ?? "" }, `${t.amount} of ${t.name.toLowerCase()}`, t.level && el("span", { class: "muted ship-trade-level" }, ` ${t.level}${t.has ? `, ${t.has} here` : ""}`)),
           el("span", { class: "row" },
             el("button", { disabled: cannotAct() || !t.spare, title: t.spare ? "" : "The ship hasn't got that much", onclick: shipOrder({ action: "sell", id: t.id }) }, `Sell ${t.sellFor} cr`),
             el("button", { disabled: cannotAct() || t.none || t.full || g.credits < t.price, title: t.none ? "Nobody here has any left to sell" : "", onclick: shipOrder({ action: "buy", id: t.id }) }, t.none ? "None left" : `Buy ${t.price} cr`)))))

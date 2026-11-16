@@ -28,6 +28,50 @@ export function shipOrder(body, after) {
 const section = (title, ...children) => el("section", { class: "menu-section" }, title && el("h3", {}, title), children);
 const muted = (text) => el("div", { class: "muted small" }, text);
 
+// A port's supplies: how many it has of each and the word for that, with why under one that's short.
+export const suppliesNode = (goods) => el("div", { class: "map-goods small" }, goods.map((good) => [
+  el("div", { class: "menu-row" },
+    el("span", { class: "muted" }, good.name),
+    el("span", { class: good.low ? "tone-bad" : good.high ? "tone-good" : "" }, good.has ? `${good.has}, ${good.level}` : good.level)),
+  good.why && el("div", { class: "map-why muted" }, `${good.why}.`),
+]));
+// The whole of what a port holds is asked for when its fold is opened, since it's a long list for every place on
+// the map. The fold stays as it was left while one place after another is looked at.
+function holdsFold(place) {
+  const holder = el("div", {}, el("div", { class: "muted small" }, "..."));
+  const node = folded("map-holds", "Everything it holds", holder);
+  let asked = false;
+  const load = async () => {
+    if (asked) return;
+    asked = true;
+    try {
+      const { holds } = await api(`/api/port/${place.id}`);
+      holder.replaceChildren(holds.length ? holdsNode(holds) : el("div", { class: "muted small" }, "Nobody counts what's held here."));
+    } catch (err) {
+      asked = false;
+      holder.replaceChildren(el("div", { class: "tone-bad small" }, err.message));
+    }
+  };
+  node.querySelector(".fold-toggle").addEventListener("click", load);
+  if (node.classList.contains("open")) load();
+  return node;
+}
+// Everything a port holds, a tree at a time: how many, the word for it, and where it comes from.
+export const holdsNode = (trees) => el("div", { class: "map-holds small" }, trees.map((tree) => [
+  el("div", { class: "map-tree muted" }, tree.name),
+  tree.goods.map((good) => [
+    el("div", { class: "menu-row" },
+      el("span", {}, good.counted),
+      el("span", { class: good.low ? "tone-bad" : good.high ? "tone-good" : "muted" }, good.level)),
+    el("div", { class: "map-why muted" }, [
+      good.made ? `made here, ${good.made} a day as a rule` : good.from.length ? `from ${good.from.join(" or ")}` : "its own",
+      good.coming ? `, ${good.coming} on the way` : "",
+      good.why ? `. ${good.why}` : "",
+      ".",
+    ].join("")),
+  ]),
+]));
+
 // A framed chart with grid marks and a scatter of faint stars. It's the same every time, so it doesn't flicker.
 function chartArt(cols, rows) {
   const lines = [];
@@ -117,9 +161,8 @@ function placeDetails(place, g) {
     place.now?.shares.length > 0 && el("div", { class: "map-shares small" },
       el("div", { class: "muted" }, "Who has a say"),
       place.now.shares.map((side) => el("div", { class: "menu-row" }, el("span", {}, side.name), el("span", {}, String(side.share))))),
-    place.now?.goods.length > 0 && el("div", { class: "map-goods small" }, place.now.goods.map((good) => el("div", { class: "menu-row" },
-      el("span", { class: "muted" }, good.name),
-      el("span", { class: good.low ? "tone-bad" : good.high ? "tone-good" : "" }, good.level)))),
+    place.now?.goods.length > 0 && suppliesNode(place.now.goods),
+    place.now?.goods.some((good) => good.has) && holdsFold(place),
     place.now?.going.map((text) => el("div", { class: "small map-going" }, text)),
     captain && place.sells.length > 0 && muted(`Sells to the ship: ${place.sells.join(", ")}.`),
     place.hasMarket && muted("Has a market."),

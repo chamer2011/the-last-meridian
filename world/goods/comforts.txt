@@ -1,0 +1,10 @@
+# Comforts
+draft: the AI's, not yet edited by the owner
+
+Developed:
+- beer and spirits, by the keg: Stone ale, ship's beer and worse. A crew with something to drink holds together.
+- clothes, by the bale: What people wear and mend, by the bale.
+- tea and tobacco, by the chest: Tea, coffee and tobacco, for a hard day.
+
+Advanced:
+- fine things, by the case: Vantor red, an evening gown: what people pay dear for, and give as gifts.

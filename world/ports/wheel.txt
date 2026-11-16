@@ -1,0 +1,36 @@
+# The Gilded Wheel
+draft: the AI's, not yet edited by the owner
+people: 4,000
+
+Holds:
+- ration crates: usually 1,000, from Haven Station
+- ration packs: usually 50, from Haven Station
+- provisions: usually 140
+- fuel cells: usually 300, from the Veshti Deepyards or Cinder Reach
+- jump fuel: usually 150, from Kessara Drift
+- hot cells: usually 5, from the Veshti Deepyards
+- medicine crates: usually 20, from Haven Station
+- medkits: usually 5, from Lumen Sanctuary or Vantor Prime
+- surgeon's stores: usually 1, from Vantor Prime
+- parts crates: usually 30, from Haven Station
+- circuit boards: usually 5, from Kessara Drift
+- drinking water: usually 400
+- air bottles: usually 50, from Tessen Colony
+- reserve tanks: usually 2, from the Veshti Deepyards
+- beer and spirits: usually 300, from Korrath Forge
+- clothes: usually 40, from Haven Station
+- tea and tobacco: usually 30, from Haven Station
+- fine things: usually 37
+
+Makes:
+- the kitchens: 14 provisions a day
+- the house cisterns: 40 drinking water a day
+- the tailor and the Cellars: 3.7 fine things a day
+
+Uses:
+- its people: 40 ration crates, 2 ration packs, 20 drinking water, 12 beer and spirits, 1.6 clothes, 1.2 tea and tobacco a day
+- the tables and the suites: 6 provisions, 1.6 fine things a day
+- ships calling: 6 jump fuel, 2 air bottles, 0.08 reserve tanks a day
+- its power: 12 fuel cells a day
+- its sick: 0.8 medicine crates, 0.2 medkits, 0.04 surgeon's stores a day
+- its docks and workshops: 1.2 parts crates, 0.2 circuit boards, 0.2 hot cells a day

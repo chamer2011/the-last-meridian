@@ -1,0 +1,33 @@
+# The Graveyard
+draft: the AI's, not yet edited by the owner
+people: 2,000
+
+Holds:
+- ration crates: usually 500, from Haven Station
+- ration packs: usually 25, from Haven Station
+- fuel cells: usually 150, from Cinder Reach or the Veshti Deepyards
+- jump fuel: usually 40
+- hot cells: usually 2.5, from the Veshti Deepyards
+- medicine crates: usually 10, from Haven Station
+- medkits: usually 2.5, from Lumen Sanctuary
+- parts crates: usually 110
+- circuit boards: usually 2.5, from Kessara Drift
+- machines: usually 0.5, from the Veshti Deepyards
+- drinking water: usually 200
+- air bottles: usually 50, from Tessen Colony
+- reserve tanks: usually 2, from the Veshti Deepyards
+- beer and spirits: usually 50, from Korrath Forge
+- clothes: usually 10, from Haven Station
+- tea and tobacco: usually 15, from Haven Station
+
+Makes:
+- the Guild's stills: 4 jump fuel a day
+- Claim Row: 11 parts crates a day
+- the Guild's melters: 20 drinking water a day
+
+Uses:
+- its people: 20 ration crates, 1 ration packs, 10 drinking water, 2 beer and spirits, 0.4 clothes, 0.6 tea and tobacco a day
+- the divers and their barges: 2 jump fuel, 2 air bottles, 0.08 reserve tanks a day
+- its power: 6 fuel cells a day
+- its sick: 0.4 medicine crates, 0.1 medkits a day
+- its docks and workshops: 1.2 parts crates, 0.1 circuit boards, 0.02 machines, 0.1 hot cells a day

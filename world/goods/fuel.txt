@@ -1,0 +1,10 @@
+# Fuel
+draft: the AI's, not yet edited by the owner
+stands for: fuel, by its jump fuel
+
+Developed:
+- fuel cells [fuel_cell]: The cells a generator burns. One runs the Meridian for eight hours.
+
+Advanced:
+- jump fuel, by the measure: What a jump burns: one to three measures from the tank.
+- hot cells: Cells packed tighter, for a rig and whatever else needs more than a cell gives.

@@ -1,0 +1,29 @@
+# Tessen Colony
+draft: the AI's, not yet edited by the owner
+people: 2,000
+
+Holds:
+- ration crates: usually 5,500
+- ration packs: usually 25, from Haven Station
+- fuel cells: usually 150, from Cinder Reach
+- jump fuel: usually 50, from Cinder Reach
+- medicine crates: usually 10, from Haven Station
+- medkits: usually 2.5, from Lumen Sanctuary
+- parts crates: usually 15, from Haven Station
+- drinking water: usually 200
+- air bottles: usually 680
+- beer and spirits: usually 50, from Korrath Forge
+- clothes: usually 10, from Haven Station or Bastion Nine
+- tea and tobacco: usually 15, from Haven Station
+
+Makes:
+- the homesteads: 550 ration crates a day
+- the wells: 20 drinking water a day
+- the workshop: 68 air bottles a day
+
+Uses:
+- the colonists: 20 ration crates, 1 ration packs, 10 drinking water, 2 beer and spirits, 0.4 clothes, 0.6 tea and tobacco a day
+- ships calling: 2 jump fuel, 1 air bottles a day
+- its power: 6 fuel cells a day
+- its sick: 0.4 medicine crates, 0.1 medkits a day
+- its docks and workshops: 0.6 parts crates a day

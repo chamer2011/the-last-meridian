@@ -1,0 +1,19 @@
+# The Long Archive of Sarn
+draft: the AI's, not yet edited by the owner
+people: 800
+
+Holds:
+- ration crates: usually 200, from Vantor Prime
+- fuel cells: usually 60, from Cinder Reach or the Veshti Deepyards
+- medicine crates: usually 4, from Vantor Prime
+- drinking water: usually 80
+- clothes: usually 4, from Bastion Nine
+- tea and tobacco: usually 6, from Haven Station
+
+Makes:
+- the meltwater vaults: 8 drinking water a day
+
+Uses:
+- the Keepers: 8 ration crates, 4 drinking water, 0.16 clothes, 0.24 tea and tobacco a day
+- the heat pipe's pumps: 2.4 fuel cells a day
+- its sick: 0.16 medicine crates a day

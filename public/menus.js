@@ -3,7 +3,7 @@
 
 import { checkStyle, setCheckStyle } from "./check.js";
 import { api, columns, el, folded, meter, signed, strainMeter } from "./dom.js";
-import { mapMenu } from "./map.js";
+import { holdsNode, mapMenu, suppliesNode } from "./map.js";
 import { shipMenu } from "./ship.js";
 import { commandMenu } from "./command.js";
 import { workMenu } from "./work.js";
@@ -179,6 +179,8 @@ function marketNote(g) {
   return [
     short.length > 0 && small(`There's not much ${list(short)} here today, so what's made from it costs more.`),
     plenty.length > 0 && small(`There's plenty of ${list(plenty)} here today, so what's made from it costs less.`),
+    // How many of each supply this port has today, why it's short of one, and everything else it holds.
+    goods.some((good) => good.has) && folded("market-supplies", "What this port has today", suppliesNode(goods), g.world.here.holds?.length > 0 && folded("market-holds", "Everything it holds", holdsNode(g.world.here.holds))),
   ];
 }
 

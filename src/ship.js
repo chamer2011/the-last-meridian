@@ -809,6 +809,8 @@ export function shipView(game) {
   const ship = shipOf(game);
   const ledger = shipLedger(game);
   const spot = mapSpot(ship.at);
+  // What the dock she's at has of each supply today, where its amounts are real.
+  const dock = spot?.trade ? placeNow(game, ship.at)?.goods ?? null : null;
   return {
     name: ship.name,
     hull: ship.hull,
@@ -856,6 +858,8 @@ export function shipView(game) {
         price: buyPrice(game, { price: worth }),
         sellFor: sellPrice(game, { price: worth }),
         level: level === undefined ? null : levelName(level),
+        // How many the port has, and why it's short, where its amounts are real (src/ports.js).
+        ...(dock?.find((good) => good.id === id)?.has ? { has: dock.find((good) => good.id === id).has, why: dock.find((good) => good.id === id).why ?? null } : {}),
         none: noneLeft(game, ship.at, id),
         spare: (id === "fuel" ? ship.fuel : ship[id]) >= supply.lot,
         full: id === "fuel" && ship.fuel >= ship.maxFuel,

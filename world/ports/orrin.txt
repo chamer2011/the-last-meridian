@@ -1,0 +1,21 @@
+# Saint Orrin's Comet
+draft: the AI's, not yet edited by the owner
+people: 200
+
+Holds:
+- ration crates: usually 50, from Lumen Sanctuary
+- fuel cells: usually 15, from the Veshti Deepyards or Cinder Reach
+- medicine crates: usually 1, from Lumen Sanctuary
+- drinking water: usually 20
+- air bottles: usually 2.5, from Tessen Colony
+- clothes: usually 1, from Haven Station or Bastion Nine
+- tea and tobacco: usually 1.5, from Haven Station
+
+Makes:
+- the comet's melt: 2 drinking water a day
+
+Uses:
+- the hermits: 2 ration crates, 1 drinking water, 0.04 clothes, 0.06 tea and tobacco a day
+- ships calling: 0.1 air bottles a day
+- its power: 0.6 fuel cells a day
+- its sick: 0.04 medicine crates a day

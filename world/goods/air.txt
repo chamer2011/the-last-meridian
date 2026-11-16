@@ -1,0 +1,9 @@
+# Water and air
+draft: the AI's, not yet edited by the owner
+
+Developed:
+- drinking water, by the cask: Filtered and casked. People drink before they eat.
+- air bottles [air_bottle]: Air split from water and bottled: an hour outside in a suit, or a room's worth on a bad day.
+
+Advanced:
+- reserve tanks: Air stored by the tank, to carry a ship or a station through a breach.

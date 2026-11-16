@@ -1,0 +1,10 @@
+# Food
+draft: the AI's, not yet edited by the owner
+stands for: food, by its ration crates
+
+Developed:
+- ration crates [ration_crate]: The crates a pantry holds: two hundred sittings each, a day's food for a hundred people.
+- ration packs, by the case [ration_pack]: Packs and tins for one person, a case of them at a time.
+
+Advanced:
+- provisions, by the hamper: Fresh bread, honey, sausage: a table worth sitting at.

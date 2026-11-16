@@ -297,7 +297,7 @@ function shown(game, shows) {
   }
   if (shows === "supplies") {
     const goods = placeNow(game, place)?.goods ?? [];
-    return goods.length ? `Today: ${listed(goods.map((good) => `${good.name.toLowerCase()} ${good.level}`))}.` : null;
+    return goods.length ? `Today: ${listed(goods.map((good) => `${good.name.toLowerCase()} ${good.level}${good.has ? ` (${good.has})` : ""}`))}.` : null;
   }
   return null;
 }

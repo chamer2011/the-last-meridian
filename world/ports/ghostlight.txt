@@ -1,0 +1,31 @@
+# The Ghostlight Nebula
+draft: the AI's, not yet edited by the owner
+people: 1,500
+
+Holds:
+- ration crates: usually 380, from Kessara Drift
+- ration packs: usually 19, from Haven Station
+- fuel cells: usually 110, from Cinder Reach
+- jump fuel: usually 30
+- hot cells: usually 3.8, from the Veshti Deepyards
+- medicine crates: usually 7.5, from Kessara Drift
+- medkits: usually 1.9, from Lumen Sanctuary
+- parts crates: usually 11, from the Graveyard
+- circuit boards: usually 1.9, from Kessara Drift
+- drinking water: usually 150
+- air bottles: usually 38, from Tessen Colony
+- reserve tanks: usually 0.75, from the Veshti Deepyards
+- beer and spirits: usually 56, from Korrath Forge
+- clothes: usually 7.5, from Haven Station or Bastion Nine
+- tea and tobacco: usually 11, from Haven Station
+
+Makes:
+- the Cold Market's stills: 3 jump fuel a day
+- the cloud-traps: 15 drinking water a day
+
+Uses:
+- its people: 15 ration crates, 0.75 ration packs, 7.5 drinking water, 2.3 beer and spirits, 0.3 clothes, 0.45 tea and tobacco a day
+- the lamp-lane runners: 1.5 jump fuel, 1.5 air bottles, 0.03 reserve tanks a day
+- its power: 4.5 fuel cells a day
+- its sick: 0.3 medicine crates, 0.08 medkits a day
+- its docks and workshops: 0.45 parts crates, 0.08 circuit boards, 0.15 hot cells a day

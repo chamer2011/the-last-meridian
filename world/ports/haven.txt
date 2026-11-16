@@ -1,0 +1,37 @@
+# Haven Station
+draft: the AI's, not yet edited by the owner
+people: 6,000
+
+Holds:
+- ration crates: usually 3,800, from Tessen Colony or Maris Deep
+- ration packs: usually 720
+- provisions: usually 7.5, from the Gilded Wheel
+- fuel cells: usually 450, from Cinder Reach or the Veshti Deepyards
+- jump fuel: usually 380, from Cinder Reach or the Veshti Deepyards
+- hot cells: usually 7.5, from the Veshti Deepyards
+- medicine crates: usually 140, from Lumen Sanctuary or Vantor Prime
+- medkits: usually 7.5, from Lumen Sanctuary or Vantor Prime
+- parts crates: usually 200, from the Graveyard or Korrath Forge
+- circuit boards: usually 7.5, from Kessara Drift
+- machines: usually 1.5, from the Veshti Deepyards
+- drinking water: usually 600
+- air bottles: usually 75, from Tessen Colony
+- reserve tanks: usually 3, from the Veshti Deepyards
+- beer and spirits: usually 230, from Korrath Forge
+- clothes: usually 190
+- tea and tobacco: usually 710
+- fine things: usually 3, from the Gilded Wheel or Vantor Prime
+
+Makes:
+- the kitchens on the Manifest Docks: 72 ration packs a day
+- the casking line: 60 drinking water a day
+- the sewing rooms in the Hook: 19 clothes a day
+- the packers on Consulate Row: 71 tea and tobacco a day
+
+Uses:
+- its people: 60 ration crates, 3 ration packs, 30 drinking water, 9 beer and spirits, 1.2 clothes, 1.8 tea and tobacco a day
+- its tables: 0.3 provisions, 0.12 fine things a day
+- the forty berths: 12 jump fuel, 3 air bottles, 0.12 reserve tanks a day
+- its power: 18 fuel cells a day
+- its sick: 1.2 medicine crates, 0.3 medkits a day
+- its docks and workshops: 2.7 parts crates, 0.3 circuit boards, 0.06 machines, 0.3 hot cells a day

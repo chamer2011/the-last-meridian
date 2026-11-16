@@ -37,6 +37,9 @@ import { COMPUTER, ENEMY, FACTION, ITEM, PERK, PERSON, PLACE, PROGRAM, RIG_PART,
 import { PROGRAMS_DIR, PROGRAM_KINDS, forgetPrograms, parseProgram, programsNow } from "./programs.js";
 import { PART_KINDS, REACHES, RIG_PARTS_DIR, benchToolById, forgetRigParts, parseRigPart, rigPartById, rigPartsNow } from "./rig-parts.js";
 import { lootLists } from "./loot.js";
+import { GOODS_DIR, PORTS_DIR, STAR_MAP, WORLD_GOODS, WORLD_PORTS, reloadPorts } from "./world.js";
+import { parseGoodsText, parsePortText } from "../public/ports-text.js";
+import { clearPorts, portsModel, portsProblems } from "./ports.js";
 
 const ID = /^[a-z][a-z0-9_]{1,60}$/;
 function checkId(id) {
@@ -468,7 +471,107 @@ function saveCommand(id, text) {
   return { saved: true, problems: commandFileProblems(id) };
 }
 
+// ---- The world's goods, and what the ports hold of them ---------------------------------------------------------
+
+const portsFileProblems = (folder, id) => portsProblems().filter((one) => one.startsWith(`${folder}/${id}.txt`));
+const placeName = (id) => LOCATIONS[id]?.name ?? id;
+
+function portsList() {
+  return Object.keys(WORLD_PORTS).map((id) => ({ id, name: LOCATIONS[id]?.name ?? WORLD_PORTS[id].name ?? id, kind: "its own file", written: true }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+function goodsList() {
+  const order = Object.keys(portsModel().trees);
+  return Object.keys(WORLD_GOODS).sort((a, b) => order.indexOf(a) - order.indexOf(b)).map((id) => ({ id, name: WORLD_GOODS[id].name ?? id, kind: "a tree of goods", written: true }));
+}
+
+// A port as the board shows it: its file, the ports it sends to for each good and the ports that send to it, and how
+// much of each good goes through it in a day when things are as usual.
+function portItem(id) {
+  checkId(id);
+  const file = path.join(PORTS_DIR, `${id}.txt`);
+  if (!fs.existsSync(file)) throw new Error(`${placeName(id)} has no file in world/ports yet. world/ports/_how-to-write-a-port.txt says how to write one.`);
+  const text = fs.readFileSync(file, "utf8");
+  const { value } = parsePortText(text, id);
+  const model = portsModel();
+  const port = model.ports[id] ?? null;
+  const named = (good) => model.goods[good].name;
+  const from = {};
+  for (const [good, hold] of Object.entries(port?.holds ?? {})) for (const other of hold.from) (from[other] ??= []).push(named(good));
+  const to = {};
+  for (const other of Object.values(model.ports)) for (const [good, hold] of Object.entries(other.holds)) if (hold.from.includes(id)) (to[other.id] ??= []).push(named(good));
+  return {
+    id, kind: "port", text, value,
+    links: {
+      place: LOCATIONS[id] ? { id, name: placeName(id) } : null,
+      from: Object.entries(from).map(([other, goods]) => ({ id: other, name: placeName(other), goods, days: model.days(other, id) })),
+      to: Object.entries(to).map(([other, goods]) => ({ id: other, name: placeName(other), goods, days: model.days(id, other) })),
+      through: port ? Object.fromEntries(Object.keys(port.holds).map((good) => [named(good), Math.round(model.flow[id][good] * 100) / 100])) : {},
+      trees: Object.values(model.trees).map((tree) => ({ id: tree.id, name: tree.name, goods: tree.goods.map(named) })),
+    },
+    lists: {
+      ...boardLists(),
+      goods: model.order.map(named),
+      ports: Object.keys(WORLD_PORTS).filter((other) => other !== id).map((other) => placeName(other).replace(/^The /, "the ")),
+      charted: Object.keys(STAR_MAP.places ?? {}).filter((other) => LOCATIONS[other] && !WORLD_PORTS[other]).map(placeName),
+    },
+    layout: readLayout()[`port/${id}`] ?? {},
+    problems: portsFileProblems("ports", id),
+  };
+}
+function savePort(id, text) {
+  checkId(id);
+  if (typeof text !== "string" || !text.trim()) throw new Error("There's nothing to save.");
+  const { problems } = parsePortText(text, id);
+  if (problems.length) return { saved: false, problems: problems.map(lineOf) };
+  fs.mkdirSync(PORTS_DIR, { recursive: true });
+  fs.writeFileSync(path.join(PORTS_DIR, `${id}.txt`), text.endsWith("\n") ? text : `${text}\n`);
+  reloadPorts();
+  clearPorts();
+  return { saved: true, problems: portsFileProblems("ports", id) };
+}
+
+// A tree of goods as the board shows it: its file, and for each good the ports that make it and how many hold it.
+function goodsItem(id) {
+  checkId(id);
+  const file = path.join(GOODS_DIR, `${id}.txt`);
+  if (!fs.existsSync(file)) throw new Error(`There's no tree called ${id} in world/goods. world/goods/_how-to-write-goods.txt says how to write one.`);
+  const text = fs.readFileSync(file, "utf8");
+  const { value } = parseGoodsText(text, id);
+  const model = portsModel();
+  const where = {};
+  for (const good of model.trees[id]?.goods ?? []) {
+    const ports = Object.values(model.ports);
+    where[model.goods[good].name] = {
+      makers: ports.filter((port) => port.made[good]).map((port) => ({ id: port.id, name: port.name, n: port.made[good] })),
+      holders: ports.filter((port) => port.holds[good]).length,
+      used: Math.round(ports.reduce((sum, port) => sum + (port.use[good] ?? 0), 0) * 100) / 100,
+      made: Math.round(ports.reduce((sum, port) => sum + (port.made[good] ?? 0), 0) * 100) / 100,
+    };
+  }
+  return {
+    id, kind: "goods", text, value,
+    links: { where },
+    lists: { ...boardLists(), items: Object.entries(WORLD_ITEMS).map(([itemId, one]) => ({ id: itemId, name: one.name })) },
+    layout: readLayout()[`goods/${id}`] ?? {},
+    problems: portsFileProblems("goods", id),
+  };
+}
+function saveGoods(id, text) {
+  checkId(id);
+  if (typeof text !== "string" || !text.trim()) throw new Error("There's nothing to save.");
+  const { problems } = parseGoodsText(text, id);
+  if (problems.length) return { saved: false, problems: problems.map(lineOf) };
+  fs.mkdirSync(GOODS_DIR, { recursive: true });
+  fs.writeFileSync(path.join(GOODS_DIR, `${id}.txt`), text.endsWith("\n") ? text : `${text}\n`);
+  reloadPorts();
+  clearPorts();
+  return { saved: true, problems: portsFileProblems("goods", id) };
+}
+
 export function boardWorldList(kind) {
+  if (kind === "port") return portsList();
+  if (kind === "goods") return goodsList();
   if (kind === "systems") return systemsList();
   if (kind === "logistics") return logisticsList();
   if (kind === "command") return commandList();
@@ -552,6 +655,8 @@ function partLinks(id, value) {
 // One person, place or species as the board shows it: its file and what the game read, what it's linked to, what
 // there is to pick from, and the checker's problems with the file.
 export function boardWorldItem(kind, id) {
+  if (kind === "port") return portItem(id);
+  if (kind === "goods") return goodsItem(id);
   if (kind === "systems") return systemsItem(id);
   if (kind === "logistics") return logisticsItem(id);
   if (kind === "command") return commandItem(id);
@@ -591,6 +696,8 @@ export function boardWorldItem(kind, id) {
 }
 
 export function saveBoardWorldItem(kind, id, text) {
+  if (kind === "port") return savePort(id, text);
+  if (kind === "goods") return saveGoods(id, text);
   if (kind === "systems") return saveSystems(id, text);
   if (kind === "logistics") return saveLogistics(id, text);
   if (kind === "command") return saveCommand(id, text);

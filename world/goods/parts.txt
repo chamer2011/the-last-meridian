@@ -1,0 +1,10 @@
+# Parts
+draft: the AI's, not yet edited by the owner
+stands for: parts, by its parts crates
+
+Developed:
+- parts crates [parts_crate]: A crate of spares: one repair, or half of an artificial limb.
+- circuit boards, by the case: Boards stripped and re-flashed, for anything that thinks.
+
+Advanced:
+- machines: Whole machines built from crates and boards: a rig's parts, weapons, a port's own plant.
