@@ -158,6 +158,10 @@ test("a bank of consoles on the plan is a control console to each two squares, a
   assert.equal(machineAt(4, 4, boat).block, true);
   assert.equal(machineAt(4, 4, boat).draw, null);
   assert.equal(machineAt(4, 3, five).block, undefined);
+  // In a galley a bank is a unit to every square: counters, and a stove for the second of every three.
+  assert.deepEqual([4, 5, 6, 7, 8].map((x) => machineAt(x, 3, five, "galley").draw), ["plan-counter", "plan-stove", "plan-counter", "plan-counter", "plan-stove"]);
+  assert.equal(machineAt(5, 3, five, "galley").across, 1);
+  assert.ok(pieceWay("plan-counter", "s", 0, both) && pieceWay("plan-stove", "s", 0, both));
 });
 
 test("a bunk is two of the pack's end to end, turned to run the way the game's bunk does", () => {

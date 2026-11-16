@@ -7,7 +7,7 @@
 import { el } from "./dom.js";
 import { FURNITURE_BY_ID, footprintOf, squaresOf } from "./furniture.js";
 import { hideLoading, showLoading } from "./loading.js";
-import { PACK_FIGURE, PIXEL_UNIT, drawPixelCrate, drawPixelDoor, drawPixelFixture, drawPixelFloors, drawPixelLowWall, drawPixelMachine, drawPixelPiece, drawPixelStairs, drawPixelWall, packBed, packKey, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim, stairsUp } from "./pixel-art.js";
+import { PACK_FIGURE, PIXEL_UNIT, drawPixelCrate, drawPixelDoor, drawPixelFixture, drawPixelFloors, drawPixelLowWall, drawPixelMachine, drawPixelPart, drawPixelPiece, drawPixelStairs, drawPixelWall, drawPixelWallRun, packBed, packKey, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim, stairsUp } from "./pixel-art.js";
 
 // A console square is about twice as tall as it's wide, so two columns make one tile.
 export const CELL_WIDTH = 0.5;
@@ -348,6 +348,8 @@ export function buildScene(view) {
           litLeft: !darkAt(x, y + 1),
           litRight: !darkAt(x + 1, y),
           ...(styles[y][x] === "machine" && unpoweredAt(x, y) ? { off: true } : {}),
+          // What a bank of the plan's consoles is in this room, where its look says (a galley's counters and stoves).
+          ...(styles[y][x] === "machine" && areaAt(x, y)?.look?.banks ? { bank: areaAt(x, y).look.banks } : {}),
         });
       }
     }
@@ -527,6 +529,14 @@ export function buildScene(view) {
     // How worn and cluttered the place looks, 0 to 3 each, where it's said (the ship: src/wear.js).
     wear: view.wear ?? null,
     light,
+    // The wall squares with something on them (a window, a screen, a part of the systems, a lamp, painted words), so
+    // the pixel-art view runs its pipes and cables along the bare ones only.
+    fitted: new Set([
+      ...blocks.filter((block) => block.wallX !== undefined).map((block) => `${block.wallX},${block.wallY}`),
+      ...(view.things ?? []).filter((thing) => thing.part?.mount === "wall").map((thing) => `${thing.x},${thing.y}`),
+      ...fixtures.map((fixture) => `${fixture.x},${fixture.y}`),
+      ...runs.filter((run) => run.on === "wall").flatMap((run) => Array.from({ length: run.length }, (_, i) => `${run.x + i},${run.y}`)),
+    ]),
     // Where the floor is worn by walking (wornPaths, below).
     worn: wornPaths(view, kinds),
     bounds: bounds ?? { minU: -1, maxU: 1, minV: -1, maxV: 1 },
@@ -1420,7 +1430,17 @@ function drawBlock(painter, block, materials) {
       // Each face is in the look of the room it's a wall of: the one in front of it.
       const lit = iso.scene.light;
       const faces = (wx) => Boolean(lit?.[y + 1]?.[wx]);
-      if (drawPixelWall(painter, block, { cellWidth: CELL_WIDTH, sameWallRight: fullWall(x + 1) && faces(x + 1) === faces(x), sameWallLeft: fullWall(x - 1) && faces(x - 1) === faces(x), ...(faces(x) ? { lookLeft: "light" } : {}), ...(lit?.[y]?.[x + 1] ? { lookRight: "light" } : {}) })) return;
+      if (drawPixelWall(painter, block, { cellWidth: CELL_WIDTH, sameWallRight: fullWall(x + 1) && faces(x + 1) === faces(x), sameWallLeft: fullWall(x - 1) && faces(x - 1) === faces(x), ...(faces(x) ? { lookLeft: "light" } : {}), ...(lit?.[y]?.[x + 1] ? { lookRight: "light" } : {}) })) {
+        // Pipes and cables run along stretches of bare wall: a face that looks into a room, with nothing hung on it
+        // or on the wall either side of it, and the same wall going on both ways (so never across a corner or a door).
+        const { kinds, fitted } = iso.scene;
+        const bare = (wx, wy) => styles[wy]?.[wx] === "wall" && heights[wy]?.[wx] === WALL_HEIGHT && !fitted?.has(`${wx},${wy}`);
+        const room = (fx, fy) => seeThrough(kinds[fy]?.[fx]);
+        const south = [x - 1, x, x + 1].every((wx) => bare(wx, y) && room(wx, y + 1));
+        const east = [y - 1, y, y + 1].every((wy) => bare(x, wy) && room(x + 1, wy));
+        if (south || east) drawPixelWallRun(painter, block, { cellWidth: CELL_WIDTH, south, east });
+        return;
+      }
     }
     // A wall cut down so the room can be seen, in the pixel-art view, is the pack's low wall on a sill; in the look of
     // the room it's cut down to show.
@@ -1657,7 +1677,43 @@ function partFace(painter, thing, z0, z1, inset) {
   return { corners, point };
 }
 
+// What the game still puts on a part the pack draws (public/pixel-art.js), to show how it stands: a junction box's
+// light and the slash across one that's cut, the tape over a sealed vent, the cloth over a covered camera, and the
+// colour of a keypad's screen (green, red once its door is locked, dark with no power).
+function drawPartMarks(painter, thing, { at: [px, py], turn }) {
+  const { ctx, unit } = painter;
+  const { kind, word, works, locked } = thing.part;
+  const dot = (dx, dy, r, colour) => {
+    ctx.fillStyle = colour;
+    ctx.beginPath();
+    ctx.arc(px + dx * unit * turn, py + dy * unit, Math.max(1, r * unit), 0, Math.PI * 2);
+    ctx.fill();
+  };
+  const slash = (colour, width) => {
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = width;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(px - unit * 0.07, py + unit * 0.06);
+    ctx.lineTo(px + unit * 0.07, py - unit * 0.06);
+    ctx.stroke();
+    ctx.lineCap = "butt";
+  };
+  if (kind === "junction box") {
+    dot(0.085, -0.045, 0.014, works ? "#60d070" : "#5a1a14");
+    if (word === "cut") slash("#d04030", 2);
+  } else if (kind === "vent" && word === "sealed") slash("#8a7a50", Math.max(3, unit * 0.06));
+  else if (kind === "camera" && word === "covered") dot(-0.05, 0.01, 0.055, "#7a7466");
+  else if (kind === "door panel") dot(0, 0, 0.028, !works ? "rgba(8,10,10,.85)" : locked ? "rgba(220,60,40,.8)" : "rgba(110,224,138,.75)");
+}
+
 function drawPart(painter, thing) {
+  // In the pixel-art view a part on a wall is the pack's fitting where it has one, with the game's marks over it.
+  const fitted = drawPixelPart(painter, thing, { cellWidth: CELL_WIDTH });
+  if (fitted) {
+    drawPartMarks(painter, thing, fitted);
+    return;
+  }
   const { ctx, at, unit } = painter;
   const look = partLook(thing);
   const { works, word, kind } = thing.part;
@@ -1775,7 +1831,9 @@ function drawPartLights(painter, now, view) {
     const { corners, point } = partFace(painter, thing, z0, z1, look.inset);
     if (part.kind === "camera") {
       const on = iso.calm || Math.floor(now / 700 + thing.x) % 2 === 0;
-      const [px, py] = point(0.8, 0.4);
+      // On the pack's camera the light is on its body, by the lens.
+      const fitted = drawPixelPart(painter, thing, { cellWidth: CELL_WIDTH, draw: false });
+      const [px, py] = fitted ? [fitted.at[0] - unit * 0.035 * fitted.turn, fitted.at[1] - unit * 0.03] : point(0.8, 0.4);
       ctx.fillStyle = on ? "#ff3020" : "#5a1810";
       ctx.beginPath();
       ctx.arc(px, py, Math.max(1.2, unit * 0.014), 0, Math.PI * 2);

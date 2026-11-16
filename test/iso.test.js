@@ -142,6 +142,8 @@ test("every place says what it's made of, in words the view knows, and only abou
     // For the pixel-art view: a room in the packs' Light look, and how much a place tones that down.
     if (look.pixel !== undefined) assert.ok(["light", "dark"].includes(look.pixel), `${where}: pixel ${look.pixel}`);
     if (look.pixelLight !== undefined) assert.ok(look.pixelLight >= 0.35 && look.pixelLight <= 1, `${where}: pixelLight ${look.pixelLight}`);
+    // And what a bank of consoles on the plan is in a room, where it isn't consoles.
+    if (look.banks !== undefined) assert.ok(["galley"].includes(look.banks), `${where}: banks ${look.banks}`);
     if (look.lights) assert.ok(look.lights.length > 0, where);
   };
   check(LOOKS.default, "default");

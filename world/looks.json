@@ -1,5 +1,5 @@
 {
-  "_help": "How each place looks in the isometric view: what it's made of and how it's lit. Nothing here changes the game, only how it's drawn. A place's settings apply to all its rooms, and 'levels' changes them for one room, by its name. floor can be deck, grate, concrete, dirt, soil, stone, tile, wood, carpet, rock, ice, wet or alien. walls can be panels, hull, concrete, rock, brick, wood, tile, stone, ice or alien. rough is what a % on the level's plan is: rock, scrap, ice or plants. ambient is how bright the room is where no lamp reaches, as a color, and the darker it is, the darker the room. lights are the colors of its lamps, picked from at random. glow is the color of its machines, fire is the color of anything burning or shining in it, and machines: false means the place has none to speak of, so that what would be a console is just a plain bench or wall. shape puts one big thing in a room in place of what's drawn on its plan, between two corners given as a column and a row: the only kind so far is wheel. pixel is for the pixel-art view, on a ship drawn in the packs' Dark look: light puts one room in their Light look, and the place's pixelLight says how much that's toned down there, from 1, the pack's own Light, to 0.35.",
+  "_help": "How each place looks in the isometric view: what it's made of and how it's lit. Nothing here changes the game, only how it's drawn. A place's settings apply to all its rooms, and 'levels' changes them for one room, by its name. floor can be deck, grate, concrete, dirt, soil, stone, tile, wood, carpet, rock, ice, wet or alien. walls can be panels, hull, concrete, rock, brick, wood, tile, stone, ice or alien. rough is what a % on the level's plan is: rock, scrap, ice or plants. ambient is how bright the room is where no lamp reaches, as a color, and the darker it is, the darker the room. lights are the colors of its lamps, picked from at random. glow is the color of its machines, fire is the color of anything burning or shining in it, and machines: false means the place has none to speak of, so that what would be a console is just a plain bench or wall. shape puts one big thing in a room in place of what's drawn on its plan, between two corners given as a column and a row: the only kind so far is wheel. pixel is for the pixel-art view, on a ship drawn in the packs' Dark look: light puts one room in their Light look, and the place's pixelLight says how much that's toned down there, from 1, the pack's own Light, to 0.35. On the Meridian, banks on a room says what a row of consoles drawn on its plan is in the pixel-art view, where it is not consoles: galley makes it kitchen counters and stoves.",
   "default": {
     "floor": "deck",
     "walls": "panels",
@@ -106,7 +106,8 @@
           "glow": "#ff7030"
         },
         "The Galley": {
-          "pixel": "light"
+          "pixel": "light",
+          "banks": "galley"
         }
       },
       "style": "navy",

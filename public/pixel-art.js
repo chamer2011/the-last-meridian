@@ -67,8 +67,26 @@ const PIECES = {
   cot: [{ picture: from("Bedroom/Bed_G_4.png") }],
   // The lamp on a wall that lights a room, and goes dark with the room's power.
   "plan-lamp": [{ picture: from("Lamps/Lamp_Modern.png") }],
+  // What the plan's own marks are drawn as (not furniture anyone places): a console of a bank, and a bank's odd square.
   "plan-console": [{ picture: cell(7, 1) }],
   "plan-terminal": [{ picture: cell(5, 0) }],
+  // In a galley a bank is its counters and stoves: the second pack's kitchen unit, its wood drawn in steel, and its stove.
+  "plan-counter": [{ picture: from("Kitchen/Kitchen_A_Tile.png") }],
+  "plan-stove": [{ picture: from("Kitchen/Oven.png") }],
+  // The parts of a place's systems that hang on its walls, where the second pack has a fitting for one: a camera on
+  // its bracket (the first picture of the pack's sixteen of it turning), a switch with its green light on, its red
+  // one, or neither, a vent's grille, a junction box on its conduit, and the small screen of a door's keypad.
+  "part:camera": [{ picture: { id: "Lab/Camera_1_Ani.png#0", file: "Lab/Camera_1_Ani.png", x: 0, y: 0, w: 64, h: 64 } }],
+  "part:switch-on": [{ picture: from("Lab/Switch_B.png") }],
+  "part:switch-off": [{ picture: from("Lab/Switch_C.png") }],
+  "part:switch-dead": [{ picture: from("Lab/Switch_A.png") }],
+  "part:vent": [{ picture: from("Kitchen/Rack.png") }],
+  "part:box": [{ picture: from("Lab/Pipe_Horizontal_Box.png") }],
+  "part:keypad": [{ picture: from("Lab/Screen_Small.png") }],
+  // What runs along a bare stretch of wall: a pipe, a bundle of cables, cables in a tray.
+  "run:pipe": [{ picture: from("Lab/Pipe_Horizontal.png") }],
+  "run:cable": [{ picture: from("Lab/Cable_Horizontal_2.png") }],
+  "run:tray": [{ picture: from("Lab/Cable_Horizontal_1.png") }],
 };
 const picturesOf = (way) => [way.picture, way.dark, way.light, way.on, ...Object.values(way.faces ?? {}), ...(way.any ?? [])].filter(Boolean);
 // The pack's walls are 1.375 tiles high and the game's 1.7, so the pack's are stood up taller to the game's height.
@@ -78,7 +96,7 @@ const WALL_PACK_HEIGHT = 1.375;
 export const PACK_FIGURE = WALL_PACK_HEIGHT / 1.7;
 // The game's own furniture whose picture in the packs is wood or orange, and is drawn in steel: the benches and the
 // washbasins' cabinets. (A piece of the packs put on a deck as itself says so in world/furniture.txt, "in steel".)
-const STEEL_FILES = new Set(["Tables/Table_Corridor.png", "Bathroom/WC_Tap_Ani/Wc_Tap_1.png", "Bedroom/Bed_G_4.png"]);
+const STEEL_FILES = new Set(["Tables/Table_Corridor.png", "Bathroom/WC_Tap_Ani/Wc_Tap_1.png", "Bedroom/Bed_G_4.png", "Kitchen/Kitchen_A_Tile.png"]);
 
 // Wood and orange turned to worn steel: a colour between red-orange and yellow-brown, strong enough to be one, keeps
 // how light it is, a little darkened, and takes the ship's blue-grey. Anything else is left as it was (null).
@@ -367,7 +385,8 @@ function readBoxes() {
     ctx.drawImage(image, x, y, w, h, 0, 0, w, h);
     const { data } = ctx.getImageData(0, 0, w, h);
     const box = solidBox(data, w, h);
-    if (box) state.boxes[picture.id] = { ...box, w, h };
+    // Which wall a flat fitting was drawn for goes with it (slantOf), for the ones the game hangs on walls itself.
+    if (box) state.boxes[picture.id] = { ...box, w, h, slant: slantOf(data, w, box) };
   }
 }
 
@@ -471,9 +490,24 @@ function layFloor(painter, cells, cellWidth, which) {
     const pick = choices[Math.floor(hash(tile.tx, tile.ty, 1) * choices.length)];
     const to = [at(tile.tx, tile.ty), at(tile.tx + 1, tile.ty), at(tile.tx, tile.ty + 1)];
     drawCell(painter, look.floors[pick], look.floorRow, FLOOR_CORNERS, to, "level", which);
+    if (tile.kind === "plain" && replacedPlate(tile.tx, tile.ty)) {
+      // A plate that isn't the one the deck was built with: a shade off the rest, bolted down at its corners.
+      const corner = (dx, dy) => at(tile.tx + dx, tile.ty + dy);
+      ctx.beginPath();
+      for (const point of [corner(0.05, 0.05), corner(0.95, 0.05), corner(0.95, 0.95), corner(0.05, 0.95)]) ctx.lineTo(...point);
+      ctx.closePath();
+      ctx.fillStyle = hash(tile.tx, tile.ty, 8) < 0.5 ? "rgba(196,210,214,.1)" : "rgba(0,0,0,.18)";
+      ctx.fill();
+      ctx.fillStyle = "rgba(8,10,10,.75)";
+      const r = Math.max(1, painter.unit * 0.012);
+      for (const [px, py] of [corner(0.14, 0.14), corner(0.86, 0.14), corner(0.86, 0.86), corner(0.14, 0.86)]) ctx.fillRect(px - r, py - r / 2, r * 2, r);
+    }
   }
   ctx.restore();
 }
+
+// Whether a tile of plain floor is a plate put in since the ship was built: about one in sixteen, the same every time.
+export const replacedPlate = (tx, ty) => hash(tx, ty, 7) < 0.0625;
 
 // A wall standing its full height: the game's own block, with its top in the pack's colour and a slab of the pack's
 // wall on each face that shows. A face along the plan's rows is half a tile wide and the pack's wall a whole tile, so
@@ -826,13 +860,15 @@ export function drawPixelPiece(painter, piece, { wallHeight, look = state.look }
 // The second square of a pair has nothing of its own. A run with more of the same above or below it is no bank of
 // consoles but one big machine (the ship's boat, an engine): block is true, and the game draws that itself.
 // isMachine(x, y) says whether a square is a console's.
-export function machineAt(x, y, isMachine) {
+export function machineAt(x, y, isMachine, bank = null) {
   let start = x;
   while (isMachine(start - 1, y)) start -= 1;
   let end = x;
   while (isMachine(end + 1, y)) end += 1;
   for (let at = start; at <= end; at += 1) if (isMachine(at, y - 1) || isMachine(at, y + 1)) return { draw: null, block: true, start, end };
   const nth = x - start;
+  // A galley's bank is a unit to every square: counters, with a stove for the second of every three.
+  if (bank === "galley") return { draw: nth % 3 === 1 ? "plan-stove" : "plan-counter", across: 1, galley: true, start, end };
   if (nth % 2 === 1) return { draw: null, start, end };
   return x + 1 <= end ? { draw: "plan-console", across: 2, start, end } : { draw: "plan-terminal", across: 1, start, end };
 }
@@ -844,14 +880,15 @@ export function machineAt(x, y, isMachine) {
 export function drawPixelMachine(painter, block, { cellWidth, isMachine, floorAt }) {
   if (!pixelArtOn()) return false;
   const { x, y } = block;
-  const found = machineAt(x, y, isMachine);
+  const found = machineAt(x, y, isMachine, block.bank);
   if (found.block) return false;
   const way = pieceWay(found.draw ?? "plan-console");
   if (!way) return false;
   if (!found.draw) return true;
   let below = false;
   for (let at = found.start; at <= found.end && !below; at += 1) below = floorAt(at, y + 1);
-  const flip = !below && floorAt(found.end + 1, y);
+  // (The kitchen's units are drawn with their fronts the other way from the consoles'.)
+  const flip = found.galley ? below : !below && floorAt(found.end + 1, y);
   drawPicture(painter, way.picture, (x + found.across / 2) * cellWidth, y + 0.5, { flip, dim: Boolean(block.off) });
   return true;
 }
@@ -915,8 +952,72 @@ export function drawPixelFixture(painter, { x, y, face, off }, { cellWidth, high
   const way = pieceWay("plan-lamp");
   if (!way) return false;
   const [wx, wy] = face === "left" ? [(x + 0.5) * cellWidth, y + 1.04] : [(x + 1) * cellWidth + 0.04, y + 0.5];
-  drawPicture(painter, way.picture, wx, wy, { lift: high, middle: true, dim: Boolean(off) });
+  // Turned round if it was drawn for the other kind of wall.
+  const lean = state.boxes[way.picture.id].slant;
+  drawPicture(painter, way.picture, wx, wy, { flip: Boolean(lean) && lean !== (face === "left" ? "s" : "e"), lift: high, middle: true, dim: Boolean(off) });
   return true;
+}
+
+// How high up its wall each of those parts hangs (the middle of it, in tiles), and which wall its picture was drawn
+// for where its pixels don't say (a camera sticks out from its wall; a wall along the plan's rows, in the pack).
+const PART_HANG = { camera: { lift: 1.4, lean: "s" }, "light switch": { lift: 0.8 }, vent: { lift: 0.32 }, "junction box": { lift: 0.78 }, "door panel": { lift: 0.82 } };
+const PART_PICTURES = { camera: "part:camera", vent: "part:vent", "junction box": "part:box", "door panel": "part:keypad" };
+
+// Which of the pack's fittings a part of the systems is drawn as, by what it is and how it stands: a switch shows its
+// green light on, its red one off, and neither with no power. Null for a part the packs have nothing for (a speaker,
+// the big units), and for one that stands on the floor.
+export function partPicture(part) {
+  if (!part || part.mount !== "wall" || !PART_HANG[part.kind]) return null;
+  if (part.kind === "light switch") return part.word === "off" ? "part:switch-off" : part.works ? "part:switch-on" : "part:switch-dead";
+  return PART_PICTURES[part.kind];
+}
+
+// A part of the systems on a wall, as the pack's fitting: on the face of the wall the room sees, turned round if it
+// was drawn for the other kind of wall, dark and dull when it isn't working. Gives back where its middle is on the
+// screen and which way it's turned (turn, 1 or -1), for the marks and lights the game puts on it; null if the test
+// isn't on or the packs have no picture for it, and the game draws its own. With draw false it only says where.
+export function drawPixelPart(painter, thing, { cellWidth, draw = true }) {
+  if (!pixelArtOn()) return null;
+  const id = partPicture(thing.part);
+  const way = id && pieceWay(id);
+  if (!way) return null;
+  const { lift, lean: said } = PART_HANG[thing.part.kind];
+  const side = thing.part.face === "side";
+  const [wx, wy] = side ? [(thing.x + 1) * cellWidth + 0.04, thing.y + 0.5] : [(thing.x + 0.5) * cellWidth, thing.y + 1.04];
+  const lean = said ?? state.boxes[way.picture.id].slant;
+  const flip = Boolean(lean) && lean !== (side ? "e" : "s");
+  if (draw) drawPicture(painter, way.picture, wx, wy, { flip, lift, middle: true, dim: !thing.part.works && thing.part.kind !== "light switch" });
+  return { at: painter.at(wx, wy, lift), turn: flip ? -1 : 1 };
+}
+
+// What runs along a bare stretch of wall, high up: a pipe, cables, or cables in a tray.
+const WALL_RUNS = ["run:pipe", "run:cable", "run:tray"];
+
+// Whether a wall's face has a run along it, and of what: by the stretch of wall it's part of (three tiles of a wall
+// along the plan's rows, face "s"; three squares of one down its columns, face "e"), about one stretch in three, and
+// the same every time. Null for none.
+export function wallRun(x, y, face) {
+  const [sx, sy, salt] = face === "s" ? [Math.floor(x / 6), y, 31] : [x, Math.floor(y / 3), 37];
+  if (hash(sx, sy, salt) >= 0.34) return null;
+  return WALL_RUNS[Math.floor(hash(sx, sy, salt + 1) * WALL_RUNS.length)];
+}
+
+// The pipes and cables on a wall's faces, in the pixel-art view: south and east say which of its two faces are bare
+// (public/iso.js knows). One length to a square of a wall along the rows, two to a square of one down the columns,
+// which is twice as long; turned round where the picture was drawn for the other kind of wall.
+export function drawPixelWallRun(painter, block, { cellWidth, south, east }) {
+  if (!pixelArtOn()) return;
+  const { x, y } = block;
+  const hang = (id, wx, wy, face) => {
+    const way = pieceWay(id);
+    if (!way) return;
+    const lean = state.boxes[way.picture.id].slant;
+    drawPicture(painter, way.picture, wx, wy, { flip: Boolean(lean) && lean !== face, lift: id === "run:pipe" ? 1.22 : 1.34, middle: true });
+  };
+  const along = south && wallRun(x, y, "s");
+  if (along) hang(along, (x + 0.5) * cellWidth, y + 1.04, "s");
+  const down = east && wallRun(x, y, "e");
+  if (down) for (const part of [0.25, 0.75]) hang(down, (x + 1) * cellWidth + 0.04, y + part, "e");
 }
 
 // A crate on the plan, on its square.
