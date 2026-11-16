@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { PACK_FIGURE, doorPicture, lightDim, mapping, pieceWay, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim, solidBox, standingPoint, steelOf } from "../public/pixel-art.js";
+import { PACK_FIGURE, doorPicture, lightDim, machineAt, mapping, pieceWay, pixelArtOn, pixelBunk, pixelDoorDepth, pixelKey, setLightDim, solidBox, standingPoint, steelOf } from "../public/pixel-art.js";
 import { figureUnit } from "../public/iso.js";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -78,8 +78,8 @@ test("without the second pack the first pack's own pieces stand in, and the rest
   assert.equal(pieceWay("long-table", "s", 0, firstOnly), null);
   // A desk's terminal is the dark one or the light one, by look.
   assert.notEqual(pieceWay("desk", "s", 0, { look: "dark", has: () => true }).picture.id, pieceWay("desk", "s", 0, { look: "light", has: () => true }).picture.id);
-  // Bunks and cots are never the packs': people lie in them.
-  assert.equal(pieceWay("bunk", "s", 0, both), null);
+  // A bunk is the first pack's, with whoever's asleep drawn into it; a cot is still the game's own.
+  assert.equal(pieceWay("bunk", "s", 0, firstOnly).picture.sheet, "assets");
   assert.equal(pieceWay("cot", "s", 0, both), null);
 });
 
@@ -133,6 +133,37 @@ test("the packs' furniture is drawn at its own size, and people as much smaller 
   assert.equal(figureUnit(64), 64);
   // A bench is its picture three times along it at that size, so the three meet.
   assert.equal(pieceWay("bench", "s", 0, { look: "dark", has: () => true }).times, 3);
+});
+
+test("a bank of consoles on the plan is a control console to each two squares, and a terminal on an odd one", () => {
+  const bank = (cells) => (x, y) => y === 3 && cells.includes(x);
+  const five = bank([4, 5, 6, 7, 8]);
+  assert.deepEqual([4, 5, 6, 7, 8].map((x) => machineAt(x, 3, five).draw), ["plan-console", null, "plan-console", null, "plan-terminal"]);
+  assert.equal(machineAt(4, 3, five).across, 2);
+  assert.equal(machineAt(8, 3, five).across, 1);
+  assert.deepEqual([machineAt(6, 3, five).start, machineAt(6, 3, five).end], [4, 8]);
+  // A square on its own is a terminal, and two are one console.
+  assert.equal(machineAt(9, 3, bank([9])).draw, "plan-terminal");
+  assert.deepEqual([10, 11].map((x) => machineAt(x, 3, bank([10, 11])).draw), ["plan-console", null]);
+  // The packs have a picture for each.
+  assert.ok(pieceWay("plan-console", "s", 0, both) && pieceWay("plan-terminal", "s", 0, both));
+});
+
+test("a bunk is two of the pack's end to end, turned to run the way the game's bunk does", () => {
+  // The pack's bunk is drawn along the plan's rows: a bunk running down the columns (facing north or south) has it
+  // turned round, and one along the rows hasn't.
+  const down = pieceWay("bunk", "s", 0, both);
+  assert.equal(down.times, 2);
+  assert.equal(down.flip, true);
+  assert.equal(pieceWay("bunk", "n", 0, both).flip, true);
+  assert.equal(pieceWay("bunk", "e", 0, both).flip, false);
+  // Any other piece with one picture is the other way about: turned round to face east or west.
+  assert.equal(pieceWay("plot-table", "s", 0, both).flip, false);
+  assert.equal(pieceWay("plot-table", "e", 0, both).flip, true);
+  // Until the view is on, the game's own bunk is drawn, sleepers and all; and the wall lamp has its picture.
+  assert.equal(pixelBunk("bunk"), false);
+  assert.equal(pixelBunk("cot"), false);
+  assert.ok(pieceWay("plan-lamp", "s", 0, both));
 });
 
 test("the view draws as it always has until Settings turns the test on", () => {

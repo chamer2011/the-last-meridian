@@ -58,6 +58,14 @@ const PIECES = {
   kettle: [{ picture: from("Kitchen/Oven.png"), on: from("Kitchen/Pot_Full.png"), lift: 0.7 }],
   plant: [{ any: [from("Plants/Plant_3.png"), from("Plants/Plant_2.png"), from("Plants/Plant_5.png"), from("Plants/Plant_1.png")] }],
   basin: [{ picture: from("Bathroom/WC_Tap_Ani/Wc_Tap_1.png") }],
+  // What the plan's own marks are drawn as (not furniture anyone places): a console of a bank, and a bank's odd square.
+  // A bunk is the pack's, which is a tile long where the game's is two: two of them end to end. Its picture runs along
+  // the plan's rows as it's drawn (lengthways), so it's turned round for a bunk that runs down the plan's columns.
+  bunk: [{ picture: cell(4, 0), times: 2, lengthways: true }],
+  // The lamp on a wall that lights a room, and goes dark with the room's power.
+  "plan-lamp": [{ picture: from("Lamps/Lamp_Modern.png") }],
+  "plan-console": [{ picture: cell(7, 1) }],
+  "plan-terminal": [{ picture: cell(5, 0) }],
 };
 const picturesOf = (way) => [way.picture, way.dark, way.light, way.on, ...Object.values(way.faces ?? {}), ...(way.any ?? [])].filter(Boolean);
 // The pack's walls are 1.375 tiles high and the game's 1.7, so the pack's are stood up taller to the game's height.
@@ -509,6 +517,70 @@ export function drawPixelWall(painter, block, { cellWidth, sameWallRight, sameWa
   return true;
 }
 
+// The pack's low wall: on the level sheet, under each look's walls, across two cells, as two arms from a far corner. One
+// runs a tile along the plan's columns (down and to the left) and one a tile along its rows (down and to the right),
+// each with a post half way. An arm's far foot, its near foot, and a point a tile above the far foot, in pixels of the
+// two cells together; and the stretch of them it's cut from.
+const LOW_DOWN_LEFT = { corners: [[128, 86], [64, 118], [128, 22]], from: 40, wide: 100 };
+const LOW_DOWN_RIGHT = { corners: [[128, 86], [192, 118], [128, 22]], from: 116, wide: 100 };
+// How far above the floor the sill under a low wall is.
+const SILL = 0.05;
+
+// A stretch of a sheet's row of cells, drawn so that three of its points land on three points of the picture.
+function drawStretch(painter, row, arm, to, look) {
+  const { ctx, ratio } = painter;
+  const [a, b, c, d, e, f] = mapping(arm.corners, to);
+  ctx.save();
+  ctx.setTransform(a * ratio, b * ratio, c * ratio, d * ratio, e * ratio, f * ratio);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(sheetFor("level", look), arm.from, row * 128, arm.wide, 128, arm.from, 0, arm.wide, 128);
+  ctx.restore();
+}
+
+// A wall that's been cut down so the room behind it can be seen (a wall with floor behind it, or to its left): in the
+// pixel-art view, the pack's low wall along the middle of it, on a dark sill the size of the wall's square. A wall along
+// the plan's row has one arm to a tile, which is two squares, each square showing its own half; a wall down the plan's
+// column has one to a square. wallAt(x, y) says whether a square is wall. False if the test isn't on.
+export function drawPixelLowWall(painter, block, { cellWidth, wallAt, look = state.look }) {
+  if (!pixelArtOn()) return false;
+  const { ctx, at } = painter;
+  const { x, y } = block;
+  const x0 = x * cellWidth;
+  const x1 = x0 + cellWidth;
+  const face = (points, colour) => {
+    ctx.beginPath();
+    for (const point of points) ctx.lineTo(...point);
+    ctx.closePath();
+    ctx.fillStyle = colour;
+    ctx.fill();
+  };
+  // The sill: its two faces toward the room's viewer where nothing stands in front of them, and its top.
+  const top = state.tops[look === "light" && state.look === "dark" ? "dark" : look] ?? "#2a2f2e";
+  if (!wallAt(x, y + 1)) face([at(x0, y + 1, SILL), at(x1, y + 1, SILL), at(x1, y + 1, 0), at(x0, y + 1, 0)], "#121514");
+  if (!wallAt(x + 1, y)) face([at(x1, y, SILL), at(x1, y + 1, SILL), at(x1, y + 1, 0), at(x1, y, 0)], "#0c0e0d");
+  face([at(x0, y, SILL), at(x1, y, SILL), at(x1, y + 1, SILL), at(x0, y + 1, SILL)], top);
+  const row = LOOKS[look].wallRow + 1;
+  const along = wallAt(x - 1, y) || wallAt(x + 1, y);
+  const down = wallAt(x, y - 1) || wallAt(x, y + 1);
+  if (down) {
+    const middle = x0 + cellWidth / 2;
+    drawStretch(painter, row, LOW_DOWN_LEFT, [at(middle, y, SILL), at(middle, y + 1, SILL), at(middle, y, SILL + 1)], look);
+  }
+  if (along || !down) {
+    // This square's half of the tile's arm, kept to the square.
+    const tile = Math.floor(x0 + 1e-6);
+    ctx.save();
+    ctx.beginPath();
+    for (const point of [at(x0, y + 0.95, -0.05), at(x1, y + 0.95, -0.05), at(x1, y + 0.05, 0.8), at(x0, y + 0.05, 0.8)]) ctx.lineTo(...point);
+    ctx.closePath();
+    ctx.clip();
+    drawStretch(painter, row, LOW_DOWN_RIGHT, [at(tile, y + 0.5, SILL), at(tile + 1, y + 0.5, SILL), at(tile, y + 0.5, SILL + 1)], look);
+    ctx.restore();
+  }
+  return true;
+}
+
 // Which of a door's sixteen pictures it shows: shut and red when locked, shut and green when shut, then one of the six
 // sliding open by how far open it is.
 export function doorPicture(open, locked = false) {
@@ -563,14 +635,15 @@ export function pieceWay(kind, facing = "s", seed = 0, { look = state.look, has 
     const picture = way.faces ? way.faces[facing] ?? way.faces.s : way.any ? way.any[Math.min(way.any.length - 1, Math.floor(seed * way.any.length))] : way[look] ?? way.picture;
     if (!picture || !has(picture) || (way.on && !has(way.on))) continue;
     // Which look's picture it is, where the piece has one for each: a Light one in a Dark ship is toned down.
-    return { picture, flip: !way.faces && (facing === "e" || facing === "w"), times: way.times ?? 1, on: way.on ?? null, lift: way.lift ?? 0, look: way.light && picture === way.light ? "light" : null };
+    const sideways = facing === "e" || facing === "w";
+    return { picture, flip: !way.faces && (way.lengthways ? !sideways : sideways), times: way.times ?? 1, on: way.on ?? null, lift: way.lift ?? 0, look: way.light && picture === way.light ? "light" : null };
   }
   return null;
 }
 
 // One picture of a piece, stood with its middle on a point of the floor (cx, cy, in tiles) or so far above it, at the
 // pack's own size: half its pixels at 64 a tile, so they stay even.
-function drawPicture(painter, picture, cx, cy, { flip = false, lift = 0, wallHeight, middle = false, look = null }) {
+function drawPicture(painter, picture, cx, cy, { flip = false, lift = 0, wallHeight, middle = false, look = null, dim = false }) {
   const box = state.boxes[picture.id];
   const { ctx, ratio, at, unit } = painter;
   const scale = unit / 128;
@@ -583,6 +656,8 @@ function drawPicture(painter, picture, cx, cy, { flip = false, lift = 0, wallHei
   ctx.setTransform(ratio * scale * turn, 0, 0, ratio * scale, ratio * (px - scale * turn * ax), ratio * (py - scale * ay));
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
+  // Something with its power off is drawn dark and dull.
+  if (dim) ctx.filter = "brightness(0.5) saturate(0.4)";
   ctx.drawImage(image, picture.x ?? 0, picture.y ?? 0, box.w, box.h, 0, 0, box.w, box.h);
   ctx.restore();
 }
@@ -614,6 +689,53 @@ export function drawPixelPiece(painter, piece, { wallHeight, look = state.look }
     drawPicture(painter, way.picture, x, y, { flip: way.flip, lift: piece.lift ?? 0, wallHeight, look: way.look });
     if (way.on) drawPicture(painter, way.on, x, y, { lift: way.lift, wallHeight });
   }
+  return true;
+}
+
+// Which of a bank's squares a console of the plan stands on, and what's drawn there. A bank is a run of console squares
+// along a row: the pack's control console is a tile across, which is two squares, so there's one to each two squares
+// from the bank's left end, and its narrower terminal desk on an odd last square, or on a square with none beside it.
+// The second square of a pair has nothing of its own. isMachine(x, y) says whether a square is a console's.
+export function machineAt(x, y, isMachine) {
+  let start = x;
+  while (isMachine(start - 1, y)) start -= 1;
+  let end = x;
+  while (isMachine(end + 1, y)) end += 1;
+  const nth = x - start;
+  if (nth % 2 === 1) return { draw: null, start, end };
+  return x + 1 <= end ? { draw: "plan-console", across: 2, start, end } : { draw: "plan-terminal", across: 1, start, end };
+}
+
+// A console drawn on the plan, as the pack's: true if it's been seen to (drawn, or part of the console beside it), false
+// if the test isn't on or the pictures aren't there, and the game draws its own block. Its front is toward the floor in
+// front of the bank (below it on the plan), or turned to the floor at the bank's right-hand end when there's none below;
+// with its power off it's dark.
+export function drawPixelMachine(painter, block, { cellWidth, isMachine, floorAt }) {
+  if (!pixelArtOn()) return false;
+  const { x, y } = block;
+  const found = machineAt(x, y, isMachine);
+  const way = pieceWay(found.draw ?? "plan-console");
+  if (!way) return false;
+  if (!found.draw) return true;
+  let below = false;
+  for (let at = found.start; at <= found.end && !below; at += 1) below = floorAt(at, y + 1);
+  const flip = !below && floorAt(found.end + 1, y);
+  drawPicture(painter, way.picture, (x + found.across / 2) * cellWidth, y + 0.5, { flip, dim: Boolean(block.off) });
+  return true;
+}
+
+// Whether a bunk is drawn as the pack's now: whoever's asleep in one is then drawn into the pack's picture by the room
+// view, and not with the game's own bunk.
+export const pixelBunk = (kind) => kind === "bunk" && pixelArtOn() && Boolean(pieceWay("bunk"));
+
+// A lamp on a wall, as the pack's strip light: on the face of the wall the room sees, so high up it, dark when the
+// room's lights are out. False if the test isn't on or the picture isn't there.
+export function drawPixelFixture(painter, { x, y, face, off }, { cellWidth, high }) {
+  if (!pixelArtOn()) return false;
+  const way = pieceWay("plan-lamp");
+  if (!way) return false;
+  const [wx, wy] = face === "left" ? [(x + 0.5) * cellWidth, y + 1.04] : [(x + 1) * cellWidth + 0.04, y + 0.5];
+  drawPicture(painter, way.picture, wx, wy, { lift: high, middle: true, dim: Boolean(off) });
   return true;
 }
 

@@ -7,7 +7,7 @@
 import { el } from "./dom.js";
 import { FURNITURE_BY_ID, footprintOf, squaresOf } from "./furniture.js";
 import { hideLoading, showLoading } from "./loading.js";
-import { PACK_FIGURE, PIXEL_UNIT, drawPixelCrate, drawPixelDoor, drawPixelFloors, drawPixelPiece, drawPixelWall, packKey, pixelArtOn, pixelDoorDepth, pixelKey, setLightDim } from "./pixel-art.js";
+import { PACK_FIGURE, PIXEL_UNIT, drawPixelCrate, drawPixelDoor, drawPixelFixture, drawPixelFloors, drawPixelLowWall, drawPixelMachine, drawPixelPiece, drawPixelWall, packKey, pixelArtOn, pixelBunk, pixelDoorDepth, pixelKey, setLightDim } from "./pixel-art.js";
 
 // A console square is about twice as tall as it's wide, so two columns make one tile.
 export const CELL_WIDTH = 0.5;
@@ -1285,6 +1285,8 @@ function drawJunk(painter, cell) {
 
 // A lamp's housing, on the wall.
 function drawFixture(painter, fixture) {
+  // In the pixel-art view the lamp is the pack's strip light (public/pixel-art.js).
+  if (drawPixelFixture(painter, fixture, { cellWidth: CELL_WIDTH, high: WALL_HEIGHT * 0.72 })) return;
   const { ctx } = painter;
   const { left, right, top, bottom } = fixtureCorners(painter, fixture);
   ctx.beginPath();
@@ -1401,6 +1403,12 @@ function drawBlock(painter, block, materials) {
       const faces = (wx) => Boolean(lit?.[y + 1]?.[wx]);
       if (drawPixelWall(painter, block, { cellWidth: CELL_WIDTH, sameWallRight: fullWall(x + 1) && faces(x + 1) === faces(x), sameWallLeft: fullWall(x - 1) && faces(x - 1) === faces(x), ...(faces(x) ? { lookLeft: "light" } : {}), ...(lit?.[y]?.[x + 1] ? { lookRight: "light" } : {}) })) return;
     }
+    // A wall cut down so the room can be seen, in the pixel-art view, is the pack's low wall on a sill; in the look of
+    // the room it's cut down to show.
+    if (h === CUT_WALL_HEIGHT) {
+      const lit = iso.scene?.light;
+      if (drawPixelLowWall(painter, block, { cellWidth: CELL_WIDTH, wallAt: (wx, wy) => iso.scene?.kinds[wy]?.[wx] === "wall", ...(lit?.[y - 1]?.[x] || lit?.[y]?.[x - 1] ? { look: "light" } : {}) })) return;
+    }
     const image = materials.wall[Math.floor(hashOf(Math.floor(x / 2), y) * 3)];
     if (block.left < h) leftFace(painter, image, x, y, h, block.left, 0.05);
     if (block.right < h) rightFace(painter, image, x, y, h, block.right, 0.42);
@@ -1444,6 +1452,8 @@ function drawBlock(painter, block, materials) {
     return;
   }
   if (style === "crate" && drawPixelCrate(painter, block, { cellWidth: CELL_WIDTH, wallHeight: WALL_HEIGHT, ...(iso.scene?.light?.[y]?.[x] ? { look: "light" } : {}) })) return;
+  // A console of the plan, in the pixel-art view, is the pack's (public/pixel-art.js).
+  if (style === "machine" && drawPixelMachine(painter, block, { cellWidth: CELL_WIDTH, isMachine: (mx, my) => iso.scene?.styles[my]?.[mx] === "machine", floorAt: (fx, fy) => walkable(iso.scene?.kinds[fy]?.[fx]) })) return;
   const side = { crate: materials.crate, rock: materials.rock, ice: materials.ice, scrap: materials.scrap, body: materials.body[Math.floor(block.seed * 2)], bench: materials.body[Math.floor(block.seed * 2)], dais: materials.body[0] }[style] ?? materials.steel;
   const top = { crate: materials.crateTop, machine: block.off ? materials.consoleOff : materials.console, rock: materials.rockTop, ice: materials.iceTop, scrap: materials.scrap, body: materials.roof, bench: materials.roof, dais: materials.roof }[style] ?? materials.steelTop;
   if (block.left < h) leftFace(painter, side, x, y, h, block.left, 0.08);
@@ -3451,12 +3461,16 @@ function draw(now, dt) {
     if (item.type === "block") drawBlock(painter, item, iso.materials);
     else if (item.type === "seatback") {
       // In the pixel-art test a chair seen from behind is one picture, so all of it goes over whoever's sitting in it.
+      // The pack's bunk is one picture too, but it's behind whoever sits on its edge, so nothing of it goes over them.
+      if (item.tag === "over" && pixelBunk(item.block.kind)) continue;
       if (!drawPixelPiece(painter, item.block, { wallHeight: WALL_HEIGHT, ...lookOfPiece(item.block) })) drawPiece(painter, item.block, { only: item.tag ?? "back", sleepers: beds.get(item.block) ?? null });
     }
     else if (item.type === "prop") item.draw();
     else if (item.type === "bed") {
       for (const one of item.sleepers) one.ring = hoverKey === `person:${one.person.key}` ? "rgba(255,250,220,.9)" : null;
-      drawPiece(painter, item.block, { sleepers: item.sleepers });
+      // The pack's bunk is in the room's picture already: only whoever's asleep in it is drawn, into it.
+      if (pixelBunk(item.block.kind)) drawPackSleepers(painter, item.block, item.sleepers);
+      else drawPiece(painter, item.block, { sleepers: item.sleepers });
       for (const one of item.sleepers) {
         if (!one.at) continue;
         const [x, y] = one.at;
@@ -4109,6 +4123,43 @@ export function wornPaths(view, kinds) {
     paths.push({ points: kept.map(middle), x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs) + 1, y1: Math.max(...ys) + 1 });
   }
   return paths;
+}
+
+// Whoever's asleep in a bunk the packs draw: the piece is two of the pack's bunks end to end, and they're in the far
+// one, the first of them in its lower bed and the second in its upper. Each is a head on the pillow and a blanket over
+// the rest, at the packs' own size; where the head was drawn is left on them, as the game's own bunks leave it.
+function drawPackSleepers(painter, piece, sleepers) {
+  const { ctx, at, unit } = painter;
+  const down = piece.y1 - piece.y0 > piece.x1 - piece.x0;
+  const cx = down ? (piece.x0 + piece.x1) / 2 : piece.x0 + (piece.x1 - piece.x0) / 4;
+  const cy = down ? piece.y0 + (piece.y1 - piece.y0) / 4 : (piece.y0 + piece.y1) / 2;
+  const random = randomFrom(`piece${piece.x0},${piece.y0}`);
+  const [long, wide] = [0.3, 0.1];
+  [0.2, 0.62].forEach((z, i) => {
+    const colour = BLANKETS[Math.floor(random() * BLANKETS.length)];
+    const one = sleepers?.[i];
+    if (!one) return;
+    box(painter, down ? [cx - wide, cy - long + 0.16, cx + wide, cy + long] : [cx - long + 0.16, cy - wide, cx + long, cy + wide], z, z + 0.07, ...shades(scaled(colour, 1.15)));
+    const [hx, hy] = down ? at(cx, cy - long + 0.06, z + 0.09) : at(cx - long + 0.06, cy, z + 0.09);
+    const r = unit * 0.062;
+    ctx.fillStyle = one.look.skin;
+    ctx.beginPath();
+    ctx.arc(hx, hy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = one.look.hair ?? "#2a2420";
+    ctx.beginPath();
+    ctx.arc(hx, hy - r * 0.1, r * 1.02, Math.PI * 0.95, Math.PI * 2.05);
+    ctx.closePath();
+    ctx.fill();
+    if (one.ring) {
+      ctx.strokeStyle = one.ring;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(hx, hy, r * 1.8, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    one.at = [hx, hy];
+  });
 }
 
 // The look a piece of furniture is drawn in by the pixel-art view, where its room has one of its own.
