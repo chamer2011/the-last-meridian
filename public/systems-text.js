@@ -33,6 +33,7 @@ export const SYSTEMS_HEADER = [
   { key: "engineers", path: "engineers", type: "list" },
   { key: "alarm rings", path: "numbers.alarm", type: "number", unit: "minutes" },
   { key: "air goes bad", path: "numbers.air", type: "number", unit: "minutes" },
+  { key: "reserve air", path: "numbers.reserve", type: "number", unit: "days" },
   { key: "repairs take", path: "numbers.repair", type: "number", unit: "hours" },
   { key: "a part wears out every", path: "numbers.wear", type: "number", unit: "days" },
 ];

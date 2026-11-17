@@ -61,6 +61,9 @@ export function readRule(text) {
   if ((found = rule.match(/^heals in (\S+) days? once (dressed|splinted|mended|dosed)$/)) && numberOf(found[1]) !== null) return { heals: null, treated: numberOf(found[1]), treatment: found[2] };
   if ((found = rule.match(/^walks at (\d+(?:\.\d+)?)% of the pace$/))) return { pace: Number(found[1]) / 100 };
   if ((found = rule.match(/^out cold for (\S+) to (\S+) hours?$/)) && numberOf(found[1]) !== null && numberOf(found[2]) !== null) return { out: [numberOf(found[1]), numberOf(found[2])] };
+  // Want of air (2026-11-16): out cold for as long as they can't breathe, and a little after (the top's "back in good
+  // air" line says how long).
+  if (rule === "out cold until they can breathe") return { out: "air" };
   if ((found = rule.match(/^checks (\S+) steps? harder$/)) && numberOf(found[1]) !== null) return { harder: numberOf(found[1]) };
   if ((found = rule.match(/^comes after (\S+) days? undressed$/)) && numberOf(found[1]) !== null) return { after: numberOf(found[1]) };
   if ((found = rule.match(/^kills after (\S+) days? undressed$/)) && numberOf(found[1]) !== null) return { kills: numberOf(found[1]) };
@@ -75,7 +78,7 @@ export function readRule(text) {
   if ((found = rule.match(/^in a fight: attack ([+-]?\d+)$/))) return { fightAttack: Number(found[1]) };
   return { problem: `I don't know the rule "${String(text).trim()}"` };
 }
-export const RULE_WORDS = "in a fight: attack -2; serious; bleeds 4 an hour; heals in 4 days, 2 once dressed; heals in 8 days once dressed; never heals; heals in 10 days, 1 once mended; walks at 90% of the pace; catches 1 in 3000 a day; spreads 1 in 4000 a day in the same quarters; worse when hungry; kills 1 in 3 left untreated 5 days; out cold for 1 to 4 hours; checks one step harder; the hand's no use; can't stand on it; limps; hidden; artificial; never at random; comes after 2 days undressed; kills after 5 days undressed; worse every day; likelier in: dock, engine; only for: synthetic; not for: synthetic";
+export const RULE_WORDS = "in a fight: attack -2; serious; bleeds 4 an hour; heals in 4 days, 2 once dressed; heals in 8 days once dressed; never heals; heals in 10 days, 1 once mended; walks at 90% of the pace; catches 1 in 3000 a day; spreads 1 in 4000 a day in the same quarters; worse when hungry; kills 1 in 3 left untreated 5 days; out cold for 1 to 4 hours; out cold until they can breathe; checks one step harder; the hand's no use; can't stand on it; limps; hidden; artificial; never at random; comes after 2 days undressed; kills after 5 days undressed; worse every day; likelier in: dock, engine; only for: synthetic; not for: synthetic";
 
 // Words, then rules, separated by semicolons: "a bad {side} knee; limps; likelier in: dock".
 function readWordsAndRules(text) {
@@ -257,7 +260,23 @@ export const CARE = {
   "artificial limbs from before": { read: (text) => { const f = lower(text).match(/^1 in (\d+) have one, 1 in (\d+) in rough work$/); return f ? { oneIn: Number(f[1]), rough: Number(f[2]) } : { problem: "is written like: 1 in 60 have one, 1 in 25 in rough work" }; }, default: "1 in 60 have one, 1 in 25 in rough work" },
   // Step 8: half rations make an illness that's worse when hungry so many times as likely, reduced rations so many.
   "illness when hungry": { read: (text) => { const f = lower(text).match(/^(twice|three times|half again|\d+(?:\.\d+)? times) as likely on half rations, (twice|three times|half again|\d+(?:\.\d+)? times) as likely on reduced$/); return f ? { half: TIMES[f[1]] ?? Number(f[1].split(" ")[0]), reduced: TIMES[f[2]] ?? Number(f[2].split(" ")[0]) } : { problem: "is written like: twice as likely on half rations, half again as likely on reduced" }; }, default: "twice as likely on half rations, half again as likely on reduced" },
+  // Want of air (2026-11-16): how long someone lasts in bad air they can't get out of before they pass out, and how
+  // long after that before it kills them, each person somewhere between the two times, in minutes here; and once they
+  // can breathe again, how long someone out cold takes to come round, and how fast the time they went without is made up.
+  "without air": { read: readWithoutAir, default: "out cold after 2 to 3 hours of bad air, dead 1 to 2 hours after that" },
+  "back in good air": { read: (text) => { const f = lower(text).match(/^comes round after (an|\S+) (minutes?|hours?), and gets their breath back (twice|three times|four times|half again|\d+(?:\.\d+)? times) as fast as they lost it$/); return f && numberOf(f[1]) !== null ? { minutes: numberOf(f[1]) * (/^hour/.test(f[2]) ? 60 : 1), back: TIMES[f[3]] ?? Number(f[3].split(" ")[0]) } : { problem: "is written like: comes round after 10 minutes, and gets their breath back twice as fast as they lost it" }; }, default: "comes round after 10 minutes, and gets their breath back twice as fast as they lost it" },
 };
+// "out cold after 2 to 3 hours of bad air, dead 1 to 2 hours after that", or one time in place of a range, in minutes
+// or hours: both in minutes.
+function readWithoutAir(text) {
+  const found = lower(text).match(/^out cold after (an|\S+)(?: to (\S+))? (minutes?|hours?) of bad air, dead (an|\S+)(?: to (\S+))? (minutes?|hours?) after that$/);
+  const wrong = { problem: "is written like: out cold after 2 to 3 hours of bad air, dead 1 to 2 hours after that" };
+  if (!found) return wrong;
+  const times = (from, to, unit) => [numberOf(from), numberOf(to ?? from)].map((n) => (n === null ? null : n * (/^hour/.test(unit) ? 60 : 1)));
+  const out = times(found[1], found[2], found[3]);
+  const dead = times(found[4], found[5], found[6]);
+  return [...out, ...dead].every((n) => n !== null && n > 0) && out[0] <= out[1] && dead[0] <= dead[1] ? { out, dead } : wrong;
+}
 export const careOf = (care = {}) => Object.fromEntries(Object.entries(CARE).map(([key, one]) => {
   const read = one.read(care[key] ?? one.default);
   return [key, read.problem ? one.read(one.default) : read];

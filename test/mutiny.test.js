@@ -43,6 +43,11 @@ const newGame = (start = "captain", seed = 21) => {
   game.transcript.push({ role: "narrator", text: "The story has begun." });
   return game;
 };
+// The cell in the generator lasts the whole test. A ship with no power runs out of air once her reserve is gone, and
+// nobody aboard outlives that (test/no-air.test.js), where a test that keeps her hungry for weeks is about hunger.
+const keepPower = (game) => {
+  game.logistics.meridian.machines.generator = { progress: 0, made: 0, waiting: null, burning: 1e9 };
+};
 const days = (game, n) => {
   const said = [];
   for (let i = 0; i < n; i += 1) said.push(...passTime(game, 24, "routine").filter((one) => one.startsWith("[COMMAND]")));
@@ -115,6 +120,7 @@ test("going hungry pulls loyalty down, and the council's confidence follows, and
 
 test("a ship kept hungry on half rations grumbles, lets orders go astray, and sends the captain a delegation", () => {
   const game = newGame();
+  keepPower(game);
   game.clock.hours = 9;
   clockRuns(game, 1);
   shipCommand(game, { action: "council", on: false });

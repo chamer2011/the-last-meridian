@@ -37,6 +37,7 @@ import "./uses.js";
 import { mapExtras } from "./room-hooks.js";
 import "./asks.js";
 import "./emergencies.js";
+import "./no-air.js";
 import "./law.js";
 import "./loot.js";
 import "./keepsakes.js";
@@ -1356,7 +1357,10 @@ function downView(game, key) {
   const d = downRecord(game, game.location, key);
   if (!d || d.going) return {};
   const bleeding = bleedingOf(game, keyAt(game.location, key));
-  const where = d.dead ? `Dead, under a blanket. They ${game.dead?.[keyAt(game.location, key)]?.cause ?? "died"}.` : d.carriedBy ? (d.carriedBy === "you" ? "You're carrying them." : "Being carried to the medbay.") : d.bed ? (d.bed.startsWith("@") ? "Lying on the medbay's floor." : "Laid up on a cot.") : `Lying where they fell, ${d.why ?? "down"}.`;
+  // How they died is a few words that follow "They" as they stand ("bled to death where they fell"), or that say of
+  // what ("of a fever, with nobody to dose it").
+  const cause = game.dead?.[keyAt(game.location, key)]?.cause ?? "died";
+  const where = d.dead ? `Dead, under a blanket. They ${/^(of|for) /.test(cause) ? "died " : ""}${cause}.` : d.carriedBy ? (d.carriedBy === "you" ? "You're carrying them." : "Being carried to the medbay.") : d.bed ? (d.bed.startsWith("@") ? "Lying on the medbay's floor." : "Laid up on a cot.") : `Lying where they fell, ${d.why ?? "down"}.`;
   return {
     down: true,
     ...(d.carriedBy ? { carried: d.carriedBy } : {}),

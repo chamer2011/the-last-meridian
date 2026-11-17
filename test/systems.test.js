@@ -261,6 +261,10 @@ test("air that stops goes bad over minutes, hurts the player, keeps them from re
   standIn(game, "meridian", "mess");
   const hp = game.hp;
   sys.applySystemsEffect(game, parseEffect("air off").do.systems);
+  // With her air plant stopped the ship breathes her reserve air first, five days of it (test/no-air.test.js): here
+  // it's already used up, so the rooms' air goes at once.
+  assert.equal(sys.airFlows(game, "meridian", "mess"), true);
+  game.systems.meridian.reserve = 5 * 24 * 60;
   assert.equal(sys.airFlows(game, "meridian", "mess"), false);
   const notes = [];
   for (let i = 0; i < 6; i += 1) notes.push(...passTime(game, 5 / 60));

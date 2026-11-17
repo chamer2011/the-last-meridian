@@ -109,6 +109,9 @@ test("a cut junction box is fixed with a parts crate from the parts lockers, whi
   const wants = model.wants;
   model.wants = wants.filter((one) => one.store !== "parts_lockers");
   try {
+    // A few hours first: this box feeds the air plant, so while it was cut nobody aboard had air, and breaking it
+    // again before they've got their breath back would have the engineers pass out at their work (test/no-air.test.js).
+    passTime(game, 4);
     take(game, "parts_lockers", "parts_crate", 6);
     sys.damagePart(game, "meridian", box.id, "broken", { by: "story" });
     passTime(game, game.systems.meridian.parts[box.id].fixAt - game.clock.hours - 0.8);
@@ -122,15 +125,17 @@ test("a cut junction box is fixed with a parts crate from the parts lockers, whi
 
 test("with no parts in the stores a repair waits, says so once, and is done within the hour after a crate comes", () => {
   const game = newGame();
-  // Nothing wears out by itself here, so the junction box is all that's broken.
+  // Nothing wears out by itself here, so the junction box is all that's broken. The bridge's own box, and not the main
+  // bus in Engineering: that one feeds the air plant, and a day without it is a day nobody aboard lives through
+  // (test/no-air.test.js).
   game.wearDay = Infinity;
-  const box = partNamed("junction box", "engineering");
+  const box = partNamed("junction box", "bridge");
   takeAboard(game, "meridian", "parts_crate", 999);
   sys.damagePart(game, "meridian", box.id, "broken", { by: "story" });
   const first = said(passTime(game, 2.1));
-  assert.deepEqual(first, ["[SYSTEMS] Marrow can't fix the junction box in Engineering: there isn't a parts crate in the stores."]);
+  assert.deepEqual(first, ["[SYSTEMS] Marrow can't fix the junction box in The Bridge: there isn't a parts crate in the stores."]);
   assert.match(sys.lookAt(game, "meridian", box), /Marrow can't fix it until there's a parts crate in the stores\.$/);
-  assert.deepEqual(publicState(game).ship.repairs.waiting, ["the junction box in Engineering"]);
+  assert.deepEqual(publicState(game).ship.repairs.waiting, ["the junction box in The Bridge"]);
   assert.deepEqual(said(passTime(game, 24)), [], "nothing said twice, and still broken");
   assert.equal(game.systems.meridian.parts[box.id].damage, "broken");
   // Reading it changes nothing.
@@ -143,8 +148,9 @@ test("with no parts in the stores a repair waits, says so once, and is done with
   assert.ok(game.systems.meridian.parts[box.id].fixAt - game.clock.hours <= 1, "an engineer's on it");
   assert.deepEqual(publicState(game).ship.repairs.waiting, []);
   // The work board looks every five minutes, so the hour can run a few minutes over.
-  assert.deepEqual(said(passTime(game, 1.1)), ["[SYSTEMS] Marrow has fixed the junction box in Engineering, with a parts crate from the parts lockers."]);
+  assert.deepEqual(said(passTime(game, 1.1)), ["[SYSTEMS] Marrow has fixed the junction box in The Bridge, with a parts crate from the parts lockers."]);
   assert.equal(parts(game), 0);
+  assert.equal(game.dead, undefined, "and with the bridge dark and airless for a day, everyone simply kept out of it");
 });
 
 test("a forced door takes a parts crate too, while a sealed vent or a covered lens takes nothing", () => {

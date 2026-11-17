@@ -113,7 +113,7 @@ test("the generator burns a cell every eight hours from the rack, starting with 
   assert.equal(powerSupply(game, "meridian"), 100);
 });
 
-test("with no cells left anywhere the generator stops, the ship goes dark and airless, the galley waits, and a cell brings it all back", () => {
+test("with no cells left anywhere the generator stops, the ship goes dark and onto her reserve air, the galley waits, and a cell brings it all back", () => {
   const game = newGame();
   // Nothing comes aboard while this runs, whatever the file's refills say.
   const model = logisticsOf("meridian");
@@ -135,7 +135,11 @@ function noCells(game) {
   assert.equal(powerSupply(game, "meridian"), 0);
   assert.equal(sys.roomPowered(game, "meridian", "galley"), false);
   assert.equal(sys.roomDark(game, "meridian", "galley"), true);
-  assert.equal(sys.airFlows(game, "meridian", "galley"), false);
+  // The air plant has no power either, so she's on her reserve air: five days of it, and only then airless
+  // (test/no-air.test.js).
+  assert.equal(sys.airFlows(game, "meridian", "galley"), true);
+  assert.ok(sys.reserveLeft(game, "meridian") > 4 * 1440 && sys.reserveLeft(game, "meridian") < 5 * 1440, `${sys.reserveLeft(game, "meridian")} minutes of reserve air left`);
+  assert.match(sys.lookAt(game, "meridian", part("air")), /The reserve air stands at 4 days and \d+ hours\.$/);
   assert.equal(sys.watched(game, "meridian", "bridge"), false);
   assert.match(sys.jumpBlocked(game), /engines are down/);
   assert.match(sys.powerNote(game, "meridian"), /^No power: the generator's stopped\./);

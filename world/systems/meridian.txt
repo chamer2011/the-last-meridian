@@ -4,6 +4,7 @@ guards: the chief of security, the guards
 engineers: the chief engineer, the techs
 alarm rings: 20
 air goes bad: 25
+reserve air: 5
 repairs take: 2
 a part wears out every: 10
 

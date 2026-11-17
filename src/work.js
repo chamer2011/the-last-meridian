@@ -67,7 +67,7 @@ import { downAt, downRecord, medbayCalled, medbayHands, medbayOf, medbayRows, me
 import { workshopHands, workshopRows, workshopWork } from "./workshop.js";
 import { addOrder, addRoomActs, detourExtras } from "./room-hooks.js";
 import { passTime } from "./rules.js";
-import { alarmWork, anyWaitingForParts, dutyDetour, engineersOf, finishRepair, holdRepair, partsWaitingRefs, repairNow, repairsDue, repairsWaiting, waitingForParts } from "./systems.js";
+import { airMoves, alarmWork, anyWaitingForParts, dutyDetour, engineersOf, finishRepair, holdRepair, partsWaitingRefs, repairNow, repairsDue, repairsWaiting, waitingForParts } from "./systems.js";
 import { worthOf } from "./worth.js";
 import { notePut, putsOf } from "./puts.js";
 import { recordFact } from "./record.js";
@@ -1155,6 +1155,10 @@ export function runBoard(game, place, model, state, t, chunk, notes = null) {
     const lines = burnOn(game, (t + chunk) / 60, place);
     if (notes) notes.push(...lines);
   }
+  // The place's air moves on with the board's clock too, a piece at a time, so that through a long wait it follows the
+  // generator and the repairs as they went, and whoever can't breathe is counted by the minute (src/systems.js).
+  const aired = airMoves(game, place, (t + chunk) / 60, { since: hours, fine: true });
+  if (notes && aired.length) notes.push(...aired);
   let troubles = burning ? troublesAt(game, place) : [];
   if (!jobs.length && !model.wants.length && !systems && !troubles.length) {
     settleWaiting(state, ctx);

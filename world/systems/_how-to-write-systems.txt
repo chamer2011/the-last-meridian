@@ -68,6 +68,8 @@ The first line is the place's name. Then, all of them can be left out:
                     stays broken until the player fixes it.
     alarm rings     How many minutes the alarm rings before it stops by itself.
     air goes bad    How many minutes a room's air takes to go bad once it stops moving.
+    reserve air     How many days of reserve air the place has to breathe while its air plant is
+                    stopped (see WITHOUT AIR, below). Left out, it has none.
     repairs take    How many hours the engineers take to fix something.
     a part wears out every
                     How many days, on average, before something wears out by itself: a junction
@@ -210,3 +212,33 @@ and a part can change them:
 What the story changes stays changed until the story changes it back. What the player switches off
 at someone else's place is switched back by its people after a while, and what they break is fixed
 by its engineers.
+
+WITHOUT AIR
+-----------
+
+Everyone gets out of a room whose air has gone bad, to the nearest room with good air. Whoever
+can't (someone lying there, or everyone once the place has no good air left anywhere) passes out
+after a couple of hours of it and dies an hour or two later, unless they're carried out or the air
+comes back: the times are two lines at the top of world/health/wounds.txt, and
+world/health/_how-to-write-health.txt explains them under "Without air". So what a place can't
+breathe without is its air plant, the junction box that feeds the air plant's room, and on the
+Meridian the generator.
+
+    reserve air: 5
+
+at the top of a place's file, with the other numbers, gives it reserve air for that many days. While
+its air plant is stopped, for whatever reason, the reserve reaches every room whose own vent hasn't
+been shut or broken, power or none, and the rooms' air stays good. The story says when the reserve
+starts being breathed, when a day of it is left and when it's gone, and a look at the air plant
+says how much is left. Once the plant runs again it fills back up within a day (the "reserve air
+fills in" hours in _defaults.json). Only the Meridian's file has the line: five days, which is
+longer than a distress call takes to bring fuel cells to a ship with none. A place without the line
+has no reserve, and its air goes as soon as its plant stops.
+
+Two more things soften it. At a place that isn't the player's own to run, its people put back whatever
+the air needs within the hour once a room's air has gone bad (the "switched back for air" number
+in _defaults.json), where anything else switched off waits its six hours. And an air plant, or the
+junction box that feeds it, never wears out by itself while the place has no spare aboard to mend
+it with: the engineers nurse it along, so that a ship with empty parts lockers isn't lost to one
+burnt-out breaker in the middle of a long wait. A fire, a fight or the player's own hand can still
+break either.

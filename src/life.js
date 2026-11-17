@@ -172,20 +172,15 @@ function planAt(entry, hours) {
   return { key: `${entry.dayTag ? `${entry.dayTag}:` : ""}${startDay}.${index}.${stop}`, block, where };
 }
 
-// The room a plan sends someone to, so the place's systems can turn them aside: the guards to the alarm, an engineer
-// to a repair, anyone headed into bad air somewhere better. detour comes from src/systems.js, and is null when
-// nothing's going on.
-function levelOfPlan(map, file, entry, plan) {
-  const where = plan.where;
-  if (!where) return null;
-  if (where === "post") return postOf(map, entry.home ?? entry.id)?.level ?? null;
-  if (/^[@>]/.test(where)) return where.slice(1);
-  return file.spots[where]?.level ?? file.groups[where]?.[0]?.level ?? null;
-}
+// The place's systems can turn someone aside from the room their plan sends them to: the guards to the alarm, an
+// engineer to a repair, anyone headed into bad air somewhere better. detour comes from src/systems.js, and is null
+// when nothing's going on. It's asked about the room itself, the one drawn on a deck where the place is decks: until
+// 2026-11-16 it was asked about the deck for anyone headed to a spot (a bench, a bunk, a console), which is nearly
+// everyone aboard, and a deck has no air of its own, so they stayed in a room whose air had gone.
 function planFor(map, file, entry, hours, detour) {
   const plan = planAt(entry, hours);
   if (!detour) return plan;
-  const turn = detour(entry.key, levelOfPlan(map, file, entry, plan), Boolean(plan.block.asleep));
+  const turn = detour(entry.key, roomOfPlan(map, file, entry, plan), Boolean(plan.block.asleep));
   // A detour names a room, or a spot the file knows, such as the square beside one of the ship's stores.
   // A detour can also name a square itself, such as where someone fell, and lay them down there.
   const known = turn && (turn.spot ?? (/^[@>]/.test(turn.where) ? roomOf(map, turn.where.slice(1)) : file.spots[turn.where] ?? file.groups[turn.where]));
@@ -356,6 +351,24 @@ export function whoIsIn(game, place, roomId, hours) {
     if (roomOfPlan(map, file, entry, plan) === roomId) names.push(entry.name ?? entry.id);
   }
   return names;
+}
+
+// The room everyone's day has them in at a time, by the key their day knows them by, with whether they're asleep: for
+// what happens to people wherever they are, such as air they can't breathe (src/no-air.js). Not the dead, nobody who's
+// away, and nobody whose day names nowhere just then. Looking changes nothing.
+export function roomsByDay(game, place, hours) {
+  const file = lifeFileFor(place);
+  const map = mapFor(place);
+  const out = new Map();
+  if (!file || !map) return out;
+  for (const entry of rosterFor(game, place)) {
+    if (entry.id && !atPost(game, entry.id)) continue;
+    const plan = planAt(entry, hours);
+    if (plan.block.dead) continue;
+    const room = roomOfPlan(map, file, entry, plan);
+    if (room) out.set(entry.key, { room, asleep: Boolean(plan.block.asleep) });
+  }
+  return out;
 }
 
 const homeOf = (map, id) => Object.values(map.levels).flatMap((level) => level.homes).find((home) => home.id === id);

@@ -193,13 +193,13 @@ export function hasADayAt(place, who) {
 }
 
 // Someone falls where they stand: at a spot, for so many hours at least (a beating), and longer while they can't get up.
-export function fallDown(game, { who, place, level, x, y, why, hours = 0 }) {
+export function fallDown(game, { who, place, level, x, y, why, hours = 0, stain = true }) {
   const key = keyAt(place, who);
   if (!key || key === YOU || game.down?.[key]) return false;
   game.down ??= {};
   game.down[key] = { who, place, level, x, y, since: nowOf(game), until: nowOf(game) + hours, why };
-  // A stain where they fell, which the crew clean up in the days after (src/wear.js).
-  addMark(game, place, { kind: "fallen", level, x, y });
+  // A stain where they fell, which the crew clean up in the days after (src/wear.js): not for someone who only fainted.
+  if (stain) addMark(game, place, { kind: "fallen", level, x, y });
   const state = stateOf(game, place, who);
   if (state) Object.assign(state, { level, x, y, path: null, goal: { level, x, y }, task: null });
   return true;
@@ -739,7 +739,7 @@ export function medbayView(game, place) {
       who: nameOf(game, d),
       worst: worst?.words ?? "resting",
       since: hours < 1 ? "just brought in" : hours < 24 ? `${Math.floor(hours)} hour${Math.floor(hours) === 1 ? "" : "s"}` : `${Math.floor(hours / 24)} day${Math.floor(hours / 24) === 1 ? "" : "s"}`,
-      state: job ? `being treated by ${medicName(game, place, job.by)}` : waiting.length ? `waiting for treatment (${waiting.length})` : restingFrom(game, key, medbay.rest) ? "resting" : "getting up soon",
+      state: job ? `being treated by ${medicName(game, place, job.by)}` : waiting.length ? `waiting for treatment (${waiting.length})` : cantGetUp(game, key) === "out cold" ? "out cold" : restingFrom(game, key, medbay.rest) ? "resting" : "getting up soon",
     };
   };
   const here = downAt(game, place).filter(([, d]) => d.bed && !d.going);
@@ -926,6 +926,17 @@ function lyingAt(place, d) {
     return room?.start ? { level: room.levelId, x: room.start.x, y: room.start.y } : null;
   }
   return map.levels[d.level] ? { level: d.level, x: d.x, y: d.y } : null;
+}
+// The room someone down is lying in, by its id: their cot's, the floor they were laid on, or where they fell. Null
+// while they're being carried or making their own way somewhere, and when there's no telling (src/no-air.js asks, for
+// whether they can breathe there).
+export function lyingRoom(place, d) {
+  if (d.carriedBy || d.going) return null;
+  if (d.bed?.startsWith("@")) return d.bed.slice(1);
+  const at = lyingAt(place, d);
+  const level = at ? mapFor(place)?.levels[at.level] : null;
+  if (!level) return null;
+  return level.areas?.length ? level.roomAt(at.x, at.y) : level.id;
 }
 // Whoever's down at a place with no day there, such as a mutineer beaten in a battle (src/aftermath.js): the life engine
 // doesn't walk them, so they're drawn where their record says, on their cot, or with whoever's carrying them. Someone

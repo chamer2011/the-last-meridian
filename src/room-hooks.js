@@ -22,6 +22,7 @@ const stocks = [];
 const detours = [];
 const fighters = [];
 const spoilers = [];
+const breathers = [];
 const holds = [];
 
 // (game, entry, key) => the acts for someone, or nothing. entry is the room's own entry for them, key their key there.
@@ -74,6 +75,11 @@ export function detourExtras(game, place) {
 // (game, place, room) => true while something spoils a room's air whatever its vents are doing: a fire, a hole.
 export const addAirSpoiler = (fn) => { spoilers.push(fn); };
 export const airSpoiled = (game, place, room) => spoilers.some((fn) => fn(game, place, room));
+
+// (game, place, minutes, hours) => lines for the story, each time a place's air has moved on by so many minutes, up to
+// an hour of the clock: what breathing it, or not being able to, does to the people there (src/no-air.js).
+export const addAirWork = (fn) => { breathers.push(fn); };
+export const airExtras = (game, place, minutes, hours) => (breathers.length ? gathered(breathers, game, place, minutes, hours) : []);
 
 // (game, place, room) => a line more for a room's description, or nothing: who's held in the brig (src/aftermath.js).
 export const addRoomNote = (fn) => { notes.push(fn); };

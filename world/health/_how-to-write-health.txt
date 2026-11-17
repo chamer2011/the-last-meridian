@@ -68,6 +68,23 @@ Living with wounds (step 3 of the health plan), the lines at the top that say:
     losing a limb to rot: the doctor takes it after 3 days gone bad
     artificial limbs from before: 1 in 60 have one, 1 in 25 in rough work
     illness when hungry: twice as likely on half rations, half again as likely on reduced
+    without air: out cold after 2 to 3 hours of bad air, dead 1 to 2 hours after that
+    back in good air: comes round after 10 minutes, and gets their breath back twice as fast as they lost it
+Without air (2026-11-16): everyone gets out of a room whose air has gone bad, if there's anywhere with good air to get
+to. Whoever can't is without air: someone lying where they fell in such a room, and everyone at a place once no room
+of it has good air left (a ship with no power, or with her air plant stopped, once her reserve air is used up: see
+world/systems/_how-to-write-systems.txt). Each minute of it is counted. After the
+first time on the "without air" line they pass out where they are, and after the second, still without air, they die
+of it: each person has their own two times, somewhere between the two numbers, and keeps them all game. One number in
+place of two ("after 2 hours") gives everyone the same, and minutes work as well as hours. Carried somewhere they can
+breathe, or once the air's back, someone out cold comes round after the "back in good air" line's minutes, and the
+time they went without is made up that many times as fast as it went. Not counted while there's good air somewhere:
+whoever's in a room without it on work the ship's work board or the medbay sent them to (an engineer at a fire works
+in a mask), and whoever the medics have laid on a cot (there are masks at the cots). Never counted: the player, whose
+health stops at 1 in bad air, for now. Aboard the Meridian the people on the register go the same way, by the quarters they sleep
+in. The wound that says someone has passed out is the line under Wounds whose rule is "out cold until they can
+breathe": add "; not for: synthetic" to it and no synthetic ever passes out or dies for want of air; take the line
+out and nobody does.
 Losing a limb (step 7 of the health plan): a hard hit on an arm or a leg that already has a broken bone on it takes it
 that often (the lost line for the arm or the leg), and a wound gone bad on a limb that's still bad after those days is
 treated by taking the limb. Artificial limbs from before: how many people the game makes up with an artificial arm or
@@ -122,6 +139,7 @@ The rules:
                                     once treated, since nothing treats anyone yet
     never heals
     out cold for 1 to 4 hours       and gone after that many hours
+    out cold until they can breathe the wound of someone who's passed out for want of air (see Without air, above)
     checks one step harder
     in a fight: attack -2           this much off their attack in a fight, the player's and anyone's
     can go bad                      left undressed long enough, it goes bad (see the infected line)

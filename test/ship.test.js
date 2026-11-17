@@ -68,6 +68,11 @@ function withoutSources(run) {
     model.refills = refills;
   }
 }
+// The cell in the generator lasts the whole test. A ship with no power runs out of air once her reserve is gone, and
+// nobody aboard outlives that (test/no-air.test.js), where a test that keeps her hungry for weeks is about hunger.
+function keepPower(game) {
+  game.logistics[SHIP_ID].machines.generator = { progress: 0, made: 0, waiting: null, burning: 1e9 };
+}
 
 // ---- The ship -----------------------------------------------------------
 
@@ -227,6 +232,7 @@ test("with parts aboard the engineers mend the hull, and without them it wears",
 
 test("no medicine: health falls, wounds heal slower, and people aboard start dying", () => {
   const game = newGame();
+  keepPower(game);
   empty(game, "medicine");
   const before = game.ship.aboard;
   // The shortage is counted at midnight, and from then on wounds heal at half speed.

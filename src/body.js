@@ -93,7 +93,11 @@ function roughWork(work) {
 }
 
 // Read again after a file changes.
+// How many times the health files have been read again: whatever's worked out from them elsewhere is kept by this.
+let readings = 0;
+export const healthReadings = () => readings;
 export function clearBodies() {
+  readings += 1;
   roughJobs.clear();
   kinds = null;
   starts = null;
@@ -370,6 +374,8 @@ function speciesOfKey(game, key) {
 // How many hours a wound of a kind lasts left to itself, at the usual pace: its days untreated, or the file's "left alone"
 // times its treated days for one that only heals once treated, or the hours it keeps them out cold.
 function hoursOf(kind, roll) {
+  // Out cold for want of air lasts until they can breathe again, which is the air's to say (src/no-air.js).
+  if (kind.out === "air") return null;
   if (kind.out) return kind.out[0] + Math.floor(roll() * (kind.out[1] - kind.out[0] + 1));
   if (kind.never) return null;
   const days = kind.heals ?? (kind.treated ? kind.treated * careNow()["left alone"].factor : null);
@@ -690,6 +696,47 @@ export function beatenFor(roll = Math.random) {
 export function bleedingOf(game, key) {
   const rate = woundsNow(game, key).filter(bleedingNow).reduce((sum, wound) => sum + (rulesOfWound(wound).bleeds ?? 0), 0);
   return rate ? { blood: Math.round(bloodOf(game, key)), rate } : null;
+}
+
+// ---- Want of air (src/no-air.js) --------------------------------------------------------------------
+
+// The wound the wounds file gives someone who's passed out for want of air: the line whose rule is "out cold until they
+// can breathe". Null when the file has no such line, and then nobody passes out or dies of it.
+const airKind = () => kindsNow().all.find((kind) => kind.section === "wound" && kind.out === "air") ?? null;
+// Whether a species passes out for want of air: every one of them, unless that line says it isn't for them.
+export function speciesNeedsAir(species) {
+  const kind = airKind();
+  return Boolean(kind) && fitsBody(kind, species);
+}
+// The same for someone by the key their body is kept by.
+export const needsAir = (game, key) => speciesNeedsAir(speciesOfKey(game, key));
+// How long someone lasts in bad air they can't get out of, in minutes: until they pass out, and from then until it
+// kills them. Each their own, somewhere between the file's two times, and the same all game. who is anything that
+// names one person, a body key or a place on the register.
+export function airTimes(game, who) {
+  const { out, dead } = careNow()["without air"];
+  const roll = seeded(`${game.bodySeed ?? 1}|${who}|air`);
+  return { out: out[0] + roll() * (out[1] - out[0]), dead: dead[0] + roll() * (dead[1] - dead[0]) };
+}
+// The file's line for once they can breathe again: the minutes someone out cold takes to come round, and how many
+// times as fast as it was lost their breath comes back.
+export const backInAir = () => careNow()["back in good air"];
+// The wound that says someone's out cold for want of air now, or null.
+export const outForAir = (game, key) => storeOf(game, key).find((wound) => lasts(wound, nowOf(game)) && rulesOfWound(wound).out === "air") ?? null;
+// They pass out, at a time: the wound is theirs until they can breathe again. False if they already had, or can't.
+export function passOut(game, key, at = nowOf(game)) {
+  const kind = airKind();
+  if (!kind || outForAir(game, key) || !needsAir(game, key)) return false;
+  addWounds(game, key, [newWound(kind, kind.parts[0])], at);
+  return true;
+}
+// Someone out cold for want of air can breathe again from a time, and comes round a little after it; or can't after
+// all, and stays out.
+export function breathing(game, key, can, at = nowOf(game)) {
+  const wound = outForAir(game, key);
+  if (!wound) return;
+  if (!can) wound.until = null;
+  else if (wound.until === null || wound.until === undefined) wound.until = at + backInAir().minutes / 60;
 }
 
 // The same, from a fighter's wounds alone: a wound on a leg is a limp.

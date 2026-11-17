@@ -449,7 +449,7 @@ function systemsGraph() {
   const add = (node) => { list.push(node); return node.id; };
   const numbers = P.numbers ?? {};
   const names = (keys) => keys.map((key) => (L.people ?? []).find((one) => one.key === key)?.name ?? key).join(", ") || "nobody";
-  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${L.own ? "Its own file." : "No file of its own yet: this is what it gets by default, and Save makes it its own."} Guards: ${names(L.guards ?? [])}. Engineers: ${names(L.engineers ?? [])}.${numbers.alarm ? ` The alarm rings ${numbers.alarm} minutes.` : ""}${numbers.air ? ` Air goes bad in ${numbers.air} minutes.` : ""}${numbers.repair ? ` Repairs take ${numbers.repair} hours.` : ""}`, label: "Who keeps it running" });
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${L.own ? "Its own file." : "No file of its own yet: this is what it gets by default, and Save makes it its own."} Guards: ${names(L.guards ?? [])}. Engineers: ${names(L.engineers ?? [])}.${numbers.alarm ? ` The alarm rings ${numbers.alarm} minutes.` : ""}${numbers.air ? ` Air goes bad in ${numbers.air} minutes.` : ""}${numbers.repair ? ` Repairs take ${numbers.repair} hours.` : ""}${numbers.reserve ? ` Reserve air for ${numbers.reserve} days.` : ""}`, label: "Who keeps it running" });
   (P.systems ?? []).forEach((system, i) => add({ id: `system${i}`, kind: KNOWN_SYSTEMS.includes(system.id) ? "beat" : "route", col: 1, name: system.name, text: system.lines.map((one) => one.text ?? one).join("\n") || "no parts yet", label: KNOWN_SYSTEMS.includes(system.id) ? "A system" : "A system of the place's own", bind: { system: i } }));
   (P.computers ?? []).forEach((one, i) => {
     const text = one.text ?? one;
@@ -1423,13 +1423,13 @@ function inspectSystemsAbout(inspector) {
   };
   const guards = choose("guards", "Guards: who come when the alarm rings");
   const engineers = choose("engineers", "Engineers: who fix what's broken");
-  const numbers = [["alarm", "alarm rings, in minutes"], ["air", "air goes bad, in minutes"], ["repair", "repairs take, in hours"]].map(([key, label]) => ({ key, box: numberBox(`edit-${key}`, P.numbers?.[key] ?? ""), label }));
+  const numbers = [["alarm", "alarm rings, in minutes"], ["air", "air goes bad, in minutes"], ["reserve", "reserve air, in days, for when the air plant is stopped"], ["repair", "repairs take, in hours"], ["wear", "a part wears out every so many days"]].map(([key, label]) => ({ key, box: numberBox(`edit-${key}`, P.numbers?.[key] ?? ""), label }));
   fill(inspector, h2("Who keeps it running"),
     el("label", { for: "edit-title" }, "The place's name"), name,
     el("label", { for: "edit-draft" }, "Who wrote it (the game doesn't read this)"), draft,
     guards.node, engineers.node,
     ...numbers.map(({ box, label }) => row(el("label", { for: box.id }, label), box)),
-    hint("Leave a number empty to use the one every place starts from, in world/systems/_defaults.json."),
+    hint("Leave a number empty to use the one every place starts from, in world/systems/_defaults.json: no reserve air, and nothing wearing out."),
     row(button("Keep", () => {
       P.name = name.value.trim() || P.name;
       if (draft.value.trim()) P.draft = draft.value.trim();

@@ -25,7 +25,7 @@ import { changeStanding, changeStress, hoursNow } from "./rules.js";
 import { holderOf } from "./daily.js";
 import { atPost, mapFor, roomOf, roomsOf, roomsOn, thingsIn } from "./walk.js";
 import { notePut } from "./puts.js";
-import { airSpoiled, partExtras } from "./room-hooks.js";
+import { addClockWork, airExtras, airSpoiled, partExtras } from "./room-hooks.js";
 import { SYSTEMS_DEFAULTS, SYSTEMS_FILE_PROBLEMS, WORLD_CHARACTERS, WORLD_COMPUTERS, WORLD_LIFE, WORLD_SYSTEMS } from "./world.js";
 import { KNOWN_SYSTEMS, SYSTEM_TITLES, readComputerLine, readDoorLine, readLocksLine, readPartLine, slugOf } from "../public/systems-text.js";
 import { FURNITURE_BY_ID } from "../public/furniture.js";
@@ -74,6 +74,9 @@ function numbersOf(file) {
     alarm: pick(file.numbers?.alarm, "alarm rings", 30),
     air: pick(file.numbers?.air, "air goes bad", 20),
     airBack: pick(null, "air comes back", 10),
+    // Reserve air, in days, for a place whose own file gives it some, and the hours it takes to fill again.
+    reserve: pick(file.numbers?.reserve, "reserve air", 0),
+    reserveFill: pick(null, "reserve air fills in", 24),
     repair: pick(file.numbers?.repair, "repairs take", 3),
     // How often something wears out by itself, in days; none unless the place's file says.
     wear: pick(file.numbers?.wear, "a part wears out every", 0),
@@ -670,7 +673,11 @@ function tidy(game, place) {
   for (const [room, q] of Object.entries(state.air)) if (q >= 100) delete state.air[room];
   if (!state.alarm.ringing && !state.alarm.disarmed) state.alarm = {};
   for (const key of Object.keys(state.noted)) if (state.air[key.split(":")[1]] === undefined) delete state.noted[key];
-  const empty = !Object.keys(state.parts).length && !Object.keys(state.doors).length && !Object.keys(state.air).length && !state.alarm.ringing && !state.alarm.disarmed && !state.cut;
+  // Who's gone short of air and by how much (src/no-air.js), and what the air did to the player that hasn't been said.
+  if (state.warned && !Object.keys(state.air).length) delete state.warned;
+  if (state.short && !Object.keys(state.short).length) delete state.short;
+  if (state.owed && !state.owed.stress && !state.owed.health) delete state.owed;
+  const empty = !Object.keys(state.parts).length && !Object.keys(state.doors).length && !Object.keys(state.air).length && !state.alarm.ringing && !state.alarm.disarmed && !state.cut && !state.short && !state.owed && !state.nowhere && !state.toll && !state.reserve;
   if (empty) delete game.systems[place];
   if (game.systems && !Object.keys(game.systems).length) delete game.systems;
 }
@@ -790,9 +797,33 @@ export function airFlows(game, place, room) {
   if (!hasSystem(model, "air")) return true;
   const all = partsOf(model, "air");
   const plants = all.filter((part) => part.kind === "air plant");
-  if (plants.length && !plants.some((part) => partWorks(game, place, part))) return false;
   const vents = all.filter((part) => part.kind !== "air plant" && part.room === room);
+  if (plants.length && !plants.some((part) => partWorks(game, place, part))) {
+    // The plant's stopped, or has no power. Where the place has reserve air, that reaches every room while there's
+    // any left, power or none, unless the room's own vent has been shut or broken.
+    if (reserveLeft(game, place) <= 0) return false;
+    return !vents.length || vents.some((part) => {
+      const s = partState(game, place, part.id);
+      return s.on !== false && !s.damage;
+    });
+  }
   return !vents.length || vents.some((part) => partWorks(game, place, part));
+}
+// Whether a place's air plant is stopped: switched off, broken, or with no power to run on. Not at a place without one.
+function plantStopped(game, place, model = systemsOf(place)) {
+  const plants = partsOf(model, "air").filter((part) => part.kind === "air plant");
+  return plants.length > 0 && !plants.some((part) => partWorks(game, place, part));
+}
+// A place's reserve air, in minutes: how much it has in all, and how much is left. Nothing where its file gives none.
+const reserveAll = (place) => (systemsOf(place)?.numbers.reserve ?? 0) * 24 * 60;
+export const reserveLeft = (game, place) => Math.max(0, reserveAll(place) - (game.systems?.[place]?.reserve ?? 0));
+// The reserve in words, for a line and for a look at the air plant: "4 days and 6 hours", "9 hours", "40 minutes".
+function reserveWords(minutes) {
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes - days * 1440) / 60);
+  if (days) return `${days} day${days === 1 ? "" : "s"}${hours ? ` and ${hours} hour${hours === 1 ? "" : "s"}` : ""}`;
+  if (hours) return `${hours} hour${hours === 1 ? "" : "s"}`;
+  return `${Math.max(1, Math.round(minutes))} minutes`;
 }
 export const airIn = (game, place, room) => game.systems?.[place]?.air?.[room] ?? 100;
 
@@ -900,7 +931,19 @@ export function switchPart(game, place, id, on, { by = "player" } = {}) {
     if (back) s.backAt = back;
     else delete s.backAt;
   }
-  return settleChange(game, place);
+  const lines = settleChange(game, place);
+  // The player's own hand stopping the air of a place that's theirs to run is said plainly, once: nobody there will
+  // put it back for them, and people die without it (src/no-air.js).
+  if (!on && by === "player" && ownedBy(game, place)) {
+    const plants = partsOf(model, "air").filter((part) => part.kind === "air plant");
+    const stopped = plants.length > 0 && !plants.some((part) => partWorks(game, place, part));
+    if (stopped && !state.warned) {
+      state.warned = true;
+      const reserve = reserveLeft(game, place);
+      lines.push(`[AIR] That stops the air for the whole ship. ${reserve > 0 ? `She has reserve air for ${reserveWords(reserve)}; after that nobody` : "Nobody"} aboard lasts more than a few hours without it, and nobody will start it again but you.`);
+    }
+  }
+  return lines;
 }
 
 // How long the engineers take to fix something: the place's hours, quicker or slower by the best of them at engineering.
@@ -1243,8 +1286,6 @@ export function advanceSystems(game) {
       delete game.systems[place];
       continue;
     }
-    const minutes = Math.max(0, (t - (state.at ?? t)) * 60);
-    state.at = t;
     const here = place === game.location;
     const say = (...text) => { if (here) lines.push(...text); };
     // Where a work board gives the repairs out, it finishes them too, when its engineer's hour is up (src/work.js).
@@ -1311,26 +1352,195 @@ export function advanceSystems(game) {
     // The alarm stops by itself after a while, or as soon as nothing can ring it.
     const ringing = state.alarm.ringing;
     if (ringing && (!alarmCanRing(game, place) || t - ringing.since >= model.numbers.alarm / 60)) say(...silenceAlarm(game, place, { quiet: !here }));
-    if (game.systems?.[place] && minutes > 0 && hasSystem(model, "air")) say(...driftAir(game, model, game.systems[place], minutes, here));
+    // The air moves on to now. Where a work board runs the place, the board's own clock moves the air through anything
+    // longer than a few minutes, a piece at a time (src/work.js), so that over a long wait the air follows the generator
+    // and the repairs as they went, and not as they stood when the wait began.
+    const lag = (t - (game.systems?.[place]?.at ?? t)) * 60;
+    if (game.systems?.[place] && !(boardRuns(place) && lag > FINE_AIR)) lines.push(...airMoves(game, place, t));
     tidy(game, place);
   }
   return lines;
 }
 
-// Each room's air moves toward good while it's flowing and toward bad while it isn't. The player feels it.
-function driftAir(game, model, state, minutes, here) {
+// ---- The air moving ----------------------------------------------------------------------------------
+
+// The longest stretch, in minutes, the air is moved through in one go at a place with a work board.
+const FINE_AIR = 5;
+const NO_LINES = Object.freeze([]);
+
+// Whether anything at a place could have its air doing anything but sitting good: a room whose air isn't whole, someone
+// who's gone short of it, no power for the air, a feed cut, or a part of the power or the air switched off or broken.
+// Asked for every few minutes of a long wait, so it looks at nothing it doesn't have to.
+function airTroubled(game, place, model, state) {
+  if (state.short || state.cut || state.nowhere || state.toll || state.reserve) return true;
+  for (const room in state.air) return true;
+  for (const id in state.parts) {
+    const system = model.parts[id]?.system;
+    if (system === "air" || system === "power") return true;
+  }
+  return starved(game, place, "air");
+}
+
+// A place's air moves on to a time, from wherever it had got to, and whoever breathes it feels it (src/no-air.js,
+// through src/room-hooks.js). Called as the clock moves (advanceSystems), and by a place's work board for every piece
+// of its own clock, with fine, so that a long wait is gone through a few minutes at a time; since is when that piece
+// began, for a place nothing was wrong with until its power went. It returns lines for the story.
+export function airMoves(game, place, until = hoursNow(game), { since = null, fine = false } = {}) {
+  const model = systemsOf(place);
+  if (!model || !hasSystem(model, "air")) return NO_LINES;
+  let state = game.systems?.[place] ?? null;
+  if (!state) {
+    // Nothing's switched, cut or broken here, so the air's moving everywhere unless there's no power for it.
+    if (!starved(game, place, "air")) return NO_LINES;
+    state = stateOf(game, place, true);
+    state.at = Math.min(since ?? until, until);
+  }
+  const minutes = (until - (state.at ?? until)) * 60;
+  if (!(minutes > 1e-9)) return NO_LINES;
+  state.at = until;
+  if (!airTroubled(game, place, model, state)) return NO_LINES;
+  const here = place === game.location;
   const lines = [];
+  const kept = flowsNow(game, place, model, state);
+  lines.push(...drawReserve(game, place, model, state, minutes, kept.stopped));
+  const bad = new Map();
+  const settled = driftAir(game, model, state, minutes, kept, bad);
+  if (here) lines.push(...airOnPlayer(game, model, state, minutes, fine));
+  // Nobody sits and smothers beside a switch: at a place that isn't the player's own to run, its people put back
+  // whatever's been switched off that the air needs, soon after the air's gone bad anywhere.
+  if (bad.size && !ownedBy(game, place)) {
+    const soon = until + (D().numbers?.["switched back for air"] ?? 1);
+    for (const id in state.parts) {
+      const s = state.parts[id];
+      if (s.backAt > soon && ["air", "power"].includes(model.parts[id]?.system)) s.backAt = soon;
+    }
+    if (state.cut) for (const room in state.cut) if (state.cut[room].backAt > soon) state.cut[room].backAt = soon;
+  }
+  // The rooms whose air was bad with nowhere better to get to from them: worked out once while nothing changes.
+  let trapped = settled ? kept.steady.trapped : null;
+  if (!trapped) {
+    const way = wayToGoodAir(game, place);
+    trapped = [...bad.keys()].filter((room) => !way(room));
+    if (settled) kept.steady.trapped = trapped;
+  }
+  lines.push(...airExtras(game, place, { minutes, until, bad, trapped }));
+  // Once every room's air has settled with some of it gone there's nothing to tidy away, and a long wait asks often.
+  if (!settled || !bad.size) tidy(game, place);
+  return lines;
+}
+
+// A place's reserve air is breathed while its air plant is stopped, and fills again once the plant runs. It says so
+// to the player when it starts, when a day of it is left and when it's gone, where they'd hear of it.
+function drawReserve(game, place, model, state, minutes, stopped) {
+  const all = reserveAll(place);
+  if (!all) return NO_LINES;
+  const used = state.reserve ?? 0;
+  const hears = place === game.location || ownedBy(game, place);
+  const where = place === "meridian" ? "The ship" : model.name;
+  if (!stopped) {
+    if (!used) return NO_LINES;
+    const left = Math.max(0, used - minutes * (all / (model.numbers.reserveFill * 60)));
+    if (left > 0) state.reserve = left;
+    else delete state.reserve;
+    return left <= 0 && hears ? [`[AIR] ${where}'s reserve air is full again.`] : NO_LINES;
+  }
+  if (used >= all) return NO_LINES;
+  const now = Math.min(all, used + minutes);
+  state.reserve = now;
+  if (!hears) return NO_LINES;
+  if (!used) return [`[AIR] The air plant has stopped. ${where} is breathing reserve air now: there's ${reserveWords(all)} of it, and after that nobody lasts more than a few hours.`];
+  if (now >= all) return [`[AIR] The reserve air has run out. With the air plant still stopped, the air's going everywhere.`];
+  if (used < all - 1440 && now >= all - 1440) return [`[AIR] A day of reserve air is left, and the air plant's still stopped.`];
+  return NO_LINES;
+}
+
+// What the air took from the player through a long wait, gone through a few minutes at a time, is said in a line each
+// once the wait's over, and forgotten.
+addClockWork((game) => {
+  const state = game.systems?.[game.location];
+  if (!state?.owed) return [];
+  const lines = owedLines(game, state);
+  tidy(game, game.location);
+  return lines;
+});
+function owedLines(game, state) {
+  const owed = state.owed;
+  delete state.owed;
+  const lines = [];
+  if (owed?.stress) lines.push(`[STRESS] +${owed.stress}: The thin air in ${owed.room}.`);
+  if (owed?.health) lines.push(`[HEALTH] -${owed.health}: The bad air in ${owed.room}.${game.hp === 1 ? " You're close to passing out." : ""}`);
+  return lines;
+}
+
+// Whether each room's vents are moving its air, by room: the same until the power, a part or a feed changes, so it's
+// kept until one does (a long wait asks every few minutes). What's kept with it, steady, is the rooms' air once it has
+// settled, which is forgotten with it.
+const flowsKept = new WeakMap();
+function flowsNow(game, place, model, state) {
+  // Everything the vents hang on: what the generator gives, whether the ship's under way (her engines draw then, and
+  // something else may be let go), each part that's off or broken, and each feed that's cut.
+  let sig = `${powerSupply(game, place)}|${place === "meridian" && game.ship?.underWay ? 1 : 0}|`;
+  for (const id in state.parts) {
+    const s = state.parts[id];
+    sig += `${id}${s.on === false ? "-" : "+"}${s.damage ? "x" : ""},`;
+  }
+  if (state.cut) for (const room in state.cut) sig += `/${room}`;
+  if (reserveLeft(game, place) > 0) sig += "|reserve";
+  let mine = flowsKept.get(game);
+  if (!mine) flowsKept.set(game, (mine = new Map()));
+  const kept = mine.get(place);
+  if (kept && kept.sig === sig && kept.model === model) return kept;
+  const made = { sig, model, flows: new Map(roomsOf(mapFor(place)).map((room) => [room.id, airFlows(game, place, room.id)])), stopped: plantStopped(game, place, model), steady: null };
+  mine.set(place, made);
+  return made;
+}
+
+// Each room's air moves toward good while it's flowing and toward bad while it isn't. bad is filled with how many of
+// these minutes each room's air was under the line where it's bad, for whoever was breathing it. It says whether
+// every room's air has settled, at good or at none, with nothing to change it but what the vents hang on: then it's
+// the same next time, and nothing's worked out again until something does change.
+function driftAir(game, model, state, minutes, kept, bad) {
   const place = model.place;
+  // The rooms' air as a count and a sum: enough to tell whether any of it has moved since it settled.
+  let n = 0;
+  let sum = 0;
+  for (const room in state.air) {
+    n += 1;
+    sum += state.air[room];
+  }
+  if (kept.steady && kept.steady.n === n && kept.steady.sum === sum) {
+    for (const room of kept.steady.bad) bad.set(room, minutes);
+    return true;
+  }
   const limits = airLimits();
+  const down = 100 / model.numbers.air;
+  const up = 100 / model.numbers.airBack;
+  let settled = true;
   for (const level of roomsOf(mapFor(place))) {
     const q = state.air[level.id] ?? 100;
     // A fire or a hole in the hull spoils a room's air whatever its vents are doing (src/room-hooks.js).
-    const flowing = airFlows(game, place, level.id) && !airSpoiled(game, place, level.id);
-    const next = flowing ? Math.min(100, q + (100 / model.numbers.airBack) * minutes) : Math.max(0, q - (100 / model.numbers.air) * minutes);
+    const moving = kept.flows.get(level.id);
+    const flowing = moving && !airSpoiled(game, place, level.id);
+    if (flowing !== moving) settled = false;
+    if (flowing && q >= 100) continue;
+    const next = flowing ? Math.min(100, q + up * minutes) : Math.max(0, q - down * minutes);
+    const under = flowing ? (q < limits.bad ? Math.min(minutes, (limits.bad - q) / up) : 0) : q < limits.bad ? minutes : Math.max(0, minutes - (q - limits.bad) / down);
+    if (under > 0) bad.set(level.id, under);
+    if (next !== q) settled = false;
     if (next >= 100) delete state.air[level.id];
     else state.air[level.id] = Math.round(next * 10) / 10;
   }
-  const spot = here ? playerSpot(game) : null;
+  kept.steady = settled ? { n, sum, bad: [...bad.keys()], trapped: null } : null;
+  return settled;
+}
+
+// What the air where the player's standing does to them, over so many minutes. With quiet, what it takes from them is
+// kept to be said later in one line, and not every ten minutes: a long wait is gone through a few minutes at a time.
+function airOnPlayer(game, model, state, minutes, quiet = false) {
+  const lines = [];
+  const place = model.place;
+  const limits = airLimits();
+  const spot = playerSpot(game);
   if (!spot) return lines;
   const q = state.air[spot.room] ?? 100;
   const name = roomNameOf(place, spot.room);
@@ -1357,12 +1567,16 @@ function driftAir(game, model, state, minutes, here) {
   state.harm -= ticks * 10;
   if (!ticks) return lines;
   const stress = limits.stress * ticks;
-  lines.push(...changeStress(game, stress), `[STRESS] +${stress}: The thin air in ${name}.`);
-  if (q < limits.bad) {
-    const was = game.hp;
-    game.hp = Math.max(1, game.hp - limits.health * ticks);
-    if (game.hp < was) lines.push(`[HEALTH] -${was - game.hp}: The bad air in ${name}.${game.hp === 1 ? " You're close to passing out." : ""}`);
+  const was = game.hp;
+  lines.push(...changeStress(game, stress));
+  if (q < limits.bad) game.hp = Math.max(1, game.hp - limits.health * ticks);
+  if (quiet) {
+    // Through a long wait it adds up, to be said in a line when the wait's over.
+    state.owed = { room: name, stress: (state.owed?.stress ?? 0) + stress, health: (state.owed?.health ?? 0) + (was - game.hp) };
+    return lines;
   }
+  lines.push(`[STRESS] +${stress}: The thin air in ${name}.`);
+  if (game.hp < was) lines.push(`[HEALTH] -${was - game.hp}: The bad air in ${name}.${game.hp === 1 ? " You're close to passing out." : ""}`);
   return lines;
 }
 
@@ -1432,6 +1646,69 @@ export function dutyDetour(game, place) {
   return called ? (key) => dutyTurn(game, place, called, key, t) : null;
 }
 
+// The nearest room with good air to get to from a room, by the ways between the rooms: null when there's none.
+function nearestGoodAir(map, state, limits, room) {
+  const seen = new Set([room]);
+  const queue = [room];
+  while (queue.length) {
+    const id = queue.shift();
+    if ((state.air[id] ?? 100) >= limits.thin && id !== room) return id;
+    for (const next of neighboursOf(map, id)) {
+      if (seen.has(next)) continue;
+      seen.add(next);
+      queue.push(next);
+    }
+  }
+  return null;
+}
+// Which rooms of a place can be walked between, as groups: each room's id with the number of its group. A place's
+// rooms never change while it's built, so this is worked out once for each map.
+const groupsKept = new WeakMap();
+function roomGroups(map) {
+  if (!groupsKept.has(map)) {
+    const group = new Map();
+    let n = 0;
+    for (const room of roomsOf(map)) {
+      if (group.has(room.id)) continue;
+      n += 1;
+      const queue = [room.id];
+      group.set(room.id, n);
+      while (queue.length) {
+        for (const next of neighboursOf(map, queue.shift())) {
+          if (group.has(next)) continue;
+          group.set(next, n);
+          queue.push(next);
+        }
+      }
+    }
+    groupsKept.set(map, group);
+  }
+  return groupsKept.get(map);
+}
+// Whether there's anywhere with good air to get to from a room of a place, for whoever's in it (src/no-air.js): some
+// other room it can be walked to from there whose air is good. Asked about one room after another at one moment.
+export function wayToGoodAir(game, place) {
+  const state = game.systems?.[place];
+  const map = mapFor(place);
+  if (!state || !map) return () => true;
+  const limits = airLimits();
+  const groups = roomGroups(map);
+  const good = new Set();
+  for (const [room, n] of groups) if ((state.air[room] ?? 100) >= limits.thin) good.add(n);
+  return (room) => good.has(groups.get(room));
+}
+// Whether a room's air is bad: under the line where it hurts.
+export const airBadIn = (game, place, room) => airIn(game, place, room) < airLimits().bad;
+// Whether a place has no room left with good air in it, said once to the player when it comes to that (src/no-air.js).
+export function nowhereToBreathe(game, place, yes) {
+  const state = game.systems?.[place];
+  if (!state) return false;
+  const was = Boolean(state.nowhere);
+  if (yes) state.nowhere = true;
+  else delete state.nowhere;
+  return yes && !was;
+}
+
 // Where someone goes instead of where their day sends them: the guards to the alarm, an engineer to what's due to be
 // fixed, and anyone headed for a room with bad air to the nearest room with good air. Asleep, people only notice
 // once it's bad. src/life.js asks this for each person, with the room their day has them going to.
@@ -1443,20 +1720,7 @@ export function detourFor(game, place) {
   const limits = airLimits();
   const called = calledNow(game, place, model, state, t);
   const map = mapFor(place);
-  const goodAirFrom = (room) => {
-    const seen = new Set([room]);
-    const queue = [room];
-    while (queue.length) {
-      const id = queue.shift();
-      if ((state.air[id] ?? 100) >= limits.thin && id !== room) return id;
-      for (const next of neighboursOf(map, id)) {
-        if (seen.has(next)) continue;
-        seen.add(next);
-        queue.push(next);
-      }
-    }
-    return null;
-  };
+  const goodAirFrom = (room) => nearestGoodAir(map, state, limits, room);
   return (key, room, asleep) => {
     const duty = dutyTurn(game, place, called, key, t);
     if (duty) return duty;
@@ -1552,7 +1816,8 @@ export function lookAt(game, place, part) {
   const s = partState(game, place, part.id);
   const works = partWorks(game, place, part);
   const state = s.damage ? (s.by === "wear" && spec.worn) || (s.by === "battle" && SHOT_UP) || (s.by === "stripped" && STRIPPED) || spec.damaged || "It's broken." : s.on === false ? spec.off ?? "It's off." : !works ? deadWords(game, place, part) : ringingNow(game, place, part) ? "It's ringing." : spec.on ?? "It's working.";
-  return `${part.look ?? spec.look ?? `The ${part.name}.`} ${state}${s.damage ? repairWords(game, place, s) : ""}`;
+  const reserve = part.kind === "air plant" && reserveAll(place) > 0 ? ` The reserve air stands at ${reserveLeft(game, place) > 0 ? reserveWords(reserveLeft(game, place)) : "nothing"}${reserveLeft(game, place) >= reserveAll(place) ? ", which is all of it" : ""}.` : "";
+  return `${part.look ?? spec.look ?? `The ${part.name}.`} ${state}${s.damage ? repairWords(game, place, s) : ""}${reserve}`;
 }
 
 // What a broken part's repair is waiting on, where it takes parts: " Chief Marrow will fix it with a parts crate from
@@ -2040,10 +2305,16 @@ export function wearDay(game, day) {
     const model = systemsOf(place);
     const every = model?.numbers.wear;
     if (!every || unitOf(`${game.name}|wear|${place}|${day}`) >= 1 / every) continue;
+    // What the place can't breathe without (its air plant, and the box that feeds it) never gives out while there's
+    // no spare aboard to mend it with: the engineers nurse it along. Left to wear, one burnt-out breaker on a ship with
+    // empty parts lockers would take everyone aboard within hours, in the middle of a wait nobody could act in.
+    const plantRooms = partsOf(model, "air").filter((part) => part.kind === "air plant").map((part) => part.room);
+    const forAir = (part) => part.kind === "air plant" || (part.kind === "junction box" && plantRooms.some((room) => model.circuits[room] === part.id));
     const working = Object.values(model.parts).filter((part) => {
       const spec = kindSpec(part.kind);
       const s = partState(game, place, part.id);
-      return !part.unplaced && spec.worn && spec.break && !s.damage && s.on !== false;
+      if (part.unplaced || !spec.worn || !spec.break || s.damage || s.on === false) return false;
+      return !(forAir(part) && !repairPartsAboard(game, place, spec.break.damage ?? "broken"));
     });
     const kinds = [...new Set(working.map((part) => part.kind))];
     if (!kinds.length) continue;

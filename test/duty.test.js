@@ -144,16 +144,26 @@ test("the generator running out of cells brings the chief engineer's duty down",
   const refills = model.refills;
   model.refills = [];
   try {
+    toMidnight(game);
+    // No cell aboard, and none in the generator: two and a half hours without power, then cells in the rack again. Not
+    // a day of it, as this used to run: a ship with no power has no air, and nobody aboard outlives that by more than
+    // a few hours (test/no-air.test.js), the chief engineer included.
     bag.storeTake(game, store("fuel_rack").key, store("fuel_rack").holds, "fuel_cell", 99);
     bag.storeTake(game, store("shuttle_stores").key, store("shuttle_stores").holds, "fuel_cell", 99);
+    game.logistics.meridian.machines.generator = { ...(game.logistics.meridian.machines.generator ?? { progress: 0, made: 0, waiting: null }), burning: 0 };
+    passTime(game, 2.5, "routine");
+    assert.equal(lg.powerSupply(game, "meridian"), 0);
+    bag.storePut(game, store("fuel_rack").key, store("fuel_rack").holds, "fuel_cell", 3);
     toMidnight(game);
-    passTime(game, 24, "routine");
   } finally {
     model.refills = refills;
   }
+  assert.equal(game.dead, undefined, "nobody died of it");
   const chief = card(game, "chief_engineer");
-  assert.match(chief.duty.last, /^power short 0\/100, repairs waiting 100\/100, hull worn \d+\/100$/);
-  assert.ok(chief.duty.score < 70, `Marrow's duty is ${chief.duty.score}`);
+  const marks = chief.duty.last.match(/^power short (\d+)\/100, repairs waiting 100\/100, hull worn \d+\/100$/);
+  assert.ok(marks, chief.duty.last);
+  assert.ok(Number(marks[1]) >= 60 && Number(marks[1]) <= 82, `two and a half hours of it: ${chief.duty.last}`);
+  assert.ok(chief.duty.score < 95, `Marrow's duty is ${chief.duty.score}`);
 });
 
 test("an alarm and a pocket picked aboard go on the chief of security's record, and deaths aboard on the doctor's", () => {

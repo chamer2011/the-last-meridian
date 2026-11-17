@@ -391,11 +391,16 @@ test("an old save picks it all up from today, with nothing happening at once", (
 
 test("a year of it is quick, and doesn't fill up the save", () => {
   const game = newGame();
-  const started = Date.now();
+  // The work this takes, not the time on the wall, as the other year tests count it: the tests all run at once, and
+  // with four seconds on the wall it failed whenever the computer was busy. About 3.4 s of work by itself, now that
+  // the ship's air is gone through a few minutes at a time with everything else (src/systems.js).
+  const started = process.cpuUsage();
   for (let day = 0; day < 365; day += 1) {
     days(game, 1);
   }
-  assert.ok(Date.now() - started < 4000, `it took ${Date.now() - started} ms`);
+  const used = process.cpuUsage(started);
+  const took = Math.round((used.user + used.system) / 1000);
+  assert.ok(took < 9000, `it took ${took} ms of work`);
   assert.ok(JSON.stringify(game.story.clock).length < 16000, `${JSON.stringify(game.story.clock).length} characters`);
   assert.ok(JSON.stringify(game.ship.council).length < 3000);
   assert.ok(game.ship.morale >= 0 && game.ship.morale <= 100);
