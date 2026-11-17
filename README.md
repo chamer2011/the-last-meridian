@@ -1214,8 +1214,9 @@ Then go to http://localhost:3210. Two things stay on the computer they're on, on
 
 ## The public copy
 
-Anyone can download the game and leave feedback at [chamer2011/last-meridian](https://github.com/chamer2011/last-meridian). It's a separate copy with only the game in it. Your own repository stays private, because `CLAUDE.md` and `docs/notes/` talk about you.
+The game is also at [chamer2011/last-meridian](https://github.com/chamer2011/last-meridian), a separate copy with only the game in it: that's where the installer is, and where feedback arrives. It has been private since 2026-11-09, at your asking, so for now only you can open it; made public again, anyone could download the game there and say what they think. Your own repository stays private either way, because `CLAUDE.md` and `docs/notes/` talk about you.
 
+- **What's there now:** version 0.9.0, put up on 2026-11-17, with its installer under **Releases**.
 - **It doesn't change by itself.** Whatever you change here stays here until you ask for a new version to be published. `tools/publish.mjs` says how that's done.
 - **Feedback** arrives under **Issues** on that page, and GitHub normally emails you about each one. Claude can read it for you, too.
 - **What's only on that page:** its front page, pictures, feedback form and installer.
