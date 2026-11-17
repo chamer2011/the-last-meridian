@@ -306,7 +306,12 @@ function settingsMenu() {
         ["light", "Light", "Scanlines and a little glow"],
         ["heavy", "Heavy", "Stronger lines, a rolling band and a flicker"],
       ]),
-      muted("How a computer looks once you're in it. They change nothing else.")),
+      pickRow("Rig animations:", "rigAnim", [
+        ["full", "Full", "Your rig slides out of your pocket, checks its parts on its screen as it starts up, and its screen goes off before it slides back"],
+        ["quick", "Quick", "The same slide, with a quick flicker in place of the parts check, and the screen going off in half the time"],
+        ["off", "Off", "None of it plays: the rig is out, or it's in your pocket"],
+      ]),
+      muted("How a computer looks once you're in it, and how much plays as your rig comes out of your pocket and goes back. They change nothing else: whichever you pick, a rig that's back in your pocket is unplugged.")),
     folded("settings-checks", "Skill checks",
       el("div", { class: "row small" }, "Checks open as:",
         el("button", { class: checkStyle() === "play" ? "primary" : "", "aria-pressed": String(checkStyle() === "play"), onclick: () => { setCheckStyle("play"); app.renderMenus(); } }, "A game"),

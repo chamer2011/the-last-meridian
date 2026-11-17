@@ -437,6 +437,22 @@
 }
 @media (prefers-reduced-motion: reduce) { .desk.rig-off .pocket-tube, .desk .pocket-off .beam, .desk .pocket-off .dot, .desk .rig-slide.leaving { animation: none; } }
 
+/* The quick way, picked in Settings (Computers, Rig animations: Quick; RIG_QUICK in public/rig-motion.js has the
+   times). Going back, the screen goes off the same way in half the time. Coming out, there's no check of the parts:
+   once the rig has arrived its picture drops in from the top of the screen with one flicker, started as far in as it
+   has got (--flick-at). */
+.desk.rig-quick.rig-off .pocket-tube, .desk.rig-quick .pocket-off .beam, .desk.rig-quick .pocket-off .dot { animation-duration: 300ms; }
+.desk .pocket-screen.flick { overflow: hidden; }
+.desk .pocket-tube.flicker { animation: rig-flicker 350ms linear var(--flick-at, 0ms) both; }
+@keyframes rig-flicker {
+  from { transform: translateY(-104%); filter: brightness(2.4); }
+  50% { transform: translateY(0); filter: brightness(1.9); }
+  68% { transform: translateY(0); filter: brightness(.5); }
+  82% { transform: translateY(0); filter: brightness(1.3); }
+  to { transform: translateY(0); filter: brightness(1); }
+}
+@media (prefers-reduced-motion: reduce) { .desk .pocket-tube.flicker { animation: none; } }
+
 /* Hardened computers (step 8): no breaker works from the front. Marked on the map, amber until a way in is found. */
 .os .logon-hard { display: flex; gap: 8px; align-items: baseline; padding: 5px 8px; margin: 2px 0; font-size: 11px; line-height: 1.3; }
 .os .logon-hard b { flex: none; color: #9a5b00; letter-spacing: .08em; font-size: 10px; }

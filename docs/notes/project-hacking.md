@@ -1091,7 +1091,9 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
   - `public/desktop.css`: `.pocket-tube` (the grid the screen's two parts sat in); `rig-off-tube`, `rig-off-beam` and
     `rig-off-dot`, each 600 ms and begun `--rig-at` in, with their three parts as keyframe percentages (30% and 55%);
     `.pocket-screen.dark .pocket-tube { visibility: hidden }`; `rig-page-out` (160 ms, begun `--page-at` in).
-  - **For step 4 (Settings):** "Rig animations: Full, Quick or Off" under Computers, beside `deskSkin` and `deskCrt`.
+  - **For step 4 (Settings),** as it stood when this was written (it's built since, see the next section, where Quick
+    became a second, shorter set of two times): "Rig animations: Full, Quick or Off" under Computers, beside
+    `deskSkin` and `deskCrt`.
     Off is what `rigStill()` gives today, so it can read the setting as well as the system's; Quick wants shorter
     times, and the times are constants in `public/rig-motion.js` that the stylesheet repeats (the tests hold the two
     together), so Quick is either a second set of both or a scale applied to both. The unplugging is a rule, not an
@@ -1115,3 +1117,51 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
     second and a half (it ended unplugged, the log showing the connecting and then the unplugging). No errors on the
     page. **Not checked:** a camera, practice, the installed app, and nobody has watched it at full speed on a real
     screen.
+- **Step 4, the line in Settings, is built (2026-11-16), untried by them: all four steps of the plan are built.**
+  Their clicks were read again first and were unchanged (`settings: yes`, whose words on the page were "Rig
+  animations, under Computers in Settings: Full, Quick or Off"). They said **"Yes, step 4"**.
+  - **What they see:** Settings, Computers, a third row under Screen and Old screen: **Rig animations: Full, Quick,
+    Off**, Full to begin with, each with a tooltip saying what it does, and the fold's one line of small print now
+    says that whichever they pick, a rig that's back in the pocket is unplugged.
+  - **Full:** everything as steps 1 to 3 built it, about two seconds out (0.42 sliding, 1.7 checking) and one second
+    back (0.6 going off, 0.3 sliding, 0.19 for the tab).
+  - **Quick** is my call, told to them: the page only said the line would "shorten these". The slides are the same.
+    Coming out, the screen is dark while the rig slides, as in Full, and then, where the parts would be checked, the
+    picture drops in from the top of the screen with one flicker: the page's own example 5, "a quick flicker", 350 ms,
+    with the same keyframes. Going back, the screen goes off the same way in half the time, 300 ms. About three
+    quarters of a second each way. At a junction box or a camera the flicker stands in for the wake-up, as the check
+    does in Full. In a narrow window the page still slides out of the strip first.
+  - **Off** is exactly a computer set to show no animations, which the guide already described: `rigStill()` now asks
+    the setting as well as the system. The rig is there, or it isn't. So at a junction box or a camera the old
+    three-second wake-up plays the first time the rig is taken out, as it does with no animations, which makes Off
+    slower than Quick at that one moment; it was kept because connecting is untouched whatever is picked (their
+    second answer). One line to change if they'd rather nothing played there.
+  - **What the setting never touches:** CONNECT's three seconds, and the unplugging once the rig is in the pocket,
+    which is a rule and not a picture (a test checks that `rigGone` and `flushUnplug` don't ask).
+  - `public/app.js`: `reading.rigAnim` ("full"), loaded and saved with the other reading preferences under
+    `meridian-reading`, and put on the root as `data-rig-anim` by `applyReading`. `public/menus.js`: the row, with
+    `pickRow`. `public/computer.js`: `rigAnim()` reads the root, `rigQuick()`, and `rigStill()` is true for "off";
+    `toggleRig` gives the move `RIG_QUICK.off` or `RIG_MOVE.off`; `deskLook` adds `rig-quick` to the window's box
+    while a quick screen goes off; `startRigCheck` marks the start-up `quick`, and then `checkNow` gives
+    `{ quick, shown: { dark } }` for `RIG_QUICK.flicker` after the rig has arrived, `checkFx` is only the dark,
+    `followRigCheck` takes the dark off and sets the flicker going in place (`flicker` on `.pocket-tube`, `flick` on
+    the screen so the picture is cut at its edge, `--flick-at`), and `pocketNode` draws the same from the clock on
+    any full redraw. `public/rig-motion.js`: `RIG_QUICK` (`off` 300, `flicker` 350), `rigFlickerNext`, and a move's
+    `off` is now how long its screen takes to go off, in milliseconds (it was `true`), which `rigPhase` and
+    `rigNextChange` go by. `public/desktop.css`: the three `rig-off-*` animations get `animation-duration: 300ms`
+    under `.desk.rig-quick`; `rig-flicker`.
+  - **Tests:** three more in `test/rig-motion.test.js` (the quick way back; the quick start-up; Settings having the
+    choice, keeping it, the page playing by it, and the stylesheet's two quick times matching `RIG_QUICK`), and step
+    3's tests now give a move its length; 1,439 tests in all.
+  - **Screens,** on a test copy run from a worktree (port 3296) in a headless Edge. The row in Settings at 1400 and
+    810 wide: under Old screen, its three buttons on one line and inside the fold, no sideways scrolling; a click on
+    Quick and on Off set the root and were saved; the page opened afresh still had the choice. Quick at the plot table
+    at both widths and at a junction box, every frame read: dark for the 0.42 s of the slide, then the picture
+    dropping from above the screen to its place in 0.35 s, cut at the screen's edge, with no line of the check ever
+    drawn and no wake-up at the junction box; going back, the screen off in 0.3 s, then the slide and the tab.
+    Off at the plot table and at a junction box: there and gone at once; CONNECT still three seconds; put away it was
+    unplugged; the junction box showed its wake-up once. Full once more at 1400: the check's five lines and 0.6 s to
+    go off. And Quick picked by clicking it in Settings, the page opened afresh, the save loaded, and the rig taken
+    out with H: the flicker, and no check. No errors on the page. **Not checked:** a camera, practice, the installed
+    app (whose saved Settings are its own: it starts on Full), and nobody has watched any of it at full speed on a
+    real screen.

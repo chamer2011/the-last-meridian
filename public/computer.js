@@ -20,7 +20,7 @@ import { leaderNode } from "./float.js";
 import { SPRING_MS, makePullable, pulledBy } from "./pull.js";
 import { NET_MAP, layOutNetMap } from "./net-layout.js";
 import { LOAD_MS, loadingLines, loadingNode, navplotNode, newChartState } from "./navplot.js";
-import { RIG_CHECK, rigCheckLamp, rigCheckNext, rigCheckShown, rigCheckTimes, rigNextChange, rigPhase, rigTurned } from "./rig-motion.js";
+import { RIG_CHECK, RIG_MOVE, RIG_QUICK, rigCheckLamp, rigCheckNext, rigCheckShown, rigCheckTimes, rigFlickerNext, rigNextChange, rigPhase, rigTurned } from "./rig-motion.js";
 
 const comp = { id: null, view: null, sending: false, message: null, seen: 0 };
 
@@ -846,7 +846,8 @@ function toggleRig() {
     // or of starting up, and with a screen showing (in a narrow window it has one only while its page is out).
     const off = !rigStill() && !rigDoing() && !checkNow() && (!rigFolded() || Boolean(comp.rigSlide));
     stopRigCheck();
-    comp.rigMove = rigStill() ? null : rigTurned(comp.rigMove, now, "away", { off });
+    // How long it takes to go off is the player's choice in Settings: all of it, or the quick way.
+    comp.rigMove = rigStill() ? null : rigTurned(comp.rigMove, now, "away", { off: off ? (rigQuick() ? RIG_QUICK.off : RIG_MOVE.off) : 0 });
     // With nothing to watch, it's in the pocket at once.
     if (!comp.rigMove) rigGone();
   }
@@ -883,20 +884,29 @@ function flushUnplug() {
 // The times and what's happening when are public/rig-motion.js's; the pictures are the stylesheet's animations, each
 // started as far in as the move has got, so that drawing the window again in the middle of one carries on with it.
 // Nothing moves when the player's computer is set to show no animations: the rig is there, or it isn't.
+//
+// How much of it plays is the player's own choice as well, in Settings under Computers (Rig animations; public/app.js
+// keeps it and puts it on the page's root): Full is all of it; Quick keeps the slides, flickers the picture in where
+// the parts would be checked, and has the screen go off in half the time; Off is the same as a computer set to show no
+// animations. Whichever it is, a rig that's back in the pocket comes off the computer: that's a rule, not a picture.
 
 // How much wider than its screen's page the rig's case is, and how wide its tab is until one's been measured.
 const RIG_CASE = 52;
 const STRIP_WIDE = 64;
 let rigTabWide = 50;
-const rigStill = () => typeof window !== "undefined" && Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+const rigAnim = () => (typeof document !== "undefined" ? document.documentElement.dataset.rigAnim : null) ?? "full";
+const rigQuick = () => rigAnim() === "quick";
+const rigStill = () => rigAnim() === "off" || (typeof window !== "undefined" && Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches));
 const rigDoing = () => rigPhase(comp.rigMove, performance.now());
 const rigShown = () => comp.rigOut || ["off", "away"].includes(rigDoing()?.phase);
 
 // The window's own box says what the rig is doing and how far in it is, for the stylesheet, and how wide the rig is,
-// for how far the computer has to slide until that's been measured.
+// for how far the computer has to slide until that's been measured. A screen going off the quick way says so too,
+// for the stylesheet's shorter times.
 function deskLook(cls, wide) {
   const doing = rigDoing();
-  return { class: doing ? `${cls} rig-${doing.phase}` : cls, style: `--rig-wide:${wide}px${doing ? `;--rig-at:-${Math.round(doing.ms)}ms` : ""}` };
+  const quick = doing?.phase === "off" && comp.rigMove.off < RIG_MOVE.off ? " rig-quick" : "";
+  return { class: doing ? `${cls} rig-${doing.phase}${quick}` : cls, style: `--rig-wide:${wide}px${doing ? `;--rig-at:-${Math.round(doing.ms)}ms` : ""}` };
 }
 
 // How far the computer slides over: half of what the row grows by when the rig takes its tab's place, since the row
@@ -1006,6 +1016,8 @@ function pocketNode(view, width, { closeable = false } = {}) {
   const where = reach.remote ? "OVER THE NETWORK" : reach.ok ? `ON THE ${linkName(reach.words)}` : "NOT CONNECTED";
   // What the rig is doing, if it's on its way: its screen going off ("off"), or sliding back with it dark ("away").
   const phase = rigDoing()?.phase ?? null;
+  // Starting up the quick way, its picture flickers in: how far into that it is, when it is.
+  const flick = flickerNow();
   return el("div", { class: "pocket", role: "group", "aria-label": "Your rig", title: "Drag the rig's case to move it" },
     closeable && el("button", { class: "pocket-close", title: "Fold the rig away", "aria-label": "Fold the rig away", onclick: (event) => { event.stopPropagation(); comp.rigSlide = null; stopRigCheck(); draw(); } }, "×"),
     el("div", { class: "pocket-top" },
@@ -1013,8 +1025,8 @@ function pocketNode(view, width, { closeable = false } = {}) {
       el("span", { class: "pocket-lights" }, linkLight(reach), heatLight(heat), el("button", { class: "pocket-away", title: AWAY, "aria-label": AWAY, onclick: rigToggle }, "AWAY"))),
     // The screen's picture is its tabs and its page together (the tube), which is what squeezes to a line when the
     // screen goes off; it's dark while the rig slides back into the pocket.
-    el("div", { class: `pocket-screen${phase === "away" ? " dark" : ""}` },
-      el("div", { class: "pocket-tube" },
+    el("div", { class: `pocket-screen${phase === "away" ? " dark" : ""}${flick !== null ? " flick" : ""}` },
+      el("div", flick !== null ? { class: "pocket-tube flicker", style: `--flick-at:-${flick}ms` } : { class: "pocket-tube" },
         el("div", { class: "pocket-tabs", role: "tablist", "aria-label": "Your rig's pages" },
           POCKET_TABS.map(([id, label, about]) => el("button", { role: "tab", "aria-selected": String(tab === id), title: about, onclick: (event) => { event.stopPropagation(); comp.rigTab = id; if (comp.rigSlide) comp.rigSlide = id; draw(); } }, label, id === "log" && unseenLog(view, tab) && el("i", { class: "pocket-dot", title: "Something new" }))),
           el("span", { class: "pocket-where" }, where)),
@@ -1085,18 +1097,26 @@ function bootPage(view) {
 // it, and putting the rig away ends it. It doesn't play along the network or for practice, where the rig is already
 // out, nor where the player's computer is set to show no animations. In a narrow window, where the rig is a strip with
 // no screen of its own, its page slides out of the strip as it arrives, to show the check on, and stays out after.
+//
+// The quick way (Settings, Rig animations: Quick) has no lines: the screen is dark while the rig is on its way, the
+// same, and once it has arrived the picture flickers in, a third of a second, with the lamps showing what they show.
 
 // The check as it stands: how far in it is and what's showing, or null when none is playing.
 function checkNow() {
   const boot = comp.rigBoot;
   if (!boot || boot.id !== comp.id || !comp.view?.rigCheck) return null;
-  const rows = comp.view.rigCheck.lines.length;
   const ms = performance.now() - boot.at;
+  if (boot.quick) return ms < RIG_QUICK.flicker ? { quick: true, rows: 0, ms, shown: { dark: ms < 0 } } : null;
+  const rows = comp.view.rigCheck.lines.length;
   return ms < rigCheckTimes(rows).done ? { rows, ms, shown: rigCheckShown(rows, ms) } : null;
 }
-const checkLamp = () => {
+// The lamps meanwhile: off while it's on its way, blinking while it checks, and themselves otherwise.
+const lampFor = (check) => (!check ? null : check.quick ? (check.shown.dark ? "off" : null) : rigCheckLamp(check.rows, check.ms));
+const checkLamp = () => lampFor(checkNow());
+// The quick way's picture flickering in: how far into it, or null when it isn't.
+const flickerNow = () => {
   const check = checkNow();
-  return check ? rigCheckLamp(check.rows, check.ms) : null;
+  return check?.quick && !check.shown.dark ? Math.round(check.ms) : null;
 };
 // Beside a computer the rig is a strip down its side where there isn't room for it whole; beside a panel it never is.
 const rigFolded = () => Boolean(comp.view) && !PANEL_LOOKS.includes(comp.view.look) && computerLayout().strip;
@@ -1105,7 +1125,7 @@ const rigFolded = () => Boolean(comp.view) && !PANEL_LOOKS.includes(comp.view.lo
 function startRigCheck() {
   const now = performance.now();
   const arrive = now + (rigNextChange(comp.rigMove, now) ?? 0);
-  comp.rigBoot = { id: comp.id, arrive, at: arrive + (rigFolded() ? RIG_CHECK.page : 0), arrived: false, paged: false, lamp: "off" };
+  comp.rigBoot = { id: comp.id, quick: rigQuick(), arrive, at: arrive + (rigFolded() ? RIG_CHECK.page : 0), arrived: false, paged: false, flicked: false, lamp: "off" };
 }
 let checkTimer = 0;
 function stopRigCheck() {
@@ -1116,6 +1136,10 @@ function stopRigCheck() {
 function endRigCheck() {
   stopRigCheck();
   document.getElementById("rig-fx")?.remove();
+  for (const screen of document.querySelectorAll("#computer-rig .pocket-screen.flick")) {
+    screen.classList.remove("flick");
+    screen.querySelector(".pocket-tube")?.classList.remove("flicker");
+  }
   relight();
 }
 function relight() {
@@ -1142,10 +1166,10 @@ function checkLines(view, shown) {
   lines.push(el("span", { class: "boot-cursor" }));
   return lines;
 }
-// Over the rig's whole screen while it plays.
+// Over the rig's whole screen while it plays. The quick way only has the dark of it, while the rig is on its way.
 function checkFx(view) {
   const check = checkNow();
-  if (!check) return null;
+  if (!check || (check.quick && !check.shown.dark)) return null;
   return el("div", { class: "pocket-fx", id: "rig-fx", title: "Click to skip", onclick: (event) => { event.stopPropagation(); endRigCheck(); } },
     el("div", { class: "pocket-boot pocket-check", id: "rig-check" }, checkLines(view, check.shown)));
 }
@@ -1183,14 +1207,29 @@ function followRigCheck() {
     endRigCheck();
     return;
   }
-  const box = document.getElementById("rig-check");
-  if (box) box.replaceChildren(...checkLines(comp.view, check.shown));
-  const lamp = rigCheckLamp(check.rows, check.ms);
+  if (check.quick) {
+    // The quick way: once the rig has arrived the dark comes off its screen and the picture flickers in, set going
+    // in place, as far in as it has got.
+    if (!check.shown.dark && !boot.flicked) {
+      boot.flicked = true;
+      document.getElementById("rig-fx")?.remove();
+      for (const screen of document.querySelectorAll("#computer-rig .pocket-screen")) {
+        const tube = screen.querySelector(".pocket-tube");
+        tube?.style.setProperty("--flick-at", `-${Math.round(check.ms)}ms`);
+        tube?.classList.add("flicker");
+        screen.classList.add("flick");
+      }
+    }
+  } else {
+    const box = document.getElementById("rig-check");
+    if (box) box.replaceChildren(...checkLines(comp.view, check.shown));
+  }
+  const lamp = lampFor(check);
   if (lamp !== boot.lamp) {
     boot.lamp = lamp;
     relight();
   }
-  const next = Math.min(rigCheckNext(check.rows, check.ms), boot.arrived ? Infinity : boot.arrive - now);
+  const next = Math.min(check.quick ? rigFlickerNext(check.ms) : rigCheckNext(check.rows, check.ms), boot.arrived ? Infinity : boot.arrive - now);
   checkTimer = setTimeout(followRigCheck, Math.max(0, next) + 4);
 }
 

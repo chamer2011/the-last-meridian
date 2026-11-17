@@ -12,9 +12,13 @@
 // How long each part takes, in milliseconds. public/desktop.css has the same numbers on its animations.
 export const RIG_MOVE = { out: 420, off: 600, away: 300, tab: 190 };
 
+// The quick way, which the player picks in Settings (Computers, Rig animations: Quick): the screen goes off in half
+// the time, and coming out, the picture flickers in where the parts would be checked. The slides are the same.
+export const RIG_QUICK = { off: 300, flicker: 350 };
+
 // A move begun: which way, "out" or "away", and when, in the page's own milliseconds. Going away begins with the
-// screen going off when off says so: the rig was out and at rest, with its screen on.
-export const rigMoveFrom = (dir, now, { off = false } = {}) => (dir === "away" && off ? { dir, at: now, off: true } : { dir, at: now });
+// screen going off when off says how long that takes: the rig was out and at rest, with its screen on.
+export const rigMoveFrom = (dir, now, { off = 0 } = {}) => (dir === "away" && off > 0 ? { dir, at: now, off } : { dir, at: now });
 
 // What a move is doing now: { phase, ms }, the phase "out", "off", "away" or "tab" and how far into it, or null once
 // it's over, or when there's none.
@@ -23,8 +27,8 @@ export function rigPhase(move, now) {
   let ms = Math.max(0, now - move.at);
   if (move.dir === "out") return ms < RIG_MOVE.out ? { phase: "out", ms } : null;
   if (move.off) {
-    if (ms < RIG_MOVE.off) return { phase: "off", ms };
-    ms -= RIG_MOVE.off;
+    if (ms < move.off) return { phase: "off", ms };
+    ms -= move.off;
   }
   if (ms < RIG_MOVE.away) return { phase: "away", ms };
   return ms < RIG_MOVE.away + RIG_MOVE.tab ? { phase: "tab", ms: ms - RIG_MOVE.away } : null;
@@ -34,17 +38,18 @@ export function rigPhase(move, now) {
 // its tab is.
 export const rigShown = (out, move, now) => Boolean(out) || ["off", "away"].includes(rigPhase(move, now)?.phase);
 
-// How long until the move's phase changes, or null when nothing's moving.
+// How long until the move's phase changes, or null when nothing's moving. A screen going off takes as long as its
+// own move says.
 export function rigNextChange(move, now) {
   const doing = rigPhase(move, now);
-  return doing ? RIG_MOVE[doing.phase] - doing.ms : null;
+  return doing ? (doing.phase === "off" ? move.off : RIG_MOVE[doing.phase]) - doing.ms : null;
 }
 
 // The rig told to go the other way in the middle of a move turns round at once: the new move begins as far along as
 // the old one had left to go, so the rig carries on from about where it is. Told anything else, it begins at the start,
-// with its screen going off first if off says so. While its screen is going off the rig hasn't moved yet: told to come
-// out then, it's there already.
-export function rigTurned(move, now, dir, { off = false } = {}) {
+// with its screen going off first for as long as off says. While its screen is going off the rig hasn't moved yet:
+// told to come out then, it's there already.
+export function rigTurned(move, now, dir, { off = 0 } = {}) {
   const doing = rigPhase(move, now);
   if (doing?.phase === "off") return dir === "out" ? { dir, at: now - RIG_MOVE.out } : move;
   if (!doing || doing.phase === "tab" || doing.phase === dir) return rigMoveFrom(dir, now, { off });
@@ -103,4 +108,12 @@ export function rigCheckNext(rows, ms) {
   const marks = [0, times.head, ...times.lines.flatMap((line) => [line.at, line.state]), times.ready, times.done];
   const next = marks.find((mark) => mark > ms);
   return next === undefined ? null : next - ms;
+}
+
+// The quick way of starting up has no lines: the screen is dark while the rig is on its way, and once it has arrived
+// the picture flickers in, with the lamps showing what they show from then. How long until that changes next, or null
+// once it's over.
+export function rigFlickerNext(ms) {
+  if (ms < 0) return -ms;
+  return ms < RIG_QUICK.flicker ? RIG_QUICK.flicker - ms : null;
 }

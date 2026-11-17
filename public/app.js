@@ -53,7 +53,7 @@ const ui = {
 // ---- Reading preferences ------------------------------------------------
 
 const READING_KEY = "meridian-reading";
-const reading = { font: "book", size: 17, view: "iso", tiles: "techlab", isoArt: "drawn", pixelLook: "dark", chosen: true, story: "popups", popFont: "terminal", writing: "normal", interface: "auto", deskSkin: "grey", deskCrt: "light" };
+const reading = { font: "book", size: 17, view: "iso", tiles: "techlab", isoArt: "drawn", pixelLook: "dark", chosen: true, story: "popups", popFont: "terminal", writing: "normal", interface: "auto", deskSkin: "grey", deskCrt: "light", rigAnim: "full" };
 const textSizes = { min: 13, max: 26 };
 
 function applyReading() {
@@ -62,6 +62,9 @@ function applyReading() {
   // How a computer the player is in looks: its desktop's skin and the old screen's strength (desktop.css).
   document.documentElement.dataset.deskSkin = reading.deskSkin;
   document.documentElement.dataset.deskCrt = reading.deskCrt;
+  // How much plays as the player's rig comes out of the pocket and goes back, at a computer: all of it, a quicker
+  // version, or nothing (public/computer.js reads it there).
+  document.documentElement.dataset.rigAnim = reading.rigAnim;
   document.documentElement.style.setProperty("--story-size", `${reading.size}px`);
   // The pixel-art test draws the isometric room in a bought pack's pictures (public/pixel-art.js).
   setPixelArt({ on: reading.view === "iso" && reading.isoArt === "pixel", look: reading.pixelLook });
@@ -90,6 +93,7 @@ function loadReading() {
     if (saved?.interface in INTERFACE_SIZES) reading.interface = saved.interface;
     if (["grey", "slate", "phosphor"].includes(saved?.deskSkin)) reading.deskSkin = saved.deskSkin;
     if (["off", "light", "heavy"].includes(saved?.deskCrt)) reading.deskCrt = saved.deskCrt;
+    if (["full", "quick", "off"].includes(saved?.rigAnim)) reading.rigAnim = saved.rigAnim;
   } catch {
     // Without saved preferences, the defaults are fine.
   }

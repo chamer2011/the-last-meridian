@@ -2,7 +2,8 @@
 // when the rig itself is on the screen and when its tab is, a press in the middle turning it round from where it is,
 // and the stylesheet's animations lasting as long as the page thinks they do. And the rig starting up as it comes out
 // (step 2 of the rig's plan): when each line of its check of its parts comes up, what its lamps do meanwhile, and when
-// the page next has something to draw. Nothing here needs a screen.
+// the page next has something to draw. And the player's choice in Settings of how much of it plays (step 4): Full,
+// Quick or Off. Nothing here needs a screen.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -10,7 +11,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
-import { RIG_CHECK, RIG_MOVE, rigCheckLamp, rigCheckNext, rigCheckShown, rigCheckTimes, rigMoveFrom, rigNextChange, rigPhase, rigShown, rigTurned } from "../public/rig-motion.js";
+import { RIG_CHECK, RIG_MOVE, RIG_QUICK, rigCheckLamp, rigCheckNext, rigCheckShown, rigCheckTimes, rigFlickerNext, rigMoveFrom, rigNextChange, rigPhase, rigShown, rigTurned } from "../public/rig-motion.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -113,8 +114,8 @@ test("the computer's window uses the move to decide what's drawn", () => {
 });
 
 test("going away from rest begins with the screen going off, and only then does the rig leave", () => {
-  const move = rigMoveFrom("away", 0, { off: true });
-  assert.deepEqual(move, { dir: "away", at: 0, off: true });
+  const move = rigMoveFrom("away", 0, { off: RIG_MOVE.off });
+  assert.deepEqual(move, { dir: "away", at: 0, off: RIG_MOVE.off });
   assert.deepEqual(rigPhase(move, 0), { phase: "off", ms: 0 });
   assert.deepEqual(rigPhase(move, RIG_MOVE.off - 1), { phase: "off", ms: RIG_MOVE.off - 1 });
   assert.deepEqual(rigPhase(move, RIG_MOVE.off), { phase: "away", ms: 0 });
@@ -127,19 +128,20 @@ test("going away from rest begins with the screen going off, and only then does 
   assert.equal(rigNextChange(move, 100), RIG_MOVE.off - 100);
   assert.equal(rigNextChange(move, RIG_MOVE.off + 100), RIG_MOVE.away - 100);
   // Coming out never has one, and going away has none unless it's asked for.
-  assert.deepEqual(rigMoveFrom("out", 0, { off: true }), { dir: "out", at: 0 });
+  assert.deepEqual(rigMoveFrom("out", 0, { off: RIG_MOVE.off }), { dir: "out", at: 0 });
   assert.deepEqual(rigMoveFrom("away", 0), { dir: "away", at: 0 });
+  assert.deepEqual(rigMoveFrom("away", 0, { off: 0 }), { dir: "away", at: 0 });
 });
 
 test("the screen only goes off for a rig at rest, and a press while it does leaves the rig where it is", () => {
   // At rest and told to go: the screen goes off first.
-  assert.deepEqual(rigTurned(null, 500, "away", { off: true }), { dir: "away", at: 500, off: true });
+  assert.deepEqual(rigTurned(null, 500, "away", { off: RIG_MOVE.off }), { dir: "away", at: 500, off: RIG_MOVE.off });
   // Still on its way out, where its screen is dark anyway: it turns round at once, with nothing to switch off.
-  const back = rigTurned(rigMoveFrom("out", 0), RIG_MOVE.out / 2, "away", { off: true });
+  const back = rigTurned(rigMoveFrom("out", 0), RIG_MOVE.out / 2, "away", { off: RIG_MOVE.off });
   assert.equal(back.off, undefined);
   assert.equal(rigPhase(back, RIG_MOVE.out / 2).phase, "away");
   // Told to come out while its screen is going off: it hasn't moved, so it's out already.
-  const going = rigMoveFrom("away", 0, { off: true });
+  const going = rigMoveFrom("away", 0, { off: RIG_MOVE.off });
   const stay = rigTurned(going, 200, "out");
   assert.equal(stay.dir, "out");
   assert.equal(rigPhase(stay, 200), null);
@@ -169,6 +171,61 @@ test("the page switches the screen off, and takes the rig off the computer once 
   const slide = css.match(/animation: rig-page-out (\d+)ms [^;]*var\(--page-at, 0ms\)/);
   assert.ok(slide, "desktop.css has no rig-page-out animation started by --page-at");
   assert.ok(Number(slide[1]) <= RIG_MOVE.away, "the page is back in the strip before the strip has gone");
+});
+
+test("the quick way: the screen goes off in half the time, and the rest of the way back is the same", () => {
+  assert.equal(RIG_QUICK.off, RIG_MOVE.off / 2);
+  const move = rigMoveFrom("away", 0, { off: RIG_QUICK.off });
+  assert.deepEqual(rigPhase(move, RIG_QUICK.off - 1), { phase: "off", ms: RIG_QUICK.off - 1 });
+  assert.deepEqual(rigPhase(move, RIG_QUICK.off), { phase: "away", ms: 0 });
+  assert.deepEqual(rigPhase(move, RIG_QUICK.off + RIG_MOVE.away), { phase: "tab", ms: 0 });
+  assert.equal(rigPhase(move, RIG_QUICK.off + RIG_MOVE.away + RIG_MOVE.tab), null);
+  // The page is told when the screen has gone off by the move's own length, not the full one's.
+  assert.equal(rigNextChange(move, 100), RIG_QUICK.off - 100);
+  assert.equal(rigNextChange(rigMoveFrom("away", 0, { off: RIG_MOVE.off }), 100), RIG_MOVE.off - 100);
+  // A press while it's going off still leaves the rig where it is.
+  assert.equal(rigPhase(rigTurned(move, 120, "out"), 120), null);
+});
+
+test("the quick way of starting up is the dark while the rig's on its way, then one flicker", () => {
+  assert.equal(RIG_QUICK.flicker, 350);
+  assert.equal(rigFlickerNext(-420), 420);
+  assert.equal(rigFlickerNext(0), RIG_QUICK.flicker);
+  assert.equal(rigFlickerNext(100), RIG_QUICK.flicker - 100);
+  assert.equal(rigFlickerNext(RIG_QUICK.flicker), null);
+  // It's much shorter than the check of the parts it stands in for.
+  assert.ok(RIG_QUICK.flicker < rigCheckTimes(5).done / 4);
+});
+
+test("Settings has the choice, keeps it, and the page plays by it", () => {
+  const app = fs.readFileSync(path.join(here, "..", "public", "app.js"), "utf8");
+  // Full unless the player says otherwise, kept with the other reading preferences, and put on the page's root.
+  assert.match(app, /const reading = \{[^}]*rigAnim: "full"[^}]*\};/);
+  assert.match(app, /document\.documentElement\.dataset\.rigAnim = reading\.rigAnim;/);
+  assert.match(app, /if \(\["full", "quick", "off"\]\.includes\(saved\?\.rigAnim\)\) reading\.rigAnim = saved\.rigAnim;/);
+  const menus = fs.readFileSync(path.join(here, "..", "public", "menus.js"), "utf8");
+  const row = menus.match(/pickRow\("Rig animations:", "rigAnim", \[([^]*?)\]\),/);
+  assert.ok(row, "Settings has no Rig animations row");
+  assert.deepEqual([...row[1].matchAll(/\["(\w+)", "(\w+)"/g)].map((m) => [m[1], m[2]]), [["full", "Full"], ["quick", "Quick"], ["off", "Off"]]);
+  // It sits under Computers, after the screen's own two choices.
+  assert.ok(menus.indexOf('folded("settings-computers", "Computers"') < menus.indexOf('pickRow("Rig animations:"'));
+  assert.ok(menus.indexOf('pickRow("Old screen:"') < menus.indexOf('pickRow("Rig animations:"'));
+  const page = fs.readFileSync(path.join(here, "..", "public", "computer.js"), "utf8");
+  // Off is the same as a computer set to show no animations; Quick shortens the screen going off and the start-up.
+  assert.match(page, /const rigStill = \(\) => rigAnim\(\) === "off" \|\| /);
+  assert.match(page, /off: off \? \(rigQuick\(\) \? RIG_QUICK\.off : RIG_MOVE\.off\) : 0/);
+  assert.match(page, /quick: rigQuick\(\)/);
+  // The unplugging doesn't ask what the choice is: it's a rule, not a picture.
+  const gone = page.match(/function rigGone\(\) \{[^]*?\n\}/)[0] + page.match(/function flushUnplug\(\) \{[^]*?\n\}/)[0];
+  assert.ok(!/rigAnim|rigQuick|rigStill/.test(gone));
+  const css = fs.readFileSync(path.join(here, "..", "public", "desktop.css"), "utf8");
+  const quickOff = css.match(/\.desk\.rig-quick\.rig-off \.pocket-tube, \.desk\.rig-quick \.pocket-off \.beam, \.desk\.rig-quick \.pocket-off \.dot \{ animation-duration: (\d+)ms; \}/);
+  assert.ok(quickOff, "desktop.css has no shorter time for the screen going off the quick way");
+  assert.equal(Number(quickOff[1]), RIG_QUICK.off);
+  const flicker = css.match(/animation: rig-flicker (\d+)ms [^;]*var\(--flick-at, 0ms\)/);
+  assert.ok(flicker, "desktop.css has no rig-flicker animation started by --flick-at");
+  assert.equal(Number(flicker[1]), RIG_QUICK.flicker);
+  assert.ok(css.includes("@keyframes rig-flicker "));
 });
 
 test("the rig's check of its parts takes 1.7 seconds for five kinds of part, each line with its state a moment after", () => {
