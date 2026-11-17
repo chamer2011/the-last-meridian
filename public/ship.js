@@ -51,7 +51,7 @@ function purseSection(g) {
     ? muted("In open space nothing's bought and nothing comes: she lives on what's aboard until she docks.")
     : el("div", { class: "stack gap-small" },
       el("div", { class: `small${m.cost > m.levy ? " tone-bad" : ""}` }, `A day at ${m.dock.name} costs her about ${plural(m.cost, "credit")}${m.cost > m.levy ? (m.moneyDays > 0 ? `, more than comes in: the purse lasts about ${plural(m.moneyDays, "day")} here.` : ", more than comes in, and the purse is empty.") : ", which the levy covers."}`),
-      muted(`That's the fuel cells her generator burns, the fuel she uses keeping station, and what goes of food, medicine and parts beyond what's made aboard, at this dock's prices today. ${m.dock.cell || m.dock.crate ? `The dock keeps the shuttle stores stocked every ${m.dock.every} hours${m.dock.cell ? `, fuel cells at ${m.dock.cell} cr` : ""}${m.dock.crate ? `${m.dock.cell ? " and" : ","} ration crates at ${m.dock.crate} cr` : ""}, out of its own stores.` : "Nothing here restocks the shuttle stores."}`));
+      muted(`That's the fuel cells her generator burns, the fuel she uses keeping station, ${m.dock.water ? "the water she uses, " : ""}and what goes of food, medicine and parts beyond what's made aboard, at this dock's prices today. ${m.dock.cell || m.dock.crate ? `The dock keeps the shuttle stores stocked every ${m.dock.every} hours${m.dock.cell ? `, fuel cells at ${m.dock.cell} cr` : ""}${m.dock.crate ? `${m.dock.cell ? " and" : ","} ration crates at ${m.dock.crate} cr` : ""}, out of its own stores.` : "Nothing here restocks the shuttle stores."}${m.dock.water ? ` It fills the water tank too, at ${m.dock.water} cr a tank.` : ""}`));
   const slate = (one) => el("div", { class: "stack gap-small" },
     el("div", { class: "menu-row small tone-bad" }, el("span", {}, `Owed at ${one.name}`), el("strong", {}, `${number(one.owed)} cr`)),
     muted(`On the slate since day ${one.since + 1}. Whatever's left in the purse at midnight goes to it${one.holder ? `, and your standing with the ${one.holder.replace(/^The /, "")} falls by ${m.slate.falls} a day until it's paid` : ""}.`));
@@ -87,6 +87,44 @@ function cellsLine(s) {
     muted(`Fuel cells for the generator: it burns ${c.aDay} a day, and without one nothing aboard has power. ${c.holding ? `${dock.name} sells them and the dock keeps her ${s.money.slates.length ? `going, ${shareWords(s.money.slate.share)} while she owes` : "stocked"}. Away from a dock, what's aboard lasts ${c.days} ${c.days === 1 ? "day" : "days"}.` : dock?.cell ? `${dock.name} sells them, but the purse can't keep up.` : dock ? `Nobody at ${dock.name} sells them: a port that sells fuel does.` : "In open space nothing comes."}`));
 }
 
+// Her water, on the Stores list: how much is in the tank, how long it lasts as things stand, and whether it's rationed.
+function waterLine(s) {
+  const w = s.water;
+  if (!w) return null;
+  const bar = "#".repeat(Math.round(Math.max(0, Math.min(1, w.n / Math.max(1, w.of))) * 10)).padEnd(10, "-");
+  const out = w.n <= 0;
+  const low = out || w.rationed || Boolean(w.pumps) || (w.days !== null && w.days <= 5 && !w.holding);
+  const dock = s.money?.dock;
+  const left = out ? "OUT" : w.holding ? "holding" : w.days === null ? "" : `${w.days} ${w.days === 1 ? "day" : "days"} left`;
+  const where = w.holding
+    ? `${dock.name} sells it by the tank, ${dock.water} cr for ${w.fills} measures, and the dock keeps the tank up. Away from a dock, what's aboard lasts about ${w.days} ${w.days === 1 ? "day" : "days"}.`
+    : dock?.water ? `${dock.name} sells it, but the purse can't keep up.`
+      : dock ? `Nobody at ${dock.name} sells water.`
+        : "In open space nothing comes.";
+  return el("div", { class: `ship-supply${low ? " low" : ""}` },
+    el("div", { class: "ship-supply-line" },
+      el("span", {}, `${"WATER".padEnd(8)} [${bar}] ${w.n} of ${w.of}`),
+      el("strong", {}, [left, w.rationed ? "rationed" : null].filter(Boolean).join(", "))),
+    muted(`Measures of water in the ${w.name}, ${w.room}. Everyone aboard drinks from it, and the galley, the Garden and the air plant take theirs: about ${w.aDay} a day as things stand.${w.pumps ? ` The pumps are stopped, so nothing that's used comes back and it's going ${w.pumps} times as fast.` : ""}${w.rationed ? ` ${w.by ?? "The quartermaster"} has it on ration: everyone gets half, and so does whatever grows.` : ""}${out ? ` With none, the galley can't cook, nothing grows, and the air plant ${w.plant === false ? "has stopped" : "stops when it has used what it had"}.` : ""} ${where}`));
+}
+
+// Her reserve air, under the water: how many hours are in the tanks, and whether she's breathing them.
+function airLine(s) {
+  const a = s.air;
+  if (!a) return null;
+  const bar = "#".repeat(Math.round(Math.max(0, Math.min(1, a.hours / Math.max(1, a.of))) * 10)).padEnd(10, "-");
+  const hours = (n) => `${n} ${n === 1 ? "hour" : "hours"}`;
+  const left = a.stopped ? (a.out ? "OUT" : `${hours(a.hours)} left`) : a.full ? "full" : "filling";
+  const now = a.stopped
+    ? `${a.dry ? "The air plant has no water to make air from" : "The air plant is stopped"}, ${a.out ? "and there's none left: nobody lasts more than a few hours like this." : "so she's breathing it now."}`
+    : a.full ? "" : "The air plant is filling them again, from the water tank.";
+  return el("div", { class: `ship-supply${a.stopped ? " low" : ""}` },
+    el("div", { class: "ship-supply-line" },
+      el("span", {}, `${"AIR".padEnd(8)} [${bar}] ${a.hours} of ${hours(a.of)}`),
+      el("strong", {}, left)),
+    muted(`Reserve air in the ${a.name}, ${a.room}: what everyone breathes while the air plant is stopped, and what fills a breached room again once it's patched.${now ? ` ${now}` : ""}${a.tank ? ` A full reserve tank from a port, fitted there by hand, adds ${hours(a.tank)}.` : ""}`));
+}
+
 function supplyLine(s) {
   const bar = "#".repeat(Math.round(Math.max(0, Math.min(1, s.stock / s.max)) * 10)).padEnd(10, "-");
   const left = s.out ? "OUT" : s.days === null ? "holding" : `${s.days} ${s.days === 1 ? "day" : "days"} left`;
@@ -98,7 +136,7 @@ function supplyLine(s) {
     muted(s.bought > 0 ? `Makes ${s.made}, uses ${s.used}, and the dock sends the rest, ${s.bought} a day, for the purse to pay.` : `Makes ${s.made}, uses ${s.used}, so ${signed(s.net)} a day.`));
 }
 
-const suppliesSection = (s) => section("Stores", s.supplies.map(supplyLine), cellsLine(s), muted("Food, medicine and parts are what's in the rooms' stores below, counted together, and fuel is the tank. Anything else that's food in the pantry, medicine in the cabinet or a spare in the lockers counts for its share of a crate. The ship's daily needs and the engineers take a crate when they've used one up, at midnight, the medbay opens one from its cabinet when its doses run out, and the kettle feeds everyone through the day. With parts aboard the engineers mend the hull a little each day; without them, she wears."));
+const suppliesSection = (s) => section("Stores", s.supplies.map(supplyLine), cellsLine(s), waterLine(s), airLine(s), muted("Food, medicine and parts are what's in the rooms' stores below, counted together, and fuel is the tank. Anything else that's food in the pantry, medicine in the cabinet or a spare in the lockers counts for its share of a crate. The ship's daily needs and the engineers take a crate when they've used one up, at midnight, the medbay opens one from its cabinet when its doses run out, and the kettle feeds everyone through the day. With parts aboard the engineers mend the hull a little each day; without them, she wears."));
 
 // What's kept where, room by room, from world/logistics: each store is a thing in a room you can walk to and open,
 // each machine takes from one and puts into another on the clock, and the whole ship eats from the kettle.

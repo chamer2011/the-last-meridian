@@ -27,6 +27,7 @@ import { holderOf } from "./daily.js";
 import { atPost, mapFor, roomOf, roomsOf, roomsOn, thingsIn } from "./walk.js";
 import { notePut } from "./puts.js";
 import { addClockWork, airExtras, airSpoiled, partExtras } from "./room-hooks.js";
+import { plantDry, plantFed, reserveFills } from "./water.js";
 import { SYSTEMS_DEFAULTS, SYSTEMS_FILE_PROBLEMS, WORLD_CHARACTERS, WORLD_COMPUTERS, WORLD_LIFE, WORLD_SYSTEMS } from "./world.js";
 import { KNOWN_SYSTEMS, SYSTEM_TITLES, readComputerLine, readDoorLine, readLocksLine, readPartLine, slugOf } from "../public/systems-text.js";
 import { FURNITURE_BY_ID } from "../public/furniture.js";
@@ -799,9 +800,10 @@ export function airFlows(game, place, room) {
   const all = partsOf(model, "air");
   const plants = all.filter((part) => part.kind === "air plant");
   const vents = all.filter((part) => part.kind !== "air plant" && part.room === room);
-  if (plants.length && !plants.some((part) => partWorks(game, place, part))) {
-    // The plant's stopped, or has no power. Where the place has reserve air, that reaches every room while there's
-    // any left, power or none, unless the room's own vent has been shut or broken.
+  if (plants.length && (!plants.some((part) => partWorks(game, place, part)) || !plantFed(game, place))) {
+    // The plant's stopped, or has no power, or no water to make air from (src/water.js). Where the place has reserve
+    // air, that reaches every room while there's any left, power or none, unless the room's own vent has been shut or
+    // broken.
     if (reserveLeft(game, place) <= 0) return false;
     return !vents.length || vents.some((part) => {
       const s = partState(game, place, part.id);
@@ -810,14 +812,40 @@ export function airFlows(game, place, room) {
   }
   return !vents.length || vents.some((part) => partWorks(game, place, part));
 }
-// Whether a place's air plant is stopped: switched off, broken, or with no power to run on. Not at a place without one.
+// Whether a place's air plant is running, as far as its own parts go: switched on, whole, and with power. True at a
+// place without one.
+export function plantOn(game, place, model = systemsOf(place)) {
+  const plants = partsOf(model, "air").filter((part) => part.kind === "air plant");
+  return !plants.length || plants.some((part) => partWorks(game, place, part));
+}
+// Whether a place's air plant is stopped: switched off, broken, with no power to run on, or with no water to make air
+// from, where it makes it from water (src/water.js). Not at a place without one.
 function plantStopped(game, place, model = systemsOf(place)) {
   const plants = partsOf(model, "air").filter((part) => part.kind === "air plant");
-  return plants.length > 0 && !plants.some((part) => partWorks(game, place, part));
+  return plants.length > 0 && (!plants.some((part) => partWorks(game, place, part)) || !plantFed(game, place));
 }
 // A place's reserve air, in minutes: how much it has in all, and how much is left. Nothing where its file gives none.
 const reserveAll = (place) => (systemsOf(place)?.numbers.reserve ?? 0) * 24 * 60;
+export const reserveAllOf = reserveAll;
 export const reserveLeft = (game, place) => Math.max(0, reserveAll(place) - (game.systems?.[place]?.reserve ?? 0));
+// So many minutes of a place's reserve air used for something other than breathing (a breached room filled again), and
+// put back by hand (a full tank fitted): src/water.js. at is the time, in hours, where the place had nothing kept yet.
+export function useReserve(game, place, minutes, at = hoursNow(game)) {
+  const all = reserveAll(place);
+  if (!all || !(minutes > 0)) return;
+  const fresh = !game.systems?.[place];
+  const state = stateOf(game, place, true);
+  if (fresh) state.at = at;
+  state.reserve = Math.min(all, (state.reserve ?? 0) + minutes);
+}
+export function giveReserve(game, place, minutes) {
+  const state = game.systems?.[place];
+  if (!state?.reserve || !(minutes > 0)) return;
+  const left = state.reserve - minutes;
+  if (left > 0) state.reserve = left;
+  else delete state.reserve;
+  tidy(game, place);
+}
 // The reserve in words, for a line and for a look at the air plant: "4 days and 6 hours", "9 hours", "40 minutes".
 function reserveWords(minutes) {
   const days = Math.floor(minutes / 1440);
@@ -1392,7 +1420,7 @@ function airTroubled(game, place, model, state) {
     const system = model.parts[id]?.system;
     if (system === "air" || system === "power") return true;
   }
-  return starved(game, place, "air");
+  return starved(game, place, "air") || !plantFed(game, place);
 }
 
 // A place's air moves on to a time, from wherever it had got to, and whoever breathes it feels it (src/no-air.js,
@@ -1404,8 +1432,9 @@ export function airMoves(game, place, until = hoursNow(game), { since = null, fi
   if (!model || !hasSystem(model, "air")) return NO_LINES;
   let state = game.systems?.[place] ?? null;
   if (!state) {
-    // Nothing's switched, cut or broken here, so the air's moving everywhere unless there's no power for it.
-    if (!starved(game, place, "air")) return NO_LINES;
+    // Nothing's switched, cut or broken here, so the air's moving everywhere unless there's no power for it, or no
+    // water for the air plant to make it from.
+    if (!starved(game, place, "air") && plantFed(game, place)) return NO_LINES;
     state = stateOf(game, place, true);
     state.at = Math.min(since ?? until, until);
   }
@@ -1452,20 +1481,32 @@ function drawReserve(game, place, model, state, minutes, stopped) {
   const hears = place === game.location || ownedBy(game, place);
   const where = place === "meridian" ? "The ship" : model.name;
   if (!stopped) {
+    delete state.breathing;
     if (!used) return NO_LINES;
-    const left = Math.max(0, used - minutes * (all / (model.numbers.reserveFill * 60)));
+    // The air plant fills the tanks again, out of the water tank where the place keeps one (src/water.js): only as
+    // much as there's water for.
+    const made = reserveFills(game, place, Math.min(used, minutes * (all / (model.numbers.reserveFill * 60))));
+    if (!(made > 0)) return NO_LINES;
+    const left = Math.max(0, used - made);
     if (left > 0) state.reserve = left;
     else delete state.reserve;
     return left <= 0 && hears ? [`[AIR] ${where}'s reserve air is full again.`] : NO_LINES;
   }
   if (used >= all) return NO_LINES;
+  // The first piece of the clock it's breathed in: it's said then, with what's left, which is all of it unless some
+  // went into a breached room or it hadn't filled again since the last time.
+  const first = !state.breathing;
+  state.breathing = true;
   const now = Math.min(all, used + minutes);
   state.reserve = now;
   if (!hears) return NO_LINES;
-  if (!used) return [`[AIR] The air plant has stopped. ${where} is breathing reserve air now: there's ${reserveWords(all)} of it, and after that nobody lasts more than a few hours.`];
-  if (now >= all) return [`[AIR] The reserve air has run out. With the air plant still stopped, the air's going everywhere.`];
-  if (used < all - 1440 && now >= all - 1440) return [`[AIR] A day of reserve air is left, and the air plant's still stopped.`];
-  return NO_LINES;
+  // With the plant itself running, it's the water it makes air from that's gone.
+  const started = () => `[AIR] ${plantOn(game, place, model) ? "The air plant has no water to make air from, and has stopped" : "The air plant has stopped"}. ${where} is breathing reserve air now: there's ${reserveWords(all - used)} of it, and after that nobody lasts more than a few hours.`;
+  if (!used) return [started()];
+  const said = first ? [started()] : [];
+  if (now >= all) said.push(`[AIR] The reserve air has run out. With the air plant still stopped, the air's going everywhere.`);
+  else if (used < all - 1440 && now >= all - 1440) said.push(`[AIR] A day of reserve air is left, and the air plant's still stopped.`);
+  return said.length ? said : NO_LINES;
 }
 
 // What the air took from the player through a long wait, gone through a few minutes at a time, is said in a line each
@@ -1500,6 +1541,8 @@ function flowsNow(game, place, model, state) {
   }
   if (state.cut) for (const room in state.cut) sig += `/${room}`;
   if (reserveLeft(game, place) > 0) sig += "|reserve";
+  // And whether the air plant has water to make air from (src/water.js).
+  if (!plantFed(game, place)) sig += "|dry";
   let mine = flowsKept.get(game);
   if (!mine) flowsKept.set(game, (mine = new Map()));
   const kept = mine.get(place);
@@ -1834,7 +1877,9 @@ export function lookAt(game, place, part) {
   const spec = kindSpec(part.kind);
   const s = partState(game, place, part.id);
   const works = partWorks(game, place, part);
-  const state = s.damage ? (s.by === "wear" && spec.worn) || (s.by === "battle" && SHOT_UP) || (s.by === "stripped" && STRIPPED) || spec.damaged || "It's broken." : s.on === false ? spec.off ?? "It's off." : !works ? deadWords(game, place, part) : ringingNow(game, place, part) ? "It's ringing." : spec.on ?? "It's working.";
+  // An air plant that runs but has no water to make air from says so (src/water.js).
+  const dry = works && part.kind === "air plant" ? plantDry(game, place) : null;
+  const state = s.damage ? (s.by === "wear" && spec.worn) || (s.by === "battle" && SHOT_UP) || (s.by === "stripped" && STRIPPED) || spec.damaged || "It's broken." : s.on === false ? spec.off ?? "It's off." : !works ? deadWords(game, place, part) : dry ?? (ringingNow(game, place, part) ? "It's ringing." : spec.on ?? "It's working.");
   const reserve = part.kind === "air plant" && reserveAll(place) > 0 ? ` The reserve air stands at ${reserveLeft(game, place) > 0 ? reserveWords(reserveLeft(game, place)) : "nothing"}${reserveLeft(game, place) >= reserveAll(place) ? ", which is all of it" : ""}.` : "";
   return `${part.look ?? spec.look ?? `The ${part.name}.`} ${state}${s.damage ? repairWords(game, place, s) : ""}${reserve}`;
 }

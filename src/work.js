@@ -68,6 +68,7 @@ import { workshopHands, workshopRows, workshopWork } from "./workshop.js";
 import { addOrder, addRoomActs, detourExtras } from "./room-hooks.js";
 import { passTime } from "./rules.js";
 import { airMoves, alarmWork, anyWaitingForParts, dutyDetour, engineersOf, finishRepair, holdRepair, partsWaitingRefs, repairNow, repairsDue, repairsWaiting, waitingForParts } from "./systems.js";
+import { countNote, rationLook } from "./water.js";
 import { worthOf } from "./worth.js";
 import { notePut, putsOf } from "./puts.js";
 import { recordFact } from "./record.js";
@@ -425,7 +426,7 @@ function setLevels(model, state, t, by) {
 // looks at once, or when whoever has it is due another look, which is as often as their pace allows. Someone who
 // can't decide when their look comes (nobody in the post, or its holder dead, locked up or laid up) decides nothing,
 // and is asked again a quarter of an hour on. Between looks the last order stands.
-function officersLook(game, place, model, state, t) {
+function officersLook(game, place, model, state, t, notes = null) {
   const orders = (state.orders ??= {});
   // An order the written story gave stands until its time is up, whoever holds the post.
   const due = (decider, was) => !was || t >= was.next || (!was.story && (holderKey(game, place, decider.post) ?? null) !== was.holder);
@@ -448,6 +449,11 @@ function officersLook(game, place, model, state, t) {
     if (who.why) orders.levels = { by: null, why: who.why, holder, looked: orders.levels?.looked ?? t, next: t + LOOK_EVERY };
     else {
       setLevels(model, state, t, who.key);
+      // Whoever decides what the stores want decides whether water's rationed too, at the same look (src/water.js).
+      if (model.water) {
+        const said = rationLook(game, place, model, state, t, who.key);
+        if (notes) notes.push(...said);
+      }
       orders.levels = { by: who.key, why: null, holder, looked: t, next: t + paceOf(game, place, levels, who.key) };
     }
   }
@@ -1165,7 +1171,7 @@ export function runBoard(game, place, model, state, t, chunk, notes = null) {
     return NOTHING_LEFT;
   }
   const deciding = Boolean(model.deciders?.first || model.deciders?.levels);
-  if (deciding && Math.floor(t / LOOK_EVERY) !== Math.floor((t - chunk) / LOOK_EVERY)) officersLook(game, place, model, state, t);
+  if (deciding && Math.floor(t / LOOK_EVERY) !== Math.floor((t - chunk) / LOOK_EVERY)) officersLook(game, place, model, state, t, notes);
   tendMine(game, place, model, state, t, notes);
   // Whoever has been called to something outside the board, or can't go on, hands their job back; and so does
   // whoever another part of the game has taken for work of its own, as the alarm takes its guards.
@@ -1453,7 +1459,7 @@ export function boardView(game, place) {
     stores: model.stores.filter((store) => !store.freight).map((store) => {
       if (store.count) {
         const n = countOf(game, store);
-        return { id: store.id, name: upperFirst(store.name), room: store.roomName, count: { n, of: store.count.n, unit: store.count.unit }, note: model.kettles.includes(store) ? (sittingOn ? "a sitting is on" : `next sitting ${clockWords(next)}`) : "", rows: [] };
+        return { id: store.id, name: upperFirst(store.name), room: store.roomName, count: { n, of: store.count.n, unit: store.count.unit }, note: model.kettles.includes(store) ? (sittingOn ? "a sitting is on" : `next sitting ${clockWords(next)}`) : countNote(game, place, store), rows: [] };
       }
       const counts = storeCounts(game, store.key, store.holds);
       return {

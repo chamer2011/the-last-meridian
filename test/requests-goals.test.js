@@ -140,7 +140,7 @@ test("parts wear out now and then on the Meridian, mended the same day while the
   const crates = lg.countAboard(game, SHIP, "parts_crate").n;
   const heard = wearFor(game, 120);
   assert.ok(heard.length >= 4 && heard.length <= 25, `about one every ten days: ${heard.length} in 120`);
-  for (const line of heard) assert.match(line, /^\[SYSTEMS\] The (junction box|air plant|speaker|relay|engines) in .+ (has|have) given out/);
+  for (const line of heard) assert.match(line, /^\[SYSTEMS\] The (junction box|air plant|speaker|relay|engines|pumps) in .+ (has|have) given out/);
   // With a crate aboard, the engineers replace what wore out on its own day, a crate where a repair takes one.
   assert.match(heard[0], /has replaced what wore out/);
   assert.ok(lg.countAboard(game, SHIP, "parts_crate").n < crates, "crates went on repairs");

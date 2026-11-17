@@ -474,11 +474,11 @@ function logisticsGraph() {
   const list = [], ws = [];
   const add = (node) => { list.push(node); return node.id; };
   const numbers = P.numbers ?? {};
-  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${numbers.eats ? `Everyone aboard eats ${numbers.eats} sittings a day. ` : ""}${numbers.crateFeeds ? `A crate feeds ${numbers.crateFeeds} sittings. ` : ""}${P.sittings ? `Sittings at ${writeSittings(P.sittings)}. ` : "Four sittings a day unless this says otherwise. "}${P.repair?.n ? `A repair takes ${writeRepair(P.repair)}.` : "A repair takes nothing."}${P.making?.n ? ` Salvage makes ${writeMaking(P.making)}.` : ""}${P.carriers?.list?.length ? ` A store that doesn't say is carried for by ${P.carriers.list.join(", then ")}.` : ""}${P.trip?.list?.length ? ` A trip carries ${writeTrip(P.trip)}.` : ""}${P.first ? ` What comes first is decided by ${writeDecider(P.first)}.` : ""}${P.levels ? ` What the stores want is set by ${writeDecider(P.levels)}.` : ""}${P.waiting && P.askers ? ` A job left waiting ${writeWaiting(P.waiting)}, is brought to the player: by ${writeAskers(P.askers)}.` : ""}`, label: "The numbers at the top" });
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${numbers.eats ? `Everyone aboard eats ${numbers.eats} sittings a day. ` : ""}${numbers.crateFeeds ? `A crate feeds ${numbers.crateFeeds} sittings. ` : ""}${numbers.drinks ? `Everyone aboard drinks ${numbers.drinks} measures of water a day${numbers.rationUnder ? `, rationed under ${numbers.rationUnder}` : ""}. ` : ""}${P.sittings ? `Sittings at ${writeSittings(P.sittings)}. ` : "Four sittings a day unless this says otherwise. "}${P.repair?.n ? `A repair takes ${writeRepair(P.repair)}.` : "A repair takes nothing."}${P.making?.n ? ` Salvage makes ${writeMaking(P.making)}.` : ""}${P.carriers?.list?.length ? ` A store that doesn't say is carried for by ${P.carriers.list.join(", then ")}.` : ""}${P.trip?.list?.length ? ` A trip carries ${writeTrip(P.trip)}.` : ""}${P.first ? ` What comes first is decided by ${writeDecider(P.first)}.` : ""}${P.levels ? ` What the stores want is set by ${writeDecider(P.levels)}.` : ""}${P.waiting && P.askers ? ` A job left waiting ${writeWaiting(P.waiting)}, is brought to the player: by ${writeAskers(P.askers)}.` : ""}`, label: "The numbers at the top" });
   const stores = (P.stores ?? []).map((one, i) => {
     const read = readStoreLine(one.text ?? one);
     const placed = (L.stores ?? []).find((s) => s.name === read.name);
-    return { i, read, id: add({ id: `store${i}`, kind: "beat", col: 1, name: read.problem ? "A store" : `${read.name}, in ${read.room}`, text: read.problem ? read.problem : `${read.freight ? "Holds freight: whatever she's carrying" : `Holds ${read.holds.map((h) => `${h.n} ${h.what}`).join(", ")}`}.${read.wants.length ? ` Wants ${marksWords(read.wants, read.holds)}${read.urgent.length ? `, urgent under ${marksWords(read.urgent, read.holds)}` : ""}, carried by ${(read.carriers.length ? read.carriers : P.carriers?.list ?? ["nobody yet"]).join(", then ")}.` : ""}${placed ? placed.placed ? " The game puts it in the room, since the map hasn't drawn one." : " It's the thing of that name in the room." : ""}${read.look ? ` ${read.look}` : ""}`, label: "A store", bind: { store: i }, problem: Boolean(read.problem) }) };
+    return { i, read, id: add({ id: `store${i}`, kind: "beat", col: 1, name: read.problem ? "A store" : `${read.name}, in ${read.room}`, text: read.problem ? read.problem : `${read.freight ? "Holds freight: whatever she's carrying" : read.reserve ? "Holds the reserve air: as many days of it as the place's systems file gives" : `Holds ${read.holds.map((h) => `${h.n} ${h.what}`).join(", ")}`}.${read.wants.length ? ` Wants ${marksWords(read.wants, read.holds)}${read.urgent.length ? `, urgent under ${marksWords(read.urgent, read.holds)}` : ""}, carried by ${(read.carriers.length ? read.carriers : P.carriers?.list ?? ["nobody yet"]).join(", then ")}.` : ""}${placed ? placed.placed ? " The game puts it in the room, since the map hasn't drawn one." : " It's the thing of that name in the room." : ""}${read.look ? ` ${read.look}` : ""}`, label: "A store", bind: { store: i }, problem: Boolean(read.problem) }) };
   });
   // What a store wants can come from any other store that holds the same thing: the board works the route out.
   for (const store of stores) {
@@ -505,6 +505,11 @@ function logisticsGraph() {
         const outOf = new RegExp(`\\bfrom (the )?${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(lower);
         if (outOf) ws.push({ from: store.id, to: id });
         else ws.push({ from: id, to: store.id });
+      }
+      // A machine whose line says it needs water takes it from the store that holds measures of water.
+      if (part === "machines" && read?.needs?.water) {
+        const tank = stores.find((store) => !store.read.problem && store.read.holds.some((h) => /^measures? of water$/i.test(h.what)));
+        if (tank) ws.push({ from: tank.id, to: id });
       }
     });
   }
@@ -1445,6 +1450,17 @@ function inspectSystemsAbout(inspector) {
     hint(`The file is world/systems/${state.id}.txt.`));
 }
 
+// The numbers a logistics file gives for water and reserve air, in the file's order, with what each box is called.
+const WATER_NUMBERS = [
+  ["drinks", "everyone aboard drinks, in measures of water a day"],
+  ["tankFills", "a tank of water fills, in measures"],
+  ["pumpsStopped", "with the pumps stopped, how many times as much water goes"],
+  ["rationUnder", "water is rationed under, in measures"],
+  ["tankAir", "a reserve tank gives, in hours of air"],
+  ["airTakes", "a day of reserve air takes, in measures of water"],
+  ["breachAir", "a breached room takes, in hours of reserve air"],
+  ["breachSlow", "a breached room fills in, in hours with no reserve air"],
+];
 // The ship's logistics: the numbers at the top.
 function inspectLogisticsAbout(inspector) {
   const P = state.item;
@@ -1452,6 +1468,8 @@ function inspectLogisticsAbout(inspector) {
   const draft = textBox("edit-draft", P.draft ?? "");
   const eats = numberBox("edit-eats", P.numbers?.eats ?? "");
   const feeds = numberBox("edit-feeds", P.numbers?.crateFeeds ?? "");
+  // Water and reserve air (step 11): each a number, and a line that's left empty isn't written.
+  const water = WATER_NUMBERS.map(([key, words]) => ({ key, words, box: numberBox(`edit-water-${key}`, P.numbers?.[key] ?? "") }));
   const sittings = textBox("edit-sittings", P.sittings ? writeSittings(P.sittings) : "");
   const repair = textBox("edit-repair", P.repair ? writeRepair(P.repair) : "");
   const making = textBox("edit-making", P.making ? writeMaking(P.making) : "");
@@ -1476,6 +1494,9 @@ function inspectLogisticsAbout(inspector) {
     el("label", { for: "edit-levels" }, "what stores want: the post that raises what a store wants after it has run low, and how often they look (empty for nobody: stores want what their lines say)"), levels,
     el("label", { for: "edit-waiting" }, "left waiting: how long a job stands with nobody able to do it, or nothing aboard to do it with, before it's brought to the player, for urgent work and for the rest (empty, with the next line empty too, for never)"), waits,
     el("label", { for: "edit-askers" }, "who asks: the post that brings such a job to the player, for each part of the ship: the medbay, the engines, the galley, repairs, and the rest"), askers,
+    el("h3", {}, "Water and reserve air"),
+    hint("For a place with a store that holds measures of water (its water tank) and one that holds the reserve air. Leave a box empty and its line isn't written."),
+    ...water.map((one) => row(el("label", { for: `edit-water-${one.key}` }, one.words), one.box)),
     trouble,
     row(button("Keep", () => {
       const read = sittings.value.trim() ? readSittings(sittings.value) : null;
@@ -1521,6 +1542,7 @@ function inspectLogisticsAbout(inspector) {
       P.numbers = {};
       if (eats.value !== "") P.numbers.eats = Number(eats.value);
       if (feeds.value !== "") P.numbers.crateFeeds = Number(feeds.value);
+      for (const one of water) if (one.box.value !== "") P.numbers[one.key] = Number(one.box.value);
       if (read) P.sittings = read;
       else delete P.sittings;
       if (fix) P.repair = fix;
@@ -1554,7 +1576,7 @@ function inspectStoreLine(inspector, node) {
   // The picker starts on what the store already holds, so adding more of the same is one click.
   const firstHeld = read.problem || !read.holds.length ? "" : read.holds[0].what.toLowerCase().replace(/s$/, "");
   const held = (lists.items ?? []).find((one) => one.name.toLowerCase().replace(/s$/, "") === firstHeld || one.id === firstHeld.replace(/ /g, "_"));
-  const item = picker("edit-item", [...(lists.items ?? []).map((one) => [one.name, one.name]), ["sittings", "sittings (a count, not things)"]], held?.name ?? (firstHeld === "sitting" ? "sittings" : (lists.items ?? [])[0]?.name ?? "sittings"));
+  const item = picker("edit-item", [...(lists.items ?? []).map((one) => [one.name, one.name]), ["sittings", "sittings (a count, not things)"], ["measures of water", "measures of water (a count: the water tank)"]], held?.name ?? (firstHeld === "sitting" ? "sittings" : firstHeld === "measures of water" ? "measures of water" : (lists.items ?? [])[0]?.name ?? "sittings"));
   const count = numberBox("edit-count", 6);
   // What it wants, and when that's urgent: a number for one of the things it holds, or for all of them.
   const heldNow = () => { const now = readStoreLine(box.value); return now.problem ? [] : now.holds.map((h) => h.what); };
@@ -1582,9 +1604,9 @@ function inspectStoreLine(inspector, node) {
       const n = Math.max(1, Number(count.value) || 1);
       const words = item.value === "sittings" ? "sittings" : item.value.toLowerCase();
       if (readStoreLine(box.value).problem) box.value = `new store in ${room.value}: holds ${n} ${words}`;
-      else rewrite((now) => { now.freight = false; now.holds.push({ n, what: words }); });
+      else rewrite((now) => { now.freight = false; now.reserve = false; now.holds.push({ n, what: words }); });
     })),
-    hint("Items are named the way their files name them, plural or not; the plural with an s is written in the file. The store starts full, with this much, and never holds more."),
+    hint("Items are named the way their files name them, plural or not; the plural with an s is written in the file. The store starts full, with this much, and never holds more. A store that holds measures of water is the place's water tank, and one written holds the reserve air is its reserve tanks, with as much as its systems file gives."),
     row(el("span", {}, "wants"), wantN, el("span", {}, "of"), wantOf, button("Set what it wants", () => rewrite((now) => { now.wants = marked(now.wants, wantOf.value, Number(wantN.value) || 0); }))),
     row(el("span", {}, "urgent under"), urgentN, el("span", {}, "of"), urgentOf, button("Set when it's urgent", () => rewrite((now) => { now.urgent = marked(now.urgent, urgentOf.value, Number(urgentN.value) || 0); }))),
     row(el("span", {}, "carried by"), carrier, button("+ add a carrier", () => rewrite((now) => { if (carrier.value && !now.carriers.includes(carrier.value)) now.carriers.push(carrier.value); })), button("Start the carriers again", () => rewrite((now) => { now.carriers = []; }))),
@@ -1601,10 +1623,10 @@ function inspectLogisticsLine(inspector, node) {
   const box = textarea("edit-line", entry.text ?? entry, 3);
   fill(inspector, h2(node.label), el("label", { for: "edit-line" }, `The line, under ${PART_TITLES[part]}`), box,
     part === "machines"
-      ? hint("A machine: its name, in and its room if the room isn't named like it, a colon, then what it does. It takes so many of an item (or one of two, with or between them) from a store, and puts so many of an item or of sittings into a store, every so long, with power and someone there if it needs them: galley: cooks 1 produce or 1 ration crate from the pantry into 200 sittings in the soup kettle every hour, with power and a cook there. One that only gives power waits for step 4.")
+      ? hint("A machine: its name, in and its room if the room isn't named like it, a colon, then what it does. It takes so many of an item (or one of two, with or between them) from a store, and puts so many of an item or of sittings into a store, every so long, with power and someone there if it needs them, and so much water for each go: galley: cooks 1 produce or 1 ration crate from the pantry into 200 sittings in the soup kettle every hour, with power, a cook there and 1 water. One that only gives power is the generator. One that only takes water from the water tank uses it up as it runs, and in the room of the place's air plant it is the air plant: with no water it makes no air.")
       : part === "loads"
           ? hint("The loads: each system and what it draws from the generator, with a room or each to count them, and while under way for what only draws on a jump: air plant 20, engines 30 while under way, lights 1 a room, computers 2 each. Another line says the order they're let go in when the generator hasn't enough: when short, drop: cameras, comms, lights, doors, navigation, air.")
-          : hint("A refill: the store, a colon, what comes into it, where from, how often, and how far it's filled: the shuttle stores: ration crates and fuel cells from the dock, every 6 hours, up to full. From the dock, it's bought at whatever port the ship is docked at, out of the port's own stores and the ship's purse, and in open space nothing comes. From nothing, it comes from nowhere. Each refill is written in the manifest."),
+          : hint("A refill: the store, a colon, what comes into it, where from, how often, and how far it's filled: the shuttle stores: ration crates and fuel cells from the dock, every 6 hours, up to full. From the dock, it's bought at whatever port the ship is docked at, out of the port's own stores and the ship's purse, and in open space nothing comes. From nothing, it comes from nowhere. Each refill is written in the manifest. The water tank is filled the same way, by the tank: the water tank: water from the dock, every 6 hours, up to full."),
     row(button("Keep", () => { P[part][i] = { text: box.value.trim().replace(/\n+/g, " ") }; changed(); }), button("Undo", () => inspect())),
     row(button(`+ another under ${PART_TITLES[part]}`, () => addLogisticsLine(part)), button("Remove", () => remove(node), { class: "danger" })));
 }

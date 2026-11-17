@@ -65,7 +65,7 @@ function leave(game, port, good, n) {
 
 test("the ship's files say it: her stores are restocked from the dock, sized for two weeks away, and the trade file has the slate and the distress call", () => {
   const model = logisticsOf(SHIP);
-  assert.deepEqual(model.refills.map((one) => [one.store, one.items, one.from, one.every, one.upTo]), [["shuttle_stores", ["ration_crate", "fuel_cell"], "dock", 360, "full"]]);
+  assert.deepEqual(model.refills.map((one) => [one.store, one.items, one.from, one.every, one.upTo]), [["shuttle_stores", ["ration_crate", "fuel_cell"], "dock", 360, "full"], ["water_tank", ["water"], "dock", 360, "full"]]);
   assert.deepEqual(model.stores.find((one) => one.id === "shuttle_stores").holds, { ration_crate: 24, fuel_cell: 36, parts_crate: 6 });
   assert.equal(readRefillLine("the pantry: produce from nothing, every 6 hours").from, "nothing", "a file can still say from nothing");
   const rules = trade.tradeRules();
@@ -351,9 +351,9 @@ test("the Ship menu says what a day costs and how long the money and the stores 
   assert.deepEqual([money.purse, money.levy], [600, 60]);
   assert.equal(money.cells.holding, true);
   assert.equal(money.cells.days, 14, "and away from a dock, what's aboard lasts two weeks");
-  assert.deepEqual(Object.keys(money.dock), ["name", "crate", "cell", "every"]);
+  assert.deepEqual(Object.keys(money.dock), ["name", "crate", "cell", "water", "every"]);
   assert.equal(money.dock.every, 6);
-  // The cells her generator burns, the fuel she uses keeping station, and what's eaten beyond what the garden grows.
+  // The cells her generator burns, the fuel she uses keeping station, the water, and what's eaten beyond what the garden grows.
   assert.ok(money.cost >= 40 && money.cost <= 60, `a day at Haven costs ${money.cost}`);
   assert.equal(money.moneyDays, null, "the levy covers it");
   // Where a day costs more than comes in, the purse has days to it.

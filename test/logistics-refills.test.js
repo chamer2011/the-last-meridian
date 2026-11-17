@@ -55,7 +55,7 @@ test("a refill's line is read into its pieces, and a bad one says what's wrong",
 
 test("the Meridian's refill knows its store and items, and the checker catches a bad one", () => {
   const model = logisticsOf("meridian");
-  assert.deepEqual(model.refills.map((one) => [one.store, one.items, one.every, one.upTo]), [["shuttle_stores", ["ration_crate", "fuel_cell"], 360, "full"]]);
+  assert.deepEqual(model.refills.map((one) => [one.store, one.items, one.every, one.upTo]), [["shuttle_stores", ["ration_crate", "fuel_cell"], 360, "full"], ["water_tank", ["water"], 360, "full"]]);
   assert.deepEqual(model.problems, []);
   try {
     fs.writeFileSync(path.join(logisticsDir, "meridian.txt"), ["# CFS Meridian", "", "Stores:", "- shuttle stores in The Lighter Bay: holds 20 ration crates, 12 fuel cells", "- soup kettle in The Long Mess: holds 400 sittings", "", "Refills:",

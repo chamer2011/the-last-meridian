@@ -130,6 +130,16 @@ The game knows what these do:
 Any other heading is a system of the place's own, like Water with a pump in it. It does nothing by
 itself, but its parts are there to work, and the story can ask about it and change it.
 
+One of them does do something, at a place that keeps its water in a tank (world/logistics, WATER AND
+RESERVE AIR in its how-to): Water. Its parts are the pumps that bring back most of the water the place
+uses, and while none of them works (broken, switched off, or with no power in its room) the water goes
+several times as fast. On the Meridian:
+
+    Water:
+    - pumps in The Pump Room: The reclaim pumps.
+
+A pump is a machine, which wears out like the other kinds that do, at a place whose file says how often.
+
 Each kind of part has a look, and its own work by hand, in _defaults.json: a junction box's lever and
 its cables, a vent that can be sealed, a camera's lens that can be covered, a speaker's wires. A part
 whose name isn't there behaves like the system's own part (a "scrubber" under Air like a vent, a
@@ -231,7 +241,11 @@ its air plant is stopped, for whatever reason, the reserve reaches every room wh
 been shut or broken, power or none, and the rooms' air stays good. The story says when the reserve
 starts being breathed, when a day of it is left and when it's gone, and a look at the air plant
 says how much is left. Once the plant runs again it fills back up within a day (the "reserve air
-fills in" hours in _defaults.json). Only the Meridian's file has the line: five days, which is
+fills in" hours in _defaults.json). On the Meridian the reserve is real tanks in Life Support, a store
+in her logistics file, which holds what this line gives: filling it again takes water, a patched breach
+is filled out of it, and a full tank from a port can be fitted by hand (world/logistics, WATER AND
+RESERVE AIR). And her air plant makes the air from water: with none in her tank it stops like an air
+plant with no power. Only the Meridian's file has the line: five days, which is
 longer than a distress call takes to bring fuel cells to a ship with none. A place without the line
 has no reserve, and its air goes as soon as its plant stops.
 

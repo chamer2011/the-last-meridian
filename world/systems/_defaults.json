@@ -148,6 +148,7 @@
       "on": "It's running.",
       "off": "It's been switched off.",
       "damaged": "It's broken.",
+      "worn": "Something inside has worn through, and it's stopped.",
       "switch": { "off": "Switch it off", "on": "Switch it on", "tampering": true },
       "break": { "label": "Break it", "check": "engineering:easy", "damage": "broken", "done": "Something inside gives, and it stops.", "failed": "It's tougher than it looks." },
       "fix": { "label": "Fix it", "check": "engineering:easy", "done": "It runs again.", "failed": "It still won't run." }

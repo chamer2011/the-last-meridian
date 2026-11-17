@@ -16,7 +16,8 @@ every store is a real thing in a room, full to start with, that the player can w
 pack; every machine takes from one store and puts into another on the clock; the generator burns fuel cells
 and gives the power the systems draw, and lets them go in a written order when it hasn't enough; whenever a
 store has fewer of something than it wants, whoever carries for it fetches some from the nearest store that
-can spare it; the whole ship eats from the kettle at its sittings;
+can spare it; the whole ship eats from the kettle at its sittings; everyone drinks from the water tank, which
+the galley, the garden and the air plant take theirs out of too;
 a store that's restocked is filled at a dock, out of the port's own stores and paid for from the ship's purse,
 and in open space nothing comes; the engineers' repairs use up spare parts from the stores; and the Ship menu's
 count of food, medicine and parts is the count of these stores, nothing else.
@@ -41,21 +42,33 @@ THE FILE
     what stores want: the quartermaster, every 4 hours   who raises what a store wants: see THE OFFICERS' ORDERS)
     left waiting: 30 minutes if it's urgent, 3 hours if it isn't   (how long a job stands before it's brought to
     who asks: the quartermaster for the galley, the deck chief for the rest   the player, and by whom: see LEFT WAITING)
+    everyone aboard drinks: 9 measures of water a day    (these eight are for a place that keeps its water in
+    a tank of water fills: 100 measures                   a tank and its reserve air in tanks: see WATER AND
+    with the pumps stopped: 4 times as much water goes    RESERVE AIR)
+    water is rationed under: 200 measures
+    a reserve tank gives: 24 hours of air
+    a day of reserve air takes: 4 measures of water
+    a breached room takes: 6 hours of reserve air
+    a breached room fills in: 3 hours with no reserve air
 
     Stores:
     - shuttle stores in The Lighter Bay: holds 24 ration crates, 36 fuel cells
     - pantry in The Galley: holds 12 ration crates, 12 produce; wants 4 of each; carried by the deckhands, the cooks: Shelves behind a wire door.
     - fuel rack in Engineering: holds 6 fuel cells; wants 3; urgent under 2
     - soup kettle in The Long Mess: holds 400 sittings
+    - water tank in The Pump Room: holds 800 measures of water
+    - reserve tanks in Life Support: holds the reserve air
 
     Machines:
-    - galley: cooks 1 produce or 1 ration crate from the pantry into 200 sittings in the soup kettle every hour
+    - galley: cooks 1 produce or 1 ration crate from the pantry into 200 sittings in the soup kettle every hour, with power, a cook there and 1 water
+    - air plant in Engineering: takes 1 water from the water tank every 3 hours, with power
 
     Loads:
     - air plant 20, engines 30 while under way, lights 2 a room
 
     Refills:
     - the shuttle stores: ration crates and fuel cells from the dock, every 6 hours, up to full
+    - the water tank: water from the dock, every 6 hours, up to full
 
     Urgency:
     - urgent carrying
@@ -84,7 +97,8 @@ The room is one from the place's map, by its name (The Galley, Engineering, Medb
 number and an item from world/items each, by the item's name or its id, plural or not: ration crates,
 fuel cells, parts crates, medicine crates, produce. That's what the store holds when the game starts, and
 also the most it holds, so it starts full. A store of sittings (holds 400 sittings) is a count, not things
-you can pick up: the kettle is one.
+you can pick up: the kettle is one. So are the water tank (holds 800 measures of water) and the reserve tanks
+(holds the reserve air): see WATER AND RESERVE AIR.
 
 A freight hold is a store that says holds freight and nothing else:
 
@@ -108,9 +122,10 @@ MACHINES
 A machine takes from one store and puts into another, so often, on the clock. Each line is the machine's
 name, then in and its room if the room isn't named like it (galley, garden), a colon, and what it does:
 
-    - galley: cooks 1 produce or 1 ration crate from the pantry into 200 sittings in the soup kettle every hour, with power and a cook there
-    - garden: grows 1 produce into the garden bins every 2 hours, with power and someone tending it
+    - galley: cooks 1 produce or 1 ration crate from the pantry into 200 sittings in the soup kettle every hour, with power, a cook there and 1 water
+    - garden: grows 1 produce into the garden bins every 2 hours, with power, someone tending it and 1 water
     - generator in Engineering: burns 1 fuel cell from the fuel rack every 8 hours, gives 100 power
+    - air plant in Engineering: takes 1 water from the water tank every 3 hours, with power
 
 The pieces, in any order after the verb:
 
@@ -124,9 +139,14 @@ The pieces, in any order after the verb:
                                       with that aren't power mean someone, and they're shown when nobody is;
                                       words that name a job on the watch bill, like a cook, mean someone
                                       doing that job, world/command says who)
+    and 1 water                       with its needs: so many measures out of the place's water tank for every
+                                      go, and it waits, saying the tank has no water, when there aren't enough
     gives 100 power                   a machine that gives power and makes nothing else is the generator: it
                                       starts with one of what it burns in it, takes the next from its store when
                                       that's spent, and stops, with nothing aboard powered, when there's none
+    takes 1 water from the water tank    a machine that only takes water uses it up as it runs: it starts with
+                                      one go's worth in it, takes the next when that's spent, and stops when the
+                                      tank is empty. In the room of the place's air plant, it is the air plant
 
 A machine is at work while its room has power and someone's there: the player standing in it, or anyone
 whose day puts them there, awake. Its progress builds up to one go, and when there's room in the store it
@@ -149,6 +169,66 @@ everyone aboard eats says, spread evenly through each sitting. Whoever finds the
 anyone you can see eating finds it empty instead, and at midnight the ship's morale feels it by the share
 who went hungry, the way a food shortage does. The Ship menu shows the sittings, and what the kettle gave
 today and yesterday.
+
+WATER AND RESERVE AIR
+---------------------
+
+A place keeps its water in a store that holds measures of water, and its reserve air in a store that says
+holds the reserve air:
+
+    - water tank in The Pump Room: holds 800 measures of water: The ship's water, behind the pumps.
+    - reserve tanks in Life Support: holds the reserve air: A rack of grey bottles along the hull.
+
+Like the kettle they're counts, not things to pick up, and each starts full. A place has one of each at most.
+The reserve tanks hold as much as the place's systems file gives it (reserve air: 5, in days, in
+world/systems), so that number isn't written here: change it there.
+
+Eight lines at the top say what the water does:
+
+    everyone aboard drinks: 9 measures of water a day
+    a tank of water fills: 100 measures
+    with the pumps stopped: 4 times as much water goes
+    water is rationed under: 200 measures
+    a reserve tank gives: 24 hours of air
+    a day of reserve air takes: 4 measures of water
+    a breached room takes: 6 hours of reserve air
+    a breached room fills in: 3 hours with no reserve air
+
+everyone aboard drinks is for everyone the ship starts with, all together, in a day; with fewer aboard it's
+less. It isn't all the water people use: it's what's lost for good, since the pumps bring the rest back.
+
+Machines take water too (see MACHINES). One whose needs end with so much water takes that many measures out of
+the tank for every go. One that only takes water uses it up as it runs, and in the room where the place's
+systems have their air plant, that machine is the air plant: it makes the place's air from water and power.
+When the tank is empty and what it had is used, it makes no air, exactly as if it had no power: the place
+breathes its reserve air, and when that's gone, nothing (world/health/wounds.txt says what that does to
+people). It uses nothing while it's switched off, broken or without power.
+
+The pumps are the parts of the place's Water system (in world/systems: a part under a Water: heading, such as
+- pumps in The Pump Room). While none of them works (broken, switched off, or with no power in its room),
+nothing that's used comes back, and everything above takes with the pumps stopped times as much. With no
+Water system written, the pumps never stop.
+
+water is rationed under: when the tank has fewer measures than this and no dock is keeping it up, whoever
+decides what the stores want (the what stores want line) puts water on ration at their next look. Everyone
+drinks half, and whatever grows (a machine that needs water and makes things, not sittings) goes at half its
+pace; the galley cooks as before. It comes off once the tank is back to half as much again, or at a dock that
+sells water. With nobody in that post, or no such line, nobody rations.
+
+The tank is filled at a dock by a Refills line (the water tank: water from the dock, every 6 hours, up to
+full): whole tanks of water out of the port's own stock (the good the ports' files call water), each filling
+a tank of water fills measures, paid for from the ship's purse at the item's own price, by how much the port
+has. In open space nothing comes. A tank of water carried aboard can be poured in by hand at the water tank.
+
+The reserve air is breathed while the air plant is stopped. It fills again while the air plant runs (reserve
+air fills in, in world/systems/_defaults.json), and filling it takes water: a day of reserve air takes so
+many measures. A full reserve tank from a port, fitted by hand at the reserve tanks, adds a reserve tank
+gives hours. And when a breach is patched, the room is filled again out of the reserve tanks at once: a
+breached room takes so many hours of their air. With less than that left in them, the air plant fills the
+room alone, which takes a breached room fills in hours, and the room's air stays bad until then.
+
+The Ship menu's Stores list has a Water line and an Air line, each with how long it lasts, and the Work page
+lists both tanks with a word beside them when something's up.
 
 CARRYING
 --------
@@ -355,6 +435,10 @@ empty. In open space nothing comes.
 A line can still say from nothing (the words for now are allowed after it). Then the store is topped up from
 nowhere, wherever the ship is, on the hour counted from midnight (every 6 hours is at 00:00, 06:00, 12:00 and
 18:00). That's how every game went before the ports held real amounts, and it's there for trying things out.
+
+The water tank is filled the same way, by the tank (see WATER AND RESERVE AIR):
+
+    - the water tank: water from the dock, every 6 hours, up to full
 
 The store has to keep every item named. What came aboard is written in the manifest, which you read by
 looking at the store (the shuttle stores carry it on a clip) or on any of the ship's computers that lists the

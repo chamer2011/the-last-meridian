@@ -71,9 +71,10 @@ test("a machine's line is read into its pieces, and a bad one says what's wrong"
 test("the Meridian's machines know their stores, rooms and needs, and the generator waits for step 4", () => {
   const model = logisticsOf("meridian");
   const byId = Object.fromEntries(model.machines.map((m) => [m.id, m]));
-  assert.deepEqual(Object.keys(byId).sort(), ["galley", "garden", "generator"]);
+  // The air plant is a machine since the ship keeps her water: it takes it from the tank as it runs (test/water.test.js).
+  assert.deepEqual(Object.keys(byId).sort(), ["air_plant", "galley", "garden", "generator"]);
   assert.deepEqual([byId.galley.room, byId.galley.takes, byId.galley.from, byId.galley.gives, byId.galley.into, byId.galley.every, byId.galley.needs, byId.galley.runs],
-    ["galley", [{ item: "produce", n: 1 }, { item: "ration_crate", n: 1 }, { kind: "food" }], "pantry", { count: true, unit: "sittings", n: 200 }, "soup_kettle", 60, { power: true, worker: "a cook there", job: "cook" }, true]);
+    ["galley", [{ item: "produce", n: 1 }, { item: "ration_crate", n: 1 }, { kind: "food" }], "pantry", { count: true, unit: "sittings", n: 200 }, "soup_kettle", 60, { power: true, worker: "a cook there", water: 1, job: "cook" }, true]);
   assert.deepEqual([byId.garden.room, byId.garden.takes, byId.garden.gives, byId.garden.into, byId.garden.every, byId.garden.runs], ["garden", [], { count: false, item: "produce", n: 1 }, "garden_bins", 120, true]);
   assert.deepEqual([byId.generator.room, byId.generator.from, byId.generator.power, byId.generator.runs, byId.generator.generator], ["engineering", "fuel_rack", 100, true, true]);
   assert.deepEqual(model.sittings, { at: [360, 450, 1080, 1170], minutes: 90 });
@@ -236,7 +237,7 @@ test("an old save comes up at version 17 with its stores full and its machines a
   assert.ok(storesView(migrated, "meridian").every((one) => one.full));
   const statuses = machinesView(migrated, "meridian").map((one) => one.status);
   assert.match(statuses[0], /^running, 8 h 0 min on this fuel cell, giving 100 power$/, "the generator starts with a cell in it");
-  assert.deepEqual(statuses.slice(1), ["about to start", "about to start"]);
+  assert.deepEqual(statuses.slice(1), ["about to start", "about to start", "running, 3 h 0 min on the water it has"]);
   assert.deepEqual(mealsView(migrated, "meridian").today, { served: 0, missed: 0 });
   clockRuns(migrated, 5);
   assert.ok(migrated.logistics.meridian.at > 0, "and it runs from the clock's next move");
@@ -260,6 +261,6 @@ test("the kettle says how much is left in it, an emptied pantry says it's empty,
   const before = JSON.stringify(fresh);
   publicState(fresh);
   assert.equal(JSON.stringify(fresh), before, "the Ship menu's machines and sittings are read without writing");
-  assert.deepEqual(fresh.logistics, { meridian: { at: 8 * 60, machines: {}, meals: { days: {}, carry: 0, dry: false }, jobs: [] } }, "a new game's logistics start with its clock");
+  assert.deepEqual(fresh.logistics, { meridian: { at: 8 * 60, machines: {}, meals: { days: {}, carry: 0, dry: false }, jobs: [], water: { carry: 0 } } }, "a new game's logistics start with its clock");
   assert.deepEqual(advanceLogistics(fresh), [], "and with the clock where it was, there's nothing to catch up");
 });

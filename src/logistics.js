@@ -13,7 +13,8 @@ import { ITEMS, LOCATIONS } from "./data.js";
 import { gridSquares, stackOf, storeCounts, storePut, storeTake } from "./bag.js";
 import { findCharacter } from "./campaign.js";
 import { rosterOf, usuallyIn, whoIsIn } from "./life.js";
-import { claimedSquares, damageKinds, floorSpot, powerBalance, roomPowered, systemsOf, waitingForParts } from "./systems.js";
+import { claimedSquares, damageKinds, floorSpot, powerBalance, reserveLeft, roomPowered, systemsOf, waitingForParts } from "./systems.js";
+import { machineWaterWhy, newWater, runUser, runWater, takeMachineWater, waterSlows } from "./water.js";
 import { YOU, jobById, jobByWords, mutinyStage, postByWords, speedOf, tallyDuty } from "./command.js";
 import { mapFor, roomHere, roomsOf, roomsOn, thingsIn } from "./walk.js";
 import { LOGISTICS_FILE_PROBLEMS, WORLD_LOGISTICS } from "./world.js";
@@ -26,8 +27,17 @@ import { KINDS, WORTH, pickWorth, worthIn, worthOf, worthTotal } from "./worth.j
 
 const plain = (words) => String(words ?? "").toLowerCase().replace(/['’]/g, "").replace(/^the\s+/, "").replace(/\s+/g, " ").trim();
 const upperFirst = (text) => (text ? text[0].toUpperCase() + text.slice(1) : "");
-// A store can hold a count of something that isn't an item you pick up: the kettle's sittings.
+// A store can hold a count of something that isn't an item you pick up: the kettle's sittings, the water tank's
+// measures of water, and the reserve tanks' hours of air, which are the place's reserve air (src/water.js).
 const COUNT_UNITS = ["sittings"];
+export const WATER_UNIT = "measures of water";
+export const AIR_UNIT = "hours of air";
+const countUnitOf = (what) => {
+  const said = plain(what);
+  return /^sittings?$/.test(said) ? "sittings" : /^measures? of water$/.test(said) ? WATER_UNIT : null;
+};
+// The thing that fills a water tank: the ports' own tank of water.
+const WATER_ITEM = "water";
 // When the whole ship eats, unless the file says: four sittings of an hour and a half, as the rota on the mess wall
 // has it, two in the morning and two in the evening, while the cooks are at the kettle.
 const DEFAULT_SITTINGS = { at: [6 * 60, 7 * 60 + 30, 18 * 60, 19 * 60 + 30], minutes: 90 };
@@ -50,7 +60,10 @@ export function itemByWords(words) {
 
 export const itemWords = (id, n) => {
   const name = (ITEMS[id]?.name ?? id).toLowerCase();
-  return n === 1 || /produce$/.test(name) ? name : `${name}s`;
+  if (n === 1 || /produce$/.test(name)) return name;
+  // "tanks of water", not "tank of waters".
+  const of = name.indexOf(" of ");
+  return of > 0 ? `${name.slice(0, of)}s${name.slice(of)}` : `${name}s`;
 };
 
 // "12 ration crates and 12 produce", or "400 sittings".
@@ -216,10 +229,27 @@ function compileLogistics(place) {
     const holds = {};
     let count = null;
     let sound = true;
+    // The reserve tanks hold the place's reserve air: as many hours of it as its systems file gives it days.
+    if (s.reserve) {
+      const days = systemsOf(place)?.numbers.reserve ?? 0;
+      if (!(days > 0)) {
+        at(line, `the ${s.name} hold the reserve air, and world/systems/${place}.txt gives ${name} none: write reserve air: 5 at its top, for five days of it`);
+        continue;
+      }
+      if (model.stores.some((one) => one.reserve)) {
+        at(line, `the reserve air is held twice: one store holds it`);
+        continue;
+      }
+      count = { n: days * 24, unit: AIR_UNIT };
+    }
     for (const { n, what } of s.holds) {
-      const unit = plain(what).replace(/s$/, "");
-      if (COUNT_UNITS.includes(`${unit}s`)) {
-        count = { n, unit: `${unit}s` };
+      const unit = countUnitOf(what);
+      if (unit) {
+        if (unit === WATER_UNIT && model.stores.some((one) => one.count?.unit === WATER_UNIT)) {
+          at(line, `the ${s.name} holds water, and so does another store: a place has one water tank`);
+          sound = false;
+        }
+        count = { n, unit };
         continue;
       }
       const item = itemByWords(what);
@@ -304,10 +334,21 @@ function compileLogistics(place) {
       thing.holds = { ...holds };
       thing.look = `${existing ? `${thing.look ?? ""} `.trimStart() : s.look ? `${s.look} ` : ""}The ship keeps ${kept} here.`.trim();
     }
-    const entry = { id, name: s.name, room: room.id, roomName: room.name, level: level.id, thing: thing.id, key: `thing:${place}:${thing.id}`, holds, count, wants, urgent, carriers: carriers.length ? carriers : usualCarriers, look: s.look, placed: !existing, line, ...(s.freight ? { freight: true } : {}) };
+    const entry = { id, place, name: s.name, room: room.id, roomName: room.name, level: level.id, thing: thing.id, key: `thing:${place}:${thing.id}`, holds, count, wants, urgent, carriers: carriers.length ? carriers : usualCarriers, look: s.look, placed: !existing, line, ...(s.freight ? { freight: true } : {}), ...(s.reserve ? { reserve: true } : {}) };
     model.stores.push(entry);
     (model.storesIn[room.id] ??= []).push(id);
-    if (count) model.kettles.push(entry);
+    if (count?.unit === "sittings") model.kettles.push(entry);
+  }
+  // Water and reserve air (src/water.js): the tank and the reserve tanks, with the file's numbers for them.
+  {
+    const tank = model.stores.find((store) => store.count?.unit === WATER_UNIT) ?? null;
+    const reserve = model.stores.find((store) => store.reserve) ?? null;
+    const n = model.numbers;
+    model.water = tank || reserve ? { tank: tank?.id ?? null, reserve: reserve?.id ?? null, plant: null, drinks: n.drinks ?? 0, tankFills: n.tankFills ?? 0, pumpsStopped: n.pumpsStopped ?? 1, rationUnder: n.rationUnder ?? 0, tankAir: n.tankAir ?? 0, airTakes: n.airTakes ?? 0, breachAir: n.breachAir ?? 0, breachSlow: n.breachSlow ?? 0 } : null;
+    const lineOf = (key) => (file.lines ?? {})[key] ?? null;
+    if (!tank) for (const [key, words] of [["drinks", "everyone aboard drinks"], ["tankFills", "a tank of water fills"], ["rationUnder", "water is rationed under"], ["airTakes", "a day of reserve air takes"]]) if (n[key] !== undefined) at(lineOf(key), `${words} is written, and no store holds measures of water: add a water tank under Stores, such as - water tank in The Pump Room: holds 800 measures of water`);
+    if (!reserve) for (const [key, words] of [["tankAir", "a reserve tank gives"], ["breachAir", "a breached room takes"]]) if (n[key] !== undefined) at(lineOf(key), `${words} is written, and no store holds the reserve air: add one under Stores, such as - reserve tanks in Life Support: holds the reserve air`);
+    if (tank && n.rationUnder > tank.count.n) at(lineOf("rationUnder"), `water is rationed under ${n.rationUnder} measures, and the ${tank.name} holds only ${tank.count.n}: it would always be rationed`);
   }
   // Everything the stores want, in the file's order: what the work board keeps up (src/work.js).
   model.wants = model.stores.flatMap((store) => Object.keys(store.wants).map((item) => ({ store: store.id, item, wants: store.wants[item], urgent: store.urgent[item] ?? 0, line: store.line })));
@@ -342,6 +383,14 @@ function compileLogistics(place) {
     }
     const takes = [];
     for (const { n, what, any } of m.takes) {
+      // Out of a store of water: so many measures of it, for a machine that uses water up (the air plant).
+      if (from?.count) {
+        if (from.count.unit !== WATER_UNIT || any || !/^(measures? of )?water$/.test(plain(what))) {
+          at(line, `the ${from.name} holds ${from.count.unit}, and the ${m.name} can't take ${what} from it${from.count.unit === WATER_UNIT ? ": write takes 1 water from the " + from.name : ""}`);
+          sound = false;
+        } else takes.push({ count: true, n });
+        continue;
+      }
       // "any food": whatever else in the store is worth something of that kind (src/worth.js).
       if (any) {
         const kind = KINDS.find((one) => one === any || WORTH[one] === any) ?? null;
@@ -393,13 +442,27 @@ function compileLogistics(place) {
       at(line, `the ${m.name} needs a room: write ${m.name} in The Galley`);
       sound = false;
     }
+    // Water for each go comes out of the place's water tank.
+    if (sound && m.needs?.water && !model.water?.tank) {
+      at(line, `the ${m.name} needs water, and no store holds measures of water: add a water tank under Stores`);
+      sound = false;
+    }
     if (!sound) continue;
     // A machine that gives power and makes nothing else is a generator: it burns what it's given and keeps the place lit.
     const generator = Boolean(m.power) && !gives;
+    // One that takes water and makes nothing it puts anywhere uses it up as it runs. The air plant is one: the
+    // machine that stands where the place's systems have their air plant, which makes air only while it has water.
+    const user = !gives && !generator && takes.length === 1 && Boolean(takes[0].count);
+    const airPlant = user && (systemsOf(place)?.partsIn?.[room.id] ?? []).some((part) => systemsOf(place).parts[part]?.kind === "air plant");
+    if (airPlant && model.water.plant) {
+      at(line, `the ${m.name} is a second air plant: one machine makes the place's air from water`);
+      continue;
+    }
+    if (airPlant) model.water.plant = id;
     // A worker the words name by their job ("a cook") has to be someone the watch bill has doing it.
     const job = m.needs?.worker ? jobByWords(place, m.needs.worker.replace(/\s+there$/i, "")) : null;
     const needs = job ? { ...m.needs, job } : m.needs;
-    model.machines.push({ id, name: m.name, verb: m.verb, room: room.id, roomName: room.name, takes, from: from?.id ?? null, gives, into: into?.id ?? null, every: m.every, needs, power: m.power, generator, runs: Boolean(gives) || generator, line, text: raw.text });
+    model.machines.push({ id, name: m.name, verb: m.verb, room: room.id, roomName: room.name, takes, from: from?.id ?? null, gives, into: into?.id ?? null, every: m.every, needs, power: m.power, generator, user, airPlant, runs: Boolean(gives) || generator || user, line, text: raw.text });
   }
   model.generators = model.machines.filter((m) => m.generator);
   // The loads: what each system draws from the generator, and the order they're let go in when there isn't enough.
@@ -458,7 +521,12 @@ function compileLogistics(place) {
       continue;
     }
     if (store.count) {
-      at(line, `the ${store.name} holds ${store.count.unit}, not things that come aboard: a refill names a store of things`);
+      // A water tank is filled with the ports' tanks of water, each as many measures as the file says.
+      const isWater = store.count.unit === WATER_UNIT && r.what.length === 1 && itemByWords(r.what[0]) === WATER_ITEM;
+      if (!isWater) at(line, `the ${store.name} holds ${store.count.unit}, not things that come aboard: ${store.count.unit === WATER_UNIT ? "what comes into it is water, from the dock" : "a refill names a store of things"}`);
+      else if (!(model.water.tankFills > 0)) at(line, `the ${store.name} is filled with tanks of water, and the file doesn't say how much one fills: write a tank of water fills: 100 measures at its top`);
+      else if (model.refills.some((one) => one.store === store.id)) at(line, `the ${store.name} is refilled twice: write what comes into it on one line`);
+      else model.refills.push({ store: store.id, items: [WATER_ITEM], count: true, per: model.water.tankFills, from: r.from, every: r.every, upTo: r.upTo, line, text: raw.text });
       continue;
     }
     const items = [];
@@ -549,11 +617,24 @@ function compileLogistics(place) {
 // ---- The counts -------------------------------------------------------------------------------------
 
 export const storeById = (model, id) => model.stores.find((store) => store.id === id) ?? null;
-// What a store of sittings holds now: kept in the save once anything's moved, and the file's number before that.
-export const countOf = (game, store) => (store.count ? game.stores?.[store.key]?.count ?? store.count.n : null);
-function setCount(game, store, n) {
+// What a store of a count holds now: kept in the save once anything's moved, and the file's number before that. The
+// reserve tanks hold whatever's left of the place's reserve air, which its systems keep (src/systems.js).
+export const countOf = (game, store) => (!store.count ? null : store.reserve ? Math.floor(reserveLeft(game, store.place) / 60 + 1e-6) : game.stores?.[store.key]?.count ?? store.count.n);
+export function setCount(game, store, n) {
+  if (store.reserve) return;
   game.stores ??= {};
   game.stores[store.key] = { ...(game.stores[store.key] ?? {}), count: Math.max(0, Math.min(store.count.n, Math.round(n))) };
+}
+// So many taken out of a store of a count, as far as it has them. Says how many came out.
+export function takeCount(game, store, n) {
+  if (!store?.count || store.reserve) return 0;
+  const have = countOf(game, store);
+  const took = Math.max(0, Math.min(have, Math.floor(n)));
+  if (took > 0) {
+    game.stores ??= {};
+    game.stores[store.key] = { ...(game.stores[store.key] ?? {}), count: have - took };
+  }
+  return took;
 }
 // How much more a store can take of what a machine makes.
 function roomFor(game, store, gives) {
@@ -734,7 +815,7 @@ export function refilledADay(game, place, items) {
     // What's bought at a dock isn't made from nothing: it's counted when it's bought.
     if (r.from !== "nothing") continue;
     const store = storeById(model, r.store);
-    for (const item of r.items) {
+    for (const item of r.count ? [] : r.items) {
       if (!wanted.includes(item)) continue;
       const upTo = r.upTo === "full" ? store.holds[item] : Math.min(store.holds[item], r.upTo);
       aDay += (upTo * 1440) / r.every;
@@ -785,7 +866,7 @@ function stateOf(game, place) {
 export const tripOf = (model, item) => model.trip?.[item] ?? 1;
 // Whether a machine has nothing left in its store to work from: the generator on its last cell, the galley with a
 // bare pantry. That's when it asks the board for more, however the store's own line counts it.
-export const machineStarved = (game, model, m) => Boolean(m.from) && m.takes.length > 0 && !pickTake(game, storeById(model, m.from), m.takes, aGo(m));
+export const machineStarved = (game, model, m) => !m.user && Boolean(m.from) && m.takes.length > 0 && !pickTake(game, storeById(model, m.from), m.takes, aGo(m));
 
 const loadWords = (item, n) => `${n} ${itemWords(item, n)}`;
 
@@ -806,6 +887,8 @@ function whyWaiting(game, place, m, from, into, minute, you, workers = null) {
     if (room < m.gives.n) return room > 0 ? `no room in the ${into.name} for ${m.gives.n} ${m.gives.count ? "sittings" : itemWords(m.gives.item, m.gives.n)} yet` : isFull(into);
   }
   if (from && !pickTake(game, from, m.takes, aGo(m))) return `the ${from.name} ${/s$/i.test(from.name) ? "have" : "has"} no ${takesWords(m.takes)}`;
+  // And water for it, where its line says it needs some (src/water.js).
+  if (m.needs.water) return machineWaterWhy(game, place, m);
   return null;
 }
 // How much one go of a machine makes at most, for a machine that takes whatever it's given: a pot of so many sittings.
@@ -823,7 +906,8 @@ function runMachine(game, place, model, m, state, minute, minutes, you) {
   const why = whyWaiting(game, place, m, from, into, minute, you, workers);
   const atWork = why === null || (why !== "no power" && !why.startsWith("waiting for "));
   // A machine that needs someone doing a job goes as fast as the best of them at that job's skill.
-  const speed = atWork && m.needs.job ? speedOf(game, place, you === m.room ? [...workers, YOU] : workers, jobById(place, m.needs.job)?.skills[0]) : 1;
+  // While water's rationed, what grows gets half of what it would, and gives half as much.
+  const speed = (atWork && m.needs.job ? speedOf(game, place, you === m.room ? [...workers, YOU] : workers, jobById(place, m.needs.job)?.skills[0]) : 1) * (m.needs.water ? waterSlows(game, place, m) : 1);
   if (atWork) s.progress = Math.min(m.every, s.progress + minutes * speed);
   // How long it's been worked at in all, whether or not there was room for what it made: what it could make in a day
   // is counted from this (grownSoFar).
@@ -832,6 +916,7 @@ function runMachine(game, place, model, m, state, minute, minutes, you) {
   while (why === null && s.progress >= m.every) {
     const take = from ? pickTake(game, from, m.takes, aGo(m)) : null;
     if ((from && !take) || (into && roomFor(game, into, m.gives) < m.gives.n)) break;
+    if (m.needs.water && !takeMachineWater(game, place, m)) break;
     // What a go gives: what its line says, unless what went in says what it feeds (src/worth.js). A pot of tins makes
     // as many sittings as the tins were worth, and a crate makes what a crate is worth.
     let gives = m.gives.n;
@@ -943,7 +1028,16 @@ function runRefills(game, place, model, state, t) {
     if (mark >= t + CHUNK) continue;
     const store = storeById(model, r.store);
     const came = [];
-    for (const item of r.items) {
+    // A store that keeps a count (the water tank) is topped up by whole ones of what fills it.
+    if (r.count) {
+      const most = r.upTo === "full" ? store.count.n : Math.min(store.count.n, r.upTo);
+      const n = Math.floor((most - countOf(game, store)) / r.per);
+      if (n > 0) {
+        setCount(game, store, countOf(game, store) + n * r.per);
+        came.push(loadWords(r.items[0], n));
+      }
+    }
+    for (const item of r.count ? [] : r.items) {
       const have = storeCounts(game, store.key, store.holds)[item] ?? 0;
       const upTo = r.upTo === "full" ? store.holds[item] : Math.min(store.holds[item], r.upTo);
       if (upTo - have <= 0) continue;
@@ -1094,7 +1188,14 @@ const minutesOf = (hours) => Math.floor(hours * 60 + 1e-6);
 // before there were logistics has no mark, and starts from the clock's next move instead, with nothing to catch up.
 export function startLogistics(game) {
   const now = minutesOf(game.clock.hours);
-  for (const place of Object.keys(WORLD_LOGISTICS)) if (logisticsOf(place)) stateOf(game, place).at = now;
+  for (const place of Object.keys(WORLD_LOGISTICS)) {
+    const model = logisticsOf(place);
+    if (!model) continue;
+    const state = stateOf(game, place);
+    state.at = now;
+    // A new game knows of its water from the start; one from before is told once (src/water.js).
+    if (model.water) state.water = newWater();
+  }
   return game;
 }
 
@@ -1127,9 +1228,12 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
     while (t + CHUNK <= until) {
       for (const m of model.machines) {
         if (m.generator) runGenerator(game, model, m, state, CHUNK);
+        else if (m.user) runUser(game, place, model, m, state, CHUNK);
         else if (m.runs) runMachine(game, place, model, m, state, t, CHUNK, you);
       }
       serveMeals(game, place, model, state, t, CHUNK, notes);
+      // Everyone drinks, a breached room is filled again, and the tank says when it's run dry (src/water.js).
+      if (model.water) runWater(game, place, model, state, t, CHUNK, notes);
       runRefills(game, place, model, state, t);
       // The board says what it couldn't give to anyone: something a store is badly short of, that some other store
       // could spare, with nobody able to carry it, which is what counts as an errand left waiting; and a repair the
@@ -1212,10 +1316,13 @@ export function machinesView(game, place) {
     const s = state?.machines?.[m.id] ?? null;
     const from = m.from ? storeById(model, m.from) : null;
     const into = m.into ? storeById(model, m.into) : null;
-    const does = [m.verb, m.takes.map((one) => (one.kind ? `any ${one.kind}` : `${one.n} ${itemWords(one.item, one.n)}`)).join(" or "), from ? `from the ${from.name}` : "", m.gives ? `into ${m.gives.n} ${m.gives.count ? m.gives.unit : itemWords(m.gives.item, m.gives.n)} in the ${into.name}` : "", `every ${everyWords(m.every)}`, m.power ? `, ${m.power} power` : ""].filter(Boolean).join(" ").replace(" ,", ",");
+    const takeWords = (one) => (one.kind ? `any ${one.kind}` : one.count ? `${one.n} ${one.n === 1 ? "measure" : "measures"} of water` : `${one.n} ${itemWords(one.item, one.n)}`);
+    const does = [m.verb, m.takes.map(takeWords).join(" or "), from ? `from the ${from.name}` : "", m.gives ? `into ${m.gives.n} ${m.gives.count ? m.gives.unit : itemWords(m.gives.item, m.gives.n)} in the ${into.name}` : "", `every ${everyWords(m.every)}`, m.needs?.water ? `, with ${m.needs.water} ${m.needs.water === 1 ? "measure" : "measures"} of water each time` : "", m.power ? `, ${m.power} power` : ""].filter(Boolean).join(" ").replace(/ ,/g, ",");
     const left = (minutes) => `${Math.floor(minutes / 60) ? `${Math.floor(minutes / 60)} h ` : ""}${Math.round(minutes % 60)} min`;
     const status = m.generator
       ? ((s?.burning ?? m.every) > 0 ? `running, ${left(s?.burning ?? m.every)} on this ${m.takes[0] ? itemWords(m.takes[0].item, 1) : "charge"}, giving ${m.power} power` : `stopped: ${s.waiting}, and nothing aboard has power`)
+      // One that uses water up as it runs (the air plant, src/water.js).
+      : m.user ? (s?.waiting ? (s.waiting === "stopped" ? "stopped" : `stopped: ${s.waiting}`) : `running, ${left(Math.max(0, s?.burning ?? m.every))} on the water it has`)
       : !m.runs ? "not in play"
         : !s ? "about to start"
           : s.waiting ? s.waiting
@@ -1271,7 +1378,10 @@ export function storeLook(game, place, thing, look) {
   if (store.count) {
     const n = countOf(game, store);
     const of = store.count.n;
-    const words = n <= 0 ? "It's been scraped empty." : n < of / 4 ? `There's not much left in it, ${n} ${store.count.unit} or so.` : n < of ? `About ${n} ${store.count.unit} left in it.` : "It's full.";
+    const many = /s$/i.test(store.name);
+    const words = store.count.unit === "sittings"
+      ? n <= 0 ? "It's been scraped empty." : n < of / 4 ? `There's not much left in it, ${n} ${store.count.unit} or so.` : n < of ? `About ${n} ${store.count.unit} left in it.` : "It's full."
+      : n <= 0 ? `${many ? "They're" : "It's"} empty.` : n < of ? `${n} of ${of} ${store.count.unit} ${many ? "are left in them" : "are left in it"}.` : `${many ? "They're" : "It's"} full: ${of} ${store.count.unit}.`;
     return `${look ?? ""} ${words}`.trim();
   }
   const counts = storeCounts(game, store.key, store.holds);

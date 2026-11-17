@@ -19,7 +19,8 @@ import { illnessKinds } from "./body.js";
 import { workshopView } from "./workshop.js";
 import { countAboard, foodADay, grownGuess, grownSoFar, machinesView, mealsOfDay, mealsView, powerSupply, putAboard, refilledADay, refillsView, repairsView, storesView, takeAboard, usedFrom, worthAboard } from "./logistics.js";
 import { addToPurse, cellsOf, dockSends, payAt, purseOf, slateWords, tradeRules, tradeView, unitPrice } from "./trade.js";
-import { portTake, portsModel } from "./ports.js";
+import { WATER_ITEM, airView, bringWater, waterView } from "./water.js";
+import { amountOf, portTake, portsModel } from "./ports.js";
 import { freightCommand, freightView } from "./freight.js";
 import { worthOf } from "./worth.js";
 import { SHIP_DATA, STAR_MAP } from "./world.js";
@@ -958,11 +959,17 @@ function distressDay(game, notes) {
   const wanted = cells && cells.n < cells.aDay ? Math.ceil(cells.aDay * 2) : 0;
   const stowed = wanted ? putAboard(game, SHIP_ID, "fuel_cell", wanted, ["fuel_rack", "shuttle_stores"]) : 0;
   const each = mapSpot(from).trade.fuel * supplyFactor(game, from, "fuel");
-  const cost = Math.ceil((fuel * each + stowed * (unitPrice(game, from, "fuel_cell") ?? 0)) * rules.times);
+  // And water for a couple of days, where she has under a day of it and that port has some to sell (src/water.js).
+  const water = waterView(game);
+  const waterEach = unitPrice(game, from, WATER_ITEM);
+  const waterGood = portsModel().order.find((one) => portsModel().goods[one].item === WATER_ITEM);
+  const tanks = water && waterEach && waterGood && water.fills > 0 && water.n < water.aDay ? bringWater(game, Math.min(Math.ceil((water.aDay * 2) / water.fills), Math.floor(amountOf(game.world, from, waterGood)))) : 0;
+  const cost = Math.ceil((fuel * each + stowed * (unitPrice(game, from, "fuel_cell") ?? 0) + tanks * (waterEach ?? 0)) * rules.times);
   ship.fuel += fuel;
   if (fuel) tradedAt(game, from, "fuel", false, fuel);
   const good = portsModel().order.find((one) => portsModel().goods[one].item === "fuel_cell");
   if (stowed && good) portTake(game.world, from, good, stowed);
+  if (tanks) portTake(game.world, from, waterGood, tanks);
   // From the purse, and the rest on the slate at the port it came from, past what a port would usually give.
   const have = Math.max(0, Math.min(cost, Math.floor(purseOf(game))));
   addToPurse(game, -have);
@@ -971,7 +978,8 @@ function distressDay(game, notes) {
     ship.slate ??= {};
     ship.slate[from] = { owed: (ship.slate[from]?.owed ?? 0) + owed, since: ship.slate[from]?.owed > 0 ? ship.slate[from].since : ship.day };
   }
-  const brought = [fuel ? `${fuel} fuel for the tank` : null, stowed ? `${stowed} fuel cells` : null].filter(Boolean).join(" and ");
+  const things = [fuel ? `${fuel} fuel for the tank` : null, stowed ? `${stowed} fuel cells` : null, tanks ? plural(tanks, "tank") + " of water" : null].filter(Boolean);
+  const brought = things.length > 2 ? `${things.slice(0, -1).join(", ")} and ${things.at(-1)}` : things.join(" and ");
   note(game, notes, "SHIP", `A tanker out of ${LOCATIONS[from].name} has answered the distress call${brought ? `: ${brought}` : ""}, for ${cost} credits${owed > 0 ? `, ${owed} of it on the slate there` : ""}. She can make ${LOCATIONS[from].name} on that.`);
   noteRestocked(game, "fuel", notes);
 }
@@ -1033,6 +1041,9 @@ function moneyView(game, ledger) {
   if (!money || money.cost === null || !prices) return money;
   let more = 0;
   for (const id of STORES) if (prices[id]) more += (ledger.bought[id] + Math.max(0, -ledger.net[id])) * prices[id] * supplyFactor(game, game.ship.at, id);
+  // And the water she uses, where this dock sells it by the tank (src/water.js).
+  const water = waterView(game);
+  if (water && water.fills > 0 && money.dock?.water) more += (water.aDay / water.fills) * money.dock.water;
   const cost = Math.round(money.cost + more);
   return { ...money, cost, moneyDays: cost > money.levy ? Math.floor(money.purse / (cost - money.levy)) : null };
 }
@@ -1065,6 +1076,9 @@ export function shipView(game) {
       return { id, name: rations.name, desc: rations.desc, current: ship.rations === id, foodUsed: round2(next.used.food), moraleTarget: next.moraleTarget, healthTarget: next.healthTarget };
     }),
     supplies: SUPPLY_IDS.map((id) => supplyRow(game, id, ledger)),
+    // Her water tank and her reserve air, with how long each lasts (src/water.js).
+    water: waterView(game),
+    air: airView(game),
     // The stores in her rooms, from world/logistics: each a thing the player can open, with what's in it now.
     stores: storesView(game, SHIP_ID),
     machines: machinesView(game, SHIP_ID),

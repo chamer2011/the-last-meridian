@@ -405,7 +405,9 @@ function partChip(thing, button) {
   const { part } = thing;
   const usual = ["on", "open", "watching", "released", "lit"].includes(part.word);
   const state = part.ringing ? " ringing" : part.works ? "" : " down";
-  return button([el("span", { class: "walk-here-dot", "aria-hidden": "true" }), `${PART_WORDS[part.kind] ?? "part"}${usual ? "" : ` (${part.word})`}`], `thing:${thing.id}`, { class: `walk-here-part${state}`, title: `${thing.name}, ${part.word}` });
+  // A machine of a place's own is called what its file calls it: the pumps, a windpump.
+  const called = part.kind === "machine" ? String(thing.name ?? "").replace(/^the /i, "").toLowerCase() || "machine" : PART_WORDS[part.kind] ?? "part";
+  return button([el("span", { class: "walk-here-dot", "aria-hidden": "true" }), `${called}${usual ? "" : ` (${part.word})`}`], `thing:${thing.id}`, { class: `walk-here-part${state}`, title: `${thing.name}, ${part.word}` });
 }
 
 // Folding the room's panel, or opening its words about the room, is kept for next time.

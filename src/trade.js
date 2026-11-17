@@ -25,7 +25,7 @@ import { storeCounts, storePut } from "./bag.js";
 import { seeded } from "./body.js";
 import { goodFactor, holderOf, supplyFactor } from "./daily.js";
 import { FACTIONS, ITEMS, LOCATIONS } from "./data.js";
-import { countAboard, logisticsOf } from "./logistics.js";
+import { countAboard, countOf, logisticsOf, setCount } from "./logistics.js";
 import { worldDir } from "./paths.js";
 import { amountOf, portTake, portsModel } from "./ports.js";
 import { aboardShip, isCaptain } from "./role.js";
@@ -45,7 +45,10 @@ const clamp = (n, low, high) => Math.max(low, Math.min(high, n));
 const nameOf = (place) => (LOCATIONS[place]?.name ?? place).replace(/^The /, "the ");
 const counted = (item, n) => {
   const name = (ITEMS[item]?.name ?? item).toLowerCase();
-  return `${n} ${name}${n === 1 || /s$/.test(name) ? "" : "s"}`;
+  if (n === 1 || /s$/.test(name)) return `${n} ${name}`;
+  // "3 tanks of water", not "3 tank of waters".
+  const of = name.indexOf(" of ");
+  return of > 0 ? `${n} ${name.slice(0, of)}s${name.slice(of)}` : `${n} ${name}s`;
 };
 const listed = (list) => (list.length > 1 ? `${list.slice(0, -1).join(", ")} and ${list.at(-1)}` : list[0] ?? "");
 
@@ -223,9 +226,18 @@ function portHas(game, port, item) {
 }
 // What one of a thing costs the ship at a port today, or null where the port doesn't sell it to her: the star map's
 // price for the supply it belongs to, by the file's number, by how much the port has of it and what it thinks of her.
+// Anything else her stores are filled with at a dock (a tank of water) is sold where the port's own file holds it, at
+// the thing's own price, by how much the port has of it and what it thinks of her.
 export function unitPrice(game, port, item) {
   const rules = tradeRules();
   const supply = SUPPLY_OF[item];
+  if (!supply) {
+    // Only what the dock restocks has a price here: anything else is the Market's, or the freight's.
+    if (!(logisticsOf(SHIP)?.refills ?? []).some((r) => r.from === "dock" && r.items.includes(item))) return null;
+    const good = portGood(item);
+    if (!rules || !good || !ITEMS[item]?.price || !portsModel().ports[port]?.holds[good]) return null;
+    return Math.max(1, Math.ceil(ITEMS[item].price * goodFactor(game, port, good)));
+  }
   const each = STAR_MAP.places?.[port]?.trade?.[supply];
   const line = rules?.[PRICE_LINE[item]];
   if (!line || !each) return null;
@@ -251,10 +263,25 @@ export function dockSends(game, item) {
   for (const r of model?.refills ?? []) {
     if (r.from !== "dock" || !r.items.includes(item)) continue;
     const store = model.stores.find((one) => one.id === r.store);
-    const upTo = r.upTo === "full" ? store.holds[item] ?? 0 : Math.min(store.holds[item] ?? 0, r.upTo);
+    const upTo = mostOf(r, store, item);
     aDay += (short ? Math.ceil(upTo * rules["while she owes"].share) : upTo) * (1440 / r.every);
   }
   return aDay;
+}
+// The most of a thing a refill line keeps in its store: what the store holds of it, or what the line says. A store
+// that keeps a count (the water tank, in measures) takes whole ones of what fills it, so many measures each.
+function mostOf(r, store, item) {
+  const holds = r.count ? Math.floor(store.count.n / r.per) : store.holds[item] ?? 0;
+  return r.upTo === "full" ? holds : Math.min(holds, r.count ? Math.floor(r.upTo / r.per) : r.upTo);
+}
+// How many of it the store has now, and one more put into it: says whether it went in.
+const hasOf = (game, r, store, item) => (r.count ? Math.floor(countOf(game, store) / r.per) : storeCounts(game, store.key, store.holds)[item] ?? 0);
+function putOne(game, r, store, item) {
+  if (!r.count) return storePut(game, store.key, store.holds, item, 1) >= 1;
+  const have = countOf(game, store);
+  if (store.count.n - have < r.per) return false;
+  setCount(game, store, have + r.per);
+  return true;
 }
 
 function restock(game) {
@@ -291,9 +318,11 @@ function restock(game) {
     for (const item of r.items) {
       const price = unitPrice(game, ship.at, item);
       if (!price) continue;
-      const upTo = r.upTo === "full" ? store.holds[item] ?? 0 : Math.min(store.holds[item] ?? 0, r.upTo);
-      const have = storeCounts(game, store.key, store.holds)[item] ?? 0;
-      const want = Math.min(upTo - have, portHas(game, ship.at, item));
+      const upTo = mostOf(r, store, item);
+      const have = hasOf(game, r, store, item);
+      // A tank that keeps a count is topped up only when there's room for a whole one of what fills it.
+      const room = r.count ? Math.floor(((r.upTo === "full" ? store.count.n : Math.min(store.count.n, r.upTo)) - countOf(game, store)) / r.per) : upTo - have;
+      const want = Math.min(room, portHas(game, ship.at, item));
       // While she owes anything, and for whatever would go on the slate, the dock only keeps her going.
       const keptAt = Math.ceil(upTo * rules["while she owes"].share);
       let got = 0;
@@ -304,7 +333,7 @@ function restock(game) {
           refused = true;
           break;
         }
-        if (storePut(game, store.key, store.holds, item, 1) < 1) break;
+        if (!putOne(game, r, store, item)) break;
         const went = payAt(game, ship.at, price);
         spent += went.paid;
         slated += went.slate;
@@ -345,7 +374,7 @@ export function tradeView(game) {
   if (!rules || !ship) return null;
   const at = ship.at && LOCATIONS[ship.at] ? ship.at : null;
   const cells = cellsOf(game);
-  const prices = at ? { crate: unitPrice(game, at, "ration_crate"), cell: unitPrice(game, at, "fuel_cell") } : null;
+  const prices = at ? { crate: unitPrice(game, at, "ration_crate"), cell: unitPrice(game, at, "fuel_cell"), water: unitPrice(game, at, "water") } : null;
   const fuelEach = at && STAR_MAP.places?.[at]?.trade?.fuel ? STAR_MAP.places[at].trade.fuel * supplyFactor(game, at, "fuel") : null;
   const burn = SHIP_DATA.ship?.uses?.fuel ?? 0;
   // What a day costs at this dock: the cells her generator burns and the fuel she uses keeping station, where they're
@@ -361,7 +390,7 @@ export function tradeView(game) {
     // How long the purse lasts at this dock's prices, when a day costs more than comes in.
     moneyDays: cost !== null && cost > levy ? Math.floor(purse / (cost - levy)) : null,
     cells,
-    dock: at ? { name: LOCATIONS[at].name, crate: prices.crate, cell: prices.cell, every: refill ? refill.every / 60 : null } : null,
+    dock: at ? { name: LOCATIONS[at].name, crate: prices.crate, cell: prices.cell, water: prices.water, every: refill ? refill.every / 60 : null } : null,
     slates: slates(game).map((one) => ({ ...one, holder: FACTIONS[holderOf(game, one.place)]?.name ?? null })),
     slate: { times: rules["the slate"].times, limit: rules["the slate"].limit, falls: rules["the slate"].falls, share: rules["while she owes"].share },
   };

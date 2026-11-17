@@ -36,7 +36,7 @@ const OLD_PARTS = { errands: "the Errands part isn't written any more: a store s
 export const LOGISTICS_HEADER = [
   { key: "draft", path: "draft", type: "string" },
   { key: "everyone aboard eats", path: "numbers.eats", type: "number", unit: "sittings a day" },
-  { key: "a crate feeds", path: "numbers.crateFeeds", type: "number", unit: "sittings" },
+  { key: "a crate feeds", path: "numbers.crateFeeds", type: "number", unit: "sittings", sample: 200 },
   { key: "sittings at", path: "sittings", type: "sittings" },
   { key: "a repair takes", path: "repair", type: "repair" },
   { key: "salvage makes", path: "making", type: "making" },
@@ -46,6 +46,15 @@ export const LOGISTICS_HEADER = [
   { key: "what stores want", path: "levels", type: "decider" },
   { key: "left waiting", path: "waiting", type: "waiting" },
   { key: "who asks", path: "askers", type: "askers" },
+  // Water and reserve air (step 11 of the logistics rework, src/water.js).
+  { key: "everyone aboard drinks", path: "numbers.drinks", type: "number", unit: "measures of water a day", sample: 9 },
+  { key: "a tank of water fills", path: "numbers.tankFills", type: "number", unit: "measures", sample: 100 },
+  { key: "with the pumps stopped", path: "numbers.pumpsStopped", type: "number", unit: "times as much water goes", sample: 4 },
+  { key: "water is rationed under", path: "numbers.rationUnder", type: "number", unit: "measures", sample: 200 },
+  { key: "a reserve tank gives", path: "numbers.tankAir", type: "number", unit: "hours of air", sample: 24 },
+  { key: "a day of reserve air takes", path: "numbers.airTakes", type: "number", unit: "measures of water", sample: 4 },
+  { key: "a breached room takes", path: "numbers.breachAir", type: "number", unit: "hours of reserve air", sample: 6 },
+  { key: "a breached room fills in", path: "numbers.breachSlow", type: "number", unit: "hours with no reserve air", sample: 3 },
 ];
 
 // "30 minutes if it's urgent, 3 hours if it isn't": how long a job stands with nobody able to do it, or nothing to
@@ -183,8 +192,12 @@ export function parseLogisticsText(text, id = "it") {
       const words = field[2].trim();
       if (known.type === "number") {
         const amount = words.match(/^(\d+(?:\.\d+)?)\b/);
-        if (!amount) problem(n, `${known.key} is a number of ${known.unit}, such as ${known.key}: ${known.key === "a crate feeds" ? "200 sittings" : "2 sittings a day"}`);
-        else set(value, known.path, Number(amount[1]));
+        if (!amount) problem(n, `${known.key} is a number of ${known.unit}, such as ${known.key}: ${known.sample ?? 2} ${known.unit}`);
+        else {
+          set(value, known.path, Number(amount[1]));
+          // Where each number was written, for whoever has something to say about it (src/logistics.js).
+          (value.lines ??= {})[known.path.split(".").at(-1)] = n;
+        }
       } else if (known.type === "sittings") {
         const read = readSittings(words);
         if (read.problem) problem(n, read.problem);
@@ -275,6 +288,8 @@ export function readStoreLine(text) {
   const holdsText = (pieces[1] ?? "").trim();
   // A hold for freight keeps nothing of the ship's own: whatever she's carrying goes into it, as far as its squares go.
   if (/^holds\s+freight$/i.test(holdsText)) return { name, room, holds: [], freight: true, wants: [], urgent: [], carriers: [], look: pieces.slice(2).join(":").trim() || null };
+  // The reserve tanks hold the place's reserve air, as much as its systems file gives it (src/water.js).
+  if (/^holds\s+the\s+reserve\s+air$/i.test(holdsText)) return { name, room, holds: [], reserve: true, wants: [], urgent: [], carriers: [], look: pieces.slice(2).join(":").trim() || null };
   if (!/^holds\s+\S/i.test(holdsText)) return { problem: `"${text}" needs holds after the colon, with what the store holds: holds 12 ration crates, 12 produce` };
   const holds = [];
   const wants = [];
@@ -308,7 +323,7 @@ export function readStoreLine(text) {
 // A store's line from its pieces, for the Story board: the clauses with semicolons between them.
 export function writeStoreLine(store) {
   const marks = (list) => list.map((one) => (one.what ? `${one.n} ${one.what}` : `${one.n}`)).join(", ");
-  const clauses = [store.freight ? "holds freight" : `holds ${(store.holds ?? []).map((one) => `${one.n} ${one.what}`).join(", ")}`];
+  const clauses = [store.freight ? "holds freight" : store.reserve ? "holds the reserve air" : `holds ${(store.holds ?? []).map((one) => `${one.n} ${one.what}`).join(", ")}`];
   if (store.wants?.length) clauses.push(`wants ${marks(store.wants)}`);
   if (store.urgent?.length) clauses.push(`urgent under ${marks(store.urgent)}`);
   if (store.carriers?.length) clauses.push(`carried by ${store.carriers.join(", ")}`);
@@ -340,7 +355,10 @@ export function readMachineLine(text) {
   const needs = { power: false, worker: null };
   body = body.replace(/,?\s*\bwith\s+(.+)$/i, (_, words) => {
     for (const need of words.split(/\s*,\s*|\s+and\s+/i).map((one) => one.trim()).filter(Boolean)) {
+      // "1 water": so many measures out of the place's water tank for each go.
+      const water = need.match(/^(\d+)\s+(?:measures?\s+of\s+)?water$/i);
       if (/^power$/i.test(need)) needs.power = true;
+      else if (water) needs.water = Number(water[1]);
       else needs.worker = needs.worker ? `${needs.worker} and ${need}` : need;
     }
     return "";

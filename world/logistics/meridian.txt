@@ -11,6 +11,14 @@ what comes first: the first officer, every hour
 what stores want: the quartermaster, every 4 hours
 left waiting: 30 minutes if it's urgent, 3 hours if it isn't
 who asks: the chief medical officer for the medbay, the chief engineer for the engines and repairs, the quartermaster for the galley, the deck chief for the rest
+everyone aboard drinks: 9 measures of water a day
+a tank of water fills: 100 measures
+with the pumps stopped: 4 times as much water goes
+water is rationed under: 200 measures
+a reserve tank gives: 24 hours of air
+a day of reserve air takes: 4 measures of water
+a breached room takes: 6 hours of reserve air
+a breached room fills in: 3 hours with no reserve air
 
 Stores:
 - shuttle stores in The Lighter Bay: holds 24 ration crates, 36 fuel cells, 6 parts crates: Crates strapped down where the lighter unloads them, with the manifest on a clip.
@@ -20,12 +28,15 @@ Stores:
 - medicine cabinet in Medbay: holds 5 medicine crates; wants 2; carried by the deckhands, the nurses, the spare hands: A locked cabinet with a list on its door of what's left.
 - parts lockers in Stores: holds 6 parts crates; wants 2; carried by the deckhands, the techs, the spare hands: Lockers of spares, sorted by someone who's since given up.
 - soup kettle in The Long Mess: holds 400 sittings
+- water tank in The Pump Room: holds 800 measures of water: The ship's water, behind the pumps, with a sight glass somebody has to wipe before they can read it.
+- reserve tanks in Life Support: holds the reserve air: A rack of grey bottles along the hull, each as tall as a person, with a gauge at the neck and a date stencilled on the shoulder.
 - freight hold in The Aft Holds: holds freight: Tie-down rings and netting, and a slate by the hatch with what's whose chalked on it.
 
 Machines:
 - generator in Engineering: burns 1 fuel cell from the fuel rack every 8 hours, gives 100 power
-- garden: grows 1 produce into the garden bins every 2 hours, with power and someone tending it
-- galley: cooks 1 produce or 1 ration crate or any food from the pantry into 200 sittings in the soup kettle every hour, with power and a cook there
+- garden: grows 1 produce into the garden bins every 2 hours, with power, someone tending it and 1 water
+- galley: cooks 1 produce or 1 ration crate or any food from the pantry into 200 sittings in the soup kettle every hour, with power, a cook there and 1 water
+- air plant in Engineering: takes 1 water from the water tank every 3 hours, with power
 
 Loads:
 - air plant 20, engines 30 while under way, doors 6, comms 6, navigation 6, cameras 4, lights 1 a room, computers 2 each
@@ -33,6 +44,7 @@ Loads:
 
 Refills:
 - the shuttle stores: ration crates and fuel cells from the dock, every 6 hours, up to full
+- the water tank: water from the dock, every 6 hours, up to full
 
 Urgency:
 - carrying someone who's bleeding

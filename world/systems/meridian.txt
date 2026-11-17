@@ -45,6 +45,9 @@ Engines:
 Navigation:
 - nav core in The Bridge: The navigation core under the plot table, plotting every jump on boards older than the war.
 
+Water:
+- pumps in The Pump Room: The reclaim pumps, bringing back most of every measure of water the ship uses, with a gauge somebody has marked in grease pencil where the needle ought to sit.
+
 Computers:
 - meridian_plot_table: comms, cameras, doors, alarm
 - meridian_reactor_gauges: power, air, lights, engines

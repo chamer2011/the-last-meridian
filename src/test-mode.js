@@ -1,7 +1,7 @@
 // A test save: a game whose `test` part switches some of the game's limits off, so things can be tried without
 // working for them first. Only tools/test-save.mjs makes one; nothing in play does, and nothing in play turns it off.
 //   fuel: the Meridian's tank stays full, whatever the days and the jumps take, and so do the stores that keep the
-//         fuel cells her generator burns.
+//         fuel cells her generator burns, and her water tank, which her air plant can't run without.
 //   rig:  the rig counts as built with whatever a hack needs: it always starts, every link reaches (a cable, the
 //         optical reader, a service clip, the short radio, the Navy coupler), it has memory for every program and the
 //         most power parts give, and none of its own heat. The hacking itself (the programs, the watcher, a computer's
@@ -9,6 +9,7 @@
 
 import { addClockWork, addDayWork } from "./room-hooks.js";
 import { putAboard } from "./logistics.js";
+import { fillTank } from "./water.js";
 
 export const testing = (game, what) => Boolean(game?.test?.[what]);
 
@@ -29,6 +30,8 @@ function keepFuelFull(game) {
     game.ship.fuel = game.ship.maxFuel;
     game.ship.fuelBurn = 0;
     putAboard(game, "meridian", "fuel_cell", 99);
+    // And her water: with none the air plant stops, which would end a test as surely as a dead generator.
+    fillTank(game);
   }
   return [];
 }

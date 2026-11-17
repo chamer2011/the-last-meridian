@@ -326,10 +326,12 @@ test("the Work page has the hands free, every store with what it has against wha
   // Everyone the board has work for: the carriers, the chief engineer with the techs, and the doctor with the nurses.
   assert.deepEqual([quiet.name, quiet.hands.of], ["CFS Meridian", 20]);
   assert.ok(quiet.hands.free > 0 && quiet.hands.free <= 20);
-  assert.deepEqual(quiet.stores.map((one) => one.id), ["shuttle_stores", "fuel_rack", "pantry", "garden_bins", "medicine_cabinet", "parts_lockers", "soup_kettle"]);
-  const kettle = quiet.stores.at(-1);
+  assert.deepEqual(quiet.stores.map((one) => one.id), ["shuttle_stores", "fuel_rack", "pantry", "garden_bins", "medicine_cabinet", "parts_lockers", "soup_kettle", "water_tank", "reserve_tanks"]);
+  const kettle = quiet.stores.find((one) => one.id === "soup_kettle");
   assert.deepEqual([kettle.count.of, kettle.count.unit, kettle.rows], [400, "sittings", []]);
   assert.match(kettle.note, /^next sitting 18:00$|^a sitting is on$/);
+  // The water tank and the reserve tanks are counts too, with a word beside them only when something's up (test/water.test.js).
+  assert.deepEqual(quiet.stores.slice(-2).map((one) => [one.count.of, one.count.unit, one.note, one.rows]), [[800, "measures of water", "", []], [120, "hours of air", "", []]]);
   take(game, "pantry", "ration_crate", 12);
   take(game, "fuel_rack", "fuel_cell", count(game, "fuel_rack", "fuel_cell") - 1);
   take(game, "parts_lockers", "parts_crate", 6);
