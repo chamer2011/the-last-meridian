@@ -2,13 +2,14 @@
 // game's state, so a menu can never disagree with the rules.
 
 import { checkStyle, setCheckStyle } from "./check.js";
-import { api, columns, el, folded, meter, signed, strainMeter } from "./dom.js";
+import { api, columns, el, folded, meter, signed, strainMeter, twoColumns } from "./dom.js";
 import { holdsNode, mapMenu, suppliesNode } from "./map.js";
 import { shipMenu } from "./ship.js";
 import { commandMenu } from "./command.js";
 import { workMenu } from "./work.js";
 import { dealerSections, rigMenu } from "./rig.js";
 import { freightSections } from "./freight.js";
+import { portStoreSections } from "./port-stores.js";
 import { oddsFor } from "./story.js";
 import { pixelArtFound, pixelFurnitureFound } from "./pixel-art.js";
 
@@ -193,17 +194,21 @@ function marketMenu() {
   // The Meridian's freight, for her captain, wherever they're standing: her hold, the loads this dock offers, its goods
   // by the load, and where things are cheap and dear (public/freight.js).
   const freight = freightSections(g);
-  if (!g.market.length && dealer.length) return columns(...dealer, ...freight);
+  // The port's own stores where they stand in its rooms, and who's carrying for them (public/port-stores.js).
+  const stores = portStoreSections(g);
+  // What's the port's and the ship's goes down the right, beside what's for your own pocket.
+  const side = [...stores, ...freight];
+  if (!g.market.length && dealer.length) return side.length ? twoColumns(dealer, side) : columns(...dealer);
   if (!g.market.length) {
     const elsewhere = g.locations.filter((l) => l.hasMarket).map((l) => l.name);
     const none = section(`Credits: ${g.credits}`,
       empty(`There's no market at ${g.location.name}${freight.length ? " for your own pocket" : ""}.`),
       elsewhere.length > 0 && small(`Known markets: ${elsewhere.join(", ")}.`));
-    return freight.length ? columns(...freight, none) : [none];
+    return side.length ? columns(...side, none) : [none];
   }
   // The rig's parts are sold one at a time to a dealer in them, below, not the rig whole.
   const sellable = g.inventory.filter((i) => !(i.type === "story" && i.price === 0) && i.id !== "rig");
-  return columns(
+  const pocket = [
     section(`Market at ${g.location.name}`,
       row("Your credits", g.credits),
       marketNote(g),
@@ -218,8 +223,8 @@ function marketMenu() {
         el("span", {}, `${i.name}${i.count > 1 ? ` x${i.count}` : ""}`, i.equipped && el("span", { class: "tag on" }, " equipped")),
         el("button", { disabled: Boolean(g.combat), onclick: act({ action: "sell", id: i.id }) }, `Sell ${i.sellPrice} cr`))) : muted("Nothing to sell.")),
     ...dealer,
-    ...freight,
-  );
+  ];
+  return side.length ? twoColumns(pocket, side) : columns(...pocket);
 }
 
 // ---- Bestiary -----------------------------------------------------------
@@ -367,7 +372,7 @@ export const MENUS = {
   command: { label: "Command", command: "command", about: "Who holds each post aboard the Meridian, who chose them, and since when", view: commandMenu },
   map: { label: "Star map", command: "map", about: "The chart of known space, and setting course", view: mapMenu },
   rig: { label: "Rig", command: "rig", about: "Your pocket computer: the programs on it, loading them, and writing new ones at the Repair Bay's bench", view: rigMenu },
-  market: { label: "Market", command: "market", about: "Buying and selling, where there's a market, and the Meridian's freight", view: marketMenu },
+  market: { label: "Market", command: "market", about: "Buying and selling, the Meridian's freight, and the stores of the port you're standing in", view: marketMenu },
   bestiary: { label: "Enemies met", command: "bestiary", about: "Enemies you know of, how they fight, and the simulator", view: bestiaryMenu },
   mapedit: { label: "Map editor", command: "mapedit", about: "Redraw the ship's decks yourself: walls, floors, doors, rooms and what's in them", editor: true, view: () => el("div") },
   settings: { label: "Settings", command: "settings", about: "Reading, display, checks, fights, saved games, and your files", view: settingsMenu },

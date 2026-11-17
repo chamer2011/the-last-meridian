@@ -4863,7 +4863,13 @@ export function crateSlots(stock, slots = 12) {
   }
   return out.slice(0, slots);
 }
-const GOODS_LOOK = { ration_crate: "#7d6c48", produce: "#5f7d3c", parts_crate: "#5e6872", medicine_crate: "#cfcac0", fuel_cell: "#c99b3a" };
+// The ship's own five, and what a port's stores stack besides (src/port-stores.js): anything else is a plain brown crate.
+const GOODS_LOOK = {
+  ration_crate: "#7d6c48", produce: "#5f7d3c", parts_crate: "#5e6872", medicine_crate: "#cfcac0", fuel_cell: "#c99b3a",
+  grain: "#c2a24e", meal: "#b8a67a", kelp: "#3f6a4c", kelp_cake: "#5a6f4a", water: "#4d7797", drinking_water: "#5f8fb0", ice: "#a9c6d6",
+  ore: "#6a5648", metal_stock: "#7c8690", scrap_load: "#5b5550", jump_fuel: "#b8563a", refined_fuel: "#a8842e", sour_gas: "#8d8a3c",
+  beer_and_spirits: "#6e4a32", cloth: "#8a84a0", clothes: "#6d6f8a", night_flowers: "#8f7aa8", extracts: "#7fa08c", blood: "#8c2f2f",
+};
 
 // One of the ship's stores as what's in it: crates, or fuel cells standing up, on a pallet, as many as it's full.
 function drawStoreCrates(painter, thing) {

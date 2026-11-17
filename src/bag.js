@@ -11,6 +11,7 @@ import { INVENTORY } from "./world.js";
 import { addItem, attr, removeItem, useItem } from "./rules.js";
 import { standingAt } from "./walk.js";
 import { notePut } from "./puts.js";
+import { firstContents } from "./room-hooks.js";
 import { rigWeight } from "./rig-parts.js";
 import { lootBox, lootOf, lootRoomOf, rollLoot } from "./loot.js";
 import { worthLine } from "./logistics.js";
@@ -266,7 +267,9 @@ function contentsOf(game, found) {
     for (const { id, n } of rollLoot(game, found.key, found.loot, found.place, lootRoomOf(found.place, found.levelId, found.thing))) pour(items, found.box, id, n);
     return items;
   }
-  for (const [id, n] of Object.entries(found.thing.holds ?? {})) if (ITEMS[id]) pour(items, found.box, id, Math.max(0, Math.round(Number(n)) || 0));
+  // A port's store holds its share of what the port has today (src/port-stores.js), whatever its map says.
+  const first = firstContents(game, standingAt(game)?.place ?? game.location, found.thing) ?? found.thing.holds ?? {};
+  for (const [id, n] of Object.entries(first)) if (ITEMS[id]) pour(items, found.box, id, Math.max(0, Math.round(Number(n)) || 0));
   return items;
 }
 function keepContents(game, found, items) {

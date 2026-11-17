@@ -1,6 +1,8 @@
 # Ruins of Ilun
 draft: the AI's, not yet edited by the owner
 people: 300
+carried by: Brother Oswin
+goods come and go by: The Listening Hall
 
 Holds:
 - ration crates: usually 75, from Lumen Sanctuary
@@ -26,3 +28,7 @@ Makes:
 Uses:
 - the monks and their pilgrims: 3 ration crates, 1.5 drinking water, 0.06 clothes, 0.09 tea and tobacco a day
 - its sick: 0.06 medicine crates a day
+
+Stores:
+- the monks' larder in The Empty Cells: usually 6 ration crates, 6 drinking water, 2 water: A novice's cell with the door taken off, and a week's bread and water kept in it.
+- the herb store in The Wind Gardens: usually 2 night flowers, 1 extracts, 1 medicine crates: A stone niche out of the wind, where what the terraces give is dried and pressed.

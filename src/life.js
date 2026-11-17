@@ -469,12 +469,12 @@ function byTheDoor(map, entry, roomId) {
   return spot ? { level: level.id, ...spot, out: true } : null;
 }
 
-// Two people can't stop in one place, so the second stops as close as they can get.
+// Two people can't stop in one place, so the second stops as close as they can get, and never in a doorway.
 function closeTo(map, entry, spot, taken) {
   if (fits(map, entry, spot, taken)) return spot;
   let found = spot;
   findPath(map.levels[spot.level], NO_ONE, spot, (here) => {
-    if (!canStand(map.levels[spot.level], here.x, here.y) || !fits(map, entry, { ...spot, x: here.x, y: here.y }, taken)) return false;
+    if (!canStand(map.levels[spot.level], here.x, here.y) || map.levels[spot.level].doors.has(`${here.x},${here.y}`) || !fits(map, entry, { ...spot, x: here.x, y: here.y }, taken)) return false;
     found = { ...spot, x: here.x, y: here.y };
     return true;
   });
@@ -698,8 +698,10 @@ export function standsAt(game, place, key, hours = game.clock.hours) {
 export function walkMinutes(game, place, key, from, to, hours = game.clock.hours) {
   const file = lifeFileFor(place);
   if (!file) return null;
-  // A spot the file knows, or a room, written @ and its id: the square people come into it at.
+  // A spot the file knows, or a room, written @ and its id: the square people come into it at. Or a square itself,
+  // for somewhere the file doesn't name (the square beside a port's store, src/port-stores.js).
   const spotOf = (where) => {
+    if (where && typeof where === "object") return where;
     if (!/^@/.test(where)) return file.spots[where];
     const room = roomOf(mapFor(place), where.slice(1));
     return room?.start ? { level: room.levelId, x: room.start.x, y: room.start.y } : null;

@@ -1,6 +1,8 @@
 # Tessen Colony
 draft: the AI's, not yet edited by the owner
 people: 2,000
+carried by: Ruth Hollow, Gant, Wim Dry, Bess Alder, Cal Alder
+goods come and go by: The Commons
 
 Holds:
 - grain: usually 3,300
@@ -43,3 +45,8 @@ Uses:
 - its power: 6 fuel cells a day
 - its sick: 0.4 medicine crates, 0.1 medkits a day
 - its docks and workshops: 0.6 parts crates a day
+
+Stores:
+- the grain sheds in The Commons: usually 20 grain, 16 meal, 12 ration crates: Three long sheds round the square, smelling of dust and chaff, with the haulers' tally chalked on the doors.
+- the leaf barn in The Long Fields: usually 16 leaf, 18 cured leaf, 8 fibre: Leaf hung to dry under a tin roof, and bales of wool against the back wall.
+- the cistern shed in The Far Homesteads: usually 6 water, 6 drinking water, 3 air bottles: Tanks and filled bottles kept out of the sun, a day's ride from anyone who'd count them.

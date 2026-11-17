@@ -1,6 +1,8 @@
 # The Gilded Wheel
 draft: the AI's, not yet edited by the owner
 people: 4,000
+carried by: Cleaner Twelve Years, Waiter Nine Years, Cook Two Years
+goods come and go by: The Ticket Docks
 
 Holds:
 - ration crates: usually 1,400, from Haven Station
@@ -36,3 +38,7 @@ Uses:
 - its power: 12 fuel cells a day
 - its sick: 0.8 medicine crates, 0.2 medkits, 0.04 surgeon's stores a day
 - its docks and workshops: 1.2 parts crates, 0.2 circuit boards, 0.2 hot cells a day
+
+Stores:
+- the dock stores in The Ticket Docks: usually 12 ration crates, 6 fuel cells, 4 jump fuel, 2 air bottles: What the house sells a ship that still has the means to leave.
+- the house cellar in The Cellars: usually 12 beer and spirits, 9 provisions, 6 fine things, 6 fruit and honey: Racks behind a brass grille, dusted every morning by people who will never taste any of it.

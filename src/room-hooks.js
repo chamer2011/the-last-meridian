@@ -94,6 +94,18 @@ export const areaExtras = (game, place, room) => Object.assign({}, ...areaStates
 export const addRefillHold = (fn) => { holds.push(fn); };
 export const refillsHeld = (game, place) => holds.some((fn) => fn(game, place));
 
+// (game, place, thing) => what's in a thing the first time it's opened, as { item: how many }, or nothing for a thing
+// that isn't its own: a port's store, which holds its share of what the port has that day (src/port-stores.js).
+const firsts = [];
+export const addFirstContents = (fn) => { firsts.push(fn); };
+export function firstContents(game, place, thing) {
+  for (const fn of firsts) {
+    const found = fn(game, place, thing);
+    if (found) return found;
+  }
+  return null;
+}
+
 // (game) => whoever stands with the player when a fight starts, as the fight knows them (a person's id).
 export const addFightAllies = (fn) => { fighters.push(fn); };
 export const fightExtras = (game) => (fighters.length ? gathered(fighters, game) : []);

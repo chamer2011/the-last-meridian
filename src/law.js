@@ -168,6 +168,8 @@ export function containerOwner(place, level, thing) {
   const room = roomOfThing(level, thing);
   return law.rooms.find((one) => one.id === room) ?? law.containers.find((one) => one.id === room) ?? law.containers.find((one) => one.anywhere) ?? null;
 }
+// Whose a port's store is (src/port-stores.js stands them in its rooms): whoever holds the place, whatever room it's in.
+export const PORTS_OWN = Object.freeze({ everyone: false, holders: true, posts: [], jobs: [], words: ["whoever holds the place"] });
 const both = (list) => (list.length > 1 ? `${list.slice(0, -1).join(", ")} and ${list.at(-1)}` : list[0] ?? "");
 // Who a container belongs to, in words, for its window: "It belongs to the Salvage Guild."
 export function ownerWords(place, owned) {
@@ -288,7 +290,8 @@ addClockWork((game) => {
     if (!handfuls.has(where)) {
       const found = containerAt(place, where.slice(prefix.length));
       const loot = found ? lootOf(place, found.thing) : null;
-      const owned = loot ? containerOwner(place, found.level, found.thing) : null;
+      // A port's store in its rooms is taken from like a container, and is the port's.
+      const owned = loot ? containerOwner(place, found.level, found.thing) : found?.thing.portStore ? PORTS_OWN : null;
       handfuls.set(where, owned ? { found, loot, owned, items: [] } : null);
     }
     const handful = handfuls.get(where);

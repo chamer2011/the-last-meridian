@@ -109,7 +109,7 @@ const DEFAULT_CHANCES = { common: 70, uncommon: 25, rare: 5 };
 // A thing that can be a container: not one of the ship's stores, a pile, a computer or a part, nor one whose map file
 // says what's in it, nor one that hands out an item or has words of its own when used, which keeps to that (a story's
 // piece, like the data chip in the comms tray, or a locker that's written to be locked).
-const canBeLoot = (thing) => !thing.item && !thing.used && !thing.usedOther && !thing.store && !thing.pile && !thing.computer && !thing.part && !Object.keys(thing.holds ?? {}).length;
+const canBeLoot = (thing) => !thing.item && !thing.used && !thing.usedOther && !thing.store && !thing.portStore && !thing.pile && !thing.computer && !thing.part && !Object.keys(thing.holds ?? {}).length;
 const kindNamed = (name) => lootModel()?.kinds.find((kind) => kind.name === name) ?? null;
 
 // The file's line for a thing at a place, under Things: the kind it opens as, or none.

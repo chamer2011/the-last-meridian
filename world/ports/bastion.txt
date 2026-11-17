@@ -1,6 +1,8 @@
 # Bastion Nine
 draft: the AI's, not yet edited by the owner
 people: 12,000
+carried by: Conscript Aldo, Conscript Renn, Deckhand Mika
+goods come and go by: The Long Anchorage
 
 Holds:
 - ration crates: usually 3,000, from Vantor Prime
@@ -32,3 +34,8 @@ Uses:
 - its power: 36 fuel cells a day
 - its sick: 3.6 medicine crates, 0.6 medkits, 0.12 surgeon's stores a day
 - its docks and workshops: 3.6 parts crates, 0.6 circuit boards, 0.12 machines a day
+
+Stores:
+- the ration dump in The Line: usually 24 ration crates, 12 drinking water: Crates in a chalked square of their own, counted twice a day by someone with a clipboard.
+- the quartermaster's cage in The Parade Ground: usually 9 fuel cells, 6 parts crates, 4 medicine crates, 6 ration packs: Fortress stores behind bars, every case stencilled with a number and a date.
+- the issue room in The Contract Hall: usually 9 clothes, 8 cloth, 6 tea and tobacco: Where a signed contract is paid its first week: a grey coat, a bolt of cloth, a twist of tea.

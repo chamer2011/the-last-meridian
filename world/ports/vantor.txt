@@ -1,6 +1,8 @@
 # Vantor Prime
 draft: the AI's, not yet edited by the owner
 people: 40,000
+carried by: Yardman Cole, Yardman Fisk, Crane Hand Ola
+goods come and go by: The Outer Yards
 
 Holds:
 - grain: usually 5,500
@@ -57,3 +59,8 @@ Uses:
 - its power: 120 fuel cells a day
 - its sick: 8 medicine crates, 2 medkits, 0.8 surgeon's stores a day
 - its docks and workshops: 12 parts crates, 2 circuit boards, 0.4 machines, 2 hot cells a day
+
+Stores:
+- the customs warehouse in The Outer Yards: usually 24 ration crates, 12 fuel cells, 8 jump fuel, 6 parts crates: White, numbered and perfectly square, with a stamp on every crate and a clerk for every stamp.
+- the packing hall in The Lower Stacks: usually 16 ration crates, 16 meal, 12 grain: A hall like all the others, where the Stacks' people pack the state's crates to a bell.
+- the ministry dispensary in The Ministry Steps: usually 6 medicine crates, 6 medkits, 6 compounds: A hatch beside the waiting rows, where what a ticket entitles you to is counted out.

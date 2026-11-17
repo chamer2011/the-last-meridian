@@ -1,6 +1,8 @@
 # Saint Orrin's Comet
 draft: the AI's, not yet edited by the owner
 people: 200
+carried by: Hanne, Brother Lurch
+goods come and go by: The Long Melt
 
 Holds:
 - ration crates: usually 50, from Lumen Sanctuary
@@ -25,3 +27,6 @@ Uses:
 - ships calling: 0.1 air bottles a day
 - its power: 0.6 fuel cells a day
 - its sick: 0.04 medicine crates a day
+
+Stores:
+- the cloister larder in The Disputation Pit: usually 6 ration crates, 4 drinking water, 2 ice, 3 fuel cells: A hollow cut into the ice behind the ring, kept by whoever lost the last argument.

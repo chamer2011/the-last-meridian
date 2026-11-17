@@ -1,6 +1,8 @@
 # The Graveyard
 draft: the AI's, not yet edited by the owner
 people: 2,000
+carried by: Buoy Hand Tovi, Diver Anouk, Diver Brask, Diver Nell
+goods come and go by: The Factor's Barge
 
 Holds:
 - ration crates: usually 500, from Haven Station
@@ -43,3 +45,7 @@ Uses:
 - its power: 6 fuel cells a day
 - its sick: 0.4 medicine crates, 0.1 medkits a day
 - its docks and workshops: 1.2 parts crates, 0.1 circuit boards, 0.02 machines, 0.1 hot cells a day
+
+Stores:
+- the Guild's bonded hold in The Factor's Barge: usually 8 parts crates, 8 ration crates, 6 fuel cells, 3 air bottles: The barge's old ore hold, with the Factor's seal on the hatch and every crate inked into the register.
+- the breakers' heap in Claim Row: usually 12 scrap, 4 parts crates, 6 ice: What came off the last claim, netted to the hull until someone weighs it.

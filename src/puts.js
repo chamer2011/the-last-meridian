@@ -8,11 +8,17 @@
 
 const keyOf = (where, item) => `${where}|${item}`;
 
+// Whoever else needs to know the moment something is put somewhere or taken from it: a port's store in its rooms, whose
+// goods are the port's own (src/port-stores.js). Each is (game, where, item, n), n below nothing for what's taken.
+const listeners = [];
+export const whenPut = (fn) => { listeners.push(fn); };
+
 export function notePut(game, where, item, n) {
   if (!where || !item || !Number.isFinite(n) || n === 0) return;
   game.puts ??= {};
   const key = keyOf(where, item);
   game.puts[key] = Math.round(((game.puts[key] ?? 0) + n) * 100) / 100;
+  for (const fn of listeners) fn(game, where, item, n);
 }
 
 // How much the player has put there in all, so far. Reading it changes nothing.

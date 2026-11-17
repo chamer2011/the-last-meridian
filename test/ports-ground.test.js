@@ -146,7 +146,7 @@ test("fourteen basic goods come out of the ground, and nothing else is made from
 });
 
 test("a Ground line is read, written back, and refused in plain words; a port's file keeps its Ground part", () => {
-  assert.deepEqual(PORT_PARTS, ["holds", "ground", "makes", "uses"]);
+  assert.deepEqual(PORT_PARTS, ["holds", "ground", "makes", "uses", "stores"]);
   assert.deepEqual(readGroundLine("the Long Fields: 1,330 grain a day"), { name: "the Long Fields", n: 1330, good: "grain" });
   assert.equal(writeGroundLine(readGroundLine("the Long Fields: 1,330 grain a day")), "the Long Fields: 1,330 grain a day");
   assert.match(readGroundLine("the Long Fields: grain").problem, /where it comes out of the ground, a colon, how many of what, and a day/);

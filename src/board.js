@@ -40,6 +40,8 @@ import { lootLists } from "./loot.js";
 import { GOODS_DIR, PORTS_DIR, STAR_MAP, WORLD_GOODS, WORLD_PORTS, reloadPorts } from "./world.js";
 import { parseGoodsText, parsePortText } from "../public/ports-text.js";
 import { clearPorts, portsModel, portsProblems } from "./ports.js";
+import { portStoreProblems } from "./port-stores.js";
+import { rosterOf } from "./life.js";
 
 const ID = /^[a-z][a-z0-9_]{1,60}$/;
 function checkId(id) {
@@ -473,7 +475,8 @@ function saveCommand(id, text) {
 
 // ---- The world's goods, and what the ports hold of them ---------------------------------------------------------
 
-const portsFileProblems = (folder, id) => portsProblems().filter((one) => one.startsWith(`${folder}/${id}.txt`));
+// What the files themselves say is wrong, and for a port what only its map and its people can say of its stores.
+const portsFileProblems = (folder, id) => [...portsProblems(), ...(folder === "ports" && mapFor(id) ? portStoreProblems(id) : [])].filter((one) => one.startsWith(`${folder}/${id}.txt`));
 const placeName = (id) => LOCATIONS[id]?.name ?? id;
 
 function portsList() {
@@ -516,6 +519,10 @@ function portItem(id) {
       basics: model.order.filter((good) => model.goods[good].step === "basic").map(named),
       made: model.order.filter((good) => model.goods[good].step !== "basic").map(named),
       ports: Object.keys(WORLD_PORTS).filter((other) => other !== id).map((other) => placeName(other).replace(/^The /, "the ")),
+      // For its stores: the place's rooms, the goods that are things someone can carry, and who has a day there.
+      rooms: mapFor(id) ? roomsOf(mapFor(id)).map((room) => room.name) : [],
+      carried: model.order.filter((good) => model.goods[good].item && port?.holds[good]).map(named),
+      locals: rosterOf(id).map((one) => one.name ?? WORLD_CHARACTERS[one.id]?.name ?? one.id),
       charted: Object.keys(STAR_MAP.places ?? {}).filter((other) => LOCATIONS[other] && !WORLD_PORTS[other]).map(placeName),
     },
     layout: readLayout()[`port/${id}`] ?? {},

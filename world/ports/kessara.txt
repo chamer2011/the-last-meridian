@@ -1,6 +1,8 @@
 # Kessara Drift
 draft: the AI's, not yet edited by the owner
 people: 5,000
+carried by: Cable Hand Pirt, Raider Bly, Raider Mung, Quartermaster Ez
+goods come and go by: Raiders' Row
 
 Holds:
 - ration crates: usually 1,600, from Maris Deep or Haven Station
@@ -40,3 +42,7 @@ Uses:
 - its power: 15 fuel cells a day
 - its sick: 1 medicine crates, 0.25 medkits a day
 - its docks and workshops: 1.5 parts crates, 0.25 circuit boards, 0.05 machines, 0.75 hot cells a day
+
+Stores:
+- the prize hold in Raiders' Row: usually 10 scrap, 9 fuel cells, 8 jump fuel, 4 parts crates: What the last ship in brought back, under a tarp, with a mark on it that says whose it is until it's sold.
+- the stallkeepers' lock-up in The Warrens: usually 12 ration crates, 9 drinking water, 9 beer and spirits, 6 circuit boards: A side tunnel behind a grille, shared by a dozen stalls and watched by all of them.

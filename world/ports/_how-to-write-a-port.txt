@@ -2,7 +2,7 @@ HOW TO WRITE A PORT
 ===================
 
 Every file in this folder is a port: what it holds, what comes out of the ground there, what it makes and from
-what, and what it uses, in real amounts. A file's name is the place's id, as in world/places and on the star
+what, and what it uses, in real amounts, and where some of it stands in the port's rooms. A file's name is the place's id, as in world/places and on the star
 map: frontier.txt is Tessen Colony. Files that start with an underscore, like this one, aren't read. The goods
 are named as world/goods names them.
 
@@ -65,6 +65,8 @@ people:   how many live there. The game doesn't use the number: it's for whoever
           port uses goes by its people. The drafts took, for a thousand people in a day: 10 ration crates, 5
           drinking water, 3 fuel cells, 1 jump fuel, 1 beer and spirits, 0.5 ration packs, 0.5 air bottles,
           0.3 parts crates, 0.3 tea and tobacco, 0.2 medicine crates, 0.2 clothes, and less of the rest.
+carried by:           who carries for the port's stores in its rooms. See STORES.
+goods come and go by: the room where goods come into the port and leave it. See STORES.
 
 HOLDS
 
@@ -140,6 +142,62 @@ Who uses it, a colon, how many of each thing with commas between them, and a day
 them. As many lines as you like: its people, ships calling, its power, its sick, its docks. Who it is only
 matters to whoever reads it. What its makers take isn't written here: their own lines say it.
 
+STORES
+
+    carried by: Docker Pav, Docker Renko, Docker Bo
+    goods come and go by: The Manifest Docks
+
+    Stores:
+    - the granary in The Manifest Docks: usually 20 ration crates, 8 meal: A cage of crates and sacks.
+
+Where the port's goods stand in its rooms, for whoever walks them. Every other part of this file is numbers; this
+part puts some of those numbers where you can see them, open them and take from them.
+
+A store's line is its name, in and the room it stands in (as world/maps names the room), a colon, usually and how
+many of each good are in it when the port has what it usually holds, with commas between, then a colon and a few
+words about it for whoever looks at it. The port has to hold each good (a line under Holds), and the good has to be
+something that can be carried: world/goods names an item for it in square brackets. Whole numbers only.
+
+What's in a store is its share of what the port really has that day. The granary above usually has 20 ration
+crates; when Haven has half the crates it usually holds, the granary has 10, and when Haven is all but out, the
+granary is nearly bare. A store never has more of a good than the whole port does, so a small port's store can be
+most of what it has.
+
+A store is a thing in its room, on a free square at the edge of it, which opens beside your pack like any store.
+If something of that name is already drawn in the room, that thing becomes the store. A store holds thirty
+squares, like every thing that opens, and what it usually has must fit them: npm run check-story says when it
+doesn't, when the room isn't one of the place's, and when there's no free square to stand it on. Don't give a
+store a name that ends in a piece of furniture (a shelf, a locker, a barrel, a table): it would be drawn as one,
+and not as the stack of crates that shows how full it is.
+
+carried by:           who carries for the stores, by the names they have in the place's file in world/life (or
+                      their ids), with commas between. Each takes one job at a time, and only while their own day
+                      has them up and about in a room with one of the stores, or in the room where goods come and
+                      go: a docker drinking at the bar isn't carrying, and nobody carries at night.
+goods come and go by: the room where goods come into the port and leave it. Left out, it's the room people
+                      arrive in.
+
+Only where you are. Stores exist while the player is at the port. The moment they arrive, each store is filled to
+its share; when they leave, the port is numbers again. Anything of the player's own left in a store stays in it for
+when they're back.
+
+What the carriers do. Every five minutes the port's board looks at each store.
+- A store with fewer of a good than its share is brought some: a carrier walks to where goods come and go, loads
+  a trip's worth, and carries it to the store. One with more than its share has some carried out the same way. A
+  trip is one stack of the thing: two ration crates, three fuel cells, one parts crate.
+- What a ship takes at the dock comes off the shelves first: when the Meridian restocks, buys a lot or loads
+  freight, that many are carried out of the store that keeps the good (never more than the store usually has),
+  and the store is then made up from what the port has. What she sells or delivers is carried in, and what's
+  over the store's share is carried on into the port. The port's own day, at midnight, only moves the share.
+- Carrying between a store and the rest of the port changes nothing the port has. The port's amount is the
+  truth; a store is where some of it stands.
+- After a wait of more than three hours nobody was watching: the stores are simply as the port has them.
+
+What's yours. Nothing in a port's store is. What you take out of one comes out of the port, in real amounts, and
+what you put into one is the port's from then on (a crate left in the wrong store is carried off into its holds).
+The law treats a store like any container that belongs to whoever holds the place (world/law): seen taking, it
+goes back and your standing with them drops; unseen, you're told once that it wasn't yours.
+
 WHAT GOES ON THERE
 
 world/daily.json's events are the things that happen at a port (a strike, a fever, a harvest), and each says
@@ -151,20 +209,25 @@ only the finished goods, the developed and the advanced. That file's own first l
 
 WHAT'S NOT HERE YET
 
-The ship herself still buys by the lot, and what she buys or sells is taken from the port or added to it in
-real crates. She still fills her shuttle stores from nothing: living off the ports is the next step. Freight,
-a port's goods in its rooms, and the ships that carry the hauls come with later steps: until then a haul is an
-amount on its way, which the star map says when a port is short.
+The ships that carry the hauls between ports: a haul is an amount on its way, which the star map says when a
+port is short. What the Meridian herself buys, sells, restocks and carries as freight is taken from a port or
+added to it in real crates (world/trade.txt, and the README's "Freight"). A port's stores stand only in the port
+the player is in, and its makers and its people don't walk to them: what they take and make is still the
+midnight's numbers.
 
 CHECKING AND CHANGING
 
 npm run check-story reads every file here and says, in plain words, what it can't follow: a good that isn't in
 world/goods, a port that isn't on the star map, a good that comes from a port that holds none, a maker of
 something the port doesn't hold, a maker that takes something the port doesn't hold or that the good isn't
-made from, a maker with no from, a basic good written under Makes or a made one under Ground, a good that's
+made from, a maker with no from, a basic good written under Makes or a made one under Ground, a store that
+keeps a good the port doesn't hold or one nobody can carry, a store in a room the place doesn't have or with more
+in it than fits, a carrier nobody at the place is called, a good that's
 used or taken and never comes, or one that's taken faster than it's made or comes out of the ground.
 
 The Story board has Ports: each line of a port's file is a box, with the ports it sends to on the left and the
 ports that send to it on the right, what comes out of the ground above its makers, an arrow from each of them
-to what it gives or makes, and one to each maker from each thing it's made from. Click a box to change its
-line, then Keep and Save.
+to what it gives or makes, and one to each maker from each thing it's made from. Its stores are boxes too, with
+an arrow from each good to the store that keeps it, and the port's own box has who carries for them and where
+goods come and go, picked from the people and the rooms of the place. Click a box to change its line, then Keep
+and Save.

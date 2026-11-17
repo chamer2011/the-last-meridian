@@ -1,6 +1,8 @@
 # The Sundial
 draft: the AI's, not yet edited by the owner
 people: 4,000
+carried by: Pump Hand Joan, Pump Hand Ravi, Hal Rae, Tunde Okafor
+goods come and go by: The Long Furrow
 
 Holds:
 - grain: usually 550
@@ -31,3 +33,8 @@ Uses:
 - the great lamp on the Sun Rail: 24 fuel cells a day
 - its sick: 0.8 medicine crates a day
 - its docks and workshops: 1.2 parts crates a day
+
+Stores:
+- the tithe store in Steward's Row: usually 12 ration crates, 12 meal, 10 grain: Every strip's share of the harvest, behind the Steward's door, weighed in front of whoever grew it.
+- the pump tower store in The Water Table: usually 8 water, 9 drinking water, 6 fuel cells: Casks at the foot of the tower, filled and handed out aloud.
+- the bay racks in The Drowned Deck: usually 12 greens, 6 fruit and honey: Crates of the morning's picking, and the hives' jars beside them, in the warm blue light.

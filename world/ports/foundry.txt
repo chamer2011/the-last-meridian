@@ -1,6 +1,8 @@
 # Foundry Seven
 draft: the AI's, not yet edited by the owner
 people: 1,200
+carried by: Tally-Two, Quince-Four, Bracket
+goods come and go by: The Cold Gate
 
 Holds:
 - fuel cells: usually 190, from Cinder Reach or the Veshti Deepyards
@@ -24,3 +26,7 @@ Makes:
 Uses:
 - its power: 7.2 fuel cells a day
 - the Unbound, who are their own upkeep: 0.72 parts crates, 0.24 circuit boards, 0.05 machines, 0.24 hot cells a day
+
+Stores:
+- the parts bay in The Long Rack: usually 6 parts crates, 8 scrap, 3 circuit boards: What the reclaimers bring up, sorted in the dark by hands that don't need the light.
+- the cell crib in The Silent Line: usually 9 fuel cells, 2 hot cells: Charged cells in a wire crib by the dead line, counted by everyone who passes and ordered by no one.

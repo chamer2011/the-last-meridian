@@ -1,6 +1,8 @@
 # Cinder Reach
 draft: the AI's, not yet edited by the owner
 people: 8,000
+carried by: Manager Lyle, Manager Prue, Tech Hamid
+goods come and go by: Shift Row
 
 Holds:
 - ration crates: usually 2,000, from Tessen Colony
@@ -46,3 +48,8 @@ Uses:
 - its power: 24 fuel cells a day
 - its sick: 1.6 medicine crates, 0.4 medkits a day
 - the mines and the Stack: 4.8 parts crates, 0.4 circuit boards, 0.16 machines, 0.4 hot cells a day
+
+Stores:
+- the company store in Shift Row: usually 16 ration crates, 9 drinking water, 6 beer and spirits: Shuttered since the strike began, and served through one hatch by whoever the Hill can spare.
+- the cell yard in The Stack: usually 24 fuel cells, 12 jump fuel, 9 refined fuel, 8 sour gas: Racks of charged cells and sealed drums behind the fence, with nobody much to move them.
+- the ore bins in The Tubes: usually 8 ore, 6 metal stock, 4 parts crates: Skips at the mouth of the old workings, half of them left where the last shift dropped them.

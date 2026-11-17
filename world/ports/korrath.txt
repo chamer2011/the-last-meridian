@@ -1,6 +1,8 @@
 # Korrath Forge
 draft: the AI's, not yet edited by the owner
 people: 15,000
+carried by: Smelter Goh, Smelter Drenn, Smelter Uma, Rigger Ohm
+goods come and go by: The Cradles
 
 Holds:
 - grain: usually 1,500
@@ -48,3 +50,8 @@ Uses:
 - its power: 45 fuel cells a day
 - its sick: 3 medicine crates, 0.75 medkits, 0.15 surgeon's stores a day
 - the forges: 9 parts crates, 0.75 circuit boards, 0.3 machines, 0.75 hot cells a day
+
+Stores:
+- the ore stacks in The Long Furnaces: usually 16 ore, 12 metal stock, 6 parts crates: Ore one side of the furnace mouths and poured stock the other, with the foreman's mark on both.
+- the clan granary in The Low Halls: usually 12 grain, 12 meal, 12 ration crates: A hall cut lower than the rest, dry and cold, where a clan keeps what it eats.
+- the bonded cellar in The Weigh House: usually 18 beer and spirits, 8 mash, 6 fruit and honey: Casks under the iron hall, each weighed in before it was let down the steps.

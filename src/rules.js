@@ -17,6 +17,7 @@ import {
 import { checkView } from "./checks.js";
 import { FIGHT_DIFFICULTIES, attackBonus, combatProfile, combatView, enemyNumbers, parleyNotes } from "./combat.js";
 import { advanceWorld, holdingsOf, itemFactor, newWorld, newsView, placeNow, worldOf } from "./daily.js";
+import { portStoresView } from "./port-stores.js";
 import { advanceShip, chairOf, chartEntry, isCharted, jumpCost, newShipState, shipGoingHungry, shipJumped, shipOf, shipView, shipsJumpCost } from "./ship.js";
 import { advanceLife, lifeOf } from "./life.js";
 import { advanceLogistics, startLogistics } from "./logistics.js";
@@ -1126,7 +1127,8 @@ export function publicState(game) {
     ship: shipView(game),
     command: commandView(game),
     role: roleView(game),
-    world: { here: placeNow(game, game.location, { full: true }), news: newsView(game) },
+    // stores: the port's goods where they stand in its rooms, and its dockhands' board, where the player's at one.
+    world: { here: placeNow(game, game.location, { full: true }), news: newsView(game), stores: portStoresView(game) },
     location: { id: game.location, ...place },
     story: { ...storyView(game), record: recordView(game) },
     equipped: game.equipped,

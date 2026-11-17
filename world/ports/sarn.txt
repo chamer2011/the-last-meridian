@@ -1,6 +1,8 @@
 # The Long Archive of Sarn
 draft: the AI's, not yet edited by the owner
 people: 800
+carried by: Keeper Lumis, Keeper Oy, Keeper Bren
+goods come and go by: The Deposit Hall
 
 Holds:
 - ration crates: usually 200, from Vantor Prime
@@ -23,3 +25,7 @@ Uses:
 - the Keepers: 8 ration crates, 4 drinking water, 0.16 clothes, 0.24 tea and tobacco a day
 - the heat pipe's pumps: 2.4 fuel cells a day
 - its sick: 0.16 medicine crates a day
+
+Stores:
+- the Keepers' pantry in The Warm Stair: usually 8 ration crates, 6 drinking water, 3 tea and tobacco, 2 medicine crates: A landing on the stair with a curtain across it, labeled like everything else.
+- the cart shed in The Vault Roads: usually 6 fuel cells, 4 ice: Where the rail carts are charged, and the ice they bring up is left to wait for the vaults.

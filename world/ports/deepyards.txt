@@ -1,6 +1,8 @@
 # The Veshti Deepyards
 draft: the AI's, not yet edited by the owner
 people: 10,000
+carried by: Melt-Hand Sorrow, Trawlerman Ebbe, Cutter Ao-Min, Cutter Ren-Vah
+goods come and go by: The Long Drydock
 
 Holds:
 - ration crates: usually 2,500, from Tessen Colony
@@ -48,3 +50,8 @@ Uses:
 - its power: 30 fuel cells a day
 - its sick: 2 medicine crates, 0.5 medkits, 0.1 surgeon's stores a day
 - the drydocks' own upkeep: 9 parts crates, 1 circuit boards, 0.3 machines, 0.5 hot cells a day
+
+Stores:
+- the yard stores in The Long Drydock: usually 8 parts crates, 6 scrap, 6 circuit boards, 3 machines: Ao-Vash Family's own, laid out under the gantries in an order only the Yardmother has ever explained.
+- the charging racks in The Long Drydock: usually 18 fuel cells, 8 hot cells, 8 jump fuel, 2 reserve tanks: Cells on charge in long rows, each with a family mark burned into its case.
+- the ice house in The Ice Cut: usually 16 ice, 8 water, 9 drinking water: Blocks off the ring stacked under sacking, and the casks the melt-works fill from them.

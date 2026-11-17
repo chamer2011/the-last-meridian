@@ -10,7 +10,7 @@ import { writeStoryText } from "./story-text.js";
 import { LINE_PHRASES, PERK_NUMBERS, SPECS, writeWorldText } from "./world-text.js";
 import { KNOWN_SYSTEMS, readComputerLine, systemIdOf, writeSystemsText } from "./systems-text.js";
 import { LOGISTICS_PARTS, PART_TITLES, WORK_KINDS, readAskers, readCarriers, readDecider, readLoadsLine, readMachineLine, readMaking, readRefillLine, readRepair, readSittings, readStoreLine, readTrip, readUrgencyLine, readWaiting, workKindWords, writeAskers, writeLogisticsText, writeMaking, writeRepair, writeDecider, writeSittings, writeStoreLine, writeTrip, writeWaiting } from "./logistics-text.js";
-import { NEEDS, PORT_PARTS, PORT_TITLES, STEPS, STEP_TITLES, numberWords, readGoodLine, readGroundLine, readHoldLine, readMakeLine, readStands, readUseLine, writeGoodLine, writeGoodsText, writePortText, writeStands } from "./ports-text.js";
+import { NEEDS, PORT_PARTS, PORT_TITLES, STEPS, STEP_TITLES, numberWords, readCarriedBy, readGoodLine, readGroundLine, readHoldLine, readMakeLine, readPortStoreLine, readStands, readUseLine, writeCarriedBy, writeGoodLine, writeGoodsText, writePortStoreLine, writePortText, writeStands } from "./ports-text.js";
 import { COMMAND_HEADER, SPARE, readHolderLine, readJobLine, readPostLine, readWorkersLine, slugOf, writeCommandText, writeJobLine, writePostLine } from "./command-text.js";
 import { CARE, MEDBAY_KEYS, PARTS, readAccidentLine, readAccidents, readHitLine, readKindLine, readMendingLine, readOldMarks, readQueue, readShare, readStartLine, readTreatmentLine, readWeaponLine, writeHealthText, writeWoundsText } from "./health-text.js";
 
@@ -1627,15 +1627,16 @@ function inspectUrgency(inspector, order = null) {
     hint("Urgent carrying is for a store under its urgent mark, or one a machine, the medbay or a repair is waiting on. A repair the ship can't do without is one to what carries her power, or to the air plant. The kinds that wake someone when nobody's up are the first seven as the game first has them: someone bleeding or down, a fire, a breach, the alarm, urgent carrying and a repair the ship can't do without."));
 }
 // ---- The ports and the goods (step 7 of the logistics rework) ------------------------------------------------------
-const PORT_KINDS = { holds: "beat", ground: "lead", makes: "route", uses: "clock" };
-const PORT_LABELS = { holds: "What it holds", ground: "Out of the ground", makes: "What it makes", uses: "What it uses" };
-const PORT_READERS = { holds: readHoldLine, ground: readGroundLine, makes: readMakeLine, uses: readUseLine };
+const PORT_KINDS = { holds: "beat", ground: "lead", makes: "route", uses: "clock", stores: "fact" };
+const PORT_LABELS = { holds: "What it holds", ground: "Out of the ground", makes: "What it makes", uses: "What it uses", stores: "A store in its rooms" };
+const PORT_READERS = { holds: readHoldLine, ground: readGroundLine, makes: readMakeLine, uses: readUseLine, stores: readPortStoreLine };
 // A port: a box for each line of its file, the ports it sends to on the left and the ports that send to it on the right.
 function portGraph() {
   const P = state.item, L = state.links;
   const list = [], ws = [];
   const add = (node) => { list.push(node); return node.id; };
-  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${P.people ? `${numberWords(P.people)} people. ` : ""}${(P.holds ?? []).length} goods held, ${(P.ground ?? []).length} out of the ground here, ${(P.makes ?? []).length} made here.${P.draft ? ` Written by ${P.draft}.` : ""}`, label: "The port" });
+  const carried = P.carriers?.list?.length ? ` Carried by ${P.carriers.list.join(", ")}${P.dock?.room ? `, by way of ${P.dock.room}` : ""}.` : "";
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${P.people ? `${numberWords(P.people)} people. ` : ""}${(P.holds ?? []).length} goods held, ${(P.ground ?? []).length} out of the ground here, ${(P.makes ?? []).length} made here, ${(P.stores ?? []).length} ${(P.stores ?? []).length === 1 ? "store" : "stores"} in its rooms.${carried}${P.draft ? ` Written by ${P.draft}.` : ""}`, label: "The port" });
   const sameGood = (a, b) => plainWords(a).replace(/s$/, "") === plainWords(b).replace(/s$/, "");
   const holds = (P.holds ?? []).map((one, i) => {
     const read = readHoldLine(one.text ?? one);
@@ -1664,6 +1665,15 @@ function portGraph() {
     const read = readUseLine(one.text ?? one);
     add({ id: `uses${i}`, kind: "clock", col: 3, name: read.problem ? "Who uses it" : read.who, text: read.problem ?? `${read.list.map((entry) => `${numberWords(entry.n)} ${entry.good}`).join(", ")} a day.`, label: PORT_LABELS.uses, bind: { portLine: ["uses", i] }, problem: Boolean(read.problem) });
   });
+  // Its stores, where its goods stand in its rooms, each fed from the goods it keeps.
+  (P.stores ?? []).forEach((one, i) => {
+    const read = readPortStoreLine(one.text ?? one);
+    const id = add({ id: `stores${i}`, kind: "fact", col: 3, name: read.problem ? "A store" : read.name, text: read.problem ?? `In ${read.room}. Usually ${read.list.map((entry) => `${numberWords(entry.n)} ${entry.good}`).join(", ")}: its share of what the port has.`, label: PORT_LABELS.stores, bind: { portLine: ["stores", i] }, problem: Boolean(read.problem) });
+    for (const entry of read.problem ? [] : read.list) {
+      const out = holds.find((hold) => !hold.read.problem && sameGood(hold.read.good, entry.good));
+      if (out) ws.push({ from: out.id, to: id });
+    }
+  });
   // Where it sends for things, and who sends to it for them.
   for (const other of L.from ?? []) {
     const id = add({ ...linkNode(`link_port_${other.id}`, "port", other.name, `Sends it ${other.goods.join(", ")}: ${other.days} days away.`, "It sends to"), col: 0 });
@@ -1677,11 +1687,19 @@ function inspectPortAbout(inspector) {
   const name = textBox("edit-title", P.name ?? "");
   const draft = textBox("edit-draft", P.draft ?? "");
   const people = textBox("edit-people", P.people ? numberWords(P.people) : "");
+  // For its stores in its rooms: who carries, and the room where goods come and go.
+  const carriers = textBox("edit-carriers", writeCarriedBy(P.carriers?.list ?? []));
+  const dock = textBox("edit-dock", P.dock?.room ?? "");
+  const addName = (words) => { carriers.value = carriers.value.trim() ? `${carriers.value.trim().replace(/,$/, "")}, ${words}` : words; };
   const trouble = el("div", { class: "hint tone-bad" });
   fill(inspector, h2("The port"),
     el("label", { for: "edit-title" }, "The port's name"), name,
     el("label", { for: "edit-draft" }, "Who wrote it (the game doesn't read this)"), draft,
     el("label", { for: "edit-people" }, "people: how many live there (for whoever writes the lines: the game plays what the lines say)"), people,
+    el("label", { for: "edit-carriers" }, "carried by: who carries for its stores, with commas between"), carriers,
+    (state.lists.locals ?? []).length ? el("div", { class: "subfacts" }, el("label", {}, "Someone with a day here"), row(...state.lists.locals.map((who) => button(who, () => addName(who))))) : null,
+    el("label", { for: "edit-dock" }, "goods come and go by: the room they come into the port by (left empty, the room people arrive in)"), dock,
+    (state.lists.rooms ?? []).length ? el("div", { class: "subfacts" }, el("label", {}, "A room here"), row(...state.lists.rooms.map((room) => button(room, () => { dock.value = room; })))) : null,
     trouble,
     row(button("Keep", () => {
       const n = people.value.trim() ? Number(people.value.replaceAll(",", "")) : null;
@@ -1694,6 +1712,11 @@ function inspectPortAbout(inspector) {
       else delete P.draft;
       if (n) P.people = n;
       else delete P.people;
+      const list = readCarriedBy(carriers.value);
+      if (list.length) P.carriers = { list };
+      else delete P.carriers;
+      if (dock.value.trim()) P.dock = { room: dock.value.trim() };
+      else delete P.dock;
       changed();
     }), button("Undo", () => inspect())),
     hint(`The file is world/ports/${state.id}.txt. Each midnight the port makes what its Makes lines say, never past what it usually holds and no more than it has the goods, the hands and the power for, uses what its Uses lines say, and sends for what it's running short of to the ports its Holds lines name. What's sent takes days to arrive, by the distance on the star map. The how-to in that folder says how each line is written.`));
@@ -1715,9 +1738,22 @@ function inspectPortLine(inspector, node) {
         ? hint("What comes out of the ground here: where, a colon, how many of what at the most, and a day: the Long Fields: 660 grain a day. Only a basic good comes out of the ground, and the port has to hold it. The ground gives to whatever hands there are, with or without power, and stops when the port has as many as it usually holds. Nothing else in the game is made from nothing.")
       : part === "makes"
         ? hint("What it makes: who makes it, a colon, how many of what, and a day, then from and what goes into that many, with commas between: the kitchens: 72 ration packs a day, from 36 meal. The port has to hold the good, and everything it's made from. Its makers stop when it has as many as it usually holds, make less when there isn't enough of what they make it from, and take that much less. Change how many it makes and change what goes into it too, or one of them will take more or less than before.")
-        : hint("What it uses: who uses it, a colon, how many of each thing with commas between, and a day: its people: 60 ration crates, 30 drinking water a day. The port has to hold each of them."),
+        : part === "stores"
+          ? hint("One of its stores in its rooms: its name, in and the room, a colon, usually and how many of each good are in it when the port has what it usually holds, with commas between, then a colon and a few words about it: the granary in The Manifest Docks: usually 20 ration crates, 8 meal: A cage of crates and sacks. What's in it is its share of what the port has that day, for whoever's standing in the port. It holds thirty squares, the port has to hold each good, and whole numbers only.")
+          : hint("What it uses: who uses it, a colon, how many of each thing with commas between, and a day: its people: 60 ration crates, 30 drinking water a day. The port has to hold each of them."),
     part === "holds" ? el("div", { class: "subfacts" }, el("label", {}, "A port it comes from"), row(...(state.lists.ports ?? []).map((name) => button(name, () => put(name))))) : null,
-    part !== "holds" ? el("div", { class: "subfacts" }, el("label", {}, part === "ground" ? "A basic good" : "A good"), row(...(part === "ground" ? state.lists.basics ?? goods : goods).map((name) => button(name, () => { box.value = `${box.value.trim()} ${name}`; box.focus(); })))) : null,
+    part !== "holds" ? el("div", { class: "subfacts" }, el("label", {}, part === "ground" ? "A basic good" : part === "stores" ? "A good it holds, that can be carried" : "A good"), row(...(part === "ground" ? state.lists.basics ?? goods : part === "stores" ? state.lists.carried ?? goods : goods).map((name) => button(name, () => {
+      // In a store's line a good joins what it usually has, six of it to begin with; anywhere else it's added at the end.
+      const read = part === "stores" ? readPortStoreLine(box.value.trim()) : null;
+      box.value = read && !read.problem ? writePortStoreLine({ ...read, list: [...read.list, { n: 6, good: name }] }) : `${box.value.trim()} ${name}`;
+      box.focus();
+    })))) : null,
+    part === "stores" && (state.lists.rooms ?? []).length ? el("div", { class: "subfacts" }, el("label", {}, "A room here"), row(...state.lists.rooms.map((room) => button(room, () => {
+      // The room goes where the line has one: after the store's name and its in.
+      const read = readPortStoreLine(box.value.trim());
+      box.value = read.problem ? `${box.value.trim()} in ${room}` : writePortStoreLine({ ...read, room });
+      box.focus();
+    })))) : null,
     trouble,
     row(button("Keep", () => {
       const words = box.value.trim().replace(/\n+/g, " ");
@@ -1735,7 +1771,9 @@ function addPortLine(part) {
   const good = (state.lists.goods ?? ["ration crates"])[0];
   const basic = (state.lists.basics ?? ["grain"])[0];
   const made = (state.lists.made ?? [good])[0];
-  (state.item[part] ??= []).push({ text: part === "holds" ? `${good}: usually 100` : part === "ground" ? `a new field: 1 ${basic} a day` : part === "makes" ? `a new maker: 1 ${made} a day, from 1 ${basic}` : `its people: 1 ${good} a day` });
+  const room = (state.lists.rooms ?? ["a room"])[0];
+  const carriedGood = (state.lists.carried ?? [good])[0];
+  (state.item[part] ??= []).push({ text: part === "holds" ? `${good}: usually 100` : part === "ground" ? `a new field: 1 ${basic} a day` : part === "makes" ? `a new maker: 1 ${made} a day, from 1 ${basic}` : part === "stores" ? `a new store in ${room}: usually 6 ${carriedGood}: What it looks like.` : `its people: 1 ${good} a day` });
   state.selected = { node: `${part}${state.item[part].length - 1}` };
   changed();
 }

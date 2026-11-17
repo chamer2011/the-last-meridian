@@ -1,6 +1,8 @@
 # Lumen Sanctuary
 draft: the AI's, not yet edited by the owner
 people: 9,000
+carried by: Boatman Tev, Trader Sael, Trader Oume
+goods come and go by: The Water Courts
 
 Holds:
 - grain: usually 950
@@ -51,3 +53,8 @@ Uses:
 - its power: 27 fuel cells a day
 - its sick: 1.8 medicine crates, 0.45 medkits, 0.09 surgeon's stores a day
 - its docks and workshops: 2.7 parts crates, 0.45 circuit boards, 0.09 machines a day
+
+Stores:
+- the canal warehouse in The Water Courts: usually 12 ration crates, 8 cloth, 8 fibre, 6 fuel cells: A long room with its feet in the water, where the barges unload under lamps turned low.
+- the dispensary in The Water Courts: usually 6 medicine crates, 6 medkits, 3 plasma and dressings: Clean white drawers behind a counter, and a keeper who knows how you feel about the price.
+- the flower lofts in The Shade Houses: usually 16 night flowers, 12 extracts: Trays of pale flowers in the dark under the roof, and the small bottles they're pressed into.

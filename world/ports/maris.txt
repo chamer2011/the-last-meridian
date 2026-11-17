@@ -1,6 +1,8 @@
 # Maris Deep
 draft: the AI's, not yet edited by the owner
 people: 3,000
+carried by: Kelper Annik, Kelper Joss, Kelper Teague, Young Ebb
+goods come and go by: The Rafts
 
 Holds:
 - kelp: usually 3,100
@@ -37,3 +39,7 @@ Uses:
 - its power: 9 fuel cells a day
 - its sick: 0.6 medicine crates, 0.15 medkits a day
 - its docks and workshops: 0.9 parts crates a day
+
+Stores:
+- the kelp sheds in The Rafts: usually 20 kelp, 16 kelp cake, 8 fibre: Low sheds on the leeward barges, wet at one end and dry at the other.
+- the packing raft in The Rafts: usually 16 ration crates, 6 drinking water, 4 water, 3 fuel cells: A flat barge where the cake is crated, riding lower in the water the better the season.

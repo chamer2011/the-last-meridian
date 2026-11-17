@@ -29,7 +29,7 @@
 
 import { ITEMS, LOCATIONS } from "./data.js";
 import { DAILY, PORTS_FILE_PROBLEMS, STAR_MAP, WORLD_GOODS, WORLD_PORTS } from "./world.js";
-import { NEEDS, NEED_KEYS, STEPS, numberWords, readGoodLine, readGroundLine, readHoldLine, readMakeLine, readUseLine, slugOf } from "../public/ports-text.js";
+import { NEEDS, NEED_KEYS, STEPS, numberWords, readGoodLine, readGroundLine, readHoldLine, readMakeLine, readPortStoreLine, readUseLine, slugOf } from "../public/ports-text.js";
 
 // A haul carries what the port brings in over the days the trip takes, and half again: but never more than a day and
 // a half's worth over, so that a long trip doesn't empty the port before it's back.
@@ -172,7 +172,7 @@ export function portsModel() {
       at("ports", id, null, `there's no place called ${id} on the star map: a port's file is named for its place, like haven.txt`);
       continue;
     }
-    const port = (ports[id] = { id, name: LOCATIONS[id].name, people: file.people ?? null, holds: {}, makes: [], uses: [], use: {}, made: {}, eat: {} });
+    const port = (ports[id] = { id, name: LOCATIONS[id].name, people: file.people ?? null, holds: {}, makes: [], uses: [], use: {}, made: {}, eat: {}, stores: [], carriers: null, dock: null });
     for (const raw of file.holds ?? []) {
       const read = readHoldLine(raw.text);
       if (read.problem) continue;
@@ -245,6 +245,29 @@ export function portsModel() {
         }
       }
       port.uses.push({ who: read.who, list, line: raw.line });
+    }
+    // Where its goods stand in its rooms, for whoever walks them (src/port-stores.js, which finds the rooms and the
+    // people): each store by its name, with how many of each good it has when the port has what it usually holds.
+    port.carriers = file.carriers ?? null;
+    port.dock = file.dock ?? null;
+    for (const raw of file.stores ?? []) {
+      const read = readPortStoreLine(raw.text);
+      if (read.problem) continue;
+      const storeId = slugOf(read.name.replace(/^the\s+/i, ""));
+      if (!storeId || port.stores.some((one) => one.id === storeId)) {
+        at("ports", id, raw.line, `${read.name} is written twice under Stores`);
+        continue;
+      }
+      const list = [];
+      for (const entry of read.list) {
+        const good = goodByWords(entry.good);
+        if (!good) at("ports", id, raw.line, `there's no good called ${entry.good} in world/goods, to keep in ${read.name}`);
+        else if (!port.holds[good.id]) at("ports", id, raw.line, `${read.name} keeps ${good.name}, and the port holds none: add a line for it under Holds`);
+        else if (!good.item) at("ports", id, raw.line, `${good.name} can't stand in a store: world/goods names no item for it in square brackets, so nobody can carry one`);
+        else if (list.some((one) => one.good === good.id)) at("ports", id, raw.line, `${read.name} keeps ${good.name} twice`);
+        else list.push({ good: good.id, item: good.item, usual: entry.n });
+      }
+      if (list.length) port.stores.push({ id: storeId, name: read.name, room: read.room, goods: list, look: read.look, line: raw.line });
     }
   }
   // Where a good comes from has to be a port that holds it.
@@ -358,7 +381,7 @@ export function workAt(world, id, model = portsModel()) {
 
 // What's wrong in the goods' and the ports' files, for npm run check-story.
 export const portsProblems = () => [...PORTS_FILE_PROBLEMS, ...portsModel().problems];
-export const portsCount = () => ({ ports: Object.keys(portsModel().ports).length, goods: portsModel().order.length });
+export const portsCount = () => ({ ports: Object.keys(portsModel().ports).length, goods: portsModel().order.length, stores: Object.values(portsModel().ports).reduce((sum, port) => sum + port.stores.length, 0) });
 // Whether a place has a file, and so real amounts.
 export const hasPort = (id) => Boolean(portsModel().ports[id]);
 

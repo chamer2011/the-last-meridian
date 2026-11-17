@@ -1,6 +1,8 @@
 # Anselm's Mercy
 draft: the AI's, not yet edited by the owner
 people: 3,000
+carried by: Bram, Ife, Orderly Sem
+goods come and go by: The Sorting Deck
 
 Holds:
 - ration crates: usually 750, from the Sundial or Haven Station
@@ -32,3 +34,8 @@ Uses:
 - its power: 9 fuel cells a day
 - the wards: 4.8 medicine crates, 1.2 medkits, 0.18 surgeon's stores a day
 - its docks and workshops: 0.9 parts crates a day
+
+Stores:
+- the supply bay in The Sorting Deck: usually 12 ration crates, 6 fuel cells, 9 drinking water, 2 parts crates: What the shuttles bring, stacked along the old bay wall with a colored tag on every crate.
+- the pharmacy cage in The Long Ward: usually 8 medicine crates, 6 medkits, 12 extracts, 6 plasma and dressings: Wire to the ceiling and one hatch, with a nurse's initials against everything that leaves it.
+- the blood cooler in The Gallery: usually 12 blood: A humming chest on the walkway, where the chits are paid in.

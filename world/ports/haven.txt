@@ -1,6 +1,8 @@
 # Haven Station
 draft: the AI's, not yet edited by the owner
 people: 6,000
+carried by: Docker Pav, Docker Renko, Docker Bo
+goods come and go by: The Manifest Docks
 
 Holds:
 - meal: usually 450, from Tessen Colony
@@ -39,3 +41,8 @@ Uses:
 - its power: 18 fuel cells a day
 - its sick: 1.2 medicine crates, 0.3 medkits a day
 - its docks and workshops: 2.7 parts crates, 0.3 circuit boards, 0.06 machines, 0.3 hot cells a day
+
+Stores:
+- the granary in The Manifest Docks: usually 20 ration crates, 8 meal, 6 ration packs: A caged bay of crates and sacks under a chalked tally, where the Tessen haulers unload.
+- the bonded store in The Manifest Docks: usually 9 fuel cells, 6 parts crates, 4 medicine crates, 2 air bottles: A steel cage with the dockmaster's seal on its gate and a clerk's stool beside it.
+- the chandler's cage in The Hook: usually 6 clothes, 6 tea and tobacco, 6 beer and spirits, 6 drinking water: What the station sells by the piece, behind wire, with the prices on a slate.

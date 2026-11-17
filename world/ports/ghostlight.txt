@@ -1,6 +1,8 @@
 # The Ghostlight Nebula
 draft: the AI's, not yet edited by the owner
 people: 1,500
+carried by: Lamp-Hand Ysolde, Trader Mazur, Trader Quick
+goods come and go by: The Cold Market
 
 Holds:
 - ration crates: usually 380, from Kessara Drift
@@ -39,3 +41,8 @@ Uses:
 - its power: 4.5 fuel cells a day
 - its sick: 0.3 medicine crates, 0.08 medkits a day
 - its docks and workshops: 0.45 parts crates, 0.08 circuit boards, 0.15 hot cells a day
+
+Stores:
+- the cache raft in The Lamp Lanes: usually 10 ration crates, 6 drinking water, 6 beer and spirits, 3 air bottles: A sealed raft moored to a family buoy, where the market keeps what it would rather not have stolen at the market.
+- the fuel tender in The Lamp Lanes: usually 6 fuel cells, 4 jump fuel, 3 refined fuel: A dead tender roped a little way off from everything else, for reasons nobody needs explained.
+- the purser's stores in The Line of Battle: usually 6 ration packs, 2 medicine crates, 2 parts crates: Navy issue behind a counter, signed for in triplicate, on a ship that has been at anchor for years.

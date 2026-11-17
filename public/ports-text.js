@@ -33,11 +33,16 @@
 //     - the kitchens: 72 ration packs a day, from 36 meal
 //     Uses:
 //     - its people: 60 ration crates, 3 ration packs a day
+//     Stores:
+//     - the granary in The Manifest Docks: usually 20 ration crates, 8 meal: A cage of crates and sacks.
+//
+// A port's Stores are where its goods stand in its rooms, for whoever walks them (src/port-stores.js): each holds its
+// share of what the port has, and two lines at the top say who carries for them and where goods come and go.
 
 export const STEPS = ["basic", "refined", "developed", "advanced"];
 export const STEP_TITLES = { basic: "Basic", refined: "Refined", developed: "Developed", advanced: "Advanced" };
-export const PORT_PARTS = ["holds", "ground", "makes", "uses"];
-export const PORT_TITLES = { holds: "Holds", ground: "Ground", makes: "Makes", uses: "Uses" };
+export const PORT_PARTS = ["holds", "ground", "makes", "uses", "stores"];
+export const PORT_TITLES = { holds: "Holds", ground: "Ground", makes: "Makes", uses: "Uses", stores: "Stores" };
 
 // "1,500", "0.3", "12": a number as these files write it, and back.
 const NUMBER = "\\d[\\d,]*(?:\\.\\d+)?";
@@ -249,11 +254,43 @@ export function readUseLine(text) {
 }
 export const writeUseLine = (one) => `${one.who}: ${one.list.map((entry) => `${numberWords(entry.n)} ${entry.good}`).join(", ")} a day`;
 
-const PORT_HEADER = ["draft", "people"];
+// "the granary in The Manifest Docks: usually 20 ration crates, 8 meal: A cage of crates and sacks.": one of the
+// port's stores in its rooms. Its name, the room it stands in, how many of each good are in it when the port has
+// what it usually holds (so it has half of that when the port has half), and a few words about it for whoever looks.
+export function readPortStoreLine(text) {
+  const line = String(text ?? "").trim().replace(/^-\s*/, "");
+  const example = "the granary in The Manifest Docks: usually 20 ration crates, 8 meal: A cage of crates and sacks.";
+  const cut = line.search(/:\s/);
+  const head = cut < 0 ? line.replace(/:$/, "") : line.slice(0, cut);
+  const rest = cut < 0 ? "" : line.slice(cut + 1).trim();
+  // Its name can have an in of its own (the bins in the back in The Hook): the room is what follows the last one.
+  const where = head.match(/^(.+)\s+in\s+(.+)$/i);
+  const second = rest.search(/:\s|:$/);
+  const kept = (second < 0 ? rest : rest.slice(0, second)).trim().replace(/\.$/, "");
+  const look = second < 0 ? "" : rest.slice(second + 1).trim();
+  const usually = kept.match(/^usually\s+(.+)$/i);
+  if (!where || !usually) return { problem: `"${line}" should be the store's name, in and its room, a colon, usually and how many of each good with commas between, then a colon and a few words about it if you like: ${example}` };
+  const list = [];
+  for (const piece of amountsIn(usually[1])) {
+    const amount = readAmount(piece);
+    if (!amount || !(amount.n > 0) || !Number.isInteger(amount.n)) return { problem: `"${piece}" should be how many and of what, in whole things, such as 20 ration crates` };
+    list.push(amount);
+  }
+  if (!list.length) return { problem: `"${line}" doesn't say what the store usually has in it: ${example}` };
+  return { name: where[1].trim(), room: where[2].trim(), list, look };
+}
+export const writePortStoreLine = (one) => `${one.name} in ${one.room}: usually ${one.list.map((entry) => `${numberWords(entry.n)} ${entry.good}`).join(", ")}${one.look ? `: ${one.look}` : ""}`;
+
+// "Docker Pav, Docker Renko and Docker Bo": the people who carry for a port's stores, by their names in the place's
+// file in world/life, or their ids. Commas between them, and an and before the last if you like.
+export const readCarriedBy = (words) => String(words ?? "").trim().replace(/\.$/, "").split(/\s*,\s*(?:and\s+)?|\s+and\s+(?=[A-Z])/).map((one) => one.trim()).filter(Boolean);
+export const writeCarriedBy = (list) => (list ?? []).join(", ");
+
+const PORT_HEADER = ["draft", "people", "carried by", "goods come and go by"];
 export function parsePortText(text, id = "it") {
   const problems = [];
   const problem = (line, message) => problems.push({ line, message });
-  const value = { id, name: id, holds: [], ground: [], makes: [], uses: [] };
+  const value = { id, name: id, holds: [], ground: [], makes: [], uses: [], stores: [] };
   const lines = String(text ?? "").replace(/\r\n?/g, "\n").split("\n");
   let titled = false;
   let section = null;
@@ -292,7 +329,15 @@ export function parsePortText(text, id = "it") {
         continue;
       }
       if (key === "draft") value.draft = field[2].trim();
-      else if (new RegExp(`^${NUMBER}$`).test(field[2].trim())) value.people = toNumber(field[2]);
+      else if (key === "carried by") {
+        const list = readCarriedBy(field[2]);
+        if (!list.length) problem(n, "carried by is who carries for the port's stores, by name, with commas between: carried by: Docker Pav, Docker Renko, Docker Bo");
+        else value.carriers = { list, line: n };
+      } else if (key === "goods come and go by") {
+        const room = field[2].trim().replace(/\.$/, "");
+        if (!room) problem(n, "goods come and go by is one of the port's rooms, such as goods come and go by: The Manifest Docks");
+        else value.dock = { room, line: n };
+      } else if (new RegExp(`^${NUMBER}$`).test(field[2].trim())) value.people = toNumber(field[2]);
       else problem(n, "people is a number, such as people: 6,000");
       continue;
     }
@@ -302,7 +347,7 @@ export function parsePortText(text, id = "it") {
       continue;
     }
     const words = line.replace(/^-\s*/, "");
-    const read = section === "holds" ? readHoldLine(words) : section === "ground" ? readGroundLine(words) : section === "makes" ? readMakeLine(words) : readUseLine(words);
+    const read = section === "holds" ? readHoldLine(words) : section === "ground" ? readGroundLine(words) : section === "makes" ? readMakeLine(words) : section === "stores" ? readPortStoreLine(words) : readUseLine(words);
     if (read.problem) problem(n, read.problem);
     value[section].push({ text: words, line: n });
   }
@@ -314,6 +359,8 @@ export function writePortText(value) {
   const out = [`# ${value.name ?? ""}`];
   if (value.draft) out.push(`draft: ${value.draft}`);
   if (value.people !== undefined && value.people !== null && value.people !== "") out.push(`people: ${numberWords(value.people)}`);
+  if (value.carriers?.list?.length) out.push(`carried by: ${writeCarriedBy(value.carriers.list)}`);
+  if (value.dock?.room) out.push(`goods come and go by: ${value.dock.room}`);
   for (const part of PORT_PARTS) {
     const lines = value[part] ?? [];
     if (!lines.length) continue;
