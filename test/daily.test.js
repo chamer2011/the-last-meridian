@@ -156,8 +156,9 @@ test("a year goes by quickly, everything stays in bounds, and the world does cha
   assert.ok(moved > 30);
   assert.ok(world.news.length > 10, "plenty should have happened in a year");
   assert.ok(world.news.length <= 40, "and the list doesn't grow for ever");
-  // The ports' other goods and what's on its way between them are kept too, since their amounts are real.
-  assert.ok(JSON.stringify(world).length < 26000, `the save has ${JSON.stringify(world).length} characters of this`);
+  // The ports' other goods and what's on its way between them are kept too, since their amounts are real; and which
+  // freighter each haul is in: a number on the haul, and for each ship which of her run's names she has.
+  assert.ok(JSON.stringify(world).length < 30000, `the save has ${JSON.stringify(world).length} characters of this`);
   assert.ok(world.hauls.length > 50 && world.hauls.length < 400, `${world.hauls.length} hauls on their way`);
 });
 

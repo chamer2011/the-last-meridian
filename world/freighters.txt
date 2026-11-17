@@ -1,0 +1,47 @@
+# The freighters: other people's ships, carrying the ports' goods
+draft: the AI's, not yet edited by the owner
+
+# Everything a port sends for travels in a freighter with a name. A freighter loads for a day at the port that's
+# sending the goods, takes its days on the way (the same days the ports' files and the star map give), and unloads
+# for a day where it's bound. What it carries is real: it left the first port's stores when it was loaded, and it's
+# in nobody's stores until it's unloaded. These are other people's ships: you can meet them, and you can't command
+# them. Each flies for whoever holds the port it sails from.
+#
+# Names are made from the two lists below: one word from the first and one from the second, "the Long Tally". A
+# freighter keeps its name while it's on its way, and when it's back another trip on the same run is likely to be
+# the same ship. Add words, change them, take some away; with too few, two ships can end up sharing a name.
+#
+# Docked at the same port as a freighter, the Meridian's captain can, from the Market page:
+#
+#   Hail her. Her master says where she's been and where she's bound, what she carries, and what's short and what's
+#   plentiful at the other end of her run. It costs nothing, and it's how you hear of ports you don't know.
+#
+#   Buy from her hold. The master sells part of each thing aboard (the share below), one at a time into your freight
+#   hold, out of the ship's purse. The price is halfway between what the thing costs at the two ends of her run, so
+#   a ship in from where a thing is cheap sells it for less than the port she's unloading at. What you buy never
+#   reaches the port it was bound for.
+#
+#   See her safely there. A freighter that's loading for a port whose danger on the star map is at or over the
+#   number below, or for a port where convoys are being lost, pays for company: so many credits for each measure of
+#   fuel the jump takes you, times the danger. Be docked at that port when she comes in and the fee goes into the
+#   purse, with a little standing with whoever she flies for. Where convoys are being lost, an escorted ship
+#   arrives; one sailing alone doesn't.
+#
+#   Board her. You go aboard with whoever's walking with you and fight her crew: the master and a hand, and a second
+#   hand when what she carries is worth more than the number below. Win, and everything that fits in your freight
+#   hold is yours, the dearest first; the port she was bound for goes short of it. Lose, and you wake in the medbay
+#   with nothing. Either way it costs standing with whoever she flies for, and with whoever holds the port you did
+#   it in.
+#
+# The crew fight as two enemies from world/enemies, by their ids.
+#
+# After changing this file, run "npm run check-story", and close and reopen the game.
+
+names begin: Long, Quiet, Patient, Late, Honest, Second, Plain, Old, Grey, Lucky, Tired, Steady, Far, Low, Dry, Cold, Slow, Good, Fair, Last, Early, Thin, Broad, Deep, Spare, Careful, Sober, Stubborn, Small, Tall, Third, Humble, Lean, Even, Hollow, Bright, Dull, Sure, Idle, Kind
+names end: Tally, Margin, Ledger, Lantern, Mule, Kettle, Anvil, Harvest, Tide, Measure, Penny, Bargain, Promise, Errand, Morning, Furrow, Handcart, Weight, Barrel, Thimble, Ladle, Hinge, Shovel, Receipt, Reckoning, Orchard, Bellows, Plumbline, Sparrow, Heron, Ferry, Milestone, Halfway, Remainder, Dividend, Almanac, Trestle, Windlass, Gangway, Bushel
+the master sells: 50 percent of what's aboard
+an escort pays: 20 credits a measure of fuel, times the danger, from danger 2
+an escort earns: 1 standing with whoever she flies for
+the crew: a master and 1 hand, 2 hands for a load worth over 1500 credits
+the crew fights as: freighter_master, freighter_hand
+a boarding costs: 10 standing with whoever she flies for, 5 with whoever holds the port

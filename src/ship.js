@@ -23,6 +23,7 @@ import { WATER_ITEM, airView, bringWater, waterView } from "./water.js";
 import { amountOf, portTake, portsModel } from "./ports.js";
 import { comfortOffers, freightCommand, freightView } from "./freight.js";
 import { comfortsShift, comfortsView } from "./comforts.js";
+import { freighterCommand, freightersView } from "./freighters.js";
 import { worthOf } from "./worth.js";
 import { SHIP_DATA, STAR_MAP } from "./world.js";
 import { boardView, workView } from "./work.js";
@@ -1014,6 +1015,20 @@ export function shipCommand(game, body) {
       if (ship.log.length > MAX_LOG) ship.log.splice(0, ship.log.length - MAX_LOG);
       return done;
     }
+    // The freighters docked beside her: hailing one, buying from her hold, seeing her to her next port, or boarding
+    // her (src/freighters.js).
+    case "ship-hail":
+    case "ship-buy":
+    case "ship-escort":
+    case "ship-board": {
+      const done = freighterCommand(game, body);
+      for (const line of done.notes ?? []) {
+        const said = line.match(/^\[(TRADE|HAIL|COMBAT)\] (.+)$/);
+        if (said) ship.log.push({ day: clockLabel(game), tag: said[1] === "HAIL" ? "COMMS" : said[1], text: said[2] });
+      }
+      if (ship.log.length > MAX_LOG) ship.log.splice(0, ship.log.length - MAX_LOG);
+      return done;
+    }
     default: throw new Error("Unknown order.");
   }
 }
@@ -1113,6 +1128,9 @@ export function shipView(game) {
     stranded: strandedView(game),
     // Her freight hold, what she's carrying and for whom, what this dock offers, and what things cost (src/freight.js).
     freight: freightView(game),
+    // The freighters: the ones docked beside her, the ones on the lanes between ports the captain knows of, and
+    // the ones she's said she'll see in (src/freighters.js).
+    lanes: freightersView(game),
     repairs: repairsView(game, SHIP_ID),
     // Who's on the medbay's cots and floor, and what the medics are doing (src/medbay.js).
     medbay: medbayView(game, SHIP_ID),

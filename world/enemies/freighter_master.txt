@@ -1,0 +1,48 @@
+# Freighter's Master
+threat: 1
+hp: 17
+attack: 3
+defense: 11
+damage: 2 to 5
+weapon: Deck Pistol
+xp: 30
+credits: 20 to 60
+art: soldier
+tags: 
+motive: guarding
+
+In a line:
+Whoever answers for a freighter and everything in her hold, with a pistol they've carried for years and never wanted to draw.
+
+When the fight starts:
+- The master stands in the hold with the manifest in one hand and a pistol in the other, and puts the manifest down.
+
+When they hit:
+- The pistol cracks in the closeness of the hold, and the round finds you.
+- They fire from behind a crate, steady, the way someone fires who has done it before.
+
+When they miss:
+- The shot rings off a deck plate and goes whining down the hold.
+- They fire high, and a strip light goes out over your head.
+
+When they hit hard:
+- They wait until you're close enough to see their eyes, and then they don't miss.
+
+When they're beaten:
+- The master goes down on one knee, and then the rest of the way, and the pistol slides under the crates.
+- They drop the pistol and sit back against the hull, breathing hard, and tell you to take it and go.
+
+When they join the fight:
+- {Enemy} comes out of the cabin aft, already aiming.
+
+When they're stunned:
+- {Enemy} shakes their head hard, the pistol pointing at the deck.
+
+When persuading works:
+- You tell them it's cargo, and cargo's insured, and they aren't. They lower the pistol an inch at a time.
+
+When persuading fails:
+- You tell them to think of the crew. They tell you that's exactly who they're thinking of.
+
+When a threat works:
+- You tell them what you'll leave of the ship if they make you do it the hard way. The pistol goes down on a crate.

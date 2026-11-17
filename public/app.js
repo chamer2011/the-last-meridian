@@ -9,6 +9,7 @@ import { initShip } from "./ship.js";
 import { initCommand } from "./command.js";
 import { initWork } from "./work.js";
 import { initFreight } from "./freight.js";
+import { initFreighters } from "./freighters.js";
 import { initRig } from "./rig.js";
 import { openBoard } from "./board.js";
 import { openMapEditor } from "./mapedit.js";
@@ -783,6 +784,7 @@ initShip({ ui, render, runAction, renderMenus, openMenu, closeMenu });
 initCommand({ ui, render, runAction, closeMenu, openPersonSheet });
 initWork({ ui, render, runAction });
 initFreight({ ui });
+initFreighters({ ui, renderMenus: () => renderMenus(), closeMenu });
 initRig({ ui, runAction, renderMenus: () => renderMenus() });
 initWalk({
   ui,

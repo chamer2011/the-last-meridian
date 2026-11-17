@@ -351,6 +351,7 @@ export function goLive(game) {
   if (!c) throw new Error("There's no fight right now.");
   if (c.live) return;
   if (c.training) throw new Error("A simulated fight stays in its window.");
+  if (c.away) throw new Error(`This fight is ${c.away}, not in the room.`);
   if (c.round > 1) throw new Error("This fight is already under way in its window.");
   const ground = groundOf(game);
   if (!ground) throw new Error("There's nowhere to have this fight in the room.");

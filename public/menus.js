@@ -9,6 +9,7 @@ import { commandMenu } from "./command.js";
 import { workMenu } from "./work.js";
 import { dealerSections, rigMenu } from "./rig.js";
 import { freightSections } from "./freight.js";
+import { lanesSections } from "./freighters.js";
 import { portStoreSections } from "./port-stores.js";
 import { oddsFor } from "./story.js";
 import { pixelArtFound, pixelFurnitureFound } from "./pixel-art.js";
@@ -196,8 +197,10 @@ function marketMenu() {
   const freight = freightSections(g);
   // The port's own stores where they stand in its rooms, and who's carrying for them (public/port-stores.js).
   const stores = portStoreSections(g);
+  // The freighters docked beside the Meridian, and the ones she's said she'll see in (public/freighters.js).
+  const lanes = lanesSections(g);
   // What's the port's and the ship's goes down the right, beside what's for your own pocket.
-  const side = [...stores, ...freight];
+  const side = [...stores, ...lanes, ...freight];
   if (!g.market.length && dealer.length) return side.length ? twoColumns(dealer, side) : columns(...dealer);
   if (!g.market.length) {
     const elsewhere = g.locations.filter((l) => l.hasMarket).map((l) => l.name);

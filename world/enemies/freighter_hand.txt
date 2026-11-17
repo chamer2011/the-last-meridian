@@ -1,0 +1,51 @@
+# Freighter Hand
+threat: 1
+hp: 12
+attack: 2
+defense: 10
+damage: 2 to 4
+weapon: Cargo Hook
+xp: 15
+credits: 5 to 20
+art: brawler
+tags: 
+motive: guarding
+
+In a line:
+A deckhand off a freighter, with a cargo hook in one fist and no wish to be standing where they are.
+
+When the fight starts:
+- A deckhand plants their feet across the hatch, with a cargo hook held low.
+
+When they hit:
+- The hook comes round and catches you on the forearm.
+- They shoulder you into a stack of crates, and the edge of one finds your ribs.
+
+When they miss:
+- The hook bites into a crate beside you and sticks there.
+- They swing, and you're not where they thought you'd be.
+
+When they hit hard:
+- The hook comes down overhand with their whole weight behind it, and it lands.
+
+When they're beaten:
+- The deckhand sits down hard among the crates, and the hook clatters on the deck.
+- They go down, and stay down, one hand up to say they're done.
+
+When they join the fight:
+- {Enemy} comes down the hold ladder two rungs at a time, hook in hand.
+
+When they're stunned:
+- {Enemy} sways where they stand, the hook hanging loose.
+
+When persuading works:
+- You tell them the cargo isn't theirs to bleed for. They look at the hatch, and at you, and they step aside.
+
+When persuading fails:
+- You tell them nobody's paying them enough for this. They say they know what they're paid.
+
+When paying works:
+- They weigh the credits, and then the hook, and the hook goes back on its ring.
+
+When a threat works:
+- You tell them how this ends. They back up against the crates with both hands open.

@@ -11,7 +11,7 @@ import { fallDown, hasADayAt, wakeAfterDefeat } from "./medbay.js";
 import { personHere } from "./walk.js";
 import { ATTITUDE_VALUES, FACTION_BELIEFS, NOTABLES, SKILLS } from "./character-data.js";
 import { ABILITIES, ENEMIES, ITEMS, STATS } from "./data.js";
-import { fightExtras } from "./room-hooks.js";
+import { fightEnds, fightExtras } from "./room-hooks.js";
 import { THREAT_LABELS } from "./npc.js";
 import {
   addFatigue, attrMod, beliefAffinity, changeStanding, changeStress, checkParts, clamp, defense, fxSum, grantXp, maxEnergy, maxHp, oddsFor, practice, roll, skillRank,
@@ -741,7 +741,8 @@ export function endCombat(game, ended, log) {
     addNotes(c, log, changeStress(game, fxSum(game, "stressOnKill")));
     // What they had on them is left on the floor, for the player to look through.
     const left = leaveLoot(game, beaten);
-    if (left.length) log.push({ text: `They left something on the floor: ${listOf(left)}.`, tone: "good" });
+    // After a fight somewhere else (aboard a freighter), what they had on them is brought back.
+    if (left.length) log.push({ text: c.away ? `You bring back what they had on them, and put it down beside you: ${listOf(left)}.` : `They left something on the floor: ${listOf(left)}.`, tone: "good" });
     summary = `${side} beat ${beatenProse} in ${rounds}.${done ? ` ${done}` : ""}`;
     tone = "good";
   } else if (result === "talked") {
@@ -785,6 +786,13 @@ export function endCombat(game, ended, log) {
     addNotes(c, log, changeStress(game, 3));
     summary = `You got away from ${prose}.`;
     tone = "info";
+  }
+
+  // Whatever started this fight for reasons of its own hears how it ended, and what it says goes in the fight's log
+  // (src/room-hooks.js): a boarding takes its cargo, or doesn't.
+  for (const line of fightEnds(game, c, result)) {
+    if (/^\[[A-Z]+\]/.test(line)) addNotes(c, log, [line]);
+    else log.push({ text: line, tone: result === "victory" ? "good" : "warn" });
   }
 
   for (const id of new Set(c.enemies.map((enemy) => enemy.id))) {
@@ -933,6 +941,8 @@ export function combatView(game) {
     id: c.id,
     round: c.round,
     training: Boolean(c.training),
+    // A fight that isn't in the room the player stands in, and where it is: aboard a freighter (src/freighters.js).
+    away: c.away ?? null,
     opening: c.leadIn ?? c.intro ?? null,
     // A battle says what it's called, and how it stands, in place of "Fight".
     battle: c.battle ? { title: c.battle.title ?? "Battle" } : null,

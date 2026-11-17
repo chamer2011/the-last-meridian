@@ -69,6 +69,7 @@
 .os .nv-name { fill: var(--tx); font-size: 22px; pointer-events: none; }
 .os .nv-name.on { fill: var(--tt); font-weight: 700; }
 .os .nv-ship { fill: var(--tt); }
+.os .nv-freighter { fill: var(--dim); stroke: var(--tx); stroke-width: 1.5; }
 .os .nv-shipt { fill: var(--tt); font-size: 19px; font-weight: 700; letter-spacing: 2px; pointer-events: none; }
 
 /* The list of ports, the news and what a port holds */

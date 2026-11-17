@@ -464,6 +464,17 @@ function effectsAt(world, model, id) {
   return out;
 }
 
+// Whether what's sent to a port of a good is being lost today, or kept waiting off it: for whoever follows a haul
+// to where it's going (src/lanes.js).
+export function losingAt(world, id, good, model = portsModel()) {
+  const tree = model.goods[good]?.tree;
+  return Boolean(tree && effectsAt(world, model, id)?.[tree]?.loses);
+}
+export function blockedAt(world, id, good, model = portsModel()) {
+  const tree = model.goods[good]?.tree;
+  return Boolean(tree && effectsAt(world, model, id)?.[tree]?.blocks);
+}
+
 // ---- A day at every port --------------------------------------------------------------------------------------
 
 // A number from a pair of names that's the same every time, to set things going out of step with each other.

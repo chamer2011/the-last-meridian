@@ -11,6 +11,7 @@ import { FACTIONS, ITEMS, LOCATIONS } from "./data.js";
 import { isCharted } from "./ship.js";
 import { aboardShip } from "./role.js";
 import { DAILY, SHIP_DATA } from "./world.js";
+import { lanesBefore, lanesDay } from "./lanes.js";
 import { amountOf, counted, hasPort, levelOf, portHolds, portsDay, portsModel, pushOf, usualOf, whyShort, workLine } from "./ports.js";
 
 const PLACES = DAILY.places ?? {};
@@ -169,7 +170,11 @@ function eventsDay(game, world, id, state, notes) {
 // each other, so they go together), then who has the say.
 function runDay(game, world, notes) {
   for (const [id, state] of Object.entries(world.places)) eventsDay(game, world, id, state, notes);
+  // Everything a port sends for travels in a freighter with a name (src/lanes.js): which ships come in today is
+  // looked at before the ports' day, and what became of them after it.
+  const due = lanesBefore(game, world);
   portsDay(world, () => dice(world));
+  lanesDay(game, world, notes, due, tell);
   for (const [id, state] of Object.entries(world.places)) {
     if (!hasPort(id)) supplyDay(world, id, state);
     holdDay(game, world, id, state, notes);

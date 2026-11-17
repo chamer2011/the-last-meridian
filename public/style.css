@@ -808,6 +808,9 @@ body:has(#computer) .pop-notes { visibility: hidden; }
 /* The @ for the ship, or for the player when it isn't theirs, and an M for the Meridian seen from elsewhere. */
 .map-here { position: absolute; color: var(--bright); font-weight: 700; line-height: var(--map-row); pointer-events: none; animation: blink 1.4s steps(1) infinite; z-index: 2; }
 .map-here-ship { opacity: 0.75; }
+/* A freighter under way, where it is between the two ports of its run; and the ones at a place, on its card. */
+.map-ship { position: absolute; color: var(--info); line-height: var(--map-row); z-index: 1; cursor: default; }
+.map-lanes { display: flex; flex-direction: column; gap: 2px; }
 .map-star { position: absolute; padding: 0 2px 0 0; margin: 0; font: inherit; line-height: var(--map-row); white-space: nowrap; background: var(--bg); z-index: 1; }
 .map-star::before, .map-star::after { content: none !important; }
 .map-star.selected { background: var(--text); color: var(--bg); }

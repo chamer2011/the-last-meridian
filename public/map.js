@@ -2,6 +2,7 @@
 // here is drawn from the game's state, and every button runs on this computer.
 
 import { api, el, folded } from "./dom.js";
+import { laneMarks, lanesAt, lanesFold } from "./freighters.js";
 
 // What this screen needs from the main screen. Set once, when the page loads.
 let app;
@@ -140,6 +141,8 @@ function chartNode(g, places, selected) {
     el("div", { class: "map-chart", style: `--map-cols:${chart.cols};--map-lines:${chart.rows}` },
       el("pre", { class: "map-stars", "aria-hidden": "true" }, chartArt(chart.cols, chart.rows).join("\n")),
       el("pre", { class: "map-course", "aria-hidden": "true" }, course),
+      // The freighters under way between the ports the captain knows of (public/freighters.js).
+      laneMarks(g),
       !g.role.captain && mine !== shipSpot && el("div", { class: "map-here map-here-ship", style: `left:${shipSpot.x}ch;top:calc(${shipSpot.y} * var(--map-row))`, title: "The Meridian" }, "M"),
       el("div", { class: "map-here", style: `left:${mine.x}ch;top:calc(${mine.y} * var(--map-row))`, title: g.role.captain ? "The Meridian" : "You" }, "@"),
       places.map((place) => mapStar(place, selected?.id === place.id))));
@@ -169,6 +172,7 @@ function placeDetails(place, g) {
     place.now?.goods.length > 0 && suppliesNode(place.now.goods, place.now.work),
     place.now?.goods.some((good) => good.has) && holdsFold(place),
     place.now?.going.map((text) => el("div", { class: "small map-going" }, text)),
+    lanesAt(g, place),
     captain && place.sells.length > 0 && muted(`Sells to the ship: ${place.sells.join(", ")}.`),
     place.hasMarket && muted("Has a market."),
     !place.here && place.why && el("div", { class: "small tone-bad" }, place.why),
@@ -220,6 +224,7 @@ export function mapMenu() {
               ? el("span", { class: "tag on" }, "you are here")
               : el("button", { disabled: cannotAct() || !ship.canGo, title: ship.why ?? "", onclick: shipOrder({ action: "course", id: ship.id }) }, g.role.captain || !ship.jump ? "Go aboard" : `Go aboard, ${ship.fare} cr`))))),
     placeTable(g.locations.filter((place) => !place.ownShip)),
+    lanesFold(g),
     folded("map-news", `News from around (${g.world?.news.length ?? 0})`,
       g.world?.news.length
         ? g.world.news.map((entry) => el("div", { class: "menu-entry small" }, el("span", { class: "muted" }, `Day ${entry.day}`), el("span", {}, ` ${entry.text}`)))

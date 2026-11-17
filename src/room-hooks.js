@@ -129,6 +129,12 @@ export function firstContents(game, place, thing) {
 
 // (game) => whoever stands with the player when a fight starts, as the fight knows them (a person's id).
 export const addFightAllies = (fn) => { fighters.push(fn); };
+// A fight that's over: whatever started it for reasons of its own hears how it ended, and says what came of it, in
+// lines for the fight's log (one that starts with a tag in square brackets goes into the story too). A boarding
+// takes its cargo here (src/freighters.js).
+const fightEnders = [];
+export const addFightEnd = (fn) => { fightEnders.push(fn); };
+export const fightEnds = (game, fight, result) => (fightEnders.length ? fightEnders.flatMap((fn) => fn(game, fight, result) ?? []) : []);
 export const fightExtras = (game) => (fighters.length ? gathered(fighters, game) : []);
 
 export const orderFor = (id) => orders.get(String(id ?? "")) ?? null;

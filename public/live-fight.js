@@ -56,7 +56,8 @@ export const liveRunning = () => Boolean(combat()?.live) && !lf.paused && !lf.en
 // Whether a fight belongs in the room: one there already, or one just started while the room's on screen. A simulation
 // stays in its window, and so does a fight the room couldn't take.
 export function fightInRoom(c = combat()) {
-  if (!c || c.training) return false;
+  // Nor does one that's somewhere else: aboard another ship.
+  if (!c || c.training || c.away) return false;
   if (c.live) return true;
   return app.roomShown() && c.round <= 1 && lf.refused !== c.id;
 }

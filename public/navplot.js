@@ -171,6 +171,14 @@ function chartSvg(ctx, data) {
     const spotOf = spots.get(p.id);
     if (spotOf) node.append(svg("text", { x: spotOf.tx, y: spotOf.ty, "text-anchor": spotOf.anchor, class: `nv-name${on ? " on" : ""}` }, texts.get(p.id)));
   }
+  // The freighters under way between the ports on the chart: a small diamond each, with its name and run on it.
+  for (const one of ctx.game.ship?.lanes?.lanes ?? []) {
+    if (one.state !== "under way") continue;
+    const fx = X(one.x);
+    const fy = Y(one.y);
+    node.append(svg("path", { d: `M${fx - 6} ${fy} L${fx} ${fy - 6} L${fx + 6} ${fy} L${fx} ${fy + 6} Z`, class: "nv-freighter" },
+      svg("title", {}, `${one.name}: ${midName(one.fromName)} to ${midName(one.toName)}, ${one.cargo}`)));
+  }
   if (!docked) {
     const sx = X(ship.x);
     const sy = Y(ship.y);
@@ -329,6 +337,24 @@ function holdsPage(ctx, data) {
           ]));
 }
 
+// A place's name in the middle of a line: "the Graveyard", not "The Graveyard".
+const midName = (name) => String(name ?? "").replace(/^The /, "the ");
+
+// The freighters in port at a place and on their way to it, among the ones the chart knows of.
+function freightersAt(ctx, p) {
+  const lanes = ctx.game.ship?.lanes?.lanes ?? [];
+  const inPort = lanes.filter((one) => (one.state === "loading" && one.from === p.id) || ((one.state === "unloading" || one.state === "waiting") && one.to === p.id));
+  const coming = lanes.filter((one) => one.to === p.id && (one.state === "under way" || one.state === "loading"));
+  if (!inPort.length && !coming.length) return null;
+  const line = (one, words) => el("div", { class: "nv-line" }, el("span", {}, one.name), el("span", { class: "tone-dim" }, words));
+  return [
+    el("div", { class: "nv-sub" }, "Freighters"),
+    inPort.slice(0, 3).map((one) => line(one, one.state === "loading" ? `loading for ${midName(one.toName)}` : `in from ${midName(one.fromName)}`)),
+    coming.slice(0, 3).map((one) => line(one, `due in ${one.left} ${one.left === 1 ? "day" : "days"}`)),
+    inPort.length + coming.length > Math.min(3, inPort.length) + Math.min(3, coming.length) && el("div", { class: "tone-dim" }, `and ${inPort.length + coming.length - Math.min(3, inPort.length) - Math.min(3, coming.length)} more`),
+  ];
+}
+
 function destination(ctx, data) {
   const st = ctx.st;
   const p = data.places.find((one) => one.id === st.sel);
@@ -354,6 +380,7 @@ function destination(ctx, data) {
         ]),
       ],
       (p.now?.going ?? []).map((text) => el("div", { class: "nv-going" }, text)),
+      freightersAt(ctx, p),
       p.sells?.length > 0 && el("div", { class: "tone-dim" }, `Sells to the ship: ${p.sells.join(", ")}.`),
       p.hasMarket && el("div", { class: "tone-dim" }, "Has a market."),
       amounts && el("div", {}, el("button", { type: "button", disabled: Boolean(st.jump), onclick: (event) => { event.stopPropagation(); st.menu = null; showHolds(ctx, p.id); } }, "Everything it holds..."))));

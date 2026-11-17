@@ -14,6 +14,7 @@ import { startChoiceCheck } from "./checks.js";
 import { worldDir } from "./paths.js";
 import { DIFFICULTY, attr, maxHp, skillRank, tellStoryWaits } from "./rules.js";
 import { conditionHolds, parseCondition, parseSceneText } from "./scene-text.js";
+import { FREIGHTER_FACTS } from "./lanes.js";
 import { clearFact, endStory, recordFact } from "./record.js";
 import { clockFacts, clockProblems } from "./story-clock.js";
 import { noteThreadStarted, notesProblems } from "./story-library.js";
@@ -851,7 +852,7 @@ export function allSceneProblems(dir = SCENES_DIR) {
 // Every fact something in the world can leave on the record: a story's notes name it, a scene sets it with * flag,
 // or a door sets it when the player goes through.
 export function factsLeft(scenes) {
-  const names = new Set([...Object.keys(FACT_LINES), ...clockFacts(), ...commandFacts(), ...deathFacts(), ...requestFacts(scenes), ...workFacts(scenes), ...hackFacts((place) => Object.keys(systemsOf(place)?.doors ?? {})), ...computerFacts()]);
+  const names = new Set([...Object.keys(FACT_LINES), ...FREIGHTER_FACTS, ...clockFacts(), ...commandFacts(), ...deathFacts(), ...requestFacts(scenes), ...workFacts(scenes), ...hackFacts((place) => Object.keys(systemsOf(place)?.doors ?? {})), ...computerFacts()]);
   for (const scene of Object.values(scenes)) for (const part of Object.values(scene.parts ?? {})) for (const step of part.do ?? []) if (step.set) names.add(step.set);
   const walk = (node) => {
     if (!node || typeof node !== "object") return;
