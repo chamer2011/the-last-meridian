@@ -430,14 +430,21 @@ function withoutSources(run) {
   }
 }
 
+// A ship that's fed: docked at a port that sells food, with the purse to pay for it. Since the ports hold real
+// amounts nothing comes aboard in open space, so only there is the food holding, with no days left to count.
+function docked(game) {
+  game.ship.at = "haven";
+  game.ship.purse = 5000;
+}
+
 // Each decision, with how things have to stand for it to happen. The ones about running short need the food to
 // stop coming aboard; the others happen on a ship that's fed.
 const SCENES = {
   half_rations: { starved: true, set: (game) => { game.ship.rations = "standard"; left(game, "food", 2.5); } },
   cut_rations: { starved: true, set: (game) => { game.ship.rations = "standard"; left(game, "food", 6); } },
-  feast: { set: (game) => { game.ship.rations = "standard"; game.ship.morale = 20; } },
-  feast_over: { set: (game) => { game.ship.rations = "generous"; councilOf(game.ship).setRations = "generous"; game.ship.morale = 70; } },
-  more_food: { set: (game) => { game.ship.rations = "reduced"; game.ship.morale = 40; } },
+  feast: { set: (game) => { docked(game); game.ship.rations = "standard"; game.ship.morale = 20; } },
+  feast_over: { set: (game) => { docked(game); game.ship.rations = "generous"; councilOf(game.ship).setRations = "generous"; game.ship.morale = 70; } },
+  more_food: { set: (game) => { docked(game); game.ship.rations = "reduced"; game.ship.morale = 40; } },
 };
 
 for (const [id, scene] of Object.entries(SCENES)) {
@@ -466,6 +473,7 @@ for (const [id, scene] of Object.entries(SCENES)) {
 test("generous rations for morale come back off once people are happier, unless they were the captain's idea", () => {
   const game = newGame();
   comfortable(game);
+  docked(game);
   game.ship.morale = 20;
   for (let day = 0; day < 6 && game.ship.rations !== "generous"; day += 1) {
     game.ship.food = 9000;
@@ -626,8 +634,10 @@ test("a ship left to itself doesn't flip back and forth", () => {
     assert.ok(said.length >= 2, `seed ${seed}: they only did ${said.length} things in a year`);
     assert.ok(said.length < 120, `seed ${seed}: ${said.length} decisions in a year is too many`);
   }
-  // Fed by the shuttle stores' refills, the food's holding: no days left to count, and nothing for them to decide.
+  // Docked where food's sold, the dock keeps the shuttle stores stocked and the food's holding: no days left to count,
+  // and nothing for them to decide.
   const fed = newGame(21);
+  docked(fed);
   const said = [];
   for (let day = 0; day < 40; day += 1) {
     said.push(...days(fed, 1).filter((line) => line.startsWith("[COUNCIL]")));

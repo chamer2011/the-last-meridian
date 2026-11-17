@@ -11,7 +11,7 @@ import { FACTIONS, ITEMS, LOCATIONS } from "./data.js";
 import { isCharted } from "./ship.js";
 import { aboardShip } from "./role.js";
 import { DAILY, SHIP_DATA } from "./world.js";
-import { amountOf, counted, hasPort, portHolds, portsDay, portsModel, pushOf, usualOf, whyShort, workLine } from "./ports.js";
+import { amountOf, counted, hasPort, levelOf, portHolds, portsDay, portsModel, pushOf, usualOf, whyShort, workLine } from "./ports.js";
 
 const PLACES = DAILY.places ?? {};
 const GOODS = DAILY.goods ?? {};
@@ -216,6 +216,11 @@ export function supplyFactor(game, place, good) {
   const level = game.world?.places[place]?.goods[good];
   return (level === undefined ? 1 : priceAtLevel(level)) * standingFactor(game, place);
 }
+// The same for any good a port holds, by that good's own level: a fuel cell goes by how many cells the port has, not
+// by its jump fuel.
+export function goodFactor(game, place, good) {
+  return priceAtLevel(levelOf(game.world, place, good)) * standingFactor(game, place);
+}
 
 const ITEM_GOODS = new Map(Object.entries(ITEMS).map(([id, item]) => [item, { good: DAILY.items?.[id] ?? (["weapon", "armor"].includes(item.type) ? "parts" : null), share: DAILY.items?.[id] ? 0.6 : 0.3 }]));
 
@@ -234,20 +239,29 @@ export function itemFactor(game, item) {
 const lotOf = (good) => SHIP_DATA.supplies?.[good]?.lot ?? 1;
 // What the Meridian buying or selling a lot does to what's left there: at a port with real amounts, that many
 // crates fewer or more; anywhere else, a step of its level.
-export function tradedAt(game, place, good, sold = false) {
+// units is for the last of what a port has, when it's fewer than a lot.
+export function tradedAt(game, place, good, sold = false, units = null) {
   const goods = worldOf(game).places[place]?.goods;
   if (goods?.[good] === undefined) return;
   const usual = usualOf(place, good);
-  const step = usual ? (lotOf(good) / usual) * 100 * (sold ? 1 : -1) : sold ? DAILY.lots.sold : DAILY.lots.bought;
+  const share = (units ?? lotOf(good)) / lotOf(good);
+  const step = usual ? ((units ?? lotOf(good)) / usual) * 100 * (sold ? 1 : -1) : (sold ? DAILY.lots.sold : DAILY.lots.bought) * share;
   // Kept fine enough that a lot bought is a lot gone, to the crate.
   goods[good] = usual ? Math.round(clampLevel(goods[good] + step) * 10000) / 10000 : round(clampLevel(goods[good] + step));
 }
 
-// Whether a place has none left to sell: fewer than a lot, where the amounts are real.
+// Whether a place has none left to sell: not even one, where the amounts are real. A port with fewer than a lot
+// sells what it has.
 export function noneLeft(game, place, good) {
+  return leftToSell(game, place, good) < 1;
+}
+// How many of a supply a place can sell the ship in one go: a lot, or the last of what it has where the amounts are
+// real and it's down to fewer.
+export function leftToSell(game, place, good) {
   const level = game.world?.places[place]?.goods[good] ?? 100;
   const usual = usualOf(place, good);
-  return usual ? (level / 100) * usual < lotOf(good) : level < DAILY.lots.none;
+  if (!usual) return level < DAILY.lots.none ? 0 : lotOf(good);
+  return Math.min(lotOf(good), Math.floor((level / 100) * usual + 1e-6));
 }
 
 // ---- What the browser gets to see --------------------------------------------

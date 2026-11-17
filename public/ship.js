@@ -1,5 +1,5 @@
-// The Ship menu: the Meridian's numbers, where she is, what's aboard, the rations, buying and selling at the dock,
-// waiting, what the officers decided, her log, her systems and her crew. Everything here is drawn from the game's
+// The Ship menu: the Meridian's numbers, where she is, her purse and what a day costs her, what's aboard, the rations,
+// buying and selling at the dock, waiting, what the officers decided, her log, her systems and her crew. Everything here is drawn from the game's
 // state, and every button runs on this computer. Someone who isn't her captain sees how she stands.
 
 import { api, el, folded, meter, signed, twoColumns } from "./dom.js";
@@ -37,6 +37,56 @@ function statusSection(g) {
       muted(`Settling at ${s.healthTarget}.`)));
 }
 
+// "a third full" for 0.33, "40 percent full" for anything that isn't a plain fraction.
+const shareWords = (share) => (Math.abs(share - 1 / 3) < 0.02 ? "a third full" : Math.abs(share - 0.5) < 0.01 ? "half full" : Math.abs(share - 0.25) < 0.01 ? "a quarter full" : `${Math.round(share * 100)} percent full`);
+
+// The ship's money: what's in her purse and what comes in, what a day costs at the dock she's at and how long the
+// purse would last there, what she owes on a slate, and, when she can't get herself to any port, the distress call.
+function purseSection(g) {
+  const s = g.ship;
+  const m = s.money;
+  if (!m) return null;
+  const plural = (n, word) => `${number(n)} ${word}${n === 1 ? "" : "s"}`;
+  const costs = m.cost === null
+    ? muted("In open space nothing's bought and nothing comes: she lives on what's aboard until she docks.")
+    : el("div", { class: "stack gap-small" },
+      el("div", { class: `small${m.cost > m.levy ? " tone-bad" : ""}` }, `A day at ${m.dock.name} costs her about ${plural(m.cost, "credit")}${m.cost > m.levy ? (m.moneyDays > 0 ? `, more than comes in: the purse lasts about ${plural(m.moneyDays, "day")} here.` : ", more than comes in, and the purse is empty.") : ", which the levy covers."}`),
+      muted(`That's the fuel cells her generator burns, the fuel she uses keeping station, and what goes of food, medicine and parts beyond what's made aboard, at this dock's prices today. ${m.dock.cell || m.dock.crate ? `The dock keeps the shuttle stores stocked every ${m.dock.every} hours${m.dock.cell ? `, fuel cells at ${m.dock.cell} cr` : ""}${m.dock.crate ? `${m.dock.cell ? " and" : ","} ration crates at ${m.dock.crate} cr` : ""}, out of its own stores.` : "Nothing here restocks the shuttle stores."}`));
+  const slate = (one) => el("div", { class: "stack gap-small" },
+    el("div", { class: "menu-row small tone-bad" }, el("span", {}, `Owed at ${one.name}`), el("strong", {}, `${number(one.owed)} cr`)),
+    muted(`On the slate since day ${one.since + 1}. Whatever's left in the purse at midnight goes to it${one.holder ? `, and your standing with the ${one.holder.replace(/^The /, "")} falls by ${m.slate.falls} a day until it's paid` : ""}.`));
+  const stranded = s.stranded && el("div", { class: "stack gap-small" },
+    s.stranded.words ? el("div", { class: "small tone-bad" }, `She can't get herself to any port. ${s.stranded.words}`) : null,
+    s.stranded.sent
+      ? small(`The distress call is out. ${s.stranded.due > 0 ? `About ${plural(s.stranded.due, "day")} until someone answers.` : "Someone should be here any hour."}`)
+      : [el("div", {}, el("button", { class: "primary", disabled: cannotAct(), onclick: shipOrder({ action: "distress" }) }, "Send a distress call")),
+        muted(`Answered in about ${plural(s.stranded.days, "day")}${s.stranded.from ? ` by a tanker out of ${s.stranded.from}` : ""}, with enough to reach port, at ${s.stranded.times === 2 ? "twice" : `${s.stranded.times} times`} the usual price. What the purse can't pay is owed there.`)]);
+  return section("The ship's purse",
+    el("div", { class: "menu-row" }, el("strong", {}, `${number(m.purse)} credits`), el("strong", {}, `+${m.levy} a day`)),
+    muted("The ship's own money, apart from yours. It pays for everything bought for her, and what she sells and carries is paid into it."),
+    costs,
+    m.slates.map(slate),
+    m.slates.length ? muted(`While she owes, the dock only keeps her going: it fills the shuttle stores ${shareWords(m.slate.share)}, not to the top.`) : null,
+    stranded,
+    folded("ship-purse-own", `Put in your own credits (you have ${number(g.credits)})`,
+      muted("Your own money is yours. Put some into the purse and it's the ship's from then on."),
+      el("div", { class: "row" }, [50, 200].map((n) => el("button", { disabled: cannotAct() || g.credits < n, onclick: shipOrder({ action: "purse", n }) }, `Put in ${n}`)))));
+}
+
+// The fuel cells the generator burns, on the Stores list beside the tank: how many are aboard and how long they last.
+function cellsLine(s) {
+  const c = s.money?.cells;
+  if (!c) return null;
+  const bar = "#".repeat(Math.round(Math.max(0, Math.min(1, c.n / Math.max(1, c.of))) * 10)).padEnd(10, "-");
+  const low = c.n <= 0 || (c.days <= 5 && !c.holding);
+  const dock = s.money.dock;
+  return el("div", { class: `ship-supply${low ? " low" : ""}` },
+    el("div", { class: "ship-supply-line" },
+      el("span", {}, `${"CELLS".padEnd(8)} [${bar}] ${c.n}`),
+      el("strong", {}, c.n <= 0 ? "OUT" : c.holding ? "holding" : `${c.days} ${c.days === 1 ? "day" : "days"} left`)),
+    muted(`Fuel cells for the generator: it burns ${c.aDay} a day, and without one nothing aboard has power. ${c.holding ? `${dock.name} sells them and the dock keeps her ${s.money.slates.length ? `going, ${shareWords(s.money.slate.share)} while she owes` : "stocked"}. Away from a dock, what's aboard lasts ${c.days} ${c.days === 1 ? "day" : "days"}.` : dock?.cell ? `${dock.name} sells them, but the purse can't keep up.` : dock ? `Nobody at ${dock.name} sells them: a port that sells fuel does.` : "In open space nothing comes."}`));
+}
+
 function supplyLine(s) {
   const bar = "#".repeat(Math.round(Math.max(0, Math.min(1, s.stock / s.max)) * 10)).padEnd(10, "-");
   const left = s.out ? "OUT" : s.days === null ? "holding" : `${s.days} ${s.days === 1 ? "day" : "days"} left`;
@@ -45,10 +95,10 @@ function supplyLine(s) {
       // To a tenth: a few tins or a medkit handed in count for their share of a crate, and anything smaller isn't shown.
       el("span", {}, `${s.name.toUpperCase().padEnd(8)} [${bar}] ${Math.round(s.stock * 10) / 10}${s.unit ? ` ${s.unit}` : ""}`),
       el("strong", {}, left)),
-    muted(`Makes ${s.made}, uses ${s.used}, so ${signed(s.net)} a day.`));
+    muted(s.bought > 0 ? `Makes ${s.made}, uses ${s.used}, and the dock sends the rest, ${s.bought} a day, for the purse to pay.` : `Makes ${s.made}, uses ${s.used}, so ${signed(s.net)} a day.`));
 }
 
-const suppliesSection = (s) => section("Stores", s.supplies.map(supplyLine), muted("Food, medicine and parts are what's in the rooms' stores below, counted together, and fuel is the tank. Anything else that's food in the pantry, medicine in the cabinet or a spare in the lockers counts for its share of a crate. The ship's daily needs and the engineers take a crate when they've used one up, at midnight, the medbay opens one from its cabinet when its doses run out, and the kettle feeds everyone through the day. With parts aboard the engineers mend the hull a little each day; without them, she wears."));
+const suppliesSection = (s) => section("Stores", s.supplies.map(supplyLine), cellsLine(s), muted("Food, medicine and parts are what's in the rooms' stores below, counted together, and fuel is the tank. Anything else that's food in the pantry, medicine in the cabinet or a spare in the lockers counts for its share of a crate. The ship's daily needs and the engineers take a crate when they've used one up, at midnight, the medbay opens one from its cabinet when its doses run out, and the kettle feeds everyone through the day. With parts aboard the engineers mend the hull a little each day; without them, she wears."));
 
 // What's kept where, room by room, from world/logistics: each store is a thing in a room you can walk to and open,
 // each machine takes from one and puts into another on the clock, and the whole ship eats from the kettle.
@@ -81,7 +131,7 @@ function storesSection(s) {
     muted("Walk up to any of them and open it beside your pack. What's taken out and put back is kept, and the count here follows it."),
     s.machines?.length ? [el("h4", { class: "small" }, "Machines"), s.machines.map(machine), muted("Each runs on the clock while its room has power and someone's at it, and nothing runs while the clock is paused.")] : null,
     s.work?.length ? [el("h4", { class: "small" }, "Work"), muted(`${s.work.filter((one) => one.short).length || "No"} ${s.work.filter((one) => one.short).length === 1 ? "store is" : "stores are"} short of something ${s.work.filter((one) => one.short).length === 1 ? "it wants" : "they want"}. Who's carrying, what's stuck and what the officers have put first are on the Work page.`)] : null,
-    s.refills?.length ? [el("h4", { class: "small" }, "Refills"), s.refills.map(refill), muted("The one place things still come from nowhere, until trade off the ship is built. The manifest on the clip in the lighter bay, and the ship's computers, say what came and when.")] : null,
+    s.refills?.length ? [el("h4", { class: "small" }, "Restocking"), s.refills.map(refill), muted(`${s.refills.some((r) => r.from === "dock") ? "At a dock that sells them, what's missing is bought out of the port's own stores and paid for from the ship's purse. In open space nothing comes. " : ""}${s.refills.some((r) => r.from !== "dock") ? "What's from nothing comes from nowhere, wherever she is. " : ""}The manifest on the clip in the lighter bay, and the ship's computers, say what came and when.`)] : null,
     repairs ? [el("h4", { class: "small" }, "Repairs"), repairs, muted("When something's been damaged, an engineer fetches what the repair takes from the stores and fixes it. With none aboard, it stays broken until some comes.")] : null,
     meals ? [el("h4", { class: "small" }, "The sittings"), meals, muted("Everyone aboard eats from the kettle at the sittings. Whoever finds it empty goes without, and the ship's morale feels that at midnight.")] : null);
 }
@@ -149,12 +199,16 @@ function ordersSection(g) {
     el("div", {}, el("button", { onclick: () => app.openMenu("map") }, "Open the star map")),
     s.trade.length > 0
       ? el("div", { class: "stack gap-small" },
-        el("div", { class: "small" }, `Trade with ${s.atName}. You have ${g.credits} credits. Prices move with what's left here, and with each lot you buy or sell.`),
+        el("div", { class: "small" }, `Trade with ${s.atName}, for the ship. Her purse holds ${number(s.money?.purse ?? 0)} credits. Prices move with what's left here, and with each lot you buy or sell.`),
         s.trade.map((t) => el("div", { class: "menu-row small ship-trade" },
           el("span", { title: t.why ?? "" }, `${t.amount} of ${t.name.toLowerCase()}`, t.level && el("span", { class: "muted ship-trade-level" }, ` ${t.level}${t.has ? `, ${t.has} here` : ""}`)),
           el("span", { class: "row" },
             el("button", { disabled: cannotAct() || !t.spare, title: t.spare ? "" : "The ship hasn't got that much", onclick: shipOrder({ action: "sell", id: t.id }) }, `Sell ${t.sellFor} cr`),
-            el("button", { disabled: cannotAct() || t.none || t.full || g.credits < t.price, title: t.none ? "Nobody here has any left to sell" : "", onclick: shipOrder({ action: "buy", id: t.id }) }, t.none ? "None left" : `Buy ${t.price} cr`)))))
+            el("button", {
+              disabled: cannotAct() || t.none || t.full || !t.buys || !t.pays,
+              title: t.none ? "Nobody here has any left to sell" : !t.buys ? "There's no room aboard for more" : !t.pays ? "The purse can't cover it, and this port won't put any more on the slate" : t.pays === "slate" ? `The purse can't cover it: ${t.slate} credits would be owed on the slate here` : "",
+              onclick: shipOrder({ action: "buy", id: t.id }),
+            }, t.none ? "None left" : `Buy ${t.buys && t.buys !== t.amount ? `${t.buys}, ` : ""}${t.price} cr${t.pays === "slate" ? ", on the slate" : ""}`)))))
       : muted(s.at ? `Nobody at ${s.atName} deals in the ship's supplies. The star map says who does.` : "In open space there's nobody to buy from. The star map says who sells what."));
 }
 
@@ -238,7 +292,7 @@ export function shipMenu() {
   const g = app.ui.game;
   if (!g.role.captain) return outsiderShip(g);
   return twoColumns(
-    [statusSection(g), suppliesSection(g.ship), storesSection(g.ship), medbaySection(g.ship), workshopSection(g.ship), systemsSection(g)],
+    [statusSection(g), purseSection(g), suppliesSection(g.ship), storesSection(g.ship), medbaySection(g.ship), workshopSection(g.ship), systemsSection(g)],
     [ordersSection(g), rationsSection(g.ship), councilSection(g.ship), logSection(g.ship), crewSection(g)],
   );
 }

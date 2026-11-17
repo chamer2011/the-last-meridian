@@ -3,7 +3,7 @@ type: gadget
 price: 12
 size: 1x1
 weight: 40
-stack: 1
+stack: 2
 feeds: 200
 
 In a line:

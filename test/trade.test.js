@@ -1,5 +1,5 @@
-// Real trade (the hands-on plan, step 6): the captain can have the shuttle stores restocked from the dock, paid from
-// the ship's purse, instead of from nothing; and carry cargo and passengers between ports for a fee.
+// The ship's trade: world/trade.txt, and cargo and passengers carried between ports for a fee paid into the ship's
+// purse. How she's restocked at a dock, the slate and the distress call are in living-off-ports.test.js.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
@@ -10,7 +10,6 @@ process.env.GAME_DATA_DIR ??= fs.mkdtempSync(path.join(os.tmpdir(), "meridian-tr
 
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 await import("../src/tools.js");
-const { logisticsOf, refilledADay, stockOf, takeAboard } = await import("../src/logistics.js");
 const { passTime } = await import("../src/rules.js");
 const trade = await import("../src/trade.js");
 const walk = await import("../src/walk.js");
@@ -27,9 +26,6 @@ const inRoom = (game, room) => {
   walk.walkCommand(game, { action: "room", to: room });
 };
 const acts = (game) => walk.walkView(game).acts ?? [];
-const crates = (game) => stockOf(game, "meridian", "ration_crate", "the shuttle stores");
-const shuttle = () => logisticsOf("meridian").stores.find((one) => one.id === "shuttle_stores");
-const emptySome = (game, n) => takeAboard(game, "meridian", "ration_crate", n, ["shuttle_stores"]);
 // Ashore at a port with the ship docked there.
 function ashore(game, place) {
   game.ship.at = place;
@@ -40,64 +36,22 @@ function ashore(game, place) {
 const tradeLines = (notes) => notes.filter((one) => one.startsWith("[TRADE]"));
 
 test("the file reads, and the game's own is whole", () => {
-  const model = trade.parseTrade(["the purse: 600 to begin with, 60 a day", "restocking: whenever", "tips: 5"].join("\n"));
+  const model = trade.parseTrade(["the purse: 600 to begin with, 60 a day", "the slate: whenever", "tips: 5"].join("\n"));
   assert.deepEqual(model["the purse"], { start: 600, aDay: 60 });
-  assert.match(model.problems[0], /line 2: "restocking" is written like: every 6 hours at a dock/);
-  assert.match(model.problems[1], /line 3: a line here is one of: the purse, restocking/);
-  assert.match(model.problems[2], /there's no line for restocking, a ration crate, a fuel cell, cargo, passengers/);
-  assert.ok(trade.tradeRules(), "the game's own file has every line");
-});
-
-test("left alone, the stores fill from nothing as before; switched on, nothing comes in open space", () => {
+  assert.match(model.problems[0], /line 2: "the slate" is written like: 1\.5 times the price, up to 300 credits a port, standing falls 1 a day until it's paid/);
+  assert.match(model.problems[1], /line 3: a line here is one of: the purse, a ration crate, a fuel cell, the slate, while she owes, a distress call, cargo, passengers/);
+  assert.match(model.problems[2], /there's no line for a ration crate, a fuel cell, the slate, while she owes, a distress call, cargo, passengers/);
+  assert.equal(model.whole, false);
+  const rules = trade.tradeRules();
+  assert.ok(rules, "the game's own file has every line");
+  assert.deepEqual(rules.problems, []);
+  // A crate goes by the port's food price and a cell by its fuel price, and a port that sells neither sells neither.
   const game = newGame();
-  inRoom(game, "lighter");
-  assert.equal(shuttle().room, "lighter");
-  const full = crates(game);
-  emptySome(game, 4);
-  passTime(game, 12, "rest");
-  assert.equal(crates(game), full, "as it was: the crates come back");
-  assert.ok(refilledADay(game, "meridian", "ration_crate") > 0);
-  // The captain throws the switch in the Lighter Bay.
-  const offered = acts(game).find((one) => one.id === "trade-switch");
-  assert.deepEqual([offered.label, offered.detail], ["Restock from the dock, out of the purse", "the purse holds 600 credits"]);
-  assert.match(walk.walkCommand(game, { action: "trade-switch" }).said, /^\[TRADE\] From now on the shuttle stores are restocked only at a dock/);
-  assert.equal(game.ship.purse, 600);
-  assert.equal(acts(game).find((one) => one.id === "trade-switch").label, "Go back to stores from nowhere");
-  emptySome(game, 4);
-  const low = crates(game);
-  passTime(game, 12, "rest");
-  assert.ok(crates(game) <= low, "in open space nothing comes aboard");
-  assert.equal(refilledADay(game, "meridian", "ration_crate"), 0, "and the ledger no longer counts on it");
-  // The levy came in at midnight, if one passed.
-  assert.ok(game.ship.purse >= 600);
-});
-
-test("at a dock, what's missing is bought from the port out of the purse, and the port has less", () => {
-  const game = newGame();
-  inRoom(game, "lighter");
-  walk.walkCommand(game, { action: "trade-switch" });
-  game.ship.at = "haven";
-  passTime(game, 6, "rest");
-  const full = shuttle().holds.ration_crate;
-  emptySome(game, crates(game));
-  takeAboard(game, "meridian", "ration_crate", 99);
-  assert.equal(crates(game), 0);
-  const price = trade.crateprice(game, "haven", "ration_crate");
-  assert.ok(price >= 1, `a crate costs ${price} at Haven`);
-  const purse = game.ship.purse;
-  const food = game.world.places.haven.goods.food;
-  const notes = tradeLines(passTime(game, 6.1, "rest"));
-  assert.match(notes[0], /^\[TRADE\] \d+ ration crates bought at Haven Station for \d+ credits, into the shuttle stores\. The purse holds \d+\.$/);
-  const got = crates(game);
-  assert.ok(got > 0 && got <= full, `${got} crates came`);
-  assert.ok(game.ship.purse < purse, "and were paid for");
-  assert.ok(game.world.places.haven.goods.food < food, "out of what Haven had");
-  // An empty purse buys nothing but what the day's levy pays for, and never goes under.
-  emptySome(game, crates(game));
-  game.ship.purse = 0;
-  passTime(game, 6.1, "active");
-  assert.ok(crates(game) * price <= 60, `${crates(game)} crates on a day's levy`);
-  assert.ok(game.ship.purse >= 0);
+  assert.ok(trade.unitPrice(game, "haven", "ration_crate") >= 1);
+  assert.ok(trade.unitPrice(game, "haven", "fuel_cell") < trade.unitPrice(game, "wheel", "fuel_cell") + 3);
+  assert.equal(trade.unitPrice(game, "graveyard", "ration_crate"), null);
+  assert.equal(trade.unitPrice(game, "graveyard", "fuel_cell"), null);
+  assert.equal(trade.unitPrice(game, "haven", "medicine_crate"), null, "only what the dock restocks has a price here");
 });
 
 test("cargo and passengers are taken at a port and paid for where they're going", () => {
@@ -119,17 +73,21 @@ test("cargo and passengers are taken at a port and paid for where they're going"
   assert.match(walk.walkCommand(game, { action: "take-passengers", key: party.id }).said, /passengers for .+ come aboard/);
   assert.equal(game.ship.aboard, aboard + party.n);
   assert.throws(() => walk.walkCommand(game, { action: "take-passengers", key: party.id }), /another ship/);
-  // The ship gets to where the crates are going, in time, and then where the passengers are.
+  // The ship gets to where the crates are going, in time, and then where the passengers are. Whatever the docks sold
+  // her on the way came out of the same purse.
+  const spentAt = (lines) => lines.reduce((sum, one) => sum + Number(one.match(/bought at .+ for (\d+) credits/)?.[1] ?? 0) - Number(one.match(/, (\d+) of it on the slate/)?.[1] ?? 0), 0);
   const purse = game.ship.purse;
   game.ship.at = first.to;
   let notes = tradeLines(passTime(game, 1, "active"));
+  let spent = spentAt(notes);
   assert.ok(notes.some((one) => new RegExp(`^\\[TRADE\\] The ${first.n} crates for .+ are unloaded\\. ${first.fee} credits into the ship's purse\\.$`).test(one)), notes.join(" | "));
   game.ship.at = party.to;
   notes = tradeLines(passTime(game, 1, "active"));
+  spent += spentAt(notes);
   assert.ok(notes.some((one) => /passengers go ashore/.test(one)) || first.to === party.to, notes.join(" | "));
   assert.equal(game.ship.aboard, aboard);
   assert.equal(game.ship.party, null);
-  assert.equal(game.ship.purse, purse + first.fee + party.fee);
+  assert.equal(game.ship.purse, purse + first.fee + party.fee - spent);
   // Late, the crates pay half.
   const late = newGame();
   ashore(late, "haven");
@@ -141,15 +99,19 @@ test("cargo and passengers are taken at a port and paid for where they're going"
   late.ship.at = null;
   passTime(late, 24 * 12, "routine");
   late.ship.at = one.to;
+  const purseThen = late.ship.purse;
   const paid = tradeLines(passTime(late, 1, "active"));
   assert.ok(paid.some((line) => /late: half the fee/.test(line)), paid.join(" | "));
-  assert.ok(late.ship.purse >= before + Math.floor(one.fee / 2));
+  assert.equal(late.ship.purse, purseThen + Math.floor(one.fee / 2) - spentAt(paid));
+  assert.ok(purseThen > before, "the levy came in on the way");
 });
 
 test("none of it is anyone's but the captain's", () => {
   const game = newGame("engine_hand");
   inRoom(game, "lighter");
-  assert.equal(acts(game).find((one) => one.id === "trade-switch"), undefined);
-  assert.throws(() => walk.walkCommand(game, { action: "trade-switch" }), /captain's to decide/);
+  assert.deepEqual(acts(game).filter((one) => /^take-|^trade-/.test(one.id)), []);
   assert.deepEqual(trade.offersAt(game, "haven"), { cargo: [], party: null });
+  ashore(game, "haven");
+  assert.deepEqual(trade.offersAt(game, "haven"), { cargo: [], party: null });
+  assert.throws(() => walk.walkCommand(game, { action: "take-cargo", key: "0:haven:0" }), /That cargo's gone/);
 });

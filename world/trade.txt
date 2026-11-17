@@ -1,16 +1,27 @@
-# Real trade
+# The ship's trade
 draft: the AI's, not yet edited by the owner
 
-# What the Meridian's captain can do with a dock, beside buying by the lot from the Ship menu. Every number here is a
-# first guess.
+# How the Meridian pays her way, now that the ports hold real amounts. Every number here is a first guess.
 #
-# The purse is the ship's own money, apart from yours. It begins the first time you use any of this, and a levy comes
-# in every day after that while you're the captain.
+# The purse is the ship's own money, apart from yours. A levy comes into it every day, and it pays for everything the
+# ship buys: her restocking, and what you buy for her by the lot from the Ship menu. What she sells, and the fees for
+# cargo and passengers, go into it. Whoever has the chair has the purse.
 #
-# Restocking is a switch you throw in the Lighter Bay (under You can). While it's on, nothing comes into the shuttle
-# stores from nowhere any more: at a dock, every so many hours, the missing ration crates and fuel cells are bought
-# from the port out of the purse, at the port's own price that day, and the port has that much less. In open space,
-# or at a port that doesn't sell it, or with an empty purse, nothing comes. While it's off, the stores fill as before.
+# Restocking: a store whose line in world/logistics says "from the dock" is filled every so often while she's docked
+# at a port that sells what it keeps. The crates and cells are real ones out of the port's own stores, at the port's
+# price that day, paid from the purse. A ration crate goes by the port's food price, and a fuel cell by its fuel
+# price, each times the number below. In open space nothing comes, and a port that has none sells none.
+#
+# The slate is the way back at a port for a ship with an empty purse: the port sells her what she needs anyway,
+# dearer by the number below, up to so many credits owed there. Each midnight whatever is left in the purse goes to
+# the slate, and then the day's levy comes in, so the day's needs are still bought at the usual price. Every day
+# something's still owed, your standing with whoever holds the port falls. And while she owes anything anywhere, the
+# dock only keeps her going: it fills her stores as far as the "while she owes" line says, not to the top.
+#
+# A distress call is the way back in open space, for a ship that can't get herself to any port: no fuel in the tank
+# for even the shortest jump, or no fuel cells left for her generator. Sent from the Ship menu, it's answered after
+# so many days by a tanker from the nearest port that sells fuel, with enough to reach that port, at the port's price
+# times the number below. What the purse can't pay is owed at that port.
 #
 # Cargo and passengers are offered at a port while the ship is docked there and you're ashore: a few crates, or a few
 # people, for another port on your chart. The fee goes into the purse when the ship gets there; cargo delivered late
@@ -19,8 +30,10 @@ draft: the AI's, not yet edited by the owner
 # After changing this file, run "npm run check-story", and close and reopen the game.
 
 the purse: 600 to begin with, 60 a day
-restocking: every 6 hours at a dock
-a ration crate: 2 times the port's food price
-a fuel cell: 0.5 times the port's fuel price
+a ration crate: 1 times the port's food price
+a fuel cell: 0.15 times the port's fuel price
+the slate: 1.5 times the price, up to 300 credits a port, standing falls 1 a day until it's paid
+while she owes: the dock fills her stores to 33 percent
+a distress call: answered in 3 days, at 2 times the price
 cargo: 2 offers a port, 4 to 10 crates, 15 credits a crate, 10 days to deliver, 20 crates in the hold
 passengers: 4 to 10 people, 10 credits each

@@ -13,7 +13,7 @@ left waiting: 30 minutes if it's urgent, 3 hours if it isn't
 who asks: the chief medical officer for the medbay, the chief engineer for the engines and repairs, the quartermaster for the galley, the deck chief for the rest
 
 Stores:
-- shuttle stores in The Lighter Bay: holds 20 ration crates, 12 fuel cells, 6 parts crates: Crates strapped down where the lighter unloads them, with the manifest on a clip.
+- shuttle stores in The Lighter Bay: holds 24 ration crates, 36 fuel cells, 6 parts crates: Crates strapped down where the lighter unloads them, with the manifest on a clip.
 - fuel rack in Engineering: holds 6 fuel cells; wants 3; urgent under 2; carried by the deckhands, the techs, the spare hands: A rack of cells by the reactor, each one tagged with the day it came aboard.
 - pantry in The Galley: holds 12 ration crates, 12 produce; wants 4 of each; carried by the deckhands, the cooks, the quartermaster, the spare hands: Shelves behind a wire door, and the smell of whatever's nearest to going off.
 - garden bins in The Garden: holds 12 produce: Bins at the end of the beds, with today's picking in them.
@@ -31,7 +31,7 @@ Loads:
 - when short, drop: cameras, comms, lights, doors, navigation, air
 
 Refills:
-- the shuttle stores: ration crates and fuel cells from nothing for now, every 6 hours, up to full
+- the shuttle stores: ration crates and fuel cells from the dock, every 6 hours, up to full
 
 Urgency:
 - carrying someone who's bleeding

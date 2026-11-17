@@ -8,7 +8,7 @@
 
 import { findCharacter } from "./campaign.js";
 import { LOCATIONS, FACTIONS } from "./data.js";
-import { inTrouble, levelName, noneLeft, placeNow, supplyFactor, tellNews, tradedAt } from "./daily.js";
+import { inTrouble, leftToSell, levelName, noneLeft, placeNow, supplyFactor, tellNews, tradedAt } from "./daily.js";
 import { aboardShip, isCaptain } from "./role.js";
 import { addCondition, buyPrice, changeStress, clamp, clockLabel, jumpHours, passTime, sellPrice, travel } from "./rules.js";
 import { navigationDown } from "./systems.js";
@@ -17,7 +17,9 @@ import { dosesADay, medbayDoses, medbayOf, medbayView } from "./medbay.js";
 import { illnessPenalty, registerStarves } from "./register.js";
 import { illnessKinds } from "./body.js";
 import { workshopView } from "./workshop.js";
-import { countAboard, foodADay, machinesView, mealsOfDay, mealsView, putAboard, refilledADay, refillsView, repairsView, storesView, takeAboard, usedFrom, worthAboard } from "./logistics.js";
+import { countAboard, foodADay, grownGuess, grownSoFar, machinesView, mealsOfDay, mealsView, powerSupply, putAboard, refilledADay, refillsView, repairsView, storesView, takeAboard, usedFrom, worthAboard } from "./logistics.js";
+import { addToPurse, cellsOf, dockSends, payAt, purseOf, slateWords, tradeRules, tradeView, unitPrice } from "./trade.js";
+import { portTake, portsModel } from "./ports.js";
 import { worthOf } from "./worth.js";
 import { SHIP_DATA, STAR_MAP } from "./world.js";
 import { boardView, workView } from "./work.js";
@@ -96,6 +98,8 @@ export function newShipState(game) {
     warned: {},
     deaths: 0,
     log: [],
+    // When each store was last restocked at a dock (src/trade.js).
+    restocked: {},
     seed: seedFrom(`${game.name}|ship`),
   };
 }
@@ -162,10 +166,14 @@ export function shipLedger(game, change = {}) {
   used.medicine = medbayDoses(SHIP_ID) && aboardCount(game, "medicine") ? medicineADay(game) : people * SUPPLIES.medicine.perPerson * (1 + (100 - ship.health) / 100);
   for (const [id, amount] of Object.entries(SHIP.uses ?? {})) used[id] += amount;
   for (const [id, amount] of Object.entries(SHIP.produces ?? {})) made[id] += amount;
-  // What the refills from nothing bring to the stores counts as made, up to what's used: while they keep up, a store
-  // is holding, and nobody counts the days it has left.
-  for (const id of STORES) if (aboardCount(game, id)) made[id] += Math.min(used[id], refilledADay(game, SHIP_ID, STORE_ITEMS[id]));
-  const net = Object.fromEntries(SUPPLY_IDS.map((id) => [id, made[id] - used[id]]));
+  // What a refill from nothing brings counts as made, up to what's used, and so does what the garden grows.
+  for (const id of STORES) if (aboardCount(game, id)) made[id] += Math.min(used[id], refilledADay(game, SHIP_ID, STORE_ITEMS[id]) + (id === "food" ? grownADay(game) : 0));
+  // What the dock she's at sends for the rest is bought, not made: while it keeps up, a store is holding, and nobody
+  // counts the days it has left. The purse pays for it.
+  // (Left out when someone's asking how long she'd last away from it: change.dock false.)
+  const bought = Object.fromEntries(SUPPLY_IDS.map((id) => [id, 0]));
+  for (const id of STORES) if (change.dock !== false && aboardCount(game, id)) bought[id] = Math.min(Math.max(0, used[id] - made[id]), STORE_ITEMS[id].reduce((sum, item) => sum + dockSends(game, item), 0));
+  const net = Object.fromEntries(SUPPLY_IDS.map((id) => [id, made[id] + bought[id] - used[id]]));
   let moraleTarget = rations.morale;
   let healthTarget = rations.health - illnessPenalty(game);
   for (const id of shortages) {
@@ -175,6 +183,7 @@ export function shipLedger(game, change = {}) {
   return {
     people,
     made,
+    bought,
     used,
     net,
     moraleTarget: clamp(moraleTarget, 5, 100),
@@ -183,6 +192,13 @@ export function shipLedger(game, change = {}) {
     wear: ship.out.parts ? RULES.wearNoParts : 0,
     mend: ship.out.parts ? 0 : RULES.mend,
   };
+}
+
+// What the garden's been picking in a day, in crates of food: over the last few days where they've been watched, and
+// before that a guess from how fast its beds grow.
+function grownADay(game) {
+  const seen = game.ship?.grown ?? [];
+  return seen.length >= 2 ? Math.max(0, (seen.at(-1) - seen[0]) / (seen.length - 1)) : grownGuess(SHIP_ID);
 }
 
 function stockOf(game, id) {
@@ -343,6 +359,8 @@ function runDay(game) {
   const meals = mealsOfDay(game, SHIP_ID, ship.day - 1);
   const hungry = meals && meals.missed > 0 ? meals.missed / (meals.served + meals.missed) : 0;
   ship.hungry = hungry > 0 ? (ship.hungry ?? 0) + 1 : 0;
+  // What the beds have grown, a mark a day for the last few, so the ledger knows what the garden's worth.
+  if (aboardCount(game, "food")) ship.grown = [...(ship.grown ?? []).slice(-3), Math.round(grownSoFar(game, SHIP_ID) * 100) / 100];
   if (hungry > 0) {
     // With the food itself run out, the shortage rule already has morale; this is for a kettle nobody kept up.
     if (!ship.out.food) ledger.moraleTarget = clamp(ledger.moraleTarget + Math.round(hungry * (RULES.shortage.food?.morale ?? -25)), 5, 100);
@@ -362,43 +380,56 @@ function runDay(game) {
   feedThePlayer(game, notes);
   councilDay(game, notes);
   chairDay(game, notes);
+  distressDay(game, notes);
   return notes;
 }
 
 // ---- Someone else in the chair ----------------------------------------------------
 
 // What's running out, most urgent first.
-function shipNeeds(game) {
-  const ledger = shipLedger(game);
+function shipNeeds(game, { cells: withCells = true, dock = true } = {}) {
+  const ledger = shipLedger(game, { dock });
   // Whatever they're eating today, what counts is whether there's enough to feed people properly.
-  const standard = shipLedger(game, { rations: "standard" });
-  return SUPPLY_IDS.map((id) => ({ id, days: isOut(game, id) ? 0 : daysLeft(game, id, id === "food" ? standard : ledger) ?? Infinity })).sort((a, b) => a.days - b.days);
+  const standard = shipLedger(game, { rations: "standard", dock });
+  // Fuel is the tank and the generator's cells: with either gone she's going nowhere, and a port that sells one sells
+  // the other.
+  const cells = withCells ? cellsOf(game) : null;
+  const cellDays = cells && !cells.holding ? cells.n / cells.aDay : Infinity;
+  return SUPPLY_IDS.map((id) => ({ id, days: isOut(game, id) ? 0 : Math.min(daysLeft(game, id, id === "food" ? standard : ledger) ?? Infinity, id === "fuel" ? cellDays : Infinity) })).sort((a, b) => a.days - b.days);
 }
 
 function chairBuys(game, chair, notes) {
   const ship = game.ship;
   const prices = mapSpot(ship.at)?.trade;
   if (!prices) return;
+  // What's bought by the lot is judged by itself, and by what's aboard: the tank by the tank, and the food by how
+  // long it would last away from this dock. The dock sees to the generator's cells.
+  const byTheLot = { cells: false, dock: false };
   // Nobody shops every day, but nobody waits to buy what's run out altogether, either.
-  const runOut = shipNeeds(game).some((need) => need.days === 0 && prices[need.id]);
+  const runOut = shipNeeds(game, byTheLot).some((need) => need.days === 0 && prices[need.id]);
   if (ship.day - ship.chair.lastBuy < CHAIR.buyEvery && !runOut) return;
   const keep = CHAIR.keep ?? {};
   const bought = [];
-  for (const { id } of shipNeeds(game)) {
+  for (const { id } of shipNeeds(game, byTheLot)) {
     if (!prices[id]) continue;
     let lots = 0;
-    while (lots < CHAIR.lotsAtOnce && !noneLeft(game, ship.at, id)) {
-      const days = shipNeeds(game).find((need) => need.id === id).days;
-      const price = Math.round(prices[id] * supplyFactor(game, ship.at, id) * SUPPLIES[id].lot);
+    while (lots < CHAIR.lotsAtOnce) {
+      const days = shipNeeds(game, byTheLot).find((need) => need.id === id).days;
+      // A lot, or the last of what the port has, or what there's room for.
+      const n = Math.max(0, Math.min(leftToSell(game, ship.at, id), SUPPLIES[id].lot, id === "fuel" ? ship.maxFuel - ship.fuel : Math.floor(roomFor(game, id) + 1e-6)));
+      const price = Math.round(prices[id] * supplyFactor(game, ship.at, id) * n);
       // A ship with fuel can go and get anything else, so nobody sails with less than this if they can help it.
       // A few crates of what goes in lumps are kept whatever the days say: one crate of medicine lasts months of
       // everyday use, and a fever or a bad week can take three at once.
-      const wanted = id === "fuel" ? ship.fuel < CHAIR.fuelReserve || days < chair.stockTo : days < chair.stockTo || stockOf(game, id) < (keep[id] ?? 0);
-      if (!wanted || ship.chair.funds < price || (id === "fuel" && ship.fuel >= ship.maxFuel) || roomFor(game, id) < SUPPLIES[id].lot) break;
-      ship.chair.funds -= price;
-      if (id === "fuel") ship.fuel = Math.min(ship.maxFuel, ship.fuel + SUPPLIES[id].lot);
-      else stow(game, id, SUPPLIES[id].lot);
-      tradedAt(game, ship.at, id);
+      // Where fuel is dear nobody fills the tank past what they'd never sail without.
+      const wanted = id === "fuel" ? ship.fuel < CHAIR.fuelReserve || (days < chair.stockTo && dearness(game, ship.at, id) <= 1) : days < chair.stockTo || stockOf(game, id) < (keep[id] ?? 0);
+      if (!wanted || n < 1 || ship.chair.funds < price) break;
+      // Only what came aboard is paid for.
+      const got = id === "fuel" ? n : stow(game, id, n);
+      if (got < 1) break;
+      if (id === "fuel") ship.fuel = Math.min(ship.maxFuel, ship.fuel + n);
+      ship.chair.funds -= got < n ? Math.round(prices[id] * supplyFactor(game, ship.at, id) * got) : price;
+      tradedAt(game, ship.at, id, false, got);
       lots += 1;
     }
     if (lots) {
@@ -422,9 +453,26 @@ function chairRecords(game, text) {
 }
 
 // Where's best to go from here for what's needed most, without taking the ship anywhere this captain wouldn't.
+// What the ports a chair's captain goes to usually ask for a supply, and how dear one of them is for it today beside
+// that: 1 is the usual, more is dearer. She pays for everything she lives on, so a careful captain looks.
+const usualPrice = (id) => {
+  const all = CHAIR.ports.map((port) => mapSpot(port)?.trade?.[id]).filter(Boolean);
+  return all.length ? all.reduce((sum, each) => sum + each, 0) / all.length : null;
+};
+function dearness(game, port, id) {
+  const each = mapSpot(port)?.trade?.[id];
+  const usual = usualPrice(id);
+  return each && usual ? (each * supplyFactor(game, port, id)) / usual : 1;
+}
+// How good a port is to lie at: it sells the fuel her generator and her tank want, and the food the garden doesn't
+// grow, and the cheaper the better.
+const LIVES_ON = ["fuel", "food"];
+const living = (game, port) => LIVES_ON.reduce((sum, id) => sum + (mapSpot(port)?.trade?.[id] ? 1.5 - 3 * (dearness(game, port, id) - 1) : 0), 0);
+
 function chairChooses(game, chair, needs) {
   const ship = game.ship;
-  const worth = (spot, id) => (spot.trade?.[id] ? 6 : 0);
+  // Somewhere that sells what she's short of, and for money, somewhere she can live for less.
+  const worth = (spot, id) => (id === "money" ? 0 : spot.trade?.[id] ? 6 : 0);
   let best = null;
   let bestScore = -Infinity;
   for (const id of CHAIR.ports) {
@@ -432,7 +480,7 @@ function chairChooses(game, chair, needs) {
     if (!spot || id === ship.at || spot.danger > chair.risk) continue;
     const { fuel } = shipJumpCost(ship, id);
     if (fuel > ship.fuel) continue;
-    const score = (needs[0] ? worth(spot, needs[0].id) : 5) + (needs[1] ? worth(spot, needs[1].id) / 2 : 0) - fuel * 2 - spot.danger + dice(ship);
+    const score = (needs[0] ? worth(spot, needs[0].id) : 5) + (needs[1] ? worth(spot, needs[1].id) / 2 : 0) + living(game, id) - fuel * 2 - spot.danger + dice(ship);
     if (score > bestScore) {
       best = id;
       bestScore = score;
@@ -448,6 +496,12 @@ function chairMoves(game, chair, notes) {
   const lowOnFuel = ship.fuel <= CHAIR.fuelLow && !here?.trade?.fuel;
   const needs = shipNeeds(game).filter((need) => (need.days <= chair.moveAt || (need.id === "fuel" && lowOnFuel)) && !servedHere(need.id));
   if (lowOnFuel) needs.sort((a, b) => Number(b.id === "fuel") - Number(a.id === "fuel"));
+  // A port where a day costs more than comes in is left before the money's gone, for one where she can live for less.
+  const cost = here ? moneyView(game, shipLedger(game))?.cost ?? 0 : 0;
+  if (cost > CHAIR.income) {
+    const days = Math.max(0, ship.chair.funds) / (cost - CHAIR.income);
+    if (days <= chair.moveAt && CHAIR.ports.some((id) => id !== ship.at && living(game, id) > living(game, ship.at))) needs.push({ id: "money", days: Math.max(days, CHAIR.desperate + 1) });
+  }
   if (!needs.length) return;
   // Nobody jumps again straight away, unless something's about to run out altogether.
   if (ship.day - ship.chair.lastJump < chair.restDays && !needs.some((need) => need.days <= CHAIR.desperate)) return;
@@ -708,36 +762,58 @@ function buySupply(game, id) {
   const supply = SUPPLIES[id];
   const prices = mapSpot(ship.at)?.trade;
   if (!supply || !prices?.[id]) throw new Error("Nobody here is selling that to the ship.");
-  if (noneLeft(game, ship.at, id)) throw new Error("Nobody here has any left to sell.");
-  const price = buyPrice(game, { price: prices[id] * supplyFactor(game, ship.at, id) * supply.lot });
-  if (game.credits < price) throw new Error("You can't afford that.");
+  const offer = buyOffer(game, id);
+  if (offer.none) throw new Error("Nobody here has any left to sell.");
   if (id === "fuel" && ship.fuel >= ship.maxFuel) throw new Error("The tank is full.");
-  if (id !== "fuel" && roomFor(game, id) < supply.lot) throw new Error(`There's no room aboard for ${lotText(supply)} more of ${supply.name.toLowerCase()}: the stores that keep it are full.`);
-  game.credits -= price;
+  if (offer.n < 1) throw new Error(`There's no room aboard for more ${supply.name.toLowerCase()}: the stores that keep it are full.`);
+  // The ship's purse pays for the ship, and what it can't cover goes on the slate here, while the port gives credit.
+  if (!payAt(game, ship.at, offer.price, { dry: true })) throw new Error(`The ship's purse holds ${Math.floor(purseOf(game))} credits, and ${placeName(ship)} won't put any more on the slate.`);
   // What the player buys counts toward anything someone's asked them to bring (src/requests.js).
+  let got = offer.n;
   if (id === "fuel") {
     const before = ship.fuel;
-    ship.fuel = Math.min(ship.maxFuel, ship.fuel + supply.lot);
+    ship.fuel = Math.min(ship.maxFuel, ship.fuel + offer.n);
     notePut(game, "tank", "fuel", ship.fuel - before);
   } else {
-    stow(game, id, supply.lot, (store, n) => {
+    got = stow(game, id, offer.n, (store, n) => {
       notePut(game, store.key, STORE_ITEMS[id][0], n);
       notePut(game, "aboard", STORE_ITEMS[id][0], n);
     });
   }
-  tradedAt(game, ship.at, id);
+  if (got < 1) throw new Error(`There's no room aboard for more ${supply.name.toLowerCase()}: the stores that keep it are full.`);
+  // Only what came aboard is paid for, and only that has left the port.
+  if (got < offer.n) offer.price = buyPrice(game, { price: (mapSpot(ship.at).trade[id] ?? 0) * supplyFactor(game, ship.at, id) * got });
+  offer.n = got;
+  const paid = payAt(game, ship.at, offer.price);
+  tradedAt(game, ship.at, id, false, offer.n);
   const notes = [];
-  const amount = lotText(supply);
-  const message = say("bought", { amount, supply: supply.name.toLowerCase(), price });
+  const message = `${say("bought", { amount: amountText(supply, offer.n), supply: supply.name.toLowerCase(), price: offer.price })}${paid.slate ? ` The purse couldn't cover it: ${paid.slate} credits are owed. ${paid.first ? slateWords(game, ship.at) : `The slate at ${placeName(ship)} has grown.`}` : ""}`;
   note(game, notes, "SUPPLY", message);
   noteRestocked(game, id, notes);
   return { message, notes };
 }
 
+// "5 crates", "the last 3 crates", "1": so many of a supply, in its own words.
+const amountText = (supply, n) => (n === supply.lot ? lotText(supply) : supply.unit ? `${n} ${n === 1 ? supply.unit.replace(/s$/, "") : supply.unit}` : String(n));
+// What the dock will sell the ship of a supply in one go, and for how much: a lot, or the last of what the port has
+// when it's down to fewer, or what there's room for aboard.
+function buyOffer(game, id) {
+  const ship = game.ship;
+  const supply = SUPPLIES[id];
+  const there = leftToSell(game, ship.at, id);
+  const room = id === "fuel" ? ship.maxFuel - ship.fuel : Math.floor(roomFor(game, id) + 1e-6);
+  const n = Math.max(0, Math.min(there, supply.lot, room));
+  const each = mapSpot(ship.at)?.trade?.[id] ?? 0;
+  return { n, none: there < 1, last: there >= 1 && there < supply.lot, price: n ? buyPrice(game, { price: each * supplyFactor(game, ship.at, id) * n }) : 0 };
+}
+
 // Room aboard for more of a kind, what can be sold of it (crates, not baskets), and putting a lot in or taking one out:
 // through the rooms' stores where there are any, and the old counts where there aren't.
+// Room aboard for more of a supply as it's bought: room for its crates, in the stores that keep them. The baskets the
+// garden's bins have room for aren't room for a ration crate.
 function roomFor(game, id) {
-  const counted = aboardCount(game, id);
+  if (!aboardCount(game, id)) return Infinity;
+  const counted = countAboard(game, SHIP_ID, [STORE_ITEMS[id][0]]);
   return counted ? counted.of - counted.n : Infinity;
 }
 function sellable(game, id) {
@@ -770,7 +846,8 @@ function sellSupply(game, id) {
   const amount = lotText(supply);
   if ((id === "fuel" ? ship.fuel : sellable(game, id)) < supply.lot) throw new Error(`The ship hasn't got ${amount} of ${supply.name.toLowerCase()} to sell.`);
   const price = sellPrice(game, { price: prices[id] * supplyFactor(game, ship.at, id) * supply.lot });
-  game.credits += price;
+  // What the ship sells is the ship's: it goes into her purse.
+  addToPurse(game, price);
   if (id === "fuel") ship.fuel -= supply.lot;
   else unstow(game, id, supply.lot);
   tradedAt(game, ship.at, id, true);
@@ -778,6 +855,124 @@ function sellSupply(game, id) {
   const message = say("sold", { amount, supply: supply.name.toLowerCase(), price });
   note(game, notes, "SUPPLY", message);
   return { message, notes };
+}
+
+// The captain's own credits put into the ship's purse: a way to keep her going when the levy doesn't.
+function payIntoPurse(game, requested) {
+  const n = Math.floor(Number(requested));
+  if (!(n > 0)) throw new Error("How many credits?");
+  if ((game.credits ?? 0) < n) throw new Error(`You have ${game.credits ?? 0} credits of your own.`);
+  game.credits -= n;
+  addToPurse(game, n);
+  const notes = [];
+  const message = `You put ${n} of your own credits into the ship's purse. It holds ${Math.floor(purseOf(game))}.`;
+  note(game, notes, "SHIP", message);
+  return { message, notes };
+}
+
+// ---- A ship that can't get to any port ---------------------------------------------------------------------
+
+// The fewest fuel a jump to anywhere on the chart would take from where she is.
+function shortestJump(game) {
+  const ship = game.ship;
+  const byHand = navigationDown(game) ? 1 : 0;
+  const costs = Object.keys(STAR_MAP.places).filter((id) => id !== ship.at && isCharted(id) && LOCATIONS[id]).map((id) => shipJumpCost(ship, id).fuel + byHand);
+  return costs.length ? Math.min(...costs) : Infinity;
+}
+// Why she can't get herself to a port, or nothing if she can: no fuel in the tank for even the shortest jump, or no
+// fuel cells left for the generator her engines run on. At a port that sells fuel she isn't stranded: she buys it
+// there, on the slate if she has to.
+function strandedWhy(game) {
+  const ship = game.ship;
+  if (!ship) return null;
+  // Where fuel's sold and there's some to sell, the purse or the slate gets it, and her cells with it.
+  if (mapSpot(ship.at)?.trade?.fuel && !noneLeft(game, ship.at, "fuel")) return null;
+  if (ship.fuel < shortestJump(game)) return "fuel";
+  const cells = cellsOf(game);
+  if (cells && cells.n <= 0 && (powerSupply(game, SHIP_ID) ?? 1) <= 0) return "power";
+  return null;
+}
+// The nearest port on the chart that sells fuel and has some: where an answer to a distress call comes from.
+function nearestFuel(game) {
+  const here = shipSpot(game.ship);
+  const far = (id) => Math.hypot(mapSpot(id).x - here.x, (mapSpot(id).y - here.y) * 2);
+  const sellers = Object.keys(STAR_MAP.places).filter((id) => id !== game.ship.at && isCharted(id) && LOCATIONS[id] && mapSpot(id)?.trade?.fuel).sort((a, b) => far(a) - far(b));
+  return sellers.find((id) => !noneLeft(game, id, "fuel")) ?? sellers[0] ?? null;
+}
+function strandedView(game) {
+  const rules = tradeRules()?.["a distress call"];
+  const ship = game.ship;
+  if (!rules || !ship) return null;
+  const why = strandedWhy(game);
+  const sent = ship.distress ?? null;
+  if (!why && !sent) return null;
+  const from = nearestFuel(game);
+  return {
+    why,
+    words: why === "fuel" ? "There isn't the fuel in her tank for even the shortest jump." : why === "power" ? "Her generator has burned its last fuel cell, and her engines won't run without power." : null,
+    sent: Boolean(sent),
+    due: sent ? Math.max(0, Math.ceil((sent.due - game.clock.hours) / 24)) : null,
+    days: rules.days,
+    times: rules.times,
+    from: from ? LOCATIONS[from].name : null,
+  };
+}
+function callForHelp(game) {
+  const ship = shipOf(game);
+  const rules = tradeRules()?.["a distress call"];
+  if (!rules) throw new Error("There's nobody to call.");
+  if (ship.distress) throw new Error("The call's already out. Someone's on their way.");
+  if (!strandedWhy(game)) throw new Error("She can still get herself to a port. Nobody answers a call from a ship that can.");
+  ship.distress = { sent: game.clock.hours, due: game.clock.hours + rules.days * 24 };
+  const notes = [];
+  const message = `The distress call is out. Someone should answer in about ${plural(rules.days, "day")}, and they'll charge ${rules.times === 2 ? "twice" : `${rules.times} times`} the usual for what they bring.`;
+  note(game, notes, "SHIP", message);
+  return { message, notes };
+}
+// Each midnight: whoever else has the chair calls for help when she's stranded, and a call that's due is answered.
+// The answer brings the fuel to reach the nearest port that sells it, and cells for a couple of days if she has none,
+// out of that port's own stores and at its prices, dearer; what the purse can't pay goes on the slate there, however
+// much it is, because nobody tows a ship home for nothing and nobody leaves one to die for a debt.
+function distressDay(game, notes) {
+  const ship = game.ship;
+  const rules = tradeRules()?.["a distress call"];
+  if (!rules) return;
+  if (!ship.distress) {
+    const why = strandedWhy(game);
+    // Whoever else has the chair calls at once. The player's told once that they can.
+    if (ship.chair && why) ship.distress = { sent: game.clock.hours, due: game.clock.hours + rules.days * 24 };
+    else if (why && isCaptain(game) && !ship.warned.stranded) {
+      ship.warned.stranded = true;
+      note(game, notes, "SHIP", `The Meridian can't get herself to any port now. A distress call can be sent from the Ship menu: someone answers in about ${plural(rules.days, "day")}, and charges ${rules.times === 2 ? "twice" : `${rules.times} times`} the usual for what they bring.`);
+    } else if (!why) delete ship.warned.stranded;
+    return;
+  }
+  if (game.clock.hours < ship.distress.due) return;
+  delete ship.distress;
+  const from = nearestFuel(game);
+  if (!from) return;
+  const byHand = navigationDown(game) ? 1 : 0;
+  const fuel = clamp(shipJumpCost(ship, from).fuel + byHand + 1 - ship.fuel, 0, ship.maxFuel - ship.fuel);
+  const cells = cellsOf(game);
+  const wanted = cells && cells.n < cells.aDay ? Math.ceil(cells.aDay * 2) : 0;
+  const stowed = wanted ? putAboard(game, SHIP_ID, "fuel_cell", wanted, ["fuel_rack", "shuttle_stores"]) : 0;
+  const each = mapSpot(from).trade.fuel * supplyFactor(game, from, "fuel");
+  const cost = Math.ceil((fuel * each + stowed * (unitPrice(game, from, "fuel_cell") ?? 0)) * rules.times);
+  ship.fuel += fuel;
+  if (fuel) tradedAt(game, from, "fuel", false, fuel);
+  const good = portsModel().order.find((one) => portsModel().goods[one].item === "fuel_cell");
+  if (stowed && good) portTake(game.world, from, good, stowed);
+  // From the purse, and the rest on the slate at the port it came from, past what a port would usually give.
+  const have = Math.max(0, Math.min(cost, Math.floor(purseOf(game))));
+  addToPurse(game, -have);
+  const owed = cost - have;
+  if (owed > 0) {
+    ship.slate ??= {};
+    ship.slate[from] = { owed: (ship.slate[from]?.owed ?? 0) + owed, since: ship.slate[from]?.owed > 0 ? ship.slate[from].since : ship.day };
+  }
+  const brought = [fuel ? `${fuel} fuel for the tank` : null, stowed ? `${stowed} fuel cells` : null].filter(Boolean).join(" and ");
+  note(game, notes, "SHIP", `A tanker out of ${LOCATIONS[from].name} has answered the distress call${brought ? `: ${brought}` : ""}, for ${cost} credits${owed > 0 ? `, ${owed} of it on the slate there` : ""}. She can make ${LOCATIONS[from].name} on that.`);
+  noteRestocked(game, "fuel", notes);
 }
 
 export function shipCommand(game, body) {
@@ -790,6 +985,8 @@ export function shipCommand(game, body) {
     case "course": return setCourse(game, body.id);
     case "buy": return buySupply(game, body.id);
     case "sell": return sellSupply(game, body.id);
+    case "distress": return callForHelp(game);
+    case "purse": return payIntoPurse(game, body.n);
     default: throw new Error("Unknown order.");
   }
 }
@@ -807,6 +1004,7 @@ function supplyRow(game, id, ledger) {
     stock: id === "fuel" ? game.ship.fuel : round1(stockOf(game, id)),
     max: capacityOf(game, id),
     made: round2(ledger.made[id]),
+    bought: round2(ledger.bought[id]),
     used: round2(ledger.used[id]),
     net: round2(ledger.net[id]),
     days: days === null ? null : Math.floor(days),
@@ -816,6 +1014,19 @@ function supplyRow(game, id, ledger) {
 }
 
 // The ship as the page sees her: her numbers, where she is, what's aboard and what's been decided.
+// The ship's money as the Ship menu shows it: src/trade.js knows her purse, her cells and what the tank and the
+// generator cost in a day at this dock, and the ledger adds what goes of food, medicine and parts beyond what's made
+// aboard, where the dock sells them. So "what a day costs here" is what staying would take out of the purse.
+function moneyView(game, ledger) {
+  const money = tradeView(game);
+  const prices = mapSpot(game.ship.at)?.trade;
+  if (!money || money.cost === null || !prices) return money;
+  let more = 0;
+  for (const id of STORES) if (prices[id]) more += (ledger.bought[id] + Math.max(0, -ledger.net[id])) * prices[id] * supplyFactor(game, game.ship.at, id);
+  const cost = Math.round(money.cost + more);
+  return { ...money, cost, moneyDays: cost > money.levy ? Math.floor(money.purse / (cost - money.levy)) : null };
+}
+
 export function shipView(game) {
   const ship = shipOf(game);
   const ledger = shipLedger(game);
@@ -852,6 +1063,10 @@ export function shipView(game) {
     // The work board as the Work page shows it: the officers' orders, the stores and the jobs (src/work.js).
     board: boardView(game, SHIP_ID),
     refills: refillsView(game, SHIP_ID),
+    // The ship's money: her purse, what comes in, what a day costs at this dock, what she owes, and her fuel cells.
+    money: moneyView(game, ledger),
+    // Whether she can get herself to any port, and a distress call that's been sent.
+    stranded: strandedView(game),
     repairs: repairsView(game, SHIP_ID),
     // Who's on the medbay's cots and floor, and what the medics are doing (src/medbay.js).
     medbay: medbayView(game, SHIP_ID),
@@ -862,17 +1077,24 @@ export function shipView(game) {
       const supply = SUPPLIES[id];
       const worth = each * supplyFactor(game, ship.at, id) * supply.lot;
       const level = game.world?.places[ship.at]?.goods[id];
+      const offer = buyOffer(game, id);
+      // How it would be paid for: from the purse, on the slate here, or not at all.
+      const pays = offer.n ? payAt(game, ship.at, offer.price, { dry: true }) : null;
       return {
         id,
         name: supply.name,
         amount: lotText(supply),
-        price: buyPrice(game, { price: worth }),
+        // What Buy would get: a lot, or fewer when the port is down to its last or the stores have little room.
+        buys: offer.n ? `${offer.last ? "the last " : ""}${amountText(supply, offer.n)}` : null,
+        price: offer.n ? offer.price : buyPrice(game, { price: worth }),
+        pays: pays ? (pays.slate ? "slate" : "purse") : null,
+        slate: pays?.slate ?? 0,
         sellFor: sellPrice(game, { price: worth }),
         level: level === undefined ? null : levelName(level),
         // How many the port has, and why it's short, where its amounts are real (src/ports.js).
         ...(dock?.find((good) => good.id === id)?.has ? { has: dock.find((good) => good.id === id).has, why: dock.find((good) => good.id === id).why ?? null } : {}),
         none: noneLeft(game, ship.at, id),
-        spare: (id === "fuel" ? ship.fuel : ship[id]) >= supply.lot,
+        spare: (id === "fuel" ? ship.fuel : sellable(game, id)) >= supply.lot,
         full: id === "fuel" && ship.fuel >= ship.maxFuel,
       };
     }),
@@ -925,6 +1147,8 @@ export function changeCommand(game, { takes, reason }) {
     if (!aboardShip(game)) throw new Error("They have to be aboard the Meridian, or on the dock she's at, to take command of her. Use travel first.");
     const was = chairOf(game);
     game.role.captain = true;
+    // The ship's money comes with the chair.
+    if (ship.chair) ship.purse = ship.chair.funds ?? ship.purse;
     ship.chair = null;
     if (captainPost()) setHolder(game, SHIP_ID, captainPost(), YOU);
     return { summary: `They're the captain now. ${was ? `${was.name} isn't, and the rations, the buying and the jumps are all the player's to answer.` : ""}`, notice: `[SHIP] You have command of the Meridian: ${reason}`, notes: [] };
@@ -932,6 +1156,7 @@ export function changeCommand(game, { takes, reason }) {
   if (!isCaptain(game)) return { summary: "They aren't in command anyway." };
   game.role.captain = false;
   ship.chair = newChair(game);
+  if (ship.purse !== undefined) ship.chair.funds = ship.purse;
   if (captainPost()) setHolder(game, SHIP_ID, captainPost(), ship.chair.id);
   const chair = chairOf(game);
   return { summary: `They aren't the captain any more. ${chair.name} (id ${chair.id}) is, and you play them. The ship goes on by itself from here, and the player goes where they like.`, notice: `[SHIP] ${chair.name} has command of the Meridian now: ${reason}`, notes: [] };
@@ -944,10 +1169,11 @@ export function handChair(game, key) {
   game.role ??= { id: "captain", captain: true };
   if (key === YOU) {
     game.role.captain = true;
+    if (ship.chair) ship.purse = ship.chair.funds ?? ship.purse;
     ship.chair = null;
   } else {
     game.role.captain = false;
-    ship.chair = { id: key, funds: ship.chair?.funds ?? CHAIR.funds, lastJump: ship.chair?.lastJump ?? -99, lastBuy: ship.chair?.lastBuy ?? -99 };
+    ship.chair = { id: key, funds: ship.chair?.funds ?? ship.purse ?? CHAIR.funds, lastJump: ship.chair?.lastJump ?? -99, lastBuy: ship.chair?.lastBuy ?? -99 };
   }
   if (captainPost()) setHolder(game, SHIP_ID, captainPost(), key);
 }

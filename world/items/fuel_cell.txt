@@ -1,14 +1,13 @@
 # Fuel Cell
 order: 16
-type: consumable
-price: 100
+type: gadget
+price: 10
 size: 1x1
 weight: 2
 stack: 3
-effect: fuel 3
 
 In a line:
-Adds 3 fuel to the ship.
+A cell for a ship's generator. One runs the Meridian for eight hours, once it's in the fuel rack.
 
 Drawing:
 `{F}`

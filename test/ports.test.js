@@ -335,7 +335,7 @@ test("the Meridian's buying and selling move real crates, and a port can sell on
   game.ship.at = "haven";
   game.location = "haven";
   game.walk = null;
-  game.credits = 100000;
+  game.ship.purse = 100000;
   const m = model();
   const before = has(game, "haven", "ration_crates");
   shipCommand(game, { action: "sell", id: "food" });
@@ -352,13 +352,26 @@ test("the Meridian's buying and selling move real crates, and a port can sell on
   const small = supplyFactor(game, "frontier", "medicine");
   tradedAt(game, "frontier", "medicine");
   assert.ok(supplyFactor(game, "frontier", "medicine") - small > 0.05, "a crate is a tenth of what Tessen Colony usually holds");
-  // With fewer than a lot left there's none to sell.
+  // A port with four crates left sells four, for the price of four, and then it has none.
+  shipCommand(game, { action: "sell", id: "food" });
   game.world.places.haven.goods.food = (4 / m.ports.haven.holds.ration_crates.usual) * 100;
+  assert.equal(noneLeft(game, "haven", "food"), false, "four crates are four to sell");
+  const lot = row();
+  assert.deepEqual([lot.none, lot.buys, lot.pays], [false, "the last 4 crates", "purse"]);
+  const food = shipView(game).supplies.find((one) => one.id === "food").stock;
+  const purse = game.ship.purse;
+  const last = shipCommand(game, { action: "buy", id: "food" });
+  assert.match(last.message, /^Bought 4 crates of food for the ship, for \d+ credits/);
+  assert.equal(shipView(game).supplies.find((one) => one.id === "food").stock, food + 4);
+  assert.equal(game.ship.purse, purse - lot.price, "and she paid for four");
+  assert.ok(has(game, "haven", "ration_crates") < 0.01, "Haven has none now");
   assert.equal(noneLeft(game, "haven", "food"), true);
   assert.equal(row().none, true);
   assert.throws(() => shipCommand(game, { action: "buy", id: "food" }), /any left/);
   game.world.places.haven.goods.food = (6 / m.ports.haven.holds.ration_crates.usual) * 100;
   assert.equal(noneLeft(game, "haven", "food"), false);
+  // Six on the dock, and room aboard for one more: she's sold the one.
+  assert.equal(row().buys, "1 crate");
 }));
 
 test("a save from before has its levels kept and its hauls begun, and a place with no file keeps the older rule", (t) => {

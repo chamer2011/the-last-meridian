@@ -293,14 +293,18 @@ test("carrying crates into the pantry by hand counts; carrying them back out tak
   assert.equal(rq.answerRequest(game, "pantry", "yes").length, 1);
   const q = quest(game);
   assert.equal(q.objective, "Bring 2 ration crates to the pantry (0/2)");
-  // Down to the lighter bay: two crates out of the shuttle stores, one at a time.
+  // Down to the lighter bay: two crates out of the shuttle stores. They sit two to a square, so one square's worth
+  // comes out together, and it's split in the pack to carry them in one at a time.
   walk.walkCommand(game, { action: "room", to: "lighter" });
   bag.bagCommand(game, { action: "open", key: "thing:meridian:store:shuttle_stores" });
-  for (let i = 0; i < 2; i += 1) {
-    const crate = bag.bagView(game).open.items.find((one) => one.id === "ration_crate");
-    bag.bagCommand(game, { action: "move", from: { at: "open", x: crate.x, y: crate.y }, to: { at: "pack", x: 7 - i, y: 4 } });
-  }
+  const crates = bag.bagView(game).open.items.find((one) => one.id === "ration_crate");
+  assert.equal(crates.n, 2, "two crates to a square");
+  bag.bagCommand(game, { action: "move", from: { at: "open", x: crates.x, y: crates.y }, to: { at: "pack", x: 7, y: 4 } });
   bag.bagCommand(game, { action: "close" });
+  assert.equal(game.inventory.ration_crate, 2);
+  bag.bagCommand(game, { action: "split", from: { at: "pack", x: 7, y: 4 } });
+  const other = bag.bagView(game).pack.items.find((one) => one.id === "ration_crate" && !(one.x === 7 && one.y === 4));
+  bag.bagCommand(game, { action: "move", from: { at: "pack", x: other.x, y: other.y }, to: { at: "pack", x: 6, y: 4 } });
   assert.equal(game.inventory.ration_crate, 2);
   // Up to the galley, and into the pantry.
   walk.walkCommand(game, { action: "room", to: "galley" });

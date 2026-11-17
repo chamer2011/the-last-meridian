@@ -185,7 +185,7 @@ test("when the pantry runs short the deckhands fetch crates, as many at once as 
   assert.ok(seen.some((words) => /carrying 2 ration crates to the pantry/.test(words)), seen.join("\n"));
   assert.ok(!seen.some((words) => /^Quartermaster Brandt.*ration crates (from|to) the/.test(words)), "Brandt stays at her own work");
   assert.equal(count(game, "pantry", "ration_crate"), 4, "one trip each, and four is what it wants");
-  assert.equal(count(game, "shuttle_stores", "ration_crate"), 16);
+  assert.equal(count(game, "shuttle_stores", "ration_crate"), 20);
   assert.equal(line(game, "pantry:ration_crate").status, "nothing to carry");
   assert.deepEqual(jobs(game), []);
   assert.equal(workDetour(game, "meridian"), null, "nobody's carrying once the pantry's right");
@@ -196,7 +196,7 @@ test("with nothing aboard to spare nobody stands at an empty store, the Ship men
   const game = newGame();
   at(game, 16);
   take(game, "pantry", "ration_crate", 12);
-  take(game, "shuttle_stores", "ration_crate", 20);
+  take(game, "shuttle_stores", "ration_crate", 24);
   const seen = watch(game, 30, cmd.onJob(game, "meridian", "deckhand"));
   assert.deepEqual(jobs(game), [], "nobody's sent");
   assert.ok(!seen.some((words) => /shuttle stores/.test(words)), "and nobody's standing at the shuttle stores");
@@ -321,7 +321,7 @@ test("away from the ship the carrying still gets done, and the Ship menu lists w
   take(game, "fuel_rack", "fuel_cell", count(game, "fuel_rack", "fuel_cell") - 1);
   passTime(game, 1.5);
   assert.equal(count(game, "pantry", "ration_crate"), 4);
-  assert.equal(count(game, "shuttle_stores", "ration_crate"), 16);
+  assert.equal(count(game, "shuttle_stores", "ration_crate"), 20);
   assert.equal(count(game, "fuel_rack", "fuel_cell"), 3);
   assert.deepEqual(jobs(game), []);
 });

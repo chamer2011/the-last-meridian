@@ -495,11 +495,14 @@ export function readRefillLine(text) {
   body = body.replace(PERIOD, (_, n, unit) => { every = (Number(n) || 1) * (/^min/i.test(unit) ? 1 : /^hour/i.test(unit) ? 60 : 1440); return ""; }).trim().replace(/,\s*$/, "");
   if (!every) return { problem: `"${text}" needs to say how often, such as every 6 hours` };
   const fromAt = body.search(/\s+from\s+/i);
-  if (fromAt < 0) return { problem: `"${text}" needs to say where it comes from: from nothing, until trade off the ship is built` };
-  const from = body.slice(fromAt).replace(/^\s+from\s+/i, "").replace(/\s+for\s+now\s*$/i, "").trim().toLowerCase();
-  if (from !== "nothing") return { problem: `"${text}": only from nothing is played until trade off the ship is built` };
+  if (fromAt < 0) return { problem: `"${text}" needs to say where it comes from: from the dock, bought at whatever port the ship is docked at, or from nothing` };
+  const words = body.slice(fromAt).replace(/^\s+from\s+/i, "").replace(/\s+for\s+now\s*$/i, "").trim().toLowerCase();
+  // From the dock: bought from the port the ship is docked at, out of her purse, and nothing in open space. From
+  // nothing: it just comes, which is how it was before the ports held real amounts.
+  const from = words === "nothing" ? "nothing" : /^(the\s+)?docks?$/.test(words) ? "dock" : null;
+  if (!from) return { problem: `"${text}": a store is filled from the dock, or from nothing` };
   const what = body.slice(0, fromAt).split(/\s*,\s*|\s+and\s+/i).map((one) => one.trim()).filter(Boolean);
-  if (!what.length) return { problem: `"${text}" names nothing to come in: write ration crates and fuel cells from nothing` };
+  if (!what.length) return { problem: `"${text}" names nothing to come in: write ration crates and fuel cells from the dock` };
   return { store, what, from, every, upTo };
 }
 

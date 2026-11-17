@@ -278,10 +278,10 @@ test("a job kept by a save of before the stores said what they want is settled, 
   assert.deepEqual(work.map((one) => one.id), [FUEL_LINE, CRATES_LINE, "pantry:produce", "medicine_cabinet:medicine_crate", "parts_lockers:parts_crate"], "a line for everything a store wants");
   minutes(game, 5);
   assert.equal(game.logistics.meridian.errands, undefined, "the old job is gone");
-  assert.equal(crates(), 20, "and its two crates are back in the stores, none lost and none doubled");
+  assert.equal(crates(), 24, "and its two crates are back in the stores, none lost and none doubled");
   minutes(game, 90);
   assert.equal(count(game, PANTRY, "ration_crate"), 4, "Brandt brought the pantry up to what it wants");
-  assert.equal(crates(), 20);
+  assert.equal(crates(), 24);
   // And when nothing's due and nobody's called, the systems say so at once.
   assert.equal(sys.dutyDetour(newGame(), "meridian"), null);
 }));

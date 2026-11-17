@@ -140,17 +140,19 @@ test("passing many days at once runs each one", () => {
   assert.equal(one.ship.day, many.ship.day);
 });
 
-test("left alone, the numbers hold: about two weeks of fuel keeping station, three and a half weeks of food, six of medicine", () => {
+test("left alone in open space, the numbers hold: about two weeks of fuel keeping station, three of food, and months of medicine", () => {
   const game = newGame();
   const ledger = shipLedger(game);
   assert.ok(ledger.people === 900);
   const shown = shipView(game).supplies;
   const row = (id) => shown.find((s) => s.id === id);
   // Food is every crate and basket in the pantry, the shuttle stores and the garden bins, about six days of it at
-  // nine a day, and the refills from nothing keep it up; medicine and parts are their crates, and nothing refills them.
-  assert.equal(row("food").stock, 56);
+  // nine a day. The garden grows about two thirds of what's eaten, and in open space nothing else comes; medicine and
+  // parts are their crates.
+  assert.equal(row("food").stock, 60);
   assert.equal(row("food").unit, "crates");
-  assert.equal(row("food").days, null, "holding, while the refills keep up");
+  assert.ok(row("food").days >= 17 && row("food").days <= 23, `with the garden, food lasts ${row("food").days} days`);
+  assert.ok(row("food").made > 4 && row("food").made < row("food").used, `the garden grows ${row("food").made} of the ${row("food").used} eaten`);
   withoutSources(() => {
     const starved = shipView(game).supplies.find((s) => s.id === "food");
     assert.ok(starved.days >= 5 && starved.days <= 7, `with nothing coming aboard, food lasts ${starved.days} days`);
@@ -319,14 +321,21 @@ test("waiting passes whole days, and doesn't tire the captain", () => {
   assert.throws(() => shipCommand(game, { action: "strip", id: "x" }), /Unknown order/);
 });
 
-test("buying needs a dock that sells, credits and room in the tank", () => {
+test("buying needs a dock that sells, a purse that can pay and room aboard", () => {
   const game = newGame();
   assert.throws(() => shipCommand(game, { action: "buy", id: "fuel" }), /Nobody here is selling/);
   game.ship.at = "haven";
   game.location = "haven";
-  game.credits = 1;
-  assert.throws(() => shipCommand(game, { action: "buy", id: "food" }), /can't afford/);
+  // The ship's purse pays for the ship, not the captain's own credits. With nothing in it and no more credit at the
+  // port, nothing's sold. (The slate has its own tests, in living-off-ports.test.js.)
   game.credits = 10000;
+  game.ship.purse = 0;
+  game.ship.slate = { haven: { owed: 300, since: 0 } };
+  game.ship.fuel = 2;
+  assert.throws(() => shipCommand(game, { action: "buy", id: "fuel" }), /purse holds 0 credits, and Haven Station won't put any more on the slate/);
+  assert.equal(game.credits, 10000);
+  delete game.ship.slate;
+  game.ship.purse = 600;
   game.ship.fuel = game.ship.maxFuel;
   assert.throws(() => shipCommand(game, { action: "buy", id: "fuel" }), /tank is full/);
   // The stores start full, so a lot of food needs room first.
@@ -336,6 +345,8 @@ test("buying needs a dock that sells, credits and room in the tank", () => {
   const { message } = shipCommand(game, { action: "buy", id: "food" });
   assert.match(message, /^Bought 5 crates of food for the ship, for \d+ credits/);
   assert.equal(stock(game, "food"), food + 5);
+  assert.equal(game.ship.purse, 600 - Number(message.match(/for (\d+) credits/)[1]), "paid from the purse");
+  assert.equal(game.credits, 10000, "and not from the captain's own credits");
 });
 
 // ---- The star map -------------------------------------------------------------
@@ -524,7 +535,7 @@ test("a save from before the ship kept her own stores loads, with nothing charge
   assert.equal(game.version, 28);
   assert.equal(game.ship.day, 9);
   assert.equal(game.ship.at, "kessara");
-  assert.equal(stock(game, "food"), 56, "her stores are full, from the logistics file");
+  assert.equal(stock(game, "food"), 60, "her stores are full, from the logistics file");
   assert.equal(game.ship.aboard, 900);
   assert.equal(game.ship.fuel, 3, "fuel stays what it was");
   assert.equal(game.ship.morale, 31, "morale stays what it was");

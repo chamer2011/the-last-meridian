@@ -78,7 +78,7 @@
 
   "text": {
     "chairJumped": "{who} has taken the Meridian to {place}, {why}.",
-    "chairWhy": { "food": "to get food", "fuel": "to find fuel", "medicine": "to find medicine", "parts": "to find parts" },
+    "chairWhy": { "food": "to get food", "fuel": "to find fuel", "medicine": "to find medicine", "parts": "to find parts", "money": "where she can live for less" },
     "chairLeft": "The Meridian has left {from} for {place}.",
     "chairCame": "The Meridian has come in at {place}.",
     "chairBought": "{who} has bought {what} for the ship at {place}.",

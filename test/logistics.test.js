@@ -190,12 +190,12 @@ test("the Ship menu lists every store with what's in it, the kettle by its sitti
   assert.deepEqual(kettle.items, []);
   const shuttle = stores.find((one) => one.id === "shuttle_stores");
   assert.equal(shuttle.room, "The Lighter Bay");
-  assert.deepEqual(shuttle.items.map((one) => `${one.n} ${one.id}`), ["20 ration_crate", "12 fuel_cell", "6 parts_crate"]);
+  assert.deepEqual(shuttle.items.map((one) => `${one.n} ${one.id}`), ["24 ration_crate", "36 fuel_cell", "6 parts_crate"]);
   // Three days on, the galley has cooked the pantry down and the kettle has been eaten from: the machines run on the clock.
   passTime(game, 24 * 3, "routine");
   const later = publicState(game).ship.stores;
   assert.ok(later.find((one) => one.id === "pantry").items.reduce((sum, one) => sum + one.n, 0) < 24, "the pantry has been cooked from");
-  assert.ok(game.logistics.meridian.refills.log.length > 0, "and the shuttle stores have been refilled behind the errands");
+  assert.equal(game.logistics.meridian.refills.log.length, 0, "and in open space nothing has come aboard: the shuttle stores are restocked at a dock");
 });
 
 test("the new items for the stores have sizes, weights and stacks, and the four of them are in the item files", () => {
@@ -206,7 +206,10 @@ test("the new items for the stores have sizes, weights and stacks, and the four 
     assert.ok(bag.weightOf(item) > 0 && bag.stackOf(item) >= 1, id);
     assert.ok(item.desc, `${id} has no line`);
   }
-  assert.equal(ITEMS.fuel_cell.effect?.fuel, 3, "fuel cells are the item the game already had");
+  // Fuel cells are the item the game already had. Since the ports hold real amounts a cell is only what the generator
+  // burns: it's bought for a few credits at a dock, and it can't be poured into the jump tank.
+  assert.equal(ITEMS.fuel_cell.type, "gadget");
+  assert.equal(ITEMS.fuel_cell.effect?.fuel, undefined, "a fuel cell no longer fills the tank");
 });
 
 // ---- The board -----------------------------------------------------------------------------------------

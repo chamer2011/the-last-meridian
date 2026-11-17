@@ -1,7 +1,11 @@
-// The ship's logistics, step 5: the shuttle stores are topped up from nothing on the hour, each refill written in the
-// manifest, and the Ship menu's food, medicine and parts are the rooms' stores and nothing else: the kettle eats the
-// food, the medbay and the engineers take a crate when they've used one up, and buying puts crates into the stores.
+// The ship's logistics, step 5: a store whose refill says "from nothing" is topped up on the hour, each refill written
+// in the manifest, and the Ship menu's food, medicine and parts are the rooms' stores and nothing else: the kettle eats
+// the food, the medbay and the engineers take a crate when they've used one up, and buying puts crates into the stores.
 // None of this calls an AI.
+//
+// Since the ports hold real amounts the Meridian's own file has her restocked at a dock (test/living-off-ports.test.js),
+// but a file can still say from nothing. So the copy these tests run on says what hers said before: the shuttle stores
+// as big as they were, and filled from nothing.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -11,7 +15,12 @@ import { test } from "node:test";
 
 process.env.GAME_DATA_DIR ??= fs.mkdtempSync(path.join(os.tmpdir(), "meridian-logistics-refills-"));
 const logisticsDir = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-logistics-refills-files-"));
-fs.copyFileSync(new URL("../world/logistics/meridian.txt", import.meta.url), path.join(logisticsDir, "meridian.txt"));
+const HERS = fs.readFileSync(new URL("../world/logistics/meridian.txt", import.meta.url), "utf8");
+const FROM_NOTHING = HERS
+  .replace("holds 24 ration crates, 36 fuel cells, 6 parts crates", "holds 20 ration crates, 12 fuel cells, 6 parts crates")
+  .replace("ration crates and fuel cells from the dock, every 6 hours", "ration crates and fuel cells from nothing for now, every 6 hours");
+assert.ok(FROM_NOTHING.includes("holds 20 ration crates, 12 fuel cells") && FROM_NOTHING.includes("from nothing for now"), "the ship's file has changed: these tests' copy of it needs looking at");
+fs.writeFileSync(path.join(logisticsDir, "meridian.txt"), FROM_NOTHING);
 process.env.GAME_LOGISTICS_DIR = logisticsDir;
 
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
@@ -37,7 +46,10 @@ test("a refill's line is read into its pieces, and a bad one says what's wrong",
   assert.deepEqual(readRefillLine("pantry: produce from nothing every day, up to 10").upTo, 10);
   assert.match(readRefillLine("shuttle stores get crates").problem, /needs a colon/);
   assert.match(readRefillLine("the shuttle stores: ration crates every 6 hours").problem, /where it comes from/);
-  assert.match(readRefillLine("the shuttle stores: ration crates from the dock every 6 hours").problem, /only from nothing/);
+  // From the dock is how the ship's own file has it now: bought at whatever port she's docked at.
+  assert.deepEqual(readRefillLine("the shuttle stores: ration crates and fuel cells from the dock, every 6 hours, up to full"),
+    { store: "shuttle stores", what: ["ration crates", "fuel cells"], from: "dock", every: 360, upTo: "full" });
+  assert.match(readRefillLine("the shuttle stores: ration crates from the moon every 6 hours").problem, /from the dock, or from nothing/);
   assert.match(readRefillLine("the shuttle stores: ration crates from nothing").problem, /how often/);
 });
 

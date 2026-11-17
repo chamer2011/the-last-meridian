@@ -46,6 +46,8 @@ The rules that still hold for all of it: no AI, everything by clicking, nothing 
 
 ## 6. Real trade (`src/trade.js`, changes in `src/logistics.js` and `src/ship.js`)
 
+**Since 2026-11-16 this is how every game goes, and the switch is gone:** the logistics rework's step 8 (their click: "At step 8, for every game") made restocking at a dock the only way the shuttle stores fill, with the purse on the Ship menu, a slate and a distress call. `docs/notes/project-logistics.md` has it. Cargo and passengers are as built here.
+
 - The shuttle stores stop filling from nothing. At a dock, they're restocked from the port, a crate at a time, paid from **the ship's purse** at the port's price, which takes it from what the port has; in open space nothing comes. A switch on the Ship menu holds the restocking.
 - **The purse** is the ship's own money (the levy the chair already drew, 60 a day), for any captain, beside the player's own credits.
 - **Cargo.** Each port offers contracts made from what the ports are short of: so many crates to another port by a day, for a fee paid on arrival into the purse. They ride in the cargo hold, which has only so much room.

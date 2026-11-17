@@ -438,8 +438,8 @@ function compileLogistics(place) {
       model.loads.push({ system: id, amount: one.amount, per: one.per, underWay: Boolean(one.while), words: one.system });
     }
   }
-  // The refills: what comes into a store from outside, how often and how far. From nothing, until trade off the ship
-  // is built, which is the one place something still comes from nowhere.
+  // The refills: what comes into a store from outside, how often and how far. From the dock, bought at whatever port
+  // the ship is docked at and paid for out of her purse (src/trade.js); or from nothing, which a file can still say.
   model.refills = [];
   for (const raw of file.refills ?? []) {
     const line = raw.line ?? null;
@@ -474,7 +474,7 @@ function compileLogistics(place) {
       at(line, `the ${store.name} is refilled twice: write what comes into it on one line`);
       continue;
     }
-    model.refills.push({ store: store.id, items, every: r.every, upTo: r.upTo, line, text: raw.text });
+    model.refills.push({ store: store.id, items, from: r.from, every: r.every, upTo: r.upTo, line, text: raw.text });
   }
   // What the engineers' repairs take: so many of an item, from which stores first to last, for which kinds of damage.
   model.repair = null;
@@ -727,6 +727,8 @@ export function refilledADay(game, place, items) {
   const wanted = Array.isArray(items) ? items : [items];
   let aDay = 0;
   for (const r of model.refills) {
+    // What's bought at a dock isn't made from nothing: it's counted when it's bought.
+    if (r.from !== "nothing") continue;
     const store = storeById(model, r.store);
     for (const item of r.items) {
       if (!wanted.includes(item)) continue;
@@ -735,6 +737,24 @@ export function refilledADay(game, place, items) {
     }
   }
   return aDay;
+}
+
+// What the place's own beds could have grown since the game began, as food, in crates: every machine that makes
+// something to eat out of nothing but tending, by how long it's been tended. It's counted by the tending and not by
+// what came out, so that beds whose bins are full for a day don't look as if they'd stopped growing. And what they'd
+// grow in a day with someone at them half of it, for before a day has been watched.
+const grows = (model) => model.machines.filter((m) => m.runs && !m.generator && !m.takes.length && m.gives && !m.gives.count && worthOf(m.gives.item, "food") > 0);
+export function grownSoFar(game, place) {
+  const model = logisticsOf(place);
+  if (!model) return 0;
+  const unit = sittingsAUnit(model);
+  return grows(model).reduce((sum, m) => sum + ((game.logistics?.[place]?.machines?.[m.id]?.worked ?? 0) / m.every) * m.gives.n * (worthOf(m.gives.item, "food") / unit), 0);
+}
+export function grownGuess(place) {
+  const model = logisticsOf(place);
+  if (!model) return 0;
+  const unit = sittingsAUnit(model);
+  return grows(model).reduce((sum, m) => sum + (1440 / m.every) * m.gives.n * (worthOf(m.gives.item, "food") / unit) * 0.5, 0);
 }
 
 // How many crates or baskets the whole ship eats in a day, with the rations as they are, or as they might be. Null
@@ -801,6 +821,9 @@ function runMachine(game, place, model, m, state, minute, minutes, you) {
   // A machine that needs someone doing a job goes as fast as the best of them at that job's skill.
   const speed = atWork && m.needs.job ? speedOf(game, place, you === m.room ? [...workers, YOU] : workers, jobById(place, m.needs.job)?.skills[0]) : 1;
   if (atWork) s.progress = Math.min(m.every, s.progress + minutes * speed);
+  // How long it's been worked at in all, whether or not there was room for what it made: what it could make in a day
+  // is counted from this (grownSoFar).
+  if (atWork) s.worked = (s.worked ?? 0) + minutes * speed;
   s.waiting = why;
   while (why === null && s.progress >= m.every) {
     const take = from ? pickTake(game, from, m.takes, aGo(m)) : null;
@@ -908,6 +931,8 @@ function runRefills(game, place, model, state, t) {
   if (!model.refills.length || refillsHeld(game, place)) return;
   state.refills ??= { log: [] };
   for (const r of model.refills) {
+    // A store that's restocked at the dock is the ship's trade's to fill, and only there.
+    if (r.from !== "nothing") continue;
     // The hour's mark that falls in this piece of the clock, if one does. In play the clock runs by the second, so
     // the pieces don't start on the minute, let alone on the hour.
     const mark = Math.ceil(t / r.every) * r.every;
@@ -946,7 +971,8 @@ export function refillsView(game, place) {
     return {
       id: r.store,
       store: upperFirst(store.name),
-      does: `${r.items.map((item) => itemWords(item, 2)).join(" and ")} from nothing, every ${everyWords(r.every)}, up to ${r.upTo === "full" ? "full" : r.upTo}`,
+      from: r.from,
+      does: `${r.items.map((item) => itemWords(item, 2)).join(" and ")} ${r.from === "dock" ? "bought at the dock" : "from nothing"}, every ${everyWords(r.every)}, up to ${r.upTo === "full" ? "full" : r.upTo}`,
       last: last ? `${clockWordsAt(last.at)}: ${last.text}` : null,
     };
   });

@@ -419,6 +419,10 @@ test("the ship goes on by itself: whoever has the chair moves her when she needs
 
 test("someone away from the Meridian doesn't go hungry with her, or hear her troubles, or heal slower for them", () => {
   const away = newGame("docker");
+  // Somewhere she won't come: a ship with no fuel calls for help, and is taken to the nearest port that sells it,
+  // which is Haven, where a dock hand starts.
+  away.location = "ilun";
+  away.walk = null;
   empty(away, "food");
   empty(away, "medicine");
   away.ship.fuel = 0;
@@ -495,7 +499,10 @@ test("a ship with someone in the chair is at least as well off as one nobody's l
     const onItsOwn = newGame("captain", seed);
     onItsOwn.ship.council = { off: true, ordered: {}, waiting: {}, last: {}, setRations: null, recent: [] };
     days(onItsOwn, 100);
-    assert.ok(looked.ship.health >= onItsOwn.ship.health, `seed ${seed}: ${looked.ship.health} against ${onItsOwn.ship.health}`);
+    // Left to herself in open space she runs dry and people die, until someone takes the chair and takes her to port.
+    // So it's who's still aboard that says how each fared; a hundred days on, her health is much the same.
+    assert.ok(looked.ship.aboard >= onItsOwn.ship.aboard, `seed ${seed}: ${looked.ship.aboard} aboard against ${onItsOwn.ship.aboard}`);
+    assert.ok(looked.ship.health >= onItsOwn.ship.health - 5, `seed ${seed}: ${looked.ship.health} against ${onItsOwn.ship.health}`);
   }
 });
 

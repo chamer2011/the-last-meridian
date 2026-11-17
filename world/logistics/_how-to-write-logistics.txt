@@ -3,7 +3,7 @@ HOW TO WRITE A PLACE'S LOGISTICS
 
 Nothing aboard comes from nothing. The ship's logistics say where every stock is kept, what machines turn one
 thing into another, what each system draws from the generator, what each store wants kept in it and who
-carries for it, and what gets refilled from outside. It's one plain text file in this folder, world/logistics/<place>.txt, named after the
+carries for it, and what gets restocked at a dock. It's one plain text file in this folder, world/logistics/<place>.txt, named after the
 place (the file name of its map in world/maps). The Story board shows it under Logistics, as boxes and arrows,
 and saving one there writes its file here.
 
@@ -17,9 +17,9 @@ pack; every machine takes from one store and puts into another on the clock; the
 and gives the power the systems draw, and lets them go in a written order when it hasn't enough; whenever a
 store has fewer of something than it wants, whoever carries for it fetches some from the nearest store that
 can spare it; the whole ship eats from the kettle at its sittings;
-the refills top a store up from nothing on the hour, the one place anything still comes from nowhere; the
-engineers' repairs use up spare parts from the stores; and the Ship menu's count of food, medicine and parts is
-the count of these stores, nothing else. Trade off the ship, which will replace the refills, is a later step.
+a store that's restocked is filled at a dock, out of the port's own stores and paid for from the ship's purse,
+and in open space nothing comes; the engineers' repairs use up spare parts from the stores; and the Ship menu's
+count of food, medicine and parts is the count of these stores, nothing else.
 
 
 THE FILE
@@ -43,7 +43,7 @@ THE FILE
     who asks: the quartermaster for the galley, the deck chief for the rest   the player, and by whom: see LEFT WAITING)
 
     Stores:
-    - shuttle stores in The Lighter Bay: holds 20 ration crates, 12 fuel cells
+    - shuttle stores in The Lighter Bay: holds 24 ration crates, 36 fuel cells
     - pantry in The Galley: holds 12 ration crates, 12 produce; wants 4 of each; carried by the deckhands, the cooks: Shelves behind a wire door.
     - fuel rack in Engineering: holds 6 fuel cells; wants 3; urgent under 2
     - soup kettle in The Long Mess: holds 400 sittings
@@ -55,7 +55,7 @@ THE FILE
     - air plant 20, engines 30 while under way, lights 2 a room
 
     Refills:
-    - the shuttle stores: ration crates and fuel cells from nothing for now, every 6 hours, up to full
+    - the shuttle stores: ration crates and fuel cells from the dock, every 6 hours, up to full
 
     Urgency:
     - urgent carrying
@@ -331,17 +331,25 @@ altogether, nothing aboard has power.
 REFILLS
 -------
 
-A refill tops a store up from outside. Each line is the store, a colon, what comes into it, from nothing
-(the only source there is until trade off the ship is built; the words for now are allowed), how often, and
-how far it's filled:
+A refill tops a store up from outside. Each line is the store, a colon, what comes into it, where from, how
+often, and how far it's filled:
 
-    - the shuttle stores: ration crates and fuel cells from nothing for now, every 6 hours, up to full
+    - the shuttle stores: ration crates and fuel cells from the dock, every 6 hours, up to full
 
-On the hour it says, counted from midnight (every 6 hours is at 00:00, 06:00, 12:00 and 18:00), each item
-named is brought up to what the store's holds line keeps, or up to the number written after up to. The store
-has to keep every item named. What came aboard is written in the manifest, which you read by looking at the
-store (the shuttle stores carry it on a clip) or on any of the ship's computers that lists the manifest log,
-and the Ship menu's Refills lines say the last one.
+From the dock is how the ship lives. While she's docked at a port that sells what's named (a port that sells
+food sells ration crates, and one that sells fuel sells fuel cells), every so many hours each item is brought
+up to what the store's holds line keeps, or up to the number written after up to. They're real crates and
+cells out of the port's own stores, so a port that's down to six sells six, and they're paid for out of the
+ship's purse at the port's price that day. world/trade.txt has the prices, and what happens when the purse is
+empty. In open space nothing comes.
+
+A line can still say from nothing (the words for now are allowed after it). Then the store is topped up from
+nowhere, wherever the ship is, on the hour counted from midnight (every 6 hours is at 00:00, 06:00, 12:00 and
+18:00). That's how every game went before the ports held real amounts, and it's there for trying things out.
+
+The store has to keep every item named. What came aboard is written in the manifest, which you read by
+looking at the store (the shuttle stores carry it on a clip) or on any of the ship's computers that lists the
+manifest log, and the Ship menu's Refills lines say the last one.
 
 REPAIRS
 -------
@@ -393,6 +401,7 @@ The Ship menu's Stores (food, medicine, parts) are these stores and nothing else
 and basket of produce aboard, counted as crates; medicine the medicine crates; parts the parts crates. The
 kettle feeds everyone through the day; the medbay and the engineers take a crate at midnight each time they've
 used one up; a day's use and the days left are worked out from that. Buying at a dock puts crates into the
-stores that keep them (food into the shuttle stores, then the pantry), selling takes them out, and a story
-that gives or takes food counts one of its units as ten crates, about a day's eating. Fuel for jumps stays in
-the tank, which has nothing to do with the fuel cells the generator burns.
+stores that keep them (food into the shuttle stores, then the pantry) and selling takes them out, both through
+the ship's purse, and a story that gives or takes food counts one of its units as ten crates, about a day's
+eating. Fuel for jumps stays in the tank, which has nothing to do with the fuel cells the generator burns: a
+cell can't be poured into the tank, and jump fuel can't run the generator.

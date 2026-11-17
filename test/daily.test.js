@@ -159,8 +159,10 @@ test("a year goes by quickly, everything stays in bounds, and the world does cha
 });
 
 test("the same game gives the same world, even after saving and loading part way", () => {
+  // The same game, to the last number: a ship left in open space this long runs dry, and what becomes of her then,
+  // and of the ports she's taken to, goes by who's aboard.
   const one = newGame();
-  const two = newGame();
+  const two = JSON.parse(JSON.stringify(one));
   days(one, 60);
   days(two, 30);
   const loaded = JSON.parse(JSON.stringify(two));
@@ -286,15 +288,16 @@ test("the less there is of something, the more it costs, and there's a band for 
   assert.deepEqual([150, 100, 60, 30, 5].map(levelName), ["plenty", "normal", "short", "scarce", "almost gone"]);
 });
 
-test("the ship pays what things cost today, each lot it buys raises the price, and it can run out", () => {
+test("the ship pays what things cost today out of her purse, each lot it buys raises the price, and it can run out", () => {
   const game = at("haven");
-  game.credits = 100000;
+  game.ship.purse = 100000;
   game.ship.fuel = 2;
   const before = shipView(game).trade.find((one) => one.id === "fuel");
   assert.equal(before.level, "normal");
   const credits = game.credits;
   shipCommand(game, { action: "buy", id: "fuel" });
-  assert.equal(game.credits, credits - before.price);
+  assert.equal(game.ship.purse, 100000 - before.price);
+  assert.equal(game.credits, credits, "the captain's own credits aren't the ship's");
   const after1 = shipView(game).trade.find((one) => one.id === "fuel");
   assert.ok(after1.price > before.price, `${after1.price} after ${before.price}`);
   // Down to less than one measure of fuel on the whole station.
@@ -316,8 +319,10 @@ test("the ship can sell what it has, for more where it's short, and that eases t
   const credits = game.credits;
   // Medicine is the crates in the medbay's cabinet, and a sale takes one out.
   const stock = countAboard(game, "meridian", ["medicine_crate"]).n;
+  const purse = shipView(game).money.purse;
   const reply = shipCommand(game, { action: "sell", id: "medicine" });
-  assert.equal(game.credits, credits + dear);
+  assert.equal(shipView(game).money.purse, purse + dear, "what the ship sells goes into her purse");
+  assert.equal(game.credits, credits);
   assert.equal(countAboard(game, "meridian", ["medicine_crate"]).n, stock - 1);
   assert.ok(goods.medicine > 30);
   assert.match(reply.message, /Sold 1 crate of the ship's medicine/);
@@ -515,11 +520,12 @@ test("over the real server: the clock runs away from the Meridian, trading moves
   // The parts lockers start full, so a crate goes to the dock first, and then one comes back aboard, dearer.
   const sold = await post("/api/ship", { action: "sell", id: "parts" });
   assert.equal(sold.status, 200);
-  assert.ok(sold.game.credits > start.credits);
+  assert.ok(sold.game.ship.money.purse > start.ship.money.purse, "into the ship's purse");
+  assert.equal(sold.game.credits, start.credits);
   const bought = await post("/api/ship", { action: "buy", id: "parts" });
   assert.equal(bought.status, 200);
   assert.ok(bought.game.ship.trade.find((one) => one.id === "parts").price >= sold.game.ship.trade.find((one) => one.id === "parts").price);
-  assert.ok(bought.game.credits < sold.game.credits, "buying costs more than selling paid");
+  assert.ok(bought.game.ship.money.purse < start.ship.money.purse, "buying costs more than selling paid");
 
   const waited = await post("/api/ship", { action: "wait", days: 3 });
   assert.equal(waited.status, 200);

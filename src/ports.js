@@ -381,6 +381,17 @@ export function amountOf(world, id, good, model = portsModel()) {
   const hold = model.ports[id]?.holds[good];
   return hold ? (levelOf(world, id, good, model) / 100) * hold.usual : 0;
 }
+// So many of a good taken out of a port's stores, or put into them when it's fewer than none: the Meridian's
+// restocking, and what a distress call brings her. Says how many came out, which is never more than it had.
+export function portTake(world, id, good, n) {
+  const model = portsModel();
+  const hold = model.ports[id]?.holds[good];
+  if (!hold || !n) return 0;
+  const have = (levelOf(world, id, good, model) / 100) * hold.usual;
+  const took = n > 0 ? Math.min(n, have) : n;
+  setLevel(world, id, good, fine(clamp(((have - took) / hold.usual) * 100, 0, MOST)), model);
+  return took;
+}
 // What a port usually holds of the good a supply stands on, or nothing if it has no file or holds none.
 export function usualOf(id, supply) {
   const model = portsModel();

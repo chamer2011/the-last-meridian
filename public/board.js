@@ -491,7 +491,7 @@ function logisticsGraph() {
   }
   const cols = { machines: 2, loads: 3, refills: 2 };
   const kinds = { machines: "route", loads: "clock", refills: "consequence" };
-  const labels = { machines: "A machine", loads: "What draws power", refills: "A refill, from nothing" };
+  const labels = { machines: "A machine", loads: "What draws power", refills: "A refill" };
   for (const part of ["machines", "loads", "refills"]) {
     (P[part] ?? []).forEach((one, i) => {
       const words = one.text ?? one;
@@ -1604,7 +1604,7 @@ function inspectLogisticsLine(inspector, node) {
       ? hint("A machine: its name, in and its room if the room isn't named like it, a colon, then what it does. It takes so many of an item (or one of two, with or between them) from a store, and puts so many of an item or of sittings into a store, every so long, with power and someone there if it needs them: galley: cooks 1 produce or 1 ration crate from the pantry into 200 sittings in the soup kettle every hour, with power and a cook there. One that only gives power waits for step 4.")
       : part === "loads"
           ? hint("The loads: each system and what it draws from the generator, with a room or each to count them, and while under way for what only draws on a jump: air plant 20, engines 30 while under way, lights 1 a room, computers 2 each. Another line says the order they're let go in when the generator hasn't enough: when short, drop: cameras, comms, lights, doors, navigation, air.")
-          : hint("A refill: the store, a colon, what comes into it, from nothing (the one source left until trade off the ship is built), how often, and how far it's filled: the shuttle stores: ration crates and fuel cells from nothing for now, every 6 hours, up to full. Each refill is written in the manifest."),
+          : hint("A refill: the store, a colon, what comes into it, where from, how often, and how far it's filled: the shuttle stores: ration crates and fuel cells from the dock, every 6 hours, up to full. From the dock, it's bought at whatever port the ship is docked at, out of the port's own stores and the ship's purse, and in open space nothing comes. From nothing, it comes from nowhere. Each refill is written in the manifest."),
     row(button("Keep", () => { P[part][i] = { text: box.value.trim().replace(/\n+/g, " ") }; changed(); }), button("Undo", () => inspect())),
     row(button(`+ another under ${PART_TITLES[part]}`, () => addLogisticsLine(part)), button("Remove", () => remove(node), { class: "danger" })));
 }

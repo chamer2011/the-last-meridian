@@ -108,14 +108,14 @@ test("the generator burns a cell every eight hours from the rack, starting with 
   passTime(game, 24, "routine");
   // Three more by the next afternoon, and Oona has been down to the shuttle stores for the rack once it was under three.
   const cells = count(game, "fuel_rack", "fuel_cell") + count(game, "shuttle_stores", "fuel_cell");
-  assert.equal(cells, 18 - 4, `${cells} cells left between the rack and the shuttle stores`);
+  assert.equal(cells, 42 - 4, `${cells} cells left between the rack and the shuttle stores`);
   assert.ok(count(game, "fuel_rack", "fuel_cell") >= 2, "Oona keeps the rack up, give or take the trip she's on");
   assert.equal(powerSupply(game, "meridian"), 100);
 });
 
 test("with no cells left anywhere the generator stops, the ship goes dark and airless, the galley waits, and a cell brings it all back", () => {
   const game = newGame();
-  // Nothing comes aboard from nothing while this runs, or the shuttle stores would have cells again by noon.
+  // Nothing comes aboard while this runs, whatever the file's refills say.
   const model = logisticsOf("meridian");
   const refills = model.refills;
   model.refills = [];
@@ -128,7 +128,7 @@ test("with no cells left anywhere the generator stops, the ship goes dark and ai
 
 function noCells(game) {
   take(game, "fuel_rack", "fuel_cell", 6);
-  take(game, "shuttle_stores", "fuel_cell", 12);
+  take(game, "shuttle_stores", "fuel_cell", 36);
   walkCommand(game, { action: "room", to: "galley" });
   passTime(game, 8, "routine");
   assert.match(generator(game).status, /^stopped: the fuel rack has no fuel cells, and nothing aboard has power$/);
