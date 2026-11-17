@@ -24,7 +24,7 @@ const { logisticsOf, logisticsProblems, machinesView, powerSupply, storeById, st
 const { amountOf, portsModel } = await import("../src/ports.js");
 const { airSpoiled } = await import("../src/room-hooks.js");
 const { addItem, passTime } = await import("../src/rules.js");
-const { shipView } = await import("../src/ship.js");
+const { shipCommand, shipView } = await import("../src/ship.js");
 const sys = await import("../src/systems.js");
 const water = await import("../src/water.js");
 const { clearMaps, walkCommand, walkView } = await import("../src/walk.js");
@@ -350,6 +350,33 @@ test("a tank of water can be poured in by hand, and a full reserve tank fitted",
   assert.deepEqual([fit().detail, Boolean(fit().disabled)], ["24 hours of air", false]);
   assert.match(run(game, "Reserve tanks", "fit-reserve-tank").said, /^You fit the full tank in place of an empty one\. The reserve air stands at 96 of 120 hours\.$/);
   assert.deepEqual([game.inventory.reserve_tank, sys.reserveLeft(game, SHIP)], [1, RESERVE - 24 * 60]);
+});
+
+test("the answer to a distress call brings a couple of days of water too, when she has under a day of it", () => {
+  const game = newGame();
+  keepPower(game);
+  game.ship.fuel = 0;
+  shipCommand(game, { action: "distress" });
+  for (let day = 0; day < 2; day += 1) hours(game, 24);
+  setTank(game, 10);
+  // The same game without the call, to see what the tanker took out of Haven.
+  const twin = JSON.parse(JSON.stringify(game));
+  delete twin.ship.distress;
+  const told = hours(game, 24);
+  hours(twin, 24);
+  const line = told.find((one) => /tanker/.test(one));
+  assert.match(line ?? told.join(" | "), /^\[SHIP\] A tanker out of Haven Station has answered the distress call: \d+ fuel for the tank and 1 tank of water, for \d+ credits\. She can make Haven Station on that\.$/);
+  assert.ok(inTank(game) >= 60 && inTank(game) <= 100, `${inTank(game)} measures in the tank after the tanker`);
+  assert.equal(inTank(twin), 0, "and none without it");
+  assert.ok(Math.abs(amountOf(twin.world, "haven", "water") - amountOf(game.world, "haven", "water") - 1) < 0.05, "a tank of it out of Haven's own water");
+  // With water enough aboard, the tanker brings none.
+  const wet = newGame();
+  keepPower(wet);
+  wet.ship.fuel = 0;
+  shipCommand(wet, { action: "distress" });
+  const said = [];
+  for (let day = 0; day < 3; day += 1) said.push(...hours(wet, 24));
+  assert.doesNotMatch(said.find((one) => /tanker/.test(one)), /of water/);
 });
 
 test("a game from before the ship kept her water is told once how it goes now", () => {
