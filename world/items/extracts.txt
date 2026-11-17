@@ -1,0 +1,13 @@
+# Flask of extracts
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 16
+size: 1x1
+weight: 2
+stack: 6
+
+In a line:
+Distilled from what grows. A dispensary makes medicine of it.
+
+Drawing:
+`!~!`

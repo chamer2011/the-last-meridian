@@ -1,0 +1,13 @@
+# Case of circuit boards
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 30
+size: 1x1
+weight: 8
+stack: 3
+
+In a line:
+Boards stripped and re-flashed, for anything that thinks.
+
+Drawing:
+`[::]`

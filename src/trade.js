@@ -10,8 +10,10 @@
 //   is left in the purse at midnight goes to the slate, and the ship's standing with whoever holds the port falls a
 //   little every day until it's paid. While she owes anything the dock only keeps her going: it fills her stores part
 //   of the way, not to the top.
-// - Cargo and passengers, offered at a port while the ship is docked there and the captain's ashore: crates or people
-//   for another port on the chart, paid into the purse on arrival. Passengers eat at the sittings on the way.
+// - Passengers, offered at a port while the ship is docked there and the captain's ashore: people for another port on
+//   the chart, paid into the purse on arrival. They eat at the sittings on the way. (Freight is src/freight.js: real
+//   goods out of a port's stores, in the ship's hold. The crates a game from before was carrying are still unloaded
+//   here.)
 //
 // It registers itself with src/room-hooks.js. src/ship.js uses the purse and the slate for what the captain buys, and
 // for the distress call; nothing here imports the ship's rules.
@@ -56,7 +58,7 @@ const LINES = {
   "the slate": [/^([\d.]+) times the price, up to (\d+) credits a port, standing falls (\d+) a day until it's paid$/i, (f) => ({ times: Number(f[1]), limit: Number(f[2]), falls: Number(f[3]) }), "1.5 times the price, up to 300 credits a port, standing falls 1 a day until it's paid"],
   "while she owes": [/^the dock fills her stores to (\d+) percent$/i, (f) => ({ share: Number(f[1]) / 100 }), "the dock fills her stores to 33 percent"],
   "a distress call": [/^answered in (\d+) days?, at ([\d.]+) times the price$/i, (f) => ({ days: Number(f[1]), times: Number(f[2]) }), "answered in 3 days, at 2 times the price"],
-  cargo: [/^(\d+) offers a port, (\d+) to (\d+) crates, (\d+) credits a crate, (\d+) days to deliver, (\d+) crates in the hold$/i, (f) => ({ offers: Number(f[1]), least: Number(f[2]), most: Number(f[3]), each: Number(f[4]), days: Number(f[5]), hold: Number(f[6]) }), "2 offers a port, 4 to 10 crates, 15 credits a crate, 10 days to deliver, 20 crates in the hold"],
+  freight: [/^up to (\d+) offers a port, ([\d.]+) credits a square for each measure of fuel the trip takes, (\d+) days to deliver$/i, (f) => ({ offers: Number(f[1]), rate: Number(f[2]), days: Number(f[3]) }), "up to 3 offers a port, 4 credits a square for each measure of fuel the trip takes, 8 days to deliver"],
   passengers: [/^(\d+) to (\d+) people, (\d+) credits each$/i, (f) => ({ least: Number(f[1]), most: Number(f[2]), each: Number(f[3]) }), "4 to 10 people, 10 credits each"],
 };
 
@@ -365,32 +367,25 @@ export function tradeView(game) {
   };
 }
 
-// ---- Cargo and passengers -----------------------------------------------------------------------------
+// ---- Passengers ---------------------------------------------------------------------------------------
 
-const cargoAboard = (game) => (game.ship?.cargo ?? []).reduce((sum, one) => sum + one.n, 0);
 // The ports a captain's chart shows that have a market, other than this one.
 const portsFrom = (place) => Object.entries(STAR_MAP.places ?? {}).filter(([id, spot]) => id !== place && spot.charted && spot.trade && LOCATIONS[id]).map(([id]) => id);
 
-// What a port offers this week: the same all week, and gone once it's taken.
+// The party a port has for her this week: the same all week, and gone once it's taken.
 export function offersAt(game, place) {
   const rules = tradeRules();
   // Nothing's offered to someone who's out at a wreck (src/salvage.js, src/wrecks.js): they aren't on the dock to hear it.
-  if (!rules || !isCaptain(game) || game.ship?.at !== place || game.location !== place || game.salvage || game.wreckRun) return { cargo: [], party: null };
+  if (!rules || !isCaptain(game) || game.ship?.at !== place || game.location !== place || game.salvage || game.wreckRun) return { party: null };
   const ports = portsFrom(place);
-  if (!ports.length) return { cargo: [], party: null };
+  if (!ports.length) return { party: null };
   const week = Math.floor(dayOf(game) / 7);
-  const roll = seeded(`${game.bodySeed}:trade:${week}:${place}`);
+  const roll = seeded(`${game.bodySeed}:passengers:${week}:${place}`);
   const between = (least, most) => least + Math.floor(roll() * (most - least + 1));
   const taken = game.ship.taken ?? [];
-  const cargo = [];
-  for (let i = 0; i < rules.cargo.offers; i += 1) {
-    const n = between(rules.cargo.least, rules.cargo.most);
-    const offer = { id: `${week}:${place}:${i}`, to: ports[Math.floor(roll() * ports.length)], n, fee: n * rules.cargo.each, days: rules.cargo.days };
-    if (!taken.includes(offer.id)) cargo.push(offer);
-  }
   const n = between(rules.passengers.least, rules.passengers.most);
   const party = { id: `${week}:${place}:p`, to: ports[Math.floor(roll() * ports.length)], n, fee: n * rules.passengers.each };
-  return { cargo, party: taken.includes(party.id) ? null : party };
+  return { party: taken.includes(party.id) ? null : party };
 }
 
 addRoomActs((game, { place, room }) => {
@@ -399,29 +394,16 @@ addRoomActs((game, { place, room }) => {
   const acts = [];
   // In the room the dock's goods come aboard into: what's being carried, for whoever looks.
   if (place === SHIP && room === logisticsOf(SHIP)?.stores.find((one) => logisticsOf(SHIP).refills.some((r) => r.store === one.id))?.room) {
-    for (const one of game.ship.cargo ?? []) acts.push({ id: "trade-carried", key: one.id, label: `Carrying ${one.n} crates for ${nameOf(one.to)}`, detail: `${one.fee} credits, by day ${one.by + 1}`, disabled: true });
+    // Crates a game from before was carrying. Real freight is in the hold, and on the Market's page.
+    for (const one of (game.ship.cargo ?? []).filter((it) => !it.item)) acts.push({ id: "trade-carried", key: one.id, label: `Carrying ${one.n} crates for ${nameOf(one.to)}`, detail: `${one.fee} credits, by day ${one.by + 1}`, disabled: true });
     if (game.ship.party) acts.push({ id: "trade-carried", key: "party", label: `Carrying ${game.ship.party.n} passengers to ${nameOf(game.ship.party.to)}`, detail: `${game.ship.party.fee} credits on arrival`, disabled: true });
   }
   const offers = offersAt(game, place);
-  for (const one of offers.cargo) {
-    const full = cargoAboard(game) + one.n > rules.cargo.hold;
-    acts.push({ id: "take-cargo", key: one.id, label: `Take cargo for ${nameOf(one.to)}: ${one.n} crates`, detail: full ? "there's no room in the hold" : `${one.fee} credits on arrival, within ${one.days} days`, ...(full ? { disabled: true } : {}) });
-  }
   if (offers.party) {
     const busy = Boolean(game.ship.party);
     acts.push({ id: "take-passengers", key: offers.party.id, label: `Take ${offers.party.n} passengers to ${nameOf(offers.party.to)}`, detail: busy ? "you're carrying a party already" : `${offers.party.fee} credits on arrival; they eat at the sittings`, ...(busy ? { disabled: true } : {}) });
   }
   return acts;
-});
-
-addOrder("take-cargo", (game, body) => {
-  const offer = offersAt(game, game.location).cargo.find((one) => one.id === String(body.key ?? ""));
-  if (!offer) throw new Error("That cargo's gone.");
-  if (cargoAboard(game) + offer.n > tradeRules().cargo.hold) throw new Error("There's no room in the hold for it.");
-  openPurse(game);
-  game.ship.cargo = [...(game.ship.cargo ?? []), { id: offer.id, to: offer.to, n: offer.n, fee: offer.fee, by: dayOf(game) + offer.days }];
-  game.ship.taken = [...(game.ship.taken ?? []), offer.id].slice(-30);
-  return { said: `[TRADE] ${offer.n} crates for ${nameOf(offer.to)} go into the Meridian's hold: ${offer.fee} credits when they get there, within ${offer.days} days.` };
 });
 
 addOrder("take-passengers", (game, body) => {
@@ -430,7 +412,7 @@ addOrder("take-passengers", (game, body) => {
   if (game.ship.party) throw new Error("You're carrying a party already.");
   openPurse(game);
   game.ship.party = { to: party.to, n: party.n, fee: party.fee };
-  game.ship.taken = [...(game.ship.taken ?? []), party.id].slice(-30);
+  game.ship.taken = [...(game.ship.taken ?? []), party.id].slice(-40);
   game.ship.aboard += party.n;
   return { said: `[TRADE] ${party.n} passengers for ${nameOf(party.to)} come aboard with their bags. ${party.fee} credits when they get there, and they eat at the sittings until then.` };
 });
@@ -442,13 +424,14 @@ addClockWork((game) => {
   if (!rules || !ship) return [];
   const lines = [];
   if (ship.at && (ship.cargo?.length || ship.party)) {
-    for (const one of (ship.cargo ?? []).filter((it) => it.to === ship.at)) {
+    // The crates a game from before was carrying were a count and no more. Real freight is unloaded by src/freight.js.
+    for (const one of (ship.cargo ?? []).filter((it) => !it.item && it.to === ship.at)) {
       const late = dayOf(game) > one.by;
       const fee = late ? Math.floor(one.fee / 2) : one.fee;
       addToPurse(game, fee);
       lines.push(`[TRADE] The ${one.n} crates for ${nameOf(one.to)} are unloaded${late ? ", late: half the fee" : ""}. ${fee} credits into the ship's purse.`);
     }
-    if (ship.cargo?.length) ship.cargo = ship.cargo.filter((it) => it.to !== ship.at);
+    if (ship.cargo?.length) ship.cargo = ship.cargo.filter((it) => it.item || it.to !== ship.at);
     if (ship.party?.to === ship.at) {
       addToPurse(game, ship.party.fee);
       ship.aboard = Math.max(0, ship.aboard - ship.party.n);

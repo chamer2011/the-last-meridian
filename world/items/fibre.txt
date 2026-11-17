@@ -1,0 +1,13 @@
+# Bundle of fibre
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 5
+size: 1x1
+weight: 12
+stack: 4
+
+In a line:
+Wool, and thread spun from kelp, by the bundle.
+
+Drawing:
+`{%%}`

@@ -1,0 +1,13 @@
+# Basket of leaf
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 7
+size: 1x1
+weight: 4
+stack: 4
+
+In a line:
+Tea, and tobacco from under a ban, green in the basket.
+
+Drawing:
+`\,,/`

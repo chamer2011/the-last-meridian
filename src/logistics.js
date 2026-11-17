@@ -10,7 +10,7 @@
 import { handsFree } from "./body.js";
 import { medbayOf } from "./medbay.js";
 import { ITEMS, LOCATIONS } from "./data.js";
-import { storeCounts, storePut, storeTake } from "./bag.js";
+import { gridSquares, stackOf, storeCounts, storePut, storeTake } from "./bag.js";
 import { findCharacter } from "./campaign.js";
 import { rosterOf, usuallyIn, whoIsIn } from "./life.js";
 import { claimedSquares, damageKinds, floorSpot, powerBalance, roomPowered, systemsOf, waitingForParts } from "./systems.js";
@@ -295,12 +295,16 @@ function compileLogistics(place) {
     }
     const kept = describeHolds(holds, count);
     thing.store = id;
-    if (count) thing.look = `${existing ? `${thing.look ?? ""} `.trimStart() : s.look ? `${s.look} ` : ""}It holds up to ${kept}, the ship's own.`.trim();
+    if (s.freight) {
+      // A freight hold starts empty, and what's in it is whatever she's carrying (src/freight.js).
+      thing.holds = {};
+      thing.look = `${existing ? `${thing.look ?? ""} `.trimStart() : s.look ? `${s.look} ` : ""}What she carries for a fee, or to sell, rides here.`.trim();
+    } else if (count) thing.look = `${existing ? `${thing.look ?? ""} `.trimStart() : s.look ? `${s.look} ` : ""}It holds up to ${kept}, the ship's own.`.trim();
     else {
       thing.holds = { ...holds };
       thing.look = `${existing ? `${thing.look ?? ""} `.trimStart() : s.look ? `${s.look} ` : ""}The ship keeps ${kept} here.`.trim();
     }
-    const entry = { id, name: s.name, room: room.id, roomName: room.name, level: level.id, thing: thing.id, key: `thing:${place}:${thing.id}`, holds, count, wants, urgent, carriers: carriers.length ? carriers : usualCarriers, look: s.look, placed: !existing, line };
+    const entry = { id, name: s.name, room: room.id, roomName: room.name, level: level.id, thing: thing.id, key: `thing:${place}:${thing.id}`, holds, count, wants, urgent, carriers: carriers.length ? carriers : usualCarriers, look: s.look, placed: !existing, line, ...(s.freight ? { freight: true } : {}) };
     model.stores.push(entry);
     (model.storesIn[room.id] ??= []).push(id);
     if (count) model.kettles.push(entry);
@@ -1181,6 +1185,11 @@ export function storeStock(game, place, storeId) {
   const share = (n, of) => (of > 0 ? Math.max(0, Math.min(1, n / of)) : 0);
   if (store.count) return { full: share(countOf(game, store), store.count.n), unit: store.count.unit };
   const counts = storeCounts(game, store.key, store.holds);
+  // A freight hold keeps nothing of its own: it's as full as its squares are taken, with whatever she's carrying.
+  if (store.freight) {
+    const squares = gridSquares(game, store.key);
+    return { full: share(squares.taken, squares.of), goods: Object.entries(counts).filter(([, n]) => n > 0).map(([item, n]) => ({ item, n, of: squares.of * stackOf(ITEMS[item]) })) };
+  }
   const goods = Object.entries(store.holds).map(([item, of]) => ({ item, n: Math.min(of, counts[item] ?? 0), of }));
   const of = goods.reduce((sum, one) => sum + one.of, 0);
   return { full: share(goods.reduce((sum, one) => sum + one.n, 0), of), goods };

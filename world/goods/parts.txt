@@ -3,16 +3,16 @@ draft: the AI's, not yet edited by the owner
 stands for: parts, by its parts crates
 
 Basic:
-- ore, by the load: Rock with metal in it.
+- ore, by the load [ore]: Rock with metal in it.
 - wrecks: Dead ships, towed in or cut up where they lie: scrap in their hulls, and fuel still in some of their tanks.
 
 Refined:
-- metal stock, by the load, made from ore: Ore smelted into plate and bar.
-- scrap, by the load [scrap], made from wrecks: Dead ships cut up and sorted, by the load.
+- metal stock, by the load [metal_stock], made from ore: Ore smelted into plate and bar.
+- scrap, by the load [scrap_load], made from wrecks: Dead ships cut up and sorted, by the load.
 
 Developed:
 - parts crates [parts_crate], made from metal stock, scrap: A crate of spares: one repair, or half of an artificial limb.
-- circuit boards, by the case, made from scrap: Boards stripped and re-flashed, for anything that thinks.
+- circuit boards, by the case [circuit_board_case], made from scrap: Boards stripped and re-flashed, for anything that thinks.
 
 Advanced:
-- machines, made from parts crates, circuit boards: Whole machines built from crates and boards: a rig's parts, weapons, a port's own plant.
+- machines [machines], made from parts crates, circuit boards: Whole machines built from crates and boards: a rig's parts, weapons, a port's own plant.

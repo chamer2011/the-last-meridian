@@ -1,0 +1,13 @@
+# Case of medkits
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 110
+size: 1x1
+weight: 10
+stack: 3
+
+In a line:
+Kits for one wound each, a case of them, sealed for a ward or a ship's stores.
+
+Drawing:
+`[++]`

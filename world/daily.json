@@ -126,7 +126,7 @@
   "items": {
     "medkit": "medicine", "stim": "medicine", "trauma_kit": "medicine", "calm_tabs": "medicine", "emergency_patch": "medicine",
     "ration_pack": "food", "nutrient_gel": "food",
-    "fuel_cell": "fuel", "refined_fuel": "fuel",
+    "fuel_cell": "fuel", "refined_fuel": "fuel", "jump_fuel": "fuel",
     "energy_cell": "parts", "repair_kit": "parts"
   },
 

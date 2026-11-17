@@ -20,6 +20,7 @@ import { workshopView } from "./workshop.js";
 import { countAboard, foodADay, grownGuess, grownSoFar, machinesView, mealsOfDay, mealsView, powerSupply, putAboard, refilledADay, refillsView, repairsView, storesView, takeAboard, usedFrom, worthAboard } from "./logistics.js";
 import { addToPurse, cellsOf, dockSends, payAt, purseOf, slateWords, tradeRules, tradeView, unitPrice } from "./trade.js";
 import { portTake, portsModel } from "./ports.js";
+import { freightCommand, freightView } from "./freight.js";
 import { worthOf } from "./worth.js";
 import { SHIP_DATA, STAR_MAP } from "./world.js";
 import { boardView, workView } from "./work.js";
@@ -976,7 +977,7 @@ function distressDay(game, notes) {
 }
 
 export function shipCommand(game, body) {
-  shipOf(game);
+  const ship = shipOf(game);
   if (!isCaptain(game) && body.action !== "wait" && body.action !== "course") throw new Error(say("chairTook", { who: chairOf(game)?.name ?? "Someone else" }));
   switch (body.action) {
     case "rations": return setRations(game, body.id);
@@ -987,6 +988,15 @@ export function shipCommand(game, body) {
     case "sell": return sellSupply(game, body.id);
     case "distress": return callForHelp(game);
     case "purse": return payIntoPurse(game, body.n);
+    // Freight: a load taken on for a fee, and goods bought and sold by the load for her own account (src/freight.js).
+    case "freight-take":
+    case "freight-buy":
+    case "freight-sell": {
+      const done = freightCommand(game, body);
+      for (const line of done.notes ?? []) ship.log.push({ day: clockLabel(game), tag: "TRADE", text: line.replace(/^\[TRADE\] /, "") });
+      if (ship.log.length > MAX_LOG) ship.log.splice(0, ship.log.length - MAX_LOG);
+      return done;
+    }
     default: throw new Error("Unknown order.");
   }
 }
@@ -1067,6 +1077,8 @@ export function shipView(game) {
     money: moneyView(game, ledger),
     // Whether she can get herself to any port, and a distress call that's been sent.
     stranded: strandedView(game),
+    // Her freight hold, what she's carrying and for whom, what this dock offers, and what things cost (src/freight.js).
+    freight: freightView(game),
     repairs: repairsView(game, SHIP_ID),
     // Who's on the medbay's cots and floor, and what the medics are doing (src/medbay.js).
     medbay: medbayView(game, SHIP_ID),

@@ -1,0 +1,13 @@
+# Case of plasma and dressings
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 22
+size: 1x1
+weight: 10
+stack: 3
+
+In a line:
+Blood spun down, and linen boiled and cut: what a ward gets through first.
+
+Drawing:
+`[+~]`

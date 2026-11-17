@@ -1,0 +1,13 @@
+# Brick of cured leaf
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 16
+size: 1x1
+weight: 2
+stack: 6
+
+In a line:
+Tea and tobacco leaf, dried and pressed into a brick.
+
+Drawing:
+`[,,]`

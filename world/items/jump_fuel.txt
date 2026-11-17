@@ -1,0 +1,14 @@
+# Measure of jump fuel
+draft: Claude's, not yet edited by the owner
+type: consumable
+price: 38
+size: 1x1
+weight: 8
+stack: 4
+effect: fuel 1
+
+In a line:
+A sealed measure of what a jump burns. Poured into the tank, it's one more to jump on.
+
+Drawing:
+`{JF}`

@@ -2,19 +2,19 @@
 draft: the AI's, not yet edited by the owner
 
 Basic:
-- fruit and honey, by the crate: Vines, orchards and hives.
-- fibre, by the bundle: Wool, and thread spun from kelp.
-- leaf, by the basket: Tea, and tobacco from under a ban.
+- fruit and honey, by the crate [fruit_and_honey]: Vines, orchards and hives.
+- fibre, by the bundle [fibre]: Wool, and thread spun from kelp.
+- leaf, by the basket [leaf]: Tea, and tobacco from under a ban.
 
 Refined:
-- mash, by the vat, made from fruit and honey: Fruit and honey set to work in a vat.
-- cloth, by the roll, made from fibre: Wool and kelp thread, woven.
-- cured leaf, by the brick, made from leaf: Tea and tobacco leaf, dried and pressed into bricks.
+- mash, by the vat [mash], made from fruit and honey: Fruit and honey set to work in a vat.
+- cloth, by the roll [cloth], made from fibre: Wool and kelp thread, woven.
+- cured leaf, by the brick [cured_leaf], made from leaf: Tea and tobacco leaf, dried and pressed into bricks.
 
 Developed:
-- beer and spirits, by the keg, made from mash: Stone ale, ship's beer and worse. A crew with something to drink holds together.
-- clothes, by the bale, made from cloth: What people wear and mend, by the bale.
-- tea and tobacco, by the chest, made from cured leaf: Tea, coffee and tobacco, for a hard day.
+- beer and spirits, by the keg [beer_and_spirits], made from mash: Stone ale, ship's beer and worse. A crew with something to drink holds together.
+- clothes, by the bale [clothes], made from cloth: What people wear and mend, by the bale.
+- tea and tobacco, by the chest [tea_and_tobacco], made from cured leaf: Tea, coffee and tobacco, for a hard day.
 
 Advanced:
-- fine things, by the case, made from beer and spirits, clothes: Vantor red, an evening gown: what people pay dear for, and give as gifts.
+- fine things, by the case [fine_things], made from beer and spirits, clothes: Vantor red, an evening gown: what people pay dear for, and give as gifts.

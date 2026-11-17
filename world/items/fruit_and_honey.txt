@@ -1,0 +1,13 @@
+# Crate of fruit and honey
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 9
+size: 1x1
+weight: 20
+stack: 2
+
+In a line:
+From vines, orchards and hives, crated the day it's picked.
+
+Drawing:
+`[oo]`

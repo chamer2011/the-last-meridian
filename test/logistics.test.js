@@ -132,7 +132,11 @@ test("every store is a thing in its room, full to start with, drawn there or put
     assert.equal(reply.arrived?.kind, "thing", `${store.id} can't be walked to`);
     assert.equal(Math.abs(reply.walk.captain.x - thing.x) + Math.abs(reply.walk.captain.y - thing.y), 1, `${store.id} is reached from beside it`);
     if (store.count) assert.match(thing.look, /holds up to 400 sittings/);
-    else {
+    // The freight hold keeps nothing of the ship's own: it starts empty, and takes whatever she's carrying.
+    else if (store.freight) {
+      assert.deepEqual([thing.holds, store.holds], [{}, {}]);
+      assert.match(thing.look, /What she carries for a fee, or to sell, rides here\.$/);
+    } else {
       assert.deepEqual(thing.holds, store.holds);
       assert.match(thing.look, /The ship keeps/);
     }
@@ -181,10 +185,12 @@ test("the player walks to the pantry, opens it beside their pack, takes a crate 
 test("the Ship menu lists every store with what's in it, the kettle by its sittings, and a day passing changes none of it yet", () => {
   const game = newGame();
   const stores = publicState(game).ship.stores;
-  assert.equal(stores.length, 7);
+  assert.equal(stores.length, 8);
   const names = stores.map((one) => one.name);
-  assert.deepEqual(names, ["Shuttle stores", "Fuel rack", "Pantry", "Garden bins", "Medicine cabinet", "Parts lockers", "Soup kettle"]);
-  assert.ok(stores.every((one) => one.full));
+  assert.deepEqual(names, ["Shuttle stores", "Fuel rack", "Pantry", "Garden bins", "Medicine cabinet", "Parts lockers", "Soup kettle", "Freight hold"]);
+  // Every store of the ship's own starts full; the freight hold starts empty.
+  assert.ok(stores.every((one) => one.full || one.id === "freight_hold"));
+  assert.deepEqual(stores.at(-1).items, []);
   const kettle = stores.find((one) => one.id === "soup_kettle");
   assert.deepEqual(kettle.count, { n: 400, of: 400, unit: "sittings" });
   assert.deepEqual(kettle.items, []);
@@ -219,7 +225,7 @@ test("the Story board has a Logistics page: the file as boxes, its lists, and Sa
   const item = boardWorldItem("logistics", "meridian");
   assert.equal(item.kind, "logistics");
   assert.equal(item.text, FILE);
-  assert.equal(item.value.stores.length, 7);
+  assert.equal(item.value.stores.length, 8);
   assert.ok(item.links.stores.some((one) => one.id === "pantry" && one.placed && one.room === "The Galley"));
   assert.ok(item.links.stores.some((one) => one.id === "soup_kettle" && !one.placed));
   assert.ok(item.lists.rooms.includes("The Galley") && item.lists.rooms.includes("Engineering"));

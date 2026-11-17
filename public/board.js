@@ -478,7 +478,7 @@ function logisticsGraph() {
   const stores = (P.stores ?? []).map((one, i) => {
     const read = readStoreLine(one.text ?? one);
     const placed = (L.stores ?? []).find((s) => s.name === read.name);
-    return { i, read, id: add({ id: `store${i}`, kind: "beat", col: 1, name: read.problem ? "A store" : `${read.name}, in ${read.room}`, text: read.problem ? read.problem : `Holds ${read.holds.map((h) => `${h.n} ${h.what}`).join(", ")}.${read.wants.length ? ` Wants ${marksWords(read.wants, read.holds)}${read.urgent.length ? `, urgent under ${marksWords(read.urgent, read.holds)}` : ""}, carried by ${(read.carriers.length ? read.carriers : P.carriers?.list ?? ["nobody yet"]).join(", then ")}.` : ""}${placed ? placed.placed ? " The game puts it in the room, since the map hasn't drawn one." : " It's the thing of that name in the room." : ""}${read.look ? ` ${read.look}` : ""}`, label: "A store", bind: { store: i }, problem: Boolean(read.problem) }) };
+    return { i, read, id: add({ id: `store${i}`, kind: "beat", col: 1, name: read.problem ? "A store" : `${read.name}, in ${read.room}`, text: read.problem ? read.problem : `${read.freight ? "Holds freight: whatever she's carrying" : `Holds ${read.holds.map((h) => `${h.n} ${h.what}`).join(", ")}`}.${read.wants.length ? ` Wants ${marksWords(read.wants, read.holds)}${read.urgent.length ? `, urgent under ${marksWords(read.urgent, read.holds)}` : ""}, carried by ${(read.carriers.length ? read.carriers : P.carriers?.list ?? ["nobody yet"]).join(", then ")}.` : ""}${placed ? placed.placed ? " The game puts it in the room, since the map hasn't drawn one." : " It's the thing of that name in the room." : ""}${read.look ? ` ${read.look}` : ""}`, label: "A store", bind: { store: i }, problem: Boolean(read.problem) }) };
   });
   // What a store wants can come from any other store that holds the same thing: the board works the route out.
   for (const store of stores) {
@@ -1552,7 +1552,7 @@ function inspectStoreLine(inspector, node) {
   const read = readStoreLine(box.value);
   const room = picker("edit-room", (lists.rooms ?? []).map((one) => [one, one]), read.problem ? (lists.rooms ?? [])[0] : (lists.rooms ?? []).find((one) => one.toLowerCase() === read.room.toLowerCase()) ?? (lists.rooms ?? [])[0]);
   // The picker starts on what the store already holds, so adding more of the same is one click.
-  const firstHeld = read.problem ? "" : read.holds[0].what.toLowerCase().replace(/s$/, "");
+  const firstHeld = read.problem || !read.holds.length ? "" : read.holds[0].what.toLowerCase().replace(/s$/, "");
   const held = (lists.items ?? []).find((one) => one.name.toLowerCase().replace(/s$/, "") === firstHeld || one.id === firstHeld.replace(/ /g, "_"));
   const item = picker("edit-item", [...(lists.items ?? []).map((one) => [one.name, one.name]), ["sittings", "sittings (a count, not things)"]], held?.name ?? (firstHeld === "sitting" ? "sittings" : (lists.items ?? [])[0]?.name ?? "sittings"));
   const count = numberBox("edit-count", 6);
@@ -1582,7 +1582,7 @@ function inspectStoreLine(inspector, node) {
       const n = Math.max(1, Number(count.value) || 1);
       const words = item.value === "sittings" ? "sittings" : item.value.toLowerCase();
       if (readStoreLine(box.value).problem) box.value = `new store in ${room.value}: holds ${n} ${words}`;
-      else rewrite((now) => { now.holds.push({ n, what: words }); });
+      else rewrite((now) => { now.freight = false; now.holds.push({ n, what: words }); });
     })),
     hint("Items are named the way their files name them, plural or not; the plural with an s is written in the file. The store starts full, with this much, and never holds more."),
     row(el("span", {}, "wants"), wantN, el("span", {}, "of"), wantOf, button("Set what it wants", () => rewrite((now) => { now.wants = marked(now.wants, wantOf.value, Number(wantN.value) || 0); }))),

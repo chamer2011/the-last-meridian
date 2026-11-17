@@ -25,7 +25,9 @@ const itemsDir = path.join(path.dirname(loot.LOOT_DIR), "items");
 const enemiesDir = path.join(path.dirname(loot.LOOT_DIR), "enemies");
 const kinds = parseLootText(fs.readFileSync(path.join(loot.LOOT_DIR, "containers.txt"), "utf8")).value.kinds;
 const found = Object.entries(ITEMS).filter(([, item]) => item.foundIn?.length);
-const drafts = Object.entries(ITEMS).filter(([, item]) => item.draft);
+// The things to find: the drafts that turn up in containers. The goods a hold carries (a sack of meal, a load of ore)
+// are drafts too, and are never found: test/freight.test.js has those.
+const drafts = Object.entries(ITEMS).filter(([, item]) => item.draft && item.foundIn?.length);
 const squares = (item) => String(item.size).split("x").map(Number);
 // What the inventory's squares hold of a drawing at its 9px type (public/style.css): 26px squares less the border,
 // 5.4px a character across and 9.45px a row down.

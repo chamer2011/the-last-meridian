@@ -197,6 +197,10 @@ Lines starting with * happen when the part begins, and the player sees each as a
                                                 does it; the player can do it there themselves, under You can. Done,
                                                 it leaves the fact work_sweep_bay_done)
     * work job sweep_bay off: The reason        (taken off the board, done or not)
+    * goods ration crates -150 at haven: The convoy never came   (a port's real amounts: so many of a good taken
+                                                out of its stores, or put in without the minus. The good as its tree
+                                                in world/goods names it, the port by its id or its name; the port
+                                                has to hold that good. Its prices and its word for the supply follow)
     * mutiny give ground: The reason      (the ship's chain of command, for the scenes it plays: give ground,
                                           calmed, arrest, crushed, step down, refused, taken, released, join,
                                           stay out or warn; world/command/_how-to-write-command.txt says what each does)
@@ -264,6 +268,9 @@ and join several with "and":
     rival any                        Someone aboard the Meridian is working against a post's holder (a rival,
                                      after a review). rival chief_medical_officer for that post's holder.
     brig any                         Someone's in the Meridian's brig. brig tarrow for that person.
+    goods ration crates < 200 at haven   How many of a good a port holds, counted as the good is counted (crates,
+                                     sacks, casks), with the same comparisons as credits. The good as world/goods
+                                     names it, and the port, which has to hold it, by its id or its name.
     supply food < 80                 How much of a supply the port the player is at has, where 100 is what's
                                      usual for it (under 80 is short, under 50 scarce): food, fuel, medicine
                                      or parts, with the same comparisons as credits. Add at and a place for

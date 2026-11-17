@@ -23,6 +23,7 @@ Stores:
 - the parts lockers: the chief engineer, the techs
 - the fuel rack: the chief engineer, the techs
 - the shuttle stores: the quartermaster, the deckhands
+- the freight hold: the quartermaster, the deckhands
 
 Rooms:
 - The Armory: the chief of security, the guards

@@ -228,6 +228,25 @@ export function storePut(game, key, holds, id, n) {
   keepStore(game, key, items);
   return want - left;
 }
+// A freight hold has no holds line to count against: whatever fits its grid goes in. How many more of an item would
+// fit, and putting some in; taking out is storeTake, like any store.
+export function gridRoom(game, key, id) {
+  const items = (game.stores?.[key]?.items ?? []).map((one) => ({ ...one }));
+  const n = 9999;
+  return n - pour(items, R().containers, id, n);
+}
+export function gridPut(game, key, id, n) {
+  const items = [...(game.stores?.[key]?.items ?? [])].map((one) => ({ ...one }));
+  const left = pour(items, R().containers, id, n);
+  keepStore(game, key, items);
+  return n - left;
+}
+// How many squares of a store's grid are taken, and how many it has.
+export function gridSquares(game, key) {
+  const box = R().containers;
+  const taken = (game.stores?.[key]?.items ?? []).reduce((sum, one) => sum + squares(ITEMS[one.id] ?? {}), 0);
+  return { taken, of: box.cols * box.rows };
+}
 // Puts up to n of an item back into a container in a room that's been opened, wherever it fits on its grid (src/law.js,
 // when someone saw it taken). Says how many went in.
 export function containerPut(game, key, box, id, n) {

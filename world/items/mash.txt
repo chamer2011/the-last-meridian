@@ -1,0 +1,13 @@
+# Vat of mash
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 11
+size: 1x1
+weight: 50
+stack: 2
+
+In a line:
+Fruit and honey set to work in a vat. It'll be drink in a while.
+
+Drawing:
+`\~~/`

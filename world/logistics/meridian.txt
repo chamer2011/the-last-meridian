@@ -20,6 +20,7 @@ Stores:
 - medicine cabinet in Medbay: holds 5 medicine crates; wants 2; carried by the deckhands, the nurses, the spare hands: A locked cabinet with a list on its door of what's left.
 - parts lockers in Stores: holds 6 parts crates; wants 2; carried by the deckhands, the techs, the spare hands: Lockers of spares, sorted by someone who's since given up.
 - soup kettle in The Long Mess: holds 400 sittings
+- freight hold in The Aft Holds: holds freight: Tie-down rings and netting, and a slate by the hatch with what's whose chalked on it.
 
 Machines:
 - generator in Engineering: burns 1 fuel cell from the fuel rack every 8 hours, gives 100 power

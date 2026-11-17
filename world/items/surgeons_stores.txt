@@ -1,0 +1,13 @@
+# Case of surgeon's stores
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 260
+size: 1x1
+weight: 12
+stack: 3
+
+In a line:
+Surgical kits and synthskin, for the worst cases. Signed for at both ends.
+
+Drawing:
+`[+S]`

@@ -1,0 +1,13 @@
+# Sack of meal
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 8
+size: 1x1
+weight: 25
+stack: 4
+
+In a line:
+Grain dried and milled, by the sack: what ration crates and packs are packed from.
+
+Drawing:
+`(::)`

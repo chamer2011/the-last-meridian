@@ -1,0 +1,13 @@
+# Jar of compounds
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 15
+size: 1x1
+weight: 2
+stack: 6
+
+In a line:
+Made up in a laboratory, from what a refinery draws off.
+
+Drawing:
+`[oo]`

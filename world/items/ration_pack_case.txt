@@ -1,0 +1,13 @@
+# Case of ration packs
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 40
+size: 1x1
+weight: 12
+stack: 3
+
+In a line:
+Packs and tins for one person each, a case of them, strapped and stencilled.
+
+Drawing:
+`[==]`

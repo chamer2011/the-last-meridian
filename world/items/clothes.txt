@@ -1,0 +1,13 @@
+# Bale of clothes
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 20
+size: 1x1
+weight: 18
+stack: 3
+
+In a line:
+What people wear and mend, by the bale.
+
+Drawing:
+`{##}`

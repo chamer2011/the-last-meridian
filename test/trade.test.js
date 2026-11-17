@@ -1,5 +1,6 @@
-// The ship's trade: world/trade.txt, and cargo and passengers carried between ports for a fee paid into the ship's
-// purse. How she's restocked at a dock, the slate and the distress call are in living-off-ports.test.js.
+// The ship's trade: world/trade.txt, and passengers carried between ports for a fee paid into the ship's purse. How
+// she's restocked at a dock, the slate and the distress call are in living-off-ports.test.js, and freight in
+// freight.test.js.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
@@ -39,8 +40,8 @@ test("the file reads, and the game's own is whole", () => {
   const model = trade.parseTrade(["the purse: 600 to begin with, 60 a day", "the slate: whenever", "tips: 5"].join("\n"));
   assert.deepEqual(model["the purse"], { start: 600, aDay: 60 });
   assert.match(model.problems[0], /line 2: "the slate" is written like: 1\.5 times the price, up to 300 credits a port, standing falls 1 a day until it's paid/);
-  assert.match(model.problems[1], /line 3: a line here is one of: the purse, a ration crate, a fuel cell, the slate, while she owes, a distress call, cargo, passengers/);
-  assert.match(model.problems[2], /there's no line for a ration crate, a fuel cell, the slate, while she owes, a distress call, cargo, passengers/);
+  assert.match(model.problems[1], /line 3: a line here is one of: the purse, a ration crate, a fuel cell, the slate, while she owes, a distress call, freight, passengers/);
+  assert.match(model.problems[2], /there's no line for a ration crate, a fuel cell, the slate, while she owes, a distress call, freight, passengers/);
   assert.equal(model.whole, false);
   const rules = trade.tradeRules();
   assert.ok(rules, "the game's own file has every line");
@@ -54,64 +55,38 @@ test("the file reads, and the game's own is whole", () => {
   assert.equal(trade.unitPrice(game, "haven", "medicine_crate"), null, "only what the dock restocks has a price here");
 });
 
-test("cargo and passengers are taken at a port and paid for where they're going", () => {
+test("passengers are taken at a port and paid for where they're going", () => {
   const game = newGame();
   ashore(game, "haven");
-  const offers = trade.offersAt(game, "haven");
-  assert.equal(offers.cargo.length, 2);
-  assert.ok(offers.party);
-  const cargo = acts(game).filter((one) => one.id === "take-cargo");
-  assert.equal(cargo.length, 2);
-  assert.match(cargo[0].label, /^Take cargo for .+: \d+ crates$/);
-  assert.match(cargo[0].detail, /^\d+ credits on arrival, within 10 days$/);
-  const first = offers.cargo[0];
-  assert.match(walk.walkCommand(game, { action: "take-cargo", key: first.id }).said, /go into the Meridian's hold/);
-  assert.equal(game.ship.cargo.length, 1);
-  assert.equal(trade.offersAt(game, "haven").cargo.length, 1, "it's offered once");
+  const { party } = trade.offersAt(game, "haven");
+  assert.ok(party && party.n >= 4 && party.n <= 10);
+  assert.equal(party.fee, party.n * 10);
+  const offered = acts(game).filter((one) => one.id === "take-passengers");
+  assert.equal(offered.length, 1);
+  assert.match(offered[0].label, /^Take \d+ passengers to .+$/);
+  assert.deepEqual(acts(game).filter((one) => one.id === "take-cargo"), [], "the crates nobody ever saw are gone: freight is on the Market's page");
   const aboard = game.ship.aboard;
-  const party = offers.party;
   assert.match(walk.walkCommand(game, { action: "take-passengers", key: party.id }).said, /passengers for .+ come aboard/);
   assert.equal(game.ship.aboard, aboard + party.n);
+  assert.equal(trade.offersAt(game, "haven").party, null, "it's offered once");
   assert.throws(() => walk.walkCommand(game, { action: "take-passengers", key: party.id }), /another ship/);
-  // The ship gets to where the crates are going, in time, and then where the passengers are. Whatever the docks sold
-  // her on the way came out of the same purse.
+  // The ship gets to where they're going. Whatever the docks sold her on the way came out of the same purse.
   const spentAt = (lines) => lines.reduce((sum, one) => sum + Number(one.match(/bought at .+ for (\d+) credits/)?.[1] ?? 0) - Number(one.match(/, (\d+) of it on the slate/)?.[1] ?? 0), 0);
-  const purse = game.ship.purse;
-  game.ship.at = first.to;
-  let notes = tradeLines(passTime(game, 1, "active"));
-  let spent = spentAt(notes);
-  assert.ok(notes.some((one) => new RegExp(`^\\[TRADE\\] The ${first.n} crates for .+ are unloaded\\. ${first.fee} credits into the ship's purse\\.$`).test(one)), notes.join(" | "));
+  const purse = trade.purseOf(game);
   game.ship.at = party.to;
-  notes = tradeLines(passTime(game, 1, "active"));
-  spent += spentAt(notes);
-  assert.ok(notes.some((one) => /passengers go ashore/.test(one)) || first.to === party.to, notes.join(" | "));
+  const notes = tradeLines(passTime(game, 1, "active"));
+  assert.ok(notes.some((one) => new RegExp(`^\\[TRADE\\] The ${party.n} passengers go ashore at .+\\. ${party.fee} credits into the ship's purse\\.$`).test(one)), notes.join(" | "));
   assert.equal(game.ship.aboard, aboard);
   assert.equal(game.ship.party, null);
-  assert.equal(game.ship.purse, purse + first.fee + party.fee - spent);
-  // Late, the crates pay half.
-  const late = newGame();
-  ashore(late, "haven");
-  const one = trade.offersAt(late, "haven").cargo[0];
-  walk.walkCommand(late, { action: "take-cargo", key: one.id });
-  const before = late.ship.purse;
-  late.location = "meridian";
-  late.walk = null;
-  late.ship.at = null;
-  passTime(late, 24 * 12, "routine");
-  late.ship.at = one.to;
-  const purseThen = late.ship.purse;
-  const paid = tradeLines(passTime(late, 1, "active"));
-  assert.ok(paid.some((line) => /late: half the fee/.test(line)), paid.join(" | "));
-  assert.equal(late.ship.purse, purseThen + Math.floor(one.fee / 2) - spentAt(paid));
-  assert.ok(purseThen > before, "the levy came in on the way");
+  assert.equal(trade.purseOf(game), purse + party.fee - spentAt(notes));
 });
 
 test("none of it is anyone's but the captain's", () => {
   const game = newGame("engine_hand");
   inRoom(game, "lighter");
   assert.deepEqual(acts(game).filter((one) => /^take-|^trade-/.test(one.id)), []);
-  assert.deepEqual(trade.offersAt(game, "haven"), { cargo: [], party: null });
+  assert.deepEqual(trade.offersAt(game, "haven"), { party: null });
   ashore(game, "haven");
-  assert.deepEqual(trade.offersAt(game, "haven"), { cargo: [], party: null });
-  assert.throws(() => walk.walkCommand(game, { action: "take-cargo", key: "0:haven:0" }), /That cargo's gone/);
+  assert.deepEqual(trade.offersAt(game, "haven"), { party: null });
+  assert.throws(() => walk.walkCommand(game, { action: "take-passengers", key: "0:haven:p" }), /another ship/);
 });

@@ -173,11 +173,11 @@ test("the checker says what's wrong with a maker: what it takes isn't a good, is
   assert.match(said(portsDir, "cinder.txt", (text) => text.replace(/(the company shops: [\d,.]+ parts crates a day), from [\d,.]+ metal stock/, "$1, from 18 scrap")), /the company shops: parts crates from scrap, and the port holds no scrap: add a line for it under Holds/);
   assert.match(said(portsDir, "haven.txt", (text) => text.replace(/(- meal: usually [\d,.]+), from Tessen Colony/, "$1")), /meal goes into what's made here and never comes: say where it's from, or who makes it/);
   assert.match(said(portsDir, "maris.txt", (text) => text.replace(/(the presses on the Rafts: )[\d,.]+ kelp cake/, "$110 kelp cake")), /kelp cake a day are used here, taken by its makers or sent for from here, and 10 are made: it'll run down/);
-  assert.match(said(goodsDir, "food.txt", (text) => text.replace("[ration_pack], made from meal", "[ration_pack], made from moon cheese")), /goods\/food\.txt \(line \d+\): ration packs: made from moon cheese, which isn't a good in world\/goods/);
+  assert.match(said(goodsDir, "food.txt", (text) => text.replace("[ration_pack_case], made from meal", "[ration_pack_case], made from moon cheese")), /goods\/food\.txt \(line \d+\): ration packs: made from moon cheese, which isn't a good in world\/goods/);
   assert.match(said(goodsDir, "food.txt", (text) => text.replace("hands need: ration crates", "hands need: fuel cells")), /hands need: fuel cells, which isn't one of this tree's goods/);
   // Round in a ring: scrap from machines, which are made from parts crates, which are made from scrap. The tree has
   // to allow it for a maker to try it.
-  const ring = withFile(goodsDir, "parts.txt", (text) => text.replace("[scrap], made from wrecks", "[scrap], made from wrecks, machines"),
+  const ring = withFile(goodsDir, "parts.txt", (text) => text.replace("[scrap_load], made from wrecks", "[scrap_load], made from wrecks, machines"),
     () => said(portsDir, "deepyards.txt", (text) => text.replace(/(the cutters: [\d,.]+ scrap a day), from [\d,.]+ wrecks/, "$1, from 1 machines")));
   assert.match(ring, /making .* takes .*, and making .* takes .* in the end: one of the ports' makers has to give way/);
   assert.deepEqual(portsProblems(), [], "and the files are as they were");

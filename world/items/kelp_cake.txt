@@ -1,0 +1,13 @@
+# Block of kelp cake
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 7
+size: 1x1
+weight: 15
+stack: 4
+
+In a line:
+Kelp pressed and dried. It keeps for years, and tastes like it.
+
+Drawing:
+`[~~]`

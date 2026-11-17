@@ -86,6 +86,15 @@ fuel cells, parts crates, medicine crates, produce. That's what the store holds 
 also the most it holds, so it starts full. A store of sittings (holds 400 sittings) is a count, not things
 you can pick up: the kettle is one.
 
+A freight hold is a store that says holds freight and nothing else:
+
+    - freight hold in The Aft Holds: holds freight: Tie-down rings and netting.
+
+It keeps nothing of the ship's own and starts empty. Whatever she carries for a fee, or buys by the load to
+sell, rides in it as things, as far as its thirty squares go, and it's opened like any store. It wants
+nothing and nobody carries for it; the ship's food, medicine and parts don't count what's in it.
+world/trade.txt has the freight line.
+
 If the room already has a thing with the store's name, that thing is the store, and it keeps its own look.
 If it hasn't, the game puts one there, on a free square of the room, so nothing needs drawing to start.
 Draw one in Tiled later if you'd rather, with the same name, and the game will use yours.

@@ -1449,7 +1449,8 @@ export function boardView(game, place) {
       since: first.by || storyFirst ? whenWords(orders.first.since, now) : null,
     },
     levels: levels && { post: levels.post, by: levels.by, why: levels.by ? null : levels.nobody },
-    stores: model.stores.map((store) => {
+    // Not the freight hold: what's in it is cargo, and nobody on the board carries for it.
+    stores: model.stores.filter((store) => !store.freight).map((store) => {
       if (store.count) {
         const n = countOf(game, store);
         return { id: store.id, name: upperFirst(store.name), room: store.roomName, count: { n, of: store.count.n, unit: store.count.unit }, note: model.kettles.includes(store) ? (sittingOn ? "a sitting is on" : `next sitting ${clockWords(next)}`) : "", rows: [] };

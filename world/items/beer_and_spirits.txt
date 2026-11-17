@@ -1,0 +1,13 @@
+# Keg of beer and spirits
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 26
+size: 1x1
+weight: 30
+stack: 3
+
+In a line:
+Stone ale, ship's beer and worse, by the keg.
+
+Drawing:
+`(==)`

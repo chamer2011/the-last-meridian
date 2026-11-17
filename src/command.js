@@ -22,6 +22,7 @@ import { BODIES, SPARE, THE_CHAIR, readHolderLine, readJobLine, readPostLine, re
 import { storyHealth } from "./story-health.js";
 import { storyRig } from "./story-rig.js";
 import { storyWork } from "./work-hook.js";
+import { storyGoods } from "./story-goods.js";
 import { giveRigPart, loadIfRoom } from "./rig.js";
 import { learnWeak } from "./weak-points.js";
 
@@ -1438,6 +1439,8 @@ export function storyCommand(game, step, place = SHIP_PLACE) {
   if (["rig_program", "rig_part", "rig_tool", "weak", "seal", "unseal"].includes(step.command)) return storyRig(game, step, { giveRigPart, learnWeak, loadIfRoom });
   // The ship's work board, as the story changes it: src/work.js, through src/work-hook.js.
   if (String(step.command).startsWith("work_")) return storyWork(game, step);
+  // A port's real amounts, as the story changes them: src/story-goods.js.
+  if (step.command === "goods") return storyGoods(game, step);
   const notes = [];
   const model = commandOf(place);
   if (!model) return notes;

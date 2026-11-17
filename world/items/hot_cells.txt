@@ -1,0 +1,13 @@
+# Hot cell
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 30
+size: 1x1
+weight: 3
+stack: 4
+
+In a line:
+A cell packed tighter than a generator's, for a rig and whatever else needs more than a cell gives. This one's crated for sale, not fitted.
+
+Drawing:
+`{HH}`

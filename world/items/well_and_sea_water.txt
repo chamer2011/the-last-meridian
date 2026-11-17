@@ -1,0 +1,13 @@
+# Tank of raw water
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 1
+size: 1x1
+weight: 60
+stack: 2
+
+In a line:
+Drawn from under the ground, caught off the rain, or pumped out of a sea. Not for drinking yet.
+
+Drawing:
+`|~~|`

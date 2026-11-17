@@ -1,7 +1,7 @@
 # Cinder Reach
 also called: Cinder Reach, the Reach
 faction: none
-market: refined_fuel, fuel_cell, work_suit, emergency_patch, ration_pack, tool_roll, arc_welder, slug_thrower, shock_baton
+market: jump_fuel, refined_fuel, fuel_cell, work_suit, emergency_patch, ration_pack, tool_roll, arc_welder, slug_thrower, shock_baton
 a place to rest: no
 dangerous: no
 hidden: no

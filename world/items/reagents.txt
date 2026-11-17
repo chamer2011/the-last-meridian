@@ -1,0 +1,13 @@
+# Barrel of reagents
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 8
+size: 1x1
+weight: 40
+stack: 2
+
+In a line:
+Drawn off a refinery: what a laboratory makes its compounds from. The lid says not to breathe it.
+
+Drawing:
+`(%%)`

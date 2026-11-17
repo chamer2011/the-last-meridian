@@ -216,6 +216,9 @@ export function supplyFactor(game, place, good) {
   const level = game.world?.places[place]?.goods[good];
   return (level === undefined ? 1 : priceAtLevel(level)) * standingFactor(game, place);
 }
+// How badly a port wants a good, by how much it has of it: 1 is the usual, more is shorter. It's the number that makes
+// a thing dear where it's short, without what the port thinks of anyone.
+export const scarcityOf = (game, place, good) => priceAtLevel(levelOf(game.world, place, good));
 // The same for any good a port holds, by that good's own level: a fuel cell goes by how many cells the port has, not
 // by its jump fuel.
 export function goodFactor(game, place, good) {

@@ -1,0 +1,13 @@
+# Load of ore
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 3
+size: 1x1
+weight: 50
+stack: 2
+
+In a line:
+Rock with metal in it, by the load.
+
+Drawing:
+`/##\`

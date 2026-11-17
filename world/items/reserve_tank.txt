@@ -1,0 +1,13 @@
+# Reserve tank of air
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 260
+size: 1x1
+weight: 60
+stack: 1
+
+In a line:
+Air stored by the tank, to carry a ship or a station through a breach.
+
+Drawing:
+`(OO)`

@@ -1,0 +1,13 @@
+# Tank of water
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 3
+size: 1x1
+weight: 60
+stack: 2
+
+In a line:
+Melted, drawn or caught where it's found, and filtered once.
+
+Drawing:
+`|==|`

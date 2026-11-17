@@ -1,0 +1,13 @@
+# Roll of cloth
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 9
+size: 1x1
+weight: 12
+stack: 4
+
+In a line:
+Wool and kelp thread, woven.
+
+Drawing:
+`@==`

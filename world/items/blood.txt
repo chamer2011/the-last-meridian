@@ -1,0 +1,13 @@
+# Unit of blood
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 10
+size: 1x1
+weight: 1
+stack: 6
+
+In a line:
+Given, or paid. On Anselm's Mercy it's how care is paid for. Kept cold.
+
+Drawing:
+`<+>`

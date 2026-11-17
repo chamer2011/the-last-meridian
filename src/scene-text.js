@@ -33,6 +33,7 @@ import { REQUEST_STATES } from "./request-hook.js";
 import { healthHolds, readHealthAsk, readHealthEffect } from "./story-health.js";
 import { readRigAsk, readRigEffect, rigHolds } from "./story-rig.js";
 import { readWorkAsk, readWorkEffect, workHolds } from "./work-hook.js";
+import { goodsHolds, readGoodsAsk, readGoodsEffect } from "./story-goods.js";
 
 // The place's systems, in conditions and effects: "power off in The Docks", "alarm ringing at haven", "door locked
 // The Hook". What each one's state can be, asked about and made so.
@@ -328,6 +329,14 @@ export function parseCondition(text) {
         else Object.assign(term, read);
         break;
       }
+      case "goods": {
+        // How many of a good a port holds, in the good's own count: goods ration crates < 200 at haven
+        // (src/story-goods.js).
+        const read = readGoodsAsk(rest);
+        if (read.problem) problems.push(`${read.problem}: "${raw.trim()}"`);
+        else Object.assign(term, read);
+        break;
+      }
       case "hurt":
       case "badly":
       case "ill":
@@ -435,6 +444,7 @@ function termHolds(game, term, helpers) {
     case "computer":
     case "recoded": result = rigHolds(game, term); break;
     case "work": result = workHolds(game, term); break;
+    case "goods": result = goodsHolds(game, term); break;
     case "short": result = shortHolds(game, term.id); break;
     case "down": {
       // Lying where they fell, not yet in the medbay or on the way: game.down, kept by src/medbay.js.
@@ -607,6 +617,9 @@ export function parseEffect(text) {
     case "work":
       // The ship's work board: what comes first, and a job of the story's own (src/work-hook.js).
       return readWorkEffect(words.slice(1), after);
+    case "goods":
+      // A port's real amounts: so many of a good taken out of its stores, or put in (src/story-goods.js).
+      return readGoodsEffect(words.slice(1), after);
     case "release": {
       // Someone let out of the brig before their days are done: * release tarrow: reason.
       const who = words.slice(1).join(" ");

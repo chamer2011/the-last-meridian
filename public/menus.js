@@ -8,6 +8,7 @@ import { shipMenu } from "./ship.js";
 import { commandMenu } from "./command.js";
 import { workMenu } from "./work.js";
 import { dealerSections, rigMenu } from "./rig.js";
+import { freightSections } from "./freight.js";
 import { oddsFor } from "./story.js";
 import { pixelArtFound, pixelFurnitureFound } from "./pixel-art.js";
 
@@ -189,14 +190,16 @@ function marketMenu() {
   const g = ui.game;
   // A dealer in rig parts at this port, with the parts, tools and programs they sell and what they'd pay (public/rig.js).
   const dealer = dealerSections(g, { market: g.market.length > 0 });
-  if (!g.market.length && dealer.length) return columns(...dealer);
+  // The Meridian's freight, for her captain, wherever they're standing: her hold, the loads this dock offers, its goods
+  // by the load, and where things are cheap and dear (public/freight.js).
+  const freight = freightSections(g);
+  if (!g.market.length && dealer.length) return columns(...dealer, ...freight);
   if (!g.market.length) {
     const elsewhere = g.locations.filter((l) => l.hasMarket).map((l) => l.name);
-    return [
-      section(`Credits: ${g.credits}`,
-        empty(`There's no market at ${g.location.name}.`),
-        elsewhere.length > 0 && small(`Known markets: ${elsewhere.join(", ")}.`)),
-    ];
+    const none = section(`Credits: ${g.credits}`,
+      empty(`There's no market at ${g.location.name}${freight.length ? " for your own pocket" : ""}.`),
+      elsewhere.length > 0 && small(`Known markets: ${elsewhere.join(", ")}.`));
+    return freight.length ? columns(...freight, none) : [none];
   }
   // The rig's parts are sold one at a time to a dealer in them, below, not the rig whole.
   const sellable = g.inventory.filter((i) => !(i.type === "story" && i.price === 0) && i.id !== "rig");
@@ -215,6 +218,7 @@ function marketMenu() {
         el("span", {}, `${i.name}${i.count > 1 ? ` x${i.count}` : ""}`, i.equipped && el("span", { class: "tag on" }, " equipped")),
         el("button", { disabled: Boolean(g.combat), onclick: act({ action: "sell", id: i.id }) }, `Sell ${i.sellPrice} cr`))) : muted("Nothing to sell.")),
     ...dealer,
+    ...freight,
   );
 }
 
@@ -363,7 +367,7 @@ export const MENUS = {
   command: { label: "Command", command: "command", about: "Who holds each post aboard the Meridian, who chose them, and since when", view: commandMenu },
   map: { label: "Star map", command: "map", about: "The chart of known space, and setting course", view: mapMenu },
   rig: { label: "Rig", command: "rig", about: "Your pocket computer: the programs on it, loading them, and writing new ones at the Repair Bay's bench", view: rigMenu },
-  market: { label: "Market", command: "market", about: "Buying and selling, where there's a market", view: marketMenu },
+  market: { label: "Market", command: "market", about: "Buying and selling, where there's a market, and the Meridian's freight", view: marketMenu },
   bestiary: { label: "Enemies met", command: "bestiary", about: "Enemies you know of, how they fight, and the simulator", view: bestiaryMenu },
   mapedit: { label: "Map editor", command: "mapedit", about: "Redraw the ship's decks yourself: walls, floors, doors, rooms and what's in them", editor: true, view: () => el("div") },
   settings: { label: "Settings", command: "settings", about: "Reading, display, checks, fights, saved games, and your files", view: settingsMenu },

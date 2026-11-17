@@ -4,7 +4,7 @@ stands for: fuel, by its jump fuel
 power is: fuel cells
 
 Basic:
-- sour gas, by the canister: What the wells under a rock give up, and what a skimmer takes out of a cloud.
+- sour gas, by the canister [sour_gas]: What the wells under a rock give up, and what a skimmer takes out of a cloud.
 
 Refined:
 - refined fuel, by the drum [refined_fuel], made from sour gas, ice, wrecks: Gas and ice worked into something that burns clean, or drained from a dead ship's tanks: what cells are charged from and jump fuel is made of.
@@ -13,5 +13,5 @@ Developed:
 - fuel cells [fuel_cell], made from refined fuel, parts crates: The cells a generator burns. One runs the Meridian for eight hours. The casings come out of a parts crate.
 
 Advanced:
-- jump fuel, by the measure, made from refined fuel: What a jump burns: one to three measures from the tank.
-- hot cells, made from fuel cells: Cells packed tighter, for a rig and whatever else needs more than a cell gives.
+- jump fuel, by the measure [jump_fuel], made from refined fuel: What a jump burns: one to three measures from the tank.
+- hot cells [hot_cells], made from fuel cells: Cells packed tighter, for a rig and whatever else needs more than a cell gives.

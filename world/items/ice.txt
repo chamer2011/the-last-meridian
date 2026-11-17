@@ -1,0 +1,13 @@
+# Load of ice
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 2
+size: 1x1
+weight: 50
+stack: 2
+
+In a line:
+Cut from a ring, a comet or a cloud. Water starts here, and so does some fuel.
+
+Drawing:
+`/**\`

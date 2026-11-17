@@ -28,7 +28,7 @@ aren't read.
 
     Developed:
     - ration crates [ration_crate], made from meal, kelp cake: The crates a pantry holds.
-    - ration packs, by the case [ration_pack], made from meal: Packs and tins for one person.
+    - ration packs, by the case [ration_pack_case], made from meal: Packs and tins for one person.
 
     Advanced:
     - provisions, by the hamper, made from ration crates, fruit and honey: Fresh bread, honey, sausage.
@@ -89,7 +89,7 @@ A GOOD
 
 A line under a step, starting with a dash:
 
-    - ration packs, by the case [ration_pack], made from meal: Packs and tins for one person.
+    - ration packs, by the case [ration_pack_case], made from meal: Packs and tins for one person.
 
 its name        as it's counted, in the plural: ration crates, medkits, machines. This is what a port's file
                 calls it, and what the game says: "1,180 ration crates".
@@ -97,9 +97,10 @@ its name        as it's counted, in the plural: ration crates, medkits, machines
 , by the ...    how it's counted, when its name isn't a count: drinking water, by the cask ("150 casks of
                 drinking water"); jump fuel, by the measure. Leave it out for a name that counts itself.
 
-[item]          the game's own item, by its id in world/items, if the good is one: [ration_crate]. Leave it out
-                if it isn't. Nothing is done with it yet; it's for the steps where the ship buys and carries
-                the goods themselves.
+[item]          the item one of this good is when it's carried, by its id in world/items: [ration_crate] for a
+                ration crate, [meal] for a sack of meal. It's what rides in the Meridian's freight hold when she
+                carries the good or buys it by the load, and its file gives its price, its weight and how many
+                go to a square. A good with no item can't be carried: a dead ship is the only one.
 
 , made from ... the goods it can be made from, with commas between them: made from meal, kelp cake. Never an
                 and: some goods have one in their own name (plasma and dressings). They can be goods of

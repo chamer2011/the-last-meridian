@@ -23,9 +23,17 @@ draft: the AI's, not yet edited by the owner
 # so many days by a tanker from the nearest port that sells fuel, with enough to reach that port, at the port's price
 # times the number below. What the purse can't pay is owed at that port.
 #
-# Cargo and passengers are offered at a port while the ship is docked there and you're ashore: a few crates, or a few
-# people, for another port on your chart. The fee goes into the purse when the ship gets there; cargo delivered late
-# pays half. Passengers eat at the sittings on the way.
+# Freight is a port's real goods going where they're wanted. While she's docked, the Market offers what this port
+# can spare for a port you know of that's running low on it: so many sacks, crates or casks, which leave this port
+# when they're loaded, ride in her freight hold, and go into the far port's stores when she docks there. The fee is
+# so many credits for each square of the hold the load takes and each measure of fuel the trip takes, times how badly
+# it's wanted there (the same number that makes a thing dear where it's short), and it's paid into the purse on
+# arrival. Late, it pays half; and only what's still in the hold is paid for. She can also buy any port's goods by
+# the load for herself, out of the purse, and sell them wherever a port holds that good; those prices come from each
+# good's item in world/items and from how much the port has.
+#
+# Passengers are offered at a port while the ship is docked there and you're ashore: a few people for another port on
+# your chart. The fee goes into the purse when the ship gets there, and they eat at the sittings on the way.
 #
 # After changing this file, run "npm run check-story", and close and reopen the game.
 
@@ -35,5 +43,5 @@ a fuel cell: 0.15 times the port's fuel price
 the slate: 1.5 times the price, up to 300 credits a port, standing falls 1 a day until it's paid
 while she owes: the dock fills her stores to 33 percent
 a distress call: answered in 3 days, at 2 times the price
-cargo: 2 offers a port, 4 to 10 crates, 15 credits a crate, 10 days to deliver, 20 crates in the hold
+freight: up to 3 offers a port, 4 credits a square for each measure of fuel the trip takes, 8 days to deliver
 passengers: 4 to 10 people, 10 credits each

@@ -1,14 +1,13 @@
 # Refined Fuel
 order: 40
-type: consumable
-price: 170
+type: goods
+price: 14
 size: 1x1
 weight: 2.5
 stack: 3
-effect: fuel 5
 
 In a line:
-Adds 5 fuel to the ship.
+A drum of fuel refined clean: what cells are charged from and jump fuel is made of. It doesn't go in a ship's tank as it is.
 
 Drawing:
 `{FF}`

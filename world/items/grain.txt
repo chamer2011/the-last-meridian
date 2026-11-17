@@ -1,0 +1,13 @@
+# Load of grain
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 4
+size: 1x1
+weight: 50
+stack: 2
+
+In a line:
+Barley, wheat and beans off a field, by the load. A mill makes meal of it.
+
+Drawing:
+`/::\`

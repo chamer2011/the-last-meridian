@@ -1,0 +1,13 @@
+# Canister of sour gas
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 5
+size: 1x1
+weight: 15
+stack: 4
+
+In a line:
+What a well under a rock gives up, under pressure. A refinery makes fuel of it.
+
+Drawing:
+`(||)`

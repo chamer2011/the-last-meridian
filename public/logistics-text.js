@@ -273,6 +273,8 @@ export function readStoreLine(text) {
   if (!name) return { problem: `"${text}" needs the store's name before in` };
   if (!room) return { problem: `"${text}" needs the room after in` };
   const holdsText = (pieces[1] ?? "").trim();
+  // A hold for freight keeps nothing of the ship's own: whatever she's carrying goes into it, as far as its squares go.
+  if (/^holds\s+freight$/i.test(holdsText)) return { name, room, holds: [], freight: true, wants: [], urgent: [], carriers: [], look: pieces.slice(2).join(":").trim() || null };
   if (!/^holds\s+\S/i.test(holdsText)) return { problem: `"${text}" needs holds after the colon, with what the store holds: holds 12 ration crates, 12 produce` };
   const holds = [];
   const wants = [];
@@ -306,7 +308,7 @@ export function readStoreLine(text) {
 // A store's line from its pieces, for the Story board: the clauses with semicolons between them.
 export function writeStoreLine(store) {
   const marks = (list) => list.map((one) => (one.what ? `${one.n} ${one.what}` : `${one.n}`)).join(", ");
-  const clauses = [`holds ${(store.holds ?? []).map((one) => `${one.n} ${one.what}`).join(", ")}`];
+  const clauses = [store.freight ? "holds freight" : `holds ${(store.holds ?? []).map((one) => `${one.n} ${one.what}`).join(", ")}`];
   if (store.wants?.length) clauses.push(`wants ${marks(store.wants)}`);
   if (store.urgent?.length) clauses.push(`urgent under ${marks(store.urgent)}`);
   if (store.carriers?.length) clauses.push(`carried by ${store.carriers.join(", ")}`);

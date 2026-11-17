@@ -3,15 +3,15 @@ draft: the AI's, not yet edited by the owner
 hands need: drinking water
 
 Basic:
-- ice, by the load: Cut from a ring, a comet or a cloud. Water starts here, and so does some fuel.
-- well and sea water, by the tank: Drawn from under the ground, caught off the rain, or pumped out of a sea.
+- ice, by the load [ice]: Cut from a ring, a comet or a cloud. Water starts here, and so does some fuel.
+- well and sea water, by the tank [well_and_sea_water]: Drawn from under the ground, caught off the rain, or pumped out of a sea.
 
 Refined:
-- water, by the tank, made from ice, well and sea water: Melted, drawn or caught where it's found, and filtered once.
+- water, by the tank [water], made from ice, well and sea water: Melted, drawn or caught where it's found, and filtered once.
 
 Developed:
-- drinking water, by the cask, made from water: Filtered and casked. People drink before they eat.
+- drinking water, by the cask [drinking_water], made from water: Filtered and casked. People drink before they eat.
 - air bottles [air_bottle], made from water: Air split from water and bottled: an hour outside in a suit, or a room's worth on a bad day.
 
 Advanced:
-- reserve tanks, made from air bottles: Air stored by the tank, to carry a ship or a station through a breach.
+- reserve tanks [reserve_tank], made from air bottles: Air stored by the tank, to carry a ship or a station through a breach.

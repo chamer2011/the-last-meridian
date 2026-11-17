@@ -1,0 +1,13 @@
+# Load of metal stock
+draft: Claude's, not yet edited by the owner
+type: goods
+price: 9
+size: 1x1
+weight: 50
+stack: 2
+
+In a line:
+Ore smelted into plate and bar.
+
+Drawing:
+`[==]`

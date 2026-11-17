@@ -8,6 +8,7 @@ import { initMap } from "./map.js";
 import { initShip } from "./ship.js";
 import { initCommand } from "./command.js";
 import { initWork } from "./work.js";
+import { initFreight } from "./freight.js";
 import { initRig } from "./rig.js";
 import { openBoard } from "./board.js";
 import { openMapEditor } from "./mapedit.js";
@@ -778,6 +779,7 @@ initMap({ ui, render, runAction, renderMenus, openMenu, closeMenu });
 initShip({ ui, render, runAction, renderMenus, openMenu, closeMenu });
 initCommand({ ui, render, runAction, closeMenu, openPersonSheet });
 initWork({ ui, render, runAction });
+initFreight({ ui });
 initRig({ ui, runAction, renderMenus: () => renderMenus() });
 initWalk({
   ui,

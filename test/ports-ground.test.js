@@ -167,8 +167,8 @@ test("the checker keeps the ground to the basic goods, and everything else to be
   assert.match(said(portsDir, "frontier.txt", (text) => text.replace(/(- the Long Fields: [\d,.]+ grain a day)/, "$1, from 5 leaf")), /comes out of the ground, so it isn't made from anything/);
   assert.match(said(portsDir, "orrin.txt", (text) => text.replace("Ground:", "Ground:\n- the comet's dust: 2 ore a day")), /the comet's dust: ore come out of the ground here, and the port holds none: add a line for it under Holds/);
   assert.match(said(portsDir, "frontier.txt", (text) => text.replace(/(- the drying sheds: [\d,.]+ meal a day), from [\d,.]+ grain/, "$1")), /the drying sheds: meal from nothing\. Say from how many of what \(grain\)/);
-  assert.match(said(goodsDir, "food.txt", (text) => text.replace("- grain, by the load:", "- grain, by the load, made from kelp:")), /goods\/food\.txt \(line \d+\): grain: a basic good comes out of the ground, and isn't made from anything/);
-  assert.match(said(goodsDir, "food.txt", (text) => text.replace("- meal, by the sack, made from grain:", "- meal, by the sack:")), /meal: say what it's made from \(made from \.\.\.\)\. Only the basic goods come out of the ground/);
+  assert.match(said(goodsDir, "food.txt", (text) => text.replace("- grain, by the load [grain]:", "- grain, by the load [grain], made from kelp:")), /goods\/food\.txt \(line \d+\): grain: a basic good comes out of the ground, and isn't made from anything/);
+  assert.match(said(goodsDir, "food.txt", (text) => text.replace("- meal, by the sack [meal], made from grain:", "- meal, by the sack [meal]:")), /meal: say what it's made from \(made from \.\.\.\)\. Only the basic goods come out of the ground/);
   // A port with no ground for what it makes things from, and nowhere to send for it.
   assert.match(said(portsDir, "orrin.txt", (text) => text.replace(/\nGround:\n- the comet's own ice: [\d,.]+ ice a day\n/, "\n")), /ice goes into what's made here and never comes: say where it's from, or who makes it/);
   assert.deepEqual(portsProblems(), [], "and the files are as they were");
