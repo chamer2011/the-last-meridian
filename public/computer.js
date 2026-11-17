@@ -9,6 +9,8 @@
 // side, takes it out, and H again, or AWAY on it, puts it back. It slides out from behind the computer's edge and back
 // in, and each time it comes out it starts up: its screen is dark until it has arrived, then it checks its own parts
 // on it, a line to each (public/rig-motion.js has the times of both; the list of parts is the game's, src/rig.js).
+// Going back, its screen goes off first, the picture squeezing to a line and a dot, and once it's in the pocket it's
+// off the computer as well, where it can come off.
 // Skin and the old screen's strength are Settings choices (desktop.css). Nothing here needs typing. Since step 6 a
 // computer can look like something else: a door's panel with its keypad, a junction box's service menu and a camera's
 // feed on the rig's little screen, and NAVCOM 7, the Navy's desktop, for the ship's main system.
@@ -42,7 +44,7 @@ const startWindows = () => ({
 });
 
 export function resetComputer() {
-  Object.assign(comp, { app: null, chart: null, id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1, rigTab: null, rigSlide: null, wasLocked: null, logSeen: 0, boot: null, rigOut: false, rigMove: null, rigBoot: null, woke: false });
+  Object.assign(comp, { app: null, chart: null, id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1, rigTab: null, rigSlide: null, wasLocked: null, logSeen: 0, boot: null, rigOut: false, rigMove: null, rigBoot: null, unplug: null, woke: false });
 }
 resetComputer();
 
@@ -102,14 +104,22 @@ async function send(body) {
     const reply = await api("/api/computer", body);
     app.ui.game = reply.game;
     comp.sending = false;
+    settleUnplug();
     if (reply.said) comp.message = reply.said;
     // The whole page, because logging off, being thrown out, or reaching for another computer changes more than this window.
     app.render();
   } catch (err) {
     comp.sending = false;
+    settleUnplug();
     comp.message = err.message;
     draw();
   }
+  // The rig went back in the pocket while this order was on its way: its unplugging goes now.
+  flushUnplug();
+}
+// Only one order is on its way at a time, so one that has come back while an unplugging was sent was that unplugging.
+function settleUnplug() {
+  if (comp.unplug === "sent") comp.unplug = null;
 }
 
 const logOff = () => send({ action: "logoff" });
@@ -788,8 +798,10 @@ function drawLead() {
   const desk = document.getElementById("computer-window");
   const rig = document.querySelector("#computer-rig > .rig-strip") ?? document.getElementById("computer-rig");
   const layer = svg.parentElement;
-  // No lead while the rig is on its way out of the pocket or back into it: it's drawn once the rig has arrived.
-  if (!kind || !LEADS[kind] || !desk || !rig || !layer || rigDoing()) {
+  // No lead while the rig is on its way out of the pocket or back into it: it's drawn once the rig has arrived, and
+  // stays while its screen goes off, until the rig leaves.
+  const doing = rigDoing();
+  if (!kind || !LEADS[kind] || !desk || !rig || !layer || (doing && doing.phase !== "off")) {
     svg.innerHTML = "";
     return;
   }
@@ -805,35 +817,72 @@ function drawLead() {
 
 // ---- The rig in the pocket ----------------------------------------------------------------------------------------
 // The rig stays in the player's pocket until it's taken out: H, or the tab down the computer's side. H again, or AWAY on
-// the rig, puts it back. Putting it away only puts its window away: a rig that's plugged in stays plugged in (UNPLUG
-// takes it off), and the tab's lights say so. Each time it comes out it starts up, checking its own parts on its screen.
+// the rig, puts it back. Each time it comes out it starts up, checking its own parts on its screen. Going back, its
+// screen goes off first, and once it's in the pocket it's off the computer too, wherever UNPLUG was on offer (the
+// owner's answer on the plan's page: away means unplugged). A junction box or a camera is reached only through the rig,
+// and a computer reached over the network has nothing here to unplug, so there the rig stays connected in the pocket,
+// and the tab's lights say so.
 function toggleRig() {
   const view = comp.view;
   if (!view) return;
+  const now = performance.now();
   comp.rigOut = !comp.rigOut;
-  // It comes out and goes back by an animation, and the same press in the middle turns it round from where it is.
-  comp.rigMove = rigStill() ? null : rigTurned(comp.rigMove, performance.now(), comp.rigOut ? "out" : "away");
-  // Coming out, it starts up. Where the player's computer is set to show no animations it doesn't, and then a junction
-  // box or a camera, which the rig connects to as they open, still shows it waking the first time it's taken out there.
-  if (comp.rigOut && !rigStill() && view.rigCheck) startRigCheck();
-  else {
+  if (comp.rigOut) {
+    // Taken out again before the unplugging was sent: it never came off.
+    if (comp.unplug === "due") comp.unplug = null;
+    // It comes out and goes back by an animation, and the same press in the middle turns it round from where it is.
+    comp.rigMove = rigStill() ? null : rigTurned(comp.rigMove, now, "out");
+    // Coming out, it starts up. Where the player's computer is set to show no animations it doesn't, and then a
+    // junction box or a camera, which the rig connects to as they open, still shows it waking the first time it's
+    // taken out there.
+    if (!rigStill() && view.rigCheck) startRigCheck();
+    else {
+      stopRigCheck();
+      if (!comp.woke && view.reach?.plugged && !view.reach?.remote && THROUGH_RIG.includes(view.look)) startBoot();
+    }
+    comp.woke = true;
+  } else {
+    // Going back, its screen goes off first, where it's on: the rig out and at rest, not in the middle of coming out
+    // or of starting up, and with a screen showing (in a narrow window it has one only while its page is out).
+    const off = !rigStill() && !rigDoing() && !checkNow() && (!rigFolded() || Boolean(comp.rigSlide));
     stopRigCheck();
-    if (comp.rigOut && !comp.woke && view.reach?.plugged && !view.reach?.remote && THROUGH_RIG.includes(view.look)) startBoot();
+    comp.rigMove = rigStill() ? null : rigTurned(comp.rigMove, now, "away", { off });
+    // With nothing to watch, it's in the pocket at once.
+    if (!comp.rigMove) rigGone();
   }
-  if (comp.rigOut) comp.woke = true;
-  else comp.rigSlide = null;
   draw();
   followRigMove();
   followRigCheck();
 }
 
+// The rig is back in the pocket: its page is folded away with it, and where UNPLUG was on offer it comes off the
+// computer, as UNPLUG takes it off. The order waits for one that's already on its way, and whether there's anything to
+// unplug is looked at once that one is back: it may have been the connecting itself.
+const canUnplug = (view) => Boolean(view?.reach?.plugged) && !view.reach.remote && !THROUGH_RIG.includes(view.look);
+function rigGone() {
+  comp.rigSlide = null;
+  if (!comp.sending && !canUnplug(comp.view)) return;
+  comp.unplug = "due";
+  flushUnplug();
+}
+function flushUnplug() {
+  if (comp.unplug !== "due" || comp.sending || !comp.view) return;
+  if (!canUnplug(comp.view)) {
+    comp.unplug = null;
+    return;
+  }
+  comp.unplug = "sent";
+  send({ action: "unplug" });
+}
+
 // ---- The rig coming out and going back -------------------------------------------------------------------------------
 // Taken out, the rig slides out from behind the computer's edge, where its tab was, and the computer slides over to make
-// room, since the two sit in the middle together. Put away, it slides back in, and its tab slides out again. A rig that
-// was dragged away from the computer has no edge to come from, and grows and shrinks where it is. The times and what's
-// happening when are public/rig-motion.js's; the pictures are the stylesheet's animations, each started as far in as
-// the move has got, so that drawing the window again in the middle of one carries on with it. Nothing moves when the
-// player's computer is set to show no animations: the rig is there, or it isn't, as it was before.
+// room, since the two sit in the middle together. Put away, its screen goes off first (the picture squeezes to a bright
+// line, the line to a dot, and the dot fades), then it slides back in with its screen dark, and its tab slides out
+// again. A rig that was dragged away from the computer has no edge to come from, and grows and shrinks where it is.
+// The times and what's happening when are public/rig-motion.js's; the pictures are the stylesheet's animations, each
+// started as far in as the move has got, so that drawing the window again in the middle of one carries on with it.
+// Nothing moves when the player's computer is set to show no animations: the rig is there, or it isn't.
 
 // How much wider than its screen's page the rig's case is, and how wide its tab is until one's been measured.
 const RIG_CASE = 52;
@@ -841,7 +890,7 @@ const STRIP_WIDE = 64;
 let rigTabWide = 50;
 const rigStill = () => typeof window !== "undefined" && Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
 const rigDoing = () => rigPhase(comp.rigMove, performance.now());
-const rigShown = () => comp.rigOut || rigDoing()?.phase === "away";
+const rigShown = () => comp.rigOut || ["off", "away"].includes(rigDoing()?.phase);
 
 // The window's own box says what the rig is doing and how far in it is, for the stylesheet, and how wide the rig is,
 // for how far the computer has to slide until that's been measured.
@@ -863,8 +912,9 @@ function fitRigShift() {
   desk.style.setProperty("--rig-shift", `${Math.round((row.offsetWidth - win.offsetWidth - rigTabWide) / 2)}px`);
 }
 
-// What has to be drawn again as a move goes on: the row without the rig, and its tab coming out, once it's gone in;
-// and the lead, once it's out.
+// What has to be drawn again as a move goes on: the rig leaving with its screen dark, once that has gone off; the row
+// without the rig, and its tab coming out, once it's gone in, which is also when it comes off the computer; and the
+// lead, once it's out.
 let rigTimer = 0;
 function followRigMove() {
   clearTimeout(rigTimer);
@@ -873,10 +923,14 @@ function followRigMove() {
     comp.rigMove = null;
     return;
   }
+  const id = comp.id;
   rigTimer = setTimeout(() => {
+    // Another computer by now: this move was the last one's.
+    if (comp.id !== id) return;
     if (!rigDoing()) comp.rigMove = null;
+    if (before.phase === "away") rigGone();
     if (document.getElementById("computer")) {
-      if (before.phase === "away") draw();
+      if (before.phase === "off" || before.phase === "away") draw();
       else drawLead();
     }
     followRigMove();
@@ -889,7 +943,8 @@ const rigToggle = (event) => {
 const AWAY = "Put your rig back in your pocket (H)";
 function rigPocketTab(view) {
   const reach = view.reach ?? {};
-  const on = reach.ok || reach.remote;
+  // Its lights show while it's still connected in the pocket, never while it's coming off the computer.
+  const on = (reach.ok || reach.remote) && !comp.unplug;
   return el("button", { class: "rig-pocket", title: on ? "Take out your rig (H): it's still plugged in" : "Take out your rig (H)", "aria-label": "Take out your rig (H)", onclick: rigToggle },
     picture("rig"), el("span", {}, "RIG"), el("kbd", {}, "H"),
     on && el("span", { class: "rig-pocket-lights" }, linkLight(reach), heatLight(view.rigHeat)));
@@ -901,10 +956,12 @@ const linkName = (words) => String(words ?? "").replace(/^(an?|the) /i, "").toUp
 const capital = (text) => (text ? `${text[0].toUpperCase()}${text.slice(1)}` : "");
 // The rig's two lamps. Each says which it is (data-light), so that the rig starting up can light them again in place.
 const rigLight = (cls, label, title) => el("span", { class: "pocket-light", title, "data-light": label.toLowerCase() }, el("i", { class: `lamp${cls ? ` ${cls}` : ""}` }), label);
-// While the rig starts up they're off as it arrives, and blink as it checks its parts.
+// While the rig starts up they're off as it arrives, and blink as it checks its parts. Going back with its screen off,
+// they're off too, unless it stays connected in the pocket.
 const startingLight = (label) => {
   const lamp = checkLamp();
-  return lamp ? rigLight(lamp === "busy" ? "busy" : "", label, "Starting up: your rig is checking its parts") : null;
+  if (lamp) return rigLight(lamp === "busy" ? "busy" : "", label, "Starting up: your rig is checking its parts");
+  return rigDoing()?.phase === "away" && canUnplug(comp.view) ? rigLight("", label, "Switched off") : null;
 };
 const linkLight = (reach) => (booting() ? rigLight("busy", "LINK", "Connecting: the rig is waking up") : startingLight("LINK") ?? rigLight(reach.remote ? "net" : reach.ok ? "on" : "", "LINK", reach.remote ? "Over the network, from where it's plugged in" : reach.ok ? `Plugged in by ${reach.words}` : `Not connected: this takes ${reach.words}`));
 const heatLight = (heat) => startingLight("HEAT") ?? rigLight(!heat || heat.dead ? "" : heat.overheating ? "hot" : heat.fan ? "warm" : "cool", "HEAT", heat ? `Your rig: ${heat.dead ? `it won't start, ${heat.dead}` : heat.words}` : "Not working: it warms while it works someone else's computer");
@@ -947,21 +1004,28 @@ function pocketNode(view, width, { closeable = false } = {}) {
   else if (tab === "prog") page = pocketPrograms(view);
   else page = el("div", { class: "pocket-log", id: "rig-log", role: "log" }, view.log.slice(-14).map((entry) => lineNode(entry)));
   const where = reach.remote ? "OVER THE NETWORK" : reach.ok ? `ON THE ${linkName(reach.words)}` : "NOT CONNECTED";
+  // What the rig is doing, if it's on its way: its screen going off ("off"), or sliding back with it dark ("away").
+  const phase = rigDoing()?.phase ?? null;
   return el("div", { class: "pocket", role: "group", "aria-label": "Your rig", title: "Drag the rig's case to move it" },
     closeable && el("button", { class: "pocket-close", title: "Fold the rig away", "aria-label": "Fold the rig away", onclick: (event) => { event.stopPropagation(); comp.rigSlide = null; stopRigCheck(); draw(); } }, "×"),
     el("div", { class: "pocket-top" },
       el("span", {}, [face.board, face.casing].filter(Boolean).join(" · ").toUpperCase() || "YOUR RIG"),
       el("span", { class: "pocket-lights" }, linkLight(reach), heatLight(heat), el("button", { class: "pocket-away", title: AWAY, "aria-label": AWAY, onclick: rigToggle }, "AWAY"))),
-    el("div", { class: "pocket-screen" },
-      el("div", { class: "pocket-tabs", role: "tablist", "aria-label": "Your rig's pages" },
-        POCKET_TABS.map(([id, label, about]) => el("button", { role: "tab", "aria-selected": String(tab === id), title: about, onclick: (event) => { event.stopPropagation(); comp.rigTab = id; if (comp.rigSlide) comp.rigSlide = id; draw(); } }, label, id === "log" && unseenLog(view, tab) && el("i", { class: "pocket-dot", title: "Something new" }))),
-        el("span", { class: "pocket-where" }, where)),
-      el("div", { class: "pocket-page", style: `width:${width}px;min-height:${Math.max(tall, 150)}px` }, page),
+    // The screen's picture is its tabs and its page together (the tube), which is what squeezes to a line when the
+    // screen goes off; it's dark while the rig slides back into the pocket.
+    el("div", { class: `pocket-screen${phase === "away" ? " dark" : ""}` },
+      el("div", { class: "pocket-tube" },
+        el("div", { class: "pocket-tabs", role: "tablist", "aria-label": "Your rig's pages" },
+          POCKET_TABS.map(([id, label, about]) => el("button", { role: "tab", "aria-selected": String(tab === id), title: about, onclick: (event) => { event.stopPropagation(); comp.rigTab = id; if (comp.rigSlide) comp.rigSlide = id; draw(); } }, label, id === "log" && unseenLog(view, tab) && el("i", { class: "pocket-dot", title: "Something new" }))),
+          el("span", { class: "pocket-where" }, where)),
+        el("div", { class: "pocket-page", style: `width:${width}px;min-height:${Math.max(tall, 150)}px` }, page)),
       // Starting up, the whole screen is the rig's check of its parts, over the page that's there once it's done.
-      checkFx(view)),
+      checkFx(view),
+      // Going off, the bright line the picture squeezes to, and the dot the line shrinks to.
+      phase === "off" && el("div", { class: "pocket-off", "aria-hidden": "true" }, el("i", { class: "beam" }), el("i", { class: "dot" }))),
     el("div", { class: "pocket-bottom" },
       el("span", {}, `${view.rig?.used ?? 0} OF ${view.rig?.memory ?? 0} BLOCKS`),
-      reach.plugged && !reach.remote && !THROUGH_RIG.includes(view.look) && el("button", { disabled: comp.sending, title: "Take your rig off this one", onclick: (event) => { event.stopPropagation(); send({ action: "unplug" }); } }, "UNPLUG"),
+      canUnplug(view) && el("button", { disabled: comp.sending, title: "Take your rig off this one", onclick: (event) => { event.stopPropagation(); send({ action: "unplug" }); } }, "UNPLUG"),
       el("span", {}, view.netmap && reach.ok && !view.locked ? `${view.netmap.hop.minutes} MIN A HOP` : "")));
 }
 
@@ -1085,8 +1149,11 @@ function checkFx(view) {
   return el("div", { class: "pocket-fx", id: "rig-fx", title: "Click to skip", onclick: (event) => { event.stopPropagation(); endRigCheck(); } },
     el("div", { class: "pocket-boot pocket-check", id: "rig-check" }, checkLines(view, check.shown)));
 }
-// The folded rig's page: sliding out of the strip when the check brought it out, started as far in as it has got.
+// The folded rig's page: sliding out of the strip when the check brought it out, and back into it as the rig leaves
+// for the pocket, each started as far in as it has got.
 function slideLook() {
+  const doing = rigDoing();
+  if (doing?.phase === "away") return { class: "rig-slide leaving", style: `--page-at:-${Math.round(doing.ms)}ms` };
   const boot = comp.rigBoot;
   const ms = boot?.paged && boot.id === comp.id ? performance.now() - boot.arrive : null;
   return ms === null || ms >= RIG_CHECK.page ? { class: "rig-slide" } : { class: "rig-slide arriving", style: `--page-at:-${Math.max(0, Math.round(ms))}ms` };

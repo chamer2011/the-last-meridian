@@ -1025,10 +1025,9 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
     overlay off and relights, in place. `linkLight` and `heatLight` ask `startingLight` first.
   - `public/desktop.css`: `.pocket-screen` is `position: relative`; `.pocket-fx`, `.pocket-check`, `.check-row`
     (three columns: 7ch, the name with a dotted leader, 8ch), `b.worn`, `b.bad`; `rig-page-in`.
-  - **For step 3 (the power-off):** it has to be a phase before the away move, the way the check is a phase after the
-    out move: today `toggleRig` flips `comp.rigOut` at once and the rig slides back with its page showing. Their
-    click is that putting it away unplugs it; say the costs again first (a minute and being seen at every reconnect;
-    a junction box or a camera can't be unplugged, `THROUGH_RIG`). No power-off was kept on the page: ask.
+  - **For step 3 (the power-off),** as it stood when this was written: it has to be a phase before the away move,
+    the way the check is a phase after the out move, since `toggleRig` flipped `comp.rigOut` at once and the rig slid
+    back with its page showing. It's built since: see the next section.
   - **Tests:** `test/rig-check.test.js` (6: a new rig's lines, worn and broken, a broken core, parts taken out, a
     test save's rig, the view carrying it) and five more in `test/rig-motion.test.js` (the times, what's shown when,
     the lamps, the next change, the stylesheet and the page agreeing with them); 1,420 tests in all.
@@ -1041,9 +1040,78 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
     window and the check carried on; CONNECT still took its three seconds with no check over it, and after it the
     link said PLUGGED; the junction box never showed the wake-up, and showed it once with no animations; in the
     narrow window the page slid out, and the cross, the strip's buttons and PLUG IN each did what's said above; a
-    dragged rig checked its parts where it was. No errors on the page. **Not checked:** a camera (the same window as
-    the junction box), practice and going along the network (read in the code only: the rig is out already and
-    nothing starts), a board with an extra socket or two sinks (the names are joined by the server and cut with dots
-    by the stylesheet if too long, which no screen has shown), the installed app, and nobody has watched it at full
-    speed on a real screen. On the test save the link's line names the cable jack even at a junction box, since that
-    rig lists the parts it really has.
+    dragged rig checked its parts where it was. The biggest rig on the shortest screen was looked at last, after the
+    lines above were first written: a Navy board with two sinks, three memory blocks and an extra (six lines,
+    "FIN SINK + COLD PLATE" the longest name) at a locked logon, where the rig's screen is 221 px tall: all of it
+    fitted at both widths, with 61 px to spare under the last line and no name cut. No errors on the page. **Not
+    checked:** a camera (the same window as the junction box), practice and going along the network (read in the code
+    only: the rig is out already and nothing starts), the installed app, and nobody has watched it at full speed on
+    a real screen. On the test save the link's line names the cable jack even at a junction box, since that rig lists
+    the parts it really has.
+- **Step 3, the power-off, is built (2026-11-16), untried by them.** Their clicks were read again first and were
+  unchanged (no power-off kept on the page; `plugged: unplugs`). Step 2's report told them once more what unplugging
+  costs and asked them to say if they'd rather the rig stayed plugged in; the box asked "Build step 3, the power-off
+  when the rig goes back in your pocket?", and they answered **"Yes, tube collapse"**. So: my pick of the power-offs,
+  and their own answer on unplugging.
+  - **What they see:** put away (H, AWAY, or AWAY on the strip), the rig's screen goes off first. The picture, which
+    is its tabs and its page together, squeezes to a bright line across the middle (180 ms), the line shrinks to a dot
+    (150 ms), and the dot fades (270 ms): 600 ms, the page's example. Then the rig slides back in with its screen dark
+    (300 ms), and the tab comes out (190 ms). The lead stays while the screen goes off and goes as the rig leaves.
+  - **When it doesn't play:** only a screen that's on can go off. A rig still sliding out, or still starting up,
+    turns round as before: its screen goes dark at once and it slides back. In a narrow window with the rig's page
+    folded away there's no screen, and the strip just slides back. With no animations shown the rig is simply gone.
+  - **H in the middle:** while the screen is going off the rig hasn't moved, so it stays where it is and starts up
+    again (the parts check, since every coming out has one). While it's sliding in, it turns round from where it is,
+    as in step 1, and starts up when it has arrived.
+  - **Putting it away unplugs it,** as they clicked. Once the rig is in the pocket, which is when the slide ends, or
+    at once with no animations, the page sends the `unplug` order, the same one the UNPLUG button sends, wherever
+    that button is on offer: plugged in here, not over the network, not a junction box or a camera (`canUnplug`).
+    The session's log gets "You unplug your rig.", the tab shows no lights, and the next time the rig comes out its
+    page says NOT CONNECTED: CONNECT again, a minute, and seen at someone else's. A change of mind before the rig is
+    all the way in keeps it plugged in: it never reached the pocket. **Where it can't come off** (my reading of their
+    answer for these two, told to them): at a junction box or a camera, which are reached only through the rig, and
+    at a computer reached over the network, where there's nothing in front of the player to unplug. There the rig
+    only goes dark; it stays connected in the pocket, its lamps stay lit all the way in, and the tab shows them, as
+    before.
+  - `public/rig-motion.js`: `RIG_MOVE.off` (600); a move that begins with the screen going off is
+    `{ dir: "away", at, off: true }` (`rigMoveFrom(dir, now, { off })`); `rigPhase` gives "off" before "away";
+    `rigShown` counts it; `rigTurned(move, now, dir, { off })`: told to come out during "off", the move is one that's
+    already over (`at: now - RIG_MOVE.out`), and a turn from the middle of coming out never has an "off".
+  - `public/computer.js`: `toggleRig` works out `off` (not `rigStill()`, no move on, no check playing, and a screen
+    showing: `!rigFolded() || comp.rigSlide`) before it stops the check. `followRigMove` draws the window again when
+    "off" ends (the rig leaves, dark) and when "away" ends, where it calls `rigGone()` first; a timer that fires after
+    the player has gone on to another computer does nothing (`comp.id`). `rigGone` folds the page away
+    (`comp.rigSlide`, which now lasts until then) and marks the unplugging due (`comp.unplug = "due"`), also when an
+    order is still on its way, since that order may be the connecting itself; `flushUnplug` sends it once nothing is
+    on its way, if there's still something to unplug then, and `send` calls it as each order comes back
+    (`settleUnplug` clears "sent"). The tab shows its lamps only while nothing is due or sent. `pocketNode` wraps the
+    tabs and the page in `.pocket-tube`, gives the screen `dark` during "away", and adds `.pocket-off` (the beam and
+    the dot) during "off". `startingLight` turns the lamps off during "away" where the rig will come off.
+    `drawLead` draws during "off". `slideLook` gives the narrow window's page `leaving` during "away".
+  - `public/desktop.css`: `.pocket-tube` (the grid the screen's two parts sat in); `rig-off-tube`, `rig-off-beam` and
+    `rig-off-dot`, each 600 ms and begun `--rig-at` in, with their three parts as keyframe percentages (30% and 55%);
+    `.pocket-screen.dark .pocket-tube { visibility: hidden }`; `rig-page-out` (160 ms, begun `--page-at` in).
+  - **For step 4 (Settings):** "Rig animations: Full, Quick or Off" under Computers, beside `deskSkin` and `deskCrt`.
+    Off is what `rigStill()` gives today, so it can read the setting as well as the system's; Quick wants shorter
+    times, and the times are constants in `public/rig-motion.js` that the stylesheet repeats (the tests hold the two
+    together), so Quick is either a second set of both or a scale applied to both. The unplugging is a rule, not an
+    animation: it stays whatever the setting.
+  - **Tests:** three more in `test/rig-motion.test.js` (the "off" phase and what follows it; the screen going off
+    only for a rig at rest, and a press during it; the page's side: when the screen goes off, where unplugging is on
+    offer, that it's sent once the rig is in, the lead, the tube, the stylesheet's rules); two of step 2's source
+    checks changed with `toggleRig`; 1,423 tests in all.
+  - **Screens,** on a test copy run from a worktree (port 3296) in a headless Edge, every frame read, at 1400 and
+    810 wide, at the plot table, the Bridge door's keypad and a junction box: the screen went off for 600 ms (the
+    picture gone by about 180, the line full and then gone, the dot nearly full and then gone), the computer didn't
+    move while it did, then the rig slid back dark and the tab came out. Connected, the lead and the LINK lamp stayed
+    while the screen went off and went as the rig left; in the pocket the tab had no lights, and taken out again the
+    rig said NOT CONNECTED with "You unplug your rig." last in its log. H during the power-off, and H during the
+    slide, each left it connected. Put away in the middle of starting up, nothing was switched off and it slid back
+    dark. With no animations it was gone at once and unplugged. The junction box kept LINK lit all the way in and on
+    its tab, and was still on its clip afterwards. Also, once each: over the network (hopped from the plot table to
+    the reactor gauges: still OVER THE NETWORK after going in and out, the tab's lamp blue); the narrow window with
+    its page folded away (no power-off) and with it out (the page leaving as the strip does); a dragged rig (off
+    where it was, then shrinking); and CONNECT pressed a tenth of a second before H with every order held back a
+    second and a half (it ended unplugged, the log showing the connecting and then the unplugging). No errors on the
+    page. **Not checked:** a camera, practice, the installed app, and nobody has watched it at full speed on a real
+    screen.

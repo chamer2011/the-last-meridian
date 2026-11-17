@@ -93,9 +93,13 @@ test("the stylesheet's animations last as long as the page thinks they do", () =
   assert.equal(lasts("rig-away"), RIG_MOVE.away);
   assert.equal(lasts("rig-row-away"), RIG_MOVE.away);
   assert.equal(lasts("rig-tab-in"), RIG_MOVE.tab);
+  // The screen going off: the picture, the line and the dot each run the whole of it.
+  assert.equal(lasts("rig-off-tube"), RIG_MOVE.off);
+  assert.equal(lasts("rig-off-beam"), RIG_MOVE.off);
+  assert.equal(lasts("rig-off-dot"), RIG_MOVE.off);
   // Each is started as far in as the move has got, and each has its pictures.
-  for (const name of ["rig-out", "rig-away", "rig-grow", "rig-shrink", "rig-tab-in", "rig-row-out", "rig-row-away"]) assert.ok(css.includes(`@keyframes ${name} `), name);
-  assert.equal(css.split("var(--rig-at, 0ms)").length - 1, 5);
+  for (const name of ["rig-out", "rig-away", "rig-grow", "rig-shrink", "rig-tab-in", "rig-row-out", "rig-row-away", "rig-off-tube", "rig-off-beam", "rig-off-dot"]) assert.ok(css.includes(`@keyframes ${name} `), name);
+  assert.equal(css.split("var(--rig-at, 0ms)").length - 1, 8);
   // And none of it plays for someone whose computer is set to show no animations.
   assert.match(css, /prefers-reduced-motion: reduce\) \{\s*\.desk\.rig-out \.device-row/);
 });
@@ -106,6 +110,65 @@ test("the computer's window uses the move to decide what's drawn", () => {
   // The rig is drawn by rigShown at a computer and at a panel, never by the out flag alone, or it would vanish at once.
   assert.equal(page.split("rigShown()").length - 1, 2);
   assert.ok(!/const rig = !?comp\.rigOut/.test(page));
+});
+
+test("going away from rest begins with the screen going off, and only then does the rig leave", () => {
+  const move = rigMoveFrom("away", 0, { off: true });
+  assert.deepEqual(move, { dir: "away", at: 0, off: true });
+  assert.deepEqual(rigPhase(move, 0), { phase: "off", ms: 0 });
+  assert.deepEqual(rigPhase(move, RIG_MOVE.off - 1), { phase: "off", ms: RIG_MOVE.off - 1 });
+  assert.deepEqual(rigPhase(move, RIG_MOVE.off), { phase: "away", ms: 0 });
+  assert.deepEqual(rigPhase(move, RIG_MOVE.off + RIG_MOVE.away + 40), { phase: "tab", ms: 40 });
+  assert.equal(rigPhase(move, RIG_MOVE.off + RIG_MOVE.away + RIG_MOVE.tab), null);
+  // The rig is still there while its screen goes off and while it slides in, and each change is told to the page.
+  assert.equal(rigShown(false, move, 10), true);
+  assert.equal(rigShown(false, move, RIG_MOVE.off + 10), true);
+  assert.equal(rigShown(false, move, RIG_MOVE.off + RIG_MOVE.away), false);
+  assert.equal(rigNextChange(move, 100), RIG_MOVE.off - 100);
+  assert.equal(rigNextChange(move, RIG_MOVE.off + 100), RIG_MOVE.away - 100);
+  // Coming out never has one, and going away has none unless it's asked for.
+  assert.deepEqual(rigMoveFrom("out", 0, { off: true }), { dir: "out", at: 0 });
+  assert.deepEqual(rigMoveFrom("away", 0), { dir: "away", at: 0 });
+});
+
+test("the screen only goes off for a rig at rest, and a press while it does leaves the rig where it is", () => {
+  // At rest and told to go: the screen goes off first.
+  assert.deepEqual(rigTurned(null, 500, "away", { off: true }), { dir: "away", at: 500, off: true });
+  // Still on its way out, where its screen is dark anyway: it turns round at once, with nothing to switch off.
+  const back = rigTurned(rigMoveFrom("out", 0), RIG_MOVE.out / 2, "away", { off: true });
+  assert.equal(back.off, undefined);
+  assert.equal(rigPhase(back, RIG_MOVE.out / 2).phase, "away");
+  // Told to come out while its screen is going off: it hasn't moved, so it's out already.
+  const going = rigMoveFrom("away", 0, { off: true });
+  const stay = rigTurned(going, 200, "out");
+  assert.equal(stay.dir, "out");
+  assert.equal(rigPhase(stay, 200), null);
+  assert.equal(rigNextChange(stay, 200), null);
+  // Told to come out once it's sliding in: from where it is, as before.
+  const sliding = rigTurned(going, RIG_MOVE.off + RIG_MOVE.away / 4, "out");
+  assert.equal(Math.round(rigPhase(sliding, RIG_MOVE.off + RIG_MOVE.away / 4).ms), Math.round(RIG_MOVE.out * 0.75));
+});
+
+test("the page switches the screen off, and takes the rig off the computer once it's in the pocket", () => {
+  const page = fs.readFileSync(path.join(here, "..", "public", "computer.js"), "utf8");
+  // The screen goes off only when it's on: the rig at rest, not starting up, and with a screen showing.
+  assert.match(page, /const off = !rigStill\(\) && !rigDoing\(\) && !checkNow\(\) && \(!rigFolded\(\) \|\| Boolean\(comp\.rigSlide\)\);/);
+  // Where UNPLUG is on offer is where going back in the pocket unplugs: never at a junction box or a camera, which
+  // are reached only through the rig, nor over the network.
+  assert.match(page, /const canUnplug = \(view\) => Boolean\(view\?\.reach\?\.plugged\) && !view\.reach\.remote && !THROUGH_RIG\.includes\(view\.look\);/);
+  assert.match(page, /canUnplug\(view\) && el\("button", \{[^}]*title: "Take your rig off this one"/);
+  // It comes off when the rig has gone in, not when it's told to go, so a change of mind on the way keeps it on.
+  assert.match(page, /if \(before\.phase === "away"\) rigGone\(\);/);
+  assert.match(page, /if \(!comp\.rigMove\) rigGone\(\);/);
+  // Its lead stays while the screen goes off, and the picture that squeezes is the tabs and the page together.
+  assert.match(page, /doing && doing\.phase !== "off"/);
+  assert.match(page, /class: "pocket-tube"/);
+  const css = fs.readFileSync(path.join(here, "..", "public", "desktop.css"), "utf8");
+  assert.match(css, /\.desk\.rig-off \.pocket-tube \{ animation: rig-off-tube/);
+  assert.match(css, /\.desk \.pocket-screen\.dark \.pocket-tube \{ visibility: hidden; \}/);
+  const slide = css.match(/animation: rig-page-out (\d+)ms [^;]*var\(--page-at, 0ms\)/);
+  assert.ok(slide, "desktop.css has no rig-page-out animation started by --page-at");
+  assert.ok(Number(slide[1]) <= RIG_MOVE.away, "the page is back in the strip before the strip has gone");
 });
 
 test("the rig's check of its parts takes 1.7 seconds for five kinds of part, each line with its state a moment after", () => {
@@ -171,11 +234,11 @@ test("the stylesheet and the page play the check the way the times say", () => {
   assert.match(css, /\.desk \.pocket-fx \{ position: absolute; inset: 0;/);
   const page = fs.readFileSync(path.join(here, "..", "public", "computer.js"), "utf8");
   // It starts each time the rig comes out, unless no animations are shown; connecting's own screen is as it was.
-  assert.match(page, /if \(comp\.rigOut && !rigStill\(\) && view\.rigCheck\) startRigCheck\(\);/);
+  assert.match(page, /if \(comp\.rigOut\) \{[^]*?if \(!rigStill\(\) && view\.rigCheck\) startRigCheck\(\);/);
   assert.match(page, /const BOOT_MS = 3000;/);
   // Putting the rig away ends it, and so does going on to another computer.
-  assert.match(page, /rigBoot: null, woke: false \}\);/);
-  assert.match(page, /else \{\s*stopRigCheck\(\);/);
+  assert.match(page, /rigBoot: null, unplug: null, woke: false \}\);/);
+  assert.match(page, /const off = [^;]*;\s*stopRigCheck\(\);/);
   // What it shows comes from the game's own list of the rig's parts.
   assert.match(page, /view\.rigCheck/);
 });
