@@ -38,6 +38,7 @@ import { mapExtras } from "./room-hooks.js";
 import "./asks.js";
 import "./emergencies.js";
 import "./no-air.js";
+import "./collapse.js";
 import "./law.js";
 import "./loot.js";
 import "./keepsakes.js";

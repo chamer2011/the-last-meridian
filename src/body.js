@@ -325,8 +325,9 @@ export function bodyOf(game, who) {
 // heals once treated, its treated days once it's dressed, and longer for a species whose wounds heal slowly. A wound
 // that bleeds lowers their blood until it's dressed, and blood comes back once nothing bleeds. Someone dresses a wound
 // that isn't serious themselves after a while; a serious one waits for someone else (the player's medkit, and the
-// medbay in a later step). A wound that can go bad goes bad when it's left undressed long enough. Nobody dies of any
-// of it yet: bleeding stops at the file's line, for now.
+// medbay in a later step). A wound that can go bad goes bad when it's left undressed long enough. Where a medbay could
+// have reached them, blood that runs out or a wound left bad too long kills; anywhere else bleeding stops at the
+// file's line. Since 2026-11-16 that's so for the player too, who goes down first (src/collapse.js).
 const nowOf = (game) => game.clock?.hours ?? 0;
 const lasts = (wound, now) => wound.until === null || wound.until === undefined || wound.until > now;
 const storeOf = (game, key) => (key === "you" ? game.wounds : game.bodies?.[key]?.wounds) ?? [];
@@ -341,8 +342,10 @@ function placeOfKey(game, key) {
   if (key.startsWith("crowd:")) return key.split(":")[1];
   return game.down?.[key]?.place ?? WORLD_CHARACTERS[key.slice(3)]?.location ?? null;
 }
-// Death comes only where a medbay could have reached them in time, and never to the player, for now.
-const canDieAt = (game, key) => key !== "you" && Boolean(WORLD_HEALTH[placeOfKey(game, key)]?.medbay);
+// Death comes only where a medbay could have reached them in time: for the player, the place they're at.
+const canDieAt = (game, key) => Boolean(WORLD_HEALTH[key === "you" ? game.location : placeOfKey(game, key)]?.medbay);
+// Whether the player is somewhere their wounds can kill them.
+export const deadlyHere = (game) => canDieAt(game, "you");
 
 // The lines at the top of the wounds file about living with wounds, read once until it changes.
 let care = null;
@@ -586,7 +589,7 @@ export function dressWounds(game, key, many = 1) {
 export function passWounds(game, hours, { speed = 1 } = {}) {
   const to = nowOf(game);
   const from = to - hours;
-  const told = { healed: [], dressed: [], bad: [] };
+  const told = { healed: [], dressed: [], bad: [], worse: [] };
   const rules = careNow();
   const infected = kindsNow().all.find((kind) => kind.id === "infected");
   const live = (key, held) => {
@@ -596,6 +599,12 @@ export function passWounds(game, hours, { speed = 1 } = {}) {
     let bled = 0;
     let stopped = from;
     const deadly = canDieAt(game, key);
+    // The player goes down before anything kills them (src/collapse.js). Until they're down nothing here does, and
+    // their blood stops just under what it takes to stand; once they are, their blood can run out like anyone's, and
+    // a wound gone bad kills them once they've lain as long as the file's line gives whoever could treat it.
+    const mine = key === "you";
+    const fell = mine ? game.fell ?? null : null;
+    const spared = mine && !fell;
     let died = null;
     for (const wound of wounds) {
       const kind = kindOf(wound.kind, wound.part);
@@ -604,7 +613,17 @@ export function passWounds(game, hours, { speed = 1 } = {}) {
       // An illness is the doctor's rounds' to settle, once a day (src/register.js), so it doesn't kill here.
       const killsAt = own.kills && !own.catches ? wound.at + own.kills * 24 : null;
       const fated = !own.killsOneIn || seeded(`${game.bodySeed ?? 1}|${key}|${wound.at}|kills`)() < 1 / own.killsOneIn;
-      if (deadly && killsAt !== null && fated && !wound.dressed && killsAt <= to && (!died || killsAt < died.at)) died = { at: Math.max(from, killsAt), cause: own.catches ? "illness" : "infection", part: wound.part, kind: wound.kind };
+      const dueAt = killsAt === null || !mine ? killsAt : fell ? Math.max(killsAt, fell.at + rules["you collapse"].hours) : Infinity;
+      if (deadly && dueAt !== null && fated && !wound.dressed && dueAt <= to && (!died || dueAt < died.at)) died = { at: Math.max(from, dueAt), cause: own.catches ? "illness" : "infection", part: wound.part, kind: wound.kind };
+      // The player is told on each day a wound gone bad is left, and how long it leaves them: once for each day, which
+      // the wound remembers, however the time is cut up.
+      if (mine && deadly && killsAt !== null && fated && !wound.dressed) {
+        const gone = Math.floor((to - wound.at) / 24 + 1e-6);
+        if (gone >= 1 && gone < own.kills && gone > (wound.warned ?? 0)) {
+          wound.warned = gone;
+          told.worse.push({ words: wound.words, days: own.kills - gone });
+        }
+      }
       // Someone dresses what isn't serious themselves, once a little time has gone by.
       const selfAt = wound.at + rules["they dress their own"].hours;
       if (!wound.dressed && !own.serious && treatable(wound) && selfAt <= to) {
@@ -630,13 +649,15 @@ export function passWounds(game, hours, { speed = 1 } = {}) {
     }
     const all = [...wounds, ...added];
     const left = all.filter((wound) => lasts(wound, to));
-    if (key === "you") told.healed.push(...all.filter((wound) => !lasts(wound, to)).map((wound) => wound.words));
+    // Coming round after passing out for want of air has its own line (src/collapse.js): it isn't a wound healing.
+    if (key === "you") told.healed.push(...all.filter((wound) => !lasts(wound, to) && rulesOfWound(wound).out !== "air").map((wound) => wound.words));
     // Blood goes with the bleeding and comes back once nothing bleeds. Where help could have come, it runs out and they
-    // die; for the player, and anywhere without a medbay, it stops at the file's line, for now.
-    const floor = deadly ? rules["bleeding to death"].at : rules["bleeding stops at"].floor;
+    // die; anywhere without a medbay it stops at the file's line; and the player's stops just under what it takes to
+    // stand until they've gone down for it.
+    const floor = !deadly ? rules["bleeding stops at"].floor : spared ? rules["too weak to stand"].under - 0.5 : rules["bleeding to death"].at;
     let blood = held.blood ?? 100;
     if (bled) {
-      if (deadly && blood - bled <= floor) {
+      if (deadly && !spared && blood - bled <= floor) {
         const rate = bled / Math.max(1e-6, to - from);
         const at = Math.min(to, from + Math.max(0, blood - floor) / rate);
         if (!died || at < died.at) died = { at, cause: "bled" };
@@ -653,6 +674,8 @@ export function passWounds(game, hours, { speed = 1 } = {}) {
   game.wounds = mine?.wounds ?? [];
   if (mine && mine.blood < 100) game.blood = mine.blood;
   else delete game.blood;
+  // The player's own death, of their blood or a wound gone bad, is the caller's to carry out (src/ending.js).
+  if (mine?.died) told.died = mine.died;
   for (const [key, held] of Object.entries(game.bodies ?? {})) {
     // The dead are left as they died.
     if (held.died || deathOf(game, key)) continue;
@@ -696,6 +719,51 @@ export function beatenFor(roll = Math.random) {
 export function bleedingOf(game, key) {
   const rate = woundsNow(game, key).filter(bleedingNow).reduce((sum, wound) => sum + (rulesOfWound(wound).bleeds ?? 0), 0);
   return rate ? { blood: Math.round(bloodOf(game, key)), rate } : null;
+}
+
+// ---- What can kill the player (src/collapse.js) ------------------------------------------------------
+
+// The blood under which nobody can stand, and how long before a wound gone bad or a fever would kill them the player
+// goes down for it, in hours, from the wounds file.
+export const tooWeakUnder = () => careNow()["too weak to stand"].under;
+export const collapseHours = () => careNow()["you collapse"].hours;
+// What's on its way to killing the player, the soonest first: a wound gone bad that's still undressed, where a medbay
+// could have reached them, and, with rounds (they're where the doctor's rounds would dose them: src/register.js), a
+// fever nobody has dosed that was going to kill, which the rounds settle at a midnight. Each is { cause, at, wound }:
+// at is the hour it would kill them. Reading it writes nothing.
+export function playersKillers(game, { rounds = false } = {}) {
+  const out = [];
+  const now = nowOf(game);
+  const deadly = canDieAt(game, "you");
+  for (const wound of game.wounds ?? []) {
+    if (wound.dressed || !lasts(wound, now)) continue;
+    const own = rulesOfWound(wound);
+    if (!own.kills) continue;
+    if (own.killsOneIn > 1 && !(seeded(`${game.bodySeed ?? 1}|you|${wound.at}|kills`)() < 1 / own.killsOneIn)) continue;
+    const due = wound.at + own.kills * 24;
+    if (own.catches) {
+      if (rounds) out.push({ cause: "illness", at: Math.ceil(due / 24 - 1e-9) * 24, wound });
+    } else if (deadly) out.push({ cause: "infection", at: due, wound });
+  }
+  return out.sort((a, b) => a.at - b.at);
+}
+
+// How long, in hours, the player will go on standing as far as their blood and their wounds can tell: no time when
+// they'd go down now, the time their blood takes to fall under what it takes to stand while a wound bleeds where a
+// medbay could have reached them, the time until a wound gone bad or a fever takes their legs, and for ever
+// otherwise. A wait is cut there (src/rules.js), so that they go down when they should and not at its end.
+export function standsFor(game, { rounds = false } = {}) {
+  const now = nowOf(game);
+  let hours = Infinity;
+  if (canDieAt(game, "you")) {
+    const under = careNow()["too weak to stand"].under;
+    const blood = bloodOf(game, "you");
+    if (blood < under) return 0;
+    const rate = (game.wounds ?? []).reduce((sum, wound) => sum + (lasts(wound, now) && bleedingNow(wound) ? rulesOfWound(wound).bleeds ?? 0 : 0), 0);
+    if (rate > 0) hours = (blood - under) / rate;
+  }
+  const next = playersKillers(game, { rounds })[0];
+  return next ? Math.min(hours, Math.max(0, next.at - careNow()["you collapse"].hours - now)) : hours;
 }
 
 // ---- Want of air (src/no-air.js) --------------------------------------------------------------------

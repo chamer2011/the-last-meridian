@@ -6,6 +6,7 @@
 // and the tools read those.
 
 import { storyRequest } from "./request-hook.js";
+import { addDropWork } from "./room-hooks.js";
 import { LOCATIONS } from "./data.js";
 import { placeNow, worldOf } from "./daily.js";
 import { clearFact, recordFact } from "./record.js";
@@ -460,6 +461,13 @@ export function screenGoesDark(game, why) {
   if (!session?.roomId || roomPowered(game, session.place, session.roomId)) return null;
   return finish(game, session, [`[COMPUTER] The screen goes dark: ${why}.`]);
 }
+// The player's at a computer and can't be any more: they've gone down where they stood (src/collapse.js, which asks
+// through src/room-hooks.js since it can't load this file). The session ends as if they'd logged off, with a line for
+// why.
+addDropWork((game, why) => {
+  const session = game.computer;
+  if (session) finish(game, session, [`[COMPUTER] ${why}`]);
+});
 
 export function computerCommand(game, body) {
   const session = game.computer;

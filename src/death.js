@@ -4,7 +4,8 @@
 // stories waiting on them fail, they leave their post and the watch bill, one less is aboard, morale drops by the health
 // file's cost, the doctor's and the captain's duty count it, and their name goes up on the place's names, which the
 // player can read. Whoever died lying down stays lying there under a blanket until someone carries them to the room
-// the health file lays the dead out in (src/medbay.js), and then nobody sees them again. The player never dies, yet.
+// the health file lays the dead out in (src/medbay.js), and then nobody sees them again. The player's own death is
+// src/ending.js: it ends the game, and none of this follows it.
 //
 // game.dead holds them by body key: { who, name, place, at, day, cause, part, room }. A new object each time someone
 // dies, so that whatever's remembered about the living knows it's out of date. Reading any of it writes nothing.

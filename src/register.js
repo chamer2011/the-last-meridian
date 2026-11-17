@@ -14,11 +14,12 @@
 // crew: { [body key]: { [illness]: the hour it ends } } }.
 // Reading any of it writes nothing.
 
-import { SPECIES_SHARE, catchIllness, crowdWho, hungerFactor, illnessKinds, illnessesOf, keyAt, mendedByTechs, seeded, weighted, woundsNow } from "./body.js";
+import { SPECIES_SHARE, catchIllness, collapseHours, crowdWho, hungerFactor, illnessKinds, illnessesOf, keyAt, mendedByTechs, seeded, weighted, woundsNow } from "./body.js";
 import { findCharacter } from "./campaign.js";
 import { NAMES } from "./character-data.js";
 import { tallyDuty } from "./command.js";
 import { deathRulesOf, die } from "./death.js";
+import { playerDies } from "./ending.js";
 import { mealsOfDay } from "./logistics.js";
 import { doseOnRounds, roundsDose } from "./medbay.js";
 import { aboardShip } from "./role.js";
@@ -144,10 +145,19 @@ export function registerDay(game, day) {
         continue;
       }
       const fated = kind.killsOneIn <= 1 || seeded(`${seed}|${key}|${wound.at}|kills`)() < 1 / kind.killsOneIn;
-      if (key !== "you" && kind.kills !== null && fated && midnight >= wound.at + kind.kills * 24) {
+      const due = kind.kills !== null && fated && midnight >= wound.at + kind.kills * 24;
+      if (due && key !== "you") {
         notes.push(...die(game, key, { at: midnight, cause: "illness", part: wound.part, kind: wound.kind }));
         break;
       }
+      // The player goes down first (src/collapse.js), and the rounds find them dead of it only once they've lain as
+      // long as the wounds file gives whoever might still have had a dose for them.
+      if (due && game.fell && midnight - game.fell.at >= collapseHours() - 1e-6) {
+        notes.push(...playerDies(game, { at: midnight, cause: "illness", kind: wound.kind }));
+        break;
+      }
+      // And they're told each night there was nothing to dose them with.
+      if (key === "you" && kind.dosed !== null) notes.push(`[HEALTH] There was no medicine on the rounds for your ${kind.name}.${kind.kills !== null ? " Left undosed, it can kill." : ""}`);
     }
   }
   // Who's sick where, for how it spreads.

@@ -13,8 +13,13 @@
 // being at work the place's board or the medbay sent them to, since that isn't where their day has them (an engineer
 // at a fire or a breach works in a mask); and belonging to a species the wounds file's "no air" line says it isn't
 // for. Aboard the Meridian the people on the register (src/register.js) go the same way, by the quarters they sleep
-// in, on paper: nobody on it is seen passing out, they're counted when they die. The player isn't counted here at all:
-// bad air takes their health down to 1 and stops, as it did, until the owner says what the player's death is.
+// in, on paper: nobody on it is seen passing out, they're counted when they die.
+//
+// The player is counted too, since 2026-11-16, by the room they're standing or lying in: every minute of bad air
+// there, whether or not they could have walked out of it, since where they stand is theirs to choose. They pass out
+// when their own time is up, or sooner once the bad air has taken their health all the way down (src/systems.js takes
+// it), and what follows is src/collapse.js: carried to a cot if anyone can come, on a mask there unless there's no
+// air anywhere, and dead when their second time is up with nobody having got them out (src/ending.js).
 //
 // Nothing here runs unless a place's air is moving (src/systems.js calls it through src/room-hooks.js, for every
 // stretch of time its air moves through: a few minutes at most aboard the ship, however long the wait). The counts
@@ -26,6 +31,7 @@ import { addAirWork } from "./room-hooks.js";
 import { airTimes, backInAir, breathing, deathOf, healthReadings, keyAt, nameOfKey, needsAir, outForAir, passOut, speciesNeedsAir } from "./body.js";
 import { LOCATIONS } from "./data.js";
 import { deathRulesOf, die } from "./death.js";
+import { isOver, playerDies } from "./ending.js";
 import { roomsByDay } from "./life.js";
 import { fallDown, lyingRoom, medbayOf } from "./medbay.js";
 import { registerDies, registerPeople } from "./register.js";
@@ -134,15 +140,17 @@ function registerLasts(game) {
 export function breathe(game, place, { minutes, until, bad, trapped: stuck = null }) {
   const state = game.systems?.[place];
   if (!state) return NONE;
-  if (!bad.size && !state.short && !state.nowhere && !state.toll) return NONE;
-  if (isFinished(game, place, stuck)) return NONE;
+  // The player first, where they are: they're counted by their own room, whatever everyone else is doing.
+  const mine = place === game.location && !isOver(game) ? playerBreathes(game, place, state, { minutes, until, bad, stuck }) : NONE;
+  if (!bad.size && !state.short && !state.nowhere && !state.toll) return mine;
+  if (isFinished(game, place, stuck)) return mine;
   // The rooms whose air is bad with nowhere better to get to: whoever's day has them there can't get out of it.
   const way = stuck ? null : wayToGoodAir(game, place);
   const trapped = new Set(stuck ?? [...bad.keys()].filter((room) => !way(room)));
   // Rooms without air that everyone's out of, nobody lying in them and nobody short of breath: nothing to count. A
   // ship with a dead breaker and no spare sits like this for months, and is asked every few minutes.
-  if (!trapped.size && !state.short && !state.nowhere && !state.toll && !lyingAt(game, place)) return NONE;
-  const lines = [];
+  if (!trapped.size && !state.short && !state.nowhere && !state.toll && !lyingAt(game, place)) return mine;
+  const lines = [...mine];
   const short = (state.short ??= {});
   const back = backInAir().back;
   const told = hears(game, place);
@@ -181,8 +189,8 @@ export function breathe(game, place, { minutes, until, bad, trapped: stuck = nul
     if (everywhere && !living) setEmptied(game, place, true);
   }
   for (const key of new Set([...Object.keys(short), ...without.keys()])) {
-    if (key.startsWith(QUARTERS) || carried.has(key)) continue;
-    if (key === YOU || deathOf(game, key) || !needsAir(game, key)) {
+    if (key.startsWith(QUARTERS) || carried.has(key) || key === YOU) continue;
+    if (deathOf(game, key) || !needsAir(game, key)) {
       delete short[key];
       continue;
     }
@@ -230,6 +238,50 @@ export function breathe(game, place, { minutes, until, bad, trapped: stuck = nul
     if (!trapped.size && !toll.out.length && !toll.dead) delete state.toll;
   }
   return lines;
+}
+
+// The player's own breath, over a stretch of a place's air: the minutes of it that were bad in the room they're in
+// are counted, unless they're being carried (nothing's counted then, as for anyone) or have been laid in the medbay,
+// where they're on a mask that only fails once there's nowhere left with good air. They pass out when their time's
+// up, and sooner if the bad air has their health all the way down. Until their fall has been taken up
+// (src/collapse.js, after this piece of the clock) the count stops there; after it, their second time kills them. It
+// returns lines for the story.
+const PICKED_UP = 0.25;
+function playerBreathes(game, place, state, { minutes, until, bad, stuck }) {
+  if (!needsAir(game, YOU)) {
+    if (state.short?.[YOU] !== undefined) delete state.short[YOU];
+    return NONE;
+  }
+  const had = state.short?.[YOU] ?? 0;
+  const out = outForAir(game, YOU);
+  if (!bad.size && !had && !out) return NONE;
+  const fell = game.fell ?? null;
+  // Picked up and on the way to a cot: nothing's counted until they're laid down.
+  if (fell?.call && until >= fell.call.since + PICKED_UP) return NONE;
+  const room = playerSpot(game)?.room ?? null;
+  const nowhere = () => (stuck ? stuck.includes(room) : !wayToGoodAir(game, place)(room));
+  const masked = Boolean(fell?.bed) && !nowhere();
+  const gone = room && bad.has(room) && !masked ? bad.get(room) : 0;
+  if (!gone && !had && !out) return NONE;
+  const times = airTimes(game, YOU);
+  let peak = had + gone;
+  if (gone && game.hp <= 1) peak = Math.max(peak, times.out);
+  if (!fell) peak = Math.min(peak, times.out);
+  const when = (count) => Math.max(until - minutes / 60, Math.min(until, until - (peak - count) / 60));
+  const short = (state.short ??= {});
+  if (fell && gone && peak >= times.out + times.dead) {
+    delete short[YOU];
+    if (!Object.keys(short).length) delete state.short;
+    return playerDies(game, { at: when(times.out + times.dead), cause: "air", room });
+  }
+  if (gone && peak >= times.out) passOut(game, YOU, when(times.out));
+  const stillBad = gone > 0 && airBadIn(game, place, room);
+  if (outForAir(game, YOU)) breathing(game, YOU, !stillBad, until);
+  const left = stillBad ? peak : Math.max(0, peak - (minutes - gone) * backInAir().back);
+  if (left > 0) short[YOU] = Math.round(left * 100) / 100;
+  else delete short[YOU];
+  if (!Object.keys(short).length) delete state.short;
+  return NONE;
 }
 
 // Someone who's passed out lies where they are: on their square where the player's there to see it, and unseen at

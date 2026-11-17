@@ -155,6 +155,8 @@ export function freeCot(game, place) {
   const medbay = medbayOf(place);
   if (!medbay) return null;
   const taken = new Set([...cotsByDay(place, medbay.cots), ...Object.values(game.down ?? {}).flatMap((d) => [d.bed, d.call?.bed]).filter(Boolean)]);
+  // The player's own cot, while they're down on one (src/collapse.js).
+  if (game.fell?.bed && game.fell.place === place) taken.add(game.fell.bed);
   return medbay.cots.find((cot) => !taken.has(cot)) ?? null;
 }
 
@@ -680,7 +682,7 @@ function treatOnClock(game, place, medbay, now) {
       const medic = free.shift();
       const minutes = treatment.minutes / speedOf(game, place, [medic], "medicine");
       state.treating[key] = { by: medic, part: wound.part, kind: wound.kind, at: wound.at, doses: treatment.doses, since: t, until: t + minutes / 60 };
-      if (key === YOU && place === game.location) notes.push(`[HEALTH] ${medicName(game, place, medic)} sees to your ${wound.words.replace(/^(an?|the) /, "")}.`);
+      if (key === YOU && place === game.location) notes.push(`[HEALTH] ${medicName(game, place, medic)} sees to your ${wound.words.replace(/^(an?|the) /, "").replace(/ has gone bad$/, " gone bad")}.`);
     }
     const next = Math.min(Infinity, ...Object.values(state.treating).map((job) => job.until));
     if (next > now) break;
@@ -1032,19 +1034,7 @@ export function wakeInMedbay(game) {
   const hours = Math.max(knock ? knock.until - nowOf(game) : 0, beatenFor());
   // Carried there, whatever doors are between: but if the map won't have it, they come round where they fell instead,
   // because this is the end of a fight and nothing here may stop it ending.
-  try {
-    walkCommand(game, { action: "room", to: medbay.room });
-  } catch {
-    return null;
-  }
-  const cot = freeCot(game, place);
-  const spot = cot ? WORLD_LIFE[place].spots[cot] : null;
-  const level = mapFor(place)?.levels[game.walk.level];
-  if (spot && level) {
-    // Beside the cot, on the floor, so the player can walk away from it.
-    const near = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1]].map(([dx, dy]) => ({ x: spot[1] + dx, y: spot[2] + dy })).find((one) => canStand(level, one.x, one.y));
-    if (near) Object.assign(game.walk, { x: near.x, y: near.y });
-  }
+  if (!playerToCot(game, place, medbay)) return null;
   const notes = passTime(game, hours, "rest");
   const whole = Math.round(hours * 10) / 10;
   const where = medbayCalled(place);
@@ -1055,6 +1045,32 @@ export function wakeInMedbay(game) {
 export function wakeAfterDefeat(game) {
   const here = wakeInMedbay(game);
   if (here) return here;
+  const from = shuttleBringsAboard(game);
+  if (!from) return null;
+  const woke = wakeInMedbay(game);
+  return woke ? [`The shuttle crew found you on ${LOCATIONS[from]?.name ?? from} and brought you back aboard.`, ...woke] : null;
+}
+
+// The player is moved to a place's medbay, beside a free cot, on the floor, so that they can walk away from it. It
+// returns the cot, or "@" and the room when the cots are all taken; null if the map won't have them there.
+function playerToCot(game, place, medbay) {
+  try {
+    walkCommand(game, { action: "room", to: medbay.room });
+  } catch {
+    return null;
+  }
+  const cot = freeCot(game, place);
+  const spot = cot ? WORLD_LIFE[place].spots[cot] : null;
+  const level = mapFor(place)?.levels[game.walk.level];
+  if (spot && level) {
+    const near = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1]].map(([dx, dy]) => ({ x: spot[1] + dx, y: spot[2] + dy })).find((one) => canStand(level, one.x, one.y));
+    if (near) Object.assign(game.walk, { x: near.x, y: near.y });
+  }
+  return cot ?? `@${medbay.room}`;
+}
+// Someone whose home is the Meridian, down at the dock she's at where there's no clinic: her shuttle crew bring them
+// across to her, if anyone aboard could come for them. It returns where they were found, or null when it doesn't apply.
+export function shuttleBringsAboard(game) {
   const from = game.location;
   const home = isCaptain(game) || startOf(game)?.place === SHIP || Boolean(deposedStart(game));
   const medbay = medbayOf(SHIP);
@@ -1063,6 +1079,47 @@ export function wakeAfterDefeat(game) {
   game.location = SHIP;
   game.walk = null;
   walkOf(game);
-  const woke = wakeInMedbay(game);
-  return woke ? [`The shuttle crew found you on ${LOCATIONS[from]?.name ?? from} and brought you back aboard.`, ...woke] : null;
+  return from;
 }
+
+// ---- The player down for another reason (src/collapse.js) ----------------------------------------------------
+
+// The room the player's in, at a place.
+const playersRoom = (game, place) => (game.walk && !game.walk.room && game.location === place ? mapFor(place)?.levels[game.walk.level]?.roomAt(game.walk.x, game.walk.y) ?? null : null);
+// Whoever would come for the player, lying where they are at a place with a medbay: { by, woken }, the key of the
+// first who can and whether the call woke them; or { help }, the sentence for why nobody does. Null at a place with no
+// medbay. It takes nobody off anything: the player isn't on the place's work board.
+export function helpForPlayer(game, kind = "fallen") {
+  const place = game.location;
+  const medbay = medbayOf(place);
+  if (!medbay?.room || !walkOf(game)) return null;
+  const room = playersRoom(game, place);
+  if (room !== medbay.room) {
+    if (doorLocked(game, place, medbay.room)) return { help: `${MedbayCalled(place)}'s door was locked, and nobody could get out to you.` };
+    if (room && doorLocked(game, place, room)) return { help: `The door to ${roomNameOf(place, room)} was locked, and nobody could get in to you.` };
+  }
+  const found = answerer(game, place, medbay, nowOf(game), kind, true);
+  return found ? { by: found.key, woken: Boolean(found.woken) } : { help: "Nobody was left who could come for you." };
+}
+// Whoever came lays the player in the place's medbay: on a cot, or its floor. It returns which, or null.
+export function layPlayerDown(game) {
+  const medbay = medbayOf(game.location);
+  return medbay?.room ? playerToCot(game, game.location, medbay) : null;
+}
+// Whether the player's in a place's medbay, and why it can't treat them there, in a sentence, or null when it can.
+export function playerInMedbay(game) {
+  const medbay = medbayOf(game.location);
+  return Boolean(medbay?.room) && playersRoom(game, game.location) === medbay.room;
+}
+export function cantTreatWhy(game) {
+  const place = game.location;
+  const medbay = medbayOf(place);
+  if (!medbay?.room) return null;
+  if (!medbay.treatments.length || !medbay.medicine) return "There was nothing there to treat you with.";
+  if (!roomPowered(game, place, medbay.room)) return `${MedbayCalled(place)} had no power, and nobody could be treated in it.`;
+  if (game.medbay?.[place]?.short) return medbay.medicine.own ? "There was no medicine left there to treat you with." : "The medicine cabinet was empty.";
+  if (!medicsAt(game, place, medbay, nowOf(game)).length && !game.medbay?.[place]?.treating?.[YOU]) return "Nobody who could treat you was there.";
+  return null;
+}
+// What the ship calls whoever carried them.
+export const carrierName = (game, key) => nameOf(game, { who: key });

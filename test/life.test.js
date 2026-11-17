@@ -291,6 +291,10 @@ test("a long gap puts everyone where they should be, the same every time, and a 
   // The same game: a long wait passes a day at a time, so who's hurt, laid up or dead along the way tells on where
   // everyone is at the end of it, and bodies are made up from the game's own seed.
   two.bodySeed = one.bodySeed;
+  // A captain who doesn't breathe: left to herself for a year the ship loses her air about day 20, and since
+  // 2026-11-16 a captain who breathes with it, which stops the clock there (test/players-death.test.js).
+  one.character.species = "synthetic";
+  two.character.species = "synthetic";
   // The work this takes, not the time on the wall: the tests all run at once, so a busy computer isn't a slow game.
   const started = process.cpuUsage();
   passTime(one, 24 * 365);

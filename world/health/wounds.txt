@@ -6,7 +6,7 @@ a hard wound: 40% of their health, or a hard hit
 blood comes back: 2 an hour, once nothing bleeds
 low on blood: under 60, checks one step harder
 bleeding to death: at 0 blood
-bleeding stops at: 35, for you and away from a medbay, for now
+bleeding stops at: 35, away from a medbay
 they dress their own: wounds that aren't serious, after an hour
 left alone: twice as long, for a wound that heals once treated
 with a limp: 60% of the pace
@@ -20,6 +20,7 @@ artificial limbs from before: 1 in 60 have one, 1 in 25 in rough work
 illness when hungry: twice as likely on half rations, half again as likely on reduced
 without air: out cold after 2 to 3 hours of bad air, dead 1 to 2 hours after that
 back in good air: comes round after 10 minutes, and gets their breath back twice as fast as they lost it
+you collapse: 12 hours before a wound gone bad or a fever would kill you
 rough work: engine, tech, dock, hauler, porter, deckhand, crane, rigger, cable, pump, sump, tube, guard, marine, security, soldier, sergeant, gunner, conscript, picket, rating, bosun, enforcer, miner, prospector, smelter, melt, salvage, diver, cutter, raider, smuggler, duelist, shipwright, yard, kelper, trawler, boatman, strike
 
 Wounds:
@@ -32,7 +33,7 @@ Wounds:
 - burn, any part: a burn on the {part}; can go bad; heals in 14 days, 7 once dressed
 - deep burn, any part: a deep burn on the {part}; serious; can go bad; heals in 30 days, 14 once dressed
 - knock, the head: a hard knock on the head; out cold for 1 to 4 hours
-- no air, the chest: passed out for want of air; out cold until they can breathe
+- no air, the chest: passed out for want of air; out cold until they can breathe; not for: synthetic
 - concussion, the head: a concussion; checks one step harder; in a fight: attack -1; heals in 2 days
 - lost, an arm: the {side} arm is gone; serious; the hand's no use; in a fight: attack -3; bleeds 20 an hour until treated; can go bad; never heals; not for: synthetic
 - lost, a leg: the {side} leg is gone; serious; can't stand on it; bleeds 20 an hour until treated; can go bad; never heals; not for: synthetic

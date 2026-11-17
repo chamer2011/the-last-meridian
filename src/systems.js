@@ -13,6 +13,7 @@
 
 import { SKILLS } from "./character-data.js";
 import { LOCATIONS } from "./data.js";
+import { keyAt, needsAir } from "./body.js";
 import { startCheck } from "./checks.js";
 import { genericKindOf, writtenAtThing } from "./computers.js";
 import { livesHere, peopleAboard } from "./life.js";
@@ -826,6 +827,19 @@ function reserveWords(minutes) {
   return `${Math.max(1, Math.round(minutes))} minutes`;
 }
 export const airIn = (game, place, room) => game.systems?.[place]?.air?.[room] ?? 100;
+// How long, in hours, the air where the player stands can be counted on: no time at all when it's bad, going or not
+// moving; as long as the reserve lasts while the place is breathing that; and for ever otherwise, or for a player who
+// doesn't breathe. Once it can't be counted on, a wait is gone through a few minutes at a go (src/rules.js), so that
+// the clock is in the right place when they pass out.
+export function airSafeFor(game) {
+  const spot = playerSpot(game);
+  if (!spot || !needsAir(game, YOU)) return Infinity;
+  const model = systemsOf(spot.place);
+  if (!hasSystem(model, "air")) return Infinity;
+  if (airIn(game, spot.place, spot.room) < 100) return 0;
+  if (!airFlows(game, spot.place, spot.room) || airSpoiled(game, spot.place, spot.room)) return 0;
+  return plantStopped(game, spot.place, model) ? reserveLeft(game, spot.place) / 60 : Infinity;
+}
 
 export const watched = (game, place, room) => partsOf(systemsOf(place), "cameras", room).some((part) => partWorks(game, place, part) && !cameraLooped(game, place, part.id));
 
@@ -1468,7 +1482,7 @@ function owedLines(game, state) {
   delete state.owed;
   const lines = [];
   if (owed?.stress) lines.push(`[STRESS] +${owed.stress}: The thin air in ${owed.room}.`);
-  if (owed?.health) lines.push(`[HEALTH] -${owed.health}: The bad air in ${owed.room}.${game.hp === 1 ? " You're close to passing out." : ""}`);
+  if (owed?.health) lines.push(`[HEALTH] -${owed.health}: The bad air in ${owed.room}.${game.hp <= airLimits().health + 1 ? " You're close to passing out." : ""}`);
   return lines;
 }
 
@@ -1546,10 +1560,12 @@ function airOnPlayer(game, model, state, minutes, quiet = false) {
   const name = roomNameOf(place, spot.room);
   const thinKey = `thin:${spot.room}`;
   const badKey = `bad:${spot.room}`;
+  // A player who doesn't breathe (the wounds file's "no air" line says who) is told, and isn't hurt.
+  const breathes = needsAir(game, YOU);
   if (q < limits.bad && !state.noted[badKey]) {
     state.noted[badKey] = true;
     state.noted[thinKey] = true;
-    lines.push(`[AIR] The air in ${name} is bad. Get out, or get it moving again.`);
+    lines.push(breathes ? `[AIR] The air in ${name} is bad. Get out, or get it moving again.` : `[AIR] The air in ${name} is bad. It's nothing to you, but nobody who breathes can stay in it.`);
   } else if (q < limits.thin && !state.noted[thinKey]) {
     state.noted[thinKey] = true;
     lines.push(`[AIR] The air in ${name} is getting thin.`);
@@ -1558,7 +1574,8 @@ function airOnPlayer(game, model, state, minutes, quiet = false) {
     delete state.noted[badKey];
     lines.push(`[AIR] The air in ${name} is good again.`);
   }
-  if (q >= limits.thin) {
+  // Nor is one who has already gone down: what happens to them then is src/no-air.js and src/collapse.js.
+  if (q >= limits.thin || !breathes || game.fell) {
     state.harm = 0;
     return lines;
   }
@@ -1576,7 +1593,7 @@ function airOnPlayer(game, model, state, minutes, quiet = false) {
     return lines;
   }
   lines.push(`[STRESS] +${stress}: The thin air in ${name}.`);
-  if (game.hp < was) lines.push(`[HEALTH] -${was - game.hp}: The bad air in ${name}.${game.hp === 1 ? " You're close to passing out." : ""}`);
+  if (game.hp < was) lines.push(`[HEALTH] -${was - game.hp}: The bad air in ${name}.${game.hp <= limits.health + 1 ? " You're close to passing out." : ""}`);
   return lines;
 }
 
@@ -1726,6 +1743,8 @@ export function detourFor(game, place) {
     if (duty) return duty;
     const q = room ? state.air[room] ?? 100 : 100;
     if (q >= limits.thin || (asleep && q >= limits.bad)) return null;
+    // Someone who doesn't breathe has no reason to leave.
+    if (!needsAir(game, keyAt(place, key))) return null;
     const away = goodAirFrom(room);
     return away ? { where: `@${away}`, doing: `getting out of the bad air in ${lowerFirst(roomNameOf(place, room))}` } : null;
   };

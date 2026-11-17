@@ -40,6 +40,16 @@ export const addOrder = (id, fn) => { orders.set(id, fn); };
 export const addClockWork = (fn) => { clocks.push(fn); };
 // (game, day) => lines for the story, once for each day that ends.
 export const addDayWork = (fn) => { days.push(fn); };
+// (game) => lines for the story, last of all each time the clock has moved, once everything else has caught up with
+// it: whether the player can still stand (src/collapse.js). What it adds may pass more time itself.
+const lasts = [];
+export const addAfterClock = (fn) => { lasts.push(fn); };
+export const afterClock = (game) => (lasts.length ? lasts.flatMap((fn) => fn(game) ?? []) : []);
+// (game, why) => nothing: whatever the player was in the middle of that a part of the game keeps is let go of, with a
+// line for why, when they can't go on with it: the computer they were on, when they go down (src/collapse.js).
+const droppers = [];
+export const addDropWork = (fn) => { droppers.push(fn); };
+export const dropExtras = (game, why) => { for (const fn of droppers) fn(game, why); };
 
 // (place, map) => nothing, or false for "not yet": once for each place's map, after its systems and its stores are
 // stood in it. For giving the things drawn there something more, or standing something of its own on a free square.

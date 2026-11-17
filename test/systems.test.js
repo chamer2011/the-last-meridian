@@ -274,9 +274,12 @@ test("air that stops goes bad over minutes, hurts the player, keeps them from re
   assert.ok(game.hp < hp && game.hp >= 1);
   assert.equal(sys.airBadHere(game), true);
   assert.ok(conditionHolds(game, "air bad here") && conditionHolds(game, "air off in The Long Mess"));
-  // Hours of it never kill.
-  passTime(game, 6);
-  assert.equal(game.hp, 1);
+  // An hour of it takes health and nothing more. (Longer than their own two hours and more, they pass out, and with
+  // no air anywhere nobody comes: test/players-death.test.js.)
+  passTime(game, 1);
+  assert.ok(game.hp >= 1 && game.hp < hp);
+  assert.equal(game.over, undefined);
+  assert.equal(game.fell, undefined);
   // People leave a room whose air has gone, unless they're asleep and it's only thin.
   const detour = sys.detourFor(game, "meridian");
   assert.equal(detour("halm", "mess", false), null, "nowhere has good air, so there's nowhere to go");

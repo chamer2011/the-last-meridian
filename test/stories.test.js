@@ -320,7 +320,10 @@ test("it comes out the same however the time is cut up, and after saving and loa
 });
 
 test("a long wait doesn't flood the screen, but all of it is still in the news", () => {
+  // A captain who doesn't breathe: seventy days with nobody at the helm outlast the ship's air, and since 2026-11-16 a
+  // captain who breathes with it (test/players-death.test.js).
   const game = newGame();
+  game.character.species = "synthetic";
   const all = Object.values(STORY_CLOCK.threads).flatMap((entry) => entry.stages.map((stage) => stage.news));
   comfortable(game);
   const notes = days(game, 70);
@@ -328,6 +331,7 @@ test("a long wait doesn't flood the screen, but all of it is still in the news",
   assert.ok(told.length <= 4, `${told.length} story lines came up at once`);
   assert.ok(game.story.clock.moved.length > 20, "plenty happened");
   const day = newGame();
+  day.character.species = "synthetic";
   comfortable(day);
   days(day, 25);
   const oneDay = [];

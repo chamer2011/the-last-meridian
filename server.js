@@ -37,6 +37,8 @@ import { computerCommand, screenGoesDark } from "./src/computer-use.js";
 import { afterDeedFight, settleDeed } from "./src/deeds.js";
 import { bagCommand } from "./src/bag.js";
 import { rigCommand } from "./src/rig.js";
+import { clockWords } from "./src/ending.js";
+import { playerFalls } from "./src/collapse.js";
 
 const savesDir = path.join(dataDir(), "saves");
 const publicDir = path.join(projectDir, "public");
@@ -44,6 +46,13 @@ const PORT = Number(process.env.PORT) || 3210;
 // "previous" keeps the last game when a new one starts, in case that was a mistake.
 // "test" is the test save tools/test-save.mjs makes (src/test-mode.js).
 const SAVE_SLOTS = ["autosave", "previous", "slot1", "slot2", "slot3", "test"];
+// The saves the game keeps by itself, one from each of the last three mornings of the game being played, for going
+// back to once the player has died (src/ending.js). They aren't on the title screen: the ending offers them.
+const MORNINGS = ["morning1", "morning2", "morning3"];
+// A morning begins at six.
+const MORNING_HOUR = 6;
+// What the server says to anything asked of a game whose player has died.
+const GAME_OVER = "This game is over. Go back to a morning the game kept, or start a new one.";
 
 fs.mkdirSync(savesDir, { recursive: true });
 
@@ -53,15 +62,87 @@ const savePath = (slot) => path.join(savesDir, `${slot}.json`);
 
 // Written to one side and then swapped in, so a crash or a full disk can't leave half a save.
 function writeSave(slot, data) {
-  if (!SAVE_SLOTS.includes(slot)) throw new Error("Unknown save slot.");
+  if (!SAVE_SLOTS.includes(slot) && !MORNINGS.includes(slot)) throw new Error("Unknown save slot.");
   const file = savePath(slot);
-  fs.writeFileSync(`${file}.tmp`, JSON.stringify(data));
+  // A game, or one already written out.
+  const text = typeof data === "string" ? data : JSON.stringify(data);
+  fs.writeFileSync(`${file}.tmp`, text);
   fs.renameSync(`${file}.tmp`, file);
+  return text;
 }
 
-// Keeps the game being left, in case leaving was a mistake. A game nobody's played yet isn't worth losing an older one for.
+// Keeps the game being left, in case leaving was a mistake. A game nobody's played yet isn't worth losing an older one
+// for, and neither is one whose player has died.
 function keepAsPrevious() {
-  if (game && (game.turn > 0 || !fs.existsSync(savePath("previous")))) writeSave("previous", game);
+  if (game && !game.over && (game.turn > 0 || !fs.existsSync(savePath("previous")))) writeSave("previous", game);
+}
+
+// ---- The mornings ---------------------------------------------------------
+
+// Which morning an hour of a game's clock belongs to: its number, counted from the game's first.
+const morningOf = (hours) => Math.floor((hours - MORNING_HOUR) / 24);
+// What's kept in each morning's file: whose game it is (its campaign), its clock, and when it was written. Read from
+// the files once.
+let mornings = null;
+function morningsKept() {
+  if (mornings) return mornings;
+  mornings = new Map();
+  for (const slot of MORNINGS) {
+    try {
+      const data = JSON.parse(fs.readFileSync(savePath(slot), "utf8"));
+      mornings.set(slot, { campaign: data.campaign ?? null, hours: data.clock?.hours ?? 0, written: fs.statSync(savePath(slot)).mtimeMs });
+    } catch {
+      // Nothing kept there yet.
+    }
+  }
+  return mornings;
+}
+// The mornings kept of a game, newest first: its own campaign's, and none from a time after its clock, which belong
+// to a future that was left behind by going back.
+function morningsFor(of) {
+  return [...morningsKept()].map(([slot, one]) => ({ slot, ...one })).filter((one) => one.campaign === of.campaign && one.hours <= of.hours + 1e-9).sort((a, b) => b.hours - a.hours);
+}
+// A game as it was written out is kept as its morning's, in a file that holds nothing of this game's past: an empty
+// one; or another game's, or one from a future that was left, whichever was written longest ago; or else this game's
+// oldest morning.
+function storeMorning(text, of) {
+  const kept = morningsKept();
+  const mine = new Set(morningsFor(of).map((one) => one.slot));
+  const others = MORNINGS.filter((slot) => kept.has(slot) && !mine.has(slot)).sort((a, b) => kept.get(a).written - kept.get(b).written);
+  const free = MORNINGS.find((slot) => !kept.has(slot)) ?? others[0] ?? morningsFor(of).at(-1).slot;
+  writeSave(free, text);
+  kept.set(free, { campaign: of.campaign, hours: of.hours, written: Date.now() });
+}
+// The game as it was last written to the autosave: its text, whose it is, its clock and whether its player had died.
+let lastSaved = null;
+// Called with the autosave just written. The first time a game is saved after six on a new day, that's its morning's
+// save. If the player died in what was just done and no save of this morning was kept yet, the game as it stood
+// before that is, so that going back never costs more than the day.
+function keepMorning(text) {
+  const now = { campaign: game.campaign ?? null, hours: game.clock?.hours ?? 0 };
+  const newest = morningsFor(now)[0] ?? null;
+  const due = !newest || morningOf(now.hours) > morningOf(newest.hours);
+  if (!game.over) {
+    if (due) storeMorning(text, now);
+    return;
+  }
+  const before = lastSaved;
+  if (due && before && !before.over && before.campaign === now.campaign && before.hours <= now.hours + 1e-9 && (!newest || before.hours > newest.hours)) storeMorning(before.text, before);
+}
+// The mornings a dead player can go back to, newest first, each with the clock's words for it and, for the newest one
+// saved before noon on the day they died or the day before, what to call it: this morning, yesterday morning.
+function morningsList() {
+  if (!game) return [];
+  const day = Math.floor((game.over?.at ?? game.clock.hours) / 24);
+  const called = new Set();
+  return morningsFor({ campaign: game.campaign ?? null, hours: game.clock.hours }).map((one) => {
+    const back = day - Math.floor(one.hours / 24);
+    const early = (((one.hours % 24) + 24) % 24) < 12;
+    const words = !early ? null : back === 0 ? "this morning" : back === 1 ? "yesterday morning" : null;
+    const fresh = words && !called.has(words);
+    if (fresh) called.add(words);
+    return { slot: one.slot, when: clockWords(one.hours), words: fresh ? words : null };
+  });
 }
 
 function listSaves() {
@@ -76,7 +157,7 @@ function listSaves() {
 }
 
 function readSave(slot) {
-  if (!SAVE_SLOTS.includes(slot)) throw new Error("Unknown save slot.");
+  if (!SAVE_SLOTS.includes(slot) && !MORNINGS.includes(slot)) throw new Error("Unknown save slot.");
   try {
     return migrateGame(JSON.parse(fs.readFileSync(savePath(slot), "utf8")));
   } catch {
@@ -88,8 +169,11 @@ function readSave(slot) {
 
 let game = null;
 try {
-  game = migrateGame(JSON.parse(fs.readFileSync(savePath("autosave"), "utf8")));
+  const text = fs.readFileSync(savePath("autosave"), "utf8");
+  game = migrateGame(JSON.parse(text));
   ensureContactFiles(game);
+  // The game as it was left, for a morning's save if the first thing done in it is the last (keepMorning).
+  lastSaved = { text, campaign: game.campaign ?? null, hours: game.clock?.hours ?? 0, over: Boolean(game.over) };
 } catch (err) {
   // No autosave yet: the player starts on the title screen. A broken one is kept, so a new game can't overwrite it.
   if (err.code !== "ENOENT" && !game) {
@@ -104,8 +188,23 @@ let busy = false;
 const log = (role, text, tag = null) => game.transcript.push({ role, text, ...(tag?.scene ? { scene: tag.scene, quest: tag.quest ?? null } : {}) });
 
 function autosave() {
-  writeSave("autosave", game);
+  const text = writeSave("autosave", game);
+  try {
+    keepMorning(text);
+  } catch (err) {
+    // A morning that couldn't be kept (a full disk, a file in use) must never stop the game being saved.
+    console.error(`This morning's save couldn't be kept: ${err.message}`);
+  }
+  lastSaved = { text, campaign: game.campaign ?? null, hours: game.clock?.hours ?? 0, over: Boolean(game.over) };
   if (game.campaign) saveCaptainSheet(game.campaign, captainSheet(game));
+}
+
+// Whether the player can still stand is looked at each time the clock moves, but not while a skill check or a fight
+// is going on (src/collapse.js). So once one of those is over, or a turn of the story has been told, it's looked at
+// here, and a fall that was waiting is played before anything else can be asked of someone who can't stand.
+function fallNow() {
+  const lines = playerFalls(game);
+  if (lines.length) log("notice", lines.join("\n"));
 }
 
 // Walking can be a step per key press, so the save waits until the captain stops for a moment.
@@ -187,6 +286,7 @@ function streamTurn(res, { playerText, event, threadId, person = null, talking =
     }
     if (talking) talkLineOver(game);
     else game.turn += 1;
+    fallNow();
     autosave();
     send({ type: "done", state: publicState(game) });
   } catch (err) {
@@ -342,6 +442,8 @@ async function handleApi(req, res, route) {
   if (req.method === "GET" && route === "/api/levels") return json(res, 200, placeLevels(requireGame()) ?? { levels: {} });
   // Everything a port holds today, for the star map when that fold is opened. It only reads.
   if (req.method === "GET" && route.startsWith("/api/port/")) return json(res, 200, { holds: portNow(requireGame(), route.slice("/api/port/".length)) });
+  // The mornings the game has kept of the game being played, for the ending to offer (public/ending.js). It only reads.
+  if (req.method === "GET" && route === "/api/mornings") return json(res, 200, { mornings: morningsList() });
 
   if (req.method !== "POST") return json(res, 404, { error: "Not found." });
   const body = await readBody(req);
@@ -376,7 +478,14 @@ async function handleApi(req, res, route) {
     autosave();
     return json(res, 200, { game: publicState(game), saves: listSaves() });
   }
+  // Once the player has died nothing more can be done in that game: only another one loaded or begun, above. The
+  // clock's own asking, twice a second, is answered quietly.
+  if (game?.over) {
+    if (route === "/api/tick") return json(res, 200, { still: true });
+    throw new Error(GAME_OVER);
+  }
   if (route === "/api/save") {
+    if (!SAVE_SLOTS.includes(body.slot)) throw new Error("Unknown save slot.");
     writeSave(body.slot, requireGame());
     return json(res, 200, { saves: listSaves() });
   }
@@ -447,6 +556,7 @@ async function handleApi(req, res, route) {
       const after = afterDeedFight(game, outcome);
       if (after.length) log("notice", after.join("\n"));
     }
+    if (outcome.over) fallNow();
     autosave();
     return json(res, 200, { game: publicState(game), outcome });
   }
@@ -477,6 +587,7 @@ async function handleApi(req, res, route) {
     if (reply.over) {
       const asked = advanceRequests(game);
       if (asked.length) game.transcript.push({ role: "notice", text: asked.join("\n") });
+      fallNow();
       autosave();
     }
     return json(res, 200, { game: publicState(game), ...reply });

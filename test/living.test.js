@@ -31,13 +31,16 @@ const everyone = (game) => Object.keys(MAP.levels).flatMap((level) => peopleAboa
 
 test("a wound bleeds until it's dressed, a small one dressed by whoever has it, and blood comes back", () => {
   const game = newGame();
+  // Ashore, away from any medbay: aboard, too little blood takes their legs and a nurse comes (test/players-death.test.js).
+  game.location = "haven";
+  game.walk = null;
   body.addWounds(game, "you", [wound("deep cut", "left_arm"), wound("cut", "chest")]);
   assert.ok(publicState(game).body.lines.some((line) => line.words === "A deep cut in the left arm, bleeding"));
   const notes = passTime(game, 2);
   assert.ok(notes.some((note) => /You dress the cut on the chest/.test(note)), "the cut, an hour in");
   assert.equal(game.blood, 100 - 12 * 2 - 4);
   passTime(game, 10);
-  assert.equal(game.blood, 35, "and no lower, for now");
+  assert.equal(game.blood, 35, "and no lower, away from a medbay");
   assert.ok(checkParts(game, { skill: "awareness" }).parts.some((part) => part.label === "condition" && part.value === -2), "too little blood makes checks harder");
   // A medkit dresses the worst of them, and the blood comes back.
   addItem(game, "medkit");
@@ -146,7 +149,7 @@ test("now and then someone has an accident at their work, the same in a game wit
 });
 
 test("the files' new lines say what's wrong with them", () => {
-  assert.match(health.CARE["bleeding stops at"].read("thirty").problem, /35, for you and away from a medbay, for now/);
+  assert.match(health.CARE["bleeding stops at"].read("thirty").problem, /35, away from a medbay/);
   assert.match(health.readQueue("in the morning").problem, /07:45 to 10:30/);
   assert.match(health.readAccidents("often").problem, /1 in 20 days/);
   assert.deepEqual(health.readAccidentLine("cut: likelier in: cook"), { name: "cut", likelier: ["cook"] });

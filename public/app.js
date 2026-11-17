@@ -26,6 +26,7 @@ import { bringIntoRoom, fightInRoom, initLive, liveElsewhereNode, liveOn, liveSe
 import { aimWith } from "./float.js";
 import { WRITING_SPEEDS } from "./writer.js";
 import { loadPack, onPixelArt, setPixelArt } from "./pixel-art.js";
+import { endingNode, initEnding } from "./ending.js";
 
 const app = document.getElementById("app");
 
@@ -691,6 +692,8 @@ function render() {
     railNode(),
     backdropNode(),
     drawerNode(),
+    // The player has died: the page of the ship's log their game ends on, over everything else.
+    endingNode(),
   ));
   if (!popupsShown()) updateLive();
   // A fight that's just begun, with the room on screen, moves into it.
@@ -824,6 +827,17 @@ initComputer({ ui, render, openMenu });
 initBag({ ui, render, renderStatus, renderWalk, putAway: putAwayRoomWindows, openMenu: (id) => openMenu(id) });
 initSheet({ ui, render, act, openMenu, startPractice: (skill, difficulty) => runAction(() => startPractice(skill, difficulty))() });
 initQuests({ ui, render, placed: popupDrawn });
+initEnding({
+  ui,
+  render,
+  loadGame,
+  toTitle,
+  // A new game, as from the title screen: the creator opens.
+  newGame: async () => {
+    ui.screen = "create";
+    await openCreator(ui.setup);
+  },
+});
 aimWith(markPoint, keepClear);
 
 initCreator({

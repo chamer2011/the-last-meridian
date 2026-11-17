@@ -36,6 +36,9 @@ const { NEEDS, goodsIn, parseGoodsText, readGoodLine, readMakeLine, writeGoodLin
 const newGame = (seed = 21) => {
   const game = createGameFromDraft(randomDraft({ seed, archetype: "officer" }));
   game.transcript.push({ role: "narrator", text: "The story so far." });
+  // A captain who doesn't breathe, so that months can go by with nobody at the helm: left to herself the Meridian loses
+  // her air about day 20, and since 2026-11-16 a captain who breathes with it (test/players-death.test.js).
+  game.character.species = "synthetic";
   return game;
 };
 const days = (game, count) => { for (let day = 0; day < count; day += 1) passTime(game, 24, "routine"); };

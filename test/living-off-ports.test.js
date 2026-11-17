@@ -415,9 +415,9 @@ test("the test save's always-full switch keeps the fuel cells full as well as th
   days(game, 20);
   assert.ok(aboard(game, "fuel_cell") >= 41);
   assert.ok(powerSupply(game, SHIP) > 0);
-  // And without the switch, that's a ship that's gone dark.
+  // And without the switch, that's a ship that's gone dark. (Her reserve air lasts five days more, to about day 20.)
   const plain = newGame();
-  days(plain, 20);
+  days(plain, 16);
   assert.equal(aboard(plain, "fuel_cell"), 0);
   assert.equal(powerSupply(plain, SHIP), 0);
   putAboard(plain, SHIP, "fuel_cell", 3, ["fuel_rack"]);

@@ -4,7 +4,7 @@
 import { advanceMedbay, startHealth } from "./medbay.js";
 import { settleDeaths } from "./death.js";
 import { registerDay, startRegister } from "./register.js";
-import { accidentsDay, bleedingOf, bodyOf, bodyView, dressWounds, handsFree, newBodySeed, painADay, passWounds, woundEffects, woundsNow } from "./body.js";
+import { accidentsDay, bleedingOf, bodyOf, bodyView, dressWounds, handsFree, newBodySeed, painADay, passWounds, standsFor, woundEffects, woundsNow } from "./body.js";
 import { allCharacters, allEnemies, campaignCharacters, campaignEnemies, campaignFolderName, findCharacter, findEnemy, fullName } from "./campaign.js";
 import {
   ABILITIES, CORE_FACTIONS, FACTIONS, ITEMS, LOCATIONS, PERKS, STARTING_QUESTS, STATS, STAT_INFO,
@@ -24,17 +24,18 @@ import { advanceLogistics, startLogistics } from "./logistics.js";
 import { advanceCommand, commandView, dutyDay, moodDay, reviewDay, sidesTaken, startCommand } from "./command.js";
 import { startingLoreIds } from "./lore.js";
 import { THREAT_LABELS } from "./npc.js";
-import { START_LIST, aboardShip, isCaptain, jobHere, startOf, toOutsider } from "./role.js";
+import { START_LIST, aboardShip, isCaptain, jobHere, onTheRounds, startOf, toOutsider } from "./role.js";
 import { recordView } from "./record.js";
 import { advanceStories, clockOf } from "./story-clock.js";
 import { emptyStory, storyView } from "./story-library.js";
 import { checkTarget, startInRoom, talkView, walkView } from "./walk.js";
 import { computerView } from "./computers.js";
-import { advanceSystems, jumpBlocked, roomEdge, shipSystemsView, wearDay } from "./systems.js";
+import { advanceSystems, airSafeFor, jumpBlocked, roomEdge, shipSystemsView, wearDay } from "./systems.js";
 import { buildLoreIndex, findLoreIds } from "../public/story.js";
 import { bagView, roomFor, tiring } from "./bag.js";
 import { heldUp, questsView } from "./quests.js";
-import { clockExtras, dayExtras } from "./room-hooks.js";
+import { afterClock, clockExtras, dayExtras } from "./room-hooks.js";
+import { endingView, isOver, playerDies } from "./ending.js";
 
 import { notePut } from "./puts.js";
 import { newRig, rigView } from "./rig.js";
@@ -274,16 +275,44 @@ export function clockLabel(game) {
 // time they're given, so seventy days in one go used to treat, release and dose people at other moments than seventy
 // single days, and now and then whoever had the chair bought medicine differently and the ship ended up somewhere
 // else. (The Ship menu's waits were already a day at a time; jumps and the story's own long waits weren't.)
+//
+// Once the player has died nothing moves any more (src/ending.js).
 const LONGEST_PIECE = 24;
 export function passTime(game, hours, activity = "active") {
-  if (!(hours > LONGEST_PIECE)) return passPiece(game, hours, activity);
+  if (isOver(game)) return [];
+  if (!(hours > LONGEST_PIECE)) return passWatched(game, hours, activity);
   const notes = [];
   // One count of the story's lines for the whole wait, so that a long one still doesn't flood the screen: what isn't
   // told is in the news all the same.
   const told = { today: 0, all: 0 };
   let left = hours;
-  for (; left > LONGEST_PIECE + 1e-9; left -= LONGEST_PIECE) notes.push(...passPiece(game, LONGEST_PIECE, activity, told));
-  if (left > 1e-9) notes.push(...passPiece(game, left, activity, told));
+  for (; left > LONGEST_PIECE + 1e-9; left -= LONGEST_PIECE) notes.push(...passWatched(game, LONGEST_PIECE, activity, told));
+  if (left > 1e-9) notes.push(...passWatched(game, left, activity, told));
+  return notes;
+}
+
+// A piece of time with an eye on the player. While the air's going or gone where they stand, the piece is gone
+// through a few minutes at a go, and it's cut where their blood, a wound gone bad or a fever would take their legs:
+// so that the clock is where it should be when they go down and when whoever comes for them does, and a day waited
+// in one go doesn't have them lying there until its end. Whatever being down took (src/collapse.js) comes out of
+// what was left to wait. With nothing the matter with them or the air, it's the one piece it always was.
+// A go is a little over five minutes, and never leaves less than that for the next, so that it stays time waited
+// through and not time played: what only starts by chance in play (a fire, a brawl: src/emergencies.js) doesn't start
+// in it.
+const CAREFUL_STEP = 6 / 60;
+const standingFor = (game) => Math.min(airSafeFor(game), standsFor(game, { rounds: onTheRounds(game) }));
+function passWatched(game, hours, activity, told) {
+  if (isOver(game)) return [];
+  if (standingFor(game) >= hours) return passPiece(game, hours, activity, told);
+  const notes = [];
+  let left = hours;
+  while (left > 1e-9 && !isOver(game)) {
+    let step = Math.min(left, Math.max(CAREFUL_STEP, standingFor(game)));
+    if (left - step < CAREFUL_STEP) step = left;
+    const before = game.clock.hours;
+    notes.push(...passPiece(game, step, activity, told));
+    left -= Math.max(step, game.clock.hours - before);
+  }
   return notes;
 }
 
@@ -302,13 +331,15 @@ function passPiece(game, hours, activity, told = { today: 0, all: 0 }) {
   const medbay = advanceMedbay(game);
   advanceLife(game);
   const notes = hoursPass(game, hours, activity, told);
-  // Last, anyone with something to ask the player, and anything they've asked that's done, put right or overdue.
-  return [...systems, ...command, ...medbay, ...notes, ...advanceLogistics(game), ...clockExtras(game), ...requestsMove(game)];
+  // Then anyone with something to ask the player, and anything they've asked that's done, put right or overdue. And
+  // last of all, whether the player can still stand (src/collapse.js).
+  return [...systems, ...command, ...medbay, ...notes, ...advanceLogistics(game), ...clockExtras(game), ...requestsMove(game), ...afterClock(game)];
 }
 
 // The clock running by itself while the player explores. It moves in moments, and every two hours
 // that go by count as two hours, which keeps fatigue and energy in whole numbers.
 export function clockRuns(game, minutes) {
+  if (isOver(game)) return [];
   lifeOf(game);
   const before = Math.floor(game.clock.hours + 1e-6);
   game.clock.hours = Math.round((game.clock.hours + minutes / 60) * 3600) / 3600;
@@ -323,6 +354,18 @@ export function clockRuns(game, minutes) {
   // What the parts of the game that add to a room do each time the clock has moved (src/room-hooks.js).
   notes.push(...clockExtras(game));
   notes.push(...requestsMove(game));
+  notes.push(...afterClock(game));
+  return notes;
+}
+
+// What so many hours of rest do for the player: less tired, calmer, and some health and energy back. It returns lines
+// for the story.
+export function restedFor(game, hours) {
+  addFatigue(game, -9 * hours);
+  const notes = changeStress(game, -1.5 * hours);
+  // Whole numbers, however long the rest: someone carried to the medbay is out for an hour and a bit, not eight.
+  game.hp = Math.min(maxHp(game), Math.round(game.hp + hours * (1 + Math.floor(attr(game, "endurance") / 4))));
+  game.energy = Math.min(maxEnergy(game), Math.round(game.energy + hours));
   return notes;
 }
 
@@ -331,11 +374,7 @@ export function clockRuns(game, minutes) {
 function hoursPass(game, hours, activity, told = { today: 0, all: 0 }) {
   const notes = [];
   if (activity === "rest") {
-    addFatigue(game, -9 * hours);
-    notes.push(...changeStress(game, -1.5 * hours));
-    // Whole numbers, however long the rest: someone carried to the medbay is out for an hour and a bit, not eight.
-    game.hp = Math.min(maxHp(game), Math.round(game.hp + hours * (1 + Math.floor(attr(game, "endurance") / 4))));
-    game.energy = Math.min(maxEnergy(game), Math.round(game.energy + hours));
+    notes.push(...restedFor(game, hours));
   } else if (activity === "routine") {
     game.energy = Math.min(maxEnergy(game), game.energy + Math.floor(hours / 2));
   } else {
@@ -361,8 +400,11 @@ function hoursPass(game, hours, activity, told = { today: 0, all: 0 }) {
   for (const words of lived.bad) notes.push(`[HEALTH] ${words.replace(/^an? /, "The ")} has gone bad.`);
   for (const words of lived.healed) notes.push(`[HEALTH] Healed: ${words}.`);
   if (lived.low) notes.push("[HEALTH] You've lost a lot of blood, and everything's harder for it. You're still bleeding: dress the wound with a medkit, or get to a medbay.");
-  // Whoever's bled out or died of a wound gone bad, where help could have come, dies of it now (src/death.js).
+  for (const one of lived.worse) notes.push(`[HEALTH] ${one.words.charAt(0).toUpperCase()}${one.words.slice(1)}, and it's still untreated. Left like this it will kill you in ${one.days === 1 ? "a day" : `${one.days} days`}: a medkit will see to it, or the medbay.`);
+  // Whoever's bled out or died of a wound gone bad, where help could have come, dies of it now (src/death.js): the
+  // player too, once they've gone down for it and nobody could treat them (src/ending.js).
   notes.push(...settleDeaths(game));
+  if (lived.died) notes.push(...playerDies(game, { at: lived.died.at, cause: lived.died.cause, part: lived.died.part ?? null, kind: lived.died.kind ?? null }));
   const pain = painADay(game);
   if (pain) notes.push(...changeStress(game, (pain * hours) / 24));
   // The ship, the world and the stories go through each day together, so it makes no difference how a long wait is cut up.
@@ -1166,6 +1208,8 @@ export function publicState(game) {
     shipSystems: shipSystemsView(game),
     difficulty: game.difficulty ?? "normal",
     transcript: game.transcript,
+    // The player has died: the page of the ship's log the game ends on (src/ending.js), or null while they're alive.
+    over: endingView(game),
   };
 }
 

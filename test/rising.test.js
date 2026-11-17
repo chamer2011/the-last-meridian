@@ -188,6 +188,8 @@ test("the captain relieves someone themselves: the choice stands, and they bring
   assert.match(first, /You took the chief engineer's post off me and gave it to Chief Engineer Sami|Come to see how Chief Engineer Sami is managing my work|I did that job for years/);
   game.talk = null;
   // A month on (with the reviews held, so that nothing else happens to Marrow), it isn't the first thing they say.
+  // The generator's cell lasts the month: left without power the ship loses her air, and everyone aboard with it.
+  game.logistics.meridian.machines.generator = { progress: 0, made: 0, waiting: null, burning: 1e9 };
   cmd.commandCommand(game, { action: "hold", held: true });
   passTime(game, 24 * 31, "routine");
   assert.equal(cmd.grudgeLine(game, "marrow"), null);

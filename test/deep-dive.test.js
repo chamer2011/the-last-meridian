@@ -168,13 +168,16 @@ test("someone here asks for a word with the player's boss only where that boss i
 
 test("the top bar's numbers: wounds count as hurt, and bleeding says how much blood is left, until the wound's dressed", () => {
   const game = newGame();
+  // Ashore, away from any medbay, where blood stops and nobody comes to dress the wound for them.
+  game.location = "haven";
+  game.walk = null;
   assert.equal(publicState(game).hurt, 0);
   assert.equal(publicState(game).bleeding, null);
   body.addWounds(game, "you", [wound("deep_cut", "left_leg")]);
   const shown = publicState(game);
   assert.equal(shown.hurt, 1);
   assert.ok(shown.bleeding.rate > 0 && shown.bleeding.blood === 100, JSON.stringify(shown.bleeding));
-  // The story says once when they've lost a lot of it, and it stops where the wounds file says, for the player.
+  // The story says once when they've lost a lot of it, and it stops where the wounds file says, away from a medbay.
   const said = [];
   for (let hour = 0; hour < 12; hour += 1) said.push(...passTime(game, 1));
   assert.equal(said.filter((line) => /lost a lot of blood/.test(line)).length, 1, said.join(" | "));

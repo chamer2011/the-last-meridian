@@ -3,7 +3,9 @@
 // wounds file's time and dies after its second, unless they're carried out or the air comes back; the people on the
 // register go the same way; with her air plant stopped the ship breathes reserve air for five days first; an hour
 // without power kills nobody; a long wait comes out as its minutes do; at someone else's place its people put the air
-// back on soon; a species the line isn't for is spared; and the player doesn't die, for now.
+// back on soon; and a species the wounds file's line isn't for is spared, which as the file stands is the synthetics.
+// The one watching all this is a synthetic captain, who can stand in a room without air and see what it does to
+// everyone else: what it does to a player who breathes is test/players-death.test.js.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
@@ -25,7 +27,7 @@ const { mapFor, useThing, walkCommand, walkView } = await import("../src/walk.js
 const sys = await import("../src/systems.js");
 const { parseEffect } = await import("../src/scene-text.js");
 const { shipView } = await import("../src/ship.js");
-const { registerTable } = await import("../src/register.js");
+const { registerPeople, registerTable } = await import("../src/register.js");
 const { WOUNDS } = await import("../src/world.js");
 const health = await import("../public/health-text.js");
 
@@ -38,6 +40,8 @@ const newGame = (seed = 21, bodySeed = 77) => {
   game.transcript.push({ role: "narrator", text: "The story has begun." });
   // People's own times without air come from this, so the same people pass out in the same order every run.
   game.bodySeed = bodySeed;
+  // The captain here doesn't breathe, so the air going is something they watch happen to the others.
+  game.character.species = "synthetic";
   return game;
 };
 const inRoom = (game, room) => {
@@ -67,6 +71,11 @@ const BAO = "crowd:meridian:mess hand bao";
 const DECKS = ["deck1", "deck2", "deck3"];
 const everyoneAboard = (game) => DECKS.flatMap((level) => peopleAboard(game, "meridian", level).map((one) => ({ ...one, room: mapFor("meridian").levels[level].roomAt(one.x, one.y) })));
 const inThe = (game, room) => everyoneAboard(game).filter((one) => one.room === room).map((one) => one.name);
+// Whether someone aboard breathes, and the ones in a room who do: the synthetics have no reason to leave it.
+const breathes = (game, one) => body.needsAir(game, body.keyAt("meridian", one.id ?? one.name));
+const breathingIn = (game, room) => everyoneAboard(game).filter((one) => one.room === room && breathes(game, one)).map((one) => one.name);
+// How many on the register breathe: everyone but its synthetics.
+const registerBreathers = (game) => registerPeople(game).filter((one) => body.speciesNeedsAir(one.species)).length;
 const deadAboard = (game) => death.deadAt(game, "meridian").length;
 // Bao, beaten and lying in the mess for hours yet.
 const layBaoDown = (game) => {
@@ -100,7 +109,7 @@ test("the wounds file says how long anyone lasts without air, and it reads back"
   const text = fs.readFileSync(new URL("../world/health/wounds.txt", import.meta.url), "utf8").replace(/\r\n/g, "\n");
   assert.match(text, /^without air: out cold after 2 to 3 hours of bad air, dead 1 to 2 hours after that$/m);
   assert.match(text, /^back in good air: comes round after 10 minutes, and gets their breath back twice as fast as they lost it$/m);
-  assert.match(text, /^- no air, the chest: passed out for want of air; out cold until they can breathe$/m);
+  assert.match(text, /^- no air, the chest: passed out for want of air; out cold until they can breathe; not for: synthetic$/m);
   const read = health.parseWoundsText(text);
   assert.deepEqual(read.problems, []);
   assert.equal(health.writeWoundsText(read.value), text);
@@ -112,7 +121,8 @@ test("the wounds file says how long anyone lasts without air, and it reads back"
   assert.deepEqual(body.airTimes(game, BAO), times);
   assert.notDeepEqual(body.airTimes(game, "crowd:meridian:mess hand lotte"), times);
   assert.equal(body.needsAir(game, BAO), true);
-  assert.equal(body.speciesNeedsAir("synthetic"), true, "nothing written says a synthetic doesn't");
+  assert.equal(body.speciesNeedsAir("synthetic"), false, "the line says a synthetic doesn't");
+  assert.equal(body.speciesNeedsAir("human"), true);
 });
 
 test("everyone leaves a room whose air has gone, the ones at benches and counters too, and nobody's the worse for it", () => {
@@ -123,7 +133,7 @@ test("everyone leaves a room whose air has gone, the ones at benches and counter
   effect(game, "air off in The Long Mess");
   minutes(game, 40);
   assert.ok(sys.airIn(game, "meridian", "mess") < 30);
-  assert.deepEqual(inThe(game, "mess"), [], "the mess is empty");
+  assert.deepEqual(breathingIn(game, "mess"), [], "everyone who breathes has left the mess");
   assert.ok(everyoneAboard(game).some((one) => /getting out of the bad air in the Long Mess/.test(one.doing)), "and they're somewhere they can breathe");
   minutes(game, 4 * 60);
   assert.equal(game.dead, undefined);
@@ -146,7 +156,7 @@ test("someone lying where the air's gone passes out and then dies of it, with al
   // The air takes a quarter hour or so to go bad, and Bao's own time runs from there.
   const outAfter = (game.clock.hours - began) * 60;
   assert.ok(outAfter >= times.out + 10 && outAfter <= times.out + 25, `passed out after ${outAfter} minutes, with ${times.out} of bad air to last`);
-  assert.deepEqual(inThe(game, "mess"), ["Mess Hand Bao"], "everyone else got out");
+  assert.deepEqual(breathingIn(game, "mess"), ["Mess Hand Bao"], "everyone else who breathes got out");
   const lying = walkView(game).people.find((one) => one.key === "Mess Hand Bao");
   assert.equal(lying.down, true);
   assert.match(lying.marks ?? "", /passed out for want of air/i);
@@ -169,8 +179,8 @@ test("someone lying where the air's gone passes out and then dies of it, with al
   const names = walkView(game).things.find((thing) => thing.name === "The chalked names");
   assert.match(useThing(game, names.id).said, /- Mess Hand Bao, day 1: suffocated in the Long Mess\./);
   assert.deepEqual(shipView(game).medbay.dead, [{ name: "Mess Hand Bao", day: 1, cause: "suffocated in the Long Mess" }]);
-  // The player stood in it for the first hours and is alive: bad air stops at 1 health, for now.
-  assert.ok(game.hp >= 1);
+  // The captain stood in it all that while and doesn't breathe: the game goes on.
+  assert.equal(game.over, undefined);
 });
 
 test("carried out in time by the medics, nobody passes out", () => {
@@ -207,7 +217,7 @@ test("once the air's back, whoever passed out comes round, and nobody's died", (
   assert.ok(everyoneAboard(game).filter((one) => !one.asleep).length > 20, "people are about their day again");
 });
 
-test("a ship with no air left anywhere loses everyone aboard, the register too, and the player lives", () => {
+test("a ship with no air left anywhere loses everyone aboard who breathes, the register too, and the game goes on", () => {
   const game = newGame();
   inRoom(game, "mess");
   const aboard = game.ship.aboard;
@@ -219,18 +229,21 @@ test("a ship with no air left anywhere loses everyone aboard, the register too, 
   assert.ok(said.some((line) => /Passed out for want of air, elsewhere aboard the Meridian: /.test(line)));
   assert.ok(said.some((line) => /The people on the register are dying for want of air: \d+ of them so far\./.test(line)));
   assert.ok(said.some((line) => /more of the people on the register have died for want of air\. That's \d+ of them\./.test(line)));
-  // Everyone on the register, and everyone with a day of their own who's aboard.
-  assert.equal(Object.keys(game.register.dead).length, game.register.size);
-  assert.equal(everyoneAboard(game).filter((one) => !/^dead/.test(one.doing)).length, 0, "nobody's left on their feet");
+  // Everyone on the register who breathes, and everyone with a day of their own who's aboard and does.
+  assert.equal(Object.keys(game.register.dead).length, registerBreathers(game));
+  const standing = everyoneAboard(game).filter((one) => !/^dead/.test(one.doing));
+  assert.deepEqual(standing.filter((one) => breathes(game, one)).map((one) => one.name), [], "nobody who breathes is left on their feet");
+  assert.ok(standing.some((one) => one.id === "seven" || one.name === "seven" || /Seven/.test(one.name)), "Mercy Seven is, and the other synthetics");
   assert.equal(game.ship.aboard, aboard - deadAboard(game));
-  assert.ok(game.ship.aboard <= 5, `${game.ship.aboard} left aboard on paper`);
+  const machines = game.register.size - registerBreathers(game);
+  assert.ok(machines > 20 && game.ship.aboard >= machines && game.ship.aboard <= machines + 12, `${game.ship.aboard} left aboard on paper, ${machines} of them synthetics on the register`);
   assert.equal(game.ship.morale, 0);
   const table = registerTable(game);
   assert.equal(table.rows.filter((row) => /^died on day 1, (for want of air|suffocated in )/.test(row[4])).length, deadAboard(game), table.summary);
   // Said in a few lines, not one for each of nine hundred.
   assert.ok(said.filter((line) => /^\[AIR\]/.test(line)).length < 40, `${said.filter((line) => /^\[AIR\]/.test(line)).length} lines about the air`);
-  // The player can't die of it yet: their health stops at 1.
-  assert.equal(game.hp, 1);
+  // The captain doesn't breathe, and keeps the ship: the game isn't over.
+  assert.equal(game.over, undefined);
   // A dead ship left for a month costs next to nothing to keep counting.
   const started = Date.now();
   for (let day = 0; day < 30; day += 1) passTime(game, 24, "routine");
@@ -260,8 +273,8 @@ test("an hour without power kills nobody; six hours without it kills the ship", 
   withoutFuel(long, () => {
     for (let hour = 0; hour < 6; hour += 1) passTime(long, 1, "active");
   });
-  assert.equal(Object.keys(long.register.dead).length, long.register.size);
-  assert.ok(deadAboard(long) > long.register.size + 30);
+  assert.equal(Object.keys(long.register.dead).length, registerBreathers(long));
+  assert.ok(deadAboard(long) > registerBreathers(long) + 25);
 });
 
 test("a long wait comes out as its minutes do", () => {
@@ -289,26 +302,30 @@ test("a long wait comes out as its minutes do", () => {
   }
   // A day in one go with no air at all is a day without air.
   const day = run((game) => passTime(game, 24, "active"));
-  assert.equal(Object.keys(day.register.dead).length, day.register.size);
-  assert.equal(day.hp, 1);
+  assert.equal(Object.keys(day.register.dead).length, registerBreathers(day));
 });
 
 test("a species the wounds file's line isn't for is spared", () => {
   const line = WOUNDS.wounds.find((one) => /^no air,/.test(one.text));
   const was = line.text;
-  try {
-    line.text = `${was}; not for: synthetic`;
-    body.clearBodies();
-    assert.equal(body.speciesNeedsAir("synthetic"), false);
-    assert.equal(body.speciesNeedsAir("human"), true);
+  // As the file stands, the line isn't for synthetics.
+  assert.match(was, /; not for: synthetic$/);
+  {
     const game = newGame();
     inRoom(game, "mess");
     airGone(game);
     for (let hour = 0; hour < 6; hour += 1) passTime(game, 1, "active");
     assert.equal(game.dead?.["id:seven"], undefined, "Seven's a synthetic, and still here");
     assert.ok(game.dead?.["id:halm"], "Halm isn't");
-    const spared = Object.keys(game.register.dead).length;
-    assert.ok(spared < game.register.size && spared > game.register.size * 0.8, `${spared} of ${game.register.size} on the register died`);
+    const died = Object.keys(game.register.dead).length;
+    assert.ok(died < game.register.size && died > game.register.size * 0.8, `${died} of ${game.register.size} on the register died`);
+  }
+  // Without those words, everyone needs air, Seven too.
+  try {
+    line.text = was.replace(/; not for: synthetic$/, "");
+    body.clearBodies();
+    assert.equal(body.speciesNeedsAir("synthetic"), true);
+    assert.equal(body.needsAir(newGame(), "id:seven"), true);
   } finally {
     line.text = was;
     body.clearBodies();
@@ -451,7 +468,7 @@ test("with her air plant stopped the ship breathes reserve air for five days, an
   const last = passTime(game, 24, "routine");
   assert.ok(last.some((line) => /The reserve air has run out/.test(line)), last.filter((line) => /AIR/.test(line)).join(" | "));
   const end = passTime(game, 8, "routine");
-  assert.equal(Object.keys(game.register.dead).length, game.register.size, [...last, ...end].filter((line) => /AIR/.test(line)).join(" | "));
+  assert.equal(Object.keys(game.register.dead).length, registerBreathers(game), [...last, ...end].filter((line) => /AIR/.test(line)).join(" | "));
   // Started again in time, the plant fills the reserve back up within the day.
   const saved = newGame();
   inRoom(saved, "mess");

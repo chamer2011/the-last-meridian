@@ -1127,6 +1127,28 @@ body:has(.ship-log) .pop-notes, body:has(.ship-log) #quest-tracker:not(.open) { 
 /* In the views without the room, the page sits in the middle of the window. */
 .ship-log-overlay .ship-log { position: relative; left: auto; top: auto; width: min(580px, calc(100vw - 32px)); max-height: calc(100vh - 80px); margin: 40px auto; }
 @media (prefers-reduced-motion: reduce) { .ship-log { animation: none; } }
+/* The ending (public/ending.js): once the player has died, a page of the ship's log over the whole game, in the red
+   of the console's alarms. Nothing behind it can be reached. */
+.ending-overlay {
+  position: fixed; inset: 0; z-index: 43; display: flex; align-items: flex-start; justify-content: center;
+  padding: max(16px, 7vh) 16px 16px; overflow-y: auto; background: rgba(0, 0, 0, .8);
+}
+.ending-overlay .ship-log {
+  position: relative; left: auto; top: auto; width: min(620px, 100%); max-height: none; margin: 0; cursor: default; touch-action: auto;
+  --speaker: #ff8f7f; --c: #ff8f7f; --c-dim: #ad5a4e; --c-line: #753a31; --c-bright: #ffe9e4;
+  background: rgba(20, 5, 4, .97);
+}
+.ending-overlay .ship-log-bar { color: #140504; }
+.ending-name { font-size: 20px; letter-spacing: .08em; text-transform: uppercase; }
+.ending-words { overflow: visible; }
+.ending-words p { margin: 0 0 .6em; }
+.ending-line { color: var(--c-bright); }
+.ending-last { margin: .4em 0 .2em; padding-top: .5em; border-top: 1px solid var(--c-line); }
+.ending-last-title { color: var(--c-dim); font: 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: .08em; margin-bottom: .3em; }
+.ending-last-line { color: var(--c-dim); font: 12.5px/1.5 var(--mono); overflow-wrap: anywhere; }
+.ending-overlay .ship-log-options button { font-size: 14px; padding: 6px 8px; min-height: 36px; }
+.ending-overlay .ship-log-options button:disabled { opacity: .5; cursor: progress; }
+.ending-error { margin: 4px 14px 0; color: var(--c-bright); font-size: 12.5px; }
 /* The loading screen, over the whole game while a place's map is drawn (public/loading.js), under the Story board and
    the map editor only. */
 .loading-screen {

@@ -245,7 +245,9 @@ export const CARE = {
   "low on blood": { read: (text) => { const f = lower(text).match(/^under (\d+), checks (\S+) steps? harder$/); return f && numberOf(f[2]) !== null ? { under: Number(f[1]), harder: numberOf(f[2]) } : { problem: "is written like: under 60, checks one step harder" }; }, default: "under 60, checks one step harder" },
   // Step 6: someone whose blood runs out dies, where there's a medbay to have reached them in time.
   "bleeding to death": { read: (text) => { const f = lower(text).match(/^at (\d+) blood$/); return f ? { at: Number(f[1]) } : { problem: "is written like: at 0 blood" }; }, default: "at 0 blood" },
-  "bleeding stops at": { read: (text) => { const f = lower(text).match(/^(\d+)(, for you and away from a medbay)?(, for now)?$/); return f ? { floor: Number(f[1]) } : { problem: "is written like: 35, for you and away from a medbay, for now" }; }, default: "35, for you and away from a medbay, for now" },
+  // Away from a medbay nobody bleeds to death, the player included: their blood stops here. (Until 2026-11-16 the
+  // player's stopped here everywhere, and the line said so; a file that still says it reads the same.)
+  "bleeding stops at": { read: (text) => { const f = lower(text).match(/^(\d+)(, (for you and )?away from a medbay)?(, for now)?$/); return f ? { floor: Number(f[1]) } : { problem: "is written like: 35, away from a medbay" }; }, default: "35, away from a medbay" },
   "they dress their own": { read: (text) => { const f = lower(text).match(/^wounds that aren['’]t serious, after (an|\S+) hours?$/); return f && numberOf(f[1]) !== null ? { hours: numberOf(f[1]) } : { problem: "is written like: wounds that aren't serious, after an hour" }; }, default: "wounds that aren't serious, after an hour" },
   "left alone": { read: (text) => { const f = lower(text).match(/^(twice|three times|four times|half again|\d+(?:\.\d+)? times) as long, for a wound that heals once treated$/); return f ? { factor: TIMES[f[1]] ?? Number(f[1].split(" ")[0]) } : { problem: "is written like: twice as long, for a wound that heals once treated" }; }, default: "twice as long, for a wound that heals once treated" },
   "with a limp": { read: share, default: "60% of the pace" },
@@ -265,6 +267,10 @@ export const CARE = {
   // can breathe again, how long someone out cold takes to come round, and how fast the time they went without is made up.
   "without air": { read: readWithoutAir, default: "out cold after 2 to 3 hours of bad air, dead 1 to 2 hours after that" },
   "back in good air": { read: (text) => { const f = lower(text).match(/^comes round after (an|\S+) (minutes?|hours?), and gets their breath back (twice|three times|four times|half again|\d+(?:\.\d+)? times) as fast as they lost it$/); return f && numberOf(f[1]) !== null ? { minutes: numberOf(f[1]) * (/^hour/.test(f[2]) ? 60 : 1), back: TIMES[f[3]] ?? Number(f[3].split(" ")[0]) } : { problem: "is written like: comes round after 10 minutes, and gets their breath back twice as fast as they lost it" }; }, default: "comes round after 10 minutes, and gets their breath back twice as fast as they lost it" },
+  // The player's own death (2026-11-16): what kills the crew kills them, and they go down first. A wound gone bad or a
+  // fever takes their legs this long before it would kill them, so that whoever can still carry and treat them has
+  // the time to (src/collapse.js).
+  "you collapse": { read: (text) => { const f = lower(text).match(/^(an|\S+) hours? before a wound gone bad or a fever would kill you$/); return f && numberOf(f[1]) !== null && numberOf(f[1]) > 0 ? { hours: numberOf(f[1]) } : { problem: "is written like: 12 hours before a wound gone bad or a fever would kill you" }; }, default: "12 hours before a wound gone bad or a fever would kill you" },
 };
 // "out cold after 2 to 3 hours of bad air, dead 1 to 2 hours after that", or one time in place of a range, in minutes
 // or hours: both in minutes.

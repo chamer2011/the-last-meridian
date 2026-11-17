@@ -125,10 +125,11 @@ test("a wound gone bad and left undressed kills after five days, and treated, it
   assert.ok(fed.medbay.meridian.log.some((one) => /Mess Hand Bao's wound in the chest gone bad/.test(one.line)), JSON.stringify(fed.medbay.meridian.log));
 });
 
-test("you never die, and nobody away from a medbay bleeds to death, for now", () => {
+test("nobody away from a medbay bleeds to death, you included", () => {
+  // Since 2026-11-16 the player can die where the crew can (test/players-death.test.js); away from a medbay, nobody does.
   const game = newGame();
-  inRoom(game, "mess");
-  setDoor(game, "meridian", "medbay", "locked", { by: "story" });
+  game.location = "haven";
+  game.walk = null;
   game.wounds = [{ ...body.newWound(body.kindOf("deep_cut", "left_arm"), "left_arm"), at: game.clock.hours, until: game.clock.hours + 400 }];
   game.blood = 50;
   bleeding(game, "crowd:haven:dock hand", 50);
@@ -136,6 +137,7 @@ test("you never die, and nobody away from a medbay bleeds to death, for now", ()
   assert.equal(game.blood, 35, "your blood stops at 35");
   assert.equal(game.bodies["crowd:haven:dock hand"].blood, 35);
   assert.equal(game.dead, undefined);
+  assert.equal(game.over, undefined);
 });
 
 test("a story person who dies: their post goes to someone else, and the story knows", () => {

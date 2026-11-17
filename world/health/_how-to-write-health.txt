@@ -56,7 +56,7 @@ Living with wounds (step 3 of the health plan), the lines at the top that say:
     blood comes back: 2 an hour, once nothing bleeds
     low on blood: under 60, checks one step harder
     bleeding to death: at 0 blood          (where there's a medbay, someone whose blood runs this low dies)
-    bleeding stops at: 35, for you and away from a medbay, for now   (the player, and anyone at a place without one)
+    bleeding stops at: 35, away from a medbay   (anyone at a place without one, the player too)
     they dress their own: wounds that aren't serious, after an hour
     left alone: twice as long, for a wound that heals once treated
     with a limp: 60% of the pace           (how fast someone walks with a limp: a wound on a leg, or a mark that limps)
@@ -70,6 +70,7 @@ Living with wounds (step 3 of the health plan), the lines at the top that say:
     illness when hungry: twice as likely on half rations, half again as likely on reduced
     without air: out cold after 2 to 3 hours of bad air, dead 1 to 2 hours after that
     back in good air: comes round after 10 minutes, and gets their breath back twice as fast as they lost it
+    you collapse: 12 hours before a wound gone bad or a fever would kill you
 Without air (2026-11-16): everyone gets out of a room whose air has gone bad, if there's anywhere with good air to get
 to. Whoever can't is without air: someone lying where they fell in such a room, and everyone at a place once no room
 of it has good air left (a ship with no power, or with her air plant stopped, once her reserve air is used up: see
@@ -80,11 +81,22 @@ place of two ("after 2 hours") gives everyone the same, and minutes work as well
 breathe, or once the air's back, someone out cold comes round after the "back in good air" line's minutes, and the
 time they went without is made up that many times as fast as it went. Not counted while there's good air somewhere:
 whoever's in a room without it on work the ship's work board or the medbay sent them to (an engineer at a fire works
-in a mask), and whoever the medics have laid on a cot (there are masks at the cots). Never counted: the player, whose
-health stops at 1 in bad air, for now. Aboard the Meridian the people on the register go the same way, by the quarters they sleep
-in. The wound that says someone has passed out is the line under Wounds whose rule is "out cold until they can
-breathe": add "; not for: synthetic" to it and no synthetic ever passes out or dies for want of air; take the line
-out and nobody does.
+in a mask), and whoever the medics have laid on a cot (there are masks at the cots). Aboard the Meridian the people on
+the register go the same way, by the quarters they sleep in. The wound that says someone has passed out is the line
+under Wounds whose rule is "out cold until they can breathe". It ends "; not for: synthetic", so no synthetic ever
+passes out or dies for want of air, or leaves a room for it; take those words off and they need air like anyone; take
+the line out and nobody does.
+The player (2026-11-16) can die of what kills anyone here: no air, their blood running out, a wound gone bad, a fever
+nobody doses. They go down first, and die only when nobody reaches them in time. For the air they're counted by the
+room they stand in, every minute of bad air there, and pass out at their own first time, or sooner once the bad air
+has their health down to 1. Where there's a medbay, under the "too weak to stand" line's blood their legs go; and the
+"you collapse" line says how long before a wound gone bad (kills after) or a fever (kills 1 in N) would kill them it
+takes their legs, so that whoever can still carry and treat them has that long. A dressing of their own goes on first,
+if they carry one. Whoever answers a call there carries them to a cot and the medbay treats them with what it has;
+they die when their second time without air is up, when their blood runs out, when a wound gone bad has had them down
+that many hours untreated, or at the midnight rounds that find them down that long with no dose. A lost fight still
+ends on a cot. Away from a medbay their blood stops at the "bleeding stops at" line and a wound gone bad doesn't kill,
+as for anyone there.
 Losing a limb (step 7 of the health plan): a hard hit on an arm or a leg that already has a broken bone on it takes it
 that often (the lost line for the arm or the leg), and a wound gone bad on a limb that's still bad after those days is
 treated by taking the limb. Artificial limbs from before: how many people the game makes up with an artificial arm or
@@ -163,7 +175,7 @@ The rules:
     heals in 8 days, 3 once dosed   an illness the doctor's rounds can dose
     kills 1 in 3 left untreated 5 days
                                     a serious illness left undosed that long kills one time in that many; the rounds
-                                    settle it at midnight, and the player never dies of it
+                                    settle it at midnight (the player goes down for it first: see "you collapse")
 
 
 Accidents (in wounds.txt, before Old marks): the wounds people get at their work, each likelier in the work it names:
@@ -226,7 +238,8 @@ the dead are laid out in, the names go up on and a death aboard costs (step 6 of
 answers a call carries the dead to (they're gone once they're there; without this line they're gone at once), the thing
 in one of the place's rooms whose Look and Use list the dead (by its name on the map), and how much morale a death
 there costs the ship, and after a comma how much a death on the register costs (the same, if it doesn't say). Someone dies at a place with a medbay when their blood runs out (bleeding to death, in the wounds
-file) or a wound gone bad is left undressed too long (kills after, on the infected line). The player never dies, for now.
+file) or a wound gone bad is left undressed too long (kills after, on the infected line). The player too, since
+2026-11-16, once they've gone down for it and nobody could treat them: that ends the game, and none of this follows.
 
 the morning queue: when anyone there who's hurt and on their feet goes to wait at the medbay, and where: a spot or a
 group of spots in the place's file in world/life (queue is the medbay's). Anyone asleep or laid up stays put.

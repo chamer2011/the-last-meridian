@@ -17,6 +17,9 @@ export const startOf = (game) => START_LIST[game.role?.id] ?? null;
 
 // Aboard the Meridian, or on the dock she's at. A captain's always with their ship.
 export const aboardShip = (game) => isCaptain(game) || game.location === "meridian" || (Boolean(game.ship?.at) && game.location === game.ship.at);
+// Whether the doctor's rounds would reach the player at midnight: aboard the Meridian herself, with her register kept
+// (src/register.js). A fever of theirs is dosed or not there, and nowhere else.
+export const onTheRounds = (game) => game.location === "meridian" && aboardShip(game) && Boolean(game.register);
 
 // The work they do, if this is where they do it. Crew aboard the Meridian do the job the watch bill has them on, so a
 // move there moves their shifts too, and a captain the officers relieved is crew aboard too.
