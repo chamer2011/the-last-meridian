@@ -1,4 +1,4 @@
-// What's in the containers (the loot plan, docs/notes/project-loot.md): world/loot/containers.txt, read by
+// What's in the containers (the loot plan): world/loot/containers.txt, read by
 // public/loot-text.js, names the kinds of container, what a thing has to be called to be one, how big each is inside
 // and how many things it holds, which rooms and places hold more or fewer, how often each rarity turns up, what the
 // furniture on the decks opens as, which rooms everywhere else get a container of their own, and the things that open

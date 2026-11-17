@@ -5,7 +5,7 @@
 // in its cabinet, a repair takes any spare (src/logistics.js, src/medbay.js), and the Ship menu and the asks count it
 // all by its worth (src/ship.js, src/requests.js).
 //
-// This is step 2 of the logistics rework (docs/notes/project-logistics.md, "The rework"): the worth is the right-hand
+// This is step 2 of the logistics rework: the worth is the right-hand
 // end of each resource's tree, where developed goods are used up.
 
 import { ITEMS } from "./data.js";

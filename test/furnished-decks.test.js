@@ -1,4 +1,4 @@
-// The Meridian's decks as furnished (step 2 of the furniture plan, docs/notes/project-furniture.md): every deck has its
+// The Meridian's decks as furnished (step 2 of the furniture plan): every deck has its
 // furniture, the beds and tables that were drawn as consoles are real ones, and nothing stands where it shouldn't or
 // cuts anyone off. Reads the game's own maps and changes nothing.
 

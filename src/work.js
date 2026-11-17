@@ -46,7 +46,7 @@
 // the job to them. The written story can ask whether anything's waiting and what comes first, put a part of the ship
 // first itself, and give the board a job of its own (src/work-hook.js has the words).
 //
-// This is steps 1, 3, 4, 5 and 6 of the logistics rework (docs/notes/project-logistics.md, "The rework"). What's kept in
+// This is steps 1, 3, 4, 5 and 6 of the logistics rework. What's kept in
 // the save is game.logistics[place].jobs, a list. A carrying job is { id, kind, to, item, from, n, phase, since, load,
 // by, took, walk }, and one set down with its load has nobody (by: null, phase "down"); a repair is { id, kind, ref,
 // what, by, took, since }. Work nobody has taken up yet isn't kept at all: it's there whenever the store is short or

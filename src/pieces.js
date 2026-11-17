@@ -1,6 +1,6 @@
 // The catalogue of pieces: every picture in the bought pixel-art packs (licensed/, see public/pixel-art.js), gathered
 // into pieces, sorted by where each belongs on a ship, and marked as going on the ship or not. It's step 1 of the map's
-// rework (docs/notes/project-pixel-art.md): the Map editor's Pieces window shows it (public/pieces.js), and the owner
+// rework: the Map editor's Pieces window shows it (public/pieces.js), and the owner
 // ticks what they want. Nothing on the decks reads it yet. These aren't the furniture pieces of public/furniture.js,
 // which the decks are made of today: step 2 of the rework is what turns ticked pieces here into furniture there.
 //

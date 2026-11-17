@@ -1,6 +1,6 @@
 // What each piece of the bought packs is to the game once it stands on a deck: a seat, a table, something to open, a
 // fitting on a wall; how much floor it takes; whether people walk round it. It's step 2 of the map's rework
-// (docs/notes/project-pixel-art.md). The catalogue (src/pieces.js) says which pictures are a piece and whether it's
+// with the packs. The catalogue (src/pieces.js) says which pictures are a piece and whether it's
 // on the ship; this says what the piece is, and hands every one of them to the game's list of furniture
 // (public/furniture.js) under the piece's own id, so a deck's file can hold one like any chair or locker.
 //
