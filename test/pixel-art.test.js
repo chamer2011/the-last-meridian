@@ -341,9 +341,12 @@ test("the view draws as it always has until Settings turns the test on", () => {
 test("the bought pack never goes to GitHub, the public copy or an installer for others", () => {
   const ignored = fs.readFileSync(path.join(root, ".gitignore"), "utf8").split(/\r?\n/).map((line) => line.trim());
   assert.ok(ignored.includes("licensed/"), "licensed/ is in .gitignore");
-  const publish = fs.readFileSync(path.join(root, "tools", "publish.mjs"), "utf8");
-  const game = publish.match(/const GAME = \[([^\]]*)\]/)[1];
-  assert.doesNotMatch(game, /licensed/);
+  // The script that makes the public copy is only in the private folder. Where it is, the pack isn't on its list.
+  const script = path.join(root, "tools", "publish.mjs");
+  if (fs.existsSync(script)) {
+    const game = fs.readFileSync(script, "utf8").match(/const GAME = \[([^\]]*)\]/)[1];
+    assert.doesNotMatch(game, /licensed/);
+  }
   const files = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).build.files;
   assert.ok(files.every((one) => !one.startsWith("licensed")));
 });
