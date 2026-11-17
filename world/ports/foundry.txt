@@ -5,13 +5,17 @@ people: 1,200
 Holds:
 - fuel cells: usually 190, from Cinder Reach or the Veshti Deepyards
 - hot cells: usually 4.8
+- wrecks: usually 5.8
 - scrap: usually 29
 - parts crates: usually 17
 - circuit boards: usually 5.8
 - machines: usually 0.96
 
+Ground:
+- the old plant in the Sublevels: 0.6 wrecks a day
+
 Makes:
-- the reclaimers: 3 scrap a day
+- the reclaimers: 3 scrap a day, from 0.6 wrecks
 - the rack: 1.8 parts crates a day, from 1.8 scrap
 - the Assembly Floor: 0.58 circuit boards a day, from 1.16 scrap
 - the cell line: 0.48 hot cells a day, from 0.96 fuel cells

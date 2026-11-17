@@ -59,8 +59,8 @@ function holdsFold(place) {
 }
 // So many a day, as a list this long can say it: whole above ten, to a tenth under it.
 const aDay = (n) => (n >= 10 ? String(Math.round(n)) : String(Math.round(n * 10) / 10));
-// Everything a port holds, a tree at a time: how many, the word for it, where it comes from or what it's made from
-// here, and what its makers take of it to make other things.
+// Everything a port holds, a tree at a time: how many, the word for it, where it comes from (another port, or the
+// ground here) or what it's made from here, and what its makers take of it to make other things.
 export const holdsNode = (trees) => el("div", { class: "map-holds small" }, trees.map((tree) => [
   el("div", { class: "map-tree muted" }, tree.name),
   tree.goods.map((good) => [
@@ -68,7 +68,7 @@ export const holdsNode = (trees) => el("div", { class: "map-holds small" }, tree
       el("span", {}, good.counted),
       el("span", { class: good.low ? "tone-bad" : good.high ? "tone-good" : "muted" }, good.level)),
     el("div", { class: "map-why muted" }, [
-      good.made ? `made here, up to ${aDay(good.made)} a day${good.madeFrom?.length ? `, from ${good.madeFrom.join(" and ")}` : ""}` : good.from.length ? `from ${good.from.join(" or ")}` : "its own",
+      good.made ? (good.ground?.length ? `from ${good.ground.join(" and ")} here, up to ${aDay(good.made)} a day` : `made here, up to ${aDay(good.made)} a day${good.madeFrom?.length ? `, from ${good.madeFrom.join(" and ")}` : ""}`) : good.from.length ? `from ${good.from.join(" or ")}` : "its own",
       good.taken ? `; its makers take about ${aDay(good.taken)} a day` : "",
       good.coming ? `; ${good.coming} on the way` : "",
       good.why ? `. ${good.why}` : "",

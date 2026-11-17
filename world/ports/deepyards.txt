@@ -12,10 +12,12 @@ Holds:
 - medicine crates: usually 50, from Lumen Sanctuary
 - medkits: usually 13, from Lumen Sanctuary or Vantor Prime
 - surgeon's stores: usually 2.5, from Vantor Prime
+- wrecks: usually 69
 - scrap: usually 350
 - parts crates: usually 350
 - circuit boards: usually 63, from Kessara Drift
 - machines: usually 30
+- ice: usually 1,800
 - water: usually 380
 - drinking water: usually 1,000
 - air bottles: usually 500, from Tessen Colony
@@ -24,10 +26,14 @@ Holds:
 - clothes: usually 50, from Haven Station or Bastion Nine
 - tea and tobacco: usually 75, from Haven Station
 
+Ground:
+- the hulks at the Dark Moorings: 7 wrecks a day
+- the Ice Cut: 190 ice a day
+
 Makes:
-- the melt-works: 150 refined fuel a day
-- the cutters: 35 scrap a day
-- the Ice Cut: 38 water a day
+- the melt-works: 150 refined fuel a day, from 150 ice
+- the cutters: 35 scrap a day, from 7 wrecks
+- the meltwater tanks: 38 water a day, from 38 ice
 - the charging racks: 380 fuel cells a day, from 38 refined fuel, 7.6 parts crates
 - the cutters' shops: 35 parts crates a day, from 35 scrap
 - the Long Families' caskers: 100 drinking water a day, from 20 water

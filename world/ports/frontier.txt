@@ -3,6 +3,7 @@ draft: the AI's, not yet edited by the owner
 people: 2,000
 
 Holds:
+- grain: usually 3,300
 - meal: usually 3,300
 - ration crates: usually 5,800
 - ration packs: usually 25, from Haven Station
@@ -11,18 +12,27 @@ Holds:
 - medicine crates: usually 10, from Haven Station
 - medkits: usually 2.5, from Lumen Sanctuary
 - parts crates: usually 15, from Haven Station
+- well and sea water: usually 140
 - water: usually 140
 - drinking water: usually 200
 - air bottles: usually 880
+- fibre: usually 400
+- leaf: usually 1,500
 - cured leaf: usually 1,200
 - beer and spirits: usually 50, from Korrath Forge
 - clothes: usually 10, from Haven Station or Bastion Nine
 - tea and tobacco: usually 15, from Haven Station
 
+Ground:
+- the Long Fields: 330 grain a day
+- the Well-Head: 15 well and sea water a day
+- the flocks on the Far Homesteads: 30 fibre a day
+- the tea slopes: 160 leaf a day
+
 Makes:
-- the drying sheds: 330 meal a day
-- the wells: 15 water a day
-- the leaf barns: 75 cured leaf a day
+- the drying sheds: 330 meal a day, from 330 grain
+- the settling tanks: 15 water a day, from 15 well and sea water
+- the leaf barns: 75 cured leaf a day, from 150 leaf
 - the homesteads: 580 ration crates a day, from 290 meal
 - the well-houses: 20 drinking water a day, from 4 water
 - the workshop: 88 air bottles a day, from 4.4 water

@@ -18,6 +18,7 @@ Holds:
 - drinking water: usually 400
 - air bottles: usually 50, from Tessen Colony
 - reserve tanks: usually 2, from the Veshti Deepyards
+- fruit and honey: usually 90, from the Sundial
 - beer and spirits: usually 350, from Korrath Forge
 - clothes: usually 86, from Haven Station
 - tea and tobacco: usually 30, from Haven Station
@@ -25,7 +26,7 @@ Holds:
 
 Makes:
 - the house cisterns: 40 drinking water a day, from 8 water
-- the kitchens: 14 provisions a day, from 28 ration crates
+- the kitchens: 14 provisions a day, from 28 ration crates, 7 fruit and honey
 - the tailor and the Cellars: 3.7 fine things a day, from 3.7 clothes, 3.7 beer and spirits
 
 Uses:

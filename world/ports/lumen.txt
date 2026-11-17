@@ -3,12 +3,14 @@ draft: the AI's, not yet edited by the owner
 people: 9,000
 
 Holds:
+- grain: usually 950
 - meal: usually 950
 - ration crates: usually 1,900
 - ration packs: usually 110, from Haven Station
 - provisions: usually 23, from the Gilded Wheel
 - fuel cells: usually 680, from Cinder Reach or the Veshti Deepyards
 - jump fuel: usually 230, from the Veshti Deepyards
+- night flowers: usually 520
 - extracts: usually 260
 - plasma and dressings: usually 57, from Anselm's Mercy
 - medicine crates: usually 150
@@ -17,22 +19,29 @@ Holds:
 - parts crates: usually 68, from Haven Station
 - circuit boards: usually 11, from Kessara Drift
 - machines: usually 2.3, from the Veshti Deepyards
+- well and sea water: usually 180
 - water: usually 180
 - drinking water: usually 900
+- fibre: usually 740, from Tessen Colony or Maris Deep
 - cloth: usually 590
 - beer and spirits: usually 230, from Korrath Forge
 - clothes: usually 45, from Haven Station or Bastion Nine
 - tea and tobacco: usually 68, from Haven Station
 - fine things: usually 4.5, from the Gilded Wheel or Vantor Prime
 
+Ground:
+- the terraces: 95 grain a day
+- the Shade Houses: 54 night flowers a day
+- the springs under the Water Courts: 18 well and sea water a day
+
 Makes:
-- the terraces: 95 meal a day
-- the still-houses: 27 extracts a day
-- the Water Courts: 18 water a day
-- the looms: 59 cloth a day
+- the terrace mills: 95 meal a day, from 95 grain
+- the Still Rooms: 27 extracts a day, from 54 night flowers
+- the Water Courts: 18 water a day, from 18 well and sea water
+- the looms: 59 cloth a day, from 59 fibre
 - the terrace kitchens: 190 ration crates a day, from 95 meal
 - the dispensaries: 15 medicine crates a day, from 15 extracts
-- the still-houses' benches: 4.6 medkits a day, from 4.6 plasma and dressings
+- the Still Rooms' benches: 4.6 medkits a day, from 4.6 plasma and dressings
 - the court fountains: 90 drinking water a day, from 18 water
 
 Uses:

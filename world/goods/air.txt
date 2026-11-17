@@ -2,8 +2,12 @@
 draft: the AI's, not yet edited by the owner
 hands need: drinking water
 
+Basic:
+- ice, by the load: Cut from a ring, a comet or a cloud. Water starts here, and so does some fuel.
+- well and sea water, by the tank: Drawn from under the ground, caught off the rain, or pumped out of a sea.
+
 Refined:
-- water, by the tank: Melted, drawn or caught where it's found, and filtered once.
+- water, by the tank, made from ice, well and sea water: Melted, drawn or caught where it's found, and filtered once.
 
 Developed:
 - drinking water, by the cask, made from water: Filtered and casked. People drink before they eat.

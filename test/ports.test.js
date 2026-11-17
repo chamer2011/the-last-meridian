@@ -3,7 +3,8 @@
 // short of, and hauls take days by the distance on the star map. The word a port has for a supply is how many it has
 // against the usual, so prices, news and the story go on as before. What goes on at a port does real things: its
 // makers stop, its people use more, goods are taken or brought, nothing gets in, or a haul is lost. None of this
-// calls an AI. What a maker needs to make things (part 2) is in test/ports-makers.test.js.
+// calls an AI. What a maker needs to make things (part 2) is in test/ports-makers.test.js, and the ground the basic
+// goods come out of (part 3) in test/ports-ground.test.js.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -101,9 +102,8 @@ test("the goods' and the ports' files are sound, and each reads back exactly as 
   const m = model();
   assert.deepEqual(Object.keys(m.trees), ["food", "fuel", "medicine", "parts", "air", "comforts"], "the supplies' trees first, in their own order");
   assert.deepEqual(m.stands, { food: "ration_crates", fuel: "jump_fuel", medicine: "medicine_crates", parts: "parts_crates" });
-  assert.equal(m.order.length, 31, "the refined, the developed and the advanced goods");
-  assert.ok(m.order.every((good) => ["refined", "developed", "advanced"].includes(m.goods[good].step)));
-  assert.equal(m.order.filter((good) => m.goods[good].step === "refined").length, 12);
+  assert.equal(m.order.length, 45, "the basic, the refined, the developed and the advanced goods");
+  assert.deepEqual(STEPS.map((step) => m.order.filter((good) => m.goods[good].step === step).length), [14, 12, 12, 7]);
   // Every port with supplies has a file, and holds each supply the world already says it deals in.
   assert.deepEqual(Object.keys(m.ports).sort(), Object.keys(DAILY.places).sort());
   for (const [id, place] of Object.entries(DAILY.places)) for (const supply of Object.keys(place.goods ?? {})) assert.ok(usualOf(id, supply) > 0, `${id} holds its ${supply}`);

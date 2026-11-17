@@ -3,10 +3,15 @@ draft: the AI's, not yet edited by the owner
 stands for: medicine, by its medicine crates
 the sick need: medicine crates
 
+Basic:
+- night flowers, by the basket: Picked after dark, for what's distilled from them.
+- reagents, by the barrel: Drawn off a refinery: what a laboratory makes its compounds from.
+- blood, by the unit: Given, or paid: on Anselm's Mercy it's how care is paid for.
+
 Refined:
-- extracts, by the flask: Distilled from what grows: Lumen's night flowers, a monk's herb bed.
-- compounds, by the jar: Made up in a laboratory, from what a refinery draws off.
-- plasma and dressings, by the case: Blood spun down, and linen boiled and cut: what a ward gets through first.
+- extracts, by the flask, made from night flowers: Distilled from what grows: Lumen's night flowers, a monk's garden.
+- compounds, by the jar, made from reagents: Made up in a laboratory, from what a refinery draws off.
+- plasma and dressings, by the case, made from blood: Blood spun down, and linen boiled and cut: what a ward gets through first.
 
 Developed:
 - medicine crates [medicine_crate], made from extracts, compounds: Twenty doses to a crate: what a medbay's cabinet holds.

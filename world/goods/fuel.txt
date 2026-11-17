@@ -3,8 +3,11 @@ draft: the AI's, not yet edited by the owner
 stands for: fuel, by its jump fuel
 power is: fuel cells
 
+Basic:
+- sour gas, by the canister: What the wells under a rock give up, and what a skimmer takes out of a cloud.
+
 Refined:
-- refined fuel, by the drum [refined_fuel]: Gas and ice worked into something that burns clean: what cells are charged from and jump fuel is made of.
+- refined fuel, by the drum [refined_fuel], made from sour gas, ice, wrecks: Gas and ice worked into something that burns clean, or drained from a dead ship's tanks: what cells are charged from and jump fuel is made of.
 
 Developed:
 - fuel cells [fuel_cell], made from refined fuel, parts crates: The cells a generator burns. One runs the Meridian for eight hours. The casings come out of a parts crate.

@@ -4,16 +4,22 @@ people: 300
 
 Holds:
 - ration crates: usually 75, from Lumen Sanctuary
+- night flowers: usually 2.4
 - extracts: usually 1.2
 - medicine crates: usually 1.2
+- well and sea water: usually 6
 - water: usually 6
 - drinking water: usually 30
 - clothes: usually 1.5, from Bastion Nine or Haven Station
 - tea and tobacco: usually 2.3, from Haven Station
 
+Ground:
+- the Wind Gardens: 0.24 night flowers a day
+- the stone springs: 0.6 well and sea water a day
+
 Makes:
-- the monks' herb beds: 0.12 extracts a day
-- the cistern: 0.6 water a day
+- the monks' presses: 0.12 extracts a day, from 0.24 night flowers
+- the cistern: 0.6 water a day, from 0.6 well and sea water
 - the monks' stillroom: 0.12 medicine crates a day, from 0.12 extracts
 - the well-keepers: 3 drinking water a day, from 0.6 water
 

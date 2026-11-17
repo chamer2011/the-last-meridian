@@ -5,6 +5,7 @@ people: 1,500
 Holds:
 - ration crates: usually 380, from Kessara Drift
 - ration packs: usually 19, from Haven Station
+- sour gas: usually 60
 - refined fuel: usually 60
 - fuel cells: usually 110, from Cinder Reach
 - jump fuel: usually 30
@@ -13,6 +14,7 @@ Holds:
 - medkits: usually 1.9, from Lumen Sanctuary
 - parts crates: usually 11, from the Graveyard
 - circuit boards: usually 1.9, from Kessara Drift
+- ice: usually 30
 - water: usually 30
 - drinking water: usually 150
 - air bottles: usually 38, from Tessen Colony
@@ -21,9 +23,13 @@ Holds:
 - clothes: usually 7.5, from Haven Station or Bastion Nine
 - tea and tobacco: usually 11, from Haven Station
 
+Ground:
+- the gas skimmers: 6 sour gas a day
+- the cloud-traps: 3 ice a day
+
 Makes:
-- the gas skimmers: 6 refined fuel a day
-- the cloud-traps: 3 water a day
+- the Cold Market's crackers: 6 refined fuel a day, from 6 sour gas
+- the melt pots: 3 water a day, from 3 ice
 - the Cold Market's water sellers: 15 drinking water a day, from 3 water
 - the Cold Market's stills: 3 jump fuel a day, from 6 refined fuel
 

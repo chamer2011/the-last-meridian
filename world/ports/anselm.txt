@@ -5,20 +5,23 @@ people: 3,000
 Holds:
 - ration crates: usually 750, from the Sundial or Haven Station
 - fuel cells: usually 230, from Cinder Reach or the Veshti Deepyards
+- blood: usually 150
 - extracts: usually 140, from Lumen Sanctuary
 - plasma and dressings: usually 77
 - medicine crates: usually 110
 - medkits: usually 31
 - surgeon's stores: usually 3.6
 - parts crates: usually 22, from Haven Station
-- water: usually 60
+- water: usually 75, from the Graveyard or Korrath Forge
 - drinking water: usually 300
 - clothes: usually 30, from Haven Station
 - tea and tobacco: usually 22, from Haven Station
 
+Ground:
+- the blood chits on the Gallery: 16 blood a day
+
 Makes:
-- the blood line and the laundry: 7.8 plasma and dressings a day
-- the recyclers: 6 water a day
+- the blood line and the laundry: 7.8 plasma and dressings a day, from 15.6 blood
 - the pharmacy cage: 11 medicine crates a day, from 11 extracts
 - the ward benches: 3.2 medkits a day, from 3.2 plasma and dressings
 - the boilers: 30 drinking water a day, from 6 water

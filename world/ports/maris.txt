@@ -3,6 +3,7 @@ draft: the AI's, not yet edited by the owner
 people: 3,000
 
 Holds:
+- kelp: usually 3,100
 - kelp cake: usually 1,500
 - ration crates: usually 3,100
 - ration packs: usually 38, from Haven Station
@@ -11,15 +12,22 @@ Holds:
 - medicine crates: usually 15, from Lumen Sanctuary
 - medkits: usually 3.8, from Lumen Sanctuary
 - parts crates: usually 22, from Haven Station
-- water: usually 120
+- well and sea water: usually 200
+- water: usually 200
 - drinking water: usually 300
+- fibre: usually 300
 - beer and spirits: usually 75, from Korrath Forge
 - clothes: usually 15, from Haven Station
 - tea and tobacco: usually 22, from Haven Station
 
+Ground:
+- the kelp lines off the Rafts: 320 kelp a day
+- the rain sails: 20 well and sea water a day
+- the kelp-thread racks: 30 fibre a day
+
 Makes:
-- the presses on the Rafts: 160 kelp cake a day
-- the rain sails: 12 water a day
+- the presses on the Rafts: 160 kelp cake a day, from 320 kelp
+- the raft stills: 20 water a day, from 20 well and sea water
 - the Rafts' packers: 310 ration crates a day, from 155 kelp cake
 - the raft cisterns: 30 drinking water a day, from 6 water
 

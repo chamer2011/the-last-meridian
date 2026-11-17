@@ -512,6 +512,9 @@ function portItem(id) {
     lists: {
       ...boardLists(),
       goods: model.order.map(named),
+      // What can come out of the ground, and what's made.
+      basics: model.order.filter((good) => model.goods[good].step === "basic").map(named),
+      made: model.order.filter((good) => model.goods[good].step !== "basic").map(named),
       ports: Object.keys(WORLD_PORTS).filter((other) => other !== id).map((other) => placeName(other).replace(/^The /, "the ")),
       charted: Object.keys(STAR_MAP.places ?? {}).filter((other) => LOCATIONS[other] && !WORLD_PORTS[other]).map(placeName),
     },

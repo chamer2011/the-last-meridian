@@ -7,8 +7,8 @@ once, developed into what people use, and one advanced good on top. It says what
 The ports' files, in world/ports, say how many of each a port holds, makes and uses, and name a good by the
 name it has here.
 
-So far the Refined, Developed and Advanced steps are played. The Basic step, and the ground the basic goods
-come out of, come with the last part of this step: until then a refined good is made from nothing.
+All four steps are played. Only the basic goods come out of the ground, at the ports that have ground for
+them, and nothing else is made from nothing: every other good is made from the goods its line names.
 
 A file's name is the tree's id, in small letters: food.txt. Files that start with an underscore, like this one,
 aren't read.
@@ -18,16 +18,20 @@ aren't read.
     stands for: food, by its ration crates
     hands need: ration crates
 
+    Basic:
+    - grain, by the load: Barley, wheat and beans off a field.
+    - kelp, by the load: Cut from the lines at slack water.
+
     Refined:
-    - meal, by the sack: Grain dried and milled.
-    - kelp cake, by the block: Kelp pressed and dried on the rafts.
+    - meal, by the sack, made from grain: Grain dried and milled.
+    - kelp cake, by the block, made from kelp: Kelp pressed and dried on the rafts.
 
     Developed:
     - ration crates [ration_crate], made from meal, kelp cake: The crates a pantry holds.
     - ration packs, by the case [ration_pack], made from meal: Packs and tins for one person.
 
     Advanced:
-    - provisions, by the hamper, made from ration crates: Fresh bread, honey, sausage.
+    - provisions, by the hamper, made from ration crates, fruit and honey: Fresh bread, honey, sausage.
 
 THE TOP
 
@@ -45,10 +49,11 @@ stands for:     which of the four supplies every port already has a word for (fo
 Three more lines say what a port's makers need besides the goods they make things from. Each names one of this
 tree's goods, and a tree has a line only if it's that kind of tree:
 
-hands need:     a port that's short of this good has fewer hands at its makers. With all it usually holds, or
-                four fifths of it, every hand is at work; below that fewer and fewer, down to three quarters
-                of their work when there's none. Food has it for its ration crates, water and air for its
-                drinking water. Where two trees have one, the port goes by the one it's worse off for.
+hands need:     a port that's short of this good has fewer hands at its makers, and at its ground. With all it
+                usually holds, or four fifths of it, every hand is at work; below that fewer and fewer, down
+                to three quarters of their work when there's none. Food has it for its ration crates, water
+                and air for its drinking water. Where two trees have one, the port goes by the one it's worse
+                off for.
 
 the sick need:  a port that's scarce of this good has more of its people laid up. With half of what it usually
                 holds or more, nobody extra is; below that more and more, down to 85 hundredths of their work
@@ -58,9 +63,27 @@ power is:       what every port's makers run on. With half of what it usually ho
                 the power they want; below that less and less, down to four tenths of their work when there's
                 none, which is what can be done by hand. Fuel has it, for its fuel cells. The makers of that
                 same tree don't need it: a refinery runs on what it makes, or no port could ever get its
-                power back.
+                power back. The ground doesn't need it either: a field gives the same in the dark.
 
 A port that holds none of a good isn't short of it: Foundry Seven's machines neither eat nor drink.
+
+THE STEPS
+
+Basic:          what comes out of the ground: grain, sour gas, ore, ice, night flowers, wrecks, and blood,
+                which on Anselm's Mercy is how care is paid for. A basic good isn't made from anything, so
+                its line has no "made from", and no maker makes it: a port has it from its own ground (the
+                Ground part of its file), or sends to another port for it.
+
+Refined:        a basic good worked up once: meal from grain, refined fuel from sour gas or ice, scrap from
+                wrecks.
+
+Developed:      what people use: ration crates, fuel cells, medicine crates, parts crates, drinking water,
+                clothes.
+
+Advanced:       one step further, for a few: provisions, jump fuel, surgeon's stores, machines.
+
+Every refined, developed and advanced good has to say what it's made from. npm run check-story says which
+one doesn't, and which basic good wrongly does.
 
 A GOOD
 
@@ -80,10 +103,10 @@ its name        as it's counted, in the plural: ration crates, medkits, machines
 
 , made from ... the goods it can be made from, with commas between them: made from meal, kelp cake. Never an
                 and: some goods have one in their own name (plasma and dressings). They can be goods of
-                another tree: a fuel cell's casing comes out of a parts crate. This is the list a port's maker
-                picks from: a maker says how many of which it takes (world/ports), and one that takes a good
-                that isn't in this list is something npm run check-story says. Leave it out for a good that's
-                made from nothing here: the refined goods, until the basic ones are in.
+                another tree: a fuel cell's casing comes out of a parts crate, and refined fuel can be drained
+                from a wreck. This is the list a port's maker picks from: a maker says how many of which it
+                takes (world/ports), and one that takes a good that isn't in this list is something npm run
+                check-story says. A basic good has none.
 
 : words         a few words about it, for whoever reads the file and the Story board.
 
@@ -93,6 +116,7 @@ made from another that's made from the first), since then neither could ever be 
 
 CHANGING THEM IN THE GAME
 
-The Story board has Goods: each tree as boxes by step, with an arrow from each good to what's made from it, the
-ports that make each good, and how many are used, go into other things and are made a day across the map. Click
-a box to change its line, then Keep and Save. A tree's own box has what hands, the sick and power need.
+The Story board has Goods: each tree as boxes by step, from the ground on the left to the advanced good on
+the right, with an arrow from each good to what's made from it, the ports that make each good or have ground
+for it, and how many are used, go into other things and are made a day across the map. Click a box to change
+its line, then Keep and Save. A tree's own box has what hands, the sick and power need.

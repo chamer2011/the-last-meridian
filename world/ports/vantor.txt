@@ -3,13 +3,16 @@ draft: the AI's, not yet edited by the owner
 people: 40,000
 
 Holds:
+- grain: usually 5,500
 - meal: usually 5,500
 - ration crates: usually 11,000
 - ration packs: usually 460
+- sour gas: usually 1,000
 - refined fuel: usually 1,000
 - fuel cells: usually 3,000, from Cinder Reach or the Veshti Deepyards
 - jump fuel: usually 520
 - hot cells: usually 50, from the Veshti Deepyards
+- reagents: usually 480
 - compounds: usually 480
 - medicine crates: usually 350
 - medkits: usually 120
@@ -17,18 +20,27 @@ Holds:
 - parts crates: usually 390, from Korrath Forge
 - circuit boards: usually 50, from Kessara Drift
 - machines: usually 10, from the Veshti Deepyards
+- well and sea water: usually 1,000
 - water: usually 1,000
 - drinking water: usually 4,000
+- fruit and honey: usually 2,000
 - beer and spirits: usually 1,100, from Korrath Forge
 - clothes: usually 200, from Bastion Nine
 - tea and tobacco: usually 300, from Haven Station
 - fine things: usually 43
 
+Ground:
+- the state farms: 580 grain a day
+- the state gas fields: 110 sour gas a day
+- the refineries' off-take: 48 reagents a day
+- the reservoirs: 110 well and sea water a day
+- the vineyards: 150 fruit and honey a day
+
 Makes:
-- the state mills: 580 meal a day
-- the state refineries: 110 refined fuel a day
-- the white labs: 48 compounds a day
-- the waterworks: 110 water a day
+- the state mills: 580 meal a day, from 580 grain
+- the state refineries: 110 refined fuel a day, from 110 sour gas
+- the white labs: 48 compounds a day, from 48 reagents
+- the waterworks: 110 water a day, from 110 well and sea water
 - the Lower Stacks' packing halls: 1,100 ration crates a day, from 550 meal
 - the garrison kitchens: 46 ration packs a day, from 23 meal
 - the white labs' packing floor: 35 medicine crates a day, from 35 compounds

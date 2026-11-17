@@ -1,35 +1,39 @@
 HOW TO WRITE A PORT
 ===================
 
-Every file in this folder is a port: what it holds, what it makes and from what, and what it uses, in real
-amounts. A file's name is the place's id, as in world/places and on the star map: haven.txt. Files that start
-with an underscore, like this one, aren't read. The goods are named as world/goods names them.
+Every file in this folder is a port: what it holds, what comes out of the ground there, what it makes and from
+what, and what it uses, in real amounts. A file's name is the place's id, as in world/places and on the star
+map: frontier.txt is Tessen Colony. Files that start with an underscore, like this one, aren't read. The goods
+are named as world/goods names them.
 
-    # Haven Station
+    # Tessen Colony
     draft: the AI's, not yet edited by the owner
-    people: 6,000
+    people: 2,000
 
     Holds:
-    - meal: usually 450, from Tessen Colony
-    - ration crates: usually 4,500, from Tessen Colony or Maris Deep
-    - ration packs: usually 720
-    - water: usually 150, from Tessen Colony or Maris Deep
-    - drinking water: usually 600
+    - grain: usually 3,300
+    - meal: usually 3,300
+    - ration crates: usually 5,800
+    - fuel cells: usually 150, from Cinder Reach
+
+    Ground:
+    - the Long Fields: 330 grain a day
 
     Makes:
-    - the kitchens on the Manifest Docks: 72 ration packs a day, from 36 meal
-    - the casking line: 60 drinking water a day, from 12 water
+    - the drying sheds: 330 meal a day, from 330 grain
+    - the homesteads: 580 ration crates a day, from 290 meal
 
     Uses:
-    - its people: 60 ration crates, 3 ration packs, 30 drinking water a day
-    - the forty berths: 12 jump fuel a day
+    - the colonists: 20 ration crates, 10 drinking water a day
+    - its power: 6 fuel cells a day
 
 WHAT HAPPENS EACH MIDNIGHT
 
 1. What's on its way to the port comes a day nearer, and what arrives is put away.
-2. Its makers make what their lines say, but never past what the port usually holds: a full store stops them.
-   Each takes what its line says it makes things from, out of what the port holds, and makes no more than
-   there is of it. A port that's hungry, thirsty, sick or out of power makes less (see MAKES).
+2. Its ground gives what its Ground lines say, to the hands there are, and its makers make what their lines
+   say. Neither goes past what the port usually holds: a full store stops them. Each maker takes what its line
+   says it makes things from, out of what the port holds, and makes no more than there is of it. A port that's
+   hungry, thirsty, sick or out of power makes less (see MAKES).
 3. What its Uses lines say is used up.
 4. For each good it sends elsewhere for, when a haul would leave it with no more than a little over what it
    usually holds, it sends for one: to the ports its Holds line names, the best stocked first, sharing what it
@@ -42,10 +46,11 @@ down, then sends less, and the ports it supplies run short some days after it, a
 come again. One haul of a good is on its way from each sender at a time, and a second once the port is badly
 short.
 
-A shortage travels down a tree the same way. A port that makes medicine from another port's extracts runs out
-of extracts some days after that port stops sending them, then makes no medicine, and then the ports it sends
-medicine to run short. The star map says so under the supply: "Its makers are short of extracts (nothing's
-leaving Lumen Sanctuary)."
+A shortage travels up a tree the same way, from the ground. A field that fails gives no grain; the sheds mill
+no meal; the homesteads pack no crates; and the ports that send there for food run short. And it crosses the
+map before anything is finished: a port that makes medicine from another port's extracts runs out of extracts
+some days after that port stops sending them. The star map says so under the supply: "Its makers are short of
+extracts (nothing's leaving Lumen Sanctuary)."
 
 A port's word for a supply (plenty, normal, short, scarce, almost gone) is how many it has against what it
 usually holds: with all of it, it's normal; with four fifths or less, short; with half or less, scarce. What
@@ -67,22 +72,38 @@ HOLDS
 
 The good, a colon, usually and how many it has when things are as usual, then from and the ports it sends to for
 more, with or between them. A port is named by its name, the name the star map gives it, or its id, and has to
-have a file here that holds the good. Leave the from out for a good the port makes itself, or one that only ever
-goes down.
+have a file here that holds the good. Leave the from out for a good the port makes itself or has ground for,
+or one that only ever goes down.
 
-A port holds everything its makers make, and everything they make things from: Haven holds meal because its
-kitchens pack ration packs from it, though nobody there eats meal.
+A port holds everything that comes out of its ground, everything its makers make, and everything they make
+things from: Haven holds meal because its kitchens pack ration packs from it, though nobody there eats meal.
 
-usually is what the word for a supply is measured against, and where the port's makers stop. The drafts gave a
-port that sends for a good twenty-five days' worth of what goes through it, and a port that makes one twenty
-days' worth of what's taken from it (and never less than six of the biggest haul that leaves it): enough that
-a single haul never makes it short.
+usually is what the word for a supply is measured against, and where the port's ground and its makers stop.
+The drafts gave a port that sends for a good twenty-five days' worth of what goes through it, and a port that
+makes one twenty days' worth of what's taken from it (and never less than six of the biggest haul that leaves
+it): enough that a single haul never makes it short.
+
+GROUND
+
+    - the Long Fields: 330 grain a day
+    - the Ice Cut: 190 ice a day
+    - the blood chits on the Gallery: 16 blood a day
+
+What comes out of the ground here: where, a colon, how many of what at the most, and a day. Only a basic good
+does (the Basic step of a tree in world/goods), and the port has to hold it. A Ground line has no from: this
+is the one place in the game where something comes from nothing. Ground is whatever a good comes from first:
+a field, a well, a seam, a ring of ice, a field of wrecks, the sea, a cloud, and on Anselm's Mercy the people
+who pay in blood.
+
+The ground gives to whatever hands there are: a hungry, thirsty or sick port brings in less, as its makers
+make less. It needs no power. A port with no ground for something it works up sends to another port for it,
+like Lumen for the wool and the kelp thread its looms weave, or goes without: a station has no ground at all,
+and neither has a ship any water of its own.
 
 MAKES
 
     - the kitchens on the Manifest Docks: 72 ration packs a day, from 36 meal
     - the charging sheds: 430 fuel cells a day, from 43 refined fuel, 8.6 parts crates
-    - the drying sheds: 310 meal a day
 
 Who makes it, a colon, how many of what, and a day; then from and what goes into that many, with commas
 between. So the kitchens make 72 cases of ration packs on a day they work flat out, and take 36 sacks of meal
@@ -90,8 +111,8 @@ for them: a sack to two cases. On a day they make less, they take that much less
 makes and change what goes into it as well, or each one will take more or less than it did.
 
 The port has to hold the good and everything that goes into it, and what goes into it has to be something
-world/goods says the good is made from (its "made from"). A maker of a good that's made from nothing there
-(the refined goods, for now) has no from.
+world/goods says the good is made from (its "made from"). Every maker has a from: only the ground gives
+something for nothing, and a basic good is never written here.
 
 How much a maker makes on a day is the least of:
 - what its line says, when nothing's in its way;
@@ -103,13 +124,13 @@ How much a maker makes on a day is the least of:
   Which goods those are is written at the top of the trees in world/goods (hands need, the sick need, power
   is), and the makers of the tree the power comes from don't need it.
 
-The makers work in the order the goods are made in, whatever order they're written in: what's refined first,
-then what's made of it, so that today's meal goes into today's crates. Two makers that take the same good are
-served in the order they're written.
+The makers work in the order the goods are made in, whatever order they're written in: what's out of the
+ground first, then what's refined, then what's made of it, so that today's grain goes into today's meal and
+today's meal into today's crates. Two makers that take the same good are served in the order they're written.
 
-The drafts gave each maker twice what's taken from it in a day, so that it catches up after a bad stretch, and
-a maker of something that's made into other things here enough to keep those going flat out. A maker that
-makes less than is taken from it is something npm run check-story says.
+The drafts gave each maker and each piece of ground twice what's taken from it in a day, so that it catches
+up after a bad stretch, and enough to keep whatever is made from its goods here going flat out. One that
+gives less than is taken from it is something npm run check-story says.
 
 USES
 
@@ -124,25 +145,26 @@ WHAT GOES ON THERE
 world/daily.json's events are the things that happen at a port (a strike, a fever, a harvest), and each says
 what it does to a supply while it lasts: its makers make less or more, its people use more, goods are taken off
 its market or brought to it, nothing gets in or out, or what was sent there never arrives. Makers and what gets
-in or out go for every good of that supply's tree, the refined ones too; what's taken off the market or
-brought to it is only the finished goods, the developed and the advanced. That file's own first lines explain
-the words.
+in or out go for every good of that supply's tree, the ground's and the refined ones too: a harvest is twice
+the grain out of the fields, and a storm a tenth of the kelp. What's taken off the market or brought to it is
+only the finished goods, the developed and the advanced. That file's own first lines explain the words.
 
 WHAT'S NOT HERE YET
 
-The basic goods, and the ground they come out of, are the last part of this step: until then the refined goods
-are made from nothing. The ship herself still buys by the lot, and what she buys or sells is taken from the
-port or added to it in real crates. Freight, a port's goods in its rooms, and the ships that carry the hauls
-come with later steps: until then a haul is an amount on its way, which the star map says when a port is short.
+The ship herself still buys by the lot, and what she buys or sells is taken from the port or added to it in
+real crates. She still fills her shuttle stores from nothing: living off the ports is the next step. Freight,
+a port's goods in its rooms, and the ships that carry the hauls come with later steps: until then a haul is an
+amount on its way, which the star map says when a port is short.
 
 CHECKING AND CHANGING
 
 npm run check-story reads every file here and says, in plain words, what it can't follow: a good that isn't in
 world/goods, a port that isn't on the star map, a good that comes from a port that holds none, a maker of
 something the port doesn't hold, a maker that takes something the port doesn't hold or that the good isn't
-made from, a maker that says nothing of what it makes a good from, a good that's used or taken and never
-comes, or one that's taken faster than it's made.
+made from, a maker with no from, a basic good written under Makes or a made one under Ground, a good that's
+used or taken and never comes, or one that's taken faster than it's made or comes out of the ground.
 
 The Story board has Ports: each line of a port's file is a box, with the ports it sends to on the left and the
-ports that send to it on the right, an arrow from each maker to what it makes, and one to it from each thing
-it's made from. Click a box to change its line, then Keep and Save.
+ports that send to it on the right, what comes out of the ground above its makers, an arrow from each of them
+to what it gives or makes, and one to each maker from each thing it's made from. Click a box to change its
+line, then Keep and Save.

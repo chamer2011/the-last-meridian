@@ -3,7 +3,7 @@
 // than the port has the goods for, and takes them; a port short of what its people eat and drink has fewer hands at
 // its makers, one short of medicine has more of them laid up, and one without what its makers run on does a part of
 // its work. So a shortage travels down a tree as well as across the map. The Sundial and Anselm's Mercy are ports.
-// None of this calls an AI.
+// None of this calls an AI. The ground the basic goods come out of (part 3) is in test/ports-ground.test.js.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -100,7 +100,7 @@ test("every good that's made from something says so, every maker says what goes 
   assert.deepEqual(m.work, { hands: ["ration_crates", "drinking_water"], sick: ["medicine_crates"], power: ["fuel_cells"] });
   assert.equal(m.trees.fuel.power, true, "the fuel tree's own makers run on what they make");
   for (const good of Object.values(m.goods)) {
-    if (good.step === "refined") assert.deepEqual(good.from, [], `${good.name} comes out of the ground, in part 3`);
+    if (good.step === "basic") assert.deepEqual(good.from, [], `${good.name} comes out of the ground`);
     else assert.ok(good.from.length >= 1 && good.from.every((one) => m.goods[one]), `${good.name} is made from something`);
   }
   assert.deepEqual(m.goods.ration_crates.from, ["meal", "kelp_cake"]);
@@ -175,8 +175,11 @@ test("the checker says what's wrong with a maker: what it takes isn't a good, is
   assert.match(said(portsDir, "maris.txt", (text) => text.replace(/(the presses on the Rafts: )[\d,.]+ kelp cake/, "$110 kelp cake")), /kelp cake a day are used here, taken by its makers or sent for from here, and 10 are made: it'll run down/);
   assert.match(said(goodsDir, "food.txt", (text) => text.replace("[ration_pack], made from meal", "[ration_pack], made from moon cheese")), /goods\/food\.txt \(line \d+\): ration packs: made from moon cheese, which isn't a good in world\/goods/);
   assert.match(said(goodsDir, "food.txt", (text) => text.replace("hands need: ration crates", "hands need: fuel cells")), /hands need: fuel cells, which isn't one of this tree's goods/);
-  // Round in a ring: scrap from machines, which are made from parts crates, which are made from scrap.
-  assert.match(said(portsDir, "deepyards.txt", (text) => text.replace(/(the cutters: [\d,.]+ scrap a day)/, "$1, from 1 machines")), /making .* takes .*, and making .* takes .* in the end: one of the ports' makers has to give way/);
+  // Round in a ring: scrap from machines, which are made from parts crates, which are made from scrap. The tree has
+  // to allow it for a maker to try it.
+  const ring = withFile(goodsDir, "parts.txt", (text) => text.replace("[scrap], made from wrecks", "[scrap], made from wrecks, machines"),
+    () => said(portsDir, "deepyards.txt", (text) => text.replace(/(the cutters: [\d,.]+ scrap a day), from [\d,.]+ wrecks/, "$1, from 1 machines")));
+  assert.match(ring, /making .* takes .*, and making .* takes .* in the end: one of the ports' makers has to give way/);
   assert.deepEqual(portsProblems(), [], "and the files are as they were");
 });
 

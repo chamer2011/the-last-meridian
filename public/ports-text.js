@@ -9,8 +9,10 @@
 //     stands for: food, by its ration crates
 //     hands need: ration crates
 //
+//     Basic:
+//     - grain, by the load: Barley, wheat and beans off a field.
 //     Refined:
-//     - meal, by the sack: Grain dried and milled.
+//     - meal, by the sack, made from grain: Grain dried and milled.
 //     Developed:
 //     - ration crates [ration_crate], made from meal, kelp cake: The crates a pantry holds, two hundred sittings each.
 //     - ration packs, by the case [ration_pack], made from meal: Packs and tins for one person.
@@ -25,6 +27,8 @@
 //     Holds:
 //     - ration crates: usually 1,500, from Tessen Colony or Maris Deep
 //     - meal: usually 900, from Tessen Colony
+//     Ground:
+//     - the Long Fields: 660 grain a day
 //     Makes:
 //     - the kitchens: 72 ration packs a day, from 36 meal
 //     Uses:
@@ -32,8 +36,8 @@
 
 export const STEPS = ["basic", "refined", "developed", "advanced"];
 export const STEP_TITLES = { basic: "Basic", refined: "Refined", developed: "Developed", advanced: "Advanced" };
-export const PORT_PARTS = ["holds", "makes", "uses"];
-export const PORT_TITLES = { holds: "Holds", makes: "Makes", uses: "Uses" };
+export const PORT_PARTS = ["holds", "ground", "makes", "uses"];
+export const PORT_TITLES = { holds: "Holds", ground: "Ground", makes: "Makes", uses: "Uses" };
 
 // "1,500", "0.3", "12": a number as these files write it, and back.
 const NUMBER = "\\d[\\d,]*(?:\\.\\d+)?";
@@ -216,6 +220,19 @@ export function readMakeLine(text) {
 }
 export const writeMakeLine = (one) => `${one.name}: ${numberWords(one.n)} ${one.good} a day${one.from?.length ? `, from ${one.from.map((entry) => `${numberWords(entry.n)} ${entry.good}`).join(", ")}` : ""}`;
 
+// "the Long Fields: 660 grain a day": what comes out of the ground at a port, where it comes out, and how many at
+// the most each day. It's made from nothing: only the basic goods are, and only here.
+export function readGroundLine(text) {
+  const line = String(text ?? "").trim().replace(/^-\s*/, "").replace(/\.$/, "");
+  if (/\s+(?:a|each|every|per)\s+day\s*,?\s*(?:made\s+)?from\s+/i.test(line)) return { problem: `"${line}" comes out of the ground, so it isn't made from anything: leave the from out, or write the line under Makes` };
+  const found = line.match(/^(.+?):\s*(.+?)\s+(?:a|each|every|per)\s+day$/i);
+  const amount = found ? readAmount(found[2]) : null;
+  if (!amount) return { problem: `"${line}" should be where it comes out of the ground, a colon, how many of what, and a day: the Long Fields: 660 grain a day` };
+  if (!(amount.n > 0)) return { problem: `"${line}" should give more than nothing a day` };
+  return { name: found[1].trim(), n: amount.n, good: amount.good };
+}
+export const writeGroundLine = (one) => `${one.name}: ${numberWords(one.n)} ${one.good} a day`;
+
 // "its people: 60 ration crates, 3 ration packs a day": who uses it up, and how many of each thing, each day.
 export function readUseLine(text) {
   const line = String(text ?? "").trim().replace(/^-\s*/, "").replace(/\.$/, "");
@@ -236,7 +253,7 @@ const PORT_HEADER = ["draft", "people"];
 export function parsePortText(text, id = "it") {
   const problems = [];
   const problem = (line, message) => problems.push({ line, message });
-  const value = { id, name: id, holds: [], makes: [], uses: [] };
+  const value = { id, name: id, holds: [], ground: [], makes: [], uses: [] };
   const lines = String(text ?? "").replace(/\r\n?/g, "\n").split("\n");
   let titled = false;
   let section = null;
@@ -285,7 +302,7 @@ export function parsePortText(text, id = "it") {
       continue;
     }
     const words = line.replace(/^-\s*/, "");
-    const read = section === "holds" ? readHoldLine(words) : section === "makes" ? readMakeLine(words) : readUseLine(words);
+    const read = section === "holds" ? readHoldLine(words) : section === "ground" ? readGroundLine(words) : section === "makes" ? readMakeLine(words) : readUseLine(words);
     if (read.problem) problem(n, read.problem);
     value[section].push({ text: words, line: n });
   }

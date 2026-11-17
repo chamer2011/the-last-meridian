@@ -10,6 +10,7 @@ Holds:
 - hot cells: usually 19, from the Veshti Deepyards
 - medicine crates: usually 33, from Haven Station
 - medkits: usually 6.3, from Lumen Sanctuary or Vantor Prime
+- wrecks: usually 67
 - scrap: usually 340
 - parts crates: usually 30
 - circuit boards: usually 150
@@ -23,10 +24,13 @@ Holds:
 - tea and tobacco: usually 38, from Haven Station
 - fine things: usually 2.5, from the Gilded Wheel
 
+Ground:
+- the prizes on Raiders' Row: 6.8 wrecks a day
+
 Makes:
-- the wreck divers: 34 scrap a day
+- the wreck divers: 34 scrap a day, from 6.8 wrecks
 - the breakers' yards: 3 parts crates a day, from 3 scrap
-- the benches in the warren: 15 circuit boards a day, from 30 scrap
+- the benches in the Warrens: 15 circuit boards a day, from 30 scrap
 - the water sellers: 50 drinking water a day, from 10 water
 
 Uses:

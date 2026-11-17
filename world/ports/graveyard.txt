@@ -11,11 +11,13 @@ Holds:
 - hot cells: usually 2.5, from the Veshti Deepyards
 - medicine crates: usually 10, from Haven Station
 - medkits: usually 2.5, from Lumen Sanctuary
+- wrecks: usually 35
 - scrap: usually 140
 - parts crates: usually 140
 - circuit boards: usually 2.5, from Kessara Drift
 - machines: usually 0.5, from the Veshti Deepyards
-- water: usually 40
+- ice: usually 70
+- water: usually 70
 - drinking water: usually 200
 - air bottles: usually 50, from Tessen Colony
 - reserve tanks: usually 2, from the Veshti Deepyards
@@ -23,10 +25,14 @@ Holds:
 - clothes: usually 10, from Haven Station
 - tea and tobacco: usually 15, from Haven Station
 
+Ground:
+- the wrecks on Claim Row: 3.6 wrecks a day
+- the dead ships' tanks: 7 ice a day
+
 Makes:
-- the tank drainers: 8 refined fuel a day
-- the Guild barges: 14 scrap a day
-- the Guild's melters: 4 water a day
+- the tank drainers: 8 refined fuel a day, from 0.8 wrecks
+- the Guild barges: 14 scrap a day, from 2.8 wrecks
+- the Guild's melters: 7 water a day, from 7 ice
 - the breakers on Claim Row: 14 parts crates a day, from 14 scrap
 - the barge galleys: 20 drinking water a day, from 4 water
 - the Guild's stills: 4 jump fuel a day, from 8 refined fuel
