@@ -7,6 +7,7 @@ weight: 0.01
 found in: dresser, safe
 rarity: rare
 keepsake: yes
+gift: 6
 
 In a line:
 Two pearls on gold hooks, from an ocean world.

@@ -5,6 +5,7 @@ price: 26
 size: 1x1
 weight: 30
 stack: 3
+comfort: 80 drink
 
 In a line:
 Stone ale, ship's beer and worse, by the keg.

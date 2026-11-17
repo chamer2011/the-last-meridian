@@ -7,6 +7,7 @@ weight: 0.9
 defense: 0
 found in: crew locker
 rarity: common
+comfort: 3 clothes
 
 In a line:
 Plain trousers and shirt in a drab that matches nothing and offends no one.

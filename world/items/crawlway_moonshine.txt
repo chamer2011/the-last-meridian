@@ -8,6 +8,8 @@ stack: 5
 effect: stress 8
 found in: crate, crew locker
 rarity: uncommon
+comfort: 2 drink
+gift: 2
 
 In a line:
 Clear spirit from a still nobody admits to running. It burns twice.

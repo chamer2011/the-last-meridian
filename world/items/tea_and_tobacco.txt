@@ -5,6 +5,7 @@ price: 24
 size: 1x1
 weight: 15
 stack: 3
+comfort: 100 tea and tobacco
 
 In a line:
 Tea, coffee and tobacco, for a hard day, in a lined chest.

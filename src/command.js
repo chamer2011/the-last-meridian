@@ -824,6 +824,8 @@ const MEMORY = {
   // more than a plain no and is remembered aloud for a week.
   obeyed: { weight: 6, words: "gave {by} orders ({words}), and saw them carried out", recent: 3 },
   disobeyed: { weight: -12, words: "gave {by} orders ({words}), and was refused", recent: 7 },
+  // A gift (src/comforts.js): {words} is what it was, and its weight is the gift's own, from its item's file.
+  gift: { weight: 3, words: "given {words} by {by}", recent: 3 },
 };
 const memoriesOf = (game, place, key) => stateOf(game, place)?.memory?.[key] ?? [];
 const fadeOf = (place) => commandOf(place)?.reviews?.fade || 30;
@@ -833,6 +835,17 @@ export function rememberRequest(game, key, kind, { words = null, about = null, w
   if (!MEMORY[kind] || !commandOf(SHIP_PLACE)) return;
   remember(game, SHIP_PLACE, key, kind, { by: YOU, about, ...(w !== undefined ? { w } : {}), ...(words ? { words } : {}) });
 }
+// A gift from the player to someone aboard the Meridian (src/comforts.js), with what it was in words and how well
+// it's remembered. Someone keeps the last two they were given, so a string of gifts doesn't crowd out everything else
+// they remember. And the day of the last one, or null: one a week counts.
+export function rememberGift(game, key, words, w) {
+  if (!commandOf(SHIP_PLACE) || !key || key === YOU) return;
+  const list = memoriesOf(game, SHIP_PLACE, key);
+  const gifts = list.filter((one) => one.kind === "gift");
+  if (gifts.length >= 2) commandState(game, SHIP_PLACE).memory = { ...(stateOf(game, SHIP_PLACE)?.memory ?? {}), [key]: list.filter((one) => one !== gifts[0]) };
+  remember(game, SHIP_PLACE, key, "gift", { by: YOU, w, words });
+}
+export const lastGiftDay = (game, key) => memoriesOf(game, SHIP_PLACE, key).filter((one) => one.kind === "gift" && one.by === YOU).at(-1)?.day ?? null;
 const strengthOf = (game, place, one) => 0.5 ** (Math.max(0, dayNow(game) - one.day) / fadeOf(place));
 function remember(game, place, key, kind, { by = null, about = null, post = null, day = dayNow(game), w = undefined, words = undefined } = {}) {
   if (!key || key === YOU) return;

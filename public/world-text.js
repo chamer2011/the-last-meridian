@@ -134,6 +134,10 @@ export const ITEM = {
     // What one of it is worth to the ship, in the store that uses it: so many sittings at the kettle, so many doses in
     // the medbay, so many repairs (src/worth.js).
     { path: "feeds", key: "feeds", type: "number" }, { path: "doses", key: "doses", type: "number" }, { path: "spares", key: "spares", type: "number" },
+    // What one of it is worth to the crew as a comfort, in the store their comforts are kept in: "80 drink", "100 tea
+    // and tobacco", "100 clothes", or "a good table for 300" (src/worth.js, src/comforts.js). And how well it's
+    // remembered when it's given to someone: a gift.
+    { path: "comfort", key: "comfort", type: "string" }, { path: "gift", key: "gift", type: "number" },
   ],
   sections: [
     { path: "desc", phrase: "In a line", type: "text" },

@@ -125,6 +125,45 @@ function airLine(s) {
     muted(`Reserve air in the ${a.name}, ${a.room}: what everyone breathes while the air plant is stopped, and what fills a breached room again once it's patched.${now ? ` ${now}` : ""}${a.tank ? ` A full reserve tank from a port, fitted there by hand, adds ${hours(a.tank)}.` : ""}`));
 }
 
+// The crew's comforts, under the air: how much drink, tea and tobacco, and clothes are left in the store they're kept
+// in, what they're doing to morale, the provisions for a good table, and, at a dock that sells them, a button to buy
+// each for the crew out of the ship's purse.
+const COMFORT_LABELS = { drink: "DRINK", leaf: "TEA", clothes: "CLOTHES" };
+function comfortsLine(s) {
+  const c = s.comforts;
+  if (!c) return null;
+  const days = (n) => `${n} ${n === 1 ? "day" : "days"}`;
+  const out = c.kinds.filter((one) => one.out);
+  const row = (one) => {
+    const bar = "#".repeat(Math.round(Math.max(0, Math.min(1, one.left / Math.max(1, one.of))) * 10)).padEnd(10, "-");
+    return el("div", { class: `ship-supply-line${one.out ? " tone-bad" : ""}` },
+      el("span", {}, `${(COMFORT_LABELS[one.id] ?? one.name.toUpperCase()).padEnd(8)} [${bar}] ${one.left}`),
+      el("strong", {}, one.out ? "OUT" : one.days === null ? "" : `${days(one.days)} left`));
+  };
+  // "drink, tea and tobacco": a comma where a name has an and of its own.
+  const list = (names) => (names.length > 1 ? `${names.slice(0, -1).join(", ")}${names.some((name) => name.includes(" and ")) ? "," : " and"} ${names.at(-1)}` : names[0] ?? "");
+  const now = c.shift > 0 ? ` Things are going wrong, and what the crew still has is steadying them: morale settles ${c.shift} higher than it would.`
+    : c.shift < 0 ? ` Going without ${list(out.map((one) => one.name))} is souring the mood: morale settles ${-c.shift} lower than it would.`
+      : out.length ? ` They've run out of ${list(out.map((one) => one.name))}, and what's left is making up for it.` : "";
+  const table = c.table
+    ? ` For a good table there ${c.table.hampers === 1 ? "is 1 hamper" : `are ${c.table.hampers || "no"} hampers`} of provisions${c.table.hampers ? `, enough for ${number(c.table.seats)}` : ""}: after a hard day, when spirits are low, whoever keeps the stores has them laid out at the evening sitting, and morale lifts by up to ${c.table.lifts} at once.${c.table.last ? ` The last was on day ${c.table.last.day}, after ${c.table.last.why}.` : ""}`
+    : "";
+  const purse = s.money?.purse ?? 0;
+  const offer = (o) => {
+    const why = !o.has ? `Nobody at ${s.atName} has any left to sell` : o.have >= o.of ? `The ${c.store} has no room for another` : purse < o.price ? "The purse can't cover it" : "";
+    return el("button", { disabled: cannotAct() || Boolean(why), title: why || `${o.worth}. ${o.have} of ${o.of} in the ${c.store}.`, onclick: shipOrder({ action: "comfort-buy", id: o.id }) }, `${o.name}, ${o.price} cr`);
+  };
+  // Only what's run out is in red: the rows that are, and the heading that says which.
+  const short = (one) => (COMFORT_LABELS[one.id] ?? one.name).toLowerCase();
+  return el("div", { class: "ship-supply" },
+    el("div", { class: `ship-supply-line${out.length ? " tone-bad" : ""}` }, el("span", {}, "COMFORTS"), el("strong", {}, out.length ? `out of ${list(out.map(short))}` : "")),
+    c.kinds.map(row),
+    muted(`The crew's comforts, in the ${c.store}, ${c.room}: everyone aboard uses them up a little every day, ${list(c.kinds.map((one) => `${one.aDay} of ${one.name}`))}. While things are going wrong, each one they still have steadies morale by ${c.steadies}; each one they've run out of sours it by ${c.sours}, slowly.${now}${table}`),
+    c.offers?.length
+      ? [small(`${s.atName} sells them. For the crew, out of the ship's purse, straight into the ${c.store}:`), el("div", { class: "row ship-comforts-buy" }, c.offers.map(offer))]
+      : muted(s.at ? `Nobody at ${s.atName} sells them.` : "In open space nothing comes: they're bought at a dock."));
+}
+
 function supplyLine(s) {
   const bar = "#".repeat(Math.round(Math.max(0, Math.min(1, s.stock / s.max)) * 10)).padEnd(10, "-");
   const left = s.out ? "OUT" : s.days === null ? "holding" : `${s.days} ${s.days === 1 ? "day" : "days"} left`;
@@ -136,7 +175,7 @@ function supplyLine(s) {
     muted(s.bought > 0 ? `Makes ${s.made}, uses ${s.used}, and the dock sends the rest, ${s.bought} a day, for the purse to pay.` : `Makes ${s.made}, uses ${s.used}, so ${signed(s.net)} a day.`));
 }
 
-const suppliesSection = (s) => section("Stores", s.supplies.map(supplyLine), cellsLine(s), waterLine(s), airLine(s), muted("Food, medicine and parts are what's in the rooms' stores below, counted together, and fuel is the tank. Anything else that's food in the pantry, medicine in the cabinet or a spare in the lockers counts for its share of a crate. The ship's daily needs and the engineers take a crate when they've used one up, at midnight, the medbay opens one from its cabinet when its doses run out, and the kettle feeds everyone through the day. With parts aboard the engineers mend the hull a little each day; without them, she wears."));
+const suppliesSection = (s) => section("Stores", s.supplies.map(supplyLine), cellsLine(s), waterLine(s), airLine(s), comfortsLine(s), muted("Food, medicine and parts are what's in the rooms' stores below, counted together, and fuel is the tank. Anything else that's food in the pantry, medicine in the cabinet or a spare in the lockers counts for its share of a crate. The ship's daily needs and the engineers take a crate when they've used one up, at midnight, the medbay opens one from its cabinet when its doses run out, and the kettle feeds everyone through the day. With parts aboard the engineers mend the hull a little each day; without them, she wears."));
 
 // What's kept where, room by room, from world/logistics: each store is a thing in a room you can walk to and open,
 // each machine takes from one and puts into another on the clock, and the whole ship eats from the kettle.
@@ -146,7 +185,15 @@ function storesSection(s) {
   const line = (store) => {
     // What a store keeps is counted in its own words, "12 ration crates". Anything else that's been put in it, a tin or
     // a medkit handed in, is listed as it's named, "100 × tinned fish", since not every name takes an s.
-    const kept = (one) => `${one.n}${one.of && one.n !== one.of ? ` of ${one.of}` : ""} ${one.name.toLowerCase()}${one.n === 1 || /produce$/i.test(one.name) ? "" : "s"}`;
+    // "4 kegs of beer and spirits": the s goes on the first word of a thing that's so much of something.
+    const many = (name, n) => {
+      const low = name.toLowerCase();
+      if (n === 1 || /produce$/.test(low)) return low;
+      const of = low.indexOf(" of ");
+      if (of > 0) return `${low.slice(0, of)}s${low.slice(of)}`;
+      return /s$/.test(low) ? low : `${low}s`;
+    };
+    const kept = (one) => `${one.n}${one.of && one.n !== one.of ? ` of ${one.of}` : ""} ${many(one.name, one.of || one.n)}`;
     const what = store.count ? `${store.count.n} of ${store.count.of} ${store.count.unit}` : store.items.filter((one) => one.of || one.n > 0).map((one) => (one.of ? kept(one) : `${one.n} × ${one.name.toLowerCase()}`)).join(", ") || "empty";
     return el("div", { class: "menu-row small" },
       el("span", {}, store.name, el("span", { class: "muted" }, `, ${store.room}`)),

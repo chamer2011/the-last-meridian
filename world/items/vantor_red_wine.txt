@@ -8,6 +8,8 @@ stack: 1
 effect: stress 10
 found in: cooler, safe
 rarity: rare
+comfort: 3 drink
+gift: 6
 
 In a line:
 A dusty bottle of Vantor red, older than the ship's youngest officer.

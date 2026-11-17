@@ -1,0 +1,42 @@
+# What the house can't get
+// Draft by the AI (Claude), 2026-11-17, not yet edited by the owner. When the Gilded Wheel is short of fine things
+// (under 30 cases, where it usually keeps 37: its tailor and its Cellars make them from clothes and from beer and
+// spirits, which come to it from Haven and from Korrath), Madame Oriel asks anyone who comes through for two bottles
+// of Vantor red, at twice what they cost on the market. The bottles turn up in coolers and safes. {port} is whoever
+// holds the Wheel.
+for: anyone
+when: at wheel and goods fine things < 30 at wheel
+asks: Oriel Ao-Dess
+needs: sell 2 vantor red wine to {asker}, at twice the market price
+by: 20 days
+gone when: goods fine things >= 37 at wheel
+
+== ask
+@{asker}: "The Cellars are thin, and my best tables have noticed. I don't ask where a bottle comes from. Bring me two of Vantor red, and the house pays twice what the market would."
+> Here, take them -> given ? has vantor_red_wine
+> I'll find you two -> yes
+> Not now -> later
+> I can't -> no
+
+== yes
+@{asker}: "Two bottles. The house keeps its accounts, and its friends."
+
+== given
+@{asker}: "Dusty. Good. Your money."
+
+== later
+@{asker}: "The tables will wait a little. Not long."
+
+== no
+@{asker}: "Then someone else will drink to my health."
+
+== done
+@{asker}: "Two bottles of red, and nobody had to ask twice. The house remembers who it can ask."
+* faction {port} 3: You found Madame Oriel what the Gilded Wheel couldn't get
+* xp 15: What the house can't get
+
+== failed
+@{asker}: "I told the table it was coming. I don't enjoy being made a liar."
+
+== gone
+@{asker}: "The Cellars are full again. Keep your bottles for a thirstier house."

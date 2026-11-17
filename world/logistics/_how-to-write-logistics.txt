@@ -50,6 +50,10 @@ THE FILE
     a day of reserve air takes: 4 measures of water
     a breached room takes: 6 hours of reserve air
     a breached room fills in: 3 hours with no reserve air
+    the crew uses: 20 drink, 20 tea and tobacco, 10 clothes a day, from the comforts locker
+    each comfort steadies morale: 2 points when things go wrong     (these four are for a place whose crew
+    going without one sours it: 2 points                             has comforts: see THE CREW'S COMFORTS)
+    a good table lifts morale: 6 points after a hard day
 
     Stores:
     - shuttle stores in The Lighter Bay: holds 24 ration crates, 36 fuel cells
@@ -229,6 +233,65 @@ room alone, which takes a breached room fills in hours, and the room's air stays
 
 The Ship menu's Stores list has a Water line and an Air line, each with how long it lasts, and the Work page
 lists both tanks with a word beside them when something's up.
+
+THE CREW'S COMFORTS
+-------------------
+
+A crew uses up three comforts, a little every day: drink (beer, wine and spirits), tea and tobacco (tea,
+coffee and tobacco), and clothes. One line at the top says how much of each the whole crew uses in a day, and
+the store they're kept in:
+
+    the crew uses: 20 drink, 20 tea and tobacco, 10 clothes a day, from the comforts locker
+
+The store is one of the place's Stores, a store of things like the pantry:
+
+    - comforts locker in The Long Mess: holds 4 kegs of beer and spirits, 4 chests of tea and tobacco, 2 bales of clothes, 3 hampers of provisions, 48 ship-brewed beer, 24 crawlway moonshine
+
+What a thing is worth is in its own file in world/items, on a line such as comfort: 80 drink (a keg),
+comfort: 1 drink (a bottle of the ship's beer), comfort: 100 tea and tobacco (a chest), comfort: 100 clothes
+(a bale) or comfort: 3 clothes (a jumpsuit). The numbers are in the same measure as this file's: a crew that
+uses 20 drink a day gets four days out of a keg worth 80. Anything in the store that's worth some counts,
+whether or not the store's line names it, so a bottle or a coat put in by hand is used like the rest. The crew
+opens the smallest thing first, so what's loose goes before a keg is broached. With fewer aboard than the
+ship started with, they use less.
+
+What they do is in two numbers:
+
+    each comfort steadies morale: 2 points when things go wrong
+    going without one sours it: 2 points
+
+While things are going wrong (the rations are short, or something has run out, or the kettle ran dry, so
+that morale is settling lower than it does on a fed ship at ease), every comfort the crew still has raises
+where it settles by the first number, never past where it settles when all's well. Every comfort they've run
+out of lowers where it settles by the second, however things are going. The story says so once when one runs
+out. Leave a line out and it does nothing.
+
+A good table is the fourth line:
+
+    a good table lifts morale: 6 points after a hard day
+
+An item whose file says comfort: a good table for 300 (a hamper of provisions) is laid out for that many
+people. After a hard day (a death aboard, fighting on the decks, a fire or a hole in the hull, or the alarm),
+if spirits are low, whoever decides what the stores want (the what stores want line) has the hampers in the
+store laid out at the first sitting after noon, enough for everyone aboard if there are that many, and morale
+rises at once by the number, or by the share of everyone the hampers reached. Spirits are low while morale is
+under where a fed ship at ease settles (the standard rations' morale, in world/ship.json), and a table never
+lifts it past that. There's one in three days at most. With nobody in that post, or no such line, no table is
+laid.
+
+Nothing here comes from nothing. At a dock whose port sells them, the Ship menu's Comforts line has a button
+for each thing the store keeps (a keg, a chest, a bale, a hamper): one at a time, out of the port's own
+stores and the ship's purse, straight into the store. And a machine can make some aboard (see MACHINES):
+
+    - beer bucket in The Galley: brews 1 produce from the garden bins into 48 ship-brewed beer in the comforts locker every 480 hours, with a cook there and 1 water
+    - still in The Crawlways: distils 1 produce from the garden bins into 24 crawlway moonshine in the comforts locker every 240 hours, with someone there and 1 water
+
+Their hours are hours of work, counted only while someone's there. What they take is food the kettle doesn't
+get: with these two, about a hundredth of what the ship eats. The place's law can shut one (world/law: a line such
+as the still: against the law), and then nobody runs it.
+
+A gift is something else an item's file can say (gift: 6): handed to someone aboard from their window, it's
+remembered, and shows on an officer's card in the Command menu.
 
 CARRYING
 --------

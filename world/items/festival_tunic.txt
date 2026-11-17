@@ -7,6 +7,7 @@ weight: 0.5
 defense: 0
 found in: dresser
 rarity: uncommon
+comfort: 2 clothes
 
 In a line:
 Bright red with gold edging, made for a festival on a world nobody aboard will see again.

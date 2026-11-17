@@ -7,6 +7,7 @@ weight: 2.5
 defense: 0
 found in: dresser, crew locker
 rarity: common
+comfort: 3 clothes
 
 In a line:
 Warm and patched from three other coats, it stops nothing, but nobody in a crowd looks at it twice: +1 on checks in crowds while carried.

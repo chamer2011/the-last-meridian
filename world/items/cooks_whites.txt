@@ -7,6 +7,7 @@ weight: 0.6
 defense: 0
 found in: crew locker
 rarity: common
+comfort: 2 clothes
 
 In a line:
 A white double-breasted jacket that hasn't been white for years.

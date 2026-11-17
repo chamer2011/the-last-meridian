@@ -7,6 +7,7 @@ weight: 0.9
 defense: 0
 found in: dresser
 rarity: common
+comfort: 2 clothes
 
 In a line:
 Thick towelling with a cabin number embroidered on the pocket.

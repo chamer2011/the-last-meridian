@@ -224,6 +224,10 @@ test("an ask for medicine crates takes medkits handed in at the cabinet, five to
   assert.equal(quest.status, "completed");
 });
 
+const held2 = (game, id) => {
+  const view = bag.bagView(game);
+  return [...view.pack.items, ...view.pockets.items, ...view.belt.filter(Boolean)].find((one) => one.id === id);
+};
 test("the inventory says what a thing is worth to the ship, and where it has to be", () => {
   const game = newGame();
   rules.addItem(game, "tinned_fish", 1);
@@ -235,5 +239,8 @@ test("the inventory says what a thing is worth to the ship, and where it has to 
   assert.equal(held("tinned_fish").worth, "Feeds 1 at the kettle, once it's in the pantry.");
   assert.equal(held("medkit").worth, "4 doses for the medbay, once it's in the medicine cabinet.");
   assert.equal(held("repair_kit").worth, "One repair's worth of spares, in the parts lockers or the shuttle stores.");
-  assert.equal(held("ship_brewed_beer").worth, undefined);
+  // A beer feeds nobody: it's a comfort for the crew, and something to give (test/comforts.test.js).
+  assert.equal(held("ship_brewed_beer").worth, "1 of the crew's drink, once it's in the comforts locker. Given to someone, it's remembered.");
+  rules.addItem(game, "hard_candies", 1);
+  assert.equal(held2(game, "hard_candies").worth, undefined);
 });

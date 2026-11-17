@@ -49,6 +49,14 @@ function orders(board) {
       levels.by ? `is set by ${levels.by}, who raises it after a store has run low.` : `stays as it is: ${levels.why}.`));
 }
 
+// "3 hampers of provisions": the s goes on the first word of a thing that's so much of something.
+function many(name, n) {
+  if (n === 1 || /produce$/.test(name)) return name;
+  const of = name.indexOf(" of ");
+  if (of > 0) return `${name.slice(0, of)}s${name.slice(of)}`;
+  return /s$/.test(name) ? name : `${name}s`;
+}
+
 function storeRow(store) {
   if (store.count) {
     return el("div", { class: "work-row" },
@@ -60,7 +68,7 @@ function storeRow(store) {
     el("span", { class: "work-name" }, i === 0 ? [store.name, el("span", { class: "muted" }, `, ${store.room}`)] : ""),
     el("span", { class: `work-count${row.urgent ? " tone-bad" : row.short ? " tone-warn" : ""}` },
       squares(row.has, row.wants, row.holds),
-      ` ${row.has}${row.wants === null ? "" : ` / ${row.wants}`} ${row.name}${row.has === 1 || /produce$/.test(row.name) ? "" : "s"}`),
+      ` ${row.has}${row.wants === null ? "" : ` / ${row.wants}`} ${many(row.name, row.has)}`),
     el("span", { class: "muted small" }, row.wants === null ? (row.note || `holds ${row.holds}`) : row.note)));
 }
 

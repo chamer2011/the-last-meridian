@@ -7,6 +7,7 @@ weight: 1.4
 defense: 0
 found in: dresser, crew locker
 rarity: common
+comfort: 3 clothes
 
 In a line:
 Meridian grey, with the ship's patch on the shoulder and someone else's name inked inside the collar.

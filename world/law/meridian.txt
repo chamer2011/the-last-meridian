@@ -11,6 +11,10 @@ draft: the AI's, not yet edited by the owner
 # open): posts and jobs, "everyone", "nobody" (the captain's alone), or "whoever sleeps there", and "anywhere else" for
 # every room without a line of its own. The captain may take from any of them.
 #
+# A line for a maker the crew runs for itself (a machine in world/logistics/meridian.txt, by its name) says whether the
+# law looks away from it: "the still: the law looks away", or "the still: against the law", which shuts it: nobody
+# runs it, and the Ship menu's Machines list says why.
+#
 # None of it matters unless it's seen: by someone awake in the same room, or by a camera that works, with the room's
 # lights on. Whoever's walking with you looks the other way. The two lines at the end say what being seen costs.
 #
@@ -24,6 +28,7 @@ Stores:
 - the fuel rack: the chief engineer, the techs
 - the shuttle stores: the quartermaster, the deckhands
 - the freight hold: the quartermaster, the deckhands
+- the comforts locker: the quartermaster, the cooks, the mess hands
 
 Rooms:
 - The Armory: the chief of security, the guards
@@ -42,5 +47,6 @@ Containers:
 - The Overflow: whoever sleeps there
 - anywhere else: everyone
 
+the still: the law looks away
 seen taking: it goes back; 10 credits docked a second time within 7 days
 seen in a closed room: walked out after 10 minutes

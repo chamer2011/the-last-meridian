@@ -7,6 +7,7 @@ weight: 2
 defense: 0
 found in: dresser, crate
 rarity: common
+comfort: 3 clothes
 
 In a line:
 A heavy cloak with a hood, for a ship whose heaters can't be trusted.

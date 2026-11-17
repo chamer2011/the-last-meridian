@@ -7,6 +7,7 @@ weight: 0.4
 found in: desk, dresser, cooler
 rarity: common
 keepsake: yes
+gift: 3
 
 In a line:
 A folding chess set with magnetic pieces, two of the pawns replaced by bolts.

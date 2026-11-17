@@ -15,15 +15,16 @@ import { findCharacter } from "./campaign.js";
 import { rosterOf, usuallyIn, whoIsIn } from "./life.js";
 import { claimedSquares, damageKinds, floorSpot, powerBalance, reserveLeft, roomPowered, systemsOf, waitingForParts } from "./systems.js";
 import { machineWaterWhy, newWater, runUser, runWater, takeMachineWater, waterSlows } from "./water.js";
+import { newComforts, runComforts } from "./comforts.js";
 import { YOU, jobById, jobByWords, mutinyStage, postByWords, speedOf, tallyDuty } from "./command.js";
 import { mapFor, roomHere, roomsOf, roomsOn, thingsIn } from "./walk.js";
 import { LOGISTICS_FILE_PROBLEMS, WORLD_LOGISTICS } from "./world.js";
 import { WORK_KINDS, everyWords, readLoadsLine, readMachineLine, readRefillLine, readStoreLine, readUrgencyLine, slugOf } from "../public/logistics-text.js";
 import { KNOWN_SYSTEMS, SYSTEM_TITLES } from "../public/systems-text.js";
 import { SHIP_DATA } from "./world.js";
-import { refillsHeld } from "./room-hooks.js";
+import { machineHeld, refillsHeld } from "./room-hooks.js";
 import { runBoard } from "./work.js";
-import { KINDS, WORTH, pickWorth, worthIn, worthOf, worthTotal } from "./worth.js";
+import { COMFORTS, COMFORT_IDS, KINDS, WORTH, comfortWords, giftOf, pickWorth, worthIn, worthOf, worthTotal } from "./worth.js";
 
 const plain = (words) => String(words ?? "").toLowerCase().replace(/['’]/g, "").replace(/^the\s+/, "").replace(/\s+/g, " ").trim();
 const upperFirst = (text) => (text ? text[0].toUpperCase() + text.slice(1) : "");
@@ -49,21 +50,35 @@ const clockWords = (minutes) => `${String(Math.floor(minutes / 60) % 24).padStar
 
 // An item by the words a file uses for it: its name or its id, plural or not.
 export function itemByWords(words) {
-  const want = plain(words).replace(/s$/, "");
+  // "kegs of beer and spirits" is more than one "keg of beer and spirits": the s is on the first word.
+  const single = (text) => {
+    const bare = plain(text);
+    const of = bare.indexOf(" of ");
+    return (of > 0 ? `${bare.slice(0, of).replace(/s$/, "")}${bare.slice(of)}` : bare).replace(/s$/, "");
+  };
+  const want = single(words);
   if (!want) return null;
   for (const [id, item] of Object.entries(ITEMS)) {
-    const names = [id.replace(/_/g, " "), item.name].map((one) => plain(one).replace(/s$/, ""));
+    const names = [id.replace(/_/g, " "), item.name].map(single);
     if (names.includes(want)) return id;
   }
   return null;
 }
+
+// The comfort an item is worth some of, if it's one the crew uses up: drink, leaf or clothes.
+const comfortKindOf = (item) => {
+  const words = String(ITEMS[item]?.comfort ?? "").trim().toLowerCase();
+  return COMFORT_IDS.find((kind) => words.endsWith(` ${COMFORTS[kind]}`)) ?? null;
+};
 
 export const itemWords = (id, n) => {
   const name = (ITEMS[id]?.name ?? id).toLowerCase();
   if (n === 1 || /produce$/.test(name)) return name;
   // "tanks of water", not "tank of waters".
   const of = name.indexOf(" of ");
-  return of > 0 ? `${name.slice(0, of)}s${name.slice(of)}` : `${name}s`;
+  if (of > 0) return `${name.slice(0, of)}s${name.slice(of)}`;
+  // "smuggled cigars" is already more than one.
+  return /s$/.test(name) ? name : `${name}s`;
 };
 
 // "12 ration crates and 12 produce", or "400 sittings".
@@ -505,6 +520,24 @@ function compileLogistics(place) {
       model.loads.push({ system: id, amount: one.amount, per: one.per, underWay: Boolean(one.while), words: one.system });
     }
   }
+  // The crew's comforts (src/comforts.js): what the crew uses of each in a day, the store they're kept in, and what
+  // having them and going without does to where morale settles.
+  model.comforts = null;
+  {
+    const n = model.numbers;
+    const lineOf = (key) => (file.lines ?? {})[key] ?? null;
+    const uses = file.uses ?? null;
+    const store = uses ? findStore(uses.from) : null;
+    if (uses && !store) at(uses.line, `there's no store called ${uses.from} for the crew's comforts: the stores are ${storeNames()}`);
+    else if (uses && (store.count || store.freight)) at(uses.line, `the crew's comforts are things kept in a store, and the ${store.name} ${store.freight ? "is the freight hold" : `holds ${store.count.unit}`}: name a store of things, such as - comforts locker in The Long Mess: holds 4 kegs of beer and spirits`);
+    else if (uses) model.comforts = { store: store.id, uses: Object.fromEntries(COMFORT_IDS.map((kind) => [kind, uses.uses[kind] ?? 0])), steadies: n.steadies ?? 0, sours: n.sours ?? 0, tableLifts: n.tableLifts ?? 0, line: uses.line };
+    if (!uses) for (const [key, words] of [["steadies", "each comfort steadies morale"], ["sours", "going without one sours it"], ["tableLifts", "a good table lifts morale"]]) if (n[key] !== undefined) at(lineOf(key), `${words} is written, and the file doesn't say what the crew uses: add a line such as the crew uses: 20 drink, 20 tea and tobacco, 10 clothes a day, from the comforts locker`);
+    // A comfort the crew uses that nothing in the store is worth any of can never be had there.
+    if (model.comforts) {
+      const kept = Object.keys(store.holds);
+      for (const kind of COMFORT_IDS) if (model.comforts.uses[kind] > 0 && !kept.some((item) => comfortKindOf(item) === kind)) at(uses.line, `the crew uses ${COMFORTS[kind]}, and nothing the ${store.name} holds is worth any: add something that is to its holds line (an item's own file says so, with a line such as comfort: 80 ${COMFORTS[kind]})`);
+    }
+  }
   // The refills: what comes into a store from outside, how often and how far. From the dock, bought at whatever port
   // the ship is docked at and paid for out of her purse (src/trade.js); or from nothing, which a file can still say.
   model.refills = [];
@@ -692,7 +725,13 @@ export function worthAboard(game, place, kind, storeIds, skip = []) {
 export function worthLine(place, id) {
   const model = logisticsOf(place);
   const kind = model ? KINDS.find((one) => worthOf(id, one) > 0) : null;
-  if (!kind) return null;
+  if (!kind) {
+    // A comfort for the crew, in the store their comforts are kept in; and a gift, which someone remembers.
+    const comfort = model?.comforts ? comfortWords(id) : null;
+    const gift = giftOf(id) > 0 ? "Given to someone, it's remembered." : null;
+    if (!comfort) return gift;
+    return `${upperFirst(comfort)}, once it's in the ${storeById(model, model.comforts.store).name}.${gift ? ` ${gift}` : ""}`;
+  }
   const n = worthOf(id, kind);
   const ids = kind === "medicine" ? [medbayOf(place)?.medicine?.store] : usedFrom(place, kind);
   const names = ids.map((one) => storeById(model, one)?.name).filter(Boolean);
@@ -880,6 +919,9 @@ export function workersIn(game, place, roomId, hours) {
 // Why a machine isn't making anything at a minute of the clock, or null while it's running. Who's there comes from
 // everyone's days as written (the same however a jump of the clock is cut up), and the player standing in the room.
 function whyWaiting(game, place, m, from, into, minute, you, workers = null) {
+  // Something that keeps it shut whatever else it has: the law, for a maker it doesn't allow.
+  const held = machineHeld(game, place, m);
+  if (held) return held;
   if (m.needs.power && !roomPowered(game, place, m.room)) return "no power";
   if (m.needs.worker && you !== m.room && !(workers ?? usuallyIn(game, place, m.room, minute % 1440, m.needs.job)).length) return `waiting for ${m.needs.worker}`;
   if (into) {
@@ -904,7 +946,7 @@ function runMachine(game, place, model, m, state, minute, minutes, you) {
   // can't do the work.
   const workers = m.needs.worker ? usuallyIn(game, place, m.room, minute % 1440, m.needs.job).filter((who) => handsFree(game, place, who)) : null;
   const why = whyWaiting(game, place, m, from, into, minute, you, workers);
-  const atWork = why === null || (why !== "no power" && !why.startsWith("waiting for "));
+  const atWork = why === null || (why !== "no power" && !why.startsWith("waiting for ") && !why.startsWith("shut"));
   // A machine that needs someone doing a job goes as fast as the best of them at that job's skill.
   // While water's rationed, what grows gets half of what it would, and gives half as much.
   const speed = (atWork && m.needs.job ? speedOf(game, place, you === m.room ? [...workers, YOU] : workers, jobById(place, m.needs.job)?.skills[0]) : 1) * (m.needs.water ? waterSlows(game, place, m) : 1);
@@ -1195,6 +1237,8 @@ export function startLogistics(game) {
     state.at = now;
     // A new game knows of its water from the start; one from before is told once (src/water.js).
     if (model.water) state.water = newWater();
+    // And of its comforts (src/comforts.js).
+    if (model.comforts) state.comforts = newComforts();
   }
   return game;
 }
@@ -1234,6 +1278,8 @@ export function advanceLogistics(game, untilHours = game.clock.hours) {
       serveMeals(game, place, model, state, t, CHUNK, notes);
       // Everyone drinks, a breached room is filled again, and the tank says when it's run dry (src/water.js).
       if (model.water) runWater(game, place, model, state, t, CHUNK, notes);
+      // The crew uses up its comforts, and a good table is laid after a hard day (src/comforts.js).
+      if (model.comforts) runComforts(game, place, model, state, t, CHUNK, notes);
       runRefills(game, place, model, state, t);
       // The board says what it couldn't give to anyone: something a store is badly short of, that some other store
       // could spare, with nobody able to carry it, which is what counts as an errand left waiting; and a repair the
@@ -1308,6 +1354,8 @@ export function growingAt(game, place) {
 }
 
 // Every machine with what it does and how it's getting on. Reading this changes nothing.
+// How much work a machine has left to its next go, in words: minutes for a pot, hours or days for a brew.
+const workLeft = (minutes) => (minutes > 2880 ? `about ${Math.round(minutes / 1440)} days' work` : minutes > 120 ? `about ${Math.round(minutes / 60)} hours' work` : `${minutes} ${minutes === 1 ? "minute" : "minutes"}`);
 export function machinesView(game, place) {
   const model = logisticsOf(place);
   if (!model) return [];
@@ -1326,7 +1374,7 @@ export function machinesView(game, place) {
       : !m.runs ? "not in play"
         : !s ? "about to start"
           : s.waiting ? s.waiting
-            : `at work, ${Math.max(1, Math.ceil(m.every - s.progress))} ${Math.ceil(m.every - s.progress) === 1 ? "minute" : "minutes"} to the next`;
+            : `at work, ${workLeft(Math.max(1, Math.ceil(m.every - s.progress)))} to the next`;
     // A full store or nobody there at night is how things are; no power or nothing left to work from is a want.
     const bad = Boolean(s?.waiting) && (s.waiting === "no power" || / ha(?:s|ve) no /.test(s.waiting));
     return { id: m.id, name: upperFirst(m.name), room: m.roomName, does, status, waiting: Boolean(s?.waiting) || !m.runs, bad, made: s?.made ?? 0, runs: m.runs, generator: m.generator };

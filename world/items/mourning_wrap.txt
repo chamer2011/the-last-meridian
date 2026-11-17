@@ -7,6 +7,7 @@ weight: 0.6
 defense: 0
 found in: dresser
 rarity: uncommon
+comfort: 2 clothes
 
 In a line:
 A long grey wrap of the kind people wear for the dead. There have been a lot of them lately.

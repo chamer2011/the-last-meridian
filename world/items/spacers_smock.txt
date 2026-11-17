@@ -7,6 +7,7 @@ weight: 0.7
 defense: 0
 found in: dresser, crew locker
 rarity: uncommon
+comfort: 2 clothes
 
 In a line:
 Loose and many-pocketed, after the way the Veshti deck crews dress, with tethers sewn at the hips.

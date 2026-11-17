@@ -7,6 +7,7 @@ weight: 0.3
 defense: 0
 found in: dresser, crate
 rarity: common
+comfort: 1 clothes
 
 In a line:
 It ties at the back, which is the worst thing anyone can say about it.

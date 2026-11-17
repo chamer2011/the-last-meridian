@@ -5,6 +5,7 @@ price: 90
 size: 1x1
 weight: 10
 stack: 3
+gift: 8
 
 In a line:
 Vantor red, an evening gown: what people pay dear for, and give as gifts.

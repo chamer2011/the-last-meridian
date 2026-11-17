@@ -9,7 +9,7 @@ import { el } from "./dom.js";
 import { writeStoryText } from "./story-text.js";
 import { LINE_PHRASES, PERK_NUMBERS, SPECS, writeWorldText } from "./world-text.js";
 import { KNOWN_SYSTEMS, readComputerLine, systemIdOf, writeSystemsText } from "./systems-text.js";
-import { LOGISTICS_PARTS, PART_TITLES, WORK_KINDS, readAskers, readCarriers, readDecider, readLoadsLine, readMachineLine, readMaking, readRefillLine, readRepair, readSittings, readStoreLine, readTrip, readUrgencyLine, readWaiting, workKindWords, writeAskers, writeLogisticsText, writeMaking, writeRepair, writeDecider, writeSittings, writeStoreLine, writeTrip, writeWaiting } from "./logistics-text.js";
+import { LOGISTICS_PARTS, PART_TITLES, WORK_KINDS, readAskers, readCarriers, readDecider, readLoadsLine, readMachineLine, readMaking, readRefillLine, readRepair, readSittings, readStoreLine, readTrip, readUrgencyLine, readWaiting, workKindWords, writeAskers, writeLogisticsText, writeMaking, writeRepair, writeDecider, writeSittings, writeStoreLine, writeTrip, writeWaiting, readCrewUses, writeCrewUses } from "./logistics-text.js";
 import { NEEDS, PORT_PARTS, PORT_TITLES, STEPS, STEP_TITLES, numberWords, readCarriedBy, readGoodLine, readGroundLine, readHoldLine, readMakeLine, readPortStoreLine, readStands, readUseLine, writeCarriedBy, writeGoodLine, writeGoodsText, writePortStoreLine, writePortText, writeStands } from "./ports-text.js";
 import { COMMAND_HEADER, SPARE, readHolderLine, readJobLine, readPostLine, readWorkersLine, slugOf, writeCommandText, writeJobLine, writePostLine } from "./command-text.js";
 import { CARE, MEDBAY_KEYS, PARTS, readAccidentLine, readAccidents, readHitLine, readKindLine, readMendingLine, readOldMarks, readQueue, readShare, readStartLine, readTreatmentLine, readWeaponLine, writeHealthText, writeWoundsText } from "./health-text.js";
@@ -339,7 +339,7 @@ function itemGraph() {
   const P = state.item, L = state.links;
   const list = [], ws = [];
   const add = (node) => { list.push(node); return node.id; };
-  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${P.type ?? "an item"}, ${P.price ?? 0} credits.${P.size ? ` ${P.size} squares in the inventory, ${P.weight ?? 0} kg${P.stack > 1 ? `, ${P.stack} to a square` : ""}.` : ""}${P.damage ? ` ${P.damage[0]} to ${P.damage[1]} damage, ${P.stat ?? ""} and ${P.skill ?? ""}.` : ""}${P.defense ? ` Defense ${P.defense}.` : ""}${P.effect ? ` ${Object.entries(P.effect).map(([k, v]) => `${k} ${v}`).join(", ")}.` : ""}${P.restricted ? " Restricted." : ""}${P.keepsake ? " A keepsake: whoever it was taken from asks after it." : ""}${P.salvage ? ` Salvage: counts for ${P.salvage} toward what the bench makes.` : ""}${P.feeds ? ` Feeds ${P.feeds} at the kettle, from the pantry.` : ""}${P.doses ? ` ${P.doses} dose${P.doses === 1 ? "" : "s"} for the medbay, from its cabinet.` : ""}${P.spares ? ` Worth ${P.spares === 1 ? "a repair" : `${P.spares} repairs`}, as a spare.` : ""}${P.foundIn?.length ? ` Found in ${P.foundIn.join(", ")}, ${P.rarity ?? "common"}.` : " Not found in containers."}${P.draft ? ` Draft: ${P.draft}.` : ""}`, label: "About this item" });
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${P.type ?? "an item"}, ${P.price ?? 0} credits.${P.size ? ` ${P.size} squares in the inventory, ${P.weight ?? 0} kg${P.stack > 1 ? `, ${P.stack} to a square` : ""}.` : ""}${P.damage ? ` ${P.damage[0]} to ${P.damage[1]} damage, ${P.stat ?? ""} and ${P.skill ?? ""}.` : ""}${P.defense ? ` Defense ${P.defense}.` : ""}${P.effect ? ` ${Object.entries(P.effect).map(([k, v]) => `${k} ${v}`).join(", ")}.` : ""}${P.restricted ? " Restricted." : ""}${P.keepsake ? " A keepsake: whoever it was taken from asks after it." : ""}${P.salvage ? ` Salvage: counts for ${P.salvage} toward what the bench makes.` : ""}${P.feeds ? ` Feeds ${P.feeds} at the kettle, from the pantry.` : ""}${P.comfort ? ` A comfort for the crew: ${P.comfort}, from the store their comforts are kept in.` : ""}${P.gift ? ` A gift: remembered for ${P.gift} when it's given to someone aboard.` : ""}${P.doses ? ` ${P.doses} dose${P.doses === 1 ? "" : "s"} for the medbay, from its cabinet.` : ""}${P.spares ? ` Worth ${P.spares === 1 ? "a repair" : `${P.spares} repairs`}, as a spare.` : ""}${P.foundIn?.length ? ` Found in ${P.foundIn.join(", ")}, ${P.rarity ?? "common"}.` : " Not found in containers."}${P.draft ? ` Draft: ${P.draft}.` : ""}`, label: "About this item" });
   add({ id: "desc", kind: "lead", col: 1, name: "In a line", text: P.desc ?? "", label: "What the player reads", bind: { path: "desc" } });
   // What's written on it, which Read in the inventory shows and keeps in What you know; empty, it has nothing to read.
   add({ id: "read", kind: "beat", col: 1, name: "When read", text: P.read || "Nothing written on it.", label: "Words on it", bind: { path: "read", optional: true } });
@@ -474,7 +474,7 @@ function logisticsGraph() {
   const list = [], ws = [];
   const add = (node) => { list.push(node); return node.id; };
   const numbers = P.numbers ?? {};
-  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${numbers.eats ? `Everyone aboard eats ${numbers.eats} sittings a day. ` : ""}${numbers.crateFeeds ? `A crate feeds ${numbers.crateFeeds} sittings. ` : ""}${numbers.drinks ? `Everyone aboard drinks ${numbers.drinks} measures of water a day${numbers.rationUnder ? `, rationed under ${numbers.rationUnder}` : ""}. ` : ""}${P.sittings ? `Sittings at ${writeSittings(P.sittings)}. ` : "Four sittings a day unless this says otherwise. "}${P.repair?.n ? `A repair takes ${writeRepair(P.repair)}.` : "A repair takes nothing."}${P.making?.n ? ` Salvage makes ${writeMaking(P.making)}.` : ""}${P.carriers?.list?.length ? ` A store that doesn't say is carried for by ${P.carriers.list.join(", then ")}.` : ""}${P.trip?.list?.length ? ` A trip carries ${writeTrip(P.trip)}.` : ""}${P.first ? ` What comes first is decided by ${writeDecider(P.first)}.` : ""}${P.levels ? ` What the stores want is set by ${writeDecider(P.levels)}.` : ""}${P.waiting && P.askers ? ` A job left waiting ${writeWaiting(P.waiting)}, is brought to the player: by ${writeAskers(P.askers)}.` : ""}`, label: "The numbers at the top" });
+  add({ id: "about", kind: "about", col: 0, name: P.name, text: `${numbers.eats ? `Everyone aboard eats ${numbers.eats} sittings a day. ` : ""}${numbers.crateFeeds ? `A crate feeds ${numbers.crateFeeds} sittings. ` : ""}${numbers.drinks ? `Everyone aboard drinks ${numbers.drinks} measures of water a day${numbers.rationUnder ? `, rationed under ${numbers.rationUnder}` : ""}. ` : ""}${P.uses ? `The crew uses ${writeCrewUses(P.uses)}. ` : ""}${P.sittings ? `Sittings at ${writeSittings(P.sittings)}. ` : "Four sittings a day unless this says otherwise. "}${P.repair?.n ? `A repair takes ${writeRepair(P.repair)}.` : "A repair takes nothing."}${P.making?.n ? ` Salvage makes ${writeMaking(P.making)}.` : ""}${P.carriers?.list?.length ? ` A store that doesn't say is carried for by ${P.carriers.list.join(", then ")}.` : ""}${P.trip?.list?.length ? ` A trip carries ${writeTrip(P.trip)}.` : ""}${P.first ? ` What comes first is decided by ${writeDecider(P.first)}.` : ""}${P.levels ? ` What the stores want is set by ${writeDecider(P.levels)}.` : ""}${P.waiting && P.askers ? ` A job left waiting ${writeWaiting(P.waiting)}, is brought to the player: by ${writeAskers(P.askers)}.` : ""}`, label: "The numbers at the top" });
   const stores = (P.stores ?? []).map((one, i) => {
     const read = readStoreLine(one.text ?? one);
     const placed = (L.stores ?? []).find((s) => s.name === read.name);
@@ -1461,6 +1461,12 @@ const WATER_NUMBERS = [
   ["breachAir", "a breached room takes, in hours of reserve air"],
   ["breachSlow", "a breached room fills in, in hours with no reserve air"],
 ];
+// And for the crew's comforts (step 12).
+const COMFORT_NUMBERS = [
+  ["steadies", "each comfort steadies morale, in points when things go wrong"],
+  ["sours", "going without one sours it, in points"],
+  ["tableLifts", "a good table lifts morale, in points after a hard day"],
+];
 // The ship's logistics: the numbers at the top.
 function inspectLogisticsAbout(inspector) {
   const P = state.item;
@@ -1470,6 +1476,9 @@ function inspectLogisticsAbout(inspector) {
   const feeds = numberBox("edit-feeds", P.numbers?.crateFeeds ?? "");
   // Water and reserve air (step 11): each a number, and a line that's left empty isn't written.
   const water = WATER_NUMBERS.map(([key, words]) => ({ key, words, box: numberBox(`edit-water-${key}`, P.numbers?.[key] ?? "") }));
+  // The crew's comforts (step 12): what they use in a day and from which store, and three numbers.
+  const uses = textBox("edit-uses", P.uses ? writeCrewUses(P.uses) : "");
+  const comforts = COMFORT_NUMBERS.map(([key, words]) => ({ key, words, box: numberBox(`edit-comfort-${key}`, P.numbers?.[key] ?? "") }));
   const sittings = textBox("edit-sittings", P.sittings ? writeSittings(P.sittings) : "");
   const repair = textBox("edit-repair", P.repair ? writeRepair(P.repair) : "");
   const making = textBox("edit-making", P.making ? writeMaking(P.making) : "");
@@ -1497,6 +1506,10 @@ function inspectLogisticsAbout(inspector) {
     el("h3", {}, "Water and reserve air"),
     hint("For a place with a store that holds measures of water (its water tank) and one that holds the reserve air. Leave a box empty and its line isn't written."),
     ...water.map((one) => row(el("label", { for: `edit-water-${one.key}` }, one.words), one.box)),
+    el("h3", {}, "The crew's comforts"),
+    hint("Drink, tea and tobacco, and clothes, which the crew uses up a little every day out of one of the stores. An item's own file says what one of it is worth, with a line such as comfort: 80 drink. Leave the first box empty and the crew uses none."),
+    el("label", { for: "edit-uses" }, "the crew uses: how much of each comfort the whole crew uses in a day, and the store they're kept in"), uses,
+    ...comforts.map((one) => row(el("label", { for: `edit-comfort-${one.key}` }, one.words), one.box)),
     trouble,
     row(button("Keep", () => {
       const read = sittings.value.trim() ? readSittings(sittings.value) : null;
@@ -1532,6 +1545,11 @@ function inspectLogisticsAbout(inspector) {
         trouble.textContent = left?.problem ?? bring.problem;
         return;
       }
+      const used = uses.value.trim() ? readCrewUses(uses.value) : null;
+      if (used?.problem) {
+        trouble.textContent = used.problem;
+        return;
+      }
       if (Boolean(left) !== Boolean(bring)) {
         trouble.textContent = "left waiting and who asks go together: one says after how long a job is brought to the player, the other who brings it. Fill in both, or neither.";
         return;
@@ -1542,7 +1560,9 @@ function inspectLogisticsAbout(inspector) {
       P.numbers = {};
       if (eats.value !== "") P.numbers.eats = Number(eats.value);
       if (feeds.value !== "") P.numbers.crateFeeds = Number(feeds.value);
-      for (const one of water) if (one.box.value !== "") P.numbers[one.key] = Number(one.box.value);
+      for (const one of [...water, ...comforts]) if (one.box.value !== "") P.numbers[one.key] = Number(one.box.value);
+      if (used) P.uses = used;
+      else delete P.uses;
       if (read) P.sittings = read;
       else delete P.sittings;
       if (fix) P.repair = fix;

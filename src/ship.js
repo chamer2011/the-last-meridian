@@ -21,7 +21,8 @@ import { countAboard, foodADay, grownGuess, grownSoFar, machinesView, mealsOfDay
 import { addToPurse, cellsOf, dockSends, payAt, purseOf, slateWords, tradeRules, tradeView, unitPrice } from "./trade.js";
 import { WATER_ITEM, airView, bringWater, waterView } from "./water.js";
 import { amountOf, portTake, portsModel } from "./ports.js";
-import { freightCommand, freightView } from "./freight.js";
+import { comfortOffers, freightCommand, freightView } from "./freight.js";
+import { comfortsShift, comfortsView } from "./comforts.js";
 import { worthOf } from "./worth.js";
 import { SHIP_DATA, STAR_MAP } from "./world.js";
 import { boardView, workView } from "./work.js";
@@ -188,7 +189,10 @@ export function shipLedger(game, change = {}) {
     bought,
     used,
     net,
-    moraleTarget: clamp(moraleTarget, 5, 100),
+    // Where the rations and the shortages put morale, and where it settles once the crew's comforts have had their
+    // say (src/comforts.js): they steady it while things are going wrong, and going without them sours it.
+    moraleBase: moraleTarget,
+    moraleTarget: clamp(comfortsShift(game, moraleTarget, RATIONS.standard.morale), 5, 100),
     healthTarget: clamp(healthTarget, 5, 100),
     // With parts aboard the engineers keep the hull up, and mend it a little. Without them, she wears.
     wear: ship.out.parts ? RULES.wearNoParts : 0,
@@ -365,7 +369,10 @@ function runDay(game) {
   if (aboardCount(game, "food")) ship.grown = [...(ship.grown ?? []).slice(-3), Math.round(grownSoFar(game, SHIP_ID) * 100) / 100];
   if (hungry > 0) {
     // With the food itself run out, the shortage rule already has morale; this is for a kettle nobody kept up.
-    if (!ship.out.food) ledger.moraleTarget = clamp(ledger.moraleTarget + Math.round(hungry * (RULES.shortage.food?.morale ?? -25)), 5, 100);
+    if (!ship.out.food) {
+      ledger.moraleBase += Math.round(hungry * (RULES.shortage.food?.morale ?? -25));
+      ledger.moraleTarget = clamp(comfortsShift(game, ledger.moraleBase, RATIONS.standard.morale), 5, 100);
+    }
     // Said when it starts, and every few days while it goes on, like the other shortages.
     if (ship.hungry === 1 || ship.hungry % 5 === 0) note(game, notes, "SHIP", `The kettle ran dry ${ship.hungry === 1 ? "yesterday" : `again yesterday, the ${ship.hungry}th day running`}: ${meals.missed.toLocaleString("en-US")} of ${(meals.served + meals.missed).toLocaleString("en-US")} sittings went unserved, and people are saying so.`);
   }
@@ -999,7 +1006,9 @@ export function shipCommand(game, body) {
     // Freight: a load taken on for a fee, and goods bought and sold by the load for her own account (src/freight.js).
     case "freight-take":
     case "freight-buy":
-    case "freight-sell": {
+    case "freight-sell":
+    // And a comfort for the crew, bought at the dock into the store their comforts are kept in.
+    case "comfort-buy": {
       const done = freightCommand(game, body);
       for (const line of done.notes ?? []) ship.log.push({ day: clockLabel(game), tag: "TRADE", text: line.replace(/^\[TRADE\] /, "") });
       if (ship.log.length > MAX_LOG) ship.log.splice(0, ship.log.length - MAX_LOG);
@@ -1048,6 +1057,14 @@ function moneyView(game, ledger) {
   return { ...money, cost, moneyDays: cost > money.levy ? Math.floor(money.purse / (cost - money.levy)) : null };
 }
 
+// The crew's comforts as the Ship menu shows them: what's in the store, what they do to where morale settles today,
+// and what the dock she's at sells of them.
+function comfortsLook(game, ledger) {
+  const view = comfortsView(game);
+  if (!view) return null;
+  return { ...view, shift: Math.round(comfortsShift(game, ledger.moraleBase, RATIONS.standard.morale) - ledger.moraleBase), hard: ledger.moraleBase < RATIONS.standard.morale, offers: comfortOffers(game) };
+}
+
 export function shipView(game) {
   const ship = shipOf(game);
   const ledger = shipLedger(game);
@@ -1079,6 +1096,9 @@ export function shipView(game) {
     // Her water tank and her reserve air, with how long each lasts (src/water.js).
     water: waterView(game),
     air: airView(game),
+    // The crew's comforts: what's left of each, what's run out, what they're doing to morale, and what this dock
+    // sells of them (src/comforts.js, src/freight.js).
+    comforts: comfortsLook(game, ledger),
     // The stores in her rooms, from world/logistics: each a thing the player can open, with what's in it now.
     stores: storesView(game, SHIP_ID),
     machines: machinesView(game, SHIP_ID),

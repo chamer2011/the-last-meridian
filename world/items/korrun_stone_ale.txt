@@ -8,6 +8,8 @@ stack: 5
 effect: hp 1, stress 6
 found in: cooler
 rarity: uncommon
+comfort: 2 drink
+gift: 3
 
 In a line:
 Dark, heavy ale from Korrath, brewed to be drunk in crushing gravity. It's very strong.

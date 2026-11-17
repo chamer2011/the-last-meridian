@@ -7,6 +7,7 @@ weight: 1.8
 defense: 0
 found in: crew locker, crate
 rarity: common
+comfort: 3 clothes
 
 In a line:
 Fire-retardant once, oil-stained always, with the knees worn through to the lining.

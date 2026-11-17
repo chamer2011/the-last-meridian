@@ -7,6 +7,7 @@ weight: 0.05
 found in: desk
 rarity: uncommon
 keepsake: yes
+gift: 3
 
 In a line:
 A heavy black pen with a gold nib, used for signing things that mattered.

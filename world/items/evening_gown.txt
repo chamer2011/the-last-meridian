@@ -7,6 +7,8 @@ weight: 0.9
 defense: 0
 found in: dresser
 rarity: rare
+comfort: 2 clothes
+gift: 5
 
 In a line:
 Midnight blue, beaded at the hem, packed for a dinner on the Gilded Wheel that never happened.

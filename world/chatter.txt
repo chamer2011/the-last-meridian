@@ -20,6 +20,7 @@
 #   Someone died        someone aboard has died in the last three days
 #   After the mutiny    the five days after the mutiny was fought
 #   Grumbling           a mutiny is brewing
+#   A good table        a good table was laid this evening, after a hard day
 #   Hungry              the kettle ran dry before everyone had eaten, today or yesterday
 #   Short of food       the ship's food has run out
 #   Short of medicine   the ship's medicine has run out
@@ -29,6 +30,8 @@
 #   High morale         the ship's morale is 70 or more
 #   Eating              they're eating
 #   At work             they're at work, in the day
+#   No tea              the crew has run out of tea and tobacco
+#   No drink            the crew has run out of drink
 #   At night            it's between ten at night and six in the morning, and they're awake
 #   Anywhere            always
 #
@@ -97,6 +100,14 @@ Grumbling:
 - If the officers won't act, someone will.
 - Things can't go on like this.
 
+A good table:
+- Bread. Real bread, still warm.
+- Honey. I'd forgotten honey.
+- Sausage! Don't ask, just eat.
+- After today, we needed that.
+- Somebody remembered we're people.
+- The quartermaster opened the hampers.
+
 Hungry:
 - The kettle was empty when I got there.
 - Missed the sitting. Again.
@@ -162,6 +173,22 @@ At work:
 - This panel's been patched more than my boots.
 - Who signed off on this weld?
 - Check it twice. The ship doesn't forgive.
+
+No tea:
+- The urn's dry again.
+- Hot water. That's the tea now.
+- I'd trade a boot for a smoke.
+- No tea, no tobacco. No patience.
+- I've been chewing the old leaves.
+- Somebody find us a port with tea.
+
+No drink:
+- Not a drop aboard. Not one.
+- Even the bucket's empty.
+- I miss the bad beer. That's how bad.
+- A dry ship's a short-tempered ship.
+- The still can't keep up with us all.
+- Water again. Lovely.
 
 At night:
 - Can't sleep. The hull's ticking again.

@@ -7,6 +7,7 @@ weight: 1.1
 defense: 0
 found in: crew locker, armory
 rarity: common
+comfort: 3 clothes
 
 In a line:
 Concord marine issue, patterned for a forest war that nobody ever fought.

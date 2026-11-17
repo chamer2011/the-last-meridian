@@ -8,6 +8,7 @@ stack: 5
 effect: energy 2, stress 1
 found in: cooler, desk
 rarity: common
+comfort: 1 tea and tobacco
 
 In a line:
 Cold coffee in a squeeze bulb, the way they drink it on the bridge.

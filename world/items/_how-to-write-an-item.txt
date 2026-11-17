@@ -27,6 +27,8 @@ with the file and the line.
     feeds: 1                            (food: the sittings it makes at the kettle, once it's in the pantry)
     doses: 4                            (medicine: the doses it gives the medbay, once it's in the medicine cabinet)
     spares: 1                           (parts: the repairs it's good for, in the parts lockers or the shuttle stores)
+    comfort: 3 drink                    (a comfort for the crew: so much drink, tea and tobacco, or clothes, or a good table for 300)
+    gift: 6                             (how well it's remembered when it's given to someone aboard; leave it out if it's no gift)
 
     In a line:
     The old navy's standard long gun, easy to find now that so few are left to carry one.
@@ -74,6 +76,19 @@ basket of produce feeds 200, a tin feeds 1), the medbay doses from any medicine 
 20 doses, a medkit 4), and a repair takes any spare (a parts crate is 1). The Ship menu counts it all for its share
 of a crate, and so do the asks for food, medicine or parts. Leave the line out for anything nobody would cook, dose
 with or fit: drink, sweets and tobacco feed nobody. The numbers on the loot's foods and medicines are drafts.
+
+Comfort is what a thing is worth to the crew once it's in the store their comforts are kept in (the comforts locker
+in the Long Mess): so much of their drink, their tea and tobacco, or their clothes, in the measure the ship's
+logistics file uses (the crew uses: 20 drink, 20 tea and tobacco, 10 clothes a day), so a keg worth 80 drink lasts
+them four days and a bottle worth 1 lasts them an hour. Or a good table for so many, which is what a hamper of
+provisions is: laid out after a hard day, it lifts morale. The words have to be one of those four: 3 drink,
+4 tea and tobacco, 2 clothes, a good table for 300. The numbers on the drink, the tea and tobacco and the clothes
+already in the game are drafts: every garment that's worn and stops nothing counts for 1 to 3 clothes.
+
+Gift is how well a thing is remembered when you give it to someone aboard the Meridian, from their window: a number,
+which is what it adds to how they feel about you (a case of fine things is 8, a bottle of Vantor red 6, a bottle of
+the ship's beer 1). Someone remembers the last two gifts they were given, one a week counts, and what's remembered
+fades like anything else people remember. Leave the line out for anything that's no gift.
 
 Size, weight and stack are for the inventory. A thing one square big goes in a pocket; anything bigger goes in the
 pack, which is 8 squares by 5, so nothing can be bigger than that, and a weapon of 2 squares or fewer can go on the hip.

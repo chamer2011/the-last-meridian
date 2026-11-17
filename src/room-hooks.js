@@ -102,6 +102,17 @@ export const areaExtras = (game, place, room) => Object.assign({}, ...areaStates
 
 // (game, place) => true while a place's stores aren't to be refilled from nothing: something else supplies them.
 export const addRefillHold = (fn) => { holds.push(fn); };
+// A machine that something keeps from running, whatever else it has: why, in a few words, or null. The law, for a
+// maker it doesn't allow (src/law.js).
+const machineHolds = [];
+export const addMachineHold = (fn) => { machineHolds.push(fn); };
+export function machineHeld(game, place, m) {
+  for (const fn of machineHolds) {
+    const why = fn(game, place, m);
+    if (why) return why;
+  }
+  return null;
+}
 export const refillsHeld = (game, place) => holds.some((fn) => fn(game, place));
 
 // (game, place, thing) => what's in a thing the first time it's opened, as { item: how many }, or nothing for a thing

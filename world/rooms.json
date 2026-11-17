@@ -1057,6 +1057,11 @@
           "You refused me. I haven't forgotten it.",
           "Last time I told you to do something, you said no. Don't make a habit of it."
         ],
+        "gift_by_you": [
+          "That was a kind thing, what you gave me. I haven't forgotten it.",
+          "Nobody's given me anything in a long while. Thank you.",
+          "I've still got it, you know. Thank you for that."
+        ],
         "relieved_by_you": [
           "You took {post} off me and gave it to {who}. I hope you counted what that cost, Captain.",
           "Captain. Come to see how {who} is managing my work?",

@@ -13,7 +13,7 @@ import { alarmRinging, roomDark, roomPowered, systemsOf } from "./systems.js";
 
 export const CHATTER_FILE = process.env.GAME_CHATTER_FILE ?? path.join(worldDir, "chatter.txt");
 // The moments, the most particular first: someone says something from the first that's true for them, or the next.
-export const MOMENTS = ["Fire here", "The alarm", "Hull breached", "Fire aboard", "No power", "In the dark", "Someone died", "After the mutiny", "Grumbling", "Hungry", "Short of food", "Short of medicine", "Hurt", "Under way", "Low morale", "High morale", "Eating", "At work", "At night", "Anywhere"];
+export const MOMENTS = ["Fire here", "The alarm", "Hull breached", "Fire aboard", "No power", "In the dark", "Someone died", "After the mutiny", "Grumbling", "A good table", "Hungry", "Short of food", "Short of medicine", "Hurt", "Under way", "Low morale", "High morale", "Eating", "At work", "No tea", "No drink", "At night", "Anywhere"];
 // The longest a line can be, since it hangs over a head.
 export const LONGEST = 60;
 // How near the player someone has to be to be heard: squares across count half, as they're half as wide.
@@ -102,6 +102,11 @@ export function placeMoments(game, place) {
   if (Object.values(game.dead ?? {}).some((one) => one.place === place && lately(one.at, 72))) true_.add("Someone died");
   if (aboard && lately(game.battles?.mutiny?.hours, 120)) true_.add("After the mutiny");
   if (aboard && mutinyHolds(game, "grumbling", place)) true_.add("Grumbling");
+  // The crew's comforts (src/comforts.js): a good table laid this evening, and what they've run out of.
+  const comforts = game.logistics?.[place]?.comforts;
+  if (comforts?.table?.n && comforts.table.day === day) true_.add("A good table");
+  if (comforts?.out?.leaf !== undefined) true_.add("No tea");
+  if (comforts?.out?.drink !== undefined) true_.add("No drink");
   if (hungry) true_.add("Hungry");
   if (shipHere && game.ship.out?.food > 0) true_.add("Short of food");
   if (shipHere && game.ship.out?.medicine > 0) true_.add("Short of medicine");

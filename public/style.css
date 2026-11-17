@@ -780,6 +780,8 @@ body:has(#computer) .pop-notes { visibility: hidden; }
 .ship-supply-line { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0 12px; font-size: 13px; white-space: pre; }
 .ship-supply-line strong { color: var(--bright); }
 .ship-supply.low .ship-supply-line, .ship-supply.low .ship-supply-line strong { color: var(--bad); }
+/* One line of several that's run out, as in the crew's comforts: that line alone. */
+.ship-supply-line.tone-bad, .ship-supply-line.tone-bad strong { color: var(--bad); }
 .menu-body { container: shipmenu / inline-size; }
 
 /* The star map: a chart drawn in characters, with each place a button in its spot. */

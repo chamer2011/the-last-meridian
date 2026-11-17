@@ -8,6 +8,8 @@ stack: 10
 effect: energy 2
 found in: pantry, desk
 rarity: common
+comfort: 4 tea and tobacco
+gift: 2
 
 In a line:
 Freeze-dried coffee, a handful of cups' worth. Precious on any ship.

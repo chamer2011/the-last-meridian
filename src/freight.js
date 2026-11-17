@@ -17,7 +17,7 @@
 // unloads what's arrived. world/trade.txt has the freight line.
 
 import { addClockWork } from "./room-hooks.js";
-import { gridPut, gridRoom, gridSquares, sizeOf, stackOf, storeCounts, storeTake } from "./bag.js";
+import { gridPut, gridRoom, gridSquares, sizeOf, stackOf, storeCounts, storePut, storeTake } from "./bag.js";
 import { goodFactor, holderOf, knownPlace, levelName, scarcityOf } from "./daily.js";
 import { FACTIONS, ITEMS, LOCATIONS } from "./data.js";
 import { logisticsOf } from "./logistics.js";
@@ -27,6 +27,7 @@ import { priceEdge } from "./rules.js";
 import { jumpCost } from "./ship.js";
 import { addToPurse, purseOf, tradeRules, unitPrice } from "./trade.js";
 import { STAR_MAP } from "./world.js";
+import { comfortOf, comfortWords } from "./worth.js";
 
 const SHIP = "meridian";
 // A port offers what it has over this many hundredths of what it usually holds, and only while it has at least so
@@ -261,11 +262,57 @@ function sellFreight(game, id, n) {
 }
 
 // The captain's orders, from src/ship.js.
+// ---- Comforts for the crew ---------------------------------------------------------------------------------
+
+// The store the crew's comforts are kept in (src/comforts.js), where the ship has one.
+function lockerOf() {
+  const model = logisticsOf(SHIP);
+  return model?.comforts ? model.stores.find((one) => one.id === model.comforts.store) ?? null : null;
+}
+// What the port she's docked at sells that the crew's comforts are kept as (a keg, a chest, a bale, a hamper): what
+// one costs here today, how many the port has, and how many the store has against what it keeps. Nothing away from a
+// port, or for anyone but the captain.
+export function comfortOffers(game) {
+  const ship = game.ship;
+  const locker = lockerOf();
+  if (!locker || !isCaptain(game) || !ship?.at || !hasPort(ship.at)) return [];
+  const model = portsModel();
+  const counts = storeCounts(game, locker.key, locker.holds);
+  const offers = [];
+  for (const good of freightGoods(model)) {
+    const item = model.goods[good].item;
+    if (!(item in locker.holds) || !comfortOf(item) || !model.ports[ship.at].holds[good]) continue;
+    offers.push({ id: good, item, name: ITEMS[item].name, price: buysAt(game, ship.at, good), has: Math.floor(amountOf(game.world, ship.at, good)), have: counts[item] ?? 0, of: locker.holds[item], worth: comfortWords(item) });
+  }
+  return offers;
+}
+// Buys one of a comfort for the crew, out of the port's own stores and the ship's purse, into the store the crew's
+// comforts are kept in: never on the slate, since nobody goes cold for want of a keg.
+function buyComfort(game, id) {
+  const ship = game.ship;
+  const locker = lockerOf();
+  const model = portsModel();
+  const good = model.goods[String(id ?? "")];
+  if (!locker) throw new Error("She has nowhere to keep the crew's comforts.");
+  if (!ship?.at || !hasPort(ship.at)) throw new Error("She has to be docked at a port to buy from it.");
+  if (!good?.item || !(good.item in locker.holds) || !comfortOf(good.item) || !model.ports[ship.at].holds[good.id]) throw new Error(`Nobody at ${nameOf(ship.at)} sells that for the crew.`);
+  if (amountOf(game.world, ship.at, good.id) < 1) throw new Error(`${upper(nameOf(ship.at))} has none left to sell.`);
+  if ((storeCounts(game, locker.key, locker.holds)[good.item] ?? 0) >= locker.holds[good.item]) throw new Error(`The ${locker.name} has no room for another.`);
+  const price = buysAt(game, ship.at, good.id);
+  if (Math.floor(purseOf(game)) < price) throw new Error(`The purse holds ${Math.floor(purseOf(game))} credits, and one costs ${price}.`);
+  if (storePut(game, locker.key, locker.holds, good.item, 1) < 1) throw new Error(`The ${locker.name} has no room for another.`);
+  portTake(game.world, ship.at, good.id, 1);
+  addToPurse(game, -price);
+  const message = `Bought ${counted(good, 1)} at ${nameOf(ship.at)} for ${price} credits, for the crew: it's in the ${locker.name}.`;
+  return { message, notes: [`[TRADE] ${message}`] };
+}
+
 export function freightCommand(game, body) {
   switch (body.action) {
     case "freight-take": return takeFreight(game, body.id);
     case "freight-buy": return buyFreight(game, body.id, body.n);
     case "freight-sell": return sellFreight(game, body.id, body.n);
+    case "comfort-buy": return buyComfort(game, body.id);
     default: throw new Error("Unknown order.");
   }
 }

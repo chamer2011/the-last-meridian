@@ -16,13 +16,13 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { addChecker, addClockWork, addThingActs } from "./room-hooks.js";
+import { addChecker, addClockWork, addMachineHold, addThingActs } from "./room-hooks.js";
 import { containerPut, storePut } from "./bag.js";
 import { keyAt } from "./body.js";
 import { YOU, commandOf, countForDuty, jobByWords, jobOf, postByWords, postOf, rememberRequest } from "./command.js";
 import { FACTIONS, ITEMS, LOCATIONS } from "./data.js";
 import { peopleAboard } from "./life.js";
-import { logisticsOf } from "./logistics.js";
+import { itemWords, logisticsOf } from "./logistics.js";
 import { lootBox, lootOf } from "./loot.js";
 import { worldDir } from "./paths.js";
 import { notePut, putsOf } from "./puts.js";
@@ -40,13 +40,13 @@ const plain = (text) => String(text ?? "").toLowerCase().replace(/\s+/g, " ").re
 const nowOf = (game) => game.clock?.hours ?? 0;
 const counted = (item, n) => {
   const name = (ITEMS[item]?.name ?? item).toLowerCase();
-  return `${n === 1 ? (/^[aeiou]/.test(name) ? "an" : "a") : n} ${name}${n === 1 || /(s|produce)$/.test(name) ? "" : "s"}`;
+  return `${n === 1 ? (/^[aeiou]/.test(name) ? "an" : "a") : n} ${itemWords(item, n)}`;
 };
 
 // ---- The file -----------------------------------------------------------------------------------------
 
 export function parseLaw(text) {
-  const model = { stores: [], rooms: [], containers: [], taking: null, room: null, standing: null, problems: [] };
+  const model = { stores: [], rooms: [], containers: [], makers: [], taking: null, room: null, standing: null, problems: [] };
   let part = null;
   String(text).split(/\r?\n/).forEach((raw, i) => {
     const line = raw.trim();
@@ -61,6 +61,10 @@ export function parseLaw(text) {
     if (taking) { model.taking = { fine: Number(taking[1]), days: Number(taking[2]) }; return; }
     if (standing) { model.standing = Number(standing[1]); return; }
     if (room) { model.room = { minutes: Number(room[1]) }; return; }
+    // A maker the crew runs for itself, and whether the law looks away from it: "the still: the law looks away", or
+    // "the still: against the law", which shuts it.
+    const maker = line.startsWith("-") ? null : line.match(/^(.+?): (the law looks away|against the law)$/i);
+    if (maker) { model.makers.push({ name: maker[1].trim(), shut: /^against/i.test(maker[2]), line: n }); return; }
     if (/^seen /i.test(line)) return model.problems.push(`line ${n}: the lines at the end are written like: "seen taking: it goes back; 10 credits docked a second time within 7 days", "seen taking costs standing: 3 with whoever holds the place" and "seen in a closed room: walked out after 10 minutes"`);
     const found = part ? line.match(/^- (.+?): (.+)$/) : null;
     if (!found) return model.problems.push(`line ${n}: a line here goes: a dash, the store, the room or anywhere, a colon, and who it belongs to`);
@@ -100,7 +104,14 @@ export function lawOf(place) {
     };
     const model = logisticsOf(place);
     const map = mapFor(place);
-    law = { place, stores: [], rooms: [], containers: [], taking: read.taking, room: read.room, standing: read.standing, shared, problems };
+    law = { place, stores: [], rooms: [], containers: [], makers: [], taking: read.taking, room: read.room, standing: read.standing, shared, problems };
+    // The makers the law has a line for: each is a machine in the place's logistics file, by its name.
+    for (const entry of read.makers) {
+      const m = shared ? null : model?.machines.find((one) => plain(one.name) === plain(entry.name));
+      if (shared) wrong(entry.line, "this file is for every place, so it can't name a maker: a place's own file can");
+      else if (!m) wrong(entry.line, `there's no machine called ${entry.name} in world/logistics/${place}.txt${model?.machines.length ? `: its machines are ${model.machines.map((one) => one.name).join(", ")}` : ""}`);
+      else law.makers.push({ id: m.id, name: m.name, shut: entry.shut });
+    }
     if (shared && (read.stores.length || read.rooms.length)) problems.push(`${named}: it's for every place, so it has Containers and none of the Stores or Rooms that a place's own file can have`);
     for (const entry of read.containers) {
       if (/^anywhere( else)?$/i.test(entry.name)) {
@@ -145,6 +156,8 @@ export function lawProblems() {
   });
 }
 addChecker(lawProblems);
+// A maker that's against the law is shut: nobody runs it (src/logistics.js asks for every machine).
+addMachineHold((game, place, m) => (lawOf(place)?.makers.some((one) => one.shut && one.id === m.id) ? "shut down: it's against the ship's law" : null));
 
 // ---- Whose it is, and who sees ------------------------------------------------------------------------
 

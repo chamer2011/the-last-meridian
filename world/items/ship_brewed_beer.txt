@@ -8,6 +8,8 @@ stack: 5
 effect: stress 5
 found in: cooler
 rarity: common
+comfort: 1 drink
+gift: 1
 
 In a line:
 Cloudy and bitter, brewed in a bucket somewhere below decks.

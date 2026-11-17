@@ -9,6 +9,8 @@ effect: stress 4
 found in: crew locker, dresser, desk
 rarity: common
 keepsake: yes
+comfort: 3 tea and tobacco
+gift: 2
 
 In a line:
 Rough tobacco in a leather pouch, with a clay pipe tucked in. A few calm minutes in a cloud.

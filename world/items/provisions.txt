@@ -5,6 +5,7 @@ price: 45
 size: 1x1
 weight: 12
 stack: 3
+comfort: a good table for 300
 
 In a line:
 Fresh bread, honey, sausage: a table worth sitting at, packed in straw.

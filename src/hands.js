@@ -52,7 +52,9 @@ const listed = (words) => (words.length < 2 ? words.join("") : `${words.slice(0,
 const WORK_WORDS = { cooks: ["Cook a pot", "cook"], grows: ["Tend the beds", "tend the beds"] };
 const wordsFor = (m) => WORK_WORDS[m.verb] ?? [`Work the ${m.name}`, `work the ${m.name}`];
 // The machines in a room that someone has to work: not a generator, which only wants feeding.
-export const machinesIn = (place, room) => (logisticsOf(place)?.machines ?? []).filter((m) => m.room === room && m.needs?.worker && !m.generator);
+// Nor one whose every go is days of work, like a brew: nobody stands over a bucket for a week.
+const LONGEST_GO = 240;
+export const machinesIn = (place, room) => (logisticsOf(place)?.machines ?? []).filter((m) => m.room === room && m.needs?.worker && !m.generator && m.every <= LONGEST_GO);
 // The job a machine is the work of: the one its line names, or the one whose room it's in.
 const jobOfMachine = (place, m) => (m.needs.job ? jobById(place, m.needs.job) : commandOf(place)?.jobs.find((job) => job.room === m.room) ?? null);
 

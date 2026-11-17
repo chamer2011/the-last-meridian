@@ -55,3 +55,40 @@ export function worthWords(id) {
   if (spares) return spares === 1 ? "one repair's worth of spares" : `${spares} repairs' worth of spares`;
   return null;
 }
+
+// ---- Comforts (step 12 of the logistics rework, src/comforts.js) ---------------------------------------------
+
+// What the crew uses up to keep its spirits: drink, tea and tobacco, clothes. An item's comfort line says what one of
+// it is worth of one of them, in the store the crew's comforts are kept in: "80 drink", "100 tea and tobacco",
+// "100 clothes". A hamper of provisions says "a good table for 300": how many sit down to it.
+export const COMFORTS = { drink: "drink", leaf: "tea and tobacco", clothes: "clothes" };
+export const COMFORT_IDS = Object.keys(COMFORTS);
+const read = new Map();
+function readComfort(words) {
+  const text = String(words ?? "").trim().toLowerCase();
+  if (!text) return null;
+  if (read.has(text)) return read.get(text);
+  const table = text.match(/^a good table for (\d+)$/);
+  const found = text.match(/^(\d+)\s+(.+)$/);
+  const kind = found ? COMFORT_IDS.find((id) => COMFORTS[id] === found[2]) : null;
+  const made = table && Number(table[1]) > 0 ? { kind: "table", n: Number(table[1]) } : kind && Number(found[1]) > 0 ? { kind, n: Number(found[1]) } : { problem: true };
+  read.set(text, made);
+  return made;
+}
+// What one of an item is worth as a comfort: { kind, n }, kind being drink, leaf, clothes or table. Null for an item
+// that isn't one, or whose line can't be read.
+export function comfortOf(id) {
+  const made = readComfort(ITEMS[id]?.comfort);
+  return made && !made.problem ? made : null;
+}
+// What's wrong with an item's comfort line, in plain words, or null.
+export const comfortProblem = (id) => (readComfort(ITEMS[id]?.comfort)?.problem ? `comfort is written like 80 drink, 100 tea and tobacco, 100 clothes, or a good table for 300, not "${ITEMS[id].comfort}"` : null);
+// How well an item is remembered when it's given to someone: nothing for an item that's no gift.
+export const giftOf = (id) => Math.max(0, Number(ITEMS[id]?.gift) || 0);
+
+// What an item is worth to the crew, in words, for the inventory: "80 of the crew's drink", "a good table for 300".
+export function comfortWords(id) {
+  const one = comfortOf(id);
+  if (!one) return null;
+  return one.kind === "table" ? `a good table for ${one.n}` : `${one.n} of the crew's ${COMFORTS[one.kind]}`;
+}

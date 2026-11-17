@@ -8,6 +8,8 @@ stack: 10
 effect: energy 1, stress 4
 found in: pantry
 rarity: common
+comfort: 4 tea and tobacco
+gift: 2
 
 In a line:
 Pressed tea leaves you shave off with a knife. It makes a strong, dark cup.

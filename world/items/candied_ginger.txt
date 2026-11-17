@@ -8,6 +8,7 @@ stack: 10
 effect: energy 1, stress 3
 found in: pantry, desk
 rarity: uncommon
+gift: 1
 
 In a line:
 Sugared ginger in a paper twist, hot and sweet. Good for jump sickness.

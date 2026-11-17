@@ -15,6 +15,7 @@ import { addChecker, addMapWork, addOrder, addThingActs } from "./room-hooks.js"
 import { genericKindOf, writtenAtThing } from "./computers.js";
 import { placeNow } from "./daily.js";
 import { LOCATIONS } from "./data.js";
+import { comfortOut } from "./comforts.js";
 import { countOf, logisticsOf, logisticsPending, mealsView } from "./logistics.js";
 import { worldDir } from "./paths.js";
 import { addFatigue, changeStress, passTime, rest, restCost } from "./rules.js";
@@ -250,6 +251,9 @@ function notNow(game, def) {
     if (game.uses?.sitting === sitting.key) return "you've eaten with this sitting";
     if (!kettlesOf(game).some((kettle) => countOf(game, kettle) > 0)) return "the kettle's empty";
   } else if (def.once?.sitting && last !== undefined && now - last < MEAL_HOURS) return "you've eaten not long ago";
+  // A cup aboard is out of the crew's own tea: with none left where their comforts are kept, the urn's dry
+  // (src/comforts.js).
+  if (def.kind === "drink" && comfortOut(game, game.location, "leaf")) return "it's run dry: there's no tea aboard";
   if (def.once?.hours && last !== undefined && now - last < def.once.hours) return "not again so soon";
   if (def.once?.day && last !== undefined && Math.floor(last / 24) === Math.floor(now / 24)) return "once a day is enough";
   const cost = costOf(game, def);

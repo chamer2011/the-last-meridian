@@ -55,7 +55,40 @@ export const LOGISTICS_HEADER = [
   { key: "a day of reserve air takes", path: "numbers.airTakes", type: "number", unit: "measures of water", sample: 4 },
   { key: "a breached room takes", path: "numbers.breachAir", type: "number", unit: "hours of reserve air", sample: 6 },
   { key: "a breached room fills in", path: "numbers.breachSlow", type: "number", unit: "hours with no reserve air", sample: 3 },
+  // The crew's comforts (step 12 of the logistics rework, src/comforts.js).
+  { key: "the crew uses", path: "uses", type: "uses" },
+  { key: "each comfort steadies morale", path: "numbers.steadies", type: "number", unit: "points when things go wrong", sample: 2 },
+  { key: "going without one sours it", path: "numbers.sours", type: "number", unit: "points", sample: 2 },
+  { key: "a good table lifts morale", path: "numbers.tableLifts", type: "number", unit: "points after a hard day", sample: 6 },
 ];
+
+// The comforts a crew uses up, with what each is called in a file: drink (beer, wine and spirits), tea and tobacco
+// (tea, coffee and tobacco), and clothes.
+export const COMFORT_KINDS = { drink: "drink", leaf: "tea and tobacco", clothes: "clothes" };
+// "20 drink, 20 tea and tobacco, 10 clothes a day, from the comforts locker": what the whole crew uses of each comfort
+// in a day, and the store they're kept in.
+export function readCrewUses(words) {
+  const sample = "20 drink, 20 tea and tobacco, 10 clothes a day, from the comforts locker";
+  let text = String(words ?? "").trim().replace(/\.$/, "");
+  let from = null;
+  text = text.replace(/,?\s*from\s+(?:the\s+)?(.+)$/i, (_, store) => {
+    from = store.trim();
+    return "";
+  });
+  text = text.replace(/\s+a\s+day\s*$/i, "").trim();
+  const uses = {};
+  for (const piece of text.split(/\s*,\s*/).map((one) => one.trim()).filter(Boolean)) {
+    const found = piece.match(/^(\d+(?:\.\d+)?)\s+(.+)$/);
+    const kind = found ? Object.keys(COMFORT_KINDS).find((id) => COMFORT_KINDS[id] === found[2].trim().toLowerCase()) : null;
+    if (!kind) return { problem: `"${piece}" should be a number and a comfort (drink, tea and tobacco, or clothes), such as ${sample}` };
+    if (uses[kind] !== undefined) return { problem: `${COMFORT_KINDS[kind]} is written twice in what the crew uses` };
+    uses[kind] = Number(found[1]);
+  }
+  if (!Object.keys(uses).length) return { problem: `the crew uses needs a number of each comfort a day, such as ${sample}` };
+  if (!from) return { problem: `"${words}" needs to say which store the comforts are kept in, such as ${sample}` };
+  return { uses, from };
+}
+export const writeCrewUses = (one) => `${Object.entries(one.uses ?? {}).map(([kind, n]) => `${n} ${COMFORT_KINDS[kind]}`).join(", ")} a day, from the ${one.from}`;
 
 // "30 minutes if it's urgent, 3 hours if it isn't": how long a job stands with nobody able to do it, or nothing to
 // do it with, before whoever it belongs to brings it to the player as something to ask.
@@ -220,6 +253,10 @@ export function parseLogisticsText(text, id = "it") {
         else set(value, known.path, { ...read, line: n });
       } else if (known.type === "decider") {
         const read = readDecider(words);
+        if (read.problem) problem(n, read.problem);
+        else set(value, known.path, { ...read, line: n });
+      } else if (known.type === "uses") {
+        const read = readCrewUses(words);
         if (read.problem) problem(n, read.problem);
         else set(value, known.path, { ...read, line: n });
       } else if (known.type === "waiting" || known.type === "askers") {
@@ -532,7 +569,7 @@ export function writeLogisticsText(value) {
   for (const field of LOGISTICS_HEADER) {
     const one = get(value, field.path);
     if (one === undefined || one === null || one === "") continue;
-    out.push(`${field.key}: ${field.type === "sittings" ? writeSittings(one) : field.type === "repair" ? writeRepair(one) : field.type === "making" ? writeMaking(one) : field.type === "carriers" ? one.list.join(", ") : field.type === "trip" ? writeTrip(one) : field.type === "decider" ? writeDecider(one) : field.type === "waiting" ? writeWaiting(one) : field.type === "askers" ? writeAskers(one) : one}${field.type === "number" ? ` ${field.unit}` : ""}`);
+    out.push(`${field.key}: ${field.type === "sittings" ? writeSittings(one) : field.type === "repair" ? writeRepair(one) : field.type === "making" ? writeMaking(one) : field.type === "carriers" ? one.list.join(", ") : field.type === "trip" ? writeTrip(one) : field.type === "decider" ? writeDecider(one) : field.type === "waiting" ? writeWaiting(one) : field.type === "askers" ? writeAskers(one) : field.type === "uses" ? writeCrewUses(one) : one}${field.type === "number" ? ` ${field.unit}` : ""}`);
   }
   for (const part of LOGISTICS_PARTS) {
     const lines = value[part] ?? [];

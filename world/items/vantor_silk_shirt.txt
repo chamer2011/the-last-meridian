@@ -7,6 +7,8 @@ weight: 0.3
 defense: 0
 found in: dresser
 rarity: uncommon
+comfort: 2 clothes
+gift: 4
 
 In a line:
 Cream silk from Vantor Prime, far too fine for anything you'll do in it.

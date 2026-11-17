@@ -647,6 +647,9 @@ test("a ship left to itself doesn't flip back and forth", () => {
   // and nothing for them to decide.
   const fed = newGame(21);
   docked(fed);
+  // And with her comforts kept up, as a captain at a dock keeps them: a crew gone weeks without sours, and the
+  // council would have its own say about that (test/comforts.test.js).
+  fed.logistics.meridian.comforts.open = { drink: 1e6, leaf: 1e6, clothes: 1e6 };
   const said = [];
   for (let day = 0; day < 40; day += 1) {
     said.push(...days(fed, 1).filter((line) => line.startsWith("[COUNCIL]")));

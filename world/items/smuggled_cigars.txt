@@ -9,6 +9,8 @@ restricted: yes
 effect: stress 6
 found in: safe, cooler
 rarity: uncommon
+comfort: 5 tea and tobacco
+gift: 4
 
 In a line:
 Fat cigars from a world under a trade ban, rolled by hand.

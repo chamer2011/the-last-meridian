@@ -7,6 +7,7 @@ weight: 1.5
 defense: 0
 found in: dresser
 rarity: uncommon
+comfort: 3 clothes
 
 In a line:
 Starched grey with a high collar, the coat of a clerk who believed in order.

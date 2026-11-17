@@ -7,6 +7,8 @@ weight: 0.5
 defense: 0
 found in: dresser
 rarity: uncommon
+comfort: 2 clothes
+gift: 3
 
 In a line:
 Green brocade with silver thread, the one good thing someone packed when they ran.

@@ -7,6 +7,7 @@ weight: 1.4
 defense: 0
 found in: crew locker, dresser
 rarity: uncommon
+comfort: 3 clothes
 
 In a line:
 A pressure-ready suit with the gloves missing, worn shiny at the seat.
