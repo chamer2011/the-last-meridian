@@ -976,3 +976,74 @@ Not done: the NAVCOM look (step 6). The owner hasn't tried it.
     redraw in the middle of each way carrying on; reduced motion; pictures part-way with the animations stopped. **Not
     checked:** a junction box and a camera (the same window as the keypad), practice, going along the network, the
     installed app, and nobody has watched it at full speed on a real screen.
+- **Step 2, the loading screen, is built (2026-11-16), untried by them.** Their clicks were read again first and were
+  unchanged (no loading screen kept on the page; `often: always`, `connect: same`). Asked "Build step 2, the loading
+  screen, with my pick, the parts check?", they said **"Yes, parts check"**.
+  - **What they see:** each time the rig comes out of the pocket it starts up. Its whole screen is dark and both lamps
+    are off while it slides out. Once it has arrived, over the whole screen: `YARD BOARD  SELF-TEST`, then a line to
+    each kind of part in its sockets (CORE, MEMORY as its blocks, "2 + 2 BLOCKS", CELL, SINK, LINK, and EXTRA when
+    there is one), each with dots across to how it is, which comes up a moment after the line: OK, WORN in amber,
+    BROKEN in red. LINK and HEAT blink amber meanwhile. Then READY, and a quarter of a second later the rig's own
+    page. 1.7 seconds for five kinds, the pace of the page's example. A link in order says FITTED, or PLUGGED once the
+    rig is connected (or reaching over the network). A kind it can't start without (core, cell, link) that isn't
+    fitted has a line NONE FITTED, MISSING in red, and the last line is then `NO START:` and why, in red. A click on
+    its screen skips it. Putting the rig away, or turning it round in the middle, ends it, and it plays afresh the
+    next time. It's every time, as they clicked.
+  - **Where it doesn't play:** along the network and for practice, where the rig is already out; and with the
+    computer set to show no animations, where the rig is simply there.
+  - **CONNECT is untouched,** as they clicked: its three seconds (`startBoot`, `bootLines`, `BOOT_MS`) are as they
+    were. So at a computer the player now sees the check as the rig comes out and the wake-up when they connect.
+    **At a junction box or a camera,** which the rig connects to as they open, the check stands in for the wake-up
+    that used to play the first time the rig was taken out there, as the page's step said ("so nothing plays twice");
+    only where no animations are shown, and so no check plays, does that wake-up still play there, once.
+  - **A narrow window:** the rig is a strip with no screen, so as the strip arrives its page slides out of it (cut
+    off at the strip's edge, 160 ms) with a dark screen, and the check begins when it's out. The page stays out
+    afterwards, which is my call (the page's step only said it comes out with the rig): what the player wants next,
+    CONNECT, is on it, and the cross at its corner folds it away. Folding the page away, by the cross or by its own
+    button on the strip, ends the check; picking another page on the strip doesn't; PLUG IN on the strip ends it and
+    connecting's own screen takes over.
+  - `src/rig.js` `rigCheck(game)`: `{ board, lines: [{ slot, name, state }], dead }`, from `rigNow(game)`'s sockets
+    (so only sockets the player's Hacking has opened) and the parts' `cond`; kinds in the order `CHECKED`; of two of
+    a kind the worse counts, their names joined ("FIN SINK + COLD PLATE"), more than two counted ("3 SINKS"); `dead`
+    is `rigStats`'s own reason, null on a test save, whose rig lists the parts it really has. `src/computers.js`
+    sends it as the computer view's `rigCheck`, beside `rigFace`.
+  - `public/rig-motion.js` (pure): `RIG_CHECK` (head 90, row 125, state 115, ready 150, hold 260, page 160 ms),
+    `rigCheckTimes(rows)`, `rigCheckShown(rows, ms)` (`dark` below zero, `head`, `rows`, `states`, `ready`, `done`),
+    `rigCheckLamp` ("off", "busy" or null) and `rigCheckNext` (how long until what's shown changes, null once over).
+    Times count from when the rig arrived, so they're below zero while it's on its way.
+  - `public/computer.js`: `comp.rigBoot` (`{ id, arrive, at, arrived, paged, lamp }`, cleared by `resetComputer`,
+    so going on to another computer ends it). `toggleRig` calls `startRigCheck()` when the rig comes out, unless
+    `rigStill()`, and `stopRigCheck()` otherwise; `at` is when the out move ends (`rigNextChange`), plus
+    `RIG_CHECK.page` when `rigFolded()`. `checkNow()` is the check as it stands, worked out from the clock, so a
+    full redraw in the middle carries on. `checkFx(view)` is the overlay `#rig-fx` (`.pocket-fx`) that `pocketNode`
+    puts over the whole `.pocket-screen`, the rig's own page drawn under it; `checkLines` are its lines.
+    `followRigCheck` is a chain of timeouts, each to the next change (`rigCheckNext`), that replaces only the lines
+    in `#rig-check` and, when the lamps' state changes, the two lamps (`relight`, found by `data-light`): **the
+    computer is never drawn again by the check**, because a redraw between a press and its release on the monitor
+    loses the click. The one exception is the page sliding out in a narrow window (`comp.rigSlide` set as the strip
+    arrives, one `draw()`; `slideLook` gives `.rig-slide.arriving` with `--page-at`). `endRigCheck` takes the
+    overlay off and relights, in place. `linkLight` and `heatLight` ask `startingLight` first.
+  - `public/desktop.css`: `.pocket-screen` is `position: relative`; `.pocket-fx`, `.pocket-check`, `.check-row`
+    (three columns: 7ch, the name with a dotted leader, 8ch), `b.worn`, `b.bad`; `rig-page-in`.
+  - **For step 3 (the power-off):** it has to be a phase before the away move, the way the check is a phase after the
+    out move: today `toggleRig` flips `comp.rigOut` at once and the rig slides back with its page showing. Their
+    click is that putting it away unplugs it; say the costs again first (a minute and being seen at every reconnect;
+    a junction box or a camera can't be unplugged, `THROUGH_RIG`). No power-off was kept on the page: ask.
+  - **Tests:** `test/rig-check.test.js` (6: a new rig's lines, worn and broken, a broken core, parts taken out, a
+    test save's rig, the view carrying it) and five more in `test/rig-motion.test.js` (the times, what's shown when,
+    the lamps, the next change, the stylesheet and the page agreeing with them); 1,420 tests in all.
+  - **Screens,** on a test copy run from a worktree (port 3296) in a headless Edge, every frame read, at 1400 and
+    810 wide: at the plot table, at the Bridge door's keypad with a worn fin sink, at a junction box, and at the plot
+    table with a rig whose core was taken out and one memory block broken. Each line came within 12 ms of its time, less than a frame;
+    the overlay covered the whole screen and nothing ran out of it or was cut short; the computer didn't move once
+    the check had begun; a click skipped it and nothing came back; put away in the middle it went with the rig and
+    played in full the next time; turned round twice it played once; a desktop icon clicked in the middle opened its
+    window and the check carried on; CONNECT still took its three seconds with no check over it, and after it the
+    link said PLUGGED; the junction box never showed the wake-up, and showed it once with no animations; in the
+    narrow window the page slid out, and the cross, the strip's buttons and PLUG IN each did what's said above; a
+    dragged rig checked its parts where it was. No errors on the page. **Not checked:** a camera (the same window as
+    the junction box), practice and going along the network (read in the code only: the rig is out already and
+    nothing starts), a board with an extra socket or two sinks (the names are joined by the server and cut with dots
+    by the stylesheet if too long, which no screen has shown), the installed app, and nobody has watched it at full
+    speed on a real screen. On the test save the link's line names the cable jack even at a junction box, since that
+    rig lists the parts it really has.

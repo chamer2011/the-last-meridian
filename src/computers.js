@@ -19,7 +19,7 @@ import { notePut } from "./puts.js";
 import { fill } from "./check-games/kit.js";
 import { CHECK_TEXT, COMPUTER_FLAVOR, WORLD_COMPUTERS, WORLD_MAPS } from "./world.js";
 import { controlsFor, controlsView, ownedBy, partWorks, roomPowered, runsSystems } from "./systems.js";
-import { rigFace, rigHeat, rigInComputer } from "./rig.js";
+import { rigCheck, rigFace, rigHeat, rigInComputer } from "./rig.js";
 import { LINK_WORDS, LOOKS, THROUGH_RIG, deviceView, howOf, leaveOf, lookOf, reachOf, reachWhy, rigReaches } from "./devices.js";
 import { networkView } from "./network.js";
 import { contentHardened, weakWords, withWeakPoints } from "./weak-points.js";
@@ -530,6 +530,8 @@ export function computerView(game) {
     reach: { link: reachOf(content), words: LINK_WORDS[reachOf(content)], fits: rigReaches(game, content), why: reachWhy(game, content), plugged: Boolean(session.plugged), remote: Boolean(session.remote), ok: Boolean(session.plugged || session.remote), seen: plugSeen(game, session) },
     // Beside every computer the player's rig shows the map, the programs and the log: its board and casing.
     rigFace: rigFace(game),
+    // What the rig says of its own parts as it starts up, each time it's taken out of the pocket here.
+    rigCheck: rigCheck(game),
     device: deviceView(game, session, content),
     // The place's network as a map, once past the logon (src/network.js).
     netmap: inside ? networkView(game, session) : null,

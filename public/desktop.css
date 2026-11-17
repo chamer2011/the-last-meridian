@@ -378,6 +378,28 @@
 .desk .pocket-boot .boot-cursor { display: inline-block; width: 7px; height: 11px; background: #8ff0a8; animation: desk-blink .6s steps(2) infinite; }
 @media (prefers-reduced-motion: reduce) { .desk .lamp.busy, .desk .pocket-boot .boot-cursor { animation: none; } }
 
+/* The rig starting up as it comes out of the pocket (public/rig-motion.js has the times): its whole screen dark while
+   it's on its way, then its check of its own parts over it, a line to each kind with how that is, in the screen's
+   green when it's in order, amber when it's worn and red when it's broken or missing; LINK and HEAT blink amber
+   meanwhile. In a narrow window, where the rig is a strip with no screen, its page slides out of the strip first, cut
+   off at the strip's edge, started as far in as it has got (--page-at). */
+.desk .pocket-screen { position: relative; }
+.desk .pocket-fx { position: absolute; inset: 0; z-index: 1; padding: 6px 10px 8px; overflow: hidden; background: #020a04; border-radius: 3px; box-shadow: inset 0 0 24px #000; cursor: pointer; }
+.desk .pocket-check { min-height: 0; padding-top: 2px; }
+.desk .check-row { display: grid; grid-template-columns: 7ch minmax(0, 1fr) 8ch; gap: 6px; align-items: baseline; }
+.desk .check-row .nm { display: flex; gap: 6px; align-items: baseline; min-width: 0; white-space: nowrap; }
+.desk .check-row .nm span { overflow: hidden; text-overflow: ellipsis; }
+.desk .check-row .nm i { flex: 1; min-width: 6px; border-bottom: 1px dotted #2a8c45; }
+.desk .check-row b { font-weight: 600; color: #c9ffd8; }
+.desk .check-row b.worn { color: #f2c14e; text-shadow: none; }
+.desk .check-row b.bad, .desk .pocket-check .head.bad { color: #ff7b6b; text-shadow: none; }
+.desk .rig-slide.arriving { animation: rig-page-in 160ms ease-out var(--page-at, 0ms) backwards; }
+@keyframes rig-page-in {
+  from { transform: translateX(26px); clip-path: inset(-20px 26px -40px -20px); opacity: .3; }
+  to { transform: translateX(0); clip-path: inset(-20px 0 -40px -20px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .desk .rig-slide.arriving { animation: none; } }
+
 /* Hardened computers (step 8): no breaker works from the front. Marked on the map, amber until a way in is found. */
 .os .logon-hard { display: flex; gap: 8px; align-items: baseline; padding: 5px 8px; margin: 2px 0; font-size: 11px; line-height: 1.3; }
 .os .logon-hard b { flex: none; color: #9a5b00; letter-spacing: .08em; font-size: 10px; }

@@ -236,6 +236,32 @@ export function rigFace(game) {
   return { board: rigPartById(byUid[rig.build.board]?.id)?.name ?? null, casing: rigPartById(byUid[rig.build.casing]?.id)?.name ?? null };
 }
 
+// The rig's check of its own parts, which it shows on its screen each time it comes out of the pocket (the loading
+// screen, public/computer.js): the board's name, and a line to each kind of part in its sockets with how those are, OK,
+// WORN or BROKEN. A kind it can't start without that isn't fitted says so, and dead is why it won't start, if it won't
+// (on a test save it always does, src/test-mode.js). Sockets the player's Hacking hasn't opened aren't looked at.
+const CHECKED = [["core", "CORE"], ["memory", "MEMORY"], ["cell", "CELL"], ["sink", "SINK"], ["link", "LINK"], ["extra", "EXTRA"]];
+const NEEDED = ["core", "cell", "link"];
+export function rigCheck(game) {
+  const rig = game.rig;
+  if (!rig?.build) return null;
+  const stats = rigNow(game);
+  const byUid = Object.fromEntries(rig.parts.map((item) => [item.uid, item]));
+  const upper = (item) => partName(item).toUpperCase();
+  const lines = [];
+  for (const [kind, slot] of CHECKED) {
+    const items = stats.sockets.filter((socket) => socket.kind === kind && socket.uid).map((socket) => byUid[socket.uid]).filter(Boolean);
+    if (!items.length) {
+      if (NEEDED.includes(kind)) lines.push({ slot, name: "NONE FITTED", state: "MISSING" });
+      continue;
+    }
+    const blocks = items.map((item) => rigPartById(item.id)?.memory ?? 0);
+    const name = kind === "memory" ? `${blocks.join(" + ")} ${blocks.length === 1 && blocks[0] === 1 ? "BLOCK" : "BLOCKS"}` : items.length > 2 ? `${items.length} ${slot}S` : items.map(upper).join(" + ");
+    lines.push({ slot, name, state: items.some((item) => item.cond === "broken") ? "BROKEN" : items.some((item) => item.cond === "worn") ? "WORN" : "OK" });
+  }
+  return { board: byUid[rig.build.board] ? upper(byUid[rig.build.board]) : "NO BOARD", lines, dead: stats.dead ?? null };
+}
+
 export function rigView(game) {
   const rig = game.rig;
   if (!rig) return null;

@@ -41,3 +41,56 @@ export function rigTurned(move, now, dir) {
   const done = doing.ms / RIG_MOVE[doing.phase];
   return { dir, at: now - (1 - done) * RIG_MOVE[dir] };
 }
+
+// ---- The rig starting up as it comes out -----------------------------------------------------------------------------
+// Each time the rig comes out of the pocket it checks its own parts on its screen. The screen is dark while the rig is
+// on its way. Once it has arrived: a heading, then a line to each kind of part it's built from, how that part is a
+// moment after its line, then READY, and a moment later the rig's own page. Times are milliseconds from when the rig
+// arrived, so they're below zero while it's still coming.
+
+// How long each step takes. A line comes `row` after the step before it and its state `state` after the line; READY
+// comes `ready` after the last state and stays for `hold`. In a narrow window, where the rig is a strip with no screen
+// of its own, its page takes `page` to slide out of it first.
+export const RIG_CHECK = { head: 90, row: 125, state: 115, ready: 150, hold: 260, page: 160 };
+
+// When each thing comes up, for a rig with so many lines to its check.
+export function rigCheckTimes(rows) {
+  const lines = [];
+  let t = RIG_CHECK.head;
+  for (let i = 0; i < Math.max(0, rows); i += 1) {
+    const at = t + RIG_CHECK.row;
+    t = at + RIG_CHECK.state;
+    lines.push({ at, state: t });
+  }
+  const ready = t + RIG_CHECK.ready;
+  return { head: RIG_CHECK.head, lines, ready, done: ready + RIG_CHECK.hold };
+}
+
+// What's on the screen so long after the rig arrived: dark while it's still coming, then whether the heading is up,
+// how many lines and how many of their states, whether it has said READY, and whether it's over.
+export function rigCheckShown(rows, ms) {
+  const times = rigCheckTimes(rows);
+  return {
+    dark: ms < 0,
+    head: ms >= times.head,
+    rows: times.lines.filter((line) => ms >= line.at).length,
+    states: times.lines.filter((line) => ms >= line.state).length,
+    ready: ms >= times.ready,
+    done: ms >= times.done,
+  };
+}
+
+// The rig's two lamps meanwhile: "off" while it's on its way, "busy" (blinking) while it checks, and null, which is
+// whatever they'd show anyway, from READY on.
+export function rigCheckLamp(rows, ms) {
+  const shown = rigCheckShown(rows, ms);
+  return shown.dark ? "off" : shown.ready ? null : "busy";
+}
+
+// How long until what's shown changes next, or null once it's over.
+export function rigCheckNext(rows, ms) {
+  const times = rigCheckTimes(rows);
+  const marks = [0, times.head, ...times.lines.flatMap((line) => [line.at, line.state]), times.ready, times.done];
+  const next = marks.find((mark) => mark > ms);
+  return next === undefined ? null : next - ms;
+}

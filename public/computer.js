@@ -7,7 +7,8 @@
 // frame: the monitor slides back when it's let go, like the game's other floating windows, and the rig stays where it's
 // put, with the lead between them following. The rig starts in the player's pocket: H, or the tab down the computer's
 // side, takes it out, and H again, or AWAY on it, puts it back. It slides out from behind the computer's edge and back
-// in (public/rig-motion.js).
+// in, and each time it comes out it starts up: its screen is dark until it has arrived, then it checks its own parts
+// on it, a line to each (public/rig-motion.js has the times of both; the list of parts is the game's, src/rig.js).
 // Skin and the old screen's strength are Settings choices (desktop.css). Nothing here needs typing. Since step 6 a
 // computer can look like something else: a door's panel with its keypad, a junction box's service menu and a camera's
 // feed on the rig's little screen, and NAVCOM 7, the Navy's desktop, for the ship's main system.
@@ -17,7 +18,7 @@ import { leaderNode } from "./float.js";
 import { SPRING_MS, makePullable, pulledBy } from "./pull.js";
 import { NET_MAP, layOutNetMap } from "./net-layout.js";
 import { LOAD_MS, loadingLines, loadingNode, navplotNode, newChartState } from "./navplot.js";
-import { rigNextChange, rigPhase, rigTurned } from "./rig-motion.js";
+import { RIG_CHECK, rigCheckLamp, rigCheckNext, rigCheckShown, rigCheckTimes, rigNextChange, rigPhase, rigTurned } from "./rig-motion.js";
 
 const comp = { id: null, view: null, sending: false, message: null, seen: 0 };
 
@@ -41,7 +42,7 @@ const startWindows = () => ({
 });
 
 export function resetComputer() {
-  Object.assign(comp, { app: null, chart: null, id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1, rigTab: null, rigSlide: null, wasLocked: null, logSeen: 0, boot: null, rigOut: false, rigMove: null, woke: false });
+  Object.assign(comp, { app: null, chart: null, id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1, rigTab: null, rigSlide: null, wasLocked: null, logSeen: 0, boot: null, rigOut: false, rigMove: null, rigBoot: null, woke: false });
 }
 resetComputer();
 
@@ -805,19 +806,25 @@ function drawLead() {
 // ---- The rig in the pocket ----------------------------------------------------------------------------------------
 // The rig stays in the player's pocket until it's taken out: H, or the tab down the computer's side. H again, or AWAY on
 // the rig, puts it back. Putting it away only puts its window away: a rig that's plugged in stays plugged in (UNPLUG
-// takes it off), and the tab's lights say so. At a junction box or a camera, which the rig connects to as they open, it
-// wakes up the first time it's taken out.
+// takes it off), and the tab's lights say so. Each time it comes out it starts up, checking its own parts on its screen.
 function toggleRig() {
   const view = comp.view;
   if (!view) return;
   comp.rigOut = !comp.rigOut;
   // It comes out and goes back by an animation, and the same press in the middle turns it round from where it is.
   comp.rigMove = rigStill() ? null : rigTurned(comp.rigMove, performance.now(), comp.rigOut ? "out" : "away");
-  if (comp.rigOut && !comp.woke && view.reach?.plugged && !view.reach?.remote && THROUGH_RIG.includes(view.look)) startBoot();
+  // Coming out, it starts up. Where the player's computer is set to show no animations it doesn't, and then a junction
+  // box or a camera, which the rig connects to as they open, still shows it waking the first time it's taken out there.
+  if (comp.rigOut && !rigStill() && view.rigCheck) startRigCheck();
+  else {
+    stopRigCheck();
+    if (comp.rigOut && !comp.woke && view.reach?.plugged && !view.reach?.remote && THROUGH_RIG.includes(view.look)) startBoot();
+  }
   if (comp.rigOut) comp.woke = true;
   else comp.rigSlide = null;
   draw();
   followRigMove();
+  followRigCheck();
 }
 
 // ---- The rig coming out and going back -------------------------------------------------------------------------------
@@ -892,13 +899,21 @@ const POCKET_TABS = [["net", "NET", "The place's network: go along it from here"
 const THROUGH_RIG = ["service", "camera"];
 const linkName = (words) => String(words ?? "").replace(/^(an?|the) /i, "").toUpperCase();
 const capital = (text) => (text ? `${text[0].toUpperCase()}${text.slice(1)}` : "");
-const rigLight = (cls, label, title) => el("span", { class: "pocket-light", title }, el("i", { class: `lamp${cls ? ` ${cls}` : ""}` }), label);
-const linkLight = (reach) => (booting() ? rigLight("busy", "LINK", "Connecting: the rig is waking up") : rigLight(reach.remote ? "net" : reach.ok ? "on" : "", "LINK", reach.remote ? "Over the network, from where it's plugged in" : reach.ok ? `Plugged in by ${reach.words}` : `Not connected: this takes ${reach.words}`));
-const heatLight = (heat) => rigLight(!heat || heat.dead ? "" : heat.overheating ? "hot" : heat.fan ? "warm" : "cool", "HEAT", heat ? `Your rig: ${heat.dead ? `it won't start, ${heat.dead}` : heat.words}` : "Not working: it warms while it works someone else's computer");
+// The rig's two lamps. Each says which it is (data-light), so that the rig starting up can light them again in place.
+const rigLight = (cls, label, title) => el("span", { class: "pocket-light", title, "data-light": label.toLowerCase() }, el("i", { class: `lamp${cls ? ` ${cls}` : ""}` }), label);
+// While the rig starts up they're off as it arrives, and blink as it checks its parts.
+const startingLight = (label) => {
+  const lamp = checkLamp();
+  return lamp ? rigLight(lamp === "busy" ? "busy" : "", label, "Starting up: your rig is checking its parts") : null;
+};
+const linkLight = (reach) => (booting() ? rigLight("busy", "LINK", "Connecting: the rig is waking up") : startingLight("LINK") ?? rigLight(reach.remote ? "net" : reach.ok ? "on" : "", "LINK", reach.remote ? "Over the network, from where it's plugged in" : reach.ok ? `Plugged in by ${reach.words}` : `Not connected: this takes ${reach.words}`));
+const heatLight = (heat) => startingLight("HEAT") ?? rigLight(!heat || heat.dead ? "" : heat.overheating ? "hot" : heat.fan ? "warm" : "cool", "HEAT", heat ? `Your rig: ${heat.dead ? `it won't start, ${heat.dead}` : heat.words}` : "Not working: it warms while it works someone else's computer");
 // New lines in the session since the player last looked at LOG.
 const unseenLog = (view, tab) => tab !== "log" && (view.log?.length ?? 0) > (comp.logSeen ?? 0);
 const plug = (event) => {
   event.stopPropagation();
+  // Connecting has a screen of its own: whatever's left of the rig starting up makes way for it.
+  endRigCheck();
   startBoot();
   send({ action: "plug" });
 };
@@ -933,7 +948,7 @@ function pocketNode(view, width, { closeable = false } = {}) {
   else page = el("div", { class: "pocket-log", id: "rig-log", role: "log" }, view.log.slice(-14).map((entry) => lineNode(entry)));
   const where = reach.remote ? "OVER THE NETWORK" : reach.ok ? `ON THE ${linkName(reach.words)}` : "NOT CONNECTED";
   return el("div", { class: "pocket", role: "group", "aria-label": "Your rig", title: "Drag the rig's case to move it" },
-    closeable && el("button", { class: "pocket-close", title: "Fold the rig away", "aria-label": "Fold the rig away", onclick: (event) => { event.stopPropagation(); comp.rigSlide = null; draw(); } }, "×"),
+    closeable && el("button", { class: "pocket-close", title: "Fold the rig away", "aria-label": "Fold the rig away", onclick: (event) => { event.stopPropagation(); comp.rigSlide = null; stopRigCheck(); draw(); } }, "×"),
     el("div", { class: "pocket-top" },
       el("span", {}, [face.board, face.casing].filter(Boolean).join(" · ").toUpperCase() || "YOUR RIG"),
       el("span", { class: "pocket-lights" }, linkLight(reach), heatLight(heat), el("button", { class: "pocket-away", title: AWAY, "aria-label": AWAY, onclick: rigToggle }, "AWAY"))),
@@ -941,7 +956,9 @@ function pocketNode(view, width, { closeable = false } = {}) {
       el("div", { class: "pocket-tabs", role: "tablist", "aria-label": "Your rig's pages" },
         POCKET_TABS.map(([id, label, about]) => el("button", { role: "tab", "aria-selected": String(tab === id), title: about, onclick: (event) => { event.stopPropagation(); comp.rigTab = id; if (comp.rigSlide) comp.rigSlide = id; draw(); } }, label, id === "log" && unseenLog(view, tab) && el("i", { class: "pocket-dot", title: "Something new" }))),
         el("span", { class: "pocket-where" }, where)),
-      el("div", { class: "pocket-page", style: `width:${width}px;min-height:${Math.max(tall, 150)}px` }, page)),
+      el("div", { class: "pocket-page", style: `width:${width}px;min-height:${Math.max(tall, 150)}px` }, page),
+      // Starting up, the whole screen is the rig's check of its parts, over the page that's there once it's done.
+      checkFx(view)),
     el("div", { class: "pocket-bottom" },
       el("span", {}, `${view.rig?.used ?? 0} OF ${view.rig?.memory ?? 0} BLOCKS`),
       reach.plugged && !reach.remote && !THROUGH_RIG.includes(view.look) && el("button", { disabled: comp.sending, title: "Take your rig off this one", onclick: (event) => { event.stopPropagation(); send({ action: "unplug" }); } }, "UNPLUG"),
@@ -950,8 +967,9 @@ function pocketNode(view, width, { closeable = false } = {}) {
 
 // ---- The rig waking up as it connects ----------------------------------------------------------------------------
 // Connecting takes the rig three seconds to wake: its board, a memory count, the link, then D:. It plays when Connect is
-// pressed, and at a junction box or a camera, which connect the rig as they open, the first time it's taken out of the
-// pocket there. A click on its screen skips it.
+// pressed, and a click on its screen skips it. At a junction box or a camera, which connect the rig as they open, the
+// rig starting up (below) stands in for it; only where no animations are shown, and so nothing starts up, does it still
+// play there the first time the rig is taken out of the pocket.
 const BOOT_MS = 3000;
 let bootTimer = 0;
 const booting = () => Boolean(comp.boot) && comp.boot.id === comp.id && performance.now() - comp.boot.at < BOOT_MS;
@@ -993,6 +1011,122 @@ function bootPage(view) {
   return el("div", { class: "pocket-boot", id: "rig-boot", title: "Click to skip", onclick: (event) => { event.stopPropagation(); comp.boot = null; clearInterval(bootTimer); draw(); } }, bootLines(view, performance.now() - comp.boot.at));
 }
 
+// ---- The rig starting up as it comes out -------------------------------------------------------------------------
+// Each time the rig comes out of the pocket it starts up: its screen is dark while it's on its way, and once it has
+// arrived it checks the parts it's built from, a line to each kind with how that is a moment after, then READY, and
+// then its own page. LINK and HEAT are off as it arrives and blink while it checks. The list is the game's (rigCheck in
+// the computer's view, src/rig.js); when each line comes is public/rig-motion.js's, counted from when the rig arrived,
+// so drawing the window again in the middle carries on with it. While it plays, only its own lines and the two lamps
+// are drawn again, in place, and never the computer, which stays as usable as ever. A click on the rig's screen skips
+// it, and putting the rig away ends it. It doesn't play along the network or for practice, where the rig is already
+// out, nor where the player's computer is set to show no animations. In a narrow window, where the rig is a strip with
+// no screen of its own, its page slides out of the strip as it arrives, to show the check on, and stays out after.
+
+// The check as it stands: how far in it is and what's showing, or null when none is playing.
+function checkNow() {
+  const boot = comp.rigBoot;
+  if (!boot || boot.id !== comp.id || !comp.view?.rigCheck) return null;
+  const rows = comp.view.rigCheck.lines.length;
+  const ms = performance.now() - boot.at;
+  return ms < rigCheckTimes(rows).done ? { rows, ms, shown: rigCheckShown(rows, ms) } : null;
+}
+const checkLamp = () => {
+  const check = checkNow();
+  return check ? rigCheckLamp(check.rows, check.ms) : null;
+};
+// Beside a computer the rig is a strip down its side where there isn't room for it whole; beside a panel it never is.
+const rigFolded = () => Boolean(comp.view) && !PANEL_LOOKS.includes(comp.view.look) && computerLayout().strip;
+
+// It begins when the rig has arrived, and in a narrow window once its page has slid out as well.
+function startRigCheck() {
+  const now = performance.now();
+  const arrive = now + (rigNextChange(comp.rigMove, now) ?? 0);
+  comp.rigBoot = { id: comp.id, arrive, at: arrive + (rigFolded() ? RIG_CHECK.page : 0), arrived: false, paged: false, lamp: "off" };
+}
+let checkTimer = 0;
+function stopRigCheck() {
+  clearTimeout(checkTimer);
+  comp.rigBoot = null;
+}
+// Over, or skipped: its lines come off the screen and the lamps go back to what they show, in place.
+function endRigCheck() {
+  stopRigCheck();
+  document.getElementById("rig-fx")?.remove();
+  relight();
+}
+function relight() {
+  if (!comp.view) return;
+  for (const old of document.querySelectorAll("#computer-rig .pocket-light")) old.replaceWith(old.dataset.light === "heat" ? heatLight(comp.view.rigHeat) : linkLight(comp.view.reach ?? {}));
+}
+
+// What the check has on the screen: nothing while the rig's on its way, then its heading, its lines, and how it ends.
+const STATE_LOOK = { WORN: "worn", BROKEN: "bad", MISSING: "bad" };
+function checkLines(view, shown) {
+  if (shown.dark) return [];
+  const check = view.rigCheck;
+  const lines = [];
+  if (shown.head) lines.push(el("div", { class: "head" }, `${check.board}  SELF-TEST`));
+  check.lines.slice(0, shown.rows).forEach((line, i) => {
+    // A link in order is fitted, and plugged once the rig's connected here.
+    const state = line.slot === "LINK" && line.state === "OK" ? (view.reach?.ok ? "PLUGGED" : "FITTED") : line.state;
+    lines.push(el("div", { class: "check-row" },
+      el("span", {}, line.slot),
+      el("span", { class: "nm" }, el("span", {}, line.name), el("i", {})),
+      el("b", { class: STATE_LOOK[line.state] ?? "" }, i < shown.states ? state : "")));
+  });
+  if (shown.ready) lines.push(el("div", { class: check.dead ? "head bad" : "head" }, check.dead ? `NO START: ${check.dead.toUpperCase()}` : "READY"));
+  lines.push(el("span", { class: "boot-cursor" }));
+  return lines;
+}
+// Over the rig's whole screen while it plays.
+function checkFx(view) {
+  const check = checkNow();
+  if (!check) return null;
+  return el("div", { class: "pocket-fx", id: "rig-fx", title: "Click to skip", onclick: (event) => { event.stopPropagation(); endRigCheck(); } },
+    el("div", { class: "pocket-boot pocket-check", id: "rig-check" }, checkLines(view, check.shown)));
+}
+// The folded rig's page: sliding out of the strip when the check brought it out, started as far in as it has got.
+function slideLook() {
+  const boot = comp.rigBoot;
+  const ms = boot?.paged && boot.id === comp.id ? performance.now() - boot.arrive : null;
+  return ms === null || ms >= RIG_CHECK.page ? { class: "rig-slide" } : { class: "rig-slide arriving", style: `--page-at:-${Math.max(0, Math.round(ms))}ms` };
+}
+
+// Draws the check as it goes: each time what's shown changes, until it's over.
+function followRigCheck() {
+  clearTimeout(checkTimer);
+  const boot = comp.rigBoot;
+  if (!boot) return;
+  if (boot.id !== comp.id || !comp.view || !document.getElementById("computer")) {
+    comp.rigBoot = null;
+    return;
+  }
+  const now = performance.now();
+  if (!boot.arrived && now >= boot.arrive) {
+    boot.arrived = true;
+    if (rigFolded() && !comp.rigSlide) {
+      boot.paged = true;
+      comp.rigSlide = comp.rigTab ?? (comp.view.locked ? "prog" : "net");
+      draw();
+    }
+  }
+  const check = checkNow();
+  // Over, or its page has been folded away from under it.
+  if (!check || (boot.arrived && rigFolded() && !comp.rigSlide)) {
+    endRigCheck();
+    return;
+  }
+  const box = document.getElementById("rig-check");
+  if (box) box.replaceChildren(...checkLines(comp.view, check.shown));
+  const lamp = rigCheckLamp(check.rows, check.ms);
+  if (lamp !== boot.lamp) {
+    boot.lamp = lamp;
+    relight();
+  }
+  const next = Math.min(rigCheckNext(check.rows, check.ms), boot.arrived ? Infinity : boot.arrive - now);
+  checkTimer = setTimeout(followRigCheck, Math.max(0, next) + 4);
+}
+
 // Where there isn't room beside the monitor, the rig folds to a strip down its side: its lights, its pages, and PLUG IN
 // until it's connected. Picking a page slides the rig out over the monitor.
 function stripNode(view) {
@@ -1001,7 +1135,7 @@ function stripNode(view) {
   const tab = comp.rigTab ?? (view.locked ? "prog" : "net");
   return el("div", { class: "rig-strip", role: "group", "aria-label": "Your rig, folded", title: "Drag the rig to move it" },
     el("div", { class: "strip-lights" }, linkLight(reach), heatLight(view.rigHeat)),
-    POCKET_TABS.map(([id, label, about]) => el("button", { "aria-pressed": String(open === id), title: about, onclick: (event) => { event.stopPropagation(); comp.rigSlide = open === id ? null : id; comp.rigTab = id; draw(); } }, label, id === "log" && unseenLog(view, open ? tab : null) && el("i", { class: "pocket-dot", title: "Something new" }))),
+    POCKET_TABS.map(([id, label, about]) => el("button", { "aria-pressed": String(open === id), title: about, onclick: (event) => { event.stopPropagation(); comp.rigSlide = open === id ? null : id; comp.rigTab = id; if (!comp.rigSlide) stopRigCheck(); draw(); } }, label, id === "log" && unseenLog(view, open ? tab : null) && el("i", { class: "pocket-dot", title: "Something new" }))),
     !reach.ok && el("button", { class: "go", disabled: comp.sending || !reach.fits, title: reach.fits ? `Connect by ${reach.words}: a minute` : `${capital(reach.why ?? "")}`, onclick: plug }, "PLUG IN"),
     el("button", { class: "away", title: AWAY, "aria-label": AWAY, onclick: rigToggle }, "AWAY"));
 }
@@ -1033,7 +1167,7 @@ function windowNode() {
   const shown = rigShown();
   const rig = !shown ? [rigPocketTab(view)]
     : lay.strip
-      ? [movable(el("div", { class: "rig-folded", id: "computer-rig" }, stripNode(view), comp.rigSlide && el("div", { class: "rig-slide" }, pocketNode(view, lay.map, { closeable: true }))), "rig", { stays: true })]
+      ? [movable(el("div", { class: "rig-folded", id: "computer-rig" }, stripNode(view), comp.rigSlide && el("div", slideLook(), pocketNode(view, lay.map, { closeable: true }))), "rig", { stays: true })]
       : [el("div", { class: "rig-gap", "aria-hidden": "true" }), movable(el("div", { class: "rig-case", id: "computer-rig" }, pocketNode(view, lay.map)), "rig", { stays: true })];
   return el("div", { ...deskLook(`desk computer${lay.strip && shown ? " folded" : ""}`, lay.strip ? STRIP_WIDE : lay.map + RIG_CASE), id: "computer-desk", role: "dialog", "aria-label": view.name, tabindex: "-1" },
     el("div", { class: "device-row" }, movable(monitor, "window"), rig));
