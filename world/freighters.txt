@@ -27,13 +27,18 @@ draft: the AI's, not yet edited by the owner
 #   purse, with a little standing with whoever she flies for. Where convoys are being lost, an escorted ship
 #   arrives; one sailing alone doesn't.
 #
-#   Board her. You go aboard with whoever's walking with you and fight her crew: the master and a hand, and a second
-#   hand when what she carries is worth more than the number below. Win, and everything that fits in your freight
-#   hold is yours, the dearest first; the port she was bound for goes short of it. Lose, and you wake in the medbay
-#   with nothing. Either way it costs standing with whoever she flies for, and with whoever holds the port you did
-#   it in.
+#   Board her. You go down to the Meridian's lock with whoever's walking with you, and her crew meet you there: the
+#   master and a hand, and a second hand when what she carries is worth more than the number below. Win, and
+#   everything that fits in your freight hold is yours, the dearest first; the port she was bound for goes short of
+#   it. Lose, and you wake in the medbay with nothing. Either way it costs standing with whoever she flies for, and
+#   with whoever holds the port you did it in.
 #
 # The crew fight as two enemies from world/enemies, by their ids.
+#
+# The last line names the room of the Meridian's where a boarding is fought, by the room's name on her decks. You're
+# taken there (across on the shuttle first, if you're ashore), you stand just inside its door, and her crew stand by
+# the hatch at its far end. It's a fight in the room like any other. Take the line out, and a boarding is fought
+# aboard the freighter instead, where there's no room to draw, so it's in the fight window.
 #
 # After changing this file, run "npm run check-story", and close and reopen the game.
 
@@ -45,3 +50,4 @@ an escort earns: 1 standing with whoever she flies for
 the crew: a master and 1 hand, 2 hands for a load worth over 1500 credits
 the crew fights as: freighter_master, freighter_hand
 a boarding costs: 10 standing with whoever she flies for, 5 with whoever holds the port
+a boarding is fought at: The Port Airlock

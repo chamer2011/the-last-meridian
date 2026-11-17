@@ -33,7 +33,7 @@ When they're beaten:
 - They go down, and stay down, one hand up to say they're done.
 
 When they join the fight:
-- {Enemy} comes down the hold ladder two rungs at a time, hook in hand.
+- {Enemy} comes through the hatch at a run, hook in hand.
 
 When they're stunned:
 - {Enemy} sways where they stand, the hook hanging loose.

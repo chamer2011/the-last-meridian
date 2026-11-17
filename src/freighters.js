@@ -9,9 +9,11 @@
 // - See her safely to her next port: one loading for a dangerous port, or for one where convoys are being lost, pays
 //   for company. The fee is paid when she comes in with the Meridian docked there; and where convoys are being lost,
 //   the ship she's with arrives.
-// - Board her: a fight aboard the freighter, in the fight window, against her master and a hand or two, beside
-//   whoever's walking with the player. Won, what fits in the freight hold is taken, the dearest first, and the port
-//   she was bound for goes short of it; either way it costs standing.
+// - Board her: a fight against her master and a hand or two, beside whoever's walking with the player. It's fought
+//   at the Meridian's lock, in the room, where the file names a room for it (the owner's "At the lock", 2026-11-17):
+//   the player is taken there, and her crew stand by the hatch. With no room named it's aboard the freighter, in the
+//   fight window. Won, what fits in the freight hold is taken, the dearest first, and the port she was bound for
+//   goes short of it; either way it costs standing.
 //
 // And it tells the news: a freighter in with what a port was short of, and one that never arrived.
 // The numbers are world/freighters.txt's. Everything is one of the ship's orders (src/ship.js).
@@ -26,10 +28,11 @@ import { freighterFileProblems, freighterRules, loadsByShip, shipOf, shipSpot, s
 import { counted, hasPort, levelOf, losingAt, portsModel } from "./ports.js";
 import { recordFact } from "./record.js";
 import { isCaptain } from "./role.js";
-import { changeStanding, priceEdge } from "./rules.js";
+import { changeStanding, priceEdge, travel } from "./rules.js";
 import { shipsJumpCost } from "./ship.js";
-import { partWorks, partsOf, systemsOf } from "./systems.js";
+import { doorLocked, partWorks, partsOf, systemsOf } from "./systems.js";
 import { addToPurse, purseOf } from "./trade.js";
+import { canStand, mapFor, roomHere, walkCommand } from "./walk.js";
 import { STAR_MAP } from "./world.js";
 
 const SHIP = "meridian";
@@ -71,10 +74,56 @@ function commsDown(game) {
   return comms.length > 0 && !comms.some((part) => partWorks(game, SHIP, part));
 }
 
+// ---- The lock ---------------------------------------------------------------------------------------------------
+
+const plain = (words) => String(words ?? "").trim().toLowerCase().replace(/^the /, "");
+// How far apart two squares are, in tiles: a square is half as wide as it's deep.
+const apart = (a, b) => Math.hypot((a.x - b.x) / 2, a.y - b.y);
+// A room of the Meridian's by the name the file gives it, with where a boarding is fought in it: the player just
+// inside the door from the rest of the ship, and the freighter's crew by the hatch to outside (a door in the room's
+// walls that leads to no other room), or as far from the player as the room goes where it has none.
+function findLock(map, want) {
+  const key = plain(want);
+  const room = Object.values(map?.rooms ?? {}).find((one) => one.area && [one.name, one.id, ...(one.aliases ?? [])].some((words) => plain(words) === key));
+  if (!room) return null;
+  const { area, level } = room;
+  const inside = (x, y) => x >= area.x && x < area.x + area.w && y >= area.y && y < area.y + area.h;
+  const beside = (door) => [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dx, dy]) => ({ x: door.x + dx, y: door.y + dy })).find((spot) => inside(spot.x, spot.y) && canStand(level, spot.x, spot.y)) ?? null;
+  const doors = area.doors ?? [];
+  const you = doors.map(beside).find(Boolean) ?? { x: room.start.x, y: room.start.y };
+  const inner = new Set(doors.map((door) => `${door.x},${door.y}`));
+  const hatches = [...(level.doors ?? [])].filter((spot) => !inner.has(spot)).map((spot) => {
+    const [x, y] = spot.split(",").map(Number);
+    return beside({ x, y });
+  }).filter(Boolean);
+  let them = hatches.sort((a, b) => apart(b, you) - apart(a, you))[0] ?? null;
+  if (!them) {
+    for (let y = area.y; y < area.y + area.h; y += 1) {
+      for (let x = area.x; x < area.x + area.w; x += 1) if (canStand(level, x, y) && (!them || apart({ x, y }, you) > apart(them, you))) them = { x, y };
+    }
+  }
+  return { id: room.id, name: room.name, words: room.name.replace(/^The /, "the "), you, them: them ?? you };
+}
+// Where a boarding is fought, if the file says: null when it has no such line (or names no room the Meridian has),
+// and then the fight is aboard the freighter. Worked out once for each drawing of the ship.
+const locks = new WeakMap();
+function lockOf(rules = freighterRules()) {
+  const want = rules?.["a boarding is fought at"]?.room;
+  const map = want ? mapFor(SHIP) : null;
+  if (!map) return null;
+  const known = locks.get(map);
+  if (known?.want === want) return known.lock;
+  const lock = findLock(map, want);
+  locks.set(map, { want, lock });
+  return lock;
+}
+
 addChecker(() => {
   const problems = [...freighterFileProblems()];
   const rules = freighterRules();
   for (const kind of rules ? [rules["the crew fights as"].master, rules["the crew fights as"].hand] : []) if (!ENEMIES[kind]) problems.push(`world/freighters.txt: "the crew fights as" names ${kind}, and there's no enemy with that id in world/enemies`);
+  const room = rules?.["a boarding is fought at"]?.room;
+  if (room && !lockOf(rules)) problems.push(`world/freighters.txt: "a boarding is fought at" names ${room}, and the Meridian has no room called that. Without the line, a boarding is fought aboard the freighter, in the fight window`);
   return problems;
 });
 
@@ -191,10 +240,12 @@ export function freightersView(game) {
     lanes: lanes.map(({ near, worth, ...rest }) => rest),
     more,
     escorts: (game.ship.escorts ?? []).map((one) => ({ ...one, toName: LOCATIONS[one.to]?.name ?? one.to, due: one.by, here: game.ship.at === one.to })),
-    comms: commsDown(game) ? "The Meridian's comms are down, so nobody can be raised: you can still go across." : null,
+    comms: commsDown(game) ? "The Meridian's comms are down, so nobody can be raised: you can still board one." : null,
     purse: Math.floor(purseOf(game)),
     captain: isCaptain(game),
-    rules: { share: Math.round(rules["the master sells"].share * 100), flag: rules["a boarding costs"].flag, port: rules["a boarding costs"].port },
+    // Ashore, a boarding at the Meridian's lock starts with the shuttle back aboard.
+    ashore: game.location !== SHIP,
+    rules: { share: Math.round(rules["the master sells"].share * 100), flag: rules["a boarding costs"].flag, port: rules["a boarding costs"].port, lock: lockOf(rules)?.words ?? null },
   };
 }
 
@@ -287,28 +338,81 @@ function escort(game, id) {
   return { message, notes: [`[TRADE] ${message}`] };
 }
 
-// Going across. The fight is aboard the freighter, so it's in the fight window, not in the room; what comes of it is
-// settled when it ends (below).
+// The player goes to the lock: back aboard on the shuttle first when they're ashore, which takes its hour, and by
+// then she may have gone, or something else may have come up. It gives { stopped }, the words for why the boarding
+// is off, or { found }, the ship as she stands once they're there (null when nothing has changed).
+function toTheLock(game, id, lock, notes) {
+  let found = null;
+  if (game.location !== SHIP) {
+    notes.push(...(travel(game, SHIP).notes ?? []));
+    if (game.over || game.combat || game.talk || game.check) return { stopped: "You're back aboard the Meridian, and something else has come up first." };
+    try {
+      found = docked(game, id);
+    } catch (error) {
+      return { stopped: `You're back aboard the Meridian, too late. ${error.message}` };
+    }
+  }
+  // Once they've crossed, a refusal is something to be told; before anything has happened, it's an order refused.
+  const refuse = (why) => {
+    if (found) return { stopped: why };
+    throw new Error(why);
+  };
+  // A door the ship's systems have locked stops them: the one to the room they're in, or the lock's own.
+  const from = roomHere(game)?.id ?? null;
+  const shut = from === lock.id ? null : [from, lock.id].find((room) => room && doorLocked(game, SHIP, room)) ?? null;
+  if (shut) return refuse(`The door to ${(mapFor(SHIP)?.rooms?.[shut]?.name ?? "the room").replace(/^The /, "the ")} is locked, so you can't get to ${lock.words}: nobody's going across.`);
+  try {
+    walkCommand(game, { action: "room", to: lock.id });
+  } catch {
+    return refuse(`There's a closed door between you and ${lock.words}, so nobody's going across.`);
+  }
+  if (game.walk && !game.walk.room) Object.assign(game.walk, { x: lock.you.x, y: lock.you.y });
+  return { found };
+}
+
+// Going for her. Where the file names a room of the Meridian's for it, the player is taken to that room and the
+// fight is there, in the room like any other: her crew by the hatch, the player just inside the door, whoever's
+// walking with them beside them. With no room named, the fight is aboard the freighter, so it's in the fight window
+// and never in the room. What comes of it is settled when it ends (below).
 function board(game, id) {
-  const { rules, port, ship, hauls } = docked(game, id);
-  if (game.location !== SHIP && game.location !== port) throw new Error(`You have to be aboard the Meridian, or ashore at ${nameOf(port)}, to go across to her.`);
+  let found = docked(game, id);
+  if (game.location !== SHIP && game.location !== found.port) throw new Error(`You have to be aboard the Meridian, or ashore at ${nameOf(found.port)}, to go across to her.`);
   if (game.talk || game.check) throw new Error("Finish what you're in the middle of first.");
+  const lock = lockOf(found.rules);
+  const before = [];
+  // Whether the player crosses from the port to the Meridian for it: the page then has a new place to show.
+  const crossed = Boolean(lock) && game.location !== SHIP;
+  if (lock) {
+    const moved = toTheLock(game, id, lock, before);
+    if (moved.stopped) return { message: moved.stopped, notes: before, moved: crossed };
+    found = moved.found ?? found;
+  }
+  const { rules, port, ship, hauls } = found;
   const loads = loadsOf(hauls);
   const fights = rules["the crew fights as"];
   const hands = crewOf(rules, worthOf(loads)) - 1;
   const notes = startCombat(game, fights.master, {
     followers: Array(hands).fill(fights.hand),
-    leadIn: `You go across to ${ship.name} through the lock. Her master is waiting in the hold, and isn't alone.`,
+    leadIn: lock
+      ? `You come down to ${lock.words} to cross to ${ship.name}. Her master is standing in the hatch, and isn't alone.`
+      : `You go across to ${ship.name} through the lock. Her master is waiting in the hold, and isn't alone.`,
     why: "guarding",
-    reason: "You've come aboard their ship for what's in her hold.",
+    reason: lock ? "You mean to board their ship for what's in her hold." : "You've come aboard their ship for what's in her hold.",
     faction: FACTIONS[ship.flies] ? ship.flies : null,
   });
-  game.combat.away = `aboard ${ship.name}`;
+  // At the lock her crew stand by the hatch when the fight moves into the room (src/live-fight.js reads enter).
+  if (lock) for (const enemy of game.combat.enemies) enemy.enter = { x: lock.them.x, y: lock.them.y };
+  else game.combat.away = `aboard ${ship.name}`;
   game.combat.boarding = { ship: ship.id, port };
-  const lines = [`[COMBAT] You board ${ship.name}, at ${nameOf(port)}.`, ...notes, ...boardingCosts(game, rules, ship, port)];
+  const lines = [
+    ...before,
+    lock ? `[COMBAT] You go to board ${ship.name}, at ${nameOf(port)}, and her crew meet you in ${lock.words}.` : `[COMBAT] You board ${ship.name}, at ${nameOf(port)}.`,
+    ...notes,
+    ...boardingCosts(game, rules, ship, port),
+  ];
   ship.memo.boarded = game.world.day;
   onRecord(game, "boarded_a_freighter", `You boarded ${ship.name} at ${nameOf(port)} for her cargo.`);
-  return { message: `You go across to ${ship.name}.`, notes: lines };
+  return { message: lock ? `You go down to ${lock.words}, where ${ship.name} is made fast.` : `You go across to ${ship.name}.`, notes: lines, moved: crossed };
 }
 // What a boarding costs, won or lost: standing with whoever she flies for, and with whoever holds the port it was
 // done in, where each is one of the game's factions.
@@ -331,7 +435,7 @@ addFightEnd((game, fight, result) => {
   const ship = shipOf(game.world, boarding.ship, hauls);
   if (!ship) return [];
   // Beaten, or talked into standing aside: either way the hold is open. Anything else, and she keeps what she had.
-  if (result !== "victory" && result !== "talked") return [result === "defeat" ? `You're carried back through the lock, and ${ship.name} keeps everything she had.` : `${upper(ship.name)} keeps everything she had.`];
+  if (result !== "victory" && result !== "talked") return [result === "defeat" ? `${fight.away ? "You were carried back through the lock" : "You went down in the lock"}, and ${ship.name} keeps everything she had.` : `${upper(ship.name)} keeps everything she had.`];
   const hold = holdOf();
   const taken = [];
   if (hold) {

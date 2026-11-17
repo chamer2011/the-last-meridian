@@ -50,14 +50,28 @@ function shipCard(l, ship) {
         onclick: shipOrder({ action: "ship-buy", id: ship.id, good: one.good }),
       }, `Buy 1, ${number(one.price)} cr`)
       : null);
-  // Boarding is asked twice: it can't be taken back.
+  // Boarding is asked twice: it can't be taken back. It's fought at the Meridian's lock, in the room, where the
+  // freighters' file names a room for it (you're taken there), and aboard the freighter, in the fight window, where
+  // it doesn't.
+  const lock = l.rules.lock;
+  const costs = `It costs standing with ${ship.flies}, and with whoever holds ${mid(l.here.name)}, win or lose.`;
+  const question = lock
+    ? `Go down to ${lock} and fight her crew of ${ship.crew} there for what she carries? ${l.ashore ? "The shuttle takes you back aboard first, which takes an hour. " : ""}${costs}`
+    : `Go aboard and fight her crew of ${ship.crew} for what she carries? ${costs}`;
   const asking = ui.boardAsk === ship.id;
   const board = !l.captain ? null : asking
-    ? [el("div", { class: "small tone-bad" }, `Go aboard and fight her crew of ${ship.crew} for what she carries? It costs standing with ${ship.flies}, and with whoever holds ${mid(l.here.name)}, win or lose.`),
+    ? [el("div", { class: "small tone-bad" }, question),
       el("div", { class: "row" },
         el("button", { class: "small", disabled: !can, onclick: shipOrder({ action: "ship-board", id: ship.id }, () => { ui.boardAsk = null; if (app.ui.game.combat) closeMenu(); }) }, "Yes, board her"),
         el("button", { class: "small", onclick: () => { ui.boardAsk = null; renderMenus(); } }, "No"))]
-    : el("button", { class: "small", disabled: !can, title: `Go across with whoever's walking with you, and fight her crew of ${ship.crew} for what she carries`, onclick: () => { ui.boardAsk = ship.id; renderMenus(); } }, "Board her...");
+    : el("button", {
+      class: "small",
+      disabled: !can,
+      title: lock
+        ? `Meet her crew of ${ship.crew} at ${lock}, with whoever's walking with you, and fight them for what she carries`
+        : `Go across with whoever's walking with you, and fight her crew of ${ship.crew} for what she carries`,
+      onclick: () => { ui.boardAsk = ship.id; renderMenus(); },
+    }, "Board her...");
   return el("div", { class: "card stack gap-small freighter" },
     el("div", { class: "spread" }, el("strong", {}, ship.name), el("span", { class: "muted small" }, `flies for ${ship.flies}`)),
     small(where),

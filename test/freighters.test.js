@@ -1,8 +1,9 @@
 // The logistics rework, step 13: ships you can meet. Everything a port sends for travels in a freighter with a name
 // (src/lanes.js): it loads for a day where it sails from, is days on the way, and unloads where it's bound. Docked
 // beside one, the Meridian's captain can hail her, buy from her hold, see her to her next port for pay, or board her
-// and fight her crew for what she carries (src/freighters.js). A freighter that never arrives is a shortage where it
-// was going, and the news says so.
+// and fight her crew for what she carries (src/freighters.js): at the Meridian's lock, in the room, where the file
+// names a room for it, and aboard the freighter, in the fight window, where it doesn't. A freighter that never
+// arrives is a shortage where it was going, and the news says so.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -11,6 +12,10 @@ import path from "node:path";
 import { test } from "node:test";
 
 process.env.GAME_DATA_DIR ??= fs.mkdtempSync(path.join(os.tmpdir(), "meridian-freighters-"));
+// The freighters' file is read from a copy, so that one test can take a line out of it and put it back.
+const FILE = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "meridian-freighters-file-")), "freighters.txt");
+fs.copyFileSync(new URL("../world/freighters.txt", import.meta.url), FILE);
+process.env.GAME_FREIGHTERS_FILE = FILE;
 
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
 await import("../src/tools.js");
@@ -20,7 +25,7 @@ const { knownPlace } = await import("../src/daily.js");
 const { ENEMIES, FACTIONS, ITEMS } = await import("../src/data.js");
 const { goodPrice, holdOf } = await import("../src/freight.js");
 const lanes = await import("../src/lanes.js");
-const { goLive } = await import("../src/live-fight.js");
+const { goLive, liveOrder, liveTick, liveView } = await import("../src/live-fight.js");
 const { logisticsOf, storeById } = await import("../src/logistics.js");
 const { amountOf, portsModel } = await import("../src/ports.js");
 const { readRecord } = await import("../src/record.js");
@@ -30,6 +35,7 @@ const { isCaptain } = await import("../src/role.js");
 const { allStoryProblems } = await import("../src/scenes.js");
 const { shipCommand, shipView } = await import("../src/ship.js");
 const sys = await import("../src/systems.js");
+const { mapFor, roomHere } = await import("../src/walk.js");
 const { STAR_MAP } = await import("../src/world.js");
 
 const SHIP = "meridian";
@@ -75,6 +81,30 @@ function fight(game) {
   return out;
 }
 const weaken = (game) => { for (const enemy of game.combat.enemies) enemy.hp = 1; };
+// The same fight once it's in the room: time going by, the player going for whoever they can see, or walking at
+// whoever's left.
+function fightInRoom(game, seconds = 300) {
+  let outcome = { over: false, events: [] };
+  const said = [];
+  for (let t = 0; t < seconds * 1000 && !outcome.over; t += 150) {
+    const v = liveView(game);
+    const seen = v ? Object.entries(v.sight).find(([, sight]) => sight.ok) : null;
+    try {
+      if (seen && v.you.target !== seen[0]) liveOrder(game, { type: "attack", target: seen[0] });
+      else if (v && !seen && !v.you.target) liveOrder(game, { type: "attack", target: game.combat.enemies.find((one) => one.hp > 0 && !one.out).key });
+    } catch {
+      // Not ready, or nobody to go for just now: time goes by.
+    }
+    outcome = liveTick(game, { ms: 150 });
+    said.push(...outcome.events);
+  }
+  return { outcome, said };
+}
+// The Meridian's lock, as the file names it, and how far apart two squares are in tiles.
+const LOCK = "airlock_port";
+const lockArea = () => mapFor(SHIP).rooms[LOCK].area;
+const inLock = (spot) => { const a = lockArea(); return spot.x >= a.x && spot.x < a.x + a.w && spot.y >= a.y && spot.y < a.y + a.h; };
+const tiles = (a, b) => Math.hypot((a.x - b.x) / 2, a.y - b.y);
 
 test("the file gives the names and the numbers, and the checker reads it", () => {
   const rules = lanes.freighterRules();
@@ -85,6 +115,12 @@ test("the file gives the names and the numbers, and the checker reads it", () =>
   assert.deepEqual(rules["an escort pays"], { rate: 20, from: 2 });
   assert.deepEqual(rules["the crew"], { hands: 1, more: 2, over: 1500 });
   assert.deepEqual(rules["a boarding costs"], { flag: 10, port: 5 });
+  // The owner's "At the lock": a boarding is fought in a room of the Meridian's. The file can do without the line.
+  assert.deepEqual(rules["a boarding is fought at"], { room: "The Port Airlock" });
+  const without = lanes.parseFreighters(fs.readFileSync(FILE, "utf8").replace(/^a boarding is fought at: .+$/m, ""));
+  assert.equal(without.whole, true);
+  assert.deepEqual(without.problems, []);
+  assert.equal(without["a boarding is fought at"], undefined);
   assert.ok(ENEMIES[rules["the crew fights as"].master] && ENEMIES[rules["the crew fights as"].hand], "her crew are enemies the game has");
   assert.deepEqual(checkExtras().filter((one) => /freighters\.txt/.test(one)), []);
   const broken = lanes.parseFreighters("names begin: Long, Quiet\nthe master sells: most of it\na ship: is a ship\n");
@@ -309,17 +345,29 @@ test("where convoys are being lost, a freighter alone never arrives and the news
   }
 });
 
-test("boarding her: a fight aboard the freighter, in its window, that costs standing; won, what fits the hold is taken and the port goes short", () => {
+test("boarding her: the captain is taken to the Meridian's lock, where her crew stand by the hatch, and it costs standing; won, what fits the hold is taken and the port goes short", () => {
   const game = newGame();
+  assert.equal(view(game).rules.lock, "the Port Airlock");
+  assert.equal(view(game).ashore, false);
+  assert.notEqual(roomHere(game).id, LOCK);
   const ship = inPort(game).find((one) => one.state === "unloading" && one.loads.some((load) => load.n >= 10) && FACTIONS[shipOf(game, one.id).flies]);
   assert.ok(ship, "a ship with something worth taking is unloading");
   const flies = shipOf(game, ship.id).flies;
   const holder = game.world.places.haven.holder;
   const before = { flag: game.factions[flies] ?? 0, port: game.factions[holder] ?? 0 };
   const other = twin(game);
-  const { message, notes } = order(game, "ship-board", ship.id);
-  assert.equal(message, `You go across to ${ship.name.replace(/^T/, "t")}.`);
-  some(notes, /^\[COMBAT\] You board the .+, at Haven Station\.$/);
+  const hours = game.clock.hours;
+  const { message, notes, moved } = order(game, "ship-board", ship.id);
+  assert.equal(message, `You go down to the Port Airlock, where ${ship.name.replace(/^T/, "t")} is made fast.`);
+  some(notes, /^\[COMBAT\] You go to board the .+, at Haven Station, and her crew meet you in the Port Airlock\.$/);
+  // Already aboard, it takes no time and the page has no new place to show: the captain is in the lock, just inside
+  // its door from the rest of the ship.
+  assert.equal(moved, false);
+  assert.equal(game.clock.hours, hours);
+  assert.equal(game.location, SHIP);
+  assert.equal(roomHere(game).id, LOCK);
+  const door = lockArea().doors[0];
+  assert.ok(tiles(game.walk, door) <= 1.5, `the captain at ${game.walk.x},${game.walk.y}, the door at ${door.x},${door.y}`);
   // Standing, with whoever she flies for and whoever holds the port, win or lose.
   assert.equal(game.factions[flies], before.flag - 10);
   if (FACTIONS[holder] && holder !== flies) assert.equal(game.factions[holder], before.port - 5);
@@ -328,8 +376,26 @@ test("boarding her: a fight aboard the freighter, in its window, that costs stan
   assert.equal(c.enemies.length, ship.crew);
   assert.equal(c.enemies[0].id, "freighter_master");
   assert.ok(c.enemies.slice(1).every((enemy) => enemy.id === "freighter_hand"));
-  assert.equal(combatView(game).away, `aboard ${ship.name.replace(/^T/, "t")}`);
-  assert.throws(() => goLive(game), /aboard .+, not in the room/);
+  // It's a fight like any other, so the room can take it: her crew by the hatch at the far end of the lock, the
+  // captain where they stand, and nobody on anybody.
+  assert.equal(combatView(game).away, null);
+  for (const enemy of c.enemies) assert.ok(inLock(enemy.enter), "her crew come in inside the lock");
+  const room = twin(game);
+  goLive(room);
+  const lc = room.combat;
+  assert.deepEqual({ x: lc.live.you.x, y: lc.live.you.y }, { x: game.walk.x, y: game.walk.y });
+  for (const enemy of lc.enemies) {
+    assert.ok(inLock(enemy.live), `${enemy.id} at ${enemy.live.x},${enemy.live.y}`);
+    assert.ok(tiles(enemy.live, door) > tiles(lc.live.you, door) + 5, `${enemy.id} at ${enemy.live.x},${enemy.live.y} is at the far end from the door`);
+  }
+  assert.equal(new Set(lc.enemies.map((enemy) => `${enemy.live.x},${enemy.live.y}`)).size, lc.enemies.length);
+  // Played out in the room, it ends as it does in its window: the cargo comes across.
+  weaken(room);
+  const played = fightInRoom(room);
+  assert.equal(played.outcome.over, true);
+  assert.equal(played.outcome.result, "victory");
+  some(played.said.map((event) => event.note ?? ""), /^\[TRADE\] .+ out of the .+'s hold, into the freight hold\. Haven Station was waiting for them\.$/);
+  assert.equal(roomHere(room).id, LOCK, "and the captain is still in the lock afterwards");
   assert.throws(() => order(game, "ship-board", ship.id), /won't be surprised twice/);
   // Won: everything that fits comes across, and it's gone from what she carries.
   const had = { ...inHold(game) };
@@ -377,7 +443,7 @@ test("a boarding lost, or run from, takes nothing, and still costs the standing"
   for (const enemy of game.combat.enemies) { enemy.attack = 30; enemy.hp = 500; }
   const out = fight(game);
   assert.equal(out.result, "defeat");
-  some(out.events.map((event) => event.text ?? ""), /You're carried back through the lock, and the .+ keeps everything she had\./);
+  some(out.events.map((event) => event.text ?? ""), /You went down in the lock, and the .+ keeps everything she had\./);
   assert.equal(JSON.stringify(inHold(game)), had, "nothing came across");
   assert.deepEqual(haulsOf(game, ship.id).map((haul) => haul[3]), carried);
   assert.equal(game.factions[flies], standing - 10);
@@ -423,7 +489,7 @@ test("a ship boarded while she's loading never sails with what was taken, and th
   assert.doesNotMatch(flag, /^(Hegemony|Kessara Syndicate|Refugee Fleet|Order of Ilun)$/, "a faction reads with its the in a sentence");
   const before = haulsOf(game, ship.id).reduce((sum, haul) => sum + haul[3], 0);
   order(game, "ship-board", ship.id);
-  assert.equal(game.combat.story?.reason ?? game.combat.enemies[0].reason, "You've come aboard their ship for what's in her hold.");
+  assert.equal(game.combat.story?.reason ?? game.combat.enemies[0].reason, "You mean to board their ship for what's in her hold.");
   weaken(game);
   const out = fight(game);
   assert.equal(out.result, "victory");
@@ -434,4 +500,82 @@ test("a ship boarded while she's loading never sails with what was taken, and th
   assert.ok(said, "the port she was bound for hears of it");
   assert.doesNotMatch(said.text, /before she'd unloaded/);
   assert.match(readRecord(game).facts.find((fact) => fact.id === "robbed_a_freighter").text, /, bound for .+\.$/);
+});
+
+test("ashore, the shuttle takes the captain back aboard first, which takes its hour; too late, or with a door shut on the way, nobody's boarded", () => {
+  const pick = (game) => inPort(game).find((one) => one.state === "unloading" && one.loads.some((load) => load.n >= 10) && FACTIONS[shipOf(game, one.id).flies]);
+  // Ashore at the port she's docked at: across on the shuttle, and down to the lock.
+  const game = newGame();
+  game.location = "haven";
+  game.walk = null;
+  assert.equal(view(game).ashore, true);
+  const ship = pick(game);
+  const hours = game.clock.hours;
+  const done = order(game, "ship-board", ship.id);
+  assert.equal(done.moved, true, "the page has a new place to show");
+  assert.equal(game.location, SHIP);
+  assert.equal(roomHere(game).id, LOCK);
+  assert.ok(Math.abs(game.clock.hours - hours - 1) < 0.01, "the shuttle's hour");
+  assert.equal(game.combat.enemies[0].id, "freighter_master");
+  assert.equal(combatView(game).away, null);
+  // Too late: the hour takes her past midnight, by when the ship has unloaded and gone.
+  const late = newGame();
+  late.location = "haven";
+  late.walk = null;
+  passTime(late, 24 - (late.clock.hours % 24) - 0.5, "routine");
+  const gone = pick(late);
+  const flies = shipOf(late, gone.id).flies;
+  const standing = late.factions[flies] ?? 0;
+  const missed = order(late, "ship-board", gone.id);
+  assert.match(missed.message, /^You're back aboard the Meridian, too late\. /);
+  assert.equal(missed.moved, true);
+  assert.equal(late.location, SHIP);
+  assert.equal(late.combat ?? null, null);
+  assert.equal(late.factions[flies] ?? 0, standing, "and nothing was done to anyone");
+  assert.ok(!readRecord(late).facts.some((fact) => fact.id === "boarded_a_freighter"));
+  // Aboard, with a locked door between the captain and the lock: nobody goes across, and nothing has happened.
+  const shut = newGame();
+  const here = roomHere(shut).id;
+  sys.setDoor(shut, SHIP, here, "locked", { by: "story" });
+  const kept = pick(shut);
+  assert.throws(() => order(shut, "ship-board", kept.id), /^Error: The door to .+ is locked, so you can't get to the Port Airlock: nobody's going across\.$/);
+  assert.equal(shut.combat ?? null, null);
+  assert.equal(roomHere(shut).id, here);
+  assert.equal(inPort(shut).find((one) => one.id === kept.id).boarded, false);
+});
+
+test("with no room named for it, a boarding is fought aboard the freighter, in the fight window; a room the Meridian hasn't is a problem", () => {
+  const text = fs.readFileSync(FILE, "utf8");
+  try {
+    fs.writeFileSync(FILE, text.replace(/^a boarding is fought at: .+\r?\n?/m, ""));
+    lanes.forgetFreighters();
+    assert.ok(lanes.freighterRules(), "the file still reads whole");
+    assert.deepEqual(checkExtras().filter((one) => /freighters\.txt/.test(one)), []);
+    const game = newGame();
+    assert.equal(view(game).rules.lock, null);
+    const here = roomHere(game).id;
+    const ship = inPort(game).find((one) => one.state === "unloading" && one.loads.some((load) => load.n >= 10));
+    const { message, notes, moved } = order(game, "ship-board", ship.id);
+    assert.equal(message, `You go across to ${ship.name.replace(/^T/, "t")}.`);
+    some(notes, /^\[COMBAT\] You board the .+, at Haven Station\.$/);
+    assert.equal(moved, false);
+    assert.equal(roomHere(game).id, here, "the captain hasn't been moved anywhere");
+    assert.equal(combatView(game).away, `aboard ${ship.name.replace(/^T/, "t")}`);
+    assert.throws(() => goLive(game), /aboard .+, not in the room/);
+    assert.equal(game.combat.story.reason, "You've come aboard their ship for what's in her hold.");
+    game.hp = 1;
+    for (const enemy of game.combat.enemies) { enemy.attack = 30; enemy.hp = 500; }
+    const out = fight(game);
+    assert.equal(out.result, "defeat");
+    some(out.events.map((event) => event.text ?? ""), /You were carried back through the lock, and the .+ keeps everything she had\./);
+    // A room the Meridian hasn't: the checker says so, and a boarding is fought aboard the freighter.
+    fs.writeFileSync(FILE, text.replace(/^a boarding is fought at: .+$/m, "a boarding is fought at: The Ballroom"));
+    lanes.forgetFreighters();
+    some(checkExtras(), /"a boarding is fought at" names The Ballroom, and the Meridian has no room called that/);
+    assert.equal(view(newGame()).rules.lock, null);
+  } finally {
+    fs.writeFileSync(FILE, text);
+    lanes.forgetFreighters();
+  }
+  assert.equal(view(newGame()).rules.lock, "the Port Airlock");
 });

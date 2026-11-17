@@ -37,7 +37,11 @@ const LINES = {
   "the crew": [/^a master and (\d) hands?, (\d) hands for a load worth over (\d+) credits$/i, (f) => ({ hands: Number(f[1]), more: Number(f[2]), over: Number(f[3]) }), "a master and 1 hand, 2 hands for a load worth over 1500 credits"],
   "the crew fights as": [/^([a-z_ ]+), ([a-z_ ]+)$/i, (f) => ({ master: f[1].trim().toLowerCase().replace(/ /g, "_"), hand: f[2].trim().toLowerCase().replace(/ /g, "_") }), "freighter_master, freighter_hand"],
   "a boarding costs": [/^(\d+) standing with whoever she flies for, (\d+) with whoever holds the port$/i, (f) => ({ flag: Number(f[1]), port: Number(f[2]) }), "10 standing with whoever she flies for, 5 with whoever holds the port"],
+  "a boarding is fought at": [/^(.+)$/, (f) => ({ room: f[1].trim() }), "The Port Airlock"],
 };
+// A line the file can do without: with no room named for a boarding, it's fought aboard the freighter, in the fight
+// window (src/freighters.js).
+const OPTIONAL = new Set(["a boarding is fought at"]);
 
 export function parseFreighters(text) {
   const model = { problems: [] };
@@ -51,7 +55,7 @@ export function parseFreighters(text) {
     if (!read) return model.problems.push(`world/freighters.txt, line ${i + 1}: "${found[1]}" is written like: ${reader[2]}`);
     model[found[1].toLowerCase()] = reader[1](read);
   });
-  const missing = Object.keys(LINES).filter((name) => !model[name]);
+  const missing = Object.keys(LINES).filter((name) => !model[name] && !OPTIONAL.has(name));
   if (missing.length) model.problems.push(`world/freighters.txt: there's no line for ${missing.join(", ")}, so no freighter has a name`);
   for (const key of ["names begin", "names end"]) if (model[key] && model[key].length < 8) model.problems.push(`world/freighters.txt: "${key}" has ${model[key].length} words, and with so few two ships will share a name: give it eight or more`);
   model.whole = !missing.length;
