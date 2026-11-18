@@ -4,7 +4,7 @@
 
 The owner asked for Almagest Explorer's to be ported to Godot by "Way A": Godot replaces only what's seen and clicked. The rules in `src/` stay in JavaScript and run as a hidden Node program that Godot talks to on the same computer. Nothing in `src/` or `world/` is rewritten, and the browser version keeps working until they say otherwise. Moving the rules into Godot ("Way B") isn't planned.
 
-Seven steps. **Build only the one they name, and wait for their test before the next.**
+Seven steps. The plan was to build only the one they name and wait for their test before the next. **On 2026-11-18, after step 1's report and before trying it, they said "Go on to porting everything"**, which was taken as the word to go on through the steps in order without waiting, each one finished, checked and committed before the next is begun. It wasn't taken as the word to retire the browser view (step 7's second half): that still waits for them to say they're happy. They have tried none of it yet, so the report after each step says again what only they can check (the real art, `start-godot.bat`, the meter).
 
 1. One deck in Godot: a deck from `world/maps/meridian/deck*.tmj`, drawn with the art packs, with walking, zoom and changing decks. Compare smoothness with the current view.
 2. Connected to the game: people's days, doors, power, fires, the clock and pause, from the Node rules over the local link.
@@ -107,9 +107,78 @@ GAME_LICENSED_DIR=<stand-ins> xvfb-run -a godot --path godot --rendering-driver 
 - The atlas has room for 4096 by 4096; if the real packs' pictures on the decks ever outgrow it, the ones left over are drawn plain and the screen says so.
 - Getting the project ready takes a few seconds at every start, because it's the only way a fresh or changed copy is sure to open.
 
-## For step 2
+## Step 2: connected to the game (2026-11-18)
 
-- The Node side becomes a program that stays running (the game itself, on a port of its own or over a pipe), and `levelLook`/`placeLevels` take `draftLook`'s place: the same shape with a game behind it, so `deck_art.gd` already draws most of it. What changes with the game (a room gone dark, a fire, power) changes the scene's id in the browser; in Godot it means building that deck's meshes again, which takes about half a second a deck in GDScript now: fine for a light going out, and worth making quicker (only the layer that changed) if it shows.
-- People are `drawPerson` again (`figure.gd` has standing and walking; sitting and lying aren't ported), each a window in `overlay.gd` like the player's.
-- The systems' parts on walls, stores and containers are in `levelLook`'s `things`, with `partPicture` and `PART_HANG` still to port (`drawPixelPart`).
-- A locked door is a way out of its own in the game's view (`inner` exits), drawn shut and red.
+### What they see
+
+`start-godot.bat` now opens **the game being played**. If a game is running on port 3210 (`start-game.bat`'s window, or the app), Godot joins it; if none is, Godot starts `node server.js` itself with no window, and stops it when its own window closes. A window opens on the loading screen and then on the room the player was last in, on whichever deck, or at a port.
+
+- **Along the top:** the game's name, "Godot view", the clock's label, **Pause / Normal / Fast / Faster** (the page's own three speeds; Space toggles Pause), why the clock's stopped when it is, the room's name and the deck's, and a line on how to walk (hidden under 1000 wide, where the bar is two lines).
+- **Everyone on the level**, as `drawPerson` draws them: eased from square to square, sitting on the seat they stop on the way it faces (a chair seen from behind drawn again over them), asleep or laid up in the bed they're on (the pack's bunk takes two, a blanket each; a pod's sleeper seen through its lid), lying on the floor with the red cross when down. Names near the player or under the pointer, the amber **!** for someone with an ask, and the chatter lines over heads.
+- **Doors** open for anyone near. A door the systems have locked is the pack's red shut door with a blinking red lamp, and its name over it in the closed colour.
+- **The ship's state**, all of it from `buildScene`: dark rooms in the lightmap, lamps and consoles dimmed where off, fires (flames, smoke, the fire's own light), soot and stains, a breach (the hole, air streaks, the amber lamp), sparks, ringing alarms, the systems' parts on the walls as the packs' fittings with the game's marks over them, a working camera turning, stores as crates by stock, steam off a full kettle, litter and grime by `wear`, bad air and the alarm as a wash over the window.
+- **The game's news** (`notes` from the clock) in the bottom left for 14 seconds, five lines at most.
+- **What it doesn't play:** with a talk, a fight, a check or a computer open, or the game over, a line in amber across the top says so and names the game's own window (`http://localhost:<port>`), and walking is off until it's finished there. With no game open, the saves there are, as buttons, and **Look again**.
+
+Not in it, as the README tells them: things to click (the ? marks, parts, stores, closed doors), every menu and panel, starting a new game, screens stuttering when power is short, and the plainer windows, wall screens, garden beds and hull from step 1.
+
+### How it's made
+
+**The game's side** is small and only reads, but for the clock and a stop:
+
+- `src/godot-view.js` took over what `tools/godot-decks.mjs` did (the helper is now forty lines that call it on `draftLook`): `godotPlace(game)` is `placeLevels(game)` with each level's look run through `buildScene` and handed over as step 1 had it, plus what a game adds: each part with its state, the packs' fitting for it as it stands (`partPicture`) and how it's hung (`PART_HANG`, now exported from `public/pixel-art.js`), stores' `stock`, `onPiece` and `quiet`, exits' `closed` and `locked`, each area's dark, power, fire, breach and scorch, `scene.fires`, `breaches`, `marks`, `wear`, `darkAreas`, every seat and bed marked (`rest`), and for a bed `packBed`'s own answer for how people lie in it. `packBed` gained two options (`on`, `way`) so it can be asked from Node, where there are no pictures to look at; nothing else in `public/` changed. `ways.parts` and `ways.turning` name every part picture in every state and the camera's sixteen turns, so the atlas is whole from the start.
+- `server.js` has the routes under `/api/godot/`, loading `src/godot-view.js` only when one is asked: `GET place` (everything, with `walk`, `clock`, `state`, `saved`; `game: false` and the saves when none is open), `GET level/<id>` (one level again), `GET walk`, `POST tick`, `POST stop`. The page's `/api/tick` and Godot's share one function, `clockTick`. **Walking is the page's own `/api/walk`**, unchanged: `move` for each square reached with the keys, `go` for a click, exactly as `public/move.js` and `public/walk.js` send them.
+- **One clock.** The page's tick notes when it last ran (`pageTicked`); for a second and a half after it, Godot's tick passes no time (`ms: 0`) and says `shared: true`. So with both windows open the page runs the clock and Godot follows; with the page paused, hidden or closed, Godot runs it.
+- **Knowing something changed.** The page that makes a change gets the whole game back; a second window doesn't. So `autosave()` counts (`saves`), every Godot tick carries the count, and when it's moved Godot asks for the room again (`GET walk`). The tick also says where the game has the player (`at`) and what's open (`state`: combat, talk, check, computer, over).
+- **Stopping.** `POST /api/godot/stop` calls `finishSaving()` and exits, and only when the game was started with `ALMAGEST_STARTED_BY_GODOT=1`, which Godot sets for the process it starts and nothing else does. The app's and `start-game.bat`'s games refuse it.
+
+**Godot's side:**
+
+- `link.gd`: an `HTTPRequest` to a question (threaded, so an answer doesn't wait on frames), `start_game()` (`OS.create_process("node", [server.js])`, the port and the mark in its environment) and `stop_game()`.
+- `live.gd`: `scene_id` (the page's `sceneIdOf`, reading the game's view of a level and Godot's package of one alike, floats snapped so the two can't disagree by rounding), `look_for` (`lookFor`), and `Dice` (`randomFrom`, for litter and blankets where the browser has them).
+- `main.gd`: finds or starts the game; loads the place (the atlas is gathered and finished first, then **every level is drawn on a worker thread at once**, since `DeckArt` is all sums and `Packs` only reads once finished); ticks twice a second (once a second with `ms: 0` while paused, to keep hearing); `_take_walk` (the room as the game has it: the floor to walk on, people, exits, stock, and whether the level's picture has fallen behind); `_refresh` (asks for the level again, draws it on a thread, builds its view hidden, lets its light bake three frames, swaps it in, doors as far open as they were); `_sync` and `_go` (the page's `sync` and `go`); the clock bar, the banner, the news, the names (`Tags`, drawn in one stroke over everything).
+- `overlay.gd` grew from the player and the doors to everything that moves: people, beds with sleepers, stores, flames, the breach's hole, turning cameras, each a `Prop` window as before. `DeckArt.nearer` finds what covers a window from a grid of the standing items (96 pixels a square) instead of looking at all three thousand, which is what lets thirty people be placed in about a thousandth of a second a frame.
+- `deck_art.gd`: parts (`_part`: `drawPixelPart` and `drawPartMarks`, and a plain panel where the packs have nothing), litter, grime and marks (`drawLitter`, `drawRubbish`, `drawGrime`, `drawMark`, with the game's own dice so the same square has the same rubbish), locked and closed ways out, dimming for what's off. `deck_view.gd`: dark rooms in the lightmap, and two layers after the light (`Smoke`, `Shine`) for `drawAfterLight`.
+- `--empty` opens the ship with no game behind her, as step 1 did (the helper, the deck buttons, `--deck`, `--at`, `--preview`), for checking the drawing.
+
+**Departures and readings of mine:**
+
+- With no game open, Godot offers the saves and loads one through `/api/load`, as the title screen's Load does (so it keeps the game before as "previous").
+- A click on someone walks up to them and nothing more: the talk would open in the page, and opening one from Godot would leave the player stuck behind the banner.
+- The red lamp of a locked door is lit for any exit that's `locked`. The page looks for `exit.inner`, which `exitView` doesn't pass on, so from reading the code the page's lamp never lights; not checked on screen, and not changed.
+- A camera's red light and a ringing alarm's wash are drawn after the light, where the page draws them before it.
+
+**The public copy.** `src/godot-view.js`, the routes in `server.js` and the two new tests go across with `src/`, `server.js` and `test/` at the next publish; `godot/` and `tools/godot-decks.mjs` still don't. The routes answer there and nothing asks them, and both tests pass without `godot/` or the packs.
+
+### Checked (2026-11-18, stand-in art, a test copy on port 3292 with its own data folder)
+
+- From the test save: the bridge with its eight people seated at their consoles and Voss in her chair; names, a hovered name, chatter; walking by held keys with the game keeping the square; a click across deck 1 to the stair's plate and out onto deck 2 beside the stair; keys onto a plate and up again; the clock at Normal and Faster, paused with Space's button, and people walking as it ran.
+- Deck 2 by day and at 03:00 (a save made by a scratch script with the game's own `passTime`): cooks and gardeners at work, eighteen asleep two to a bunk, the night watch walking. **Held up against the game's own page** in the Pixel art view on the same save at the same moment (Playwright, the page paused): the same people in the same bunks and places.
+- The Hot Bunks' lights switched off and its door locked through the page's `/api/systems` while Godot was open: the room went dark and the door red within a couple of seconds, with no walking interrupted.
+- A save with a fire in the Galley, a breach at the Port Airlock, a cut junction box, a broken vent and someone down: flames, smoke and firelight, four rooms dark, the hole with its air and lamp, the news lines.
+- A talk opened in the page: the banner at 1400 and 810 wide, walking off, and on again when it closed.
+- A jump to Haven through the page's own order: the Manifest Docks drawn, with its people, its port store's crates and its ways out. **No other port, and no other room of Haven, was looked at.**
+- Godot starting the game itself, walking, and closing: the game stopped and the autosave had the square walked to. With no saves and with only a test save: the two "no game open" screens at 1400 and 810.
+- Without the packs (`--plain`), and `--empty`, at 1400 and 810.
+- `test/godot-view.test.js` (5) and `test/godot-link.test.js` (4, over the real server), and the whole suite.
+
+### Not checked, and why
+
+- **Everything step 1 couldn't check still stands:** the real art, `start-godot.bat` on Windows, smoothness on a graphics card. To those add **Godot starting and stopping Node on Windows** (`OS.create_process` and the stop were only run on Linux).
+- **The app.** Godot joining a game the installed app is running wasn't tried; it's the same server on the same port.
+- A fight, a check or a computer open (only the talk's banner was seen; the four share one line of code), the game-over banner, a place made up by the story (`offPlan`), and a deck redrawn in the Map editor while Godot is open (the place's key changes and everything is loaded again; not tried).
+- Two people answering "who's nearer the camera" within a hundredth of a tile of each other, and more than about thirty people on a level at once.
+
+### Known
+
+- If Godot is ended by force while it's running the game itself, the game is left running with no window until Godot is opened and closed again, or the computer restarted. The README says so.
+- A level's picture catches up a second or two after the change (the save's count is seen on the next tick, then the level is fetched, drawn and lit).
+- While a level is being drawn again, a second change to it waits for the first to finish.
+- People are placed every frame whether they've moved or not (about 30 millionths of a second each).
+
+## For step 3 (fights in the room)
+
+- The page's side is `public/live-fight.js` (695 lines) through hooks in `public/iso.js` (`fighters`, `fightHidden`, `fightOverlay`, `fighting`); the rules are `src/live-fight.js` on `src/combat.js`, asked through `/api/combat` (`tick` with at most half a second, the orders, `live`). The fight's view is `combatView(game)`.
+- Fighters are `drawPerson` again with health and readiness bars over them, so they're `Prop`s in `overlay.gd` like everyone else; whoever's in the fight is hidden from the level's own people (`fightHidden`).
+- The orders bar along the bottom, the pause, the notes and the end ("The battle's won", "You went down") want the style test's panes (`pal.gd`).
+- Godot's tick already hears `state.combat`; the banner goes once the fight is played here.

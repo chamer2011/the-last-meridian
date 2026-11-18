@@ -36,6 +36,9 @@ var _files := {}
 var _entries := {}
 var _shelf := Vector2i.ZERO
 var _shelf_high := 0
+## Once the atlas is whole (finish), nothing more is put on it: a picture that wasn't asked for before then is drawn
+## plain. From then on this only reads, so decks can be drawn from it on other threads.
+var _done := false
 
 
 func _init(licensed_dir: String, dim: float) -> void:
@@ -114,6 +117,8 @@ func want(picture: Variant) -> Dictionary:
 	var key := "%s|%s|%s|%s" % [src, rect, steel, dim]
 	if _entries.has(key):
 		return _entries[key]
+	if _done:
+		return {}
 	var entry := {}
 	var image := _file(src)
 	if image != null:
@@ -140,6 +145,23 @@ func want(picture: Variant) -> Dictionary:
 				entry["image"] = own
 	_entries[key] = entry
 	return entry
+
+
+## Asks for every picture named anywhere in what the game handed over (anything with a "src"), so that the atlas is
+## whole before any deck is drawn.
+func gather(data: Variant) -> void:
+	match typeof(data):
+		TYPE_DICTIONARY:
+			if data.has("src") and typeof(data.src) == TYPE_STRING:
+				want(data)
+				return
+			for value in data.values():
+				if typeof(value) == TYPE_DICTIONARY or typeof(value) == TYPE_ARRAY:
+					gather(value)
+		TYPE_ARRAY:
+			for value in data:
+				if typeof(value) == TYPE_DICTIONARY or typeof(value) == TYPE_ARRAY:
+					gather(value)
 
 
 ## Which way a flat thing's picture leans: "s" if its top runs down to the right, as on a wall seen from the room below
@@ -265,6 +287,11 @@ static func _in_steel(image: Image) -> void:
 
 ## The atlas as the picture everything is drawn from. Called once every picture has been asked for.
 func finish() -> void:
+	# Which way each picture leans is worked out now, so that nothing is written here afterwards.
+	for entry in _entries.values():
+		if not entry.is_empty():
+			slant(entry)
+	_done = true
 	var high := 1024 + PAD
 	if _shelf.y + _shelf_high + PAD > high:
 		high = _shelf.y + _shelf_high + PAD

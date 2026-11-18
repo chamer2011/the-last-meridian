@@ -1194,33 +1194,56 @@ npm run build-app
 
 `app/main.js` is the app, `app/choices.js` has the decisions it makes when it starts and what its installers are made with, `app/build.js` makes them, and `app/icon.ico` is its icon.
 
-## The Godot test
+## The Godot view
 
-This is a test of moving what you see and click to **Godot**, a program for making games, while the game's rules stay as they are. It's the first of seven steps, and it does one thing: it draws the Meridian's three decks in Godot with the two pixel-art packs, the way the **Pixel art** view does, for you to walk through and see whether it runs more smoothly. It isn't connected to a game in play. The game in your browser and in the app are untouched by it, and all three can be open at once.
+This is the game's room in **Godot**, a program for making games. What you see and click is being moved there a step at a time, while the game's rules stay exactly as they are. Two of seven steps are built. The first drew the ship; the second, this one, connects it to **your game**: it opens the game you're playing, with your captain where you left them, everyone aboard living their day, and the clock running. Walking in it is walking in the game, and it's saved as you go, in the same save.
+
+It doesn't replace anything yet. The game in your browser and the app work as they always did, and **both can be open on the same game at once**: what Godot can't do yet (talking, fights, opening things, the menus) you do in the game's own window, and Godot shows the room while you do.
 
 **To open it**, double-click **`start-godot.bat`** in the game's folder.
 
 - The first time, a black window says it's fetching Godot 4.3, about 55 MB, from Godot's own page on GitHub. It checks what came down, unpacks it into a folder called `godot-engine` beside the game, and never fetches it again. You don't install anything.
-- Every time, it then takes a few seconds to get the project ready, and a window opens on the loading screen and then on the bridge of deck 1.
+- Every time, it takes a few seconds to get ready, and a window opens on a loading screen and then on the room you were last in.
+- **If the game is already running** (the black window of `start-game.bat`, or the app), Godot joins it. **If it isn't**, Godot starts the game itself, with no window of its own, and stops it again when you close the Godot window. While it's running that way you can still open http://localhost:3210 in your browser, and you'll find the same game there.
+- **A game that was started before this update can't talk to Godot.** If the window says so, close the game (its black window, or the app), and double-click `start-godot.bat` again.
 - If Windows asks whether to run a program it doesn't know, that's Godot.
+
+**What you'll see**
+
+- **The room you're in**, in the Pixel art look, whichever deck you're on, or the port you're docked at. Its name and the deck's are along the top.
+- **Everyone else**, as the game draws them: walking between their places, sitting in their chairs at the consoles and the mess tables, asleep in the bunks and cots at night, lying where they fell with a red cross over them if they're down. Their name shows when you're near them or point at them, an amber **!** over anyone with something to ask you, and now and then someone says a line over their head.
+- **The doors between rooms** slide open for whoever comes near, not only for you. A door the ship's systems have locked is shut and red, with a red lamp blinking over it.
+- **The clock** along the top, with **Pause**, **Normal**, **Fast** and **Faster**, the same speeds as in the game. **Space** pauses and goes on.
+- **The ship's state:** a room with its lights out is dark; consoles and screens go dark where there's no power; a fire burns with flames, smoke and its own light, and leaves soot afterwards; a hole in the hull has air streaming out of it and an amber lamp beside it; broken parts throw sparks; the keypads, cameras, vents, switches, junction boxes and alarms are on the walls, and a working camera turns; the ship's stores are stacked with as many crates as they hold; the floor has as much litter and grime as the ship is worn.
+- **What the game says as it happens** (a fire, the lights going out, someone getting up) comes up in the bottom left corner for a few seconds.
 
 **What to try**
 
-- **Walking:** W, A, S and D or the arrow keys, as in the game, or click the floor and you walk there the shortest way. Walls and furniture stop you, and you slide along them. The doors between rooms slide open as you come near and shut behind you.
-- **Zoom:** the mouse wheel, between the same two sizes as in the game.
-- **Changing decks:** walk onto the striped plate by a stair, click the stair's name over it, or use **Deck 1**, **Deck 2** and **Deck 3** along the top. The buttons put you back where you last stood on that deck.
-- **The room you're in** is named along the top.
-- **The meter** in the bottom left corner says how long the slowest picture of the last second took to draw, in thousandths of a second, and how many were drawn. On most screens sixty are drawn a second, which is 16.7 each: a number that stays near that while you walk is smooth, and one that jumps to 30 or 50 is a stutter you'd feel. Walk the same way here and in the game's own Pixel art view, and compare how each feels.
+- **Walking:** W, A, S and D or the arrow keys, or click where you want to go. A click on someone walks you up to them; a click on a stair's name, or walking onto its striped plate, takes the stairs.
+- **Zoom:** the mouse wheel.
+- **Let the clock run on Faster** for a while and watch the watch change: people leave their posts, eat, and go to their bunks.
+- **With the game's own window open beside it:** switch a room's lights off from the Ship menu there, or lock a door, and watch the Godot window follow a moment later.
+- **The meter** in the bottom left corner says how long the slowest picture of the last second took to draw, in thousandths of a second. On most screens sixty are drawn a second, which is 16.7 each: a number that stays near that while you walk is smooth. Compare how walking feels here and in the game's own Pixel art view.
 
-**What's in it:** floors, tall and low walls, doors, the furniture of all three decks, console banks, stairs, the engines and the ship's boat, the lamps, the words on the walls and the rooms' names on the floor, your own figure as the game draws it, and a first version of the ship's light: dim, with pools at the lamps, the screens and the lit things.
+**What isn't in it yet, and what happens instead**
 
-**What isn't yet:** other people, the clock, anything to click on but the floor and the stairs, keypads, cameras, stores and whatever else the game stands in rooms itself, dark rooms, fires, wear and litter, the menus, the quest tracker and the panel on the right, and saving. Those are the next steps. The windows, the wall screens, the garden's beds and the hull outside are plainer here than in the game, which draws those itself and not from the packs.
+- **Talking, fights, skill checks and computers.** When one of those is open in the game, a line in amber across the top of the Godot window says so, and you can't walk until it's finished in the game's own window. A click on someone walks you up to them and stops there.
+- **Things to click:** the **?** marks, opening a store or a locker, working a part, asking at a closed door. And every menu, the quest tracker, the room's panel, your inventory.
+- **Starting a new game.** A new game opens with a written scene and a battle, which Godot doesn't play yet: start it in the game's own window and come to Godot once the battle's over, or use the **Test save**. If no game is open, Godot lists the saves there are, to open one.
+- **Which window runs the clock.** With both open, the game's own window runs it, and Godot says "The game's own window is running the clock". Pause it there and Godot's own buttons take over.
+- A few things are plainer than in the game for now: the windows, the wall screens, the garden's beds and the hull outside, and screens don't stutter when the ship is short of power.
 
-**The art** is read from the `licensed` folder each time, as the game reads it, and is never copied into the Godot project. If a line in amber appears above the meter saying something was drawn plain, a picture wasn't found: tell Claude what it says.
+**If something goes wrong**
 
-**To be rid of it**, delete the `godot-engine` folder. Godot also keeps a small folder of its own for this test, `%APPDATA%\AlmagestExplorersGodot`, with a log of what it did, which can be deleted too.
+- **"The game isn't answering"** means the game was closed while the Godot window was open. Close the Godot window and start it again.
+- **If the Godot window is ever ended by force** while it was running the game itself, the game is left running with no window. `start-game.bat` will then say it seems to be running already: opening `start-godot.bat` again and closing its window the usual way stops it, and so does restarting the computer.
+- If a line in amber appears above the meter saying something was drawn plain, a picture wasn't found in the `licensed` folder: tell Claude what it says.
 
-`godot/` is the Godot project, and `tools/godot-decks.mjs` is what the game tells it about the decks.
+**The art** is read from the `licensed` folder each time, as the game reads it, and is never copied into the Godot project.
+
+**To be rid of it**, delete the `godot-engine` folder. Godot also keeps a small folder of its own, `%APPDATA%\AlmagestExplorersGodot`, with a log of what it did, which can be deleted too.
+
+`godot/` is the Godot project, `src/godot-view.js` is what the game tells it about each deck, and `server.js` answers it under `/api/godot/`.
 
 ## Carrying on from another computer
 

@@ -934,7 +934,9 @@ const OWN_BEDS = { bunk: { ...BUNK_PLAN, twice: true }, cot: BED_PLAN };
 // z up); run, the way they lie from there ("x" or "y", toward the bigger end) and long, how far; cx, cy, the bed's
 // middle; under and blankets as above; and pictured, whether the bed is the pack's picture now or a plain shape, on
 // whose top everyone lies side by side. Null for any other piece.
-export function packBed(piece) {
+// (Asked from outside the page, where there are no pictures to look at: on says whether the packs are drawing, and way
+// stands in for pieceWay.)
+export function packBed(piece, { on = pixelArtOn(), way = pieceWay } = {}) {
   const kind = FURNITURE_BY_ID[piece?.kind];
   const sideways = piece?.facing === "e" || piece?.facing === "w";
   let plan;
@@ -943,9 +945,9 @@ export function packBed(piece) {
   if (kind?.pack) {
     if (kind.what !== "bed") return null;
     plan = bedPlan(piece.kind);
-    pictured = pixelArtOn() && Boolean(pieceWay(piece.kind, piece.facing ?? "s"));
+    pictured = on && Boolean(way(piece.kind, piece.facing ?? "s"));
   } else if (OWN_BEDS[piece?.kind]) {
-    if (!pixelArtOn() || !pieceWay(piece.kind)) return null;
+    if (!on || !way(piece.kind)) return null;
     plan = OWN_BEDS[piece.kind];
     if (PIECES[piece.kind][0].lengthways) flipped = !sideways;
     pictured = true;
@@ -981,7 +983,7 @@ export function drawPixelFixture(painter, { x, y, face, off }, { cellWidth, high
 // of its picture), so that it stays put as it turns. A big unit stands on the floor (stand): against its wall, let a
 // little way into it so there's room to stand in front of it, or on its own square where there's no wall; front is the
 // way its picture's front looks ("s" or "e"), and high how tall it is, for the light the game puts over it.
-const PART_HANG = {
+export const PART_HANG = {
   camera: { lift: 1.4, lean: "s", hung: [58, 32.5] },
   "light switch": { lift: 0.8 },
   vent: { lift: 0.32 },

@@ -31,7 +31,7 @@ import {
   buy, buyPerk, captainSheet, clockFor, combatAction, equip, notePeopleSeen, publicState, raiseSkill, raiseStat, rest, sell, setDifficulty, startCombat, useItem, workShift,
 } from "./src/rules.js";
 import { personSheet } from "./src/person-sheet.js";
-import { closeTalk, placeLevels, talkCommand, talkHeard, talkLineOver, talkSaid, walkCommand, walkTick } from "./src/walk.js";
+import { closeTalk, placeLevels, standingAt, talkCommand, talkHeard, talkLineOver, talkSaid, walkCommand, walkTick, walkView } from "./src/walk.js";
 import { airBadHere, controlSystem, settlePart, systemsOf } from "./src/systems.js";
 import { computerCommand, screenGoesDark } from "./src/computer-use.js";
 import { afterDeedFight, settleDeed } from "./src/deeds.js";
@@ -187,7 +187,11 @@ let busy = false;
 // What the story said, and what the player did, with the scene and quest it was part of when it was the written story's.
 const log = (role, text, tag = null) => game.transcript.push({ role, text, ...(tag?.scene ? { scene: tag.scene, quest: tag.quest ?? null } : {}) });
 
+// How many times the game has been saved since it started: every change but the clock's own quiet running saves it, so
+// a second window on the game (the Godot view) can tell by this that something has changed.
+let saves = 0;
 function autosave() {
+  saves += 1;
   const text = writeSave("autosave", game);
   try {
     keepMorning(text);
@@ -409,8 +413,86 @@ async function piecesApi(req, res) {
   return json(res, 404, { error: "Not found." });
 }
 
+// The clock running by itself while the player explores, for whichever view asks: what the tick did, and what came of
+// it. quiet when the clock's waiting or stands still here; passed when something's happened that the whole screen needs.
+function clockTick(body) {
+  const before = Math.floor(requireGame().clock.hours / 2);
+  const { notes = [], ...reply } = walkTick(game, body);
+  if (reply.held || reply.still) return { reply, quiet: true };
+  if (notes.length) log("notice", notes.join("\n"));
+  const news = notes.length > 0;
+  if (news) autosave();
+  else saveInAWhile();
+  // A room saved in Tiled since the view last drew it is sent again whole, so it's drawn as it is now.
+  const redrawn = body.drawn !== undefined && reply.drawn !== Number(body.drawn);
+  return { reply, notes, news, passed: news || redrawn || Math.floor(game.clock.hours / 2) !== before };
+}
+
+// The Godot view (godot/), a second window on the same game: Godot draws and takes clicks, and everything it shows or
+// does is asked here (src/godot-view.js packs a place's levels for it). It walks with the page's own /api/walk.
+// When the page last ran the clock: while it's doing so, Godot's asking moves no time, or the two would run it twice.
+let pageTicked = 0;
+const PAGE_HAS_THE_CLOCK = 1500;
+// What else is going on in the game that Godot doesn't play yet, so it can say so and wait.
+const goingOn = () => ({ combat: Boolean(game.combat), talk: Boolean(game.talk), check: Boolean(game.check), computer: Boolean(game.computer), over: Boolean(game.over) });
+async function godotApi(req, res, route) {
+  const what = route.slice("/api/godot/".length);
+  if (req.method === "GET") {
+    // Loaded only when Godot asks, so the game starts as it always did for everyone who never opens it.
+    const { godotLevelNow, godotPlace, godotRound } = await import("./src/godot-view.js");
+    const jsonShort = (obj) => {
+      res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+      res.end(JSON.stringify(obj, godotRound));
+    };
+    // Every level of the place the player's at, and the room as it stands. With no game open, the saves there are.
+    if (what === "place") {
+      if (!game) return json(res, 200, { ok: true, game: false, saves: listSaves() });
+      const place = godotPlace(game);
+      if (!place) return json(res, 200, { ok: true, game: true, nowhere: true, state: goingOn() });
+      return jsonShort({ ...place, game: true, walk: walkView(game), clock: clockFor(game), state: goingOn(), saved: saves });
+    }
+    // One level again, when something on it has changed.
+    if (what.startsWith("level/")) return jsonShort({ ok: true, deck: godotLevelNow(requireGame(), decodeURIComponent(what.slice("level/".length))) });
+    // The room as it stands, when the player's been moved by something other than Godot.
+    if (what === "walk") return json(res, 200, { walk: walkView(requireGame()), clock: clockFor(game), state: goingOn(), saved: saves });
+    return json(res, 404, { error: "Not found." });
+  }
+  if (req.method !== "POST") return json(res, 404, { error: "Not found." });
+  const body = await readBody(req);
+  // Godot closing the game it started itself (start-godot.bat with no game running): what's waiting to be saved is
+  // saved, and the game stops. A game started any other way isn't Godot's to stop.
+  if (what === "stop") {
+    if (process.env.ALMAGEST_STARTED_BY_GODOT !== "1") throw new Error("This game wasn't started by the Godot view, so it isn't the Godot view's to stop.");
+    finishSaving();
+    json(res, 200, { stopped: true });
+    setTimeout(() => process.exit(0), 100);
+    return null;
+  }
+  if (busy) return json(res, 409, { error: "The story is still being told. Wait a moment." });
+  if (what === "tick") {
+    requireGame();
+    if (game.over) return json(res, 200, { still: true, state: goingOn(), saved: saves });
+    const shared = Date.now() - pageTicked < PAGE_HAS_THE_CLOCK;
+    const { reply, notes = [], passed = false } = clockTick(shared ? { ...body, ms: 0 } : body);
+    const at = standingAt(game);
+    return json(res, 200, {
+      ...reply,
+      clock: clockFor(game),
+      state: goingOn(),
+      saved: saves,
+      ...(at ? { at: { level: at.levelId, x: at.x, y: at.y } } : {}),
+      ...(shared ? { shared: true } : {}),
+      ...(notes.length ? { notes } : {}),
+      // Something's happened that the picture may show: the room again, whole.
+      ...(passed ? { walk: walkView(game) } : {}),
+    });
+  }
+  return json(res, 404, { error: "Not found." });
+}
+
 async function handleApi(req, res, route) {
   if (route.startsWith("/api/board/")) return boardApi(req, res, route);
+  if (route.startsWith("/api/godot/")) return godotApi(req, res, route);
   // The deck as the map editor has it now, described for its picture, with nothing saved or tried out. It has a
   // route of its own, apart from the editor's, so that a game started before the picture existed says it has none
   // (asked under /api/map/, it would take the deck to be tried out, which is slow, every time something was drawn).
@@ -642,16 +724,9 @@ async function handleApi(req, res, route) {
   // The clock running by itself while the player explores. The reply
   // is small, because this is twice a second, unless something's happened that the whole screen needs.
   if (route === "/api/tick") {
-    const before = Math.floor(requireGame().clock.hours / 2);
-    const { notes = [], ...reply } = walkTick(game, body);
-    if (reply.held || reply.still) return json(res, 200, reply);
-    if (notes.length) log("notice", notes.join("\n"));
-    const news = notes.length > 0;
-    if (news) autosave();
-    else saveInAWhile();
-    // A room saved in Tiled since the page last drew it is sent again whole, so it's drawn as it is now.
-    const redrawn = body.drawn !== undefined && reply.drawn !== Number(body.drawn);
-    const passed = news || redrawn || Math.floor(game.clock.hours / 2) !== before;
+    pageTicked = Date.now();
+    const { reply, news = false, passed = false, quiet = false } = clockTick(body);
+    if (quiet) return json(res, 200, reply);
     return json(res, 200, { ...reply, clock: clockFor(game), ...(passed ? { game: publicState(game), news } : {}) });
   }
   // Walking runs here. The reply is small, because this can be every key press.

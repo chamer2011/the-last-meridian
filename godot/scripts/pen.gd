@@ -89,6 +89,35 @@ func line(a: Vector2, b: Vector2, color: Color, wide := 1.0) -> void:
 	poly(PackedVector2Array([a + n, b + n, b - n, a - n]), color)
 
 
+## A line through several points.
+func polyline(points: PackedVector2Array, color: Color, wide := 1.0) -> void:
+	for i in points.size() - 1:
+		line(points[i], points[i + 1], color, wide)
+
+
+## A filled oval, so wide and so high from its middle, turned by an angle.
+func ellipse(middle: Vector2, rx: float, ry: float, color: Color, turned := 0.0, steps := 14) -> void:
+	var points := PackedVector2Array()
+	for i in steps:
+		var a := TAU * i / steps
+		points.append(middle + Vector2(cos(a) * rx, sin(a) * ry).rotated(turned))
+	poly(points, color)
+
+
+## A filled oval whose colour changes from its middle outwards: stops is [[how far out, 0 to 1, colour], ...], the
+## first at the middle.
+func glow(middle: Vector2, rx: float, ry: float, stops: Array, steps := 16) -> void:
+	for s in range(1, stops.size()):
+		var inner: float = stops[s - 1][0]
+		var outer: float = stops[s][0]
+		for i in steps:
+			var a := TAU * i / steps
+			var b := TAU * (i + 1) / steps
+			var da := Vector2(cos(a) * rx, sin(a) * ry)
+			var db := Vector2(cos(b) * rx, sin(b) * ry)
+			poly_shaded(PackedVector2Array([middle + da * inner, middle + db * inner, middle + db * outer, middle + da * outer]), PackedColorArray([stops[s - 1][1], stops[s - 1][1], stops[s][1], stops[s][1]]))
+
+
 ## Part of the atlas (source, in pixels of a space whose corner is at origin on the atlas) drawn so that three points
 ## of that space (from) land on three points of the room (to). clip, if given, is a shape the picture is kept inside.
 func cell(origin: Vector2, source: Rect2, from: Array, to: Array, clip := PackedVector2Array(), tint := Color.WHITE) -> void:

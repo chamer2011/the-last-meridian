@@ -1,6 +1,6 @@
 ## Walking freely on a deck, the same as the browser view's (public/move.js): smoothly wherever the floor goes,
 ## sliding along walls and eased round corners, and a click walks the shortest way round what's in the way, smoothed
-## into straight lines. Where the floor is comes from the game (tools/godot-decks.mjs), never from the pictures.
+## into straight lines. Where the floor is comes from the game, never from the pictures.
 ##
 ## A position counts from a square's middle: at (3, 4) the player is in the middle of square (3, 4), and at (3.4, 4) a
 ## little to its right. A square is CELL_WIDTH across and one deep.
@@ -22,6 +22,8 @@ const CW := Iso.CELL_WIDTH
 
 var floor_rows: Array = []
 var ways_out := {}
+## The squares other people are standing on, which the player walks round.
+var blocked := {}
 var cols := 0
 var lines := 0
 
@@ -37,6 +39,8 @@ func _init(deck: Dictionary) -> void:
 ## What can be walked on: the deck's floor and its ways out.
 func ground(x: int, y: int) -> bool:
 	if x < 0 or y < 0 or y >= lines or x >= cols:
+		return false
+	if blocked.has(Vector2i(x, y)):
 		return false
 	return floor_rows[y][x] == "." or ways_out.has(Vector2i(x, y))
 

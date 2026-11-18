@@ -1,5 +1,7 @@
 ## One deck, drawn: everything that doesn't move, worked out once from what the game says is on it
-## (tools/godot-decks.mjs) and gathered into two layers, the floor and what stands on it, each one mesh.
+## (src/godot-view.js) and gathered into two layers, the floor and what stands on it, each one mesh. When something on
+## the deck changes (a room goes dark, a door is locked, a fire starts), the game says so and the deck is drawn again
+## whole, on a thread of its own, and swapped in.
 ##
 ## This is the browser view's still picture (drawTile and drawBlock in public/iso.js) with the packs' pictures
 ## (public/pixel-art.js: drawPixelFloors, drawPixelWall, drawPixelLowWall, drawPixelStairs, drawPixelDoor,
@@ -37,6 +39,33 @@ const HAZARD_STEP := 0.125
 const STAIR_STEEL := [Color("262e2d"), Color("161b1b"), Color("0e1212")]
 const FLOOR_COLORS := {"deck": "6a6e70", "grate": "5a5c5a", "concrete": "74726a", "tile": "8a8e8c"}
 const PLANT_COLORS := [Color("6a8a44"), Color("54763a"), Color("7a9650"), Color("465f30")]
+# How much of the floor has rubbish on it, by how cluttered the place is (0 to 3), and how much has grime on it, by
+# how worn: the share of squares above the mark (CLUTTER_ABOVE and GRIME_ABOVE in public/iso.js).
+const CLUTTER_ABOVE := [0.94, 0.84, 0.74, 0.62]
+const GRIME_ABOVE := [1.0, 0.9, 0.8, 0.68]
+# Something with its power off is drawn dark and dull.
+const DIM := Color(0.42, 0.44, 0.47)
+# Where on its wall each kind of the systems' parts is, when the packs have no fitting for it and the game draws a
+# plain one: from how high to how high, how far in from the square's edges, its colour and its trim (PART_LOOKS).
+const PART_LOOKS := {
+	"junction box": [0.55, 0.95, 0.08, "666a64", "d8b030"],
+	"air plant": [0.08, 1.25, 0.0, "4c5450", "88a0a0"],
+	"vent": [0.12, 0.42, 0.08, "30343a", "8a9298"],
+	"light switch": [0.7, 0.86, 0.32, "b8b0a0", "605848"],
+	"camera": [1.32, 1.52, 0.24, "242628", "9aa0a6"],
+	"speaker": [1.16, 1.42, 0.2, "463e3a", "a83228"],
+	"relay": [0.35, 1.2, 0.06, "2a3234", "60d090"],
+	"console": [0.6, 1.02, 0.05, "1c2220", "3fbf8f"],
+	"engines": [0.06, 1.4, 0.0, "58483a", "d07038"],
+	"nav core": [0.4, 1.3, 0.06, "283240", "6aa0e0"],
+	"docking clamps": [0.3, 1.1, 0.06, "5a5840", "c8b860"],
+	"door panel": [0.62, 0.98, 0.3, "26292b", "6fe08a"],
+	"machine": [0.4, 1.0, 0.08, "58584e", "a0a090"],
+}
+# The one light over each of the big units, in its own colour while it works.
+const UNIT_LIGHTS := {"relay": "60d090", "nav core": "6aa0e0", "air plant": "88c0c0", "engines": "d07038"}
+# How big the squares are that everything standing is sorted into, for finding quickly what's near someone.
+const GRID := 96.0
 const CW := Iso.CELL_WIDTH
 const WH := Iso.WALL_HEIGHT
 
@@ -64,6 +93,17 @@ var shadows: Array[PackedVector2Array] = []
 var doors: Array[Dictionary] = []
 var bounds := Rect2()
 var floor_color := Color("3a4040")
+## What moves or changes too often to be part of the still picture, for the layers over it (overlay.gd, deck_view.gd):
+## the seats and beds people use, the ship's stores, cameras that turn, what's sparking or ringing, locked doors.
+var rests: Array[Dictionary] = []
+var stores: Array[Dictionary] = []
+var cameras: Array[Dictionary] = []
+var sparking: Array[Vector2] = []
+var ringing: Array[Vector2] = []
+var locked_doors: Array[Vector2] = []
+var kettles: Array[Dictionary] = []
+## Everything standing, by the square of the picture it's in (GRID pixels a side), for nearer().
+var _grid := {}
 ## What couldn't be drawn from the packs and was drawn plain, by what it was.
 var plain := {}
 var _floor_order := {}
@@ -99,6 +139,9 @@ func _init(deck_data: Dictionary, the_packs: Packs, the_ways: Dictionary, number
 	_lay_ground()
 	_stand_everything()
 	_find_doors()
+	_sort_into_grid()
+	ground.finish(packs.size())
+	standing.finish(packs.size())
 
 
 # ---- What's where ---------------------------------------------------------------------------------------------------
@@ -226,6 +269,22 @@ func _lay_ground() -> void:
 		var y := int(c.y)
 		for i in 4:
 			pen.poly(_quad(x0, y + i * 0.25, x0 + CW, y + i * 0.25 + 0.25), Color("26241c") if i % 2 else Color("7c6c30"))
+	# Rubbish, more of it the more cluttered the place is, and grime, the more worn it is. They're only marks.
+	var wear: Variant = scene.get("wear")
+	var clutter := int(wear.get("clutter", 1)) if typeof(wear) == TYPE_DICTIONARY else 1
+	var grime := int(wear.get("grime", 0)) if typeof(wear) == TYPE_DICTIONARY else 0
+	var littered: float = CLUTTER_ABOVE[clampi(clutter, 0, 3)] if typeof(wear) == TYPE_DICTIONARY else 0.84
+	var grimed: float = GRIME_ABOVE[clampi(grime, 0, 3)] if typeof(wear) == TYPE_DICTIONARY else 1.0
+	for c in floors:
+		if c.k != "f":
+			continue
+		if Iso.hash_of(int(c.x) * 5 + 1, int(c.y) * 3 + 2) > grimed:
+			_grime(pen, int(c.x), int(c.y), grime)
+		if float(c.seed) > littered:
+			_litter(pen, int(c.x), int(c.y), clutter)
+	# What happened in a room, fading as it's cleaned away: soot where a fire burned, a stain where someone fell.
+	for mark in scene.get("marks", []):
+		_mark(pen, mark)
 	# The rooms' names and whatever else is painted on the deck.
 	var paint := Iso.mix(Iso.hex(scene.colors.get("writing"), "#d8d4c0"), Color("c8c4b0"), 0.5)
 	for label in deck.labels:
@@ -233,6 +292,118 @@ func _lay_ground() -> void:
 	for run in scene.runs:
 		if run.get("on", "") == "ground":
 			floor_words.append({"text": str(run.text), "at": Iso.at(float(run.x) * CW, float(run.y) + 0.5), "size": Iso.UNIT * 0.34, "color": Iso.see(paint, 0.5), "upright": false, "length": 0})
+
+
+## Bits of rubbish on a square of floor (drawLitter): a stain, scrap, a scrap of paper or a length of cable, and on a
+## ship nobody's tidying, cups, trays and rags.
+func _litter(pen: Pen, x: int, y: int, clutter: int) -> void:
+	var u := Iso.UNIT
+	var p := Iso.at((x + 0.5) * CW, y + 0.5)
+	var dice := Live.Dice.new("litter%d,%d" % [x, y])
+	var which := dice.roll()
+	if clutter >= 2 and dice.roll() < 0.2 + (clutter - 2) * 0.2:
+		_rubbish(pen, p, dice)
+		return
+	if which < 0.4:
+		var rx := u * (0.1 + dice.roll() * 0.14)
+		var ry := u * (0.05 + dice.roll() * 0.06)
+		pen.ellipse(p, rx, ry, Color(0, 0, 0, 0.28))
+	elif which < 0.7:
+		for i in 4:
+			var colour := Color(90 / 255.0, 58 / 255.0, 30 / 255.0, 0.8) if dice.roll() > 0.5 else Color(120 / 255.0, 122 / 255.0, 112 / 255.0, 0.55)
+			var bx := p.x + (dice.roll() - 0.5) * u * 0.3
+			var by := p.y + (dice.roll() - 0.5) * u * 0.14
+			var bw := 1.0 + dice.roll() * u * 0.05
+			var bh := 1.0 + dice.roll() * u * 0.02
+			pen.poly(PackedVector2Array([Vector2(bx, by), Vector2(bx + bw, by), Vector2(bx + bw, by + bh), Vector2(bx, by + bh)]), colour)
+	elif which < 0.85:
+		var turn := dice.roll() * 3.0
+		var paper := PackedVector2Array()
+		for corner in [Vector2(-0.03, -0.02), Vector2(0.03, -0.02), Vector2(0.03, 0.02), Vector2(-0.03, 0.02)]:
+			paper.append(p + (corner * u).rotated(turn))
+		pen.poly(paper, Color(190 / 255.0, 184 / 255.0, 160 / 255.0, 0.42))
+	else:
+		var a := p + Vector2(-u * 0.14, 0)
+		var b := p + Vector2(-u * 0.05, -u * 0.06)
+		var c := p + Vector2(u * 0.05, u * 0.06)
+		var d := p + Vector2(u * 0.15, -u * 0.01)
+		var cable := PackedVector2Array()
+		for i in 9:
+			cable.append(a.bezier_interpolate(b, c, d, i / 8.0))
+		pen.polyline(cable, Color(10 / 255.0, 10 / 255.0, 10 / 255.0, 0.6), 1.0)
+
+
+func _rubbish(pen: Pen, at: Vector2, dice: Live.Dice) -> void:
+	var u := Iso.UNIT
+	var pick := dice.roll()
+	var p := at + Vector2((dice.roll() - 0.5) * u * 0.16, 0)
+	p.y += (dice.roll() - 0.5) * u * 0.06
+	if pick < 0.3:
+		# A tin cup on its side.
+		pen.ellipse(p, u * 0.035, u * 0.022, Color(150 / 255.0, 156 / 255.0, 160 / 255.0, 0.75), dice.roll() * 3.0)
+		pen.poly(PackedVector2Array([p + Vector2(-1, -1), p + Vector2(1, -1), p + Vector2(1, 1), p + Vector2(-1, 1)]), Color(40 / 255.0, 30 / 255.0, 20 / 255.0, 0.6))
+	elif pick < 0.55:
+		# A meal tray.
+		var turn := dice.roll() * 0.6 - 0.3
+		for part in [[Rect2(-0.08, -0.03, 0.16, 0.06), Color(96 / 255.0, 104 / 255.0, 108 / 255.0, 0.8)], [Rect2(-0.06, -0.015, 0.05, 0.03), Color(160 / 255.0, 140 / 255.0, 90 / 255.0, 0.6)]]:
+			var r: Rect2 = part[0]
+			var shape := PackedVector2Array()
+			for corner in [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]:
+				shape.append(p + (corner * u).rotated(turn))
+			pen.poly(shape, part[1])
+	elif pick < 0.8:
+		# A rag.
+		var turn := dice.roll() * 3.0
+		var colour := Color(120 / 255.0, 90 / 255.0, 60 / 255.0, 0.6) if dice.roll() > 0.5 else Color(90 / 255.0, 100 / 255.0, 110 / 255.0, 0.6)
+		var rag := PackedVector2Array()
+		var a := Vector2(-0.07, 0) * u
+		var b := Vector2(0.06, -0.01) * u
+		for i in 6:
+			rag.append(p + a.bezier_interpolate(a.lerp(Vector2(-0.02, -0.05) * u, 2.0 / 3.0), b.lerp(Vector2(-0.02, -0.05) * u, 2.0 / 3.0), b, i / 5.0).rotated(turn))
+		for i in range(1, 5):
+			rag.append(p + b.bezier_interpolate(b.lerp(Vector2(0.02, 0.04) * u, 2.0 / 3.0), a.lerp(Vector2(0.02, 0.04) * u, 2.0 / 3.0), a, i / 5.0).rotated(turn))
+		pen.poly(rag, colour)
+	else:
+		# A crumpled wrapper.
+		pen.ellipse(p, u * 0.02, u * 0.02, Color(190 / 255.0, 60 / 255.0, 40 / 255.0, 0.6) if dice.roll() > 0.5 else Color(200 / 255.0, 180 / 255.0, 80 / 255.0, 0.55), 0.0, 8)
+
+
+## Grime on a worn floor (drawGrime): oil and rust soaked into the plates, and on the worst of it a puddle's sheen.
+func _grime(pen: Pen, x: int, y: int, grime: int) -> void:
+	var u := Iso.UNIT
+	var p := Iso.at((x + 0.5) * CW, y + 0.5)
+	var dice := Live.Dice.new("grime%d,%d" % [x, y])
+	var wide := u * (0.1 + dice.roll() * 0.12 + grime * 0.03)
+	var colour := Color(20 / 255.0, 16 / 255.0, 12 / 255.0, 0.18 + grime * 0.05) if dice.roll() > 0.5 else Color(90 / 255.0, 52 / 255.0, 26 / 255.0, 0.14 + grime * 0.05)
+	var off := (dice.roll() - 0.5) * u * 0.1
+	pen.ellipse(p + Vector2(off, 0), wide, wide * 0.45, colour, dice.roll() * 0.6 - 0.3)
+	if grime >= 3 and dice.roll() > 0.6:
+		var sheen := PackedVector2Array()
+		for i in 7:
+			var a := PI * (1.1 + 0.6 * i / 6.0)
+			sheen.append(p + Vector2(cos(a) * wide * 0.6, sin(a) * wide * 0.25))
+		pen.polyline(sheen, Color(150 / 255.0, 170 / 255.0, 190 / 255.0, 0.16), 1.0)
+
+
+## What happened on a square (drawMark): soot where a fire burned, a dark stain where someone fell.
+func _mark(pen: Pen, mark: Dictionary) -> void:
+	var u := Iso.UNIT
+	var x := int(mark.x)
+	var y := int(mark.y)
+	var p := Iso.at((x + 0.5) * CW, y + 0.5)
+	var left := clampf(float(mark.get("left", 1.0)), 0.0, 1.0)
+	if str(mark.get("kind", "")) == "scorch":
+		var reach := u * 0.42
+		var soot := Color(30 / 255.0, 20 / 255.0, 12 / 255.0)
+		pen.glow(p, reach, reach * 0.5, [[0.0, Color(8 / 255.0, 6 / 255.0, 5 / 255.0, 0.75 * left)], [0.6, Iso.see(soot, 0.4 * left)], [1.0, Iso.see(soot, 0.0)]])
+		return
+	var dice := Live.Dice.new("fallen%d,%d" % [x, y])
+	pen.ellipse(p, u * 0.16, u * 0.07, Color(92 / 255.0, 18 / 255.0, 14 / 255.0, 0.5 * left), dice.roll() * 0.5 - 0.25)
+	for i in 3:
+		var dx := (dice.roll() - 0.5) * u * 0.4
+		var dy := (dice.roll() - 0.5) * u * 0.16
+		var r := u * (0.015 + dice.roll() * 0.025)
+		pen.ellipse(p + Vector2(dx, dy), r, r, Color(70 / 255.0, 14 / 255.0, 10 / 255.0, 0.35 * left), 0.0, 8)
 
 
 ## Which of its floor textures the browser view would lay a square with: it lays the floor a texture at a time, in the
@@ -376,6 +547,10 @@ func _stand_everything() -> void:
 				# What grows in a bed is never drawn again over someone standing by it.
 				if b.style == "plants" and not drawn.is_empty():
 					drawn["low"] = true
+				# Somewhere to sit or to lie: which of the standing things it is, for whoever uses it (overlay.gd).
+				if b.has("rest"):
+					b["item"] = pen.items.size() - 1 if not drawn.is_empty() else -1
+					rests.append(b)
 			"thing":
 				pen.begin_item(item.depth)
 				_thing(pen, item.thing)
@@ -441,11 +616,11 @@ func _picture(pen: Pen, picture: Variant, cx: float, cy: float, flip := false, l
 
 
 ## A way of drawing something the game gave ({ picture, flip, times, on, lift }), stood on a point.
-func _way(pen: Pen, way: Variant, cx: float, cy: float, lift := 0.0, flip_too := false) -> bool:
+func _way(pen: Pen, way: Variant, cx: float, cy: float, lift := 0.0, flip_too := false, tint := Color.WHITE) -> bool:
 	if typeof(way) != TYPE_DICTIONARY:
 		return false
 	var flip: bool = way.get("flip", false) != flip_too
-	if not _picture(pen, way.picture, cx, cy, flip, lift):
+	if not _picture(pen, way.picture, cx, cy, flip, lift, false, PackedVector2Array(), tint):
 		return false
 	if way.has("on"):
 		_picture(pen, way.on, cx, cy, false, float(way.get("lift", 0.0)))
@@ -577,14 +752,14 @@ func _wall_runs(pen: Pen, x: int, y: int) -> void:
 
 
 ## Something flat hung on a wall by its middle, turned round if its picture was drawn for the other kind of wall.
-func _hang(pen: Pen, way: Variant, wx: float, wy: float, face: String, lift: float) -> bool:
+func _hang(pen: Pen, way: Variant, wx: float, wy: float, face: String, lift: float, tint := Color.WHITE) -> bool:
 	if typeof(way) != TYPE_DICTIONARY:
 		return false
 	var entry := packs.want(way.picture)
 	if entry.is_empty():
 		return false
 	var lean := packs.slant(entry)
-	return _picture(pen, way.picture, wx, wy, lean != "" and lean != face, lift, true)
+	return _picture(pen, way.picture, wx, wy, lean != "" and lean != face, lift, true, PackedVector2Array(), tint)
 
 
 ## Part of the level sheet's low-wall row drawn with three of its points on three of the room's.
@@ -738,7 +913,8 @@ func _machine(pen: Pen, b: Dictionary) -> void:
 		if bank.get("draw") == null:
 			return
 		var name: String = str(bank.draw).trim_prefix("plan-")
-		if _way(pen, ways.get(name), (x + float(bank.get("across", 1)) / 2.0) * CW, y + 0.5, 0.0, bank.get("flip", false)):
+		# With its power off it's dark.
+		if _way(pen, ways.get(name), (x + float(bank.get("across", 1)) / 2.0) * CW, y + 0.5, 0.0, bank.get("flip", false), DIM if b.get("off", false) else Color.WHITE):
 			return
 	_note_plain("a machine")
 	_box(pen, x0, y, x1, y + 1, 0, h, Color("3c4854"), Color("2e3640"), Color("20262e"))
@@ -858,9 +1034,21 @@ func _plants(pen: Pen, b: Dictionary) -> void:
 		pen.line(foot + Vector2(lean * 0.3, -high * 0.6), foot + Vector2(lean, -high), colour, maxf(1.0, Iso.UNIT * 0.022))
 
 
-## A thing on the floor that's none of the game's furniture, as the packs' piece for what its name says it is.
+## A thing on the floor: a part of the place's systems as the packs' fitting for it; one of the ship's stores as its
+## crates, which the layer over the picture stacks by how full it is; anything else that's none of the game's
+## furniture as the packs' piece for what its name says it is.
 func _thing(pen: Pen, thing: Dictionary) -> void:
-	if thing.has("looks") or thing.get("nothing", false):
+	if thing.has("part"):
+		_part(pen, thing)
+		return
+	var stock: Variant = thing.get("stock")
+	if typeof(stock) == TYPE_DICTIONARY:
+		if thing.get("looks", "") == "kettle":
+			kettles.append(thing)
+		elif stock.has("goods") and not thing.has("looks"):
+			stores.append(thing)
+			return
+	if thing.has("looks") or thing.get("nothing", false) or thing.get("onPiece", false):
 		return
 	var cx := (int(thing.x) + 0.5) * CW
 	var cy := int(thing.y) + 0.5
@@ -870,14 +1058,138 @@ func _thing(pen: Pen, thing: Dictionary) -> void:
 	_box(pen, cx - 0.2, cy - 0.3, cx + 0.2, cy + 0.3, 0, 0.3, Color("6e5c3c"), Color("463a26"), Color("2c2418"))
 
 
-## A lamp on a wall, as the pack's strip light, on the face of the wall the room sees.
+## A part of the place's systems (drawPixelPart, drawPartMarks): a fitting on the face of the wall the room sees, or a
+## big unit standing at the foot of it, dark and dull when it isn't working, with the game's own marks over it to show
+## how it stands: a junction box's light and the slash across one that's cut, the colour of a keypad's screen.
+func _part(pen: Pen, thing: Dictionary) -> void:
+	var part: Dictionary = thing.part
+	var x := int(thing.x)
+	var y := int(thing.y)
+	var kind_of: String = part.kind
+	var works: bool = part.get("works", false)
+	var word: String = str(part.get("word", ""))
+	var side: bool = part.get("face", "") == "side"
+	var on_wall: bool = part.get("mount", "") == "wall"
+	var u := Iso.UNIT
+	var look: Array = PART_LOOKS.get(kind_of, PART_LOOKS.machine)
+	var at := Vector2.ZERO
+	var turn := 1.0
+	var fitted_out := false
+	var hang: Variant = thing.get("hang")
+	var way: Variant = thing.get("pic")
+	if typeof(hang) == TYPE_DICTIONARY and typeof(way) == TYPE_DICTIONARY:
+		var tint := DIM if (not works and kind_of != "light switch") else Color.WHITE
+		if hang.get("stand", false):
+			var sx := (x + 0.5) * CW
+			var sy := y + 0.5
+			if on_wall:
+				sx = (x + 1) * CW + 0.06 if side else (x + 0.5) * CW
+				sy = y + 0.5 if side else y + 1.06
+			var flip: bool = on_wall and ("e" if side else "s") != str(hang.get("front", "s"))
+			if _picture(pen, way.picture, sx, sy, flip, 0.0, false, PackedVector2Array(), tint):
+				at = Iso.at(sx, sy, float(hang.get("high", 1.0)))
+				turn = -1.0 if flip else 1.0
+				fitted_out = true
+		else:
+			var wx := (x + 1) * CW + 0.04 if side else (x + 0.5) * CW
+			var wy := y + 0.5 if side else y + 1.04
+			var entry := packs.want(way.picture)
+			if not entry.is_empty():
+				var lean: String = str(hang.lean) if hang.has("lean") else packs.slant(entry)
+				var flip := lean != "" and lean != ("e" if side else "s")
+				var lift := float(hang.get("lift", 1.0))
+				var hung: Variant = hang.get("hung")
+				at = Iso.at(wx, wy, lift)
+				turn = -1.0 if flip else 1.0
+				if typeof(hung) == TYPE_ARRAY:
+					# A camera hangs by the plate of its bracket. One that works turns on it, so it's drawn by the
+					# layer over the picture, a turn at a time.
+					var body := at + Vector2(u * 0.17 * (1.0 if flip else -1.0), u * 0.02)
+					if kind_of == "camera" and on_wall and works and word != "covered":
+						cameras.append({"where": at, "anchor": Vector2(float(hung[0]), float(hung[1])), "flip": flip, "light": body + Vector2(0, -u * 0.035), "depth": (x + 0.5) * CW + y + 0.5 + 0.02, "seed": x * 5 + y * 3, "x": x})
+						return
+					pen.picture(entry, Vector2(float(hung[0]), float(hung[1])), at, flip, tint)
+					at = body
+				else:
+					_picture(pen, way.picture, wx, wy, flip, lift, true, PackedVector2Array(), tint)
+				fitted_out = true
+	if not fitted_out:
+		# The game's own plain part: a panel on the wall's face, or on a squat unit of its own where there's no wall.
+		var z0: float = look[0]
+		var z1: float = look[1]
+		var inset: float = look[2]
+		var colour := Color(str(look[3]))
+		if not on_wall:
+			var ux0 := x * CW + 0.08
+			var ux1 := ux0 + CW - 0.16
+			var h := minf(1.1, maxf(0.6, z1))
+			_box(pen, ux0, y + 0.22, ux1, y + 0.78, 0, h, Iso.scaled(colour, 1.15), Iso.scaled(colour, 0.85), Iso.scaled(colour, 0.62))
+			z0 = minf(0.9, z0 * 0.6 + 0.12)
+			z1 = minf(1.05, maxf(z0 + 0.18, z1 * 0.7))
+		var corners: PackedVector2Array
+		if on_wall and side:
+			var fx := (x + 1) * CW
+			corners = PackedVector2Array([Iso.at(fx, y + 1 - inset, z1), Iso.at(fx, y + inset, z1), Iso.at(fx, y + inset, z0), Iso.at(fx, y + 1 - inset, z0)])
+		else:
+			var fy := y + 1.0 if on_wall else y + 0.78
+			var edge := maxf(inset, 0.0 if on_wall else 0.16)
+			corners = PackedVector2Array([Iso.at((x + edge) * CW, fy, z1), Iso.at((x + 1 - edge) * CW, fy, z1), Iso.at((x + 1 - edge) * CW, fy, z0), Iso.at((x + edge) * CW, fy, z0)])
+		pen.poly(corners, colour)
+		for i in 4:
+			pen.line(corners[i], corners[(i + 1) % 4], Color(0, 0, 0, 0.55), 1.0)
+		# A strip of its trim along the top while it works, and a light: green, or dark red.
+		var trim := Color(str(look[4])) if works else Iso.scaled(Color(str(look[4])), 0.35)
+		pen.poly(PackedVector2Array([corners[0], corners[1], corners[1].lerp(corners[2], 0.22), corners[0].lerp(corners[3], 0.22)]), trim)
+		at = (corners[0] + corners[2]) / 2.0
+		_dot(pen, at + (corners[3] - corners[0]) * 0.15, 0.018 * u, Color("60d070") if works else Color("5a1a14"))
+		if word == "cut" or word == "sealed" or word == "covered":
+			pen.line(corners[0].lerp(corners[3], 0.2), corners[2].lerp(corners[1], 0.2), Color("d04030") if word == "cut" else Color("8a7a50"), 2.0)
+	else:
+		# The game's marks over the packs' fitting.
+		match kind_of:
+			"junction box":
+				_dot(pen, at + Vector2(0.085 * u * turn, -0.045 * u), 0.014 * u, Color("60d070") if works else Color("5a1a14"))
+				if word == "cut":
+					_slash(pen, at, Color("d04030"), 2.0)
+			"vent":
+				if word == "sealed":
+					_slash(pen, at, Color("8a7a50"), maxf(3.0, u * 0.06))
+			"camera":
+				if word == "covered":
+					_dot(pen, at, 0.06 * u, Color("7a7466"))
+			"door panel":
+				_dot(pen, at, 0.028 * u, Color(8 / 255.0, 10 / 255.0, 10 / 255.0, 0.85) if not works else (Color(220 / 255.0, 60 / 255.0, 40 / 255.0, 0.8) if part.get("locked", false) else Color(110 / 255.0, 224 / 255.0, 138 / 255.0, 0.75)))
+			"speaker":
+				if word == "cut":
+					_slash(pen, at, Color("c8c0b0"), 1.5)
+			_:
+				if UNIT_LIGHTS.has(kind_of):
+					_dot(pen, at, 0.016 * u, Color(str(UNIT_LIGHTS[kind_of])) if works else (Color("d8a040") if word == "jammed" else Color("5a1a14")))
+	# What the layer over the light shows of it: sparks off what's broken, the red of an alarm that's ringing.
+	if part.get("sparks", false):
+		sparking.append(at)
+	if part.get("ringing", false) and works:
+		ringing.append(at)
+
+
+func _dot(pen: Pen, at: Vector2, radius: float, colour: Color) -> void:
+	var r := maxf(1.0, radius)
+	pen.ellipse(at, r, r, colour, 0.0, 10)
+
+
+func _slash(pen: Pen, at: Vector2, colour: Color, wide: float) -> void:
+	var u := Iso.UNIT
+	pen.line(at + Vector2(-u * 0.07, u * 0.06), at + Vector2(u * 0.07, -u * 0.06), colour, wide)
+
+
+## A lamp on a wall, as the pack's strip light, on the face of the wall the room sees; dark when the room's lights are out.
 func _fixture(pen: Pen, fixture: Dictionary) -> void:
 	var x := int(fixture.x)
 	var y := int(fixture.y)
 	var left: bool = fixture.face == "left"
 	var wx := (x + 0.5) * CW if left else (x + 1) * CW + 0.04
 	var wy := y + 1.04 if left else y + 0.5
-	if _hang(pen, ways.get("lamp"), wx, wy, "s" if left else "e", WH * 0.72):
+	if _hang(pen, ways.get("lamp"), wx, wy, "s" if left else "e", WH * 0.72, DIM if fixture.get("off", false) else Color.WHITE):
 		return
 	var z := WH * 0.72
 	if left:
@@ -894,19 +1206,28 @@ func fixture_middle(fixture: Dictionary) -> Vector2:
 	return Iso.at((x + 0.5) * CW, y + 1, z) if fixture.face == "left" else Iso.at((x + 1) * CW, y + 0.5, z)
 
 
-## A way out that's in a wall is the pack's door, standing open.
+## A way out that's in a wall is the pack's door: standing open, or shut and red when it's closed or locked. One
+## that isn't in a tall wall has a red bar across it when it's closed.
 func _way_out(pen: Pen, exit: Dictionary) -> void:
-	if not packs.found:
-		return
 	var x := int(exit.x)
 	var y := int(exit.y)
+	var closed: bool = Live.truthy(exit.get("closed"))
+	# A door the place's systems have locked has its lock lit red (deck_view.gd).
+	if closed and (Live.truthy(exit.get("inner")) or Live.truthy(exit.get("locked"))):
+		locked_doors.append(Iso.at((x + 0.5) * CW, y + 0.5, WH * 0.88))
 	var tall_x := height(x - 1, y) > 1.0 or height(x + 1, y) > 1.0
 	if not (tall_x or height(x, y - 1) > 1.0 or height(x, y + 1) > 1.0):
+		if closed:
+			var x0 := x * CW
+			pen.poly(_quad(x0, y + 0.42, x0 + CW, y + 0.58, 0.75), Color("6e3a2c"))
+			pen.poly(PackedVector2Array([Iso.at(x0, y + 0.58, 0.75), Iso.at(x0 + CW, y + 0.58, 0.75), Iso.at(x0 + CW, y + 0.58), Iso.at(x0, y + 0.58)]), Color("46251c"))
+		return
+	if not packs.found:
 		return
 	var door := _door_at(x, y, "x" if tall_x else "y")
 	if door.is_empty():
 		return
-	var picture: int = OPENING[OPENING.size() - 1]
+	var picture: int = 2 if closed else OPENING[OPENING.size() - 1]
 	pen.cell(packs.doors_cell(picture % 8, int(door.row) + picture / 8), CELL, door.corners, door.to)
 
 
@@ -964,3 +1285,49 @@ static func door_picture(open: float) -> int:
 	if open < 0.06:
 		return 1
 	return OPENING[mini(OPENING.size() - 1, int(floor(open * OPENING.size())))]
+
+
+# ---- What's near someone --------------------------------------------------------------------------------------------
+
+## Everything standing is sorted by where on the picture it is, so that what stands in front of someone can be found
+## without looking at the whole deck.
+func _sort_into_grid() -> void:
+	var items := standing.items
+	for i in items.size():
+		var box: Rect2 = items[i].box
+		for gy in range(int(floor(box.position.y / GRID)), int(floor(box.end.y / GRID)) + 1):
+			for gx in range(int(floor(box.position.x / GRID)), int(floor(box.end.x / GRID)) + 1):
+				var key := Vector2i(gx, gy)
+				if not _grid.has(key):
+					_grid[key] = PackedInt32Array()
+				(_grid[key] as PackedInt32Array).append(i)
+		items[i]["at"] = i
+
+
+## The standing things that are nearer the camera than something and reach into its window, in the order they're
+## drawn; never `but` (the seat someone's sitting in, the bed someone's lying in).
+func nearer(depth: float, box: Rect2, but := -1) -> PackedInt32Array:
+	var found := {}
+	var items := standing.items
+	for gy in range(int(floor(box.position.y / GRID)), int(floor(box.end.y / GRID)) + 1):
+		for gx in range(int(floor(box.position.x / GRID)), int(floor(box.end.x / GRID)) + 1):
+			var cell: Variant = _grid.get(Vector2i(gx, gy))
+			if cell == null:
+				continue
+			for i in (cell as PackedInt32Array):
+				if i == but or found.has(i):
+					continue
+				var item := items[i]
+				if item.depth > depth and not item.has("low") and box.intersects(item.box):
+					found[i] = true
+	var out := PackedInt32Array(found.keys())
+	out.sort()
+	return out
+
+
+## The seat or bed under a point of the floor (in tiles), if any (restingOn).
+func resting_on(where: Vector2) -> Dictionary:
+	for b in rests:
+		if where.x > float(b.x0) and where.x < float(b.x1) and where.y > float(b.y0) and where.y < float(b.y1):
+			return b
+	return {}

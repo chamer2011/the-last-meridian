@@ -1,8 +1,9 @@
 @echo off
-title Almagest Explorer's - Godot test
+title Almagest Explorer's - Godot view
 cd /d "%~dp0"
-rem Opens the Godot view of the game (the folder "godot"): step 1 of moving what's seen and clicked to Godot.
-rem It reads no saved game and uses no port, so the game itself can be open at the same time.
+rem Opens the Godot view of the game (the folder "godot"): what's seen and clicked, being moved to Godot a step at a time.
+rem It shows the game being played. If the game is already running (start-game.bat, or the app), it joins it; if not, it
+rem starts the game itself, hidden, and stops it again when its window closes.
 rem The game's rules stay in JavaScript, so it needs Node.js, as start-game.bat does.
 set "PATH=%PATH%;C:\Program Files\nodejs"
 where node >nul 2>nul
