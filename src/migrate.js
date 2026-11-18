@@ -16,6 +16,7 @@ import { emptyStory } from "./story-library.js";
 import { walkFromOnePlan, walkFromStory } from "./walk.js";
 import { giveStartingBuild, newRig } from "./rig.js";
 import { classOf } from "./hack-classes.js";
+import { everyProgram } from "./test-mode.js";
 
 // What each original background becomes under the deeper character system.
 const LEGACY_BACKGROUNDS = {
@@ -404,5 +405,7 @@ export function migrateGame(save) {
   game.factions ??= {};
   for (const [id, start] of Object.entries(STARTING_FACTIONS)) game.factions[id] ??= start;
   shipOf(game);
+  // A test save has every program on its rig from the moment it's opened (src/test-mode.js).
+  everyProgram(game, { tell: true });
   return game;
 }

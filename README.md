@@ -354,7 +354,7 @@ At a computer or a panel your rig stays in your pocket, a small **RIG** tab down
 Its screen has three pages, under **NET**, **D:** and **LOG**:
 
 - **NET** is the place's network in the rig's own green. Click a system linked to here to go there.
-- **D:** is what's loaded on the rig, each with why it won't run here if it won't. At a logon it's what gets you past it, and the rig opens on this page; once you're in it turns to the map.
+- **D:** is what's loaded on the rig, each with why it won't run here if it won't. At a logon it's what gets you past it, and the rig opens on this page; once you're in it turns to the map. A list too long for the rig's screen scrolls inside it with the mouse wheel, and stays where you left it when you run something.
 - **LOG** is everything that's happened at this one, with a dot on its button when there's something new. A panel's window keeps its last few lines too.
 
 So a computer's desktop keeps only the computer's own things: its folders (Systems, Files, Mail, Logs, Programs, and on NAVCOM 7 the ship's log and the crew assessments) and the window you read them in. A panel's window keeps its face, its own buttons and its log. Where the screen is too narrow for the monitor and the rig side by side, the rig folds into a strip down the monitor's side, with its lights, its pages and PLUG IN, and a page you pick slides out over the monitor; its round button folds it away again.
@@ -1004,10 +1004,11 @@ Saved games from before this system still load. They get a basic character profi
 
 ### The test save
 
-**Test save** on the title screen is a game made for trying things out, kept apart from your own saves. It's a new captain on the bridge on the morning of day 1, past the opening, with no mutiny fought. Two of the game's limits are switched off in it, and in no other game:
+**Test save** on the title screen is a game made for trying things out, kept apart from your own saves. It's a new captain on the bridge on the morning of day 1, past the opening, with no mutiny fought. Three of the game's limits are switched off in it, and in no other game:
 
 - **The fuel stays full.** The Meridian's tank is topped up whenever time passes, so FUEL reads 12 of 12 after any number of days or jumps. The fuel cells her generator burns are topped up with it, so CELLS stays full too and she never goes dark for want of one, docked or not. Her water tank is kept full with them, since the air plant can't run without water.
-- **Your rig needs no parts to hack.** It connects to anything (a desk, a keypad, a junction box, a camera, the Navy's own system) whatever link is fitted, it always starts, it has room for every program you load (99 blocks), the most power parts can give, and no heat of its own. The hacking itself plays as usual: the programs, the watcher, a computer's class, hardened and sealed systems.
+- **Your rig needs no parts to hack.** It connects to anything (a desk, a keypad, a junction box, a camera, the Navy's own system) whatever link is fitted, it always starts, it has room for every program you load (99 blocks), the most power parts can give, and no heat of its own. The hacking itself plays as usual: what each program does, the watcher, a computer's class, hardened and sealed systems.
+- **Every hacking program is on your rig, loaded.** All twenty-four, without writing, buying or copying any of them: the **Rig** page lists them under what's loaded, and at a computer they're all on the rig's D: page to run. Each still only works where it would (a hardened computer still wants its way in found first). If you'd rather try with fewer, unload some on the Rig page: what you unload stays unloaded, and it's still on the rig to load again. A test save you made before this gets them the next time you open it, and its story says so once.
 
 Saving another game into it makes that an ordinary save. To make a fresh one, run `node tools/test-save.mjs --again` in the game's folder (without `--again` it won't write over a test save that's already there).
 

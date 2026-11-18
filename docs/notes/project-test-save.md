@@ -27,3 +27,34 @@
   top bar, the Bridge keypad's rig page offering CONNECT BY OPTICAL READER with no warning and 99 blocks.
 - **On the way:** the room panel listed the Bridge door's keypad as "part (lit)", left over from putting every device in
   its place; it says "keypad" now, and lit is its usual state (`PART_WORDS`, `partChip` in `public/walk.js`).
+
+## Every hacking program (2026-11-18)
+
+- Asked as "On the test save, make every hacking program available". Built on my reading, nothing shown first.
+- **What it does:** a test save's rig has every program in `world/programs` (24), and each is loaded: its rig has 99
+  blocks and they take 34. Nothing is written at the bench, bought or copied. It's part of the `rig` switch, so the
+  owner's own test save gets it without its file being touched: the save is never edited by hand.
+- **How:** `everyProgram(game, { tell })` in `src/test-mode.js` puts each program on `game.rig.programs` and, unless it's
+  built in, on `game.rig.loaded`, and keeps which it has given in `game.test.programs`. Each is given once, so a
+  program unloaded on the Rig page stays unloaded and stays on the rig to load again, and one written into the world
+  later joins the rest. It's called when a save is opened (`migrateGame` in `src/migrate.js`, with `tell`, which puts
+  one `[TEST]` line in the story the first time), as clock work (a game already being played gets them when its clock
+  next moves, with the same line as a note), and by `tools/test-save.mjs` for a new test save, whose own first notice
+  says it. The rule that showing the game changes nothing is kept: nothing is given from a view.
+- **What the programs still need:** everything else. A breaker still wants a logon it can break, a hardened computer
+  still wants its way in found, MIMIC still wants a keycard, the trace tools do nothing on the captain's own computers.
+- **Found on the way, and mended:** with 23 programs loaded the rig's D: page was 764 px tall and the rig's case ran
+  off the bottom of a 900 px window, since a rig never had more than a dozen loaded before. `.desk .pocket-list` in
+  `public/desktop.css` is at most `min(56vh, 430px)` tall now and scrolls inside the case, with the game's own wheel
+  scrolling (`public/spring.js` finds it by itself), and `pocketPrograms` in `public/computer.js` puts the list back
+  where it was scrolled to when the rig is drawn again (`comp.listAt`), or running the last program would send it back
+  to the first.
+- **Tests:** `test/test-save.test.js` has five now: every program on the rig and loaded after the clock moves, said
+  once; one unloaded stays unloaded through time and through the save being opened again; a plain game's rig is as it
+  was; a test save from before gets them the moment it's opened, with one line in its story, and nothing more the
+  second time; a program it was never given is given without saying it all again; and the tool's save has them from
+  the start. 1,543 tests.
+- **Screens** on a test copy at 1400 and 810 wide, from a test save made the old way: the story's line, the Rig page
+  with 24 cards under Loaded and "34 of 99 blocks", SHADOW unloaded and still unloaded minutes later, the rig beside the
+  plot table with 23 rows on D:, the list scrolled to its end and MAPPER run from there with the list staying put, and
+  at 810 the same on the page that slides out of the rig's strip.

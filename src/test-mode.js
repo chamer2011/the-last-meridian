@@ -4,14 +4,42 @@
 //         fuel cells her generator burns, and her water tank, which her air plant can't run without.
 //   rig:  the rig counts as built with whatever a hack needs: it always starts, every link reaches (a cable, the
 //         optical reader, a service clip, the short radio, the Navy coupler), it has memory for every program and the
-//         most power parts give, and none of its own heat. The hacking itself (the programs, the watcher, a computer's
-//         class, hardened and sealed systems) is played as usual.
+//         most power parts give, and none of its own heat. And it has every program there is, loaded, without
+//         writing, buying or copying any of them (the owner's "make every hacking program available", 2026-11-18).
+//         The hacking itself (what each program does, the watcher, a computer's class, hardened and sealed
+//         systems) is played as usual.
 
 import { addClockWork, addDayWork } from "./room-hooks.js";
 import { putAboard } from "./logistics.js";
+import { programsNow } from "./programs.js";
 import { fillTank } from "./water.js";
 
 export const testing = (game, what) => Boolean(game?.test?.[what]);
+
+// Every program there is goes on a test save's rig, loaded: its rig has the memory for all of them. Each is given
+// once, the first time the save is opened or its clock moves with that program in the world, so one that's unloaded
+// afterwards on the Rig page stays unloaded, and a program written into the world later joins the rest. game.test
+// keeps which have been given. With tell, a save that's given them for the first time says so in its story.
+export function everyProgram(game, { tell = false } = {}) {
+  if (!testing(game, "rig") || !game.rig) return [];
+  const first = !Array.isArray(game.test.programs);
+  const given = new Set(first ? [] : game.test.programs);
+  const fresh = programsNow().list.filter((p) => !given.has(p.id));
+  if (!fresh.length) return [];
+  game.rig.programs ??= [];
+  game.rig.loaded ??= [];
+  for (const p of fresh) {
+    if (!game.rig.programs.includes(p.id)) game.rig.programs.push(p.id);
+    if (!p.builtIn && !game.rig.loaded.includes(p.id)) game.rig.loaded.push(p.id);
+    given.add(p.id);
+  }
+  game.test.programs = [...given];
+  const words = "[TEST] Every hacking program is on your rig now, loaded and ready to run. The Rig page lists them, and anything you unload there stays unloaded.";
+  if (first && tell && Array.isArray(game.transcript)) game.transcript.push({ role: "notice", text: words });
+  return first && !tell ? [words] : [];
+}
+// A game already being played gets them the next time its clock moves.
+addClockWork((game) => everyProgram(game));
 
 // The most a build can add up to, as rig-parts.js caps it.
 const MOST_POWER = 3;

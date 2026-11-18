@@ -44,7 +44,7 @@ const startWindows = () => ({
 });
 
 export function resetComputer() {
-  Object.assign(comp, { app: null, chart: null, id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1, rigTab: null, rigSlide: null, wasLocked: null, logSeen: 0, boot: null, rigOut: false, rigMove: null, rigBoot: null, unplug: null, woke: false });
+  Object.assign(comp, { app: null, chart: null, id: null, view: null, sending: false, message: null, seen: 0, wins: startWindows(), z: { log: 10, list: 11, view: 12 }, top: "view", folder: null, sel: null, menu: false, screenKey: "", hushed: -1, rigTab: null, rigSlide: null, wasLocked: null, logSeen: 0, listAt: 0, boot: null, rigOut: false, rigMove: null, rigBoot: null, unplug: null, woke: false });
 }
 resetComputer();
 
@@ -1250,9 +1250,14 @@ function stripNode(view) {
 function pocketPrograms(view) {
   const list = view.locked ? view.logon?.ways ?? [] : view.rig?.loaded ?? [];
   if (!list.length) return el("div", { class: "pocket-note" }, view.locked ? "Nothing loaded on your rig gets past this logon. Load a breaker on the Rig page first." : "Nothing's loaded on your rig. Load programs on the Rig page.");
-  return el("div", { class: "pocket-list" }, list.map((one) => el("div", { class: `pocket-row${one.why ? " no" : ""}` },
+  const node = el("div", { class: "pocket-list" }, list.map((one) => el("div", { class: `pocket-row${one.why ? " no" : ""}` },
     el("span", {}, el("b", {}, one.name), el("small", {}, one.why ? ` won't: ${one.why}` : ` ${one.about ?? ""}`)),
     el("button", { disabled: comp.sending || Boolean(one.why), title: one.why ? `Won't: ${one.why}.` : one.about ?? "", onclick: (event) => { event.stopPropagation(); send({ action: "rig", id: one.id }); } }, view.locked && one.kind !== "in" ? "READ" : "RUN"))));
+  // A long list scrolls inside the rig's case (the test save's rig has every program). The rig is drawn again at every
+  // change, so where the list was scrolled to is put back, or running the last program would send it to the first.
+  node.addEventListener("scroll", () => { comp.listAt = node.scrollTop; }, { passive: true });
+  if (comp.listAt) queueMicrotask(() => { node.scrollTop = comp.listAt; });
+  return node;
 }
 
 function windowNode() {

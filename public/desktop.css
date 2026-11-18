@@ -278,7 +278,9 @@
 .desk .pocket-where { margin-left: auto; color: #3f8f57; font-size: 10px; letter-spacing: .08em; white-space: nowrap; }
 .desk .pocket-page { overflow: hidden; }
 .desk .pocket-note { padding: 8px 2px; color: #4fc46e; max-width: 46ch; }
-.desk .pocket-list { display: grid; gap: 5px; }
+/* A rig with a great many programs loaded (the test save's has every one) keeps its case on the screen: the list
+   scrolls inside it, the way everything in the game scrolls. */
+.desk .pocket-list { display: grid; gap: 5px; max-height: min(56vh, 430px); overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; }
 .desk .pocket-row { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
 .desk .pocket-row b { font-weight: 600; color: #8ff0a8; }
 .desk .pocket-row small { color: #3f8f57; }

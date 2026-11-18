@@ -1,5 +1,5 @@
-// The test save (tools/test-save.mjs, src/test-mode.js): the Meridian's fuel stays full, and the rig counts as built with
-// whatever a hack needs, while a game that isn't a test save plays as it always did.
+// The test save (tools/test-save.mjs, src/test-mode.js): the Meridian's fuel stays full, the rig counts as built with
+// whatever a hack needs and has every program there is, while a game that isn't a test save plays as it always did.
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -15,7 +15,8 @@ await import("../src/tools.js");
 const { openDoorPanel } = await import("../src/computers.js");
 const { computerCommand } = await import("../src/computer-use.js");
 const { rigLinks, reachWhy } = await import("../src/devices.js");
-const { rigNow } = await import("../src/rig.js");
+const { rigCommand, rigNow, rigView } = await import("../src/rig.js");
+const { programsNow } = await import("../src/programs.js");
 const { passTime, publicState, travel } = await import("../src/rules.js");
 const { migrateGame } = await import("../src/migrate.js");
 
@@ -29,6 +30,8 @@ const newGame = (test = null) => {
   return game;
 };
 const view = (game) => publicState(game).computer;
+const everyId = () => programsNow().list.map((p) => p.id).sort();
+const told = (game) => game.transcript.filter((entry) => /^\[TEST\] Every hacking program/.test(entry.text)).length;
 
 test("on a test save the Meridian's tank stays full through days and a jump; on any other game it runs down", () => {
   const plain = newGame();
@@ -69,11 +72,66 @@ test("tools/test-save.mjs writes the test save in its own slot, and never over o
   assert.match(run(), /Test save written/);
   const file = path.join(dir, "saves", "test.json");
   const game = migrateGame(JSON.parse(fs.readFileSync(file, "utf8")));
-  assert.deepEqual(game.test, { fuel: true, rig: true });
+  assert.deepEqual([game.test.fuel, game.test.rig], [true, true]);
+  // Every program is on its rig from the start, and its story says so in its first note, not in a second one.
+  assert.deepEqual([...game.test.programs].sort(), everyId());
+  assert.ok(rigView(game).programs.every((p) => p.owned && p.loaded));
+  assert.equal(game.transcript.filter((entry) => /Every hacking program is on/.test(entry.text)).length, 1);
   assert.equal(game.ship.fuel, game.ship.maxFuel);
   assert.equal(game.scene ?? null, null, "past the opening");
   assert.ok(game.transcript.some((entry) => /^\[TEST\]/.test(entry.text)));
   assert.deepEqual(fs.readdirSync(path.join(dir, "saves")), ["test.json"], "no other save is touched");
   assert.throws(() => run(), /test save already/);
   assert.match(run("--again"), /Test save written/);
+});
+
+test("on a test save the rig has every program, loaded: given once, so one that's unloaded stays unloaded", () => {
+  const all = programsNow().list;
+  assert.ok(all.length >= 24, `${all.length} programs`);
+  const plain = newGame();
+  const tested = newGame({ fuel: true, rig: true });
+  const mine = [...plain.rig.programs];
+  assert.ok(mine.length < all.length, "a new rig has only a few");
+  // The first time its clock moves, they're all there, and it says so once.
+  const notes = passTime(tested, 0.1, "routine");
+  assert.equal(notes.filter((note) => /^\[TEST\] Every hacking program is on your rig now/.test(note)).length, 1);
+  assert.deepEqual([...tested.rig.programs].sort(), everyId());
+  for (const p of all) assert.ok(p.builtIn || tested.rig.loaded.includes(p.id), `${p.name} is loaded`);
+  const shown = rigView(tested);
+  assert.ok(shown.programs.every((p) => p.owned && p.loaded), "the Rig page has them all, loaded");
+  assert.ok(all.reduce((n, p) => n + (p.builtIn ? 0 : p.size), 0) <= shown.memory, "and its memory holds them all");
+  assert.equal(passTime(tested, 0.1, "routine").filter((note) => /Every hacking program/.test(note)).length, 0, "said once");
+  // Unloaded on the Rig page, one stays unloaded: through time, and through the save being opened again.
+  rigCommand(tested, { action: "unload", id: "dictionary" });
+  passTime(tested, 2, "routine");
+  assert.ok(!tested.rig.loaded.includes("dictionary"));
+  const again = migrateGame(JSON.parse(JSON.stringify(tested)));
+  assert.ok(!again.rig.loaded.includes("dictionary"));
+  assert.ok(again.rig.programs.includes("dictionary"), "it's still on the rig, to load again");
+  assert.equal(told(again), 0, "and nothing more is said");
+  // A game that isn't a test save keeps the rig it has.
+  passTime(plain, 2, "routine");
+  assert.deepEqual(migrateGame(JSON.parse(JSON.stringify(plain))).rig.programs, mine);
+  assert.equal(plain.test, undefined);
+});
+
+test("a test save from before this gets every program the moment it's opened, and its story says so once", () => {
+  // As the save file was: the two switches, and the rig a new captain starts with.
+  const before = JSON.parse(JSON.stringify(newGame({ fuel: true, rig: true })));
+  assert.equal(before.test.programs, undefined);
+  const opened = migrateGame(before);
+  assert.deepEqual([...opened.rig.programs].sort(), everyId());
+  assert.ok(rigView(opened).programs.every((p) => p.owned && p.loaded));
+  assert.equal(told(opened), 1);
+  // Opened again, and after time has passed, nothing more is given or said.
+  const twice = migrateGame(JSON.parse(JSON.stringify(opened)));
+  assert.equal(told(twice), 1);
+  assert.equal(passTime(twice, 0.1, "routine").filter((note) => /Every hacking program/.test(note)).length, 0);
+  // A program written into the world later joins the rest: one it was never given is given.
+  twice.test.programs = twice.test.programs.filter((id) => id !== "worm");
+  twice.rig.programs = twice.rig.programs.filter((id) => id !== "worm");
+  twice.rig.loaded = twice.rig.loaded.filter((id) => id !== "worm");
+  passTime(twice, 0.1, "routine");
+  assert.ok(twice.rig.programs.includes("worm") && twice.rig.loaded.includes("worm"));
+  assert.equal(told(twice), 1, "without saying it all over again");
 });
