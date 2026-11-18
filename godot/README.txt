@@ -1,0 +1,21 @@
+ALMAGEST EXPLORER'S IN GODOT
+============================
+
+This folder is the Godot view of the game: step 1 of moving what's seen and clicked to Godot,
+while the game's rules stay where they are (src/, in JavaScript).
+
+TO OPEN IT
+Double-click start-godot.bat in the game's folder (the one above this). It fetches Godot 4.3 the
+first time and opens the test. The README there says what to try ("The Godot test").
+
+WHAT'S HERE
+- project.godot, main.tscn: the project and its one scene.
+- scripts/main.gd and the scripts it uses: one deck of the Meridian, walking, zoom, changing decks.
+- scripts/pal.gd and the panes, the Keelworks desktop and style_test.tscn: the style test of the
+  console look, approved before this, which the later steps are built from.
+- fonts/: Cascadia Mono, free to ship with a game (its licence is fonts/OFL-LICENSE.txt).
+
+WHAT ISN'T, AND MUSTN'T BE
+The two bought pixel-art packs. They're read from the game's "licensed" folder each time and are
+never copied in here: their licence forbids giving the files away, and Godot would copy any picture
+it found in this folder. A test fails if one ever turns up (test/godot-as-drawn.test.js).

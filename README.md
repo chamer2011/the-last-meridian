@@ -1194,6 +1194,34 @@ npm run build-app
 
 `app/main.js` is the app, `app/choices.js` has the decisions it makes when it starts and what its installers are made with, `app/build.js` makes them, and `app/icon.ico` is its icon.
 
+## The Godot test
+
+This is a test of moving what you see and click to **Godot**, a program for making games, while the game's rules stay as they are. It's the first of seven steps, and it does one thing: it draws the Meridian's three decks in Godot with the two pixel-art packs, the way the **Pixel art** view does, for you to walk through and see whether it runs more smoothly. It isn't connected to a game in play. The game in your browser and in the app are untouched by it, and all three can be open at once.
+
+**To open it**, double-click **`start-godot.bat`** in the game's folder.
+
+- The first time, a black window says it's fetching Godot 4.3, about 55 MB, from Godot's own page on GitHub. It checks what came down, unpacks it into a folder called `godot-engine` beside the game, and never fetches it again. You don't install anything.
+- Every time, it then takes a few seconds to get the project ready, and a window opens on the loading screen and then on the bridge of deck 1.
+- If Windows asks whether to run a program it doesn't know, that's Godot.
+
+**What to try**
+
+- **Walking:** W, A, S and D or the arrow keys, as in the game, or click the floor and you walk there the shortest way. Walls and furniture stop you, and you slide along them. The doors between rooms slide open as you come near and shut behind you.
+- **Zoom:** the mouse wheel, between the same two sizes as in the game.
+- **Changing decks:** walk onto the striped plate by a stair, click the stair's name over it, or use **Deck 1**, **Deck 2** and **Deck 3** along the top. The buttons put you back where you last stood on that deck.
+- **The room you're in** is named along the top.
+- **The meter** in the bottom left corner says how long the slowest picture of the last second took to draw, in thousandths of a second, and how many were drawn. On most screens sixty are drawn a second, which is 16.7 each: a number that stays near that while you walk is smooth, and one that jumps to 30 or 50 is a stutter you'd feel. Walk the same way here and in the game's own Pixel art view, and compare how each feels.
+
+**What's in it:** floors, tall and low walls, doors, the furniture of all three decks, console banks, stairs, the engines and the ship's boat, the lamps, the words on the walls and the rooms' names on the floor, your own figure as the game draws it, and a first version of the ship's light: dim, with pools at the lamps, the screens and the lit things.
+
+**What isn't yet:** other people, the clock, anything to click on but the floor and the stairs, keypads, cameras, stores and whatever else the game stands in rooms itself, dark rooms, fires, wear and litter, the menus, the quest tracker and the panel on the right, and saving. Those are the next steps. The windows, the wall screens, the garden's beds and the hull outside are plainer here than in the game, which draws those itself and not from the packs.
+
+**The art** is read from the `licensed` folder each time, as the game reads it, and is never copied into the Godot project. If a line in amber appears above the meter saying something was drawn plain, a picture wasn't found: tell Claude what it says.
+
+**To be rid of it**, delete the `godot-engine` folder. Godot also keeps a small folder of its own for this test, `%APPDATA%\AlmagestExplorersGodot`, with a log of what it did, which can be deleted too.
+
+`godot/` is the Godot project, and `tools/godot-decks.mjs` is what the game tells it about the decks.
+
 ## Carrying on from another computer
 
 The game's code and everything in `world/` are on GitHub, in a private repository. To carry on somewhere else, install [Node.js](https://nodejs.org) and [Git](https://git-scm.com), copy the game down with `git clone` and the address of your repository, and run these two in its folder:

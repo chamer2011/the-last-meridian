@@ -1,0 +1,29 @@
+; Almagest Explorer's, in Godot: what's seen and clicked. The game's rules stay in JavaScript (src/), and this asks
+; them. Opened by start-godot.bat in the game's folder.
+
+config_version=5
+
+[application]
+
+config/name="Almagest Explorer's (Godot test)"
+run/main_scene="res://main.tscn"
+config/use_custom_user_dir=true
+config/custom_user_dir_name="AlmagestExplorersGodot"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+boot_splash/bg_color=Color(0.02, 0.04, 0.027, 1)
+boot_splash/show_image=false
+
+[display]
+
+window/size/viewport_width=1400
+window/size/viewport_height=860
+
+[gui]
+
+theme/custom_font="res://fonts/CascadiaMono-Regular.ttf"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.012, 0.016, 0.012, 1)

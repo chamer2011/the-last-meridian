@@ -10,3 +10,7 @@ backups/
 
 # Art bought for this computer only: its licence forbids giving the files away, so it never goes to GitHub
 licensed/
+
+# The Godot view (godot/): what Godot makes for itself there, and the Godot program, which start-godot.bat fetches
+godot/.godot/
+godot-engine/
