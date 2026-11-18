@@ -432,6 +432,7 @@ function clockTick(body) {
 // does is asked here (src/godot-view.js packs a place's levels for it). It walks with the page's own /api/walk.
 // When the page last ran the clock: while it's doing so, Godot's asking moves no time, or the two would run it twice.
 let pageTicked = 0;
+let pageFought = 0;
 const PAGE_HAS_THE_CLOCK = 1500;
 // What else is going on in the game that Godot doesn't play yet, so it can say so and wait.
 const goingOn = () => ({ combat: Boolean(game.combat), talk: Boolean(game.talk), check: Boolean(game.check), computer: Boolean(game.computer), over: Boolean(game.over) });
@@ -453,6 +454,8 @@ async function godotApi(req, res, route) {
     }
     // One level again, when something on it has changed.
     if (what.startsWith("level/")) return jsonShort({ ok: true, deck: godotLevelNow(requireGame(), decodeURIComponent(what.slice("level/".length))) });
+    // A fight, as the fight window and the room are shown it, when Godot hears there's one.
+    if (what === "combat") return json(res, 200, { combat: combatView(requireGame()), you: { hp: game.hp, energy: game.energy }, storyWaiting: Boolean(publicState(game).storyWaiting) });
     // The room as it stands, when the player's been moved by something other than Godot.
     if (what === "walk") return json(res, 200, { walk: walkView(requireGame()), clock: clockFor(game), state: goingOn(), saved: saves });
     return json(res, 404, { error: "Not found." });
@@ -624,6 +627,9 @@ async function handleApi(req, res, route) {
       return json(res, 200, { game: publicState(game) });
     }
     const live = Boolean(game.combat?.live);
+    // A fight in the room has one clock too: while the page is running it, the Godot view's asking moves no time.
+    if (body.action === "tick" && body.view !== "godot") pageFought = Date.now();
+    if (body.action === "tick" && body.view === "godot" && Date.now() - pageFought < PAGE_HAS_THE_CLOCK) body.ms = 0;
     const outcome = body.action === "tick" ? liveTick(game, body) : live ? liveOrder(game, body) : combatAction(game, body);
     if ((body.action === "tick" || live) && !outcome.over) {
       if (outcome.events.length || body.action !== "tick") saveAfterWalking();

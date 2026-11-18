@@ -1,6 +1,7 @@
 // The Godot view's line to the game, over the real server (server.js, the routes under /api/godot/): what it's told
 // with no game open, the place and the room of a game being played, the clock run from Godot and left alone while the
-// game's own page is running it, and that only a game Godot started itself is Godot's to stop.
+// game's own page is running it, a fight in the room fought from Godot, and that only a game Godot started itself is
+// Godot's to stop.
 
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -127,6 +128,47 @@ test("while the game's own page is running the clock, Godot's asking moves no ti
   const held = await post("/api/godot/tick", { ms: 500, rate: 10 });
   assert.equal(held.held, true);
   assert.equal(held.state.talk, true);
+});
+
+test("a fight in the room is fought from Godot with the page's own orders, on one clock", async () => {
+  const { data, get, post } = await startServer();
+  leaveSave(data);
+  await post("/api/load", { slot: "slot1" });
+  const room = await get("/api/godot/walk");
+  const someone = room.walk.people.find((one) => !one.asleep && !one.down && !one.crowd) ?? room.walk.people[0];
+  await post("/api/walk", { action: "go", to: `person:${someone.key}` });
+  assert.equal((await post("/api/walk", { action: "attack", key: `person:${someone.key}` })).status, 200);
+  // Godot hears there's a fight from its tick, which stands still for it, and asks what the fight is.
+  const heard = await post("/api/godot/tick", { ms: 500, rate: 10 });
+  assert.equal(heard.held, true);
+  assert.equal(heard.state.combat, true);
+  const begun = await get("/api/godot/combat");
+  assert.equal(begun.combat.live, null, "it hasn't been moved into the room yet");
+  assert.equal(begun.combat.round, 1);
+  assert.ok(begun.combat.enemies.length >= 1);
+  assert.equal(typeof begun.storyWaiting, "boolean");
+  // It moves into the room, and says where everyone is.
+  assert.equal((await post("/api/combat", { action: "live" })).status, 200);
+  const live = (await get("/api/godot/combat")).combat;
+  assert.ok(live.live, "the fight is in the room");
+  assert.ok(Number.isFinite(live.live.you.x) && Number.isFinite(live.live.you.y));
+  for (const enemy of live.enemies) assert.ok(live.live.fighters[enemy.key], `${enemy.name} has a place in the room`);
+  assert.ok(live.actions.some((one) => one.action.type === "attack"), "there are orders to give");
+  // An order, then time: the fight goes on for Godot as it does for the page.
+  const ordered = await post("/api/combat", { type: "attack", target: live.enemies[0].key });
+  assert.equal(ordered.status, 200);
+  const went = await post("/api/combat", { action: "tick", ms: 400, view: "godot" });
+  assert.equal(went.status, 200);
+  const t1 = went.combat?.live.t ?? null;
+  if (t1 !== null) {
+    assert.ok(t1 > live.live.t, "time passed in the fight");
+    // While the page is running the fight, Godot's asking moves no time in it.
+    const page = await post("/api/combat", { action: "tick", ms: 100 });
+    if (!page.outcome.over) {
+      const still = await post("/api/combat", { action: "tick", ms: 400, view: "godot" });
+      if (!still.outcome.over) assert.equal(still.combat.live.t, page.combat.live.t, "the fight stood still for Godot");
+    }
+  }
 });
 
 test("only a game Godot started is Godot's to stop, and it saves before it does", async () => {

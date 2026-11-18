@@ -176,9 +176,46 @@ Not in it, as the README tells them: things to click (the ? marks, parts, stores
 - While a level is being drawn again, a second change to it waits for the first to finish.
 - People are placed every frame whether they've moved or not (about 30 millionths of a second each).
 
-## For step 3 (fights in the room)
+## Step 3: fights in the room (2026-11-18)
 
-- The page's side is `public/live-fight.js` (695 lines) through hooks in `public/iso.js` (`fighters`, `fightHidden`, `fightOverlay`, `fighting`); the rules are `src/live-fight.js` on `src/combat.js`, asked through `/api/combat` (`tick` with at most half a second, the orders, `live`). The fight's view is `combatView(game)`.
-- Fighters are `drawPerson` again with health and readiness bars over them, so they're `Prop`s in `overlay.gd` like everyone else; whoever's in the fight is hidden from the level's own people (`fightHidden`).
-- The orders bar along the bottom, the pause, the notes and the end ("The battle's won", "You went down") want the style test's panes (`pal.gd`).
-- Godot's tick already hears `state.combat`; the banner goes once the fight is played here.
+### What they see
+
+A fight that's fought in the room is played in the Godot window, the way `public/live-fight.js` plays it in the Isometric view. When the game says there's a fight, Godot asks what it is; one that's just begun is moved into the room (the page's own `/api/combat` `live`), and it's shown **stopped**.
+
+- **In the room:** every fighter as `drawPerson` draws them, where the fight has them, gliding there; a ring under each (blue for the player's side, red for the other, brighter for whoever's aimed at, grey for one who's out of it); whoever's down lying where they fell; whoever of the room's people is in the fight drawn once, as a fighter.
+- **Over them:** a name, a health bar and a thin gold bar filling as they get ready, a blue dot for cover, names stepping up out of each other's way; the dashed line to whoever the player's going for and the ring where they're walking to; shots, swings and the numbers they take off; the odds over one of the other side under the pointer, or over all of them while an order waits to be aimed.
+- **Along the bottom, "YOUR ORDERS":** the game's own actions, numbered (attack, the ways of talking, abilities, the belt, giving up, running), lit while picked or queued, off with the game's own reason as their tip; **Go on (Space) / Stop (Space)**; a box to tick, **Stop when I'm ready to act**; and a line saying what a click does now.
+- **Top left:** the fight's name (a battle's own) with stopped or running, and the newest four things that happened in their colours; ten once it's over, for a battle's aftermath.
+- **Down the right:** the two sides with health, the other side's rows clickable; in a battle the six nearest still standing and a line for the rest.
+- **When it's over:** the box along the bottom says how (Victory, Defeat, You got away, It's over, You gave up; The battle's won, You went down), the game's summary, who of the player's side is down, and **Back to the room**. If the story is waiting on the fight it says the story picks it up in the game's own window. Lost, the player is on a cot in the medbay when they go back.
+- Space and the numbers are the fight's while it's on; Esc lets go of an order waiting to be aimed. The clock's buttons say "Stopped for the fight".
+
+**Stays in the game's own window, with the amber line:** a simulated fight, one aboard another ship (`away`), and one already under way in the fight window (not in the room, past its first round).
+
+### How it's made
+
+- `godot/scripts/fight.gd` is `public/live-fight.js`: `wake` (finding the fight and moving it into the room), the fight's own clock (`_process`: an ask every 0.12 s while it runs, half a second at most), `_send` and `order`, `_played` (events into notes and effects, with the battle's rule for which are worth a note), `_glide`, `your_spot`, `fighters`, `hidden`, `_odds_on`, `_draw` (`liveOverlay`), `click`, `key`, the windows (`_refresh`), and `Roster`.
+- `overlay.gd`'s `place_fighters` draws them as it draws people, each in its window with what's nearer the camera over it. `main.gd` hands the player's place and the pointer to the fight while one's on, keeps the player above the orders (`covered_below`), and after it looks at the room again and puts the player where the game has them (`_fight_over`, `_after_fight`).
+- The game's side: `GET /api/godot/combat` (`combatView`, and whether the story's waiting), and one line in `/api/combat`: a tick marked `view: "godot"` moves no time for a second and a half after the page's own, so **a fight has one clock too**. Orders, ticks and `live` are the page's, unchanged.
+
+**Readings of mine:** whichever window is running a fight, the other follows; a fight finished in Godot leaves the page showing it until that page is reloaded (the page learns of an ending only from its own tick), which the README says. A fight that another window ended while Godot showed it is left at once (`none`). In a battle the list shows six of the player's side too, where the page lists them all.
+
+### Checked (2026-11-18, stand-in art, the test copy)
+
+- A fight begun with the page's own Attack order on someone in the Long Mess: found by Godot, moved into the room, shown stopped at 1400 and 810; Space, order 1 and a click on the other fighter by real key presses and a real click; a click on the floor walking there; the odds under the pointer; the notes, the bars, a swing and the numbers; fought to **Victory** and left with 1; fought without an order to **Defeat**, and left onto a cot in the Medbay an hour later.
+- **The mutiny's battle** (begun in a scratch save with the game's own `startBattle`): moved into the room across deck 1, eighteen fighters and three more arriving, fought to "The battle's won" in about eighty seconds with no orders given, the aftermath's ten notes, then the Names Bulkhead dark with the fallen under their crosses and the fire in the stair. About a thousandth of a second of script a frame.
+- A simulated fight: the amber line, and nothing else.
+- `test/godot-link.test.js` gained the fight (5 tests there now): found, moved into the room, an order, time passing for Godot, and none while the page runs it.
+
+### Not checked
+
+- Talking someone down, giving up, running, an ability or the belt from Godot (they're the page's own orders, sent as the page sends them; only attack and walking were pressed).
+- A fight with allies who walk with the player, a fight the story is waiting on, and a fight at a port.
+- Both windows running the same fight at once on a screen.
+
+## For step 4 (the story and talks)
+
+- The page's side: `public/popups.js` (the story over the room: speech panes by the head, choices, the caption, notes), `public/pane.js`, `public/talk.js`, `public/quests.js` (the tracker and the log), `public/logpage.js` (pages of the ship's log), `public/scene.js`. The game's: `/api/chat` (streamed as lines of JSON: `text`, `notice`, `state`, `done`, `error`), `/api/talk` (`open`, `say`, `close`, `rumor`, `check`), `/api/quests`, and `publicState`'s `transcript`, `talk`, `scene`, `quests`, `storyWaiting`.
+- The style test's `speech_pane.gd`, `option_row.gd`, `floaty.gd` and `spring_scroll.gd` are what the panes and choices are built from.
+- Godot's tick already hears `state.talk`; `HTTPRequest` gives a streamed answer whole at its end, which is enough since the story is written and arrives at once.
+- After it: the opening scene of a new game plays in Godot, the fight's ending can offer **Continue the story**, and a click on someone can open their talk.

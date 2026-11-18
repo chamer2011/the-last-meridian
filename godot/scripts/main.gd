@@ -1,14 +1,16 @@
-## The game's room, in Godot (step 2 of the port): the place the player's at, drawn with the art packs, with the player
-## walking it, everyone else living their days on it, the doors, the light and the dark, fires, and the clock.
+## The game's room, in Godot (steps 2 and 3 of the port): the place the player's at, drawn with the art packs, with the
+## player walking it, everyone else living their days on it, the doors, the light and the dark, fires, the clock, and
+## fights fought in the room (fight.gd).
 ##
 ## Godot draws and takes clicks; the game's rules stay in JavaScript. Everything shown here is asked of the game itself
 ## (link.gd), which is the same program the browser view talks to, so both can be open on the same game. What Godot
-## doesn't play yet (fights, talks, skill checks, computers, menus) it says so about, and waits.
+## doesn't play yet (talks, skill checks, computers, menus) it says so about, and waits.
 ##
 ## For checking without a screen, after the two dashes:
 ##   --shot=out.png  --wait=1.5  --width=810  --height=860  --zoom=1.3  --report (how it went, as a line of JSON)
 ##   --hold=W+D:1.2;S:0.5 (holds those keys down for so long, one lot after another)  --click=30,12 (a click on
 ##   that square)  --press=700,430 (a real click at that point of the window)  --wheel=3 (the wheel, so many notches)
+##   --press-last (the click comes after the keys, and --then=F12:5 holds on after it)
 ##   --point=700,430 (the pointer rests there)  --port=3292 (where the game is)  --no-start (never start the game itself)  --load=test (with no game open, open
 ##   that save)  --speed=Faster  --pause
 ##   --plain (as if the packs weren't there)  --no-light  --bare (the deck alone)  --loading-shot=out.png
@@ -27,7 +29,6 @@ const TICK := 0.5
 ## What Godot doesn't play yet, and where it is played.
 const NOT_YET := {
 	"over": "This game is over. In the game's own window you can go back to a morning it kept, or start a new one.",
-	"combat": "A fight has started. Fights aren't in this window yet: play it in the game's own window, and this one carries on when it's over.",
 	"talk": "A talk is open. Talks aren't in this window yet: finish it in the game's own window, and this one carries on.",
 	"check": "A skill check is open. It isn't in this window yet: finish it in the game's own window, and this one carries on.",
 	"computer": "A computer is open. It isn't in this window yet: log off in the game's own window, and this one carries on.",
@@ -81,6 +82,7 @@ var note: Label
 var chips: Control
 var chip_of: Array[Dictionary] = []
 var tags: Tags
+var fight: Fight
 var tint: ColorRect
 var fade: ColorRect
 var loading: Control
@@ -113,6 +115,9 @@ var _fetching := false
 ## How many times the game had been saved when this window last looked at the whole room: when it's been saved since,
 ## something has changed (here, or in the game's own window), and the room is looked at again.
 var _saved := -1
+## After a fight, the player is wherever the game has them, whatever this window thought.
+var _adopt := false
+var _fighter_looks := {}
 ## For checking without a screen: where the pointer is taken to be (--point=x,y).
 var _pointer: Variant = null
 var _chips_of := ""
@@ -170,6 +175,11 @@ func _ready() -> void:
 	chips.set_anchors_preset(Control.PRESET_FULL_RECT)
 	chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(chips)
+	# A fight in the room: what goes over the fighters, its orders, its notes and its two sides.
+	fight = Fight.new()
+	fight.main = self
+	fight.visible = false
+	add_child(fight)
 
 	_build_top()
 	_build_banner()
@@ -471,6 +481,7 @@ func _unload() -> void:
 		old.queue_free()
 	deck_buttons.clear()
 	shown.clear()
+	fight.reset()
 	walk = {}
 	current = -1
 	route.clear()
@@ -925,6 +936,11 @@ func _tick() -> void:
 	if typeof(said.get("state")) == TYPE_DICTIONARY:
 		state = said.state
 	shared = Live.truthy(said.get("shared"))
+	# A fight is played here, in the room, if it's one that can be.
+	if Live.truthy(state.get("combat")):
+		fight.wake()
+	else:
+		fight.none()
 	if typeof(said.get("clock")) == TYPE_DICTIONARY:
 		clock_text = str(said.clock.get("label", clock_text))
 	if said.has("notes"):
@@ -965,7 +981,9 @@ func _fetch_walk() -> void:
 		# Where the game has the player, if something other than this window moved them.
 		var view: Dictionary = answer.data.walk
 		var spot := Vector2i(int(view.captain.x), int(view.captain.y))
-		if not _pending and not _going and not _leaving and route.is_empty() and Time.get_ticks_msec() - _walked_at > 300 and current >= 0 and Live.level_of(view) == str(decks[current].info.id) and spot != _sent:
+		if _adopt or (not _pending and not _going and not _leaving and route.is_empty() and Time.get_ticks_msec() - _walked_at > 300 and current >= 0 and Live.level_of(view) == str(decks[current].info.id) and spot != _sent):
+			_adopt = false
+			route.clear()
 			_sent = spot
 			you.pos = Vector2(spot)
 		_take_walk(view)
@@ -998,12 +1016,35 @@ func _set_speed(name: String) -> void:
 	_show_clock()
 
 
-## What stops this window walking: something it doesn't play yet being open in the game.
+## What stops this window walking: something it doesn't play being open in the game (a fight that's fought in the
+## room is played here, and isn't one of them).
 func _blocked() -> String:
 	for what in ["over", "combat", "talk", "check", "computer"]:
-		if Live.truthy(state.get(what)):
+		if Live.truthy(state.get(what)) and not (what == "combat" and fight.on):
 			return what
 	return ""
+
+
+## A fight has just ended here: the room is looked at again, for whoever's lying where they fell.
+func _fight_over() -> void:
+	state["combat"] = false
+	_fetch_walk()
+	_show_clock()
+
+
+## The player has left a fight that's over: they're wherever the game has them now (on a cot, if they lost).
+func _after_fight() -> void:
+	_adopt = true
+	_fetch_walk()
+	_show_clock()
+
+
+## Which of the fighters the pointer's on, as the room knows them, or nobody.
+func _fight_hover() -> String:
+	if current < 0:
+		return ""
+	var hover: String = (decks[current].view as DeckView).overlay.hover
+	return hover if hover.begins_with("fighter:") else ""
 
 
 func _show_clock() -> void:
@@ -1014,8 +1055,10 @@ func _show_clock() -> void:
 	var why := ""
 	if _lost >= 4:
 		why = "The game isn't answering"
+	elif fight.on:
+		why = "Stopped for the fight"
 	elif held == "combat" or held == "talk" or held == "over":
-		why = "Stopped: see below"
+		why = "Stopped: see below" if held != "combat" or fight.elsewhere != "" else "Stopped: a fight is starting"
 	elif paused:
 		why = "Paused: Space goes on"
 	elif shared:
@@ -1029,6 +1072,9 @@ func _show_clock() -> void:
 	var words := ""
 	if _lost >= 4:
 		words = "The game has stopped answering. If you closed its window, close this one too and start again."
+	elif held == "combat":
+		if fight.elsewhere != "":
+			words = "%s (Its own window: %s in a browser, or the game's app.)" % [fight.elsewhere, link.address()]
 	elif held != "":
 		words = "%s (Its own window: %s in a browser, or the game's app.)" % [NOT_YET[held], link.address()]
 	if words == "" and _said != "" and Time.get_ticks_msec() < _said_until:
@@ -1036,6 +1082,7 @@ func _show_clock() -> void:
 	banner.visible = words != "" and not args.has("bare")
 	banner.say(words, minf(760.0, get_size().x - 60.0))
 	banner.position = Vector2((get_size().x - banner.size.x) / 2.0, top.size.y + 10.0)
+	news.visible = not fight.on and not args.has("bare")
 	# In a narrow window the line on how to walk gives way to the clock.
 	help_label.visible = get_size().x >= 1000.0
 
@@ -1050,6 +1097,10 @@ func _message(words: String) -> void:
 # ---- Walking --------------------------------------------------------------------------------------------------------
 
 func _unhandled_key_input(event: InputEvent) -> void:
+	# In a fight in the room the keys are the fight's: Space stops and starts it, a number gives that order.
+	if event is InputEventKey and event.pressed and not event.echo and playing and fight.on and fight.key(event):
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_SPACE and playing and link != null:
 		_set_speed(speed if paused else "")
 		get_viewport().set_input_as_handled()
@@ -1068,6 +1119,13 @@ func _gui_input(event: InputEvent) -> void:
 		var spot := Iso.spot_at((event.position - world.position) / world.scale.x)
 		if link == null:
 			_walk_to(Vector2i(spot.x, spot.y), spot.point)
+		elif fight.on:
+			# In a fight: one of the other side to go for them, the floor to walk there.
+			var over := _who_at((decks[current].view as DeckView).overlay, event.position)
+			if over.begins_with("fighter:"):
+				fight.click({"kind": "fighter", "key": over.trim_prefix("fighter:")})
+			else:
+				fight.click({"kind": "floor", "x": int(spot.x), "y": int(spot.y)})
 		else:
 			_go({"action": "go", "x": int(spot.x), "y": int(spot.y)}, spot.point)
 	else:
@@ -1080,7 +1138,7 @@ func _zoom_by(times: float) -> void:
 
 
 func _can_walk() -> bool:
-	return playing and current >= 0 and decks[current].mover != null and (link == null or _blocked() == "")
+	return playing and current >= 0 and decks[current].mover != null and (link == null or (_blocked() == "" and not fight.on))
 
 
 ## With no game behind the ship, a click on a square: the player walks the shortest way there, or to the floor nearest.
@@ -1249,18 +1307,46 @@ func _play(dt: float) -> void:
 		you.step += went * 5.0
 		_face_along(you, moved)
 	var square := Mover.square_of(you.pos)
+	var fighting: Array = []
+	var others := shown
 	if link == null:
 		# Walking onto a way out takes it.
 		if mover.ways_out.has(square):
 			_take(mover.ways_out[square])
 			return
+	elif fight.on:
+		# In a fight the player is where the fight has them, and whoever's in it is drawn once, as a fighter.
+		var spot := fight.your_spot(dt)
+		if not spot.is_empty():
+			you.pos = spot.pos
+			you.flip = spot.flip
+			you.back = spot.back
+			you.walking = spot.walking
+			you.step = spot.step
+			square = Mover.square_of(you.pos)
+		_move_people(dt)
+		fighting = fight.fighters(dt)
+		var hidden := fight.hidden()
+		if not hidden.is_empty():
+			others = {}
+			for key in shown:
+				if not hidden.has(key):
+					others[key] = shown[key]
+		for one in fighting:
+			var known: Variant = shown.get(str(one.person)) if one.person != null else null
+			if not _fighter_looks.has(one.key):
+				_fighter_looks[one.key] = known.look if known != null else Live.look_for(str(one.key), one.color if one.color != null else ("#b0503a" if one.side == "enemy" else "#8ec5ff"), false)
+			one["look"] = _fighter_looks[one.key]
 	else:
 		_sync()
 		_move_people(dt)
 
 	view.overlay.hover = _under_pointer(view.overlay)
 	view.overlay.place_you(you)
-	view.overlay.place_people(shown)
+	view.overlay.place_people(others)
+	view.overlay.place_fighters(fighting)
+	if not fight.on and not _fighter_looks.is_empty():
+		_fighter_looks.clear()
 
 	# The doors between rooms slide open for whoever comes near, and shut behind them.
 	var movers := view.overlay.movers
@@ -1321,14 +1407,18 @@ func _move_people(dt: float) -> void:
 func _under_pointer(overlay: Overlay) -> String:
 	if link == null or args.has("bare"):
 		return ""
-	var at: Vector2 = _pointer if _pointer != null else get_local_mouse_position()
+	return _who_at(overlay, _pointer if _pointer != null else get_local_mouse_position())
+
+
+## Whoever's drawn at a point of the window: in a fight, one of the fighters; otherwise one of the people in the room.
+func _who_at(overlay: Overlay, at: Vector2) -> String:
 	if at.y < top.size.y or not get_rect().has_point(at):
 		return ""
 	var scale := world.scale.x
 	var best := ""
 	var nearest := -INF
 	for key in overlay.heads:
-		if key == "you":
+		if key == "you" or (fight.on and not str(key).begins_with("fighter:")):
 			continue
 		var head: Dictionary = overlay.heads[key]
 		var feet: Vector2 = world.position + (head.at as Vector2) * scale
@@ -1351,6 +1441,8 @@ func _aim(dt: float) -> void:
 	var where := Iso.centre(you.pos.x, you.pos.y)
 	var here := Iso.at(where.x, where.y) / Iso.UNIT
 	var goal := Vector2(_on_axis(here.x, b.minU, b.maxU - b.minU, size.x), _on_axis(here.y, b.minV, b.maxV - b.minV, size.y))
+	# In a fight the player is kept in what's left of the room above the orders.
+	goal.y += fight.covered_below() / 2.0 / unit
 	if args.has("preview"):
 		goal = Iso.at(where.x, where.y, 0.5) / Iso.UNIT  # where the Map editor's picture looks, for holding one up against the other
 	if not camera_set:
@@ -1424,8 +1516,27 @@ func _run_check() -> void:
 			turn.position = get_size() / 2.0
 			Input.parse_input_event(turn)
 			await get_tree().process_frame
-	if args.has("press"):
-		var at: PackedStringArray = str(args.press).split(",")
+	if args.has("press") and not args.has("press-last"):
+		await _press(str(args.press))
+	if args.has("hold"):
+		await _hold(str(args.hold))
+	if args.has("press") and args.has("press-last"):
+		await _press(str(args.press))
+		await _hold(str(args.get("then", "F12:0.1")))
+	if args.has("point"):
+		var at: PackedStringArray = str(args.point).split(",")
+		_pointer = Vector2(float(at[0]), float(at[1]))
+	await get_tree().create_timer(float(args.get("wait", "1.0"))).timeout
+	_slowest_ever = 0.0
+	_meter_at = 0.0
+	await get_tree().create_timer(1.2).timeout
+	_finish_check()
+
+
+## For checking: a real click at a point of the window.
+func _press(where: String) -> void:
+	if true:
+		var at: PackedStringArray = where.split(",")
 		for down in [true, false]:
 			var click := InputEventMouseButton.new()
 			click.button_index = MOUSE_BUTTON_LEFT
@@ -1436,8 +1547,12 @@ func _run_check() -> void:
 			await get_tree().process_frame
 		await get_tree().create_timer(0.3).timeout
 		_report["route"] = route.size()
-	if args.has("hold"):
-		for part in str(args.hold).split(";"):
+
+
+## For checking: keys held down for so long, one lot after another ("W+D:1.2;S:0.5").
+func _hold(keys: String) -> void:
+	if true:
+		for part in keys.split(";"):
 			var bits: PackedStringArray = part.split(":")
 			var codes: Array = []
 			for name in bits[0].split("+"):
@@ -1451,13 +1566,9 @@ func _run_check() -> void:
 					Input.parse_input_event(key)
 				if down:
 					await get_tree().create_timer(float(bits[1]) if bits.size() > 1 else 1.0).timeout
-	if args.has("point"):
-		var at: PackedStringArray = str(args.point).split(",")
-		_pointer = Vector2(float(at[0]), float(at[1]))
-	await get_tree().create_timer(float(args.get("wait", "1.0"))).timeout
-	_slowest_ever = 0.0
-	_meter_at = 0.0
-	await get_tree().create_timer(1.2).timeout
+
+
+func _finish_check() -> void:
 	if args.has("shot"):
 		get_viewport().get_texture().get_image().save_png(args.shot)
 	if args.has("report") and playing and current >= 0:
@@ -1469,7 +1580,7 @@ func _run_check() -> void:
 				asleep += 1
 			if shown[key].walking:
 				walking += 1
-		_report.merge({"ok": true, "deck": decks[current].info.id, "pos": [you.pos.x, you.pos.y], "sent": [_sent.x, _sent.y], "room": room_label.text, "unit": unit, "packs": packs.found, "slowest_ms": _slowest_ever, "atlas": [packs.size().x, packs.size().y], "items": art.standing.items.size(), "ground_verts": art.ground.verts.size(), "standing_verts": art.standing.verts.size(), "doors": art.doors.size(), "open_doors": art.doors.filter(func(d: Dictionary) -> bool: return d.open > 0.5).size(), "top_height": top.size.y, "meter": meter.text, "note": note.text, "script_ms": _script_ms, "script_usual_ms": _script_usual, "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), "primitives": Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME), "video_mb": Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0, "people": shown.size(), "asleep": asleep, "walking": walking, "clock": clock_text, "why": clock_why.text, "banner": banner.words if banner.visible else "", "state": state, "paused": paused, "shared": shared, "stores": art.stores.size(), "cameras": art.cameras.size(), "rests": art.rests.size(), "started_game": link != null and link.started > 0, "news": news.get_child_count()})
+		_report.merge({"ok": true, "deck": decks[current].info.id, "pos": [you.pos.x, you.pos.y], "sent": [_sent.x, _sent.y], "room": room_label.text, "unit": unit, "packs": packs.found, "slowest_ms": _slowest_ever, "atlas": [packs.size().x, packs.size().y], "items": art.standing.items.size(), "ground_verts": art.ground.verts.size(), "standing_verts": art.standing.verts.size(), "doors": art.doors.size(), "open_doors": art.doors.filter(func(d: Dictionary) -> bool: return d.open > 0.5).size(), "top_height": top.size.y, "meter": meter.text, "note": note.text, "script_ms": _script_ms, "script_usual_ms": _script_usual, "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), "primitives": Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME), "video_mb": Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0, "people": shown.size(), "asleep": asleep, "walking": walking, "clock": clock_text, "why": clock_why.text, "banner": banner.words if banner.visible else "", "state": state, "paused": paused, "shared": shared, "stores": art.stores.size(), "cameras": art.cameras.size(), "rests": art.rests.size(), "started_game": link != null and link.started > 0, "fight": {"on": fight.on, "paused": fight.paused, "held": fight.held_for, "notes": fight.notes.map(func(n: Dictionary) -> String: return str(n.text)), "ending": fight.ending.get("result"), "elsewhere": fight.elsewhere, "enemies": fight.combat.get("enemies", []).map(func(e: Dictionary) -> Array: return [e.name, e.hp]), "you": fight.combat.get("you", {}).get("hp")}, "news": news.get_child_count()})
 		print("REPORT ", JSON.stringify(_report))
 	if args.has("shot") or args.has("report"):
 		_close(0)
@@ -1561,7 +1672,8 @@ class Tags:
 	func _chatter(main: Control, seen: Dictionary, spots: Dictionary) -> void:
 		var talk: Dictionary = main._chatter
 		var now := float(Time.get_ticks_msec())
-		if main._blocked() != "":
+		# Nobody chats in a fight, or while something this window doesn't play is open.
+		if main._blocked() != "" or main.fight.on:
 			talk.shown = []
 			return
 		talk.shown = (talk.shown as Array).filter(func(one: Dictionary) -> bool: return one.until > now)

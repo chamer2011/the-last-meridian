@@ -40,6 +40,7 @@ var _covering := PackedInt32Array()
 var _your_look := []
 var _your_rest := {}
 var _people := {}
+var _fighters := {}
 var _rested := {}
 var _beds := {}
 var _stores := {}
@@ -307,6 +308,55 @@ func _show(key: String, one: Dictionary, settled: Dictionary, lying: bool, down_
 	if nearer != known.covering:
 		known.covering = nearer
 		prop.cover(art.standing, atlas, nearer)
+
+
+## Whoever's in a fight in the room, each where they've got to (public/live-fight.js, liveFighters): { key, x, y, look,
+## flip, back, walking, step, down, fade, ring }. With nobody, whoever was drawn goes.
+func place_fighters(list: Array) -> void:
+	if list.is_empty() and _fighters.is_empty():
+		return
+	var here := {}
+	for one in list:
+		var key := "fighter:%s" % str(one.key)
+		here[key] = true
+		var where := Iso.centre(one.x, one.y)
+		var feet := Iso.at(where.x, where.y)
+		var down: bool = one.down
+		heads[key] = {"at": feet, "tall": FIGURE * (0.5 if down else 1.0)}
+		if not down:
+			movers.append(where)
+		var ring: Variant = Figure.HOVER_RING if hover == key and not down else one.ring
+		var now := [feet, one.flip, one.back, one.walking, one.step if one.walking else 0.0, down, ring, one.fade]
+		var known: Variant = _fighters.get(key)
+		if known != null and known.now == now:
+			continue
+		var box := _window(feet)
+		var depth := where.x + where.y
+		if known == null:
+			var fresh := FigureDraw.new()
+			known = {"draw": fresh, "prop": _stand(fresh, box, depth, false), "covering": PackedInt32Array(), "now": []}
+			_fighters[key] = known
+		var prop: Prop = known.prop
+		var figure: FigureDraw = known.draw
+		known.now = now
+		prop.frame(box)
+		prop.modulate.a = float(one.fade)
+		if not is_equal_approx(prop.depth, depth):
+			prop.depth = depth
+			_unsorted = true
+		figure.feet = feet
+		figure.who = {"look": one.look, "flip": one.flip, "back": one.back, "walking": one.walking, "step": one.step, "asleep": down, "ring": ring}
+		figure.queue_redraw()
+		var nearer := art.nearer(depth, box)
+		if nearer != known.covering:
+			known.covering = nearer
+			prop.cover(art.standing, atlas, nearer)
+	for key in _fighters.keys():
+		if not here.has(key):
+			_drop(_fighters[key].prop)
+			_fighters.erase(key)
+	if _unsorted:
+		_sort()
 
 
 ## Whoever's asleep in each bed, drawn into it: a bed is in the deck's picture already.

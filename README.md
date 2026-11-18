@@ -1196,9 +1196,9 @@ npm run build-app
 
 ## The Godot view
 
-This is the game's room in **Godot**, a program for making games. What you see and click is being moved there a step at a time, while the game's rules stay exactly as they are. Two of seven steps are built. The first drew the ship; the second, this one, connects it to **your game**: it opens the game you're playing, with your captain where you left them, everyone aboard living their day, and the clock running. Walking in it is walking in the game, and it's saved as you go, in the same save.
+This is the game's room in **Godot**, a program for making games. What you see and click is being moved there a step at a time, while the game's rules stay exactly as they are. Three of seven steps are built. The first drew the ship. The second connected it to **your game**: it opens the game you're playing, with your captain where you left them, everyone aboard living their day, and the clock running. Walking in it is walking in the game, and it's saved as you go, in the same save. The third plays **fights in the room**.
 
-It doesn't replace anything yet. The game in your browser and the app work as they always did, and **both can be open on the same game at once**: what Godot can't do yet (talking, fights, opening things, the menus) you do in the game's own window, and Godot shows the room while you do.
+It doesn't replace anything yet. The game in your browser and the app work as they always did, and **both can be open on the same game at once**: what Godot can't do yet (talking, opening things, the menus) you do in the game's own window, and Godot shows the room while you do.
 
 **To open it**, double-click **`start-godot.bat`** in the game's folder.
 
@@ -1216,21 +1216,23 @@ It doesn't replace anything yet. The game in your browser and the app work as th
 - **The clock** along the top, with **Pause**, **Normal**, **Fast** and **Faster**, the same speeds as in the game. **Space** pauses and goes on.
 - **The ship's state:** a room with its lights out is dark; consoles and screens go dark where there's no power; a fire burns with flames, smoke and its own light, and leaves soot afterwards; a hole in the hull has air streaming out of it and an amber lamp beside it; broken parts throw sparks; the keypads, cameras, vents, switches, junction boxes and alarms are on the walls, and a working camera turns; the ship's stores are stacked with as many crates as they hold; the floor has as much litter and grime as the ship is worn.
 - **What the game says as it happens** (a fire, the lights going out, someone getting up) comes up in the bottom left corner for a few seconds.
+- **A fight, in the room**, the way the game's own Isometric view plays one. It starts stopped. Everyone in it has their health and a thin gold bar that fills as they get ready to act over their head, your side ringed in blue and the other in red. **Your orders** are along the bottom, numbered; what's happened is in the top left; the two sides are listed down the right. Shots, swings, and the numbers they take off fly over the room. When it's over a box says how it ended, with **Back to the room**. A battle, like the mutiny that opens the game, is fought the same way across the whole deck.
 
 **What to try**
 
 - **Walking:** W, A, S and D or the arrow keys, or click where you want to go. A click on someone walks you up to them; a click on a stair's name, or walking onto its striped plate, takes the stairs.
 - **Zoom:** the mouse wheel.
 - **Let the clock run on Faster** for a while and watch the watch change: people leave their posts, eat, and go to their bunks.
+- **A fight:** start one in the game's own window (right-click someone, **Attack**), or load a game with one waiting, and it appears in Godot, stopped. **Space** sets it going and stops it. Click one of the other side to go for them, or the floor to walk there; press a number, or click an order, for anything else, and if it needs someone to aim at, click them next. Point at one of them to see your odds. **Stop when I'm ready to act** makes it stop by itself each time you can act.
 - **With the game's own window open beside it:** switch a room's lights off from the Ship menu there, or lock a door, and watch the Godot window follow a moment later.
 - **The meter** in the bottom left corner says how long the slowest picture of the last second took to draw, in thousandths of a second. On most screens sixty are drawn a second, which is 16.7 each: a number that stays near that while you walk is smooth. Compare how walking feels here and in the game's own Pixel art view.
 
 **What isn't in it yet, and what happens instead**
 
-- **Talking, fights, skill checks and computers.** When one of those is open in the game, a line in amber across the top of the Godot window says so, and you can't walk until it's finished in the game's own window. A click on someone walks you up to them and stops there.
+- **Talking, skill checks and computers.** When one of those is open in the game, a line in amber across the top of the Godot window says so, and you can't walk until it's finished in the game's own window. A click on someone walks you up to them and stops there. The same goes for three kinds of fight that aren't fought in the room: one in the simulator, one aboard another ship, and one already begun in the game's fight window.
 - **Things to click:** the **?** marks, opening a store or a locker, working a part, asking at a closed door. And every menu, the quest tracker, the room's panel, your inventory.
-- **Starting a new game.** A new game opens with a written scene and a battle, which Godot doesn't play yet: start it in the game's own window and come to Godot once the battle's over, or use the **Test save**. If no game is open, Godot lists the saves there are, to open one.
-- **Which window runs the clock.** With both open, the game's own window runs it, and Godot says "The game's own window is running the clock". Pause it there and Godot's own buttons take over.
+- **Starting a new game, and the story.** A new game opens with a written scene, which Godot doesn't show yet: start it in the game's own window and make your choices there. The battle it leads to can be fought in either window; whichever you fight it in, the story picks up afterwards in the game's own. Or use the **Test save**, which is past all that. If no game is open, Godot lists the saves there are, to open one.
+- **Which window runs the clock.** With both open, the game's own window runs it, and Godot says "The game's own window is running the clock". Pause it there and Godot's own buttons take over. A fight is the same: if it's running in the game's own window, Godot follows it and doesn't run it a second time. A fight you finish in Godot is still on the other window's screen until you reload that page.
 - A few things are plainer than in the game for now: the windows, the wall screens, the garden's beds and the hull outside, and screens don't stutter when the ship is short of power.
 
 **If something goes wrong**
