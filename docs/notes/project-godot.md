@@ -213,9 +213,36 @@ A fight that's fought in the room is played in the Godot window, the way `public
 - A fight with allies who walk with the player, a fight the story is waiting on, and a fight at a port.
 - Both windows running the same fight at once on a screen.
 
-## For step 4 (the story and talks)
+## Step 4: the story and talks (2026-11-18)
 
-- The page's side: `public/popups.js` (the story over the room: speech panes by the head, choices, the caption, notes), `public/pane.js`, `public/talk.js`, `public/quests.js` (the tracker and the log), `public/logpage.js` (pages of the ship's log), `public/scene.js`. The game's: `/api/chat` (streamed as lines of JSON: `text`, `notice`, `state`, `done`, `error`), `/api/talk` (`open`, `say`, `close`, `rumor`, `check`), `/api/quests`, and `publicState`'s `transcript`, `talk`, `scene`, `quests`, `storyWaiting`.
-- The style test's `speech_pane.gd`, `option_row.gd`, `floaty.gd` and `spring_scroll.gd` are what the panes and choices are built from.
-- Godot's tick already hears `state.talk`; `HTTPRequest` gives a streamed answer whole at its end, which is enough since the story is written and arrives at once.
-- After it: the opening scene of a new game plays in Godot, the fight's ending can offer **Continue the story**, and a click on someone can open their talk.
+### What they see
+
+- **The story over the room**, as `public/popups.js` has it: a scene a piece at a time. Speech by someone in the room is on a pane up and to the right of their head (their name on a tag in their colour, a line and a dot to the head); anything else (narration, a voice over comms, someone not here, a consequence) is in a box across the top. Words are written out at seventy letters a second; a click finishes them, the next goes on ("2 of 5   click to go on"), **Back** goes back. The player's own choice is shown first in a scene (`> Hold the bridge`). Once read, the choices hang under the pane of whoever the scene waits on (or the last who spoke, or "You"), numbered, with what each involves in colour before it (a check with the odds, a belief, who'd approve, a warning) and the same as a tip. A number key picks one. The last words fade after seven seconds when there's nothing to answer.
+- **A talk**, as `public/talk.js` on a pane: a click on someone walks up to them and opens it (or, for whoever a quest's scene is waiting on, goes on with the story: `meet`). Their newest words, the player's line over them, what the talk changed as coloured lines, and **What do you say?** with what they offered, the rumours line and goodbye. The clock says "Stopped while you talk".
+- **The quest in the corner:** the followed quest's name, its step or objective, a battle's checklist with its boxes, and how many more there are.
+- **A fight's ending** offers **Continue the story** and **Look around first** when the story was waiting on it. **A new game's story starts by itself.** Walking puts the story away; **The story is waiting for you** brings it back.
+
+### How it's made
+
+- **The story is read in Node, by the page's own readers.** `src/godot-story.js` (`godotStory(game, { from })`, asked at `GET /api/godot/story`) takes `publicState` and runs `latestSceneStart`, `sceneOf`, `personSpeaking` (`public/scene.js`) and `parseNarration`, `attributeSpeech`, `latestOptions`, `parseNotice`, the lore index (`public/story.js`), neither of which touches the screen. It hands over the pieces (kind, words in and out of quotation marks, speaker, colour, which person in the room), the notes with the piece each comes up at, the choices as `currentOptions` in `public/app.js` decides them, whose pane they hang off (`answerFor`), a talk's last words and lines (`optionsFor`), who a click on goes on with the story for, and the followed quest. The chips' words are `tagChip`'s from `public/story-view.js`, written again there because that file is the page's screen.
+- `godot/scripts/story.gd` draws them and keeps the reader's place. What the player does goes by the page's routes: `/api/chat` (`start`, `continue`, `meet`, a choice's words), `/api/talk` (`open`, `say`, `rumor`, `check`, `close`), `/api/check/start` for a choice with a check. Those answer with the whole game or with the story a line at a time; `Link.tell` only reads whether it was taken (and an `error` line's words), and the story is asked for afresh. `from` is how much of the story there was when the player last chose, so a scene after a fight shows only what's new, as the page's `beginScene` does.
+- `main.gd`: a click on someone is `go to person:<key>` and then `story.meet`; a click while a scene is unread goes on with it; the numbers pick; the tick asks for the story again when the game's save count moves or a talk opens or closes elsewhere.
+
+**Plainer than the page, and said so in the README:** the choices are under the pane, not beside it; a page of the ship's log is the same box across the top with "SHIP'S LOG" and its title over the words, with no drawing; the player's own line isn't on a pane over their own head; there's no quest log, no typing line, and the story's words can't be pointed at for what they mean.
+
+### Checked (2026-11-18, stand-in art, the test copy)
+
+- **A new game from its first words:** the story starting by itself, the opening's narration across the top, Voss's pane with the two choices at 1400 and 810, each choice taken with its number, the battle beginning from the first and fought, the captain going down and waking in the medbay, **Continue the story**, the tracker's "After the mutiny" list with boxes ticked.
+- **A talk** with Voss from the test save: a real click on her, the walk, her greeting and six lines, a line said and her answer written out, goodbye, and walking again.
+- `test/godot-link.test.js` has 7 tests: the story's pieces, speakers, choices, anchor and `from`; a talk opened, a line said, closed.
+
+### Not checked
+
+- A choice with a skill check (it opens the check in the game's own window), a request's ask with its yes and no, a scene held because its person is elsewhere, a talk's rumours, a talk shown as a page.
+- The tracker with a quest that has a person to go to. Long scenes of many pieces. A voice over comms.
+
+## For step 5 (the menus and windows)
+
+- Skill checks (`public/check.js`, `/api/check`), a thing's and a part's window with its actions (`thingPane` in `public/walk.js`; `use`, `ask`, `work` on `/api/walk`), the right-click menu, the room's panel, the inventory (`public/bag.js`, `/api/bag`), computers (`public/computer.js`), then the menus a group at a time (`public/menus.js`), the registry printout, the quest log, the title screen and the creator.
+- The style test's `thing_window.gd`, `keelworks.gd` and `crt_desk.gd` are the looks they approved for a thing's window and a computer.
+- Each of those wants what step 4 did for the story: the game hands Godot the view already worked out (`publicState` has most of it), and Godot draws it.

@@ -1,10 +1,10 @@
-## The game's room, in Godot (steps 2 and 3 of the port): the place the player's at, drawn with the art packs, with the
-## player walking it, everyone else living their days on it, the doors, the light and the dark, fires, the clock, and
-## fights fought in the room (fight.gd).
+## The game's room, in Godot (steps 2 to 4 of the port): the place the player's at, drawn with the art packs, with the
+## player walking it, everyone else living their days on it, the doors, the light and the dark, fires, the clock, fights
+## fought in the room (fight.gd), and the story and talks over the room (story.gd).
 ##
 ## Godot draws and takes clicks; the game's rules stay in JavaScript. Everything shown here is asked of the game itself
 ## (link.gd), which is the same program the browser view talks to, so both can be open on the same game. What Godot
-## doesn't play yet (talks, skill checks, computers, menus) it says so about, and waits.
+## doesn't play yet (skill checks, computers, menus) it says so about, and waits.
 ##
 ## For checking without a screen, after the two dashes:
 ##   --shot=out.png  --wait=1.5  --width=810  --height=860  --zoom=1.3  --report (how it went, as a line of JSON)
@@ -29,7 +29,6 @@ const TICK := 0.5
 ## What Godot doesn't play yet, and where it is played.
 const NOT_YET := {
 	"over": "This game is over. In the game's own window you can go back to a morning it kept, or start a new one.",
-	"talk": "A talk is open. Talks aren't in this window yet: finish it in the game's own window, and this one carries on.",
 	"check": "A skill check is open. It isn't in this window yet: finish it in the game's own window, and this one carries on.",
 	"computer": "A computer is open. It isn't in this window yet: log off in the game's own window, and this one carries on.",
 }
@@ -83,6 +82,7 @@ var chips: Control
 var chip_of: Array[Dictionary] = []
 var tags: Tags
 var fight: Fight
+var story: Story
 var tint: ColorRect
 var fade: ColorRect
 var loading: Control
@@ -180,6 +180,11 @@ func _ready() -> void:
 	fight.main = self
 	fight.visible = false
 	add_child(fight)
+	# The story and talks: panes by people's heads, what's told across the top, the choices, the quest in the corner.
+	story = Story.new()
+	story.main = self
+	story.visible = false
+	add_child(story)
 
 	_build_top()
 	_build_banner()
@@ -627,6 +632,9 @@ func _load(answer: Dictionary) -> void:
 		playing = true
 		_take_walk(data.walk)
 		_show_clock()
+		story.data = {}
+		story._from = -1
+		story.refresh()
 	_say_what_was_plain()
 	if args.has("hold") or args.has("click") or args.has("press") or args.has("wheel") or args.has("shot") or args.has("report"):
 		_run_check()
@@ -949,6 +957,8 @@ func _tick() -> void:
 	# (A walk through a way out is shown to its end first: the room it leads to comes then.)
 	var on_the_way_out := route_firm and not route.is_empty()
 	var changed := said.has("saved") and int(said.saved) != _saved
+	if changed or Live.truthy(state.get("talk")) != story.talking():
+		story.refresh()
 	if said.has("walk") and typeof(said.walk) == TYPE_DICTIONARY and not on_the_way_out:
 		_saved = int(said.get("saved", _saved))
 		_take_walk(said.walk)
@@ -997,7 +1007,7 @@ func _tell(line: String) -> void:
 		words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		words.custom_minimum_size.x = minf(560.0, get_size().x - 40.0)
 		news.add_child(words)
-		var going := create_tween()
+		var going := words.create_tween()
 		going.tween_interval(14.0)
 		going.tween_property(words, "modulate:a", 0.0, 1.5)
 		going.tween_callback(words.queue_free)
@@ -1019,10 +1029,22 @@ func _set_speed(name: String) -> void:
 ## What stops this window walking: something it doesn't play being open in the game (a fight that's fought in the
 ## room is played here, and isn't one of them).
 func _blocked() -> String:
-	for what in ["over", "combat", "talk", "check", "computer"]:
+	for what in ["over", "combat", "check", "computer"]:
 		if Live.truthy(state.get(what)) and not (what == "combat" and fight.on):
 			return what
 	return ""
+
+
+## The story has moved on, or a talk has opened or closed: the room is looked at again.
+func _story_moved() -> void:
+	state["talk"] = story.talking()
+	_fetch_walk()
+	_show_clock()
+
+
+## From a fight's ending: on with the story that was waiting on it.
+func _continue_story() -> void:
+	story._send("/api/chat", {"event": "continue"})
 
 
 ## A fight has just ended here: the room is looked at again, for whoever's lying where they fell.
@@ -1036,6 +1058,7 @@ func _fight_over() -> void:
 func _after_fight() -> void:
 	_adopt = true
 	_fetch_walk()
+	story.refresh()
 	_show_clock()
 
 
@@ -1057,7 +1080,9 @@ func _show_clock() -> void:
 		why = "The game isn't answering"
 	elif fight.on:
 		why = "Stopped for the fight"
-	elif held == "combat" or held == "talk" or held == "over":
+	elif Live.truthy(state.get("talk")):
+		why = "Stopped while you talk"
+	elif held == "combat" or held == "over":
 		why = "Stopped: see below" if held != "combat" or fight.elsewhere != "" else "Stopped: a fight is starting"
 	elif paused:
 		why = "Paused: Space goes on"
@@ -1101,6 +1126,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and playing and fight.on and fight.key(event):
 		get_viewport().set_input_as_handled()
 		return
+	# A number picks that choice of the story's, or that line of a talk.
+	if event is InputEventKey and event.pressed and not event.echo and playing and link != null and event.physical_keycode >= KEY_1 and event.physical_keycode <= KEY_9 and story.pick(event.physical_keycode - KEY_0):
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_SPACE and playing and link != null:
 		_set_speed(speed if paused else "")
 		get_viewport().set_input_as_handled()
@@ -1126,8 +1155,16 @@ func _gui_input(event: InputEvent) -> void:
 				fight.click({"kind": "fighter", "key": over.trim_prefix("fighter:")})
 			else:
 				fight.click({"kind": "floor", "x": int(spot.x), "y": int(spot.y)})
-		else:
-			_go({"action": "go", "x": int(spot.x), "y": int(spot.y)}, spot.point)
+		elif story.reading():
+			# Until it's been read, a click on the room goes on with the story, and doesn't walk anywhere.
+			story.next()
+		elif not story.talking():
+			# A click on someone walks up to them, to talk; anywhere else walks there.
+			var who := _who_at((decks[current].view as DeckView).overlay, event.position)
+			if who != "" and not who.begins_with("fighter:"):
+				_go({"action": "go", "to": "person:%s" % who}, null)
+			else:
+				_go({"action": "go", "x": int(spot.x), "y": int(spot.y)}, spot.point)
 	else:
 		return
 	accept_event()
@@ -1138,7 +1175,7 @@ func _zoom_by(times: float) -> void:
 
 
 func _can_walk() -> bool:
-	return playing and current >= 0 and decks[current].mover != null and (link == null or (_blocked() == "" and not fight.on))
+	return playing and current >= 0 and decks[current].mover != null and (link == null or (_blocked() == "" and not fight.on and not story.talking() and not story.sending and not Live.truthy(state.get("talk"))))
 
 
 ## With no game behind the ship, a click on a square: the player walks the shortest way there, or to the floor nearest.
@@ -1167,6 +1204,7 @@ func _walk_to(square: Vector2i, point: Variant) -> void:
 func _go(body: Dictionary, point: Variant) -> void:
 	if not _can_walk() or _going or _leaving or _pending:
 		return
+	story.put_away()  # walking puts the story away, until it's wanted again
 	_going = true
 	var from := Mover.square_of(you.pos)
 	var asked := body.duplicate()
@@ -1190,6 +1228,10 @@ func _go(body: Dictionary, point: Variant) -> void:
 	var arrived: Variant = said.get("arrived")
 	if typeof(arrived) == TYPE_DICTIONARY and str(arrived.get("kind", "")) == "door":
 		_message("That door is shut. Doors are asked at, forced or unlocked from the game's own window for now.")
+	# Walking up to someone is to talk to them, or to go on with the story that's waiting on them.
+	var met := ""
+	if typeof(arrived) == TYPE_DICTIONARY and str(arrived.get("kind", "")) == "person" and body.has("to"):
+		met = str(arrived.get("key", ""))
 	var mover: Mover = decks[current].mover
 	var points: Array[Vector2] = []
 	for step in said.get("path", []):
@@ -1203,6 +1245,8 @@ func _go(body: Dictionary, point: Variant) -> void:
 	if points.is_empty():
 		if leaving:
 			_take_walk(view)
+		if met != "":
+			story.meet(met)
 		return
 	# Nobody's in the player's way on a way the game has found round them.
 	var kept := mover.blocked
@@ -1210,7 +1254,7 @@ func _go(body: Dictionary, point: Variant) -> void:
 	route = mover.smoothed(you.pos, points)
 	mover.blocked = kept
 	route_firm = leaving
-	route_done = _take_walk.bind(view) if leaving else Callable()
+	route_done = _take_walk.bind(view) if leaving else (story.meet.bind(met) if met != "" else Callable())
 
 
 ## Tells the game about a new square once it's been reached, one at a time, and a way out as soon as it's walked into
@@ -1277,8 +1321,11 @@ func _play(dt: float) -> void:
 	var before: Vector2 = you.pos
 	var walking_speed := Mover.SPEED * pace
 	var heading := Mover.heading_of(_held()) if _can_walk() and not _leaving else Vector2.ZERO
+	if heading != Vector2.ZERO:
+		story.put_away()  # walking puts the story away, until it's wanted again
 	if not route.is_empty() and heading != Vector2.ZERO and not route_firm:
 		route.clear()  # the keys take over from a walk begun with a click
+		route_done = Callable()
 	if not route.is_empty():
 		var left := walking_speed * dt
 		while left > 0.000001 and not route.is_empty():
@@ -1580,7 +1627,7 @@ func _finish_check() -> void:
 				asleep += 1
 			if shown[key].walking:
 				walking += 1
-		_report.merge({"ok": true, "deck": decks[current].info.id, "pos": [you.pos.x, you.pos.y], "sent": [_sent.x, _sent.y], "room": room_label.text, "unit": unit, "packs": packs.found, "slowest_ms": _slowest_ever, "atlas": [packs.size().x, packs.size().y], "items": art.standing.items.size(), "ground_verts": art.ground.verts.size(), "standing_verts": art.standing.verts.size(), "doors": art.doors.size(), "open_doors": art.doors.filter(func(d: Dictionary) -> bool: return d.open > 0.5).size(), "top_height": top.size.y, "meter": meter.text, "note": note.text, "script_ms": _script_ms, "script_usual_ms": _script_usual, "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), "primitives": Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME), "video_mb": Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0, "people": shown.size(), "asleep": asleep, "walking": walking, "clock": clock_text, "why": clock_why.text, "banner": banner.words if banner.visible else "", "state": state, "paused": paused, "shared": shared, "stores": art.stores.size(), "cameras": art.cameras.size(), "rests": art.rests.size(), "started_game": link != null and link.started > 0, "fight": {"on": fight.on, "paused": fight.paused, "held": fight.held_for, "notes": fight.notes.map(func(n: Dictionary) -> String: return str(n.text)), "ending": fight.ending.get("result"), "elsewhere": fight.elsewhere, "enemies": fight.combat.get("enemies", []).map(func(e: Dictionary) -> Array: return [e.name, e.hp]), "you": fight.combat.get("you", {}).get("hp")}, "news": news.get_child_count()})
+		_report.merge({"ok": true, "deck": decks[current].info.id, "pos": [you.pos.x, you.pos.y], "sent": [_sent.x, _sent.y], "room": room_label.text, "unit": unit, "packs": packs.found, "slowest_ms": _slowest_ever, "atlas": [packs.size().x, packs.size().y], "items": art.standing.items.size(), "ground_verts": art.ground.verts.size(), "standing_verts": art.standing.verts.size(), "doors": art.doors.size(), "open_doors": art.doors.filter(func(d: Dictionary) -> bool: return d.open > 0.5).size(), "top_height": top.size.y, "meter": meter.text, "note": note.text, "script_ms": _script_ms, "script_usual_ms": _script_usual, "draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), "primitives": Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME), "video_mb": Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0, "people": shown.size(), "asleep": asleep, "walking": walking, "clock": clock_text, "why": clock_why.text, "banner": banner.words if banner.visible else "", "state": state, "paused": paused, "shared": shared, "stores": art.stores.size(), "cameras": art.cameras.size(), "rests": art.rests.size(), "started_game": link != null and link.started > 0, "story": {"id": story.data.get("id"), "open": story.open, "at": story.at, "beats": (story.data.get("beats", []) as Array).size(), "choices": (story.data.get("choices", []) as Array).map(func(c: Dictionary) -> String: return str(c.label)), "talk": story.data.get("talk", {}).get("name") if typeof(story.data.get("talk")) == TYPE_DICTIONARY else null, "talk_choices": (story.data.talk.choices as Array).map(func(c: Dictionary) -> String: return str(c.label)) if typeof(story.data.get("talk")) == TYPE_DICTIONARY else [], "tracker": story.data.get("tracker", {}).get("title") if typeof(story.data.get("tracker")) == TYPE_DICTIONARY else null, "message": story.message, "sending": story.sending}, "fight": {"on": fight.on, "paused": fight.paused, "held": fight.held_for, "notes": fight.notes.map(func(n: Dictionary) -> String: return str(n.text)), "ending": fight.ending.get("result"), "elsewhere": fight.elsewhere, "enemies": fight.combat.get("enemies", []).map(func(e: Dictionary) -> Array: return [e.name, e.hp]), "you": fight.combat.get("you", {}).get("hp")}, "news": news.get_child_count()})
 		print("REPORT ", JSON.stringify(_report))
 	if args.has("shot") or args.has("report"):
 		_close(0)
@@ -1672,8 +1719,9 @@ class Tags:
 	func _chatter(main: Control, seen: Dictionary, spots: Dictionary) -> void:
 		var talk: Dictionary = main._chatter
 		var now := float(Time.get_ticks_msec())
-		# Nobody chats in a fight, or while something this window doesn't play is open.
-		if main._blocked() != "" or main.fight.on:
+		# Nobody chats in a fight, while the story's being read or a talk is open, or while something this window
+		# doesn't play is open.
+		if main._blocked() != "" or main.fight.on or main.story.open or main.story.talking():
 			talk.shown = []
 			return
 		talk.shown = (talk.shown as Array).filter(func(one: Dictionary) -> bool: return one.until > now)

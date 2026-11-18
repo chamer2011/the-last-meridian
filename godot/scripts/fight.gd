@@ -158,6 +158,11 @@ func _start(c: Dictionary) -> void:
 	_refresh()
 
 
+func _on_with_story() -> void:
+	leave()
+	main.call("_continue_story")
+
+
 ## Another game or place is being loaded: whatever fight was on screen no longer applies.
 func reset() -> void:
 	on = false
@@ -662,7 +667,9 @@ func key(event: InputEventKey) -> bool:
 	if number >= 0:
 		var index := 9 if number == 0 else number - 1
 		if not ending.is_empty():
-			if index == 0:
+			if index == 0 and story_waiting:
+				_on_with_story()
+			elif index == 0 or (index == 1 and story_waiting):
 				leave()
 		elif _alive():
 			var actions := _numbered()
@@ -760,12 +767,14 @@ func _refresh() -> void:
 		if not battle:
 			for one in ending.get("followers", []):
 				column.add_child(Pal.label("%s: %s" % [str(one.name), "knocked out" if Live.truthy(one.get("down")) else "%d/%d health" % [int(one.hp), int(one.maxHp)]], p.dim, 12))
-		if story_waiting:
-			var more := Pal.words("The story picks it up from here, in the game's own window: stories aren't in this one yet.", p.dim, 12)
-			more.custom_minimum_size.x = wide - 24.0
-			column.add_child(more)
+		# A fight a written scene was waiting on goes on with the story; any other is over.
 		var row := HBoxContainer.new()
-		row.add_child(_button("1) Back to the room", "", false, false, leave, p))
+		row.add_theme_constant_override("separation", 6)
+		if story_waiting:
+			row.add_child(_button("1) Continue the story", "The story picks it up from here", false, false, _on_with_story, p))
+			row.add_child(_button("2) Look around first", "", false, false, leave, p))
+		else:
+			row.add_child(_button("1) Back to the room", "", false, false, leave, p))
 		column.add_child(row)
 	elif _alive():
 		var head := HBoxContainer.new()

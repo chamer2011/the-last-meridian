@@ -2,9 +2,9 @@ ALMAGEST EXPLORER'S IN GODOT
 ============================
 
 This folder is the Godot view of the game: what's seen and clicked, being moved to Godot a step at
-a time, while the game's rules stay where they are (src/, in JavaScript). Steps 1 to 3 of seven are
+a time, while the game's rules stay where they are (src/, in JavaScript). Steps 1 to 4 of seven are
 here: the room of the game being played, with everyone aboard, the doors, the light and the dark,
-fires and the clock, and fights fought in the room.
+fires and the clock, fights fought in the room, and the story and talks over it.
 
 TO OPEN IT
 Double-click start-godot.bat in the game's folder (the one above this). It fetches Godot 4.3 the
@@ -15,6 +15,7 @@ WHAT'S HERE
 - scripts/main.gd: the window, the clock, walking, and what the game is asked and told.
 - scripts/link.gd: the line to the game (server.js, the same program the browser view talks to).
 - scripts/fight.gd: a fight in the room, with its orders, its notes and its two sides.
+- scripts/story.gd: the story and talks, on panes by people's heads, and the quest in the corner.
 - scripts/deck_art.gd, deck_view.gd, overlay.gd, figure.gd and the scripts they use: the drawing.
 - scripts/pal.gd and the panes, the Keelworks desktop and style_test.tscn: the style test of the
   console look, approved before this, which the later steps are built from.

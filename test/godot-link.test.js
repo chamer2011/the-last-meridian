@@ -1,7 +1,7 @@
 // The Godot view's line to the game, over the real server (server.js, the routes under /api/godot/): what it's told
 // with no game open, the place and the room of a game being played, the clock run from Godot and left alone while the
-// game's own page is running it, a fight in the room fought from Godot, and that only a game Godot started itself is
-// Godot's to stop.
+// game's own page is running it, a fight in the room fought from Godot, the story and a talk as Godot is handed them,
+// and that only a game Godot started itself is Godot's to stop.
 
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -13,6 +13,8 @@ import { after, test } from "node:test";
 
 process.env.GAME_DATA_DIR ??= fs.mkdtempSync(path.join(os.tmpdir(), "meridian-godot-link-"));
 const { createGameFromDraft, randomDraft } = await import("../src/creator.js");
+// The story answers a line at a time: this only wants to know it was taken.
+const told = async (address, route, body) => (await fetch(address + route, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })).text();
 const { projectDir } = await import("../src/paths.js");
 
 const servers = [];
@@ -44,7 +46,7 @@ async function startServer(more = {}) {
     const res = await fetch(address + route, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     return { status: res.status, ...(await res.json()) };
   };
-  return { child, data, get, post };
+  return { child, data, get, post, address };
 }
 after(() => {
   for (const child of servers) child.kill();
@@ -169,6 +171,60 @@ test("a fight in the room is fought from Godot with the page's own orders, on on
       if (!still.outcome.over) assert.equal(still.combat.live.t, page.combat.live.t, "the fight stood still for Godot");
     }
   }
+});
+
+test("the story and a talk as Godot is handed them: pieces, who says them, and what can be answered", async () => {
+  const { get, post, address } = await startServer();
+  assert.equal((await post("/api/new", { draft: randomDraft({ seed: 7, archetype: "officer" }) })).status, 200);
+  const untold = await get("/api/godot/story");
+  assert.equal(untold.untold, true);
+  assert.deepEqual(untold.beats, []);
+  // The opening, told: read in pieces, each piece of speech by someone in the room keyed to them.
+  await told(address, "/api/chat", { event: "start" });
+  const opening = await get("/api/godot/story");
+  assert.equal(opening.untold, false);
+  assert.ok(opening.beats.length >= 2, "the opening comes in pieces");
+  assert.ok(opening.beats.every((beat) => ["narration", "speech", "consequence"].includes(beat.type) && beat.parts.every((part) => typeof part.text === "string")));
+  const room = (await get("/api/godot/walk")).walk;
+  const spoken = opening.beats.filter((beat) => beat.type === "speech");
+  assert.ok(spoken.length > 0, "someone speaks");
+  for (const beat of spoken.filter((one) => one.key && one.key !== "you")) assert.ok(room.people.some((person) => person.key === beat.key), `${beat.speaker} is in the room`);
+  assert.ok(opening.choices.length >= 2, "and there's something to answer");
+  assert.ok(opening.choices.every((choice) => typeof choice.label === "string" && Array.isArray(choice.chips)));
+  // The choices hang off whoever the scene is waiting on, with what they last said.
+  assert.equal(opening.anchor.key, opening.scene.with);
+  assert.ok(Array.isArray(opening.anchor.said));
+  // A choice taken: what's shown afterwards is what's been told since, starting with the player's own words.
+  const before = Number(opening.id.split("|")[2]);
+  await told(address, "/api/chat", { text: opening.choices[0].label });
+  const next = await get(`/api/godot/story?from=${before}`);
+  assert.equal(next.said, opening.choices[0].label);
+  assert.notEqual(next.id, opening.id);
+});
+
+test("a talk is handed to Godot with the person's words and the lines to say", async () => {
+  const { data, get, post, address } = await startServer();
+  leaveSave(data);
+  await post("/api/load", { slot: "slot1" });
+  const room = (await get("/api/godot/walk")).walk;
+  const person = room.people.find((one) => !one.asleep && !one.down && !one.crowd);
+  await post("/api/walk", { action: "go", to: `person:${person.key}` });
+  assert.equal((await post("/api/talk", { action: "open", person: person.key })).status, 200);
+  const opened = (await get("/api/godot/story")).talk;
+  assert.equal(opened.key, person.key);
+  assert.ok(opened.said.length > 0, "they speak first");
+  assert.equal(opened.choices.at(-1).order, "close", "the last line is goodbye");
+  assert.equal((await post("/api/godot/tick", { ms: 500, rate: 10 })).state.talk, true);
+  // A line said: their answer is the newest thing, and the player's own words are kept to show over it.
+  const line = opened.choices.find((choice) => choice.say);
+  if (line) {
+    await told(address, "/api/talk", { action: "say", text: line.say });
+    const answered = (await get("/api/godot/story")).talk;
+    assert.equal(answered.heard, line.say);
+    assert.ok(answered.lines > opened.lines);
+  }
+  assert.equal((await post("/api/talk", { action: "close" })).status, 200);
+  assert.equal((await get("/api/godot/story")).talk, null);
 });
 
 test("only a game Godot started is Godot's to stop, and it saves before it does", async () => {

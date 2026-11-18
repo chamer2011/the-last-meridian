@@ -57,6 +57,35 @@ func ask(path: String, body: Variant = null, wait := 20.0) -> Dictionary:
 	return {"ok": true, "code": code, "data": data, "error": ""}
 
 
+## Tells the game something whose answer isn't wanted, only whether it took it: a choice in the story, a line in a talk.
+## Those answer with the whole game, or with the story a line at a time, which Godot asks for afresh in its own shape
+## afterwards. { ok, error }.
+func tell(path: String, body: Dictionary, wait := 60.0) -> Dictionary:
+	var http := HTTPRequest.new()
+	http.use_threads = true
+	http.timeout = wait
+	add_child(http)
+	var failed := http.request("http://127.0.0.1:%d%s" % [port, path], PackedStringArray(["content-type: application/json"]), HTTPClient.METHOD_POST, JSON.stringify(body))
+	if failed != OK:
+		http.queue_free()
+		return {"ok": false, "error": "The game couldn't be asked."}
+	var got: Array = await http.request_completed
+	http.queue_free()
+	if int(got[0]) != HTTPRequest.RESULT_SUCCESS:
+		return {"ok": false, "error": "The game didn't answer."}
+	var text: String = (got[3] as PackedByteArray).get_string_from_utf8()
+	if int(got[1]) != 200:
+		var said: Variant = JSON.parse_string(text)
+		return {"ok": false, "error": str(said.error) if typeof(said) == TYPE_DICTIONARY and said.has("error") else "The game refused (%d)." % int(got[1])}
+	# The story comes a line at a time, and a turn it couldn't answer is one of the lines.
+	var at := text.find("{\"type\":\"error\"")
+	if at >= 0:
+		var line := text.substr(at).get_slice("\n", 0)
+		var said: Variant = JSON.parse_string(line)
+		return {"ok": false, "error": str(said.message) if typeof(said) == TYPE_DICTIONARY and said.has("message") else "The story couldn't answer that."}
+	return {"ok": true, "error": ""}
+
+
 ## Starts the game itself, hidden, from the game's folder (this project is the folder "godot" inside it). False if
 ## Node.js isn't on this computer.
 func start_game() -> bool:

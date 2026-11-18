@@ -454,6 +454,11 @@ async function godotApi(req, res, route) {
     }
     // One level again, when something on it has changed.
     if (what.startsWith("level/")) return jsonShort({ ok: true, deck: godotLevelNow(requireGame(), decodeURIComponent(what.slice("level/".length))) });
+    // The story and a talk, read by the page's own readers and cut into the pieces Godot shows (src/godot-story.js).
+    if (what === "story") {
+      const from = new URL(req.url, "http://localhost").searchParams.get("from");
+      return json(res, 200, (await import("./src/godot-story.js")).godotStory(requireGame(), { from: from === null ? null : Number(from) }));
+    }
     // A fight, as the fight window and the room are shown it, when Godot hears there's one.
     if (what === "combat") return json(res, 200, { combat: combatView(requireGame()), you: { hp: game.hp, energy: game.energy }, storyWaiting: Boolean(publicState(game).storyWaiting) });
     // The room as it stands, when the player's been moved by something other than Godot.
