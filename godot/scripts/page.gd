@@ -959,6 +959,132 @@ func _style(d: Dictionary, from: Dictionary) -> Dictionary:
 				s.suffix = ""
 				s.group = false
 				s.hot = Color("0d3a1a")
+			# The fight window, for a fight that isn't in the room: the two sides, what happened, and the orders.
+			"fight-window":
+				s.kind = COLUMN
+				s.size = 13.0
+			"fight-title":
+				s.kind = ROW
+				s.between = true
+				s.gap = Vector2(12, 0)
+				s.pad = [10.0, 2.0, 10.0, 2.0]
+				s.bg = ink
+				s.color = ground
+				s.keep = true
+				s.bold = true
+				s.upper = true
+			"fight-body":
+				s.kind = GRID if _wide >= 700.0 else COLUMN
+				s.cols = [["fr", 1.6], ["fr", 1]]
+			"fight-center":
+				s.kind = COLUMN
+			"fight-arena":
+				s.kind = ROW
+				s.gap = Vector2(14, 8)
+				s.pad = [10.0, 8.0, 10.0, 8.0]
+			"fight-side":
+				s.kind = ROW
+				s.gap = Vector2(6, 6)
+			"fight-clash":
+				s.color = WARN
+				s.bold = true
+			"fight-side-title":
+				s.color = dim
+				s.size = 12.0
+				s.upper = true
+			"fight-log", "fight-result", "fight-actions":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 2)
+				s.pad = [12.0, 6.0, 12.0, 8.0]
+				s.border = rule
+				s.sides = 1 if cls != "fight-actions" else 8
+			"fight-round":
+				s.color = dim
+				s.size = 12.0
+			"fight-opening":
+				s.color = Color("d9d6cb")
+			"fight-result-title":
+				s.size = 18.0
+				s.bold = true
+				s.upper = true
+			"fight-read":
+				s.color = dim
+				s.size = 12.0
+				s.pad = [12.0, 4.0, 12.0, 4.0]
+			"fighter", "fight-card":
+				s.kind = COLUMN
+				s.pad = [6.0, 4.0, 6.0, 4.0]
+				s.border = rule
+			# The quest log.
+			"qt":
+				s.kind = COLUMN
+				s.size = 13.0
+			"qt-head":
+				s.kind = ROW
+				s.between = true
+				s.gap = Vector2(12, 0)
+				s.pad = [10.0, 2.0, 10.0, 2.0]
+				s.bg = ink
+				s.color = ground
+				s.keep = true
+				s.bold = true
+				s.upper = true
+			"qt-close":
+				s.color = ground
+				s.upper = false
+			"qt-left", "qt-right":
+				s.kind = COLUMN
+				s.pad = [10.0, 8.0, 10.0, 8.0]
+				s.gap = Vector2(0, 8)
+				if cls == "qt-right":
+					s.border = rule
+					s.sides = 1
+			"qt-left-inner", "qt-story", "qt-steps", "qt-list":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 2 if cls == "qt-list" else 4)
+			"qt-box":
+				s.color = dim
+				s.then_space = true
+			"qt-what":
+				s.color = bright
+				s.then_space = true
+			"qt-where", "qt-none", "qt-item-step", "qt-key":
+				s.color = dim
+				s.size = 12.0
+			"qt-about", "qt-entry", "qt-passage":
+				s.color = Color("d9d6cb")
+			"qt-said":
+				s.color = bright
+			"qt-ending", "qt-message":
+				s.color = WARN
+			"qt-chip":
+				s.color = ground
+				s.lit = ink
+			"qt-group":
+				s.color = dim
+				s.size = 11.0
+				s.upper = true
+				s.mt = 6.0
+				s.border = rule
+				s.sides = 4
+				s.dotted = true
+			"qt-item":
+				s.kind = ROW
+				s.gap = Vector2(10, 0)
+				s.between = true
+				s.pad = [4.0, 2.0, 4.0, 2.0]
+				s.prefix = ""
+				s.suffix = ""
+				s.group = false
+				if _has(d, "picked"):
+					s.bg = Color(ink, 0.14)
+					s.border = bright
+					s.sides = 8
+			"qt-item-name":
+				s.color = bright
+			"qt-tag":
+				s.color = dim
+				s.size = 11.0
 			# The making of a captain.
 			"creator":
 				s.kind = COLUMN
@@ -1254,7 +1380,7 @@ func _in_line(k: Variant, on_desk := false) -> bool:
 	if on_desk and str(d.t) == "button":
 		return false
 	for cls in str(d.get("c", "")).split(" ", false):
-		if cls in ["row", "spread", "stack", "card", "menu-row", "post-card", "post-duty", "watch-people", "rig-socket", "rig-frame", "option", "here-row", "here-part", "here-tag", "rig-pocket"]:
+		if cls in ["row", "spread", "stack", "card", "menu-row", "post-card", "post-duty", "watch-people", "rig-socket", "rig-frame", "option", "here-row", "here-part", "here-tag", "rig-pocket", "qt-item"]:
 			return false
 	for child in d.get("k", []):
 		if not _in_line(child, on_desk):
@@ -1382,7 +1508,11 @@ func _words(k: Variant, from: Dictionary, out: Array, on: Dictionary, state: Dic
 	var after: String = s.get("suffix", "") if s.has("group") or str(d.get("t", "")) == "button" else ""
 	if before != "":
 		_text(before, s, out, mine, state, true)
+	var in_button: bool = str(d.get("t", "")) == "button" and not s.pre
 	for child in d.get("k", []):
+		# The parts of a button (its number, its words, what it costs) stand apart, as the page spaces them.
+		if in_button and typeof(child) == TYPE_DICTIONARY and not out.is_empty():
+			state.space = true
 		_words(child, s, out, mine, state)
 	if after != "":
 		_text(after, s, out, mine, state, true)

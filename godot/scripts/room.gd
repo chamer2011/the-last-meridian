@@ -276,7 +276,7 @@ func _process(_delta: float) -> void:
 		if mark.key == hover:
 			mark["box"] = _box(mark.full, mark.at, 12 if int(mark.size) >= 12 else 10)
 	# A skill check's window has the room to itself.
-	here.visible = _here_wanted and not main.check.console.visible and not main.sheet.open
+	here.visible = _here_wanted and not main.check.console.visible and not main.sheet.open and not main.fight_window.open and not main.computer.open
 	_place()
 	queue_redraw()
 

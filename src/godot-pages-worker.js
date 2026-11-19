@@ -36,6 +36,8 @@ const { initSheet, openPersonSheet, openSheetAt, resetSheet, sheetNode } = await
 const { endingNode, initEnding } = await import("../public/ending.js");
 const { creatorScreen, initCreator, openCreator, resetCreator } = await import("../public/creator.js");
 const { computerNode, initComputer, resetComputer } = await import("../public/computer.js");
+const { fightNode, initFight, resetFight, startSim } = await import("../public/fight.js");
+const { drawQuests, initQuests, openQuests, questTrackerNode, questsOpen, resetQuests } = await import("../public/quests.js");
 
 // What the page keeps about itself (ui in public/app.js), as far as the menus read it.
 const ui = { game: null, saves: [], setup: null, screen: "game", tab: "leads", sideOpen: false, streaming: false, waiting: false, menuFocus: null, peopleFilter: "all", mapSelected: null, codexSearch: "", menuMessage: null };
@@ -109,7 +111,7 @@ initMenus({
   loadGame,
   toTitle: () => effects.push({ type: "close" }, { type: "title" }),
   openMenu,
-  startSim: () => say(`The simulator ${NOT_YET}`),
+  startSim: (enemy, followers) => runAction(() => startSim(enemy, followers))(),
   startPractice,
   // A lead taken up is the story's to tell: Godot sends it, as it sends a choice.
   followLead: (lead) => effects.push({ type: "close" }, { type: "chat", body: { text: `I look into this: ${lead.title}`, thread: lead.id } }),
@@ -124,6 +126,11 @@ initRig({ ui, runAction, renderMenus: render });
 // The registry printout, the page a game ends on, and the making of a captain: the page's own, like the menus.
 initSheet({ ui, render, act, openMenu, startPractice });
 initEnding({ ui, render, loadGame, toTitle: () => effects.push({ type: "title" }), newGame: async () => effects.push({ type: "creator" }) });
+// A fight that isn't fought in the room (the simulator's, one aboard another ship): the game's fight window. Godot
+// plays a fight in the room itself (fight.gd), and only asks for this window when one isn't.
+initFight({ ui, render, sendChat: (body) => effects.push({ type: "close" }, { type: "chat", body }), openMenu, closeMenu, inRoom: () => false });
+// The quest log: the tracker in the room's corner, grown.
+initQuests({ ui, render, placed: () => {} });
 // A computer the player is at: its desktop, or a panel's own face, with the rig beside it.
 initComputer({ ui, render, openMenu });
 initCreator({
@@ -209,7 +216,11 @@ const builders = {
   ending: () => endingNode(),
   creator: () => creatorScreen(),
   computer: () => computerNode(),
+  quests: () => (questsOpen() ? questTrackerNode() : null),
+  fight: () => fightNode(),
 };
+// What's drawn into one of them only once it's on the page.
+const fills = { quests: drawQuests };
 // What opening each of them does first.
 const opens = {
   menu: async (ask) => {
@@ -223,6 +234,11 @@ const opens = {
   },
   ending: async () => {},
   computer: async () => {},
+  fight: async () => {},
+  quests: async () => {
+    resetQuests();
+    openQuests();
+  },
   creator: async () => {
     resetCreator();
     await openCreator(ui.setup);
@@ -234,6 +250,7 @@ function build(on) {
   surface.root = builders[on]() ?? null;
   // On the page, so that the page's own code finds its elements where it looks for them.
   surface.holder.replaceChildren(...(surface.root ? [surface.root] : []));
+  if (surface.root) fills[on]?.();
   stale = false;
   return surface;
 }
@@ -262,6 +279,8 @@ async function answer(ask) {
       resetComputer();
       resetSheet();
       resetCreator();
+      resetQuests();
+      resetFight();
       Object.assign(ui, { menuMessage: null, menuFocus: null, mapSelected: null });
       for (const surface of Object.values(surfaces)) Object.assign(surface, { root: null, ids: [], last: "" });
     }

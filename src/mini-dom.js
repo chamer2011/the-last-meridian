@@ -143,6 +143,15 @@ export class Element {
   get children() {
     return this.childNodes.filter((one) => one.nodeType === 1);
   }
+  // Whether it's on the page: some of the page's code draws only into what is.
+  get isConnected() {
+    let top = this;
+    while (top.parentNode) top = top.parentNode;
+    return top.tagName === "HTML";
+  }
+  get parentElement() {
+    return this.parentNode;
+  }
   get firstChild() {
     return this.childNodes[0] ?? null;
   }

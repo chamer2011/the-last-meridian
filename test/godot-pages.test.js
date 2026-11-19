@@ -266,3 +266,23 @@ test("a computer's desktop is the page's own too: an icon opens its window, and 
   assert.equal(left.closed, true);
   assert.equal((await post("/api/godot/tick", { ms: 0, rate: 10 })).state.computer, false);
 });
+
+test("the quest log and the simulator's fight window are the page's own too", async () => {
+  const { data, post, page } = await startServer();
+  leaveSave(data);
+  await post("/api/load", { slot: "slot1" });
+  const log = await page({ op: "open", on: "quests" });
+  assert.equal(log.on, "quests");
+  assert.match(words(log.tree), /What happened/);
+  const shut = await page({ op: "click", on: "quests", id: button(log.tree, "Close").id, of: log.of });
+  assert.equal(shut.closed, true);
+  // No fight, no fight window; one run in the simulator from Enemies met, and there is one, with its orders.
+  assert.equal((await page({ op: "open", on: "fight" })).closed, true);
+  const met = await page({ op: "open", menu: "bestiary" });
+  const run = button(met.tree, "Run in simulator");
+  assert.ok(run && !run.d, "the simulator's aboard");
+  await page({ op: "click", id: run.id, of: met.of });
+  const fight = await page({ op: "open", on: "fight" });
+  assert.match(words(fight.tree), /simulation/i);
+  assert.ok(button(fight.tree, "Attack"), "there's an order to give");
+});

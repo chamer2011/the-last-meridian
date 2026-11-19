@@ -97,6 +97,8 @@ var sheet: HostWindow
 var ending: HostWindow
 var creator: HostWindow
 var computer: HostWindow
+var quests: HostWindow
+var fight_window: HostWindow
 ## Everyone on the level, as the game last listed them.
 var people: Array = []
 var menus: Menus
@@ -224,6 +226,20 @@ func _ready() -> void:
 	sheet.main = self
 	sheet.colours = {"c": Color("ffb547"), "bright": Color("ffe0a3"), "dim": Color("a8732c"), "line": Color("3a2709"), "bg": Color("120b02"), "panel": Color("1a1206")}
 	add_child(sheet)
+	# A fight that isn't fought in the room (the simulator's): the game's own fight window.
+	fight_window = HostWindow.new()
+	fight_window.main = self
+	fight_window.on = "fight"
+	fight_window.where = "middle"
+	fight_window.most_wide = 940.0
+	add_child(fight_window)
+	# The quest log: every quest, where each stands, and what happened in it.
+	quests = HostWindow.new()
+	quests.main = self
+	quests.on = "quests"
+	quests.where = "left"
+	quests.most_wide = 560.0
+	add_child(quests)
 	# A computer the player is at: its monitor and desktop, built by the game like the printout.
 	computer = HostWindow.new()
 	computer.main = self
@@ -627,6 +643,8 @@ func _unload() -> void:
 	if sheet != null:
 		sheet.close()
 		computer.close()
+		quests.close()
+		fight_window.close()
 	for deck in decks:
 		if deck.has("view") and deck.view != null:
 			(deck.view as DeckView).queue_free()
@@ -1111,6 +1129,9 @@ func _tick() -> void:
 		fight.wake()
 	else:
 		fight.none()
+	# A fight that isn't in the room is fought in the game's fight window, which stays until its ending's been read.
+	if fight.elsewhere != "" and not fight_window.open:
+		fight_window.show_page()
 	# A computer the player has sat down at opens over the room, and goes when they've logged off.
 	if Live.truthy(state.get("computer")) and not computer.open:
 		room.put_away()
@@ -1300,7 +1321,7 @@ func _show_clock() -> void:
 	if _lost >= 4:
 		words = "The game has stopped answering. If you closed its window, close this one too and start again."
 	elif held == "combat":
-		if fight.elsewhere != "":
+		if fight.elsewhere != "" and not fight_window.open:
 			words = "%s (Its own window: %s in a browser, or the game's app.)" % [fight.elsewhere, link.address()]
 	elif held != "" and held != "check" and not (held == "over" and ending.open) and not (held == "computer" and computer.open):
 		words = "%s (Its own window: %s in a browser, or the game's app.)" % [NOT_YET[held], link.address()]
@@ -1380,6 +1401,19 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			computer.ask({"op": "key", "key": "h" if event.physical_keycode == KEY_H else "Escape"})
 		get_viewport().set_input_as_handled()
 		return
+	# A fight in its window has the keys to itself (its orders are clicked).
+	if event is InputEventKey and fight_window.open:
+		get_viewport().set_input_as_handled()
+		return
+	# J is the quest log, and Esc puts it away.
+	if event is InputEventKey and event.pressed and not event.echo and playing and link != null and menus.open_id == "" and not bag.on and not check.console.visible:
+		if event.physical_keycode == KEY_J or (event.physical_keycode == KEY_ESCAPE and quests.open):
+			if quests.open:
+				quests.close()
+			else:
+				quests.show_page()
+			get_viewport().set_input_as_handled()
+			return
 	# C is the registry printout, and Esc puts it away.
 	if event is InputEventKey and event.pressed and not event.echo and playing and link != null and menus.open_id == "" and not bag.on and not check.console.visible:
 		if event.physical_keycode == KEY_C or (event.physical_keycode == KEY_ESCAPE and sheet.open and not room.is_open()):
@@ -1851,6 +1885,11 @@ func _run_check() -> void:
 	if args.has("creator"):
 		creator.show_page()
 		await get_tree().create_timer(1.5).timeout
+	if args.has("menu"):
+		menus.open(str(args.menu))
+		await get_tree().create_timer(1.2).timeout
+		if args.has("menu-scroll"):
+			menus.scroll.pos = float(args["menu-scroll"])
 	# --words="computer:Systems;computer:Doors": real clicks, one after another, on whatever says that in one of the
 	# windows the game builds (computer, sheet, creator, ending, board, mapedit), or in the open menu (menu:Wait 1 day).
 	if args.has("words"):
@@ -1868,11 +1907,6 @@ func _run_check() -> void:
 				var at := page.global_position + spot
 				await _press("%d,%d" % [int(at.x), int(at.y)])
 			await get_tree().create_timer(1.5).timeout
-	if args.has("menu"):
-		menus.open(str(args.menu))
-		await get_tree().create_timer(1.2).timeout
-		if args.has("menu-scroll"):
-			menus.scroll.pos = float(args["menu-scroll"])
 	if args.has("click"):
 		var at: PackedStringArray = str(args.click).split(",")
 		if link == null:

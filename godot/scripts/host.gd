@@ -146,6 +146,8 @@ func _put() -> void:
 	match where:
 		"right":
 			console.position = Vector2(room.x - wide - 10.0, roof)
+		"left":
+			console.position = Vector2(10.0, roof)
 		_:
 			console.position = Vector2(round((room.x - wide) / 2.0), maxf(roof, round((room.y - console.size.y) / 2.5)))
 	_wide = room.x
