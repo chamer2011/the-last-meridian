@@ -1214,7 +1214,7 @@ export function publicState(game) {
 }
 
 // Who the player is right now, what they can do about it, and who's in charge if it isn't them.
-function roleView(game) {
+export function roleView(game) {
   const start = startOf(game);
   const captain = isCaptain(game);
   const job = jobHere(game);

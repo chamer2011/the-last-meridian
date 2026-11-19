@@ -21,12 +21,16 @@ const KINDS := {
 	"amber": ["ffc466", "a57f3e", "6e5426", "120c03", Color(32 / 255.0, 22 / 255.0, 6 / 255.0, 0.92), "fff0d4"],
 	"red":   ["ff8f7f", "ad5a4e", "753a31", "140504", Color(36 / 255.0, 11 / 255.0, 8 / 255.0, 0.92), "ffe9e4"],
 	"green": ["8df5ac", "4f9a68", "2a6a43", "03110a", Color(6 / 255.0, 30 / 255.0, 17 / 255.0, 0.92), "e6ffef"],
+	"violet": ["c8a8ff", "8267b3", "54407f", "0b0616", Color(22 / 255.0, 13 / 255.0, 41 / 255.0, 0.92), "f2e9ff"],
+	"blue": ["8ab8ff", "5779ad", "33507f", "040a17", Color(9 / 255.0, 20 / 255.0, 42 / 255.0, 0.92), "e6f0ff"],
+	# A skill check's own colours when its skill names none (.check-window in style.css).
+	"cyan": ["6fe6ff", "3b8ba6", "1d6b86", "03101a", Color(5 / 255.0, 26 / 255.0, 41 / 255.0, 0.92), "e4fbff"],
 }
 
 
 ## A kind's colours: c (the main colour), dim, line, bg, panel, bright.
 static func kind(name: String) -> Dictionary:
-	var k: Array = KINDS[name]
+	var k: Array = KINDS.get(name, KINDS.cyan)
 	return {"c": Color(k[0]), "dim": Color(k[1]), "line": Color(k[2]), "bg": Color(k[3]), "panel": k[4], "bright": Color(k[5])}
 
 

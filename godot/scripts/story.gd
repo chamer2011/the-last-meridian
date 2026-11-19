@@ -61,7 +61,8 @@ func _ready() -> void:
 
 
 func _room() -> Vector2:
-	return main.get_size()
+	# The room's own panel is down the right side: the story keeps to the left of it.
+	return main.get_size() - Vector2(main.room.cover(), 0)
 
 
 func _talk() -> Dictionary:
@@ -242,7 +243,7 @@ func pick(number: int) -> bool:
 	elif option.has("event"):
 		_send("/api/chat", {"event": str(option.event)})
 	elif Live.truthy(option.get("check")):
-		# A choice with a check on it opens the check, which is played in the game's own window for now.
+		# A choice with a check on it opens the check: its window comes up here (check.gd) once the game says there's one.
 		_send("/api/check/start", {"label": str(option.label)})
 	else:
 		_send("/api/chat", {"text": str(option.label)})

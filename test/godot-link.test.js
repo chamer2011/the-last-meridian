@@ -249,6 +249,57 @@ test("a talk is handed to Godot with the person's words and the lines to say", a
   assert.equal((await get("/api/godot/story")).talk, null);
 });
 
+test("who the player is comes with the clock, and the game is handed to the menus without the saves unless they're asked for", async () => {
+  const { data, get, post } = await startServer();
+  leaveSave(data);
+  await post("/api/load", { slot: "slot1" });
+  const place = await get("/api/godot/place");
+  const tick = await post("/api/godot/tick", { ms: 0, rate: 10 });
+  for (const you of [place.you, tick.you, (await get("/api/godot/walk")).you]) {
+    assert.equal(typeof you.name, "string");
+    assert.ok(you.hp > 0 && you.hp <= you.maxHp && you.energy <= you.maxEnergy);
+    assert.equal(you.captain, true);
+    assert.equal(typeof you.credits, "number");
+    assert.equal(typeof you.stress, "number");
+    assert.equal(typeof you.fuel, "number");
+  }
+  const plain = await get("/api/godot/game");
+  assert.equal(plain.game.name, place.you.name);
+  assert.equal(plain.saves, undefined);
+  assert.equal(plain.setup, undefined);
+  const full = await get("/api/godot/game?saves&setup");
+  assert.ok(Array.isArray(full.saves) && full.setup);
+});
+
+test("a skill check is handed to Godot as its window shows it, and played with the page's own commands", async () => {
+  const { data, get, post } = await startServer();
+  leaveSave(data);
+  await post("/api/load", { slot: "slot1" });
+  assert.equal((await get("/api/godot/check")).check, null, "none open yet");
+  const room = (await get("/api/godot/walk")).walk;
+  const someone = room.people.find((one) => !one.asleep && !one.down && !one.crowd && !one.wary) ?? room.people[0];
+  await post("/api/walk", { action: "go", to: `person:${someone.key}` });
+  // Picking a pocket is a Stealth check: the room's own order opens it.
+  const opened = await post("/api/walk", { action: "pickpocket", key: someone.key });
+  assert.equal(opened.status, 200);
+  assert.equal((await post("/api/godot/tick", { ms: 500, rate: 10 })).state.check, true);
+  const { check } = await get("/api/godot/check");
+  assert.equal(check.skill, "stealth");
+  assert.equal(typeof check.window, "string");
+  assert.equal(typeof check.theme, "string");
+  assert.ok(check.panels.length >= 1 && check.panels.every((panel) => typeof panel.title === "string"));
+  assert.ok(check.commands.length >= 1 && check.commands.every((entry) => typeof entry.command === "string" && typeof entry.label === "string"));
+  assert.ok(check.odds >= 0 && check.odds <= 100);
+  assert.equal(check.target, `person:${someone.key}`);
+  // The roll, made at once: it's over, with how it came out to show.
+  const rolled = await post("/api/check", { command: "run" });
+  assert.equal(rolled.over, true);
+  assert.equal(typeof rolled.outcome.title, "string");
+  assert.equal(typeof rolled.outcome.math, "string");
+  assert.equal(typeof rolled.outcome.success, "boolean");
+  assert.equal((await get("/api/godot/check")).check, null);
+});
+
 test("only a game Godot started is Godot's to stop, and it saves before it does", async () => {
   const ours = await startServer();
   const refused = await ours.post("/api/godot/stop");

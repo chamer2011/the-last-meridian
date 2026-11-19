@@ -1,10 +1,11 @@
-## The game's room, in Godot (steps 2 to 4 of the port): the place the player's at, drawn with the art packs, with the
+## The game's room, in Godot (steps 2 to 5 of the port): the place the player's at, drawn with the art packs, with the
 ## player walking it, everyone else living their days on it, the doors, the light and the dark, fires, the clock, fights
-## fought in the room (fight.gd), and the story and talks over the room (story.gd).
+## fought in the room (fight.gd), the story and talks over the room (story.gd), what can be clicked in the room and
+## the room's own panel (room.gd), skill checks (check.gd) and the menus (menus.gd, drawn by page.gd).
 ##
 ## Godot draws and takes clicks; the game's rules stay in JavaScript. Everything shown here is asked of the game itself
 ## (link.gd), which is the same program the browser view talks to, so both can be open on the same game. What Godot
-## doesn't play yet (skill checks, computers, menus) it says so about, and waits.
+## doesn't play yet (computers, the inventory, the registry printout) it says so about, and waits.
 ##
 ## For checking without a screen, after the two dashes:
 ##   --shot=out.png  --wait=1.5  --width=810  --height=860  --zoom=1.3  --report (how it went, as a line of JSON)
@@ -13,6 +14,7 @@
 ##   --press-last (the click comes after the keys, and --then=F12:5 holds on after it)
 ##   --point=700,430 (the pointer rests there)  --port=3292 (where the game is)  --no-start (never start the game itself)  --load=test (with no game open, open
 ##   that save)  --new (with no game open, start a new one; --press-first=300,300 clicks on that screen instead)  --speed=Faster  --pause
+##   --menu=ship (that menu open; --menu-scroll=400 scrolled so far down)
 ##   --plain (as if the packs weren't there)  --no-light  --bare (the deck alone)  --loading-shot=out.png
 ##   --empty (the ship with no game behind her, as step 1 had her: --deck=2 --at=40,15 --preview)
 extends Control
@@ -29,7 +31,6 @@ const TICK := 0.5
 ## What Godot doesn't play yet, and where it is played.
 const NOT_YET := {
 	"over": "This game is over. In the game's own window you can go back to a morning it kept, or start a new one.",
-	"check": "A skill check is open. It isn't in this window yet: finish it in the game's own window, and this one carries on.",
 	"computer": "A computer is open. It isn't in this window yet: log off in the game's own window, and this one carries on.",
 }
 
@@ -68,6 +69,9 @@ var top: PanelContainer
 var deck_row: HBoxContainer
 var deck_buttons: Array[Button] = []
 var clock_row: HBoxContainer
+var title_row: HBoxContainer
+var status_row: HFlowContainer
+var you_are := {}
 var clock_label: Label
 var clock_why: Label
 var speed_buttons := {}
@@ -83,6 +87,12 @@ var chip_of: Array[Dictionary] = []
 var tags: Tags
 var fight: Fight
 var story: Story
+var room: RoomWindows
+var check: CheckWindow
+## Everyone on the level, as the game last listed them.
+var people: Array = []
+var menus: Menus
+var menu_button: Button
 var tint: ColorRect
 var fade: ColorRect
 var loading: Control
@@ -175,6 +185,10 @@ func _ready() -> void:
 	chips.set_anchors_preset(Control.PRESET_FULL_RECT)
 	chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(chips)
+	# What can be clicked in the room: the marks over things, a thing's window, the right-click menu, the room's panel.
+	room = RoomWindows.new()
+	room.main = self
+	add_child(room)
 	# A fight in the room: what goes over the fighters, its orders, its notes and its two sides.
 	fight = Fight.new()
 	fight.main = self
@@ -189,6 +203,14 @@ func _ready() -> void:
 	_build_top()
 	_build_banner()
 	_build_corner()
+	# A skill check's window, over the room.
+	check = CheckWindow.new()
+	check.main = self
+	add_child(check)
+	# The menus: their buttons down the right edge, and the panel one opens in.
+	menus = Menus.new()
+	menus.main = self
+	add_child(menus)
 
 	fade = ColorRect.new()
 	fade.color = Color(Iso.BACKGROUND, 0.0)
@@ -238,13 +260,26 @@ func _build_top() -> void:
 	top.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	top.visible = false
 	add_child(top)
+	var lines := VBoxContainer.new()
+	lines.add_theme_constant_override("separation", 2)
+	top.add_child(lines)
+	# Who the player is and how they are, on a line of its own that wraps on a narrow window.
+	status_row = HFlowContainer.new()
+	status_row.add_theme_constant_override("h_separation", 14)
+	status_row.add_theme_constant_override("v_separation", 2)
+	status_row.visible = false
+	lines.add_child(status_row)
 	var row := HFlowContainer.new()
 	row.add_theme_constant_override("h_separation", 6)
 	row.add_theme_constant_override("v_separation", 2)
-	top.add_child(row)
-	row.add_child(Pal.label("ALMAGEST EXPLORER'S", Pal.BRIGHT, 13, true))
-	row.add_child(Pal.label("Godot view", Pal.MUTED, 13))
-	row.add_child(_gap(10))
+	lines.add_child(row)
+	# With no game behind her, the window's own name.
+	title_row = HBoxContainer.new()
+	title_row.add_theme_constant_override("separation", 6)
+	row.add_child(title_row)
+	title_row.add_child(Pal.label("ALMAGEST EXPLORER'S", Pal.BRIGHT, 13, true))
+	title_row.add_child(Pal.label("Godot view", Pal.MUTED, 13))
+	title_row.add_child(_gap(10))
 	# With no game behind her, the ship's decks by their buttons; with one, the clock.
 	deck_row = HBoxContainer.new()
 	deck_row.add_theme_constant_override("separation", 6)
@@ -275,6 +310,12 @@ func _build_top() -> void:
 	row.add_child(_gap(10))
 	help_label = Pal.label("W A S D or a click walks, the wheel zooms", Pal.MUTED, 13)
 	row.add_child(help_label)
+	# On a window too narrow for the menus' rail, this opens them.
+	menu_button = Pal.bracket_button("Menu", Pal.BRIGHT, Pal.BG, 13)
+	menu_button.tooltip_text = "The game's menus"
+	menu_button.visible = false
+	menu_button.pressed.connect(func() -> void: menus.toggle(""))
+	row.add_child(menu_button)
 
 
 func _gap(wide: float) -> Control:
@@ -548,6 +589,9 @@ func _unload() -> void:
 	_going = false
 	top.visible = false
 	banner.visible = false
+	menus.close()
+	check.reset()
+	room.put_away()
 
 
 # ---- Loading --------------------------------------------------------------------------------------------------------
@@ -677,6 +721,8 @@ func _load(answer: Dictionary) -> void:
 	else:
 		clock_row.visible = true
 		help_label.text = "W A S D or a click walks, the wheel zooms, Space pauses"
+		if typeof(data.get("you")) == TYPE_DICTIONARY:
+			_show_status(data.you)
 		state = data.get("state", {})
 		_saved = int(data.get("saved", -1))
 		clock_text = str(data.get("clock", {}).get("label", ""))
@@ -688,6 +734,7 @@ func _load(answer: Dictionary) -> void:
 		story.data = {}
 		story._from = -1
 		story.refresh()
+		menus.load_rail()
 	_say_what_was_plain()
 	if args.has("hold") or args.has("click") or args.has("press") or args.has("wheel") or args.has("shot") or args.has("report"):
 		_run_check()
@@ -905,6 +952,7 @@ func _take_walk(view: Dictionary) -> void:
 
 ## Who's on the level and where they've got to. Each is walked to where the game has them, never jumped there.
 func _set_people(list: Array, with_chatter: bool) -> void:
+	people = list
 	var here := {}
 	var mover: Mover = decks[current].mover
 	if mover != null:
@@ -926,6 +974,7 @@ func _set_people(list: Array, with_chatter: bool) -> void:
 	for key in shown.keys():
 		if not here.has(key):
 			shown.erase(key)
+	room.refresh()
 
 
 ## A level's picture has fallen behind the game (a room gone dark, a door locked, a fire): it's asked for again, drawn
@@ -1002,8 +1051,15 @@ func _tick() -> void:
 		fight.wake()
 	else:
 		fight.none()
+	# And a skill check in its own window.
+	if Live.truthy(state.get("check")):
+		check.wake()
+	else:
+		check.none()
 	if typeof(said.get("clock")) == TYPE_DICTIONARY:
 		clock_text = str(said.clock.get("label", clock_text))
+	if typeof(said.get("you")) == TYPE_DICTIONARY:
+		_show_status(said.you)
 	if said.has("notes"):
 		for line in said.notes:
 			_tell(str(line))
@@ -1041,6 +1097,8 @@ func _fetch_walk() -> void:
 		_saved = int(answer.data.get("saved", _saved))
 		if typeof(answer.data.get("state")) == TYPE_DICTIONARY:
 			state = answer.data.state
+		if typeof(answer.data.get("you")) == TYPE_DICTIONARY:
+			_show_status(answer.data.you)
 		# Where the game has the player, if something other than this window moved them.
 		var view: Dictionary = answer.data.walk
 		var spot := Vector2i(int(view.captain.x), int(view.captain.y))
@@ -1085,7 +1143,26 @@ func _blocked() -> String:
 	for what in ["over", "combat", "check", "computer"]:
 		if Live.truthy(state.get(what)) and not (what == "combat" and fight.on):
 			return what
+	# How a check came out is still on screen.
+	if check.console.visible:
+		return "check"
 	return ""
+
+
+## The game's answer to an order from the room's windows: the room as it is now, and whatever the order has opened (a
+## fight, a talk, a check), which the next look at the clock would say anyway.
+func _took(said: Dictionary) -> void:
+	var game: Variant = said.get("game")
+	if typeof(game) != TYPE_DICTIONARY or not playing:
+		return
+	for what in ["combat", "talk", "check", "computer", "over"]:
+		state[what] = game.get(what) != null
+	if typeof(game.get("walk")) == TYPE_DICTIONARY:
+		_take_walk(game.walk)
+	if Live.truthy(state.get("check")):
+		check.wake()
+	story.refresh()
+	_show_clock()
 
 
 ## The story has moved on, or a talk has opened or closed: the room is looked at again.
@@ -1153,7 +1230,7 @@ func _show_clock() -> void:
 	elif held == "combat":
 		if fight.elsewhere != "":
 			words = "%s (Its own window: %s in a browser, or the game's app.)" % [fight.elsewhere, link.address()]
-	elif held != "":
+	elif held != "" and held != "check":
 		words = "%s (Its own window: %s in a browser, or the game's app.)" % [NOT_YET[held], link.address()]
 	if words == "" and _said != "" and Time.get_ticks_msec() < _said_until:
 		words = _said
@@ -1163,6 +1240,42 @@ func _show_clock() -> void:
 	news.visible = not fight.on and not args.has("bare")
 	# In a narrow window the line on how to walk gives way to the clock.
 	help_label.visible = get_size().x >= 1000.0
+	menu_button.visible = not menus.has_rail()
+
+
+## Who the player is and how they are, along the top, as the game's own status bar has it: their name (which will open
+## their registry printout), their level, health and energy, how worn they are, what's wrong with them, and their money.
+func _show_status(you: Dictionary) -> void:
+	if you == you_are:
+		return
+	you_are = you
+	title_row.visible = false
+	status_row.visible = true
+	for old in status_row.get_children():
+		old.queue_free()
+	var points := str(you.get("points", ""))
+	var name := Pal.bracket_button(str(you.name).to_upper() + (" *" if points != "" else ""), Pal.BRIGHT, Pal.BG, 13)
+	name.add_theme_font_override("font", Pal.MONO_BOLD)
+	name.tooltip_text = "Your registry printout: your record, skills, perks, beliefs and past" + ("\nYou have %s to spend" % points if points != "" else "")
+	name.pressed.connect(func() -> void: menus.open("sheet"))
+	status_row.add_child(name)
+	status_row.add_child(Pal.label("LVL %d" % int(you.level), Pal.MUTED, 13))
+	for bar in [["HP", you.hp, you.maxHp], ["EN", you.energy, you.maxEnergy]]:
+		var share := clampf(float(bar[1]) / maxf(1.0, float(bar[2])), 0.0, 1.0)
+		var filled := int(round(share * 10.0))
+		status_row.add_child(Pal.label("%s [%s%s] %d/%d" % [bar[0], "#".repeat(filled), "-".repeat(10 - filled), int(bar[1]), int(bar[2])], Page.BAD if share <= 0.25 else Pal.TEXT, 13))
+	status_row.add_child(Pal.label("STRESS %d" % int(you.stress), Page.BAD if int(you.stress) >= 50 else Pal.TEXT, 13))
+	status_row.add_child(Pal.label("FATIGUE %d" % int(you.fatigue), Page.BAD if int(you.fatigue) >= 60 else Pal.TEXT, 13))
+	if int(you.get("hurt", 0)) > 0:
+		status_row.add_child(Pal.label("HURT %d" % int(you.hurt), Page.BAD, 13))
+	if typeof(you.get("bleeding")) == TYPE_DICTIONARY:
+		status_row.add_child(Pal.label("BLEEDING %d" % int(you.bleeding.get("blood", 0)), Page.BAD, 13))
+	status_row.add_child(Pal.label("CR %d" % int(you.credits), Pal.TEXT, 13))
+	if Live.truthy(you.get("captain")):
+		if you.get("fuel") != null:
+			status_row.add_child(Pal.label("FUEL %s" % str(you.fuel), Page.BAD if float(you.fuel) < 2.0 else Pal.TEXT, 13))
+	else:
+		status_row.add_child(Pal.label(str(you.get("role", "")).to_upper(), Pal.TEXT, 13))
 
 
 ## Something the game said about the last walk, across the top for a few seconds.
@@ -1175,6 +1288,23 @@ func _message(words: String) -> void:
 # ---- Walking --------------------------------------------------------------------------------------------------------
 
 func _unhandled_key_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F11:
+		get_window().mode = Window.MODE_WINDOWED if get_window().mode == Window.MODE_FULLSCREEN else Window.MODE_FULLSCREEN
+		get_viewport().set_input_as_handled()
+		return
+	# With a menu open, Esc shuts it, and the other keys wait.
+	if event is InputEventKey and event.pressed and not event.echo and menus.open_id != "":
+		if menus.key(event) or event.physical_keycode != KEY_SPACE:
+			get_viewport().set_input_as_handled()
+			return
+	# A skill check's keys are its own while its window is open.
+	if event is InputEventKey and event.pressed and not event.echo and playing and link != null and check.key(event):
+		get_viewport().set_input_as_handled()
+		return
+	# A number picks that choice of the menu or the window open in the room, and Esc puts it away.
+	if event is InputEventKey and event.pressed and not event.echo and playing and link != null and room.key(event):
+		get_viewport().set_input_as_handled()
+		return
 	# In a fight in the room the keys are the fight's: Space stops and starts it, a number gives that order.
 	if event is InputEventKey and event.pressed and not event.echo and playing and fight.on and fight.key(event):
 		get_viewport().set_input_as_handled()
@@ -1211,13 +1341,27 @@ func _gui_input(event: InputEvent) -> void:
 		elif story.reading():
 			# Until it's been read, a click on the room goes on with the story, and doesn't walk anywhere.
 			story.next()
+		elif room.menu.visible:
+			# A click that only puts the menu away doesn't walk anywhere.
+			room.menu_of = {}
+			room._show_menu()
 		elif not story.talking():
-			# A click on someone walks up to them, to talk; anywhere else walks there.
+			# A click on a thing's mark walks up to it and opens its window; on someone, walks up to them to talk;
+			# anywhere else walks there.
+			var mark := room.mark_at(event.position)
 			var who := _who_at((decks[current].view as DeckView).overlay, event.position)
-			if who != "" and not who.begins_with("fighter:"):
+			if mark != "":
+				_go({"action": "go", "to": mark}, null)
+			elif who != "" and not who.begins_with("fighter:"):
 				_go({"action": "go", "to": "person:%s" % who}, null)
 			else:
 				_go({"action": "go", "x": int(spot.x), "y": int(spot.y)}, spot.point)
+	elif event.button_index == MOUSE_BUTTON_RIGHT and link != null and not fight.on and not story.reading() and not story.talking():
+		# The other button: what can be done about what's under it, in a small menu.
+		var spot := Iso.spot_at((event.position - world.position) / world.scale.x)
+		var mark := room.mark_at(event.position)
+		var who := _who_at((decks[current].view as DeckView).overlay, event.position)
+		room.open_menu(mark if mark != "" else ("person:%s" % who if who != "" else "floor:%d,%d" % [int(spot.x), int(spot.y)]), event.position)
 	else:
 		return
 	accept_event()
@@ -1228,7 +1372,7 @@ func _zoom_by(times: float) -> void:
 
 
 func _can_walk() -> bool:
-	return playing and current >= 0 and decks[current].mover != null and (link == null or (_blocked() == "" and not fight.on and not story.talking() and not story.sending and not Live.truthy(state.get("talk"))))
+	return playing and current >= 0 and decks[current].mover != null and menus.open_id == "" and (link == null or (_blocked() == "" and not fight.on and not story.talking() and not story.sending and not Live.truthy(state.get("talk"))))
 
 
 ## With no game behind the ship, a click on a square: the player walks the shortest way there, or to the floor nearest.
@@ -1254,10 +1398,11 @@ func _walk_to(square: Vector2i, point: Variant) -> void:
 
 ## A click in a game: the game finds the way (round people, up to whoever or whatever was clicked, through a way out),
 ## and the player walks it. point is the very spot clicked, to end on exactly.
-func _go(body: Dictionary, point: Variant) -> void:
+func _go(body: Dictionary, point: Variant, after := Callable()) -> void:
 	if not _can_walk() or _going or _leaving or _pending:
 		return
 	story.put_away()  # walking puts the story away, until it's wanted again
+	room.put_away()
 	_going = true
 	var from := Mover.square_of(you.pos)
 	var asked := body.duplicate()
@@ -1278,13 +1423,21 @@ func _go(body: Dictionary, point: Variant) -> void:
 	_sent = Vector2i(int(view.captain.x), int(view.captain.y))
 	if said.get("message") != null:
 		_message(str(said.message))
+	# What happens on getting there: what was asked for if anything was; else walking up to someone is to talk to them
+	# (or to go on with the story that's waiting on them), up to a thing opens its window, and up to a shut door its own.
 	var arrived: Variant = said.get("arrived")
-	if typeof(arrived) == TYPE_DICTIONARY and str(arrived.get("kind", "")) == "door":
-		_message("That door is shut. Doors are asked at, forced or unlocked from the game's own window for now.")
-	# Walking up to someone is to talk to them, or to go on with the story that's waiting on them.
-	var met := ""
-	if typeof(arrived) == TYPE_DICTIONARY and str(arrived.get("kind", "")) == "person" and body.has("to"):
-		met = str(arrived.get("key", ""))
+	var then := Callable()
+	if typeof(arrived) == TYPE_DICTIONARY and body.has("to"):
+		var kind := str(arrived.get("kind", ""))
+		var key := str(arrived.get("key", ""))
+		if after.is_valid() and kind != "exit":
+			then = after.bind(arrived)
+		elif kind == "person":
+			then = story.meet.bind(key)
+		elif kind == "thing":
+			then = room.open_thing.bind(key)
+		elif kind == "door":
+			then = room.open_door.bind(key)
 	var mover: Mover = decks[current].mover
 	var points: Array[Vector2] = []
 	for step in said.get("path", []):
@@ -1298,8 +1451,8 @@ func _go(body: Dictionary, point: Variant) -> void:
 	if points.is_empty():
 		if leaving:
 			_take_walk(view)
-		if met != "":
-			story.meet(met)
+		elif then.is_valid():
+			then.call()
 		return
 	# Nobody's in the player's way on a way the game has found round them.
 	var kept := mover.blocked
@@ -1307,7 +1460,7 @@ func _go(body: Dictionary, point: Variant) -> void:
 	route = mover.smoothed(you.pos, points)
 	mover.blocked = kept
 	route_firm = leaving
-	route_done = _take_walk.bind(view) if leaving else (story.meet.bind(met) if met != "" else Callable())
+	route_done = _take_walk.bind(view) if leaving else then
 
 
 ## Tells the game about a new square once it's been reached, one at a time, and a way out as soon as it's walked into
@@ -1376,6 +1529,7 @@ func _play(dt: float) -> void:
 	var heading := Mover.heading_of(_held()) if _can_walk() and not _leaving else Vector2.ZERO
 	if heading != Vector2.ZERO:
 		story.put_away()  # walking puts the story away, until it's wanted again
+		room.put_away()
 	if not route.is_empty() and heading != Vector2.ZERO and not route_firm:
 		route.clear()  # the keys take over from a walk begun with a click
 		route_done = Callable()
@@ -1601,6 +1755,11 @@ func _measure() -> void:
 
 func _run_check() -> void:
 	await get_tree().create_timer(0.4).timeout
+	if args.has("menu"):
+		menus.open(str(args.menu))
+		await get_tree().create_timer(1.2).timeout
+		if args.has("menu-scroll"):
+			menus.scroll.pos = float(args["menu-scroll"])
 	if args.has("click"):
 		var at: PackedStringArray = str(args.click).split(",")
 		if link == null:
@@ -1636,10 +1795,18 @@ func _run_check() -> void:
 ## For checking: a real click at a point of the window.
 func _press(where: String) -> void:
 	if true:
-		var at: PackedStringArray = where.split(",")
+		# "r:700,430" is the other mouse button; "a,b;c,d" is one click after another, a second and a half apart.
+		var clicks := where.split(";")
+		if clicks.size() > 1:
+			for one in clicks:
+				await _press(one)
+				await get_tree().create_timer(1.5).timeout
+			return
+		var right := where.begins_with("r:")
+		var at: PackedStringArray = where.trim_prefix("r:").split(",")
 		for down in [true, false]:
 			var click := InputEventMouseButton.new()
-			click.button_index = MOUSE_BUTTON_LEFT
+			click.button_index = MOUSE_BUTTON_RIGHT if right else MOUSE_BUTTON_LEFT
 			click.pressed = down
 			click.position = Vector2(float(at[0]), float(at[1]))
 			click.global_position = click.position

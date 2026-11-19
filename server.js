@@ -457,6 +457,7 @@ async function godotApi(req, res, route) {
   if (req.method === "GET") {
     // Loaded only when Godot asks, so the game starts as it always did for everyone who never opens it.
     const { godotLevelNow, godotPlace, godotRound } = await import("./src/godot-view.js");
+    const { godotStatus } = await import("./src/godot-status.js");
     const jsonShort = (obj) => {
       res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
       res.end(JSON.stringify(obj, godotRound));
@@ -467,7 +468,13 @@ async function godotApi(req, res, route) {
       if (!game) return json(res, 200, { ok: true, game: false, saves: listSaves(), where: whichCopy() });
       const place = godotPlace(game);
       if (!place) return json(res, 200, { ok: true, game: true, nowhere: true, state: goingOn() });
-      return jsonShort({ ...place, game: true, walk: walkView(game), clock: clockFor(game), state: goingOn(), saved: saves });
+      return jsonShort({ ...place, game: true, walk: walkView(game), clock: clockFor(game), state: goingOn(), saved: saves, you: godotStatus(game) });
+    }
+    // The game as the page is given it, for the menus' own thread (src/godot-pages-worker.js): without the list of
+    // saves, which is every save read from the disk, unless it's asked for, and without what never changes.
+    if (what === "game") {
+      const ask = new URL(req.url, "http://localhost").searchParams;
+      return json(res, 200, { game: game ? publicState(game) : null, ...(ask.has("saves") ? { saves: listSaves() } : {}), ...(ask.has("setup") ? { setup: creatorSetup() } : {}) });
     }
     // One level again, when something on it has changed.
     if (what.startsWith("level/")) return jsonShort({ ok: true, deck: godotLevelNow(requireGame(), decodeURIComponent(what.slice("level/".length))) });
@@ -476,10 +483,15 @@ async function godotApi(req, res, route) {
       const from = new URL(req.url, "http://localhost").searchParams.get("from");
       return json(res, 200, (await import("./src/godot-story.js")).godotStory(requireGame(), { from: from === null ? null : Number(from) }));
     }
+    // A skill check, as its window is shown it, when Godot hears there's one (godot/scripts/check.gd).
+    if (what === "check") {
+      const shown = publicState(requireGame());
+      return json(res, 200, { check: shown.check, storyWaiting: Boolean(shown.storyWaiting) });
+    }
     // A fight, as the fight window and the room are shown it, when Godot hears there's one.
     if (what === "combat") return json(res, 200, { combat: combatView(requireGame()), you: { hp: game.hp, energy: game.energy }, storyWaiting: Boolean(publicState(game).storyWaiting) });
     // The room as it stands, when the player's been moved by something other than Godot.
-    if (what === "walk") return json(res, 200, { walk: walkView(requireGame()), clock: clockFor(game), state: goingOn(), saved: saves });
+    if (what === "walk") return json(res, 200, { walk: walkView(requireGame()), clock: clockFor(game), state: goingOn(), saved: saves, you: godotStatus(game) });
     return json(res, 404, { error: "Not found." });
   }
   if (req.method !== "POST") return json(res, 404, { error: "Not found." });
@@ -493,10 +505,15 @@ async function godotApi(req, res, route) {
     setTimeout(() => process.exit(0), 100);
     return null;
   }
+  // A menu, built by the page's own code on a thread of its own and handed over as a tree for Godot to draw; and a
+  // click or typed words in one, which run the element's own listener there (src/godot-pages.js). Its orders come back
+  // to the game by the page's own routes, so this only passes things along.
+  if (what === "page") return json(res, 200, await (await import("./src/godot-pages.js")).askPages(PORT, body));
   if (busy) return json(res, 409, { error: "The story is still being told. Wait a moment." });
   if (what === "tick") {
     requireGame();
     if (game.over) return json(res, 200, { still: true, state: goingOn(), saved: saves });
+    const { godotStatus } = await import("./src/godot-status.js");
     const shared = Date.now() - pageTicked < PAGE_HAS_THE_CLOCK;
     const { reply, notes = [], passed = false } = clockTick(shared ? { ...body, ms: 0 } : body);
     const at = standingAt(game);
@@ -505,6 +522,7 @@ async function godotApi(req, res, route) {
       clock: clockFor(game),
       state: goingOn(),
       saved: saves,
+      you: godotStatus(game),
       ...(at ? { at: { level: at.levelId, x: at.x, y: at.y } } : {}),
       ...(shared ? { shared: true } : {}),
       ...(notes.length ? { notes } : {}),
