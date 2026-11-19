@@ -78,6 +78,31 @@ function matches(node, selector) {
   return parts.every((part) => (part[0] === "." ? node.classList.contains(part.slice(1)) : part[0] === "#" ? node.id === part.slice(1) : node.tagName.toLowerCase() === part.toLowerCase()));
 }
 
+// A small picture written as markup (the desktop's icons are a few coloured rectangles; the network map's wires are
+// lines): its shapes are kept, so Godot can draw them. Nothing else written as markup is read.
+const attrsOf = (text) => Object.fromEntries([...text.matchAll(/([\w:-]+)="([^"]*)"/g)].map((found) => [found[1], found[2]]));
+function pictureFrom(html) {
+  const node = new Element("svg");
+  const head = attrsOf(html.match(/<svg([^>]*)>/)?.[1] ?? "");
+  if (head.class) node.className = head.class;
+  const view = (head.viewBox ?? "0 0 16 16").split(/\s+/).map(Number);
+  node.shapes = { w: view[2], h: view[3], rects: [], lines: [] };
+  for (const [, text] of html.matchAll(/<rect([^>]*)\/?>/g)) {
+    const a = attrsOf(text);
+    node.shapes.rects.push([Number(a.x ?? 0), Number(a.y ?? 0), Number(a.width ?? 0), Number(a.height ?? 0), a.fill ?? "#000"]);
+  }
+  for (const [, text] of html.matchAll(/<line([^>]*)\/?>/g)) {
+    const a = attrsOf(text);
+    node.shapes.lines.push([Number(a.x1 ?? 0), Number(a.y1 ?? 0), Number(a.x2 ?? 0), Number(a.y2 ?? 0), a.class ?? ""]);
+  }
+  for (const [, text] of html.matchAll(/<path([^>]*)\/?>/g)) {
+    const a = attrsOf(text);
+    const points = [...String(a.d ?? "").matchAll(/(-?[\d.]+)[ ,](-?[\d.]+)/g)].map((found) => [Number(found[1]), Number(found[2])]);
+    for (let i = 1; i < points.length; i += 1) node.shapes.lines.push([...points[i - 1], ...points[i], a.class ?? ""]);
+  }
+  return node;
+}
+
 export class Element {
   constructor(tag) {
     this.nodeType = 1;
@@ -171,6 +196,18 @@ export class Element {
     parent.childNodes.splice(parent.childNodes.indexOf(this), 1, ...nodes);
     this.parentNode = null;
     void at;
+  }
+  // Markup set on an element is kept as written; only a picture's is ever read back (content, below).
+  set innerHTML(html) {
+    this.html = String(html);
+    this.replaceChildren();
+  }
+  get innerHTML() {
+    return this.html ?? "";
+  }
+  get content() {
+    const picture = pictureFrom(this.html ?? "");
+    return { firstChild: picture, firstElementChild: picture };
   }
   get textContent() {
     return this.childNodes.map((one) => one.textContent).join("");
@@ -294,6 +331,7 @@ export function describe(node, ids) {
   if (node.attributes.type) out.type = node.attributes.type;
   if (node.attributes["aria-pressed"] === "true" || node.checked) out.pressed = 1;
   if (node.hidden) out.hidden = 1;
+  if (node.shapes) out.svg = node.shapes;
   const kids = node.childNodes.map((child) => describe(child, ids)).filter((one) => one !== "");
   if (kids.length) out.k = kids;
   return out;

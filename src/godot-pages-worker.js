@@ -35,6 +35,7 @@ const { loreCatalog, setStoryContext } = await import("../public/story-view.js")
 const { initSheet, openPersonSheet, openSheetAt, resetSheet, sheetNode } = await import("../public/sheet.js");
 const { endingNode, initEnding } = await import("../public/ending.js");
 const { creatorScreen, initCreator, openCreator, resetCreator } = await import("../public/creator.js");
+const { computerNode, initComputer } = await import("../public/computer.js");
 
 // What the page keeps about itself (ui in public/app.js), as far as the menus read it.
 const ui = { game: null, saves: [], setup: null, screen: "game", tab: "leads", sideOpen: true, streaming: false, waiting: false, menuFocus: null, peopleFilter: "all", mapSelected: null, codexSearch: "", menuMessage: null };
@@ -123,6 +124,8 @@ initRig({ ui, runAction, renderMenus: render });
 // The registry printout, the page a game ends on, and the making of a captain: the page's own, like the menus.
 initSheet({ ui, render, act, openMenu, startPractice });
 initEnding({ ui, render, loadGame, toTitle: () => effects.push({ type: "title" }), newGame: async () => effects.push({ type: "creator" }) });
+// A computer the player is at: its desktop, or a panel's own face, with the rig beside it.
+initComputer({ ui, render, openMenu });
 initCreator({
   render,
   begin: async (draft) => {
@@ -205,6 +208,7 @@ const builders = {
   sheet: () => sheetNode(),
   ending: () => endingNode(),
   creator: () => creatorScreen(),
+  computer: () => computerNode(),
 };
 // What opening each of them does first.
 const opens = {
@@ -218,6 +222,7 @@ const opens = {
     else openSheetAt(ask.page ?? "record");
   },
   ending: async () => {},
+  computer: async () => {},
   creator: async () => {
     resetCreator();
     await openCreator(ui.setup);
@@ -273,6 +278,8 @@ async function answer(ask) {
     }
   }
   if (stale || !node) build(on);
+  // What the page's own code has drawn again in place (a computer redraws itself) is what's there now.
+  else surface.root = surface.holder.childNodes[0] ?? null;
   return handOver(on);
 }
 
