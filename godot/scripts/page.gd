@@ -1388,6 +1388,10 @@ func _get_tooltip(at_position: Vector2) -> String:
 	return str(_under(root, Vector2.ZERO, at_position)[1])
 
 
+func _make_custom_tooltip(for_text: String) -> Object:
+	return Pal.tip(for_text, {"c": ink, "bg": ground, "bright": bright})
+
+
 ## Where a box is on the page, for the boxes to type in, which are Godot's own.
 func _place_fields() -> void:
 	while _fields.size() > _field_boxes.size():

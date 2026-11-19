@@ -5,7 +5,7 @@ This folder is the Godot view of the game: what's seen and clicked, being moved 
 a time, while the game's rules stay where they are (src/, in JavaScript). Steps 1 to 4 of seven are
 here, and the first parts of step 5: the room of the game being played, with everyone aboard, the
 doors, the light and the dark, fires and the clock, fights fought in the room, the story and talks
-over it, what can be clicked in the room, skill checks, and the menus.
+over it, what can be clicked in the room, skill checks, the inventory, and the menus.
 
 TO OPEN IT
 Double-click start-godot.bat in the game's folder (the one above this). It fetches Godot 4.3 the
@@ -19,6 +19,7 @@ WHAT'S HERE
 - scripts/story.gd: the story and talks, on panes by people's heads, and the quest in the corner.
 - scripts/room.gd: the marks over things, a thing's window, the right-click menu, the room's panel.
 - scripts/check.gd: a skill check's window.
+- scripts/bag.gd: the inventory, and whatever's open beside the pack.
 - scripts/menus.gd: the menus' buttons down the right edge, and the panel a menu opens in.
 - scripts/page.gd: draws a menu or a window from the tree of elements it's handed. The menus' trees
   are built by the game itself, with the code that builds them for the browser (src/godot-pages.js).

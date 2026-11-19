@@ -300,6 +300,29 @@ test("a skill check is handed to Godot as its window shows it, and played with t
   assert.equal((await get("/api/godot/check")).check, null);
 });
 
+test("what the player carries is handed to Godot as the inventory's window shows it, and moved with the page's own orders", async () => {
+  const { data, get, post } = await startServer();
+  leaveSave(data);
+  await post("/api/load", { slot: "slot1" });
+  const carried = await get("/api/godot/bag");
+  assert.equal(typeof carried.name, "string");
+  assert.equal(typeof carried.credits, "number");
+  assert.ok(carried.body && typeof carried.body === "object");
+  const { bag } = carried;
+  assert.ok(bag.pack.cols > 0 && bag.pack.rows > 0 && Array.isArray(bag.pack.items));
+  assert.ok(bag.pockets.cols > 0 && Array.isArray(bag.belt) && bag.gear && "weapon" in bag.gear);
+  assert.equal(bag.open, null);
+  assert.equal(typeof bag.load, "number");
+  // Something in the pack, moved to another square of it: the answer has the pack as it now is.
+  const item = bag.pack.items[0];
+  assert.ok(item && Number.isInteger(item.x) && Number.isInteger(item.w), "there's something in the pack, with its place and size");
+  const to = { at: "pack", x: bag.pack.cols - item.w, y: bag.pack.rows - item.h };
+  const moved = await post("/api/bag", { action: "move", from: { at: "pack", x: item.x, y: item.y }, to });
+  assert.equal(moved.status, 200);
+  assert.ok(moved.game.bag.pack.items.some((one) => one.id === item.id && one.x === to.x && one.y === to.y));
+  assert.deepEqual((await get("/api/godot/bag")).bag.pack, moved.game.bag.pack);
+});
+
 test("only a game Godot started is Godot's to stop, and it saves before it does", async () => {
   const ours = await startServer();
   const refused = await ours.post("/api/godot/stop");

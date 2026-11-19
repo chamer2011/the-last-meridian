@@ -1,11 +1,11 @@
 ## The game's room, in Godot (steps 2 to 5 of the port): the place the player's at, drawn with the art packs, with the
 ## player walking it, everyone else living their days on it, the doors, the light and the dark, fires, the clock, fights
 ## fought in the room (fight.gd), the story and talks over the room (story.gd), what can be clicked in the room and
-## the room's own panel (room.gd), skill checks (check.gd) and the menus (menus.gd, drawn by page.gd).
+## the room's own panel (room.gd), skill checks (check.gd), the inventory (bag.gd) and the menus (menus.gd, drawn by page.gd).
 ##
 ## Godot draws and takes clicks; the game's rules stay in JavaScript. Everything shown here is asked of the game itself
 ## (link.gd), which is the same program the browser view talks to, so both can be open on the same game. What Godot
-## doesn't play yet (computers, the inventory, the registry printout) it says so about, and waits.
+## doesn't play yet (computers, the registry printout) it says so about, and waits.
 ##
 ## For checking without a screen, after the two dashes:
 ##   --shot=out.png  --wait=1.5  --width=810  --height=860  --zoom=1.3  --report (how it went, as a line of JSON)
@@ -89,6 +89,7 @@ var fight: Fight
 var story: Story
 var room: RoomWindows
 var check: CheckWindow
+var bag: BagWindow
 ## Everyone on the level, as the game last listed them.
 var people: Array = []
 var menus: Menus
@@ -207,6 +208,10 @@ func _ready() -> void:
 	check = CheckWindow.new()
 	check.main = self
 	add_child(check)
+	# The inventory, over the room.
+	bag = BagWindow.new()
+	bag.main = self
+	add_child(bag)
 	# The menus: their buttons down the right edge, and the panel one opens in.
 	menus = Menus.new()
 	menus.main = self
@@ -592,6 +597,7 @@ func _unload() -> void:
 	menus.close()
 	check.reset()
 	room.put_away()
+	bag.close()
 
 
 # ---- Loading --------------------------------------------------------------------------------------------------------
@@ -1297,6 +1303,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		if menus.key(event) or event.physical_keycode != KEY_SPACE:
 			get_viewport().set_input_as_handled()
 			return
+	# The inventory's keys: I opens and shuts it, and while it's open the other keys wait.
+	if event is InputEventKey and event.pressed and not event.echo and playing and link != null and not check.console.visible and bag.key(event):
+		get_viewport().set_input_as_handled()
+		return
 	# A skill check's keys are its own while its window is open.
 	if event is InputEventKey and event.pressed and not event.echo and playing and link != null and check.key(event):
 		get_viewport().set_input_as_handled()
@@ -1372,7 +1382,7 @@ func _zoom_by(times: float) -> void:
 
 
 func _can_walk() -> bool:
-	return playing and current >= 0 and decks[current].mover != null and menus.open_id == "" and (link == null or (_blocked() == "" and not fight.on and not story.talking() and not story.sending and not Live.truthy(state.get("talk"))))
+	return playing and current >= 0 and decks[current].mover != null and menus.open_id == "" and not bag.on and (link == null or (_blocked() == "" and not fight.on and not story.talking() and not story.sending and not Live.truthy(state.get("talk"))))
 
 
 ## With no game behind the ship, a click on a square: the player walks the shortest way there, or to the floor nearest.
@@ -1801,6 +1811,41 @@ func _press(where: String) -> void:
 			for one in clicks:
 				await _press(one)
 				await get_tree().create_timer(1.5).timeout
+			return
+		# "d:700,430" is a double click there; "m:700,430>760,430" presses, drags across and lets go.
+		if where.begins_with("d:"):
+			var spot := Vector2(float(where.trim_prefix("d:").get_slice(",", 0)), float(where.get_slice(",", 1)))
+			for down in [true, false, true, false]:
+				var click := InputEventMouseButton.new()
+				click.button_index = MOUSE_BUTTON_LEFT
+				click.pressed = down
+				click.position = spot
+				click.global_position = spot
+				Input.parse_input_event(click)
+				await get_tree().process_frame
+				await get_tree().process_frame
+			await get_tree().create_timer(0.3).timeout
+			return
+		if where.begins_with("m:"):
+			var ends := where.trim_prefix("m:").split(">")
+			var from := Vector2(float(ends[0].get_slice(",", 0)), float(ends[0].get_slice(",", 1)))
+			var to := Vector2(float(ends[1].get_slice(",", 0)), float(ends[1].get_slice(",", 1)))
+			for step in 6:
+				var event: InputEvent
+				if step == 0 or step == 5:
+					var button := InputEventMouseButton.new()
+					button.button_index = MOUSE_BUTTON_LEFT
+					button.pressed = step == 0
+					event = button
+				else:
+					event = InputEventMouseMotion.new()
+				var spot := from.lerp(to, clampf((step - 1) / 3.0, 0.0, 1.0)) if step > 0 else from
+				event.position = spot
+				event.global_position = spot
+				Input.parse_input_event(event)
+				await get_tree().process_frame
+				await get_tree().process_frame
+			await get_tree().create_timer(0.3).timeout
 			return
 		var right := where.begins_with("r:")
 		var at: PackedStringArray = where.trim_prefix("r:").split(",")

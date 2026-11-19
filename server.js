@@ -483,6 +483,11 @@ async function godotApi(req, res, route) {
       const from = new URL(req.url, "http://localhost").searchParams.get("from");
       return json(res, 200, (await import("./src/godot-story.js")).godotStory(requireGame(), { from: from === null ? null : Number(from) }));
     }
+    // What the player carries, as the inventory's window is shown it (godot/scripts/bag.gd).
+    if (what === "bag") {
+      const shown = publicState(requireGame());
+      return json(res, 200, { bag: shown.bag, name: shown.name, credits: shown.credits, body: shown.body });
+    }
     // A skill check, as its window is shown it, when Godot hears there's one (godot/scripts/check.gd).
     if (what === "check") {
       const shown = publicState(requireGame());

@@ -12,7 +12,6 @@ const NARROW := 860.0
 const SLIDE := 0.22
 ## What a button of the rail opens that isn't a menu drawn here, and what to say of it until it's in this window.
 const NOT_YET := {
-	"inventory": "Your inventory isn't in this window yet. It's in the game's own window (press I there).",
 	"board": "The Story board isn't in this window yet. It's in the game's own window.",
 	"mapedit": "The Map editor isn't in this window yet. It's in the game's own window.",
 	"sheet": "Your registry printout isn't in this window yet. It's in the game's own window (press C there).",
@@ -247,6 +246,11 @@ func toggle(id: String) -> void:
 
 
 func open(id: String) -> void:
+	# The inventory is a window of its own over the room.
+	if id == "inventory":
+		close()
+		main.bag.toggle()
+		return
 	if _kind(id) != "menu" or NOT_YET.has(id):
 		_window(id)
 		return
@@ -343,4 +347,4 @@ func _take(answer: Dictionary, asked: Dictionary) -> void:
 			"browser":
 				OS.shell_open(main.link.address())
 			"window":
-				_window(str(effect.id))
+				open(str(effect.id))

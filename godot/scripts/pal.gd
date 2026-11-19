@@ -115,6 +115,19 @@ static func bracket_button(text: String, fg: Color, bg: Color, size := 13) -> Bu
 	return b
 
 
+## A tooltip in the game's look: a small bordered box of words that wraps, in a kind's colours (c, bg, bright).
+static func tip(text: String, colours: Dictionary) -> Control:
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", margins(box(colours.bg, colours.c, 1), 7, 5))
+	var words := label(text, colours.bright, 12)
+	words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	words.custom_minimum_size.x = minf(280.0, MONO.get_string_size(text.get_slice("\n", 0), HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 4.0)
+	for line in text.split("\n"):
+		words.custom_minimum_size.x = maxf(words.custom_minimum_size.x, minf(280.0, MONO.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 4.0))
+	panel.add_child(words)
+	return panel
+
+
 ## The scanlines over a window. They don't catch clicks.
 static func scanlines(strength := 0.16) -> ColorRect:
 	var r := ColorRect.new()

@@ -314,9 +314,20 @@ Built a part at a time. What's in is below; what's left is under "What's left of
 
 **Left out:** the box for typing a command (every command is a button), the rolling dice, the rain of characters behind the consoles, practice (it's started from the registry printout).
 
+### Part 4: the inventory (2026-11-19)
+
+**What they see:** I, or Inventory on the rail, opens the game's inventory window over the room in the console's green: **On you** (the figure, Sidearm, Weapon, Armor, the belt's four places), **Pockets**, **Pack**, **Load**, and beside the pack whatever's open (a locker, a shelf, one of the ship's stores, a pile) with **Take everything**; along the bottom, what was last done, or how it's worked. Drag moves a thing (the square it would take lights up, red where it can't go, and the game's own refusal is said if it's tried), a double click does the usual thing, the other button opens the thing's own menu, and resting the pointer on a thing says what it is. A container's **Open**, in its window or its menu, opens it here.
+
+**How it's made:** `godot/scripts/bag.gd`, drawn by hand (it's a grid to drag things about on, not a page of words), is `public/bag.js` measure for measure: 26 to a square, the same panels and slots, `targetAt`'s rules for what lights up, `clicked`'s for a double click, `choicesFor`'s for the menu. `GET /api/godot/bag` hands it `publicState`'s `bag`, `name`, `credits` and `body`; every order is the page's own `POST /api/bag` (`move`, `take`, `stow`, `equip`, `use`, `read`, `split`, `drop`, `open`, `close`), whose answer is the bag as it now is. Closing it shuts whatever was open. Tooltips everywhere are now the game's own small box (`Pal.tip`).
+
+**Checked** (the test save): the window by itself and with the bridge's storage shelf open, beside the browser's own; a double click on a ration in the shelf ("Took the Hegemony Field Ration.", the load rose); a drag of it from the pack to a pocket; a drag of an air bottle to the pockets, which the game refuses ("The Air bottle doesn't go there."); the other button on the worn vest (Take off, Put in a storage shelf, Look); the tooltip. `test/godot-link.test.js` (11) has the bag handed over and a move.
+
+**Not checked:** Use, Read, Split, the belt and the sidearm's slot, things in hand with no room, Take everything, 810 wide (the window is 463 wide, 680 with something open), being seen taking what isn't yours (the game's own line comes back as what was last done).
+
+**Left out:** the figure coloured by wounds, the window pulled aside, the line from the window to the player.
+
 ## What's left of step 5
 
-- **The inventory** (`public/bag.js`, `/api/bag`): the grid, the gear, a store or a pile open beside the pack. Until it's in, a container's **Open** and the rail's Inventory say it's in the game's own window. `room.gd`'s `_open_store` already sends `open` and then asks `menus` for "inventory".
 - **The registry printout** (`public/sheet.js`), yours and anyone's, with practice; **the quest log**; **the ending's page** (the game being over is still the amber line); **the title screen and the creator** (a new game from Godot is still the ready-made captain). These are element-builders like the menus, so try them on the menus' thread first (`src/godot-pages-worker.js`); sheet.js measures the page in places, which the stand-in page answers with zeros.
 - **Computers and the rig** (`public/computer.js`, `navplot.js`, `rig-motion.js`): the biggest piece left. The style test's `keelworks.gd` and `crt_desk.gd` are the look they approved.
 - **The simulator's fights**, which are played in the fight window, not the room.
