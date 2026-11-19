@@ -13,7 +13,7 @@ signal typed(id: int, value: String)
 ## The other mouse button on something that can be clicked: its number, and where the pointer was.
 signal asked(id: int, at: Vector2)
 
-enum { COLUMN, ROW, GRID, FIT, CARDS, RUN, CHART, PRE, FIELD, BOARD, DESK, PIC }
+enum { COLUMN, ROW, GRID, FIT, CARDS, RUN, CHART, PRE, FIELD, BOARD, DESK, PIC, PLAN }
 ## A computer's desktop (Keelworks, public/desktop.css): the grey of its panels, their light and dark edges, the blue of
 ## a title bar and of what's picked, and the teal behind it all.
 const KEEL := {"face": Color("c3c3c3"), "hi": Color("ffffff"), "lo": Color("808080"), "dark": Color("000000"), "title": Color("0b2a6b"), "desk": Color("2e6a6c"), "dim": Color("5e5e5e")}
@@ -806,6 +806,7 @@ func _style(d: Dictionary, from: Dictionary) -> Dictionary:
 					s.kind = COLUMN
 					s.gap = Vector2(0, 5)
 					s.pad = [5.0, 5.0, 5.0, 5.0]
+					s.grow = true
 			"pane-in", "viewer-in":
 				s.kind = COLUMN
 				s.gap = Vector2(0, 5 if cls == "viewer-in" else 0)
@@ -928,11 +929,26 @@ func _style(d: Dictionary, from: Dictionary) -> Dictionary:
 			"pocket-log":
 				s.kind = COLUMN
 				s.gap = Vector2(0, 2)
+			# The network map: each deck a band, each system a small box where the page's own layout puts it, wires between.
 			"netmap":
-				s.kind = ROW
-				s.gap = Vector2(6, 6)
-			"net-lines":
-				s.off = true
+				s.kind = PLAN
+			"net-band":
+				s.kind = COLUMN
+				s.border = Color("1d5a2c", 0.55)
+				s.pad = [4.0, 2.0, 0.0, 0.0]
+				s.size = 9.0
+				s.upper = true
+				s.color = Color("4fc46e")
+			"net-node":
+				s.pad = [4.0, 1.0, 4.0, 1.0]
+				s.size = 10.0
+				s.line = 1.15
+				s.gap = Vector2.ZERO
+				s.bg = Color("2a8c45") if _has(d, "here") else Color("031107")
+				s.color = Color("031107") if _has(d, "here") else Color("8ff0a8", 0.8 if d.has("d") else 1.0)
+				s.border = Color("c9ffd8") if _has(d, "near") and not d.has("d") else (Color("8ff0a8") if _has(d, "here") else Color("1d5a2c"))
+				s.dotted = _has(d, "hard") or _has(d, "sealed")
+				s.most_wide = 104.0
 			"rig-pocket":
 				s.kind = COLUMN
 				s.gap = Vector2(0, 4)
@@ -1190,6 +1206,21 @@ func _style(d: Dictionary, from: Dictionary) -> Dictionary:
 	return s
 
 
+## A window taller than what's in it: the part of it that's there to take up the room does (its body, and the pane
+## inside that), and what's under that part moves down.
+func _stretch(b: Box, more: float) -> void:
+	if more <= 0.0 or b.kind == RUN:
+		return
+	b.size.y += more
+	for i in b.kids.size():
+		var kid: Box = b.kids[i]
+		if kid.kind != RUN and not kid.off and kid.s.get("grow", false):
+			_stretch(kid, more)
+			for after in range(i + 1, b.kids.size()):
+				b.kids[after].at.y += more
+			return
+
+
 ## How far to the front something on a desktop is.
 func _front(b: Box) -> float:
 	if b.kind == RUN:
@@ -1431,6 +1462,8 @@ func _natural(b: Box) -> float:
 			wide = 320.0
 		PIC:
 			wide = s.pic
+		PLAN:
+			wide = _px(str(b.d.get("st", "")), "width", 440.0)
 		DESK:
 			wide = 640.0
 		CHART:
@@ -1468,6 +1501,25 @@ func _layout(b: Box, wide: float) -> void:
 		FIELD:
 			high = 28.0
 			wide = minf(wide, 360.0)
+		PLAN:
+			var plan := str(b.d.get("st", ""))
+			wide = _px(plan, "width", 440.0)
+			high = _px(plan, "height", 300.0)
+			for kid in b.kids:
+				if kid.off or kid.kind == RUN:
+					continue
+				var st := str(kid.d.get("st", ""))
+				if kid.kind == PIC:
+					kid.size = Vector2(wide, high)
+					kid.at = Vector2.ZERO
+				elif _has(kid.d, "net-band"):
+					_layout(kid, wide)
+					kid.size = Vector2(wide, _px(st, "height", 40.0))
+					kid.at = Vector2(0, _px(st, "top", 0.0))
+				else:
+					# A system's box, with its middle where the page's layout has it.
+					_layout(kid, 104.0)
+					kid.at = Vector2(_px(st, "left", 0.0) - kid.size.x / 2.0, _px(st, "top", 0.0) - kid.size.y / 2.0)
 		PIC:
 			wide = s.pic
 			high = s.pic
@@ -1481,7 +1533,7 @@ func _layout(b: Box, wide: float) -> void:
 				var st := str(kid.d.get("st", ""))
 				if _has(kid.d, "win"):
 					_layout(kid, _px(st, "width", 380.0))
-					kid.size.y = maxf(kid.size.y, _px(st, "height", 0.0))
+					_stretch(kid, _px(st, "height", 0.0) - kid.size.y)
 					kid.at = Vector2(_px(st, "left", 40.0), _px(st, "top", 30.0))
 				elif _has(kid.d, "taskbar"):
 					_layout(kid, 640.0)
@@ -1557,7 +1609,7 @@ func _layout(b: Box, wide: float) -> void:
 	if b.kind in [ROW, GRID, FIT, CARDS, BOARD]:
 		for kid in b.kids:
 			kid.at += Vector2(pad[0], pad[1])
-	if b.kind in [PIC, DESK]:
+	if b.kind in [PIC, DESK, PLAN]:
 		b.size = Vector2(wide, high)
 		return
 	b.size = Vector2(wide, maxf(high + pad[1] + pad[3], s.get("least_high", 0.0)))
@@ -1812,6 +1864,16 @@ func _paint(b: Box, at: Vector2, turned: bool) -> void:
 		var scale := b.size.x / maxf(1.0, float(shapes.get("w", 16)))
 		for r in shapes.get("rects", []):
 			draw_rect(Rect2(here + Vector2(float(r[0]), float(r[1])) * scale, Vector2(float(r[2]), float(r[3])) * scale), Color.from_string(str(r[4]), Color.BLACK))
+		# A network's wires: the data network solid, the maintenance bus dashed, the ones from here brighter.
+		for l in shapes.get("lines", []):
+			var kind := str(l[4])
+			var near := kind.contains("net-near")
+			var from := here + Vector2(float(l[0]), float(l[1])) * scale
+			var to := here + Vector2(float(l[2]), float(l[3])) * scale
+			if kind.contains("net-bus"):
+				draw_dashed_line(from, to, Color("8ff0a8", 1.0 if near else 0.4), 2.0 if near else 1.5, 4.0)
+			else:
+				draw_line(from, to, Color("4fc46e", 1.0 if near else 0.45), 2.0 if near else 1.5)
 		return
 	if s.has("border") and not turned:
 		var sides: int = s.get("sides", 15)
@@ -1939,6 +2001,47 @@ func _gui_input(event: InputEvent) -> void:
 
 func _get_tooltip(at_position: Vector2) -> String:
 	return str(_under(root, Vector2.ZERO, at_position)[1])
+
+
+## For checking: the middle of whatever can be clicked whose words include these, on the page; (-1, -1) if nothing.
+func spot_of(text: String) -> Vector2:
+	var id := _id_of(tree, text)
+	return Vector2(-1, -1) if id < 0 or root == null else _middle_of(root, Vector2.ZERO, id)
+
+
+func _said(d: Variant) -> String:
+	if typeof(d) != TYPE_DICTIONARY:
+		return str(d)
+	var all := ""
+	for k in d.get("k", []):
+		all += _said(k)
+	return all
+
+
+func _id_of(d: Variant, text: String) -> int:
+	if typeof(d) != TYPE_DICTIONARY:
+		return -1
+	for k in d.get("k", []):
+		var inside := _id_of(k, text)
+		if inside >= 0:
+			return inside
+	return int(d.id) if d.has("id") and not d.has("d") and _said(d).contains(text) else -1
+
+
+func _middle_of(b: Box, at: Vector2, id: int) -> Vector2:
+	if b.off:
+		return Vector2(-1, -1)
+	var here := at + b.at
+	if b.kind == RUN:
+		for place in b.placed:
+			if int(b.words[place[0]].id) == id:
+				return here + Vector2(place[1] + b.words[place[0]].w / 2.0, place[2] + place[3] / 2.0)
+		return Vector2(-1, -1)
+	for kid in b.kids:
+		var found := _middle_of(kid, here, id)
+		if found.x >= 0.0:
+			return found
+	return here + b.size / 2.0 if b.id == id else Vector2(-1, -1)
 
 
 func _make_custom_tooltip(for_text: String) -> Object:

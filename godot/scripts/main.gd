@@ -14,7 +14,8 @@
 ##   --press-last (the click comes after the keys, and --then=F12:5 holds on after it)
 ##   --point=700,430 (the pointer rests there)  --port=3292 (where the game is)  --no-start (never start the game itself)  --load=test (with no game open, open
 ##   that save)  --new (with no game open, start a new one; --press-first=300,300 clicks on that screen instead)  --speed=Faster  --pause
-##   --menu=ship (that menu open; --menu-scroll=400 scrolled so far down)
+##   --menu=ship (that menu open; --menu-scroll=400 scrolled so far down)  --words="computer:Systems;menu:Wait 1 day"
+##   (real clicks on whatever says that, in a window the game builds or the open menu)  --creator
 ##   --plain (as if the packs weren't there)  --no-light  --bare (the deck alone)  --loading-shot=out.png
 ##   --empty (the ship with no game behind her, as step 1 had her: --deck=2 --at=40,15 --preview)
 extends Control
@@ -1850,6 +1851,23 @@ func _run_check() -> void:
 	if args.has("creator"):
 		creator.show_page()
 		await get_tree().create_timer(1.5).timeout
+	# --words="computer:Systems;computer:Doors": real clicks, one after another, on whatever says that in one of the
+	# windows the game builds (computer, sheet, creator, ending, board, mapedit), or in the open menu (menu:Wait 1 day).
+	if args.has("words"):
+		await get_tree().create_timer(float(args.get("words-after", "2.0"))).timeout
+		for one in str(args.words).split(";"):
+			var window := one.get_slice(":", 0)
+			if window == "key":
+				computer.ask({"op": "key", "key": one.substr(4)})
+				await get_tree().create_timer(1.5).timeout
+				continue
+			var page: Page = menus.page if window == "menu" else (get(window) as HostWindow).console.page
+			var spot := page.spot_of(one.substr(window.length() + 1))
+			_report["words"] = _report.get("words", []) + [[one, spot.x >= 0.0]]
+			if spot.x >= 0.0:
+				var at := page.global_position + spot
+				await _press("%d,%d" % [int(at.x), int(at.y)])
+			await get_tree().create_timer(1.5).timeout
 	if args.has("menu"):
 		menus.open(str(args.menu))
 		await get_tree().create_timer(1.2).timeout

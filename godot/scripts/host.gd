@@ -29,7 +29,13 @@ func _init() -> void:
 	shade.visible = false
 	add_child(shade)
 	console.visible = false
-	console.relay = func(id: int) -> void: ask({"op": "click", "id": id, "of": _of})
+	console.relay = func(id: int) -> void:
+		# The chart program draws its chart in a way this window can't show: the Star map menu has the same chart, of
+		# the same places, and sets the same course.
+		if on == "computer" and console.page._said(_by_id(_tree, id)).strip_edges() == "Charts":
+			main.menus.open("map")
+			return
+		ask({"op": "click", "id": id, "of": _of})
 	console.relay_typed = func(id: int, value: String) -> void: ask({"op": "input", "id": id, "of": _of, "value": value})
 	add_child(console)
 
@@ -88,6 +94,18 @@ func ask(body: Dictionary) -> void:
 		if next.has("of"):
 			next.of = _of
 		ask(next)
+
+
+func _by_id(d: Variant, id: int) -> Variant:
+	if typeof(d) != TYPE_DICTIONARY:
+		return ""
+	if d.has("id") and int(d.id) == id:
+		return d
+	for k in d.get("k", []):
+		var found: Variant = _by_id(k, id)
+		if typeof(found) == TYPE_DICTIONARY:
+			return found
+	return ""
 
 
 ## A number picks that one of the page's listed choices (the ways on from an ending).

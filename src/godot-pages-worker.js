@@ -35,7 +35,7 @@ const { loreCatalog, setStoryContext } = await import("../public/story-view.js")
 const { initSheet, openPersonSheet, openSheetAt, resetSheet, sheetNode } = await import("../public/sheet.js");
 const { endingNode, initEnding } = await import("../public/ending.js");
 const { creatorScreen, initCreator, openCreator, resetCreator } = await import("../public/creator.js");
-const { computerNode, initComputer } = await import("../public/computer.js");
+const { computerNode, initComputer, resetComputer } = await import("../public/computer.js");
 
 // What the page keeps about itself (ui in public/app.js), as far as the menus read it.
 const ui = { game: null, saves: [], setup: null, screen: "game", tab: "leads", sideOpen: false, streaming: false, waiting: false, menuFocus: null, peopleFilter: "all", mapSelected: null, codexSearch: "", menuMessage: null };
@@ -257,6 +257,14 @@ function handOver(on, { ifChanged = false } = {}) {
 async function answer(ask) {
   const on = builders[ask.on] ? ask.on : "menu";
   if (ask.op === "rail") {
+    // A game opened or begun in Godot: what the page's code remembered of the one before is let go, as the page does.
+    if (ask.reset) {
+      resetComputer();
+      resetSheet();
+      resetCreator();
+      Object.assign(ui, { menuMessage: null, menuFocus: null, mapSelected: null });
+      for (const surface of Object.values(surfaces)) Object.assign(surface, { root: null, ids: [], last: "" });
+    }
     await refresh();
     return ui.game ? { game: true, rail: railOf(ui.game) } : { game: false };
   }

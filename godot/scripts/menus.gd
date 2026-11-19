@@ -151,7 +151,7 @@ func _process(delta: float) -> void:
 func load_rail() -> void:
 	if main.link == null:
 		return
-	var answer: Dictionary = await main.link.ask("/api/godot/page", {"op": "rail"}, 30.0)
+	var answer: Dictionary = await main.link.ask("/api/godot/page", {"op": "rail", "reset": true}, 30.0)
 	if answer.ok and answer.data.has("rail"):
 		groups = answer.data.rail
 		_build_rail()
