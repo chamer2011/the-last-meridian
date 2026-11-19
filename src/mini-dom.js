@@ -252,10 +252,12 @@ export async function fire(node, type, more = {}) {
 export function makeDocument() {
   const all = { keydown: [] };
   const body = new Element("body");
+  const head = new Element("head");
   const root = new Element("html");
-  root.append(body);
+  root.append(head, body);
   return {
     documentElement: root,
+    head,
     body,
     activeElement: null,
     fullscreenElement: null,

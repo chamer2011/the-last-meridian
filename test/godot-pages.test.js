@@ -130,7 +130,7 @@ test("a menu is handed over as the page builds it, with the rail's buttons, and 
   assert.equal(entries.find((entry) => entry.id === "board").kind, "board");
   assert.equal(entries.find((entry) => entry.id === "mapedit").kind, "editor");
   // Nothing has changed, so looking again says so and sends nothing.
-  assert.deepEqual(await page({ op: "look" }), { status: 200, game: true, same: true, of: ship.of });
+  assert.deepEqual(await page({ op: "look" }), { status: 200, game: true, on: "menu", same: true, of: ship.of });
 
   // Wait a day: the button's own listener sends the order, and the menu comes back as it now stands.
   const day = async () => Number((await get("/api/state")).game.clock.label.match(/Day (\d+)/)[1]);
@@ -200,4 +200,42 @@ test("Settings in Godot keep to what's the game's: a save made from there is on 
   const again = find(saved.tree, (node) => String(node.c).includes("menu-row") && words(node).includes("Slot 2"));
   const loaded = await page({ op: "click", id: button(again, "Load").id, of: saved.of });
   assert.deepEqual(loaded.effects.map((effect) => effect.type), ["close", "reload"]);
+});
+
+test("the registry printout is the page's own, a page at a time, and tearing it off puts it away", async () => {
+  const { data, post, page } = await startServer();
+  leaveSave(data);
+  await post("/api/load", { slot: "slot1" });
+  const sheet = await page({ op: "open", on: "sheet" });
+  assert.equal(sheet.on, "sheet");
+  assert.match(words(sheet.tree), /FLEET REGISTRY/);
+  assert.match(words(sheet.tree), /ATTRIBUTES/);
+  // The menu that's open is another thing altogether, with its own numbers.
+  const ship = await page({ op: "open", menu: "ship" });
+  assert.equal(ship.on, "menu");
+  const skills = await page({ op: "click", on: "sheet", id: button(sheet.tree, "SKILLS").id, of: sheet.of });
+  assert.match(words(skills.tree), /PRACTICE/);
+  assert.equal((await page({ op: "look" })).same, true, "the menu wasn't touched by it");
+  const torn = await page({ op: "click", on: "sheet", id: button(skills.tree, "TEAR OFF").id, of: skills.of });
+  assert.equal(torn.closed, true);
+});
+
+test("a captain is made in Godot with the page's own creator, with no game open, and the game begins", async () => {
+  const { page, get } = await startServer();
+  const title = await get("/api/godot/saves");
+  assert.equal(title.playing, null);
+  assert.ok(Array.isArray(title.saves) && title.where.folder);
+  const start = await page({ op: "open", on: "creator" });
+  assert.equal(start.on, "creator");
+  assert.match(words(start.tree), /OPEN A NEW DOSSIER/i);
+  // A ready-made captain, straight to the review, and Begin.
+  const ready = await page({ op: "click", on: "creator", id: button(start.tree, "Fleet Officer").id, of: start.of });
+  assert.match(words(ready.tree), /REVIEW/i);
+  const begin = find(ready.tree, (node) => node.t === "button" && String(node.c).split(" ").includes("begin") && !node.d);
+  assert.ok(begin, "there's a way to begin");
+  const begun = await page({ op: "click", on: "creator", id: begin.id, of: ready.of });
+  assert.deepEqual(begun.effects.map((effect) => effect.type), ["close", "reload"]);
+  const now = await get("/api/godot/saves");
+  assert.equal(typeof now.playing.name, "string");
+  assert.equal(now.playing.over, false);
 });

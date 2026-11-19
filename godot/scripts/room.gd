@@ -27,14 +27,22 @@ class Console:
 	var corners := false
 	var most_high := 2000.0
 	var scrolled := 0.0
+	## When what's drawn was built by the game (host.gd), a click or typed words are passed on by number instead.
+	var relay := Callable()
+	var relay_typed := Callable()
 
 	func _init() -> void:
 		clip_contents = true
 		mouse_filter = Control.MOUSE_FILTER_STOP
 		add_child(page)
 		page.pressed.connect(func(id: int) -> void:
-			if id < runs.size():
+			if relay.is_valid():
+				relay.call(id)
+			elif id < runs.size():
 				runs[id].call())
+		page.typed.connect(func(id: int, value: String) -> void:
+			if relay_typed.is_valid():
+				relay_typed.call(id, value))
 		page.asked.connect(func(id: int, at: Vector2) -> void:
 			if id < asks.size() and asks[id].is_valid():
 				asks[id].call(at))
@@ -268,7 +276,7 @@ func _process(_delta: float) -> void:
 		if mark.key == hover:
 			mark["box"] = _box(mark.full, mark.at, 12 if int(mark.size) >= 12 else 10)
 	# A skill check's window has the room to itself.
-	here.visible = _here_wanted and not main.check.console.visible
+	here.visible = _here_wanted and not main.check.console.visible and not main.sheet.open
 	_place()
 	queue_redraw()
 
@@ -457,6 +465,8 @@ func _room_note(room: Variant) -> Dictionary:
 
 ## How much of the room's right side the panel takes, for the story's words to keep clear of.
 func cover() -> float:
+	if main.sheet.open and main.sheet.console.visible:
+		return main.sheet.console.size.x + 24.0
 	return here.size.x + 24.0 if here.visible else 0.0
 
 
@@ -582,7 +592,7 @@ func _person_choices(one: Dictionary) -> Array:
 	var acts: Array = []
 	for act in person.get("acts", []) if person.get("acts") != null else []:
 		acts.append([str(act.label), str(act.get("detail", "")) if act.get("detail") != null else "", then.call(str(act.id)), Live.truthy(act.get("disabled"))])
-	var registry := ["Registry", "print their record", func() -> void: main.menus.open("sheet")]
+	var registry := ["Registry", "print their record", func() -> void: main.sheet.show_page({"person": key})]
 	if Live.truthy(person.get("down")):
 		var carrying: bool = main.walk.get("carrying") != null
 		var list: Array = []
@@ -755,7 +765,7 @@ func _menu_for(target: Dictionary) -> Dictionary:
 		for act in person.get("acts", []) if person.get("acts") != null else []:
 			acts.append({"label": str(act.label), "detail": act.get("detail"), "disabled": Live.truthy(act.get("disabled")), "ask": act.get("ask"), "run": then.call(str(act.id))})
 		var look := {"label": "Look", "run": look_at.bind(person)}
-		var registry := {"label": "Registry", "detail": "print their record", "run": func() -> void: main.menus.open("sheet")}
+		var registry := {"label": "Registry", "detail": "print their record", "run": func() -> void: main.sheet.show_page({"person": key})}
 		var items: Array = []
 		var word := ""
 		if Live.truthy(person.get("down")):

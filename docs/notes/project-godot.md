@@ -326,9 +326,21 @@ Built a part at a time. What's in is below; what's left is under "What's left of
 
 **Left out:** the figure coloured by wounds, the window pulled aside, the line from the window to the player.
 
+### Part 5: the registry printout, the ending, the title screen and the creator (2026-11-19, at their "Do the rest")
+
+**What they see:** C or their name prints the registry printout down the right side on amber paper (RECORD, SKILLS, PERKS, BELIEFS, PAST; + on an attribute, PRACTICE, LEARN, sleep and work; TEAR OFF, C or Esc); Registry on someone prints theirs. A game that's over ends on the ship's log's red page over everything, with the mornings the game kept, New game and The title screen; a number picks. The title screen (from there, or **Title screen** in Settings) lists the saves, Continue, and two new games: the ready-made captain, or **a captain you make yourself**, which is the game's whole character creator inside the Godot window.
+
+**How it's made:** all four are the page's own code, on the menus' thread. `src/godot-pages-worker.js` now keeps a tree for each thing it draws (`surfaces`: `menu`, `sheet`, `ending`, `creator`; `on` in what's asked; each with its own `of`), attached to the stand-in page's body so the page's own lookups find them, and tells the page's code the player wants less motion, so nothing waits on an animation. `public/sheet.js`, `ending.js` and `creator.js` get the hooks `app.js` gives them; a new game's `begin` posts `/api/new` and says `close` and `reload`; `toTitle` is the effect `title`, `newGame` the effect `creator`; practice posts `/api/check/start`. `godot/scripts/host.gd` (`HostWindow`) is one window for any of them: a `RoomWindows.Console` whose clicks are passed on by number, down the right, in the middle, or over the whole window. `page.gd` gained the printout's classes (fixed columns, kept spaces), the log page's and the creator's. `GET /api/godot/saves` is the title screen's list with a game open; `main.show_title` shows it on the screen "no game open" used.
+
+**Checked:** the printout's record page at 1400 beside the JSON; the ending from a save made with the game's own `playerDies` (the page, its three ways on, key 3 to the title screen with every save listed); the creator's first page and, after a click on Fleet Officer, its review page with the character sheet beside it. `test/godot-pages.test.js` (7): the printout's pages and tearing it off, the menu untouched by it, and a captain made and begun with no game open.
+
+**Not checked:** the other pages of the printout on screen, spending points, practice from there, someone else's printout, Go back to this morning, the creator's steps one by one and typing a name (the box is Godot's own, as in the codex), 810 wide for any of them.
+
+**Left out:** the printout's paper feeding out and its body figure (the words are there); the creator's typed commands.
+
 ## What's left of step 5
 
-- **The registry printout** (`public/sheet.js`), yours and anyone's, with practice; **the quest log**; **the ending's page** (the game being over is still the amber line); **the title screen and the creator** (a new game from Godot is still the ready-made captain). These are element-builders like the menus, so try them on the menus' thread first (`src/godot-pages-worker.js`); sheet.js measures the page in places, which the stand-in page answers with zeros.
+- **The quest log** (public/quests.js): the corner shows the followed quest and a battle's list; the whole log, and following another quest, aren't in.
 - **Computers and the rig** (`public/computer.js`, `navplot.js`, `rig-motion.js`): the biggest piece left. The style test's `keelworks.gd` and `crt_desk.gd` are the look they approved.
 - **The simulator's fights**, which are played in the fight window, not the room.
 - Then step 6, the Map editor and the Story board.

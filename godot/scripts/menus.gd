@@ -14,7 +14,6 @@ const SLIDE := 0.22
 const NOT_YET := {
 	"board": "The Story board isn't in this window yet. It's in the game's own window.",
 	"mapedit": "The Map editor isn't in this window yet. It's in the game's own window.",
-	"sheet": "Your registry printout isn't in this window yet. It's in the game's own window (press C there).",
 }
 
 var main: Control
@@ -246,10 +245,17 @@ func toggle(id: String) -> void:
 
 
 func open(id: String) -> void:
-	# The inventory is a window of its own over the room.
+	# The inventory is a window of its own over the room, and so is the registry printout.
 	if id == "inventory":
 		close()
 		main.bag.toggle()
+		return
+	if id == "sheet":
+		close()
+		if main.sheet.open:
+			main.sheet.close()
+		else:
+			main.sheet.show_page()
 		return
 	if _kind(id) != "menu" or NOT_YET.has(id):
 		_window(id)
@@ -333,10 +339,23 @@ func _take(answer: Dictionary, asked: Dictionary) -> void:
 		notice.add_theme_color_override("font_color", Pal.TEXT if typeof(message) != TYPE_DICTIONARY or Live.truthy(message.get("ok")) else Page.BAD)
 		page.show_tree(said.tree)
 		_light()
-	for effect in said.get("effects", []):
+	effects(said.get("effects", []), null)
+
+
+## What the page would have done to itself, which is Godot's to do: put the window away, send the story a choice, open
+## the game again after a load, open another window. from is the window it came from, or null for the menus' panel.
+func effects(list: Array, from: Variant) -> void:
+	for effect in list:
 		match str(effect.type):
 			"close":
-				close()
+				if from == null:
+					close()
+				else:
+					from.close()
+			"title":
+				main.show_title()
+			"creator":
+				main.creator.show_page()
 			"chat":
 				main.story._send("/api/chat", effect.body)
 			"reload":
@@ -347,4 +366,13 @@ func _take(answer: Dictionary, asked: Dictionary) -> void:
 			"browser":
 				OS.shell_open(main.link.address())
 			"window":
-				open(str(effect.id))
+				if str(effect.id) == "sheet":
+					close()
+					var more := {}
+					if effect.get("person") != null:
+						more["person"] = effect.person
+					if effect.get("page") != null:
+						more["page"] = effect.page
+					main.sheet.show_page(more)
+				else:
+					open(str(effect.id))

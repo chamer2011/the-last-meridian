@@ -20,6 +20,7 @@ WHAT'S HERE
 - scripts/room.gd: the marks over things, a thing's window, the right-click menu, the room's panel.
 - scripts/check.gd: a skill check's window.
 - scripts/bag.gd: the inventory, and whatever's open beside the pack.
+- scripts/host.gd: a window the game builds itself (the registry printout, an ending, the creator).
 - scripts/menus.gd: the menus' buttons down the right edge, and the panel a menu opens in.
 - scripts/page.gd: draws a menu or a window from the tree of elements it's handed. The menus' trees
   are built by the game itself, with the code that builds them for the browser (src/godot-pages.js).

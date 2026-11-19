@@ -483,6 +483,8 @@ async function godotApi(req, res, route) {
       const from = new URL(req.url, "http://localhost").searchParams.get("from");
       return json(res, 200, (await import("./src/godot-story.js")).godotStory(requireGame(), { from: from === null ? null : Number(from) }));
     }
+    // Godot's title screen with a game open: the saves there are, which copy of the game this is, and whose game is open.
+    if (what === "saves") return json(res, 200, { ok: true, game: false, saves: listSaves(), where: whichCopy(), playing: game ? { name: game.name, over: Boolean(game.over) } : null });
     // What the player carries, as the inventory's window is shown it (godot/scripts/bag.gd).
     if (what === "bag") {
       const shown = publicState(requireGame());

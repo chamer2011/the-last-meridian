@@ -13,7 +13,9 @@ const game = `http://127.0.0.1:${workerData.port}`;
 const send = globalThis.fetch;
 globalThis.fetch = (url, init) => send(typeof url === "string" && url.startsWith("/") ? game + url : url, init);
 globalThis.document = makeDocument();
-globalThis.window = { addEventListener() {}, removeEventListener() {}, matchMedia: () => ({ matches: false, addEventListener() {} }), innerWidth: 1400, innerHeight: 860, devicePixelRatio: 1 };
+// Nothing here is animated (Godot does its own moving), so the page's code is told the player wants less motion.
+globalThis.matchMedia = (query) => ({ matches: /reduced-motion/.test(String(query)), addEventListener() {} });
+globalThis.window = { addEventListener() {}, removeEventListener() {}, matchMedia: globalThis.matchMedia, innerWidth: 1400, innerHeight: 860, devicePixelRatio: 1 };
 const kept = new Map();
 globalThis.localStorage = { getItem: (key) => kept.get(key) ?? null, setItem: (key, value) => kept.set(key, String(value)), removeItem: (key) => kept.delete(key) };
 globalThis.requestAnimationFrame = (run) => setTimeout(() => run(Date.now()), 16);
@@ -30,6 +32,9 @@ const { initFreight } = await import("../public/freight.js");
 const { initFreighters } = await import("../public/freighters.js");
 const { initRig } = await import("../public/rig.js");
 const { loreCatalog, setStoryContext } = await import("../public/story-view.js");
+const { initSheet, openPersonSheet, openSheetAt, resetSheet, sheetNode } = await import("../public/sheet.js");
+const { endingNode, initEnding } = await import("../public/ending.js");
+const { creatorScreen, initCreator, openCreator, resetCreator } = await import("../public/creator.js");
 
 // What the page keeps about itself (ui in public/app.js), as far as the menus read it.
 const ui = { game: null, saves: [], setup: null, screen: "game", tab: "leads", sideOpen: true, streaming: false, waiting: false, menuFocus: null, peopleFilter: "all", mapSelected: null, codexSearch: "", menuMessage: null };
@@ -84,6 +89,12 @@ async function loadGame(slot) {
   effects.push({ type: "close" }, { type: "reload" });
 }
 
+// Practising a skill opens its check window, which Godot shows as it shows any check; the printout gets out of its way.
+const startPractice = (skill, difficulty = "moderate") => runAction(async () => {
+  await api("/api/check/start", { practice: skill, difficulty });
+  effects.push({ type: "close" });
+})();
+
 initMenus({
   ui,
   act,
@@ -95,20 +106,35 @@ initMenus({
   toggleFullScreen: () => effects.push({ type: "fullscreen" }),
   loreCatalog,
   loadGame,
-  toTitle: () => {},
+  toTitle: () => effects.push({ type: "close" }, { type: "title" }),
   openMenu,
   startSim: () => say(`The simulator ${NOT_YET}`),
-  startPractice: () => say(`Practice ${NOT_YET}`),
+  startPractice,
   // A lead taken up is the story's to tell: Godot sends it, as it sends a choice.
   followLead: (lead) => effects.push({ type: "close" }, { type: "chat", body: { text: `I look into this: ${lead.title}`, thread: lead.id } }),
 });
 initMap({ ui, render, runAction, renderMenus: render, openMenu, closeMenu });
 initShip({ ui, render, runAction, renderMenus: render, openMenu, closeMenu });
-initCommand({ ui, render, runAction, closeMenu, openPersonSheet: () => say(`Someone's registry printout ${NOT_YET}`) });
+initCommand({ ui, render, runAction, closeMenu, openPersonSheet: (key) => effects.push({ type: "window", id: "sheet", person: key }) });
 initWork({ ui, render, runAction });
 initFreight({ ui });
 initFreighters({ ui, renderMenus: render, closeMenu });
 initRig({ ui, runAction, renderMenus: render });
+// The registry printout, the page a game ends on, and the making of a captain: the page's own, like the menus.
+initSheet({ ui, render, act, openMenu, startPractice });
+initEnding({ ui, render, loadGame, toTitle: () => effects.push({ type: "title" }), newGame: async () => effects.push({ type: "creator" }) });
+initCreator({
+  render,
+  begin: async (draft) => {
+    const { game: now, saves } = await api("/api/new", { draft });
+    ui.game = now;
+    ui.saves = saves;
+    resetCreator();
+    effects.push({ type: "close" }, { type: "reload" });
+  },
+  hasGame: () => Boolean(ui.game),
+  exit: () => effects.push({ type: "title" }),
+});
 
 // Settings, as they are for this window: how the browser's page reads, its size and its computers' screens are the
 // browser's own, so what's here is what's the game's (saved games, how hard enemies fight, the files) and Godot's.
@@ -169,58 +195,85 @@ async function refresh() {
   ui.setup = data.setup ?? ui.setup;
 }
 
-// The menu as it's handed over: its tree, and the elements Godot can send a click or typed words to, by number. Each
-// build has a number too, so a click on a menu that's since been built again is never taken for another button.
-let root = null;
-let ids = [];
-let serial = 0;
-let last = "";
-function build() {
-  setStoryContext(ui.setup, ui.game);
-  const menu = MENUS[ui.tab] ?? MENUS.leads;
-  root = el("div", { class: "menu-body" }, ui.tab === "settings" ? settingsMenu() : menu.view());
+// What Godot is handed: a tree, and the elements it can send a click or typed words to, by number. There's one for
+// each thing the page draws for Godot (the open menu, the registry printout, the ending's page, the making of a
+// captain), each with a number of its own for every time it's built, so a click on one that's since been built again
+// is never taken for another button.
+const surfaces = {};
+const builders = {
+  menu: () => el("div", { class: "menu-body" }, ui.tab === "settings" ? settingsMenu() : (MENUS[ui.tab] ?? MENUS.leads).view()),
+  sheet: () => sheetNode(),
+  ending: () => endingNode(),
+  creator: () => creatorScreen(),
+};
+// What opening each of them does first.
+const opens = {
+  menu: async (ask) => {
+    openMenu(ask.menu, ask.focus ?? null);
+    if (ui.tab === "settings") await refresh();
+  },
+  sheet: async (ask) => {
+    resetSheet();
+    if (ask.person) await openPersonSheet(ask.person);
+    else openSheetAt(ask.page ?? "record");
+  },
+  ending: async () => {},
+  creator: async () => {
+    resetCreator();
+    await openCreator(ui.setup);
+  },
+};
+function build(on) {
+  if (ui.game) setStoryContext(ui.setup, ui.game);
+  const surface = (surfaces[on] ??= { root: null, ids: [], serial: 0, last: "", holder: document.body.appendChild(document.createElement("div")) });
+  surface.root = builders[on]() ?? null;
+  // On the page, so that the page's own code finds its elements where it looks for them.
+  surface.holder.replaceChildren(...(surface.root ? [surface.root] : []));
   stale = false;
+  return surface;
 }
-function handOver({ ifChanged = false } = {}) {
-  ids = [];
-  const tree = describe(root, ids);
-  const menu = MENUS[ui.tab] ?? MENUS.leads;
-  const page = { game: true, menu: ui.tab, label: menu.label, message: ui.menuMessage, tree, rail: railOf(ui.game) };
-  const text = JSON.stringify(page);
+function handOver(on, { ifChanged = false } = {}) {
+  const surface = surfaces[on];
+  surface.ids = [];
   const out = effects;
   effects = [];
-  if (ifChanged && text === last && !out.length) return { game: true, same: true, of: serial };
-  last = text;
-  serial += 1;
-  return { ...page, of: serial, effects: out };
+  // Nothing to show: it was put away, or what it was about is over.
+  if (!surface.root) return { game: Boolean(ui.game), on, closed: true, effects: out };
+  const tree = describe(surface.root, surface.ids);
+  const menu = MENUS[ui.tab] ?? MENUS.leads;
+  const page = on === "menu" ? { game: true, on, menu: ui.tab, label: menu.label, message: ui.menuMessage, tree, rail: railOf(ui.game) } : { game: Boolean(ui.game), on, tree, message: on === "sheet" ? ui.menuMessage : null };
+  const text = JSON.stringify(page);
+  if (ifChanged && text === surface.last && !out.length) return { game: page.game, on, same: true, of: surface.serial };
+  surface.last = text;
+  surface.serial += 1;
+  return { ...page, of: surface.serial, effects: out };
 }
 
 async function answer(ask) {
-  if (ask.op === "open" || ask.op === "look" || !ui.game) {
-    await refresh();
-    if (!ui.game) return { game: false };
-    if (ask.op === "open") {
-      openMenu(ask.menu, ask.focus ?? null);
-      if (ui.tab === "settings") await refresh();
-    }
-    build();
-    return handOver({ ifChanged: ask.op === "look" });
-  }
+  const on = builders[ask.on] ? ask.on : "menu";
   if (ask.op === "rail") {
     await refresh();
     return ui.game ? { game: true, rail: railOf(ui.game) } : { game: false };
   }
-  const node = ask.of === serial ? ids[ask.id] : null;
+  if (ask.op === "open" || ask.op === "look" || (!ui.game && on !== "creator")) {
+    await refresh();
+    if (!ui.game && on !== "creator") return { game: false };
+    if (ask.op === "open") await opens[on](ask);
+    build(on);
+    return handOver(on, { ifChanged: ask.op === "look" });
+  }
+  const surface = surfaces[on];
+  const node = surface && ask.of === surface.serial ? surface.ids[ask.id] : null;
   if (node && !node.disabled) {
     if (ask.op === "input") {
       node.value = String(ask.value ?? "");
-      await fire(node, "input");
+      await fire(node, "input", { target: node });
     } else if (ask.op === "click") {
       await fire(node, "click");
     }
   }
-  if (stale || !node) build();
-  return handOver();
+  if (stale || !node) build(on);
+  return handOver(on);
 }
 
 // One thing at a time, in the order asked.

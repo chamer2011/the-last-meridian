@@ -90,6 +90,11 @@ var story: Story
 var room: RoomWindows
 var check: CheckWindow
 var bag: BagWindow
+## Windows whose insides the game builds itself (host.gd): the registry printout, the page a game ends on, and the
+## making of a captain.
+var sheet: HostWindow
+var ending: HostWindow
+var creator: HostWindow
 ## Everyone on the level, as the game last listed them.
 var people: Array = []
 var menus: Menus
@@ -212,6 +217,11 @@ func _ready() -> void:
 	bag = BagWindow.new()
 	bag.main = self
 	add_child(bag)
+	# The registry printout, on its strip of amber paper down the right side.
+	sheet = HostWindow.new()
+	sheet.main = self
+	sheet.colours = {"c": Color("ffb547"), "bright": Color("ffe0a3"), "dim": Color("a8732c"), "line": Color("3a2709"), "bg": Color("120b02"), "panel": Color("1a1206")}
+	add_child(sheet)
 	# The menus: their buttons down the right edge, and the panel one opens in.
 	menus = Menus.new()
 	menus.main = self
@@ -224,6 +234,20 @@ func _ready() -> void:
 	add_child(fade)
 
 	_build_loading()
+	# The page a game ends on, and the making of a captain, over everything else.
+	ending = HostWindow.new()
+	ending.main = self
+	ending.on = "ending"
+	ending.colours = Pal.kind("red")
+	ending.most_wide = 600.0
+	ending.where = "whole"
+	add_child(ending)
+	creator = HostWindow.new()
+	creator.main = self
+	creator.on = "creator"
+	creator.most_wide = 1180.0
+	creator.where = "whole"
+	add_child(creator)
 	if not args.has("bare"):
 		add_child(Pal.scanlines(0.14))  # faint scanlines over everything, as in the game
 
@@ -509,9 +533,11 @@ func _no_game(said: Dictionary) -> void:
 	elif not unread.is_empty():
 		loading_line.text = "There are saved games in this folder, but they couldn't be opened. Nothing in them has been changed. A new game can still be started."
 	else:
-		loading_line.text = "There's no saved game in this copy of the game yet. Start a new one here, or make your own captain in the game's own window and then press Look again."
+		loading_line.text = "There's no saved game in this copy of the game yet. Start a new one here."
 	_loading_button("New game, with a ready-made captain", _new_game)
-	_loading_button("Make your own captain (opens the game's own window)", func() -> void: OS.shell_open(link.address()))
+	_loading_button("New game, with a captain you make yourself", func() -> void: creator.show_page())
+	if typeof(said.get("playing")) == TYPE_DICTIONARY and not Live.truthy(said.playing.get("over")):
+		_loading_button("Continue as %s" % str(said.playing.get("name", "")), _connect)
 	_loading_button("Look again", _connect)
 	_loading_button("Close", func() -> void: _close(0))
 	# Which copy of the game this is, in small print: each copy has its own saves and its own art.
@@ -560,6 +586,21 @@ func _new_game() -> void:
 	_connect()
 
 
+## The title screen with a game open: the saves there are, a new game, or back to the one being played.
+func show_title() -> void:
+	if link == null:
+		return
+	var answer: Dictionary = await link.ask("/api/godot/saves", null, 30.0)
+	if not answer.ok:
+		_message(str(answer.error))
+		return
+	_unload()
+	ending.close()
+	loading.visible = true
+	_no_game(answer.data)
+	loading_title.text = "ALMAGEST EXPLORER'S"
+
+
 func _open_save(slot: String) -> void:
 	_say("Opening the save")
 	var answer: Dictionary = await link.ask("/api/load", {"slot": slot}, 60.0)
@@ -573,6 +614,8 @@ func _open_save(slot: String) -> void:
 ## Everything of the place that was loaded goes, before another is.
 func _unload() -> void:
 	playing = false
+	if sheet != null:
+		sheet.close()
 	for deck in decks:
 		if deck.has("view") and deck.view != null:
 			(deck.view as DeckView).queue_free()
@@ -1057,6 +1100,9 @@ func _tick() -> void:
 		fight.wake()
 	else:
 		fight.none()
+	# A game that's over ends on a page of the ship's log, with the ways on from it.
+	if Live.truthy(state.get("over")) and not ending.open:
+		ending.show_page()
 	# And a skill check in its own window.
 	if Live.truthy(state.get("check")):
 		check.wake()
@@ -1236,7 +1282,7 @@ func _show_clock() -> void:
 	elif held == "combat":
 		if fight.elsewhere != "":
 			words = "%s (Its own window: %s in a browser, or the game's app.)" % [fight.elsewhere, link.address()]
-	elif held != "" and held != "check":
+	elif held != "" and held != "check" and not (held == "over" and ending.open):
 		words = "%s (Its own window: %s in a browser, or the game's app.)" % [NOT_YET[held], link.address()]
 	if words == "" and _said != "" and Time.get_ticks_msec() < _said_until:
 		words = _said
@@ -1301,6 +1347,17 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	# With a menu open, Esc shuts it, and the other keys wait.
 	if event is InputEventKey and event.pressed and not event.echo and menus.open_id != "":
 		if menus.key(event) or event.physical_keycode != KEY_SPACE:
+			get_viewport().set_input_as_handled()
+			return
+	# The making of a captain and an ending's page have the keys to themselves.
+	if event is InputEventKey and (creator.open or ending.open):
+		if event.pressed and not event.echo and ending.open and not creator.open and ending.pick(event.physical_keycode - KEY_0):
+			get_viewport().set_input_as_handled()
+		return
+	# C is the registry printout, and Esc puts it away.
+	if event is InputEventKey and event.pressed and not event.echo and playing and link != null and menus.open_id == "" and not bag.on and not check.console.visible:
+		if event.physical_keycode == KEY_C or (event.physical_keycode == KEY_ESCAPE and sheet.open and not room.is_open()):
+			menus.open("sheet")
 			get_viewport().set_input_as_handled()
 			return
 	# The inventory's keys: I opens and shuts it, and while it's open the other keys wait.
@@ -1765,6 +1822,9 @@ func _measure() -> void:
 
 func _run_check() -> void:
 	await get_tree().create_timer(0.4).timeout
+	if args.has("creator"):
+		creator.show_page()
+		await get_tree().create_timer(1.5).timeout
 	if args.has("menu"):
 		menus.open(str(args.menu))
 		await get_tree().create_timer(1.2).timeout

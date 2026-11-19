@@ -23,7 +23,7 @@ const BELIEF := Color("c9a6ff")
 const LORE := Color("8fd0e8")
 const TINT := Color(157 / 255.0, 245 / 255.0, 180 / 255.0, 0.06)
 ## What a box hands down to what's inside it.
-const HANDED := ["color", "size", "bold", "upper", "pre", "speaker", "open", "keep", "line", "chart", "dead", "wide_spaces"]
+const HANDED := ["color", "size", "bold", "upper", "pre", "speaker", "open", "keep", "line", "chart", "dead", "wide_spaces", "listed"]
 const INLINE := ["span", "strong", "em", "i", "b", "a", "label", "small", "button"]
 ## Grids of the menus, as their columns are written in style.css: ["ch", n] so many characters wide, ["mm", least,
 ## most] between the two, ["fr", share] a share of what's left, ["auto"] as wide as what's in it.
@@ -112,7 +112,7 @@ func _rebuild() -> void:
 		root = null
 		queue_redraw()
 		return
-	root = _build(tree, {"color": ink, "size": SIZE, "bold": false, "upper": false, "pre": false, "speaker": LORE, "open": true, "keep": false, "line": 1.5, "chart": 0.0, "dead": false, "wide_spaces": false})
+	root = _build(tree, {"color": ink, "size": SIZE, "bold": false, "upper": false, "pre": false, "speaker": LORE, "open": true, "keep": false, "line": 1.5, "chart": 0.0, "dead": false, "wide_spaces": false, "listed": false})
 	_layout(root, _wide)
 	custom_minimum_size.y = root.size.y
 	_place_fields()
@@ -161,6 +161,10 @@ func _style(d: Dictionary, from: Dictionary) -> Dictionary:
 			s.kind = PRE
 		"input", "textarea", "select":
 			s.kind = FIELD
+		"svg", "style":
+			s.off = true
+		"p":
+			s.mb = 6.0
 		"button":
 			s.prefix = "[ "
 			s.suffix = " ]"
@@ -517,6 +521,7 @@ func _style(d: Dictionary, from: Dictionary) -> Dictionary:
 				s.start = true
 			"option-number":
 				s.color = dim
+				s.then_space = true
 			"option-label":
 				s.color = dim if from.get("dead", false) else bright
 			"option-detail":
@@ -626,6 +631,211 @@ func _style(d: Dictionary, from: Dictionary) -> Dictionary:
 				s.gap = Vector2(0, 0)
 			"room-note":
 				s.color = BAD if _has(d, "bad") else WARN
+			# The registry printout: amber type on a strip of printer paper, set in fixed columns.
+			"sheet-dock", "sheet-feed":
+				s.kind = COLUMN
+			"sheet-slot":
+				s.kind = ROW
+				s.between = true
+				s.gap = Vector2(8, 0)
+				s.pad = [10.0, 2.0, 4.0, 2.0]
+				s.size = 11.0
+				s.color = dim
+				s.bg = Color("1a1206")
+				s.border = Color("5a3d12")
+			"sheet-paper":
+				s.kind = COLUMN
+				s.pad = [22.0, 8.0, 22.0, 10.0]
+				s.size = 12.0
+				s.line = 1.4
+				s.wide_spaces = true
+			"sheet-line", "sheet-attr":
+				s.pre = true
+			"sheet-field":
+				s.kind = GRID
+				s.cols = [["ch", 11], ["fr", 1]]
+			"sheet-label", "sheet-hi":
+				s.color = bright
+				s.keep = true
+			"sheet-dim":
+				s.color = dim
+			"sheet-red":
+				s.color = BAD
+			"sheet-warn":
+				s.color = Color("ffd36b")
+			"sheet-skills":
+				s.kind = FIT
+				s.least = 18.0
+				s.gap = Vector2(7, 0)
+				s.pad = [14.0, 0.0, 0.0, 0.0]
+			"sheet-btn", "sheet-link", "sheet-skill":
+				s.prefix = ""
+				s.suffix = ""
+				s.pre = true
+				if from.get("dead", false) or d.has("d"):
+					s.color = Color("6b4a1d")
+				if _has(d, "on"):
+					s.lit = ink
+			"sheet-actions":
+				s.kind = ROW
+				s.gap = Vector2(8, 2)
+			"sheet-pages":
+				s.kind = ROW
+				s.gap = Vector2(6, 2)
+				s.pad = [0.0, 0.0, 0.0, 4.0]
+				s.mb = 4.0
+				s.border = rule
+				s.sides = 4
+				s.dotted = true
+			"sheet-skill-row":
+				s.kind = ROW
+				s.gap = Vector2(7, 0)
+				s.pre = true
+			"sheet-group":
+				s.mb = 2.0
+			"sheet-note":
+				s.pad = [28.0, 0.0, 0.0, 0.0]
+			"sheet-mark":
+				s.pad = [14.0, 0.0, 0.0, 0.0]
+			# The making of a captain.
+			"creator":
+				s.kind = COLUMN
+			"creator-head":
+				s.kind = ROW
+				s.between = true
+				s.gap = Vector2(12, 4)
+				s.pad = [16.0, 6.0, 16.0, 6.0]
+				s.border = rule
+				s.sides = 4
+			"stepbar":
+				s.kind = ROW
+				s.gap = Vector2(10, 0)
+				s.pad = [16.0, 4.0, 16.0, 4.0]
+				s.size = 13.0
+				s.border = rule
+				s.sides = 4
+			"step":
+				s.prefix = ""
+				s.suffix = ""
+				s.upper = true
+				s.color = WARN if _has(d, "warn") else (dim if _has(d, "todo") else ink)
+				if _has(d, "current"):
+					s.lit = ink
+			"creator-body":
+				s.kind = GRID if _wide >= 900.0 else COLUMN
+				s.cols = [["fr", 1], ["ch", 36]]
+			"creator-main":
+				s.kind = COLUMN
+				s.pad = [16.0, 16.0, 16.0, 16.0]
+			"creator-content", "creator-foot-inner":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 10 if cls == "creator-content" else 4)
+				s.most_wide = 760.0
+			"creator-sheet":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 4)
+				s.pad = [12.0, 12.0, 12.0, 12.0]
+				s.size = 13.0
+				s.border = rule
+				s.sides = 8
+				s.bg = board
+			"creator-foot":
+				s.pad = [16.0, 6.0, 16.0, 8.0]
+				s.border = rule
+				s.sides = 1
+				s.bg = board
+			"step-title":
+				s.size = 20.0
+				s.color = bright
+				s.upper = true
+			"group":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 8)
+				s.mb = 8.0
+			"field-label":
+				s.color = bright
+				s.bold = true
+			"sheet-heading":
+				s.color = dim
+				s.upper = true
+				s.size = 12.0
+				s.mt = 8.0
+			"attr-row", "gear-row", "skill-row":
+				s.kind = ROW
+				s.between = true
+				s.gap = Vector2(12, 2)
+			"attr-controls", "skill-controls":
+				s.kind = ROW
+				s.gap = Vector2(6, 0)
+			"num":
+				s.color = dim
+			"attr-value":
+				s.color = bright
+				s.bold = true
+			"bio":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 6)
+				s.pad = [14.0, 0.0, 0.0, 0.0]
+			"review-grid":
+				s.kind = FIT
+				s.least = 34.0
+				s.gap = Vector2(20, 10)
+			# A page of the ship's log: the one a game ends on.
+			"ship-log":
+				s.kind = COLUMN
+				s.size = 13.0
+			"ship-log-bar":
+				s.kind = ROW
+				s.between = true
+				s.gap = Vector2(12, 0)
+				s.pad = [10.0, 2.0, 10.0, 2.0]
+				s.bg = ink
+				s.color = ground
+				s.keep = true
+				s.size = 12.0
+			"ship-log-when":
+				s.bold = true
+			"ship-log-head":
+				s.pad = [14.0, 12.0, 14.0, 4.0]
+			"ship-log-title":
+				s.size = 16.0
+				s.color = bright
+			"ship-log-under":
+				s.color = dim
+				s.size = 12.0
+			"ship-log-words":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 6)
+				s.pad = [14.0, 6.0, 14.0, 6.0]
+				s.color = Color("d9d6cb")
+				s.size = 14.0
+			"ending-line":
+				s.color = bright
+			"ending-last":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 2)
+				s.mt = 8.0
+				s.color = dim
+				s.size = 12.0
+			"ending-last-title":
+				s.upper = true
+				s.size = 11.0
+			"ending-error":
+				s.color = BAD
+				s.pad = [14.0, 2.0, 14.0, 2.0]
+			"ship-log-ask":
+				s.pad = [14.0, 6.0, 14.0, 0.0]
+				s.color = dim
+				s.size = 12.0
+			"ship-log-foot":
+				s.kind = ROW
+				s.between = true
+				s.gap = Vector2(10, 2)
+				s.pad = [12.0, 4.0, 12.0, 6.0]
+				s.size = 11.0
+				s.color = dim
+				s.border = rule
+				s.sides = 1
 			# A skill check's window: its consoles, its commands, and how it came out.
 			"check-situation":
 				s.pad = [10.0, 4.0, 10.0, 4.0]
@@ -713,6 +923,16 @@ func _style(d: Dictionary, from: Dictionary) -> Dictionary:
 					s.bold = true
 	# Where the page's own rules make an element a column of its parts, each part is on a line of its own, words too.
 	s.apart = s.kind == COLUMN
+	# A choice in a list of them, as the page writes it: a button straight inside "options".
+	if tag == "button" and from.get("listed", false) and not _has(d, "option"):
+		s.kind = ROW
+		s.gap = Vector2(8, 0)
+		s.pad = [4.0, 2.0, 4.0, 2.0]
+		s.size = 14.0
+		s.prefix = ""
+		s.suffix = ""
+		s.group = false
+	s.listed = _has(d, "options")
 	if s.kind == GRID and not s.has("cols"):
 		for cls in classes:
 			if GRIDS.has(cls):
@@ -870,6 +1090,8 @@ func _words(k: Variant, from: Dictionary, out: Array, on: Dictionary, state: Dic
 		_words(child, s, out, mine, state)
 	if after != "":
 		_text(after, s, out, mine, state, true)
+	if s.get("then_space", false):
+		state.space = true
 
 
 func _text(text: String, s: Dictionary, out: Array, on: Dictionary, state: Dictionary, _glued := false) -> void:
