@@ -13,7 +13,10 @@ signal typed(id: int, value: String)
 ## The other mouse button on something that can be clicked: its number, and where the pointer was.
 signal asked(id: int, at: Vector2)
 
-enum { COLUMN, ROW, GRID, FIT, CARDS, RUN, CHART, PRE, FIELD, BOARD }
+enum { COLUMN, ROW, GRID, FIT, CARDS, RUN, CHART, PRE, FIELD, BOARD, DESK, PIC }
+## A computer's desktop (Keelworks, public/desktop.css): the grey of its panels, their light and dark edges, the blue of
+## a title bar and of what's picked, and the teal behind it all.
+const KEEL := {"face": Color("c3c3c3"), "hi": Color("ffffff"), "lo": Color("808080"), "dark": Color("000000"), "title": Color("0b2a6b"), "desk": Color("2e6a6c"), "dim": Color("5e5e5e")}
 
 const SIZE := 15.0
 const BAD := Color("ff7b6b")
@@ -23,7 +26,7 @@ const BELIEF := Color("c9a6ff")
 const LORE := Color("8fd0e8")
 const TINT := Color(157 / 255.0, 245 / 255.0, 180 / 255.0, 0.06)
 ## What a box hands down to what's inside it.
-const HANDED := ["color", "size", "bold", "upper", "pre", "speaker", "open", "keep", "line", "chart", "dead", "wide_spaces", "listed"]
+const HANDED := ["color", "size", "bold", "upper", "pre", "speaker", "open", "keep", "line", "chart", "dead", "wide_spaces", "listed", "os", "pic", "pocket"]
 const INLINE := ["span", "strong", "em", "i", "b", "a", "label", "small", "button"]
 ## Grids of the menus, as their columns are written in style.css: ["ch", n] so many characters wide, ["mm", least,
 ## most] between the two, ["fr", share] a share of what's left, ["auto"] as wide as what's in it.
@@ -62,6 +65,8 @@ var ground := Pal.BG
 var board := Color(8 / 255.0, 17 / 255.0, 12 / 255.0, 0.92)
 ## Whether it's a console window in a kind's colours: there, "info" is the kind's own colour, not the game's blue.
 var themed := false
+## The colour of words on something lit up under the pointer.
+var flip := Pal.BG
 
 var tree := {}
 var root: Box
@@ -86,6 +91,7 @@ func use(colours: Dictionary) -> void:
 	rule = colours.line
 	ground = colours.bg
 	board = colours.get("panel", board)
+	flip = colours.get("turn", ground)
 	themed = true
 
 
@@ -112,7 +118,7 @@ func _rebuild() -> void:
 		root = null
 		queue_redraw()
 		return
-	root = _build(tree, {"color": ink, "size": SIZE, "bold": false, "upper": false, "pre": false, "speaker": LORE, "open": true, "keep": false, "line": 1.5, "chart": 0.0, "dead": false, "wide_spaces": false, "listed": false})
+	root = _build(tree, {"color": ink, "size": SIZE, "bold": false, "upper": false, "pre": false, "speaker": LORE, "open": true, "keep": false, "line": 1.5, "chart": 0.0, "dead": false, "wide_spaces": false, "listed": false, "os": false, "pic": 16.0, "pocket": false})
 	_layout(root, _wide)
 	custom_minimum_size.y = root.size.y
 	_place_fields()
@@ -162,7 +168,14 @@ func _style(d: Dictionary, from: Dictionary) -> Dictionary:
 		"input", "textarea", "select":
 			s.kind = FIELD
 		"svg", "style":
-			s.off = true
+			s.off = not d.has("svg")
+			s.kind = PIC
+		"hr":
+			s.border = KEEL.lo
+			s.sides = 1
+			s.least_high = 3.0
+		"kbd":
+			s.color = dim
 		"p":
 			s.mb = 6.0
 		"button":
@@ -170,6 +183,34 @@ func _style(d: Dictionary, from: Dictionary) -> Dictionary:
 			s.suffix = " ]"
 			s.group = true
 			s.dead = d.has("d")
+			if from.os:
+				# On a desktop a button is a raised grey box, with no brackets.
+				s.prefix = ""
+				s.suffix = ""
+				s.group = false
+				s.kind = COLUMN
+				s.pad = [8.0, 2.0, 8.0, 2.0]
+				s.bg = KEEL.face
+				s.bevel = 1
+				s.shrink = true
+				s.hot = KEEL.title
+				if d.has("d"):
+					s.color = KEEL.dim
+			elif from.pocket:
+				# On the rig a button is a thin green outline.
+				s.prefix = ""
+				s.suffix = ""
+				s.group = false
+				s.kind = COLUMN
+				s.pad = [8.0, 3.0, 8.0, 3.0]
+				s.size = 11.0
+				s.border = Color("1d5a2c")
+				s.color = Color("2a6a3a") if d.has("d") else Color("4fc46e")
+				s.hot = Color("0d3a1a")
+				s.shrink = true
+				if d.has("pressed"):
+					s.bg = Color("2a8c45")
+					s.color = Color("031107")
 	var classes := str(d.get("c", "")).split(" ", false)
 	for cls in classes:
 		match cls:
@@ -177,11 +218,13 @@ func _style(d: Dictionary, from: Dictionary) -> Dictionary:
 				s.size = 13.0
 			"muted", "tone-dim", "post-label", "post-since", "post-memory":
 				s.color = dim
-			"tone-good":
-				s.color = ink
 			"tone-bad", "watch-short", "command-deposed":
-				s.color = BAD
+				s.color = Color("b40000") if from.os else BAD
 				s.keep = true
+			"tone-good":
+				s.color = Color("006400") if from.os else ink
+			"tone-warn" when from.os:
+				s.color = Color("8a5a00")
 			"tone-warn", "effects", "command-due", "post-replace", "watch-move", "watch-moving", "map-going", "map-course", "work-part":
 				s.color = WARN
 			"tone-info", "map-ship":
@@ -697,6 +740,209 @@ func _style(d: Dictionary, from: Dictionary) -> Dictionary:
 				s.pad = [28.0, 0.0, 0.0, 0.0]
 			"sheet-mark":
 				s.pad = [14.0, 0.0, 0.0, 0.0]
+			# A computer: its monitor, the desktop on it (640 by 480, as the page draws it), and what's on the desktop.
+			"desk", "device-row":
+				s.kind = ROW
+				s.gap = Vector2(10, 10)
+			"monitor":
+				s.kind = COLUMN
+				s.pad = [18.0, 18.0, 18.0, 8.0]
+				s.bg = Color("232624")
+				s.gap = Vector2(0, 6)
+			"fx", "float-leader", "rig-lead":
+				s.off = true
+			"plate":
+				s.kind = ROW
+				s.gap = Vector2(10, 0)
+				s.color = Color("6c736d")
+				s.size = 10.0
+				s.pad = [0.0, 2.0, 0.0, 0.0]
+			"led":
+				s.dot = true
+				s.color = BAD if _has(d, "bad") else (WARN if _has(d, "warn") else Color("3cff7a"))
+			"os":
+				s.kind = DESK
+				s.bg = KEEL.desk
+				s.os = true
+				s.size = 11.0
+				s.line = 1.35
+				s.color = Color.BLACK
+				s.keep = true
+			"bev":
+				s.bg = KEEL.face
+				s.bevel = 1
+			"sunk":
+				s.bg = Color.WHITE
+				s.bevel = -1
+			"icons":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 4)
+			"icon":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 3)
+				s.pad = [2.0, 2.0, 2.0, 2.0]
+				s.bg = null
+				s.bevel = 0
+				s.color = Color.WHITE
+				s.least_wide = 76.0
+				s.shrink = true
+				s.pic = 32.0
+				s.middle = true
+			"win":
+				s.kind = COLUMN
+				s.pad = [3.0, 3.0, 3.0, 3.0]
+				s.front = _has(d, "top")
+			"wtitle":
+				s.kind = ROW
+				s.gap = Vector2(4, 0)
+				s.pad = [4.0, 1.0, 2.0, 1.0]
+				s.bg = KEEL.title if from.get("front", true) else KEEL.lo
+				s.color = Color.WHITE
+				s.bold = true
+				s.pic = 14.0
+				s.between = true
+			"body":
+				if from.os:
+					s.kind = COLUMN
+					s.gap = Vector2(0, 5)
+					s.pad = [5.0, 5.0, 5.0, 5.0]
+			"pane-in", "viewer-in":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 5 if cls == "viewer-in" else 0)
+				s.pad = [6.0, 5.0, 6.0, 5.0] if cls == "pane-in" else [0.0, 0.0, 0.0, 0.0]
+				s.wide_spaces = true
+				s.grow = cls == "pane-in"
+			"status":
+				s.kind = ROW
+				s.gap = Vector2(2, 0)
+			"rows", "items":
+				s.kind = COLUMN
+			"row-item":
+				s.kind = GRID
+				s.cols = [["ch", 2.6], ["fr", 1], ["auto"]]
+				s.gap = Vector2(4, 0)
+				s.pad = [4.0, 2.0, 4.0, 2.0]
+				s.bg = KEEL.title if _has(d, "open") else null
+				s.color = Color.WHITE if _has(d, "open") else (KEEL.dim if _has(d, "done") else Color.BLACK)
+				s.bevel = 0
+				s.shrink = false
+			"computer-screen-title":
+				s.bold = true
+				s.upper = true
+				s.mb = 4.0
+			"computer-rows":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 6)
+			"computer-row":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 2)
+				s.pad = [6.0, 4.0, 6.0, 4.0]
+				s.border = Color("b40000") if _has(d, "down") else KEEL.lo
+			"computer-row-head":
+				s.kind = ROW
+				s.between = true
+				s.gap = Vector2(6, 0)
+			"computer-row-actions":
+				s.kind = ROW
+				s.gap = Vector2(4, 4)
+				s.mt = 2.0
+			"taskbar":
+				s.kind = ROW
+				s.gap = Vector2(4, 0)
+				s.pad = [2.0, 2.0, 2.0, 2.0]
+			"keel":
+				s.bold = true
+				s.kind = ROW
+				s.gap = Vector2(4, 0)
+			"tasks":
+				s.kind = ROW
+				s.gap = Vector2(3, 0)
+			"tray":
+				s.kind = ROW
+				s.gap = Vector2(6, 0)
+				s.pad = [8.0, 2.0, 8.0, 2.0]
+				s.push = true
+			"menu":
+				if from.os:
+					s.kind = COLUMN
+					s.pad = [2.0, 2.0, 2.0, 2.0]
+			"side":
+				s.off = true
+			"balloon":
+				s.kind = COLUMN
+				s.pad = [8.0, 6.0, 8.0, 8.0]
+				s.bg = Color("ffffe1")
+				s.border = Color.BLACK
+			"navcom-top":
+				s.kind = ROW
+				s.between = true
+				s.pad = [6.0, 1.0, 6.0, 1.0]
+				s.bg = Color("0b2a6b")
+				s.color = Color.WHITE
+			"pocket":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 8)
+				s.pad = [14.0, 12.0, 14.0, 10.0]
+				s.bg = Color("2f3234")
+				s.border = Color("111111")
+				s.pocket = true
+				s.color = Color("8b9196")
+				s.size = 11.0
+				s.most_wide = 480.0
+			"pocket-top", "pocket-bottom":
+				s.kind = ROW
+				s.between = true
+				s.gap = Vector2(10, 0)
+				s.size = 10.0
+			"pocket-lights":
+				s.kind = ROW
+				s.gap = Vector2(10, 0)
+			"pocket-screen":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 6)
+				s.pad = [8.0, 6.0, 8.0, 8.0]
+				s.bg = Color("020a04")
+				s.border = Color("0b0d0c")
+				s.color = Color("8ff0a8")
+				s.size = 12.0
+			"pocket-tube", "pocket-list", "pocket-plug":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 6)
+			"pocket-tabs":
+				s.kind = ROW
+				s.gap = Vector2(4, 0)
+				s.pad = [0.0, 0.0, 0.0, 4.0]
+				s.border = Color("1d5a2c")
+				s.sides = 4
+			"pocket-where":
+				s.color = Color("3f8f57")
+				s.size = 10.0
+				s.push = true
+			"pocket-note":
+				s.pad = [2.0, 8.0, 2.0, 8.0]
+				s.color = Color("4fc46e")
+			"pocket-row":
+				s.kind = ROW
+				s.between = true
+				s.gap = Vector2(10, 2)
+			"pocket-log":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 2)
+			"netmap":
+				s.kind = ROW
+				s.gap = Vector2(6, 6)
+			"net-lines":
+				s.off = true
+			"rig-pocket":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 4)
+				s.pad = [6.0, 10.0, 6.0, 10.0]
+				s.bg = Color("26282a")
+				s.color = Color("4fc46e")
+				s.prefix = ""
+				s.suffix = ""
+				s.group = false
+				s.hot = Color("0d3a1a")
 			# The making of a captain.
 			"creator":
 				s.kind = COLUMN
@@ -944,6 +1190,23 @@ func _style(d: Dictionary, from: Dictionary) -> Dictionary:
 	return s
 
 
+## How far to the front something on a desktop is.
+func _front(b: Box) -> float:
+	if b.kind == RUN:
+		return 0.0
+	if _has(b.d, "win"):
+		return _px(str(b.d.get("st", "")), "z-index", 10.0)
+	return 800.0 if _has(b.d, "taskbar") else (900.0 if _has(b.d, "menu") else (850.0 if _has(b.d, "balloon") else float(b.at.y) / 1000.0))
+
+
+## A length in pixels out of an element's own style ("left:250px;top:30px").
+func _px(st: String, name: String, otherwise: float) -> float:
+	for part in st.split(";"):
+		if part.strip_edges().begins_with(name + ":"):
+			return float(part.get_slice(":", 1).replace("px", ""))
+	return otherwise
+
+
 func _var(st: String, name: String, otherwise: float) -> float:
 	if not st.contains(name + ":"):
 		return otherwise
@@ -951,17 +1214,19 @@ func _var(st: String, name: String, otherwise: float) -> float:
 
 
 ## Whether something sits in a line of words (a word, a tag, a plain button) or is a box of its own.
-func _in_line(k: Variant) -> bool:
+func _in_line(k: Variant, on_desk := false) -> bool:
 	if typeof(k) != TYPE_DICTIONARY:
 		return true
 	var d: Dictionary = k
 	if not INLINE.has(str(d.get("t", "div"))):
 		return false
+	if on_desk and str(d.t) == "button":
+		return false
 	for cls in str(d.get("c", "")).split(" ", false):
-		if cls in ["row", "spread", "stack", "card", "menu-row", "post-card", "post-duty", "watch-people", "rig-socket", "rig-frame", "option", "here-row", "here-part", "here-tag"]:
+		if cls in ["row", "spread", "stack", "card", "menu-row", "post-card", "post-duty", "watch-people", "rig-socket", "rig-frame", "option", "here-row", "here-part", "here-tag", "rig-pocket"]:
 			return false
 	for child in d.get("k", []):
-		if not _in_line(child):
+		if not _in_line(child, on_desk):
 			return false
 	return true
 
@@ -998,7 +1263,7 @@ func _build(d: Dictionary, from: Dictionary) -> Box:
 					b.kids.append(one)
 		ROW, GRID, FIT, CARDS, BOARD:
 			for k in kids:
-				if _in_line(k):
+				if _in_line(k, s.os or s.pocket):
 					var one := _run([k], s)
 					if typeof(k) == TYPE_DICTIONARY:
 						one.d = k
@@ -1011,7 +1276,7 @@ func _build(d: Dictionary, from: Dictionary) -> Box:
 			if s.has("prefix") and s.prefix != "" and not s.has("group"):
 				run.append(s.prefix)
 			for k in kids:
-				if _in_line(k):
+				if _in_line(k, s.os or s.pocket):
 					if s.apart and not run.is_empty() and not (run.size() == 1 and s.has("prefix") and not s.has("group") and typeof(run[0]) == TYPE_STRING and run[0] == s.prefix):
 						b.kids.append(_run(run, s))
 						run = []
@@ -1164,6 +1429,10 @@ func _natural(b: Box) -> float:
 				wide = maxf(wide, line.length() * _char(s.size))
 		FIELD:
 			wide = 320.0
+		PIC:
+			wide = s.pic
+		DESK:
+			wide = 640.0
 		CHART:
 			wide = _var(str(b.d.get("st", "")), "--map-cols", 80.0) * _char(s.size) + 2.0
 		ROW:
@@ -1186,6 +1455,9 @@ func _layout(b: Box, wide: float) -> void:
 		return
 	if s.has("most_wide"):
 		wide = minf(wide, s.most_wide)
+	# A box only as wide as what's in it (a desktop's buttons).
+	if s.get("shrink", false):
+		wide = minf(wide, maxf(_natural(b), s.get("least_wide", 0.0)))
 	var pad: Array = s.get("pad", [0.0, 0.0, 0.0, 0.0])
 	var inner := maxf(10.0, wide - pad[0] - pad[2])
 	var high := 0.0
@@ -1196,6 +1468,40 @@ func _layout(b: Box, wide: float) -> void:
 		FIELD:
 			high = 28.0
 			wide = minf(wide, 360.0)
+		PIC:
+			wide = s.pic
+			high = s.pic
+		DESK:
+			wide = 640.0
+			high = 480.0
+			var flow := 0.0
+			for kid in b.kids:
+				if kid.off or kid.kind == RUN:
+					continue
+				var st := str(kid.d.get("st", ""))
+				if _has(kid.d, "win"):
+					_layout(kid, _px(st, "width", 380.0))
+					kid.size.y = maxf(kid.size.y, _px(st, "height", 0.0))
+					kid.at = Vector2(_px(st, "left", 40.0), _px(st, "top", 30.0))
+				elif _has(kid.d, "taskbar"):
+					_layout(kid, 640.0)
+					kid.size.y = maxf(kid.size.y, 28.0)
+					kid.at = Vector2(0, 480.0 - kid.size.y)
+				elif _has(kid.d, "menu"):
+					_layout(kid, 200.0)
+					kid.at = Vector2(2, 480.0 - 28.0 - kid.size.y)
+				elif _has(kid.d, "balloon"):
+					_layout(kid, 250.0)
+					kid.at = Vector2(640.0 - 258.0, 480.0 - 34.0 - kid.size.y)
+				elif _has(kid.d, "icons"):
+					_layout(kid, 80.0)
+					kid.at = Vector2(6, flow + 6.0)
+				else:
+					_layout(kid, 640.0)
+					kid.at = Vector2(0, flow)
+					flow += kid.size.y
+			# What's in front is drawn last: the windows in their own order, then the taskbar, its menu and a balloon.
+			b.kids.sort_custom(func(one: Box, other: Box) -> bool: return _front(one) < _front(other))
 		CHART:
 			var st := str(b.d.get("st", ""))
 			var unit := _char(s.size)
@@ -1245,10 +1551,15 @@ func _layout(b: Box, wide: float) -> void:
 				kid.at = Vector2(pad[0], pad[1] + y)
 				y += kid.size.y + (kid.s.get("mb", 0.0) if kid.kind != RUN else 0.0)
 				first = false
+				if s.get("middle", false):
+					kid.at.x = pad[0] + (inner - kid.size.x) / 2.0
 			high = y
 	if b.kind in [ROW, GRID, FIT, CARDS, BOARD]:
 		for kid in b.kids:
 			kid.at += Vector2(pad[0], pad[1])
+	if b.kind in [PIC, DESK]:
+		b.size = Vector2(wide, high)
+		return
 	b.size = Vector2(wide, maxf(high + pad[1] + pad[3], s.get("least_high", 0.0)))
 
 
@@ -1333,7 +1644,7 @@ func _layout_row(b: Box, inner: float) -> float:
 		for item in items:
 			var kid: Box = item[0]
 			# What's pushed to the far end of its row (what someone's doing, after their name).
-			if kid.push and rows.size() == 1:
+			if (kid.push or (kid.kind != RUN and kid.s.get("push", false))) and rows.size() == 1:
 				at = maxf(at, inner - (kid.size.x if kid.kind == RUN else item[1]))
 			kid.at = Vector2(at, y + (high - kid.size.y) / 2.0)
 			at += (kid.size.x if kid.kind == RUN else item[1]) + between
@@ -1489,6 +1800,19 @@ func _paint(b: Box, at: Vector2, turned: bool) -> void:
 		draw_rect(box, s.get("hot", ink))
 	elif s.has("bg") and s.bg != null:
 		draw_rect(box, s.bg)
+	if int(s.get("bevel", 0)) != 0 and not turned:
+		# A raised or a sunk edge: light from the top left.
+		var up: bool = int(s.bevel) > 0
+		var a := box.position.floor() + Vector2(0.5, 0.5)
+		var z := box.end.floor() - Vector2(0.5, 0.5)
+		draw_polyline(PackedVector2Array([Vector2(a.x, z.y), a, Vector2(z.x, a.y)]), KEEL.hi if up else KEEL.lo, 1.0)
+		draw_polyline(PackedVector2Array([Vector2(a.x, z.y), z, Vector2(z.x, a.y)]), KEEL.dark if up else KEEL.hi, 1.0)
+	if b.kind == PIC:
+		var shapes: Dictionary = b.d.get("svg", {})
+		var scale := b.size.x / maxf(1.0, float(shapes.get("w", 16)))
+		for r in shapes.get("rects", []):
+			draw_rect(Rect2(here + Vector2(float(r[0]), float(r[1])) * scale, Vector2(float(r[2]), float(r[3])) * scale), Color.from_string(str(r[4]), Color.BLACK))
+		return
 	if s.has("border") and not turned:
 		var sides: int = s.get("sides", 15)
 		var edges := [[1, box.position, Vector2(box.end.x, box.position.y)], [2, Vector2(box.end.x, box.position.y), box.end], [4, Vector2(box.position.x, box.end.y), box.end], [8, box.position, Vector2(box.position.x, box.end.y)]]
@@ -1508,7 +1832,7 @@ func _paint(b: Box, at: Vector2, turned: bool) -> void:
 		var fall := Pal.MONO.get_descent(int(s.size))
 		for i in b.lines.size():
 			if b.lines[i].strip_edges() != "":
-				draw_string(Pal.MONO, here + Vector2(0, i * high + (high + rise - fall) / 2.0), b.lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, int(s.size), ground if turned else s.color)
+				draw_string(Pal.MONO, here + Vector2(0, i * high + (high + rise - fall) / 2.0), b.lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, int(s.size), flip if turned else s.color)
 		return
 	for kid in b.kids:
 		_paint(kid, here, turned)
@@ -1524,7 +1848,7 @@ func _paint_run(b: Box, here: Vector2, turned: bool) -> void:
 		if w.id >= 0 and w.id == hover:
 			lit = ink
 		if turned:
-			color = ground
+			color = flip
 		elif lit != null:
 			draw_rect(Rect2(at.x - place[4] if _joined(b, place) else at.x, at.y, w.w + (place[4] if _joined(b, place) else 0.0), high).grow_individual(1 if not _joined(b, place) else 0, 0, 1, 0), lit)
 			color = ground
@@ -1578,6 +1902,13 @@ func _under(b: Box, at: Vector2, point: Vector2) -> Array:
 				return [-1 if w.dis else int(w.id), str(w.tip)]
 		return [-1, ""]
 	var found := [b.id, b.tip]
+	if b.kind == DESK:
+		# On a desktop only what's in front at that point is under the pointer.
+		for i in range(b.kids.size() - 1, -1, -1):
+			var top: Box = b.kids[i]
+			if not top.off and top.kind != RUN and Rect2(here + top.at, top.size).has_point(point):
+				return _under(top, here, point)
+		return found
 	for kid in b.kids:
 		var inside := _under(kid, here, point)
 		if inside[0] >= 0:

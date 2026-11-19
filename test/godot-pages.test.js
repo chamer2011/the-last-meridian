@@ -239,3 +239,30 @@ test("a captain is made in Godot with the page's own creator, with no game open,
   assert.equal(typeof now.playing.name, "string");
   assert.equal(now.playing.over, false);
 });
+
+test("a computer's desktop is the page's own too: an icon opens its window, and Esc logs off", async () => {
+  const { data, post, page, get } = await startServer();
+  leaveSave(data);
+  await post("/api/load", { slot: "slot1" });
+  assert.equal((await page({ op: "open", on: "computer" })).closed, true, "nobody's at a computer yet");
+  // The captain sits down at the plot table, which is theirs: straight in.
+  const room = (await get("/api/godot/walk")).walk;
+  const table = room.things.find((thing) => /plot table/i.test(thing.name));
+  await post("/api/walk", { action: "go", to: `thing:${table.id}` });
+  assert.ok((await post("/api/walk", { action: "use", key: table.id })).computer);
+  const desk = await page({ op: "open", on: "computer" });
+  assert.equal(desk.on, "computer");
+  const os = find(desk.tree, (node) => String(node.c).split(" ").includes("os"));
+  assert.ok(os, "there's a desktop");
+  const icon = find(os, (node) => node.t === "button" && String(node.c).includes("icon") && words(node).includes("Systems"));
+  // Its picture is a few coloured rectangles, which come through for Godot to draw.
+  const picture = find(icon, (node) => node.t === "svg");
+  assert.ok(picture.svg.rects.length > 0 && picture.svg.w === 16);
+  const before = JSON.stringify(desk.tree).split('"win ').length;
+  const opened = await page({ op: "click", on: "computer", id: icon.id, of: desk.of });
+  assert.ok(JSON.stringify(opened.tree).split('"win ').length > before, "a window opened");
+  assert.match(words(opened.tree), /Doors/);
+  const left = await page({ op: "key", on: "computer", key: "Escape" });
+  assert.equal(left.closed, true);
+  assert.equal((await post("/api/godot/tick", { ms: 0, rate: 10 })).state.computer, false);
+});

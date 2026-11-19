@@ -79,6 +79,9 @@ func ask(body: Dictionary) -> void:
 		if typeof(said.get("message")) == TYPE_DICTIONARY and not Live.truthy(said.message.get("ok")):
 			main._message(str(said.message.text))
 		main.menus.effects(said.get("effects", []), self)
+		# What's done at a computer changes the room (a door locked, the lights cut): it's looked at again.
+		if on == "computer" and body.op != "look":
+			main._fetch_walk()
 	if _next != null and open:
 		var next: Dictionary = _next
 		_next = null

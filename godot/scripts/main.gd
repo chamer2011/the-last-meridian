@@ -5,7 +5,7 @@
 ##
 ## Godot draws and takes clicks; the game's rules stay in JavaScript. Everything shown here is asked of the game itself
 ## (link.gd), which is the same program the browser view talks to, so both can be open on the same game. What Godot
-## doesn't play yet (computers, the registry printout) it says so about, and waits.
+## doesn't play yet (the simulator's fights, the two editors) it says so about, and waits.
 ##
 ## For checking without a screen, after the two dashes:
 ##   --shot=out.png  --wait=1.5  --width=810  --height=860  --zoom=1.3  --report (how it went, as a line of JSON)
@@ -95,6 +95,7 @@ var bag: BagWindow
 var sheet: HostWindow
 var ending: HostWindow
 var creator: HostWindow
+var computer: HostWindow
 ## Everyone on the level, as the game last listed them.
 var people: Array = []
 var menus: Menus
@@ -222,6 +223,14 @@ func _ready() -> void:
 	sheet.main = self
 	sheet.colours = {"c": Color("ffb547"), "bright": Color("ffe0a3"), "dim": Color("a8732c"), "line": Color("3a2709"), "bg": Color("120b02"), "panel": Color("1a1206")}
 	add_child(sheet)
+	# A computer the player is at: its monitor and desktop, built by the game like the printout.
+	computer = HostWindow.new()
+	computer.main = self
+	computer.on = "computer"
+	computer.where = "middle"
+	computer.most_wide = 1190.0
+	computer.colours = {"c": Color("3a3f3b"), "bright": Color.BLACK, "dim": Color("5e5e5e"), "line": Color("808080"), "bg": Color("111312"), "panel": Color("c3c3c3"), "turn": Color.WHITE}
+	add_child(computer)
 	# The menus: their buttons down the right edge, and the panel one opens in.
 	menus = Menus.new()
 	menus.main = self
@@ -616,6 +625,7 @@ func _unload() -> void:
 	playing = false
 	if sheet != null:
 		sheet.close()
+		computer.close()
 	for deck in decks:
 		if deck.has("view") and deck.view != null:
 			(deck.view as DeckView).queue_free()
@@ -1100,6 +1110,12 @@ func _tick() -> void:
 		fight.wake()
 	else:
 		fight.none()
+	# A computer the player has sat down at opens over the room, and goes when they've logged off.
+	if Live.truthy(state.get("computer")) and not computer.open:
+		room.put_away()
+		computer.show_page()
+	elif not Live.truthy(state.get("computer")) and computer.open and not computer._busy:
+		computer.close()
 	# A game that's over ends on a page of the ship's log, with the ways on from it.
 	if Live.truthy(state.get("over")) and not ending.open:
 		ending.show_page()
@@ -1213,6 +1229,9 @@ func _took(said: Dictionary) -> void:
 		_take_walk(game.walk)
 	if Live.truthy(state.get("check")):
 		check.wake()
+	if Live.truthy(state.get("computer")) and not computer.open:
+		room.put_away()
+		computer.show_page()
 	story.refresh()
 	_show_clock()
 
@@ -1282,7 +1301,7 @@ func _show_clock() -> void:
 	elif held == "combat":
 		if fight.elsewhere != "":
 			words = "%s (Its own window: %s in a browser, or the game's app.)" % [fight.elsewhere, link.address()]
-	elif held != "" and held != "check" and not (held == "over" and ending.open):
+	elif held != "" and held != "check" and not (held == "over" and ending.open) and not (held == "computer" and computer.open):
 		words = "%s (Its own window: %s in a browser, or the game's app.)" % [NOT_YET[held], link.address()]
 	if words == "" and _said != "" and Time.get_ticks_msec() < _said_until:
 		words = _said
@@ -1353,6 +1372,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and (creator.open or ending.open):
 		if event.pressed and not event.echo and ending.open and not creator.open and ending.pick(event.physical_keycode - KEY_0):
 			get_viewport().set_input_as_handled()
+		return
+	# At a computer, H takes the rig out of the pocket and puts it back, and Esc logs off: the page's own keys.
+	if event is InputEventKey and event.pressed and not event.echo and computer.open:
+		if event.physical_keycode == KEY_H or event.physical_keycode == KEY_ESCAPE:
+			computer.ask({"op": "key", "key": "h" if event.physical_keycode == KEY_H else "Escape"})
+		get_viewport().set_input_as_handled()
 		return
 	# C is the registry printout, and Esc puts it away.
 	if event is InputEventKey and event.pressed and not event.echo and playing and link != null and menus.open_id == "" and not bag.on and not check.console.visible:

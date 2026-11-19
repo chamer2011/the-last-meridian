@@ -38,7 +38,7 @@ const { creatorScreen, initCreator, openCreator, resetCreator } = await import("
 const { computerNode, initComputer } = await import("../public/computer.js");
 
 // What the page keeps about itself (ui in public/app.js), as far as the menus read it.
-const ui = { game: null, saves: [], setup: null, screen: "game", tab: "leads", sideOpen: true, streaming: false, waiting: false, menuFocus: null, peopleFilter: "all", mapSelected: null, codexSearch: "", menuMessage: null };
+const ui = { game: null, saves: [], setup: null, screen: "game", tab: "leads", sideOpen: false, streaming: false, waiting: false, menuFocus: null, peopleFilter: "all", mapSelected: null, codexSearch: "", menuMessage: null };
 // Whether the menu has to be built again after what was just done, and what Godot has to do about it itself.
 let stale = false;
 let effects = [];
@@ -268,13 +268,23 @@ async function answer(ask) {
     return handOver(on, { ifChanged: ask.op === "look" });
   }
   const surface = surfaces[on];
+  // A key, for the page's own listeners (H takes the rig out at a computer, Esc logs off).
+  if (ask.op === "key" && surface) {
+    await document.press({ key: String(ask.key) });
+    // What a key sets going (an order to the game) is waited for a moment before the page is handed back.
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    if (stale) build(on);
+    else surface.root = surface.holder.childNodes[0] ?? null;
+    return handOver(on);
+  }
   const node = surface && ask.of === surface.serial ? surface.ids[ask.id] : null;
   if (node && !node.disabled) {
     if (ask.op === "input") {
       node.value = String(ask.value ?? "");
       await fire(node, "input", { target: node });
     } else if (ask.op === "click") {
-      await fire(node, "click");
+      // What the page opens on a double click (an icon on a desktop), Godot opens on one.
+      await fire(node, node.listeners.dblclick?.length ? "dblclick" : "click");
     }
   }
   if (stale || !node) build(on);

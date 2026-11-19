@@ -306,6 +306,15 @@ export function makeDocument() {
     querySelectorAll: (selector) => root.querySelectorAll(selector),
     addEventListener: (type, run) => (all[type] ??= []).push(run),
     removeEventListener: () => {},
+    // A key pressed in Godot, heard by whatever the page's code set listening on the page itself.
+    async press(event) {
+      let stopped = false;
+      const said = { type: "keydown", target: body, repeat: false, ctrlKey: false, metaKey: false, altKey: false, preventDefault() {}, stopPropagation() { stopped = true; }, ...event };
+      for (const run of all.keydown ?? []) {
+        if (stopped) break;
+        await run(said);
+      }
+    },
   };
 }
 
@@ -329,7 +338,7 @@ export function describe(node, ids) {
   if (node.value !== undefined && node.value !== null) out.v = String(node.value);
   if (node.attributes.placeholder) out.ph = node.attributes.placeholder;
   if (node.attributes.type) out.type = node.attributes.type;
-  if (node.attributes["aria-pressed"] === "true" || node.checked) out.pressed = 1;
+  if (node.attributes["aria-pressed"] === "true" || node.attributes["aria-selected"] === "true" || node.checked) out.pressed = 1;
   if (node.hidden) out.hidden = 1;
   if (node.shapes) out.svg = node.shapes;
   const kids = node.childNodes.map((child) => describe(child, ids)).filter((one) => one !== "");
