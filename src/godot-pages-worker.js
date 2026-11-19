@@ -260,7 +260,7 @@ function handOver(on, { ifChanged = false } = {}) {
   const out = effects;
   effects = [];
   // Nothing to show: it was put away, or what it was about is over.
-  if (!surface.root) return { game: Boolean(ui.game), on, closed: true, effects: out };
+  if (!surface.root || surface.root.hidden) return { game: Boolean(ui.game), on, closed: true, effects: out };
   const tree = describe(surface.root, surface.ids);
   const menu = MENUS[ui.tab] ?? MENUS.leads;
   const page = on === "menu" ? { game: true, on, menu: ui.tab, label: menu.label, message: ui.menuMessage, tree, rail: railOf(ui.game) } : { game: Boolean(ui.game), on, tree, message: on === "sheet" ? ui.menuMessage : null };
