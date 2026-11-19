@@ -118,7 +118,7 @@ GAME_LICENSED_DIR=<stand-ins> xvfb-run -a godot --path godot --rendering-driver 
 - **Doors** open for anyone near. A door the systems have locked is the pack's red shut door with a blinking red lamp, and its name over it in the closed colour.
 - **The ship's state**, all of it from `buildScene`: dark rooms in the lightmap, lamps and consoles dimmed where off, fires (flames, smoke, the fire's own light), soot and stains, a breach (the hole, air streaks, the amber lamp), sparks, ringing alarms, the systems' parts on the walls as the packs' fittings with the game's marks over them, a working camera turning, stores as crates by stock, steam off a full kettle, litter and grime by `wear`, bad air and the alarm as a wash over the window.
 - **The game's news** (`notes` from the clock) in the bottom left for 14 seconds, five lines at most.
-- **What it doesn't play:** with a talk, a fight, a check or a computer open, or the game over, a line in amber across the top says so and names the game's own window (`http://localhost:<port>`), and walking is off until it's finished there. With no game open, the saves there are, as buttons, and **Look again**.
+- **What it doesn't play:** with a talk, a fight, a check or a computer open, or the game over, a line in amber across the top says so and names the game's own window (`http://localhost:<port>`), and walking is off until it's finished there. With no game open, the saves there are, as buttons, and **Look again** (and since 2026-11-19 a new game, and which copy of the game this is: see "Their first try").
 
 Not in it, as the README tells them: things to click (the ? marks, parts, stores, closed doors), every menu and panel, starting a new game, screens stuttering when power is short, and the plainer windows, wall screens, garden beds and hull from step 1.
 
@@ -240,6 +240,26 @@ A fight that's fought in the room is played in the Godot window, the way `public
 
 - A choice with a skill check (it opens the check in the game's own window), a request's ask with its yes and no, a scene held because its person is elsewhere, a talk's rumours, a talk shown as a page.
 - The tracker with a quest that has a person to go to. Long scenes of many pieces. A voice over comms.
+
+## Their first try (2026-11-19): "It doesn't work, see the attached file"
+
+They sent a screenshot taken on 2026-11-18 at 19:05: the Godot window, about 977 by 624, on **NO GAME OPEN / CFS MERIDIAN**, "There's no saved game yet, and the title screen and the character sheet aren't in this window yet. Start a game in the game's own window (open http://localhost:3210 in a browser), then press Look again.", with **Look again** and **Close**.
+
+**What that screen proves:** `start-godot.bat` ran on their Windows computer, fetched and opened Godot, and Godot started Node (or joined a game with this update's code) and got an answer from `/api/godot/place`. Three of step 2's "not checked" things are checked by it. What it also says is that the server it talked to had no autosave it could read and no readable save in any slot.
+
+**The likeliest reason, not confirmed:** it was opened from a freshly downloaded copy of the branch, as their Desktop copy of 2026-11-16 was, and not from `D:\Test IA`, where their saves and the bought art are. A downloaded copy has no `data/` and no `licensed/`. The other possibility is saves that are there and can't be opened by this branch's code (the folder on their computer may be ahead of what's on GitHub). The old screen couldn't tell the two apart, and it was a dead end for someone who avoids typing: it told them to type an address into a browser.
+
+**What changed (branch `claude/godot-step-4b-…`):**
+
+- The screen is no longer a dead end. Under the saves there are (if any): **New game, with a ready-made captain** (`_new_game` in `main.gd`: `POST /api/creator/random` with `anyone: false`, whose answer's `draft` goes to `POST /api/new`; then `_connect()`, and the story starts by itself as for any untold game), **Make your own captain (opens the game's own window)** (`OS.shell_open` on the game's address, so nothing is typed), **Look again**, **Close**.
+- It says which copy it is, in small print: `/api/godot/place`'s no-game answer has `where: { folder, saves, unread: [{ slot, why }], art }` (`whichCopy` in `server.js`: the game's folder, its saves folder, every save file that's there but can't be read with the reader's own first line of why, and whether `licensed/isospace` or `licensed/interiors` exists). The screen shows the folder, an amber line for each unreadable save, an amber line when the art isn't there, and "Saved games and art in another copy of the game aren't used by this one." **So their next screenshot of that screen answers the question by itself.**
+- For checking: `--new` starts a new game from that screen, and `--press-first=x,y` clicks on it for real.
+
+**Checked** (stand-in art or none, test copies on port 3293 with their own data folders, Godot starting the game itself each time): the screen with no saves and no art at 977 by 624 (their window's size), 1400 and 810 wide; with a save cut short (the amber line, and `autosave.json.broken` kept by the server as always); with two saves and art at 1400 and 810; a real click on **New game** at 977 wide, which made Captain Asha Tembe, opened the bridge in plain shapes with the amber "art packs weren't found" line, and began the opening scene with its two choices; the game stopped when the window closed each time. `test/godot-link.test.js` has 8 tests (the folder, an unreadable save named, and a new game begun the way Godot begins one).
+
+**Not checked:** **Make your own captain** opening a browser (there's none to open in a session; it's one call to the system), and a long Windows path wrapping in the small print.
+
+**Asked of them:** which folder they opened `start-godot.bat` from. If it was a download, the choices are theirs: play a new game in that copy as it is (grey shapes), or have the update brought into their usual game folder, where their saves and art are. **Not built, and not to be built unasked:** pointing a downloaded copy at another folder's saves. Their saves would then be written by a copy whose world files may differ from the folder they belong to.
 
 ## For step 5 (the menus and windows)
 

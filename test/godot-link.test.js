@@ -1,7 +1,7 @@
 // The Godot view's line to the game, over the real server (server.js, the routes under /api/godot/): what it's told
-// with no game open, the place and the room of a game being played, the clock run from Godot and left alone while the
-// game's own page is running it, a fight in the room fought from Godot, the story and a talk as Godot is handed them,
-// and that only a game Godot started itself is Godot's to stop.
+// with no game open and a new game started from there, the place and the room of a game being played, the clock run
+// from Godot and left alone while the game's own page is running it, a fight in the room fought from Godot, the story
+// and a talk as Godot is handed them, and that only a game Godot started itself is Godot's to stop.
 
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -66,9 +66,31 @@ test("with no game open, Godot is told so, and which saves there are", async () 
   assert.equal(none.game, false);
   assert.ok(none.saves.every((save) => save.empty), "no save yet");
   assert.equal((await post("/api/godot/tick", { ms: 500, rate: 10 })).status, 400, "and there's no clock to run");
+  // It's also told which copy of the game this is: a copy with no saves of its own is the usual reason for that screen.
+  assert.equal(none.where.folder, projectDir);
+  assert.equal(none.where.saves, path.join(data, "saves"));
+  assert.deepEqual(none.where.unread, []);
+  assert.equal(none.where.art, false, "this copy has no art packs");
   leaveSave(data);
+  fs.writeFileSync(path.join(data, "saves", "slot2.json"), '{"name": "Cut short", ');
   const some = await get("/api/godot/place");
   assert.deepEqual(some.saves.filter((save) => !save.empty).map((save) => save.slot), ["slot1"]);
+  assert.deepEqual(some.where.unread.map((one) => one.slot), ["slot2"], "a save that's there and can't be opened is named");
+  assert.ok(some.where.unread[0].why.length > 0);
+});
+
+test("with no game open, a new one is started from Godot with a captain the game makes itself", async () => {
+  const { get, post } = await startServer();
+  const made = await post("/api/creator/random", { anyone: false });
+  assert.equal(made.status, 200);
+  assert.equal(made.draft.start, "captain");
+  // The captain goes through Godot and back as plain JSON.
+  const begun = await post("/api/new", { draft: JSON.parse(JSON.stringify(made.draft)) });
+  assert.equal(begun.status, 200);
+  const place = await get("/api/godot/place");
+  assert.equal(place.game, true);
+  assert.equal(place.place.id, "meridian");
+  assert.equal((await get("/api/godot/story")).untold, true, "and its story is still to be told, which Godot starts by itself");
 });
 
 test("a game being played: the place, the room, the clock, and where the player is", async () => {

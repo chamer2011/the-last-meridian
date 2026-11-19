@@ -12,7 +12,7 @@
 ##   that square)  --press=700,430 (a real click at that point of the window)  --wheel=3 (the wheel, so many notches)
 ##   --press-last (the click comes after the keys, and --then=F12:5 holds on after it)
 ##   --point=700,430 (the pointer rests there)  --port=3292 (where the game is)  --no-start (never start the game itself)  --load=test (with no game open, open
-##   that save)  --speed=Faster  --pause
+##   that save)  --new (with no game open, start a new one; --press-first=300,300 clicks on that screen instead)  --speed=Faster  --pause
 ##   --plain (as if the packs weren't there)  --no-light  --bare (the deck alone)  --loading-shot=out.png
 ##   --empty (the ship with no game behind her, as step 1 had her: --deck=2 --at=40,15 --preview)
 extends Control
@@ -427,7 +427,7 @@ func _connect() -> void:
 		return
 	var said: Dictionary = answer.data
 	if said.get("game") == false:
-		_no_game(said.get("saves", []))
+		_no_game(said)
 		return
 	if said.get("nowhere", false):
 		_fail("There's no map of where you are in the game, so there's nothing to draw yet.", true)
@@ -435,30 +435,83 @@ func _connect() -> void:
 	_load(said)
 
 
-## The game is running with no game open in it: the saves there are, to open one.
-func _no_game(saves: Array) -> void:
+## The game is running with no game open in it: the saves there are, to open one, and a new game to start. This is
+## what a copy of the game with no saves of its own opens on (one just downloaded, say), so it says which folder it's
+## playing from, and nothing on it needs typing.
+func _no_game(said: Dictionary) -> void:
+	var saves: Array = said.get("saves", [])
 	var kept: Array = saves.filter(func(save: Dictionary) -> bool: return not save.get("empty", false))
 	if args.has("load"):
 		await _open_save(str(args.load))
 		return
+	if args.has("new"):
+		args.erase("new")
+		await _new_game()
+		return
+	var where: Dictionary = said.get("where", {})
+	var unread: Array = where.get("unread", [])
 	loading_title.text = "NO GAME OPEN"
+	loading_line.remove_theme_color_override("font_color")
 	loading_bar.size.x = 0
 	for old in loading_more.get_children():
 		old.queue_free()
-	var own_window := "open %s in a browser" % link.address()
-	if kept.is_empty():
-		loading_line.text = "There's no saved game yet, and the title screen and the character sheet aren't in this window yet. Start a game in the game's own window (%s), then press Look again." % own_window
-	else:
-		loading_line.text = "Pick a saved game to open. (A new one is started in the game's own window for now: %s, then press Look again.)" % own_window
+	if not kept.is_empty():
+		loading_line.text = "Pick a saved game to open, or start a new one."
 		var names := {"autosave": "Where you left off", "previous": "The game before", "slot1": "Slot 1", "slot2": "Slot 2", "slot3": "Slot 3", "test": "Test save"}
 		for save in kept:
 			_loading_button("%s: %s, %s" % [names.get(save.slot, save.slot), str(save.get("name", "")), str(save.get("location", ""))], _open_save.bind(str(save.slot)))
+	elif not unread.is_empty():
+		loading_line.text = "There are saved games in this folder, but they couldn't be opened. Nothing in them has been changed. A new game can still be started."
+	else:
+		loading_line.text = "There's no saved game in this copy of the game yet. Start a new one here, or make your own captain in the game's own window and then press Look again."
+	_loading_button("New game, with a ready-made captain", _new_game)
+	_loading_button("Make your own captain (opens the game's own window)", func() -> void: OS.shell_open(link.address()))
 	_loading_button("Look again", _connect)
 	_loading_button("Close", func() -> void: _close(0))
+	# Which copy of the game this is, in small print: each copy has its own saves and its own art.
+	if where.has("folder"):
+		_loading_note("This copy of the game is in: %s" % str(where.folder))
+	for one in unread:
+		_loading_note("Couldn't be opened: %s.json (%s)" % [str(one.get("slot", "")), str(one.get("why", ""))], Color("ffc466"))
+	if where.has("art") and not where.art:
+		_loading_note("The bought art packs aren't in this copy (its licensed folder), so its rooms are drawn as plain grey shapes.", Color("ffc466"))
+	if kept.is_empty() and where.has("folder"):
+		_loading_note("Saved games%s in another copy of the game aren't used by this one." % ("" if where.get("art", true) else " and art"))
+	# For checking: a real click on this screen, after which the check goes on as for any game.
+	if args.has("press-first"):
+		var at := str(args["press-first"])
+		args.erase("press-first")
+		await get_tree().create_timer(0.5).timeout
+		await _press(at)
+		return
 	if args.has("shot"):
 		await get_tree().create_timer(0.5).timeout
 		get_viewport().get_texture().get_image().save_png(args.shot)
 		_close(0)
+
+
+## A line of small print under the buttons of the screen with no game open.
+func _loading_note(words: String, color := Pal.MUTED) -> void:
+	var line := Pal.label(words, color, 11)
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	line.custom_minimum_size.x = 420
+	loading_more.add_child(line)
+
+
+## A new game, begun here: the game makes a captain itself, as its own window's "A random person" does, and the story
+## then starts by itself as it does for any game that hasn't been told yet.
+func _new_game() -> void:
+	_say("Making a captain")
+	var made: Dictionary = await link.ask("/api/creator/random", {"anyone": false}, 30.0)
+	if not made.ok or typeof(made.data.get("draft")) != TYPE_DICTIONARY:
+		_fail("A captain couldn't be made:\n%s" % str(made.error), true)
+		return
+	_say("Starting a new game as Captain %s" % str(made.data.draft.get("name", "")), 0.1)
+	var begun: Dictionary = await link.ask("/api/new", {"draft": made.data.draft}, 60.0)
+	if not begun.ok:
+		_fail("The new game couldn't be started:\n%s" % str(begun.error), true)
+		return
+	_connect()
 
 
 func _open_save(slot: String) -> void:

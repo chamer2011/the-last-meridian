@@ -436,6 +436,22 @@ let pageFought = 0;
 const PAGE_HAS_THE_CLOCK = 1500;
 // What else is going on in the game that Godot doesn't play yet, so it can say so and wait.
 const goingOn = () => ({ combat: Boolean(game.combat), talk: Boolean(game.talk), check: Boolean(game.check), computer: Boolean(game.computer), over: Boolean(game.over) });
+// Which copy of the game this is, for Godot's screen with no game open: its folder, any save that's there but can't be
+// opened (and why), and whether the bought art is in it. A copy with no saves of its own, one just downloaded, is the
+// usual reason for that screen, and each copy has its own saves and its own art.
+function whichCopy() {
+  const unread = [];
+  for (const slot of SAVE_SLOTS) {
+    if (!fs.existsSync(savePath(slot))) continue;
+    try {
+      publicState(migrateGame(JSON.parse(fs.readFileSync(savePath(slot), "utf8"))));
+    } catch (err) {
+      unread.push({ slot, why: String(err?.message ?? err).split("\n")[0].slice(0, 160) });
+    }
+  }
+  const art = ["isospace", "interiors"].some((pack) => fs.existsSync(path.join(licensedDir(), pack)));
+  return { folder: projectDir, saves: savesDir, unread, art };
+}
 async function godotApi(req, res, route) {
   const what = route.slice("/api/godot/".length);
   if (req.method === "GET") {
@@ -445,9 +461,10 @@ async function godotApi(req, res, route) {
       res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
       res.end(JSON.stringify(obj, godotRound));
     };
-    // Every level of the place the player's at, and the room as it stands. With no game open, the saves there are.
+    // Every level of the place the player's at, and the room as it stands. With no game open, the saves there are,
+    // and which copy of the game this is.
     if (what === "place") {
-      if (!game) return json(res, 200, { ok: true, game: false, saves: listSaves() });
+      if (!game) return json(res, 200, { ok: true, game: false, saves: listSaves(), where: whichCopy() });
       const place = godotPlace(game);
       if (!place) return json(res, 200, { ok: true, game: true, nowhere: true, state: goingOn() });
       return jsonShort({ ...place, game: true, walk: walkView(game), clock: clockFor(game), state: goingOn(), saved: saves });
