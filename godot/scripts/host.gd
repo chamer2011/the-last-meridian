@@ -11,12 +11,14 @@ var on := "sheet"
 var colours := Pal.kind("green")
 var most_wide := 500.0
 var where := "right"
+## Whether its page is as tall as the window whatever is in it (the Story board, whose sheet takes up the room).
+var fills := false
 var console := RoomWindows.Console.new()
 var shade := ColorRect.new()
 var open := false
 var _of := -1
 var _busy := false
-var _next: Variant = null
+var _next: Array = []
 var _look_in := 0.0
 var _tree := {}
 var _wide := -1.0
@@ -37,6 +39,7 @@ func _init() -> void:
 			return
 		ask({"op": "click", "id": id, "of": _of})
 	console.relay_typed = func(id: int, value: String) -> void: ask({"op": "input", "id": id, "of": _of, "value": value})
+	console.relay_pointed = func(id: int, how: String, at: Vector2) -> void: ask({"op": "pointer", "id": id, "of": _of, "events": [[how, roundf(at.x), roundf(at.y)]]})
 	add_child(console)
 
 
@@ -44,6 +47,11 @@ func _init() -> void:
 func show_page(more := {}) -> void:
 	var body := {"op": "open"}
 	body.merge(more)
+	if fills:
+		# What's fitted to the window (a deck, in the Map editor) is fitted to this one.
+		var room := Vector2(get_window().size)
+		body["wide"] = int(room.x)
+		body["high"] = int(room.y)
 	open = true
 	console.scrolled = 0.0
 	ask(body)
@@ -54,21 +62,31 @@ func close() -> void:
 	console.visible = false
 	shade.visible = false
 	_tree = {}
+	_next.clear()
 
 
-## One thing is asked of the game at a time; what's clicked meanwhile is asked next.
+## One thing is asked of the game at a time. Meanwhile, what's typed waits its turn (the last of it for each box), and
+## so does the last thing clicked.
 func ask(body: Dictionary) -> void:
 	if main.link == null or not open:
 		return
 	if _busy:
-		if body.op != "look":
-			_next = body
+		if body.op == "pointer":
+			# The pointer's way across a picture is told whole, in one go, when its turn comes.
+			if not _next.is_empty() and _next[-1].op == "pointer":
+				(_next[-1].events as Array).append_array(body.events)
+			else:
+				_next.append(body)
+		elif body.op != "look":
+			var typed: bool = body.op == "input"
+			_next = _next.filter(func(one: Dictionary) -> bool: return one.op == "pointer" or (one.op == "input") != typed or (typed and int(one.id) != int(body.id)))
+			_next.append(body)
 		return
 	_busy = true
 	body["on"] = on
 	var answer: Dictionary = await main.link.ask("/api/godot/page", body, 40.0)
 	_busy = false
-	_look_in = 1.5
+	_look_in = 0.6 if fills else 1.5
 	if not open:
 		return
 	if not answer.ok:
@@ -88,9 +106,8 @@ func ask(body: Dictionary) -> void:
 		# What's done at a computer changes the room (a door locked, the lights cut): it's looked at again.
 		if on == "computer" and body.op != "look":
 			main._fetch_walk()
-	if _next != null and open:
-		var next: Dictionary = _next
-		_next = null
+	if not _next.is_empty() and open:
+		var next: Dictionary = _next.pop_front()
 		if next.has("of"):
 			next.of = _of
 		ask(next)
@@ -138,6 +155,7 @@ func _put() -> void:
 	var wide := minf(room.x - 16.0, most_wide)
 	console.colours = colours
 	console.most_high = room.y - roof - 10.0
+	console.page.room_high = console.most_high if fills else 0.0
 	console.put(_tree, wide)
 	console.visible = true
 	shade.visible = where == "whole"
@@ -158,6 +176,8 @@ func _process(delta: float) -> void:
 		return
 	if console.visible and absf((main.get_size().x if where != "whole" else float(get_window().size.x)) - _wide) > 0.5:
 		_put()
+		if fills:
+			ask({"op": "look", "wide": get_window().size.x, "high": get_window().size.y})
 	# What the page works out a moment later (the mornings an ending offers) is looked for again.
 	_look_in -= delta
 	if _look_in <= 0.0 and not _busy:

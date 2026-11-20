@@ -6,7 +6,7 @@
 // number of the element clicked, and the element's own listener runs, sending its order to the game as the page does.
 
 import { parentPort, workerData } from "node:worker_threads";
-import { describe, fire, makeDocument } from "./mini-dom.js";
+import { describe, Element, fire, makeDocument } from "./mini-dom.js";
 
 // A page's surroundings, as far as the menus look at them. Orders go to the game this thread belongs to.
 const game = `http://127.0.0.1:${workerData.port}`;
@@ -15,11 +15,76 @@ globalThis.fetch = (url, init) => send(typeof url === "string" && url.startsWith
 globalThis.document = makeDocument();
 // Nothing here is animated (Godot does its own moving), so the page's code is told the player wants less motion.
 globalThis.matchMedia = (query) => ({ matches: /reduced-motion/.test(String(query)), addEventListener() {} });
-globalThis.window = { addEventListener() {}, removeEventListener() {}, matchMedia: globalThis.matchMedia, innerWidth: 1400, innerHeight: 860, devicePixelRatio: 1 };
+// What the page's code set listening on the window is kept: Godot's window changing size is told to it (the Map
+// editor fits its deck to the room there is).
+const heard = {};
+globalThis.window = {
+  addEventListener: (type, run) => (heard[type] ??= []).push(run),
+  removeEventListener: (type, run) => {
+    heard[type] = (heard[type] ?? []).filter((one) => one !== run);
+  },
+  matchMedia: globalThis.matchMedia, innerWidth: 1400, innerHeight: 860, devicePixelRatio: 1,
+};
 const kept = new Map();
 globalThis.localStorage = { getItem: (key) => kept.get(key) ?? null, setItem: (key, value) => kept.set(key, String(value)), removeItem: (key) => kept.delete(key) };
 globalThis.requestAnimationFrame = (run) => setTimeout(() => run(Date.now()), 16);
 globalThis.cancelAnimationFrame = (id) => clearTimeout(id);
+
+// Something the page's code trips over away from a real screen (in a timer, say) must never stop the menus.
+process.on("uncaughtException", (err) => console.error(`A page for the Godot view tripped: ${err?.message ?? err}`));
+process.on("unhandledRejection", (err) => console.error(`A page for the Godot view tripped: ${err?.message ?? err}`));
+globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+globalThis.getComputedStyle = () => ({ getPropertyValue: () => "" });
+
+// How big a box on the Story board is, which the board's own code asks so as to stack its boxes: worked out the way
+// Godot will lay the box out (godot/scripts/page.gd: the same widths, type sizes and wrapping, in a type whose
+// letters are all one width), so the boxes are stacked by the heights they're drawn at.
+const LETTER = 1200 / 2048;
+const wordsWide = (text, size) => Math.ceil(String(text).length * LETTER * size);
+// How many lines some words take: a name joined by underscores can go on to the next line after any of them.
+function linesOf(text, size, wide, { most = Infinity, anywhere = false } = {}) {
+  let lines = 0;
+  for (const para of String(text).split("\n")) {
+    const words = para.split(/\s+/).filter(Boolean);
+    if (!words.length) continue;
+    lines += 1;
+    let x = 0;
+    for (const word of words) {
+      const bits = anywhere && word.includes("_") ? word.split(/(?<=_)/) : [word];
+      bits.forEach((bit, n) => {
+        const w = wordsWide(bit, size), gap = x > 0 && n === 0 ? wordsWide("0", size) : 0;
+        if (x > 0 && x + gap + w > wide + 0.5) {
+          lines += 1;
+          x = w;
+        } else x += gap + w;
+      });
+    }
+  }
+  return Math.min(lines, most);
+}
+Element.sizeOf = (node) => {
+  const has = (name) => node.classList.contains(name);
+  // The room the Map editor's deck has in Godot's window: all of it but the two columns beside the deck, where the
+  // window is wide enough for them (godot/scripts/page.gd lays it out so).
+  if (node.id === "mapedit-view") {
+    const inner = window.innerWidth - 44;
+    return { w: Math.max(300, inner >= 900 ? inner - 486 : inner), h: Math.max(200, window.innerHeight - 200) };
+  }
+  if (!has("board-node")) return null;
+  const w = has("stub") ? 150 : has("fact") || has("link") ? 210 : has("clock") || has("next") || has("react") ? 250 : 230;
+  const inner = w - 16;
+  const parts = node.childNodes.filter((child) => child.nodeType === 1);
+  let h = 13 + 2 * Math.max(0, parts.length - 1);
+  for (const part of parts) {
+    // What a box is, with an ending's name after it; its name; when it holds; and its words, four lines of them
+    // unless it's the box that's picked.
+    if (part.classList.contains("kind")) h += 15 * linesOf(part.childNodes.map((one) => one.textContent).join(" "), 10, inner, { anywhere: true });
+    else if (part.classList.contains("name")) h += 21 * linesOf(part.textContent, 14, inner, { anywhere: true });
+    else if (part.classList.contains("when")) h += 14 * linesOf(part.textContent, 11, inner, { anywhere: true });
+    else h += 16 * linesOf(part.textContent, 12, inner, { most: has("selected") ? 40 : 4 });
+  }
+  return { w, h };
+};
 
 // Only now, with a page to find, is the page's code read.
 const { api, columns, el, folded } = await import("../public/dom.js");
@@ -37,6 +102,9 @@ const { endingNode, initEnding } = await import("../public/ending.js");
 const { creatorScreen, initCreator, openCreator, resetCreator } = await import("../public/creator.js");
 const { computerNode, initComputer, resetComputer } = await import("../public/computer.js");
 const { fightNode, initFight, resetFight, startSim } = await import("../public/fight.js");
+const { closeBoard, openBoard } = await import("../public/board.js");
+const { closeMapEditor, openMapEditor } = await import("../public/mapedit.js");
+const { loadPack } = await import("../public/pixel-art.js");
 const { drawQuests, initQuests, openQuests, questTrackerNode, questsOpen, resetQuests } = await import("../public/quests.js");
 
 // What the page keeps about itself (ui in public/app.js), as far as the menus read it.
@@ -218,6 +286,20 @@ const builders = {
   computer: () => computerNode(),
   quests: () => (questsOpen() ? questTrackerNode() : null),
   fight: () => fightNode(),
+  // The Story board puts itself on the page and draws itself there: what's there is what's handed over.
+  board: () => document.getElementById("board"),
+  // So does the Map editor, whose plan of a deck is a picture it draws a shape at a time.
+  mapedit: () => document.getElementById("mapedit"),
+};
+// What's put right in one of them each time it's handed over, because the page's code draws it afresh.
+const tidies = {
+  // Choosing among the packs' pictures is a window of the page's that isn't in Godot yet.
+  mapedit: () => {
+    for (const id of ["mapedit-choose", "mapedit-pieces", "mapedit-look-toggle"]) {
+      const button = document.getElementById(id);
+      if (button) button.hidden = true;
+    }
+  },
 };
 // What's drawn into one of them only once it's on the page.
 const fills = { quests: drawQuests };
@@ -235,6 +317,24 @@ const opens = {
   ending: async () => {},
   computer: async () => {},
   fight: async () => {},
+  board: async () => {
+    closeBoard();
+    await openBoard();
+    // The line along the bottom says how the board is worked, and here boxes aren't dragged about or onto each other.
+    document.getElementById("board")?.querySelector(".board-foot")?.replaceChildren(
+      el("span", {}, "Click a box to read and change it."),
+      el("span", {}, "Click the words on an arrow to change when it applies."),
+      el("span", {}, "Drag the dark background, or turn the wheel, to look around."),
+    );
+  },
+  mapedit: async () => {
+    closeMapEditor();
+    // The room as the game will draw it, under the plan, is a picture made in a browser: there's only the plan here.
+    localStorage.setItem("meridian-mapedit-look", "off");
+    // The packs' pieces that are furniture, so the ones already on a deck are on its plan.
+    await loadPack();
+    await openMapEditor();
+  },
   quests: async () => {
     resetQuests();
     openQuests();
@@ -261,6 +361,7 @@ function handOver(on, { ifChanged = false } = {}) {
   effects = [];
   // Nothing to show: it was put away, or what it was about is over.
   if (!surface.root || surface.root.hidden) return { game: Boolean(ui.game), on, closed: true, effects: out };
+  tidies[on]?.();
   const tree = describe(surface.root, surface.ids);
   const menu = MENUS[ui.tab] ?? MENUS.leads;
   const page = on === "menu" ? { game: true, on, menu: ui.tab, label: menu.label, message: ui.menuMessage, tree, rail: railOf(ui.game) } : { game: Boolean(ui.game), on, tree, message: on === "sheet" ? ui.menuMessage : null };
@@ -273,6 +374,17 @@ function handOver(on, { ifChanged = false } = {}) {
 
 async function answer(ask) {
   const on = builders[ask.on] ? ask.on : "menu";
+  // How big Godot's window is, when it says: what's fitted to the window is fitted again.
+  if (ask.wide && ask.high && (ask.wide !== window.innerWidth || ask.high !== window.innerHeight)) {
+    Object.assign(window, { innerWidth: Number(ask.wide), innerHeight: Number(ask.high) });
+    for (const run of heard.resize ?? []) {
+      try {
+        run({ type: "resize" });
+      } catch {
+        // Not this listener's window.
+      }
+    }
+  }
   if (ask.op === "rail") {
     // A game opened or begun in Godot: what the page's code remembered of the one before is let go, as the page does.
     if (ask.reset) {
@@ -308,7 +420,18 @@ async function answer(ask) {
   if (node && !node.disabled) {
     if (ask.op === "input") {
       node.value = String(ask.value ?? "");
-      await fire(node, "input", { target: node });
+      node.checked = ask.value === "true";
+      // A list to pick from and a box to tick say they've changed; a box to type in says so as it's typed in.
+      for (const type of ["input", "change"]) if (node.listeners[type]?.length) await fire(node, type, { target: node });
+    } else if (ask.op === "pointer") {
+      // The pointer on a picture the page draws (the Map editor's deck): down, across it, and up again.
+      for (const [how, x, y] of ask.events ?? []) await fire(node, `pointer${how}`, { clientX: Number(x), clientY: Number(y), button: 0, pointerId: 1 });
+    } else if (ask.op === "click" && on === "board") {
+      // The Story board listens on the page itself for the pointer going down on a box and coming up again.
+      await document.send("pointerdown", { target: node });
+      await document.send("pointerup", { target: node });
+      await fire(node, "click");
+      await document.send("click", { target: node });
     } else if (ask.op === "click") {
       // What the page opens on a double click (an icon on a desktop), Godot opens on one.
       await fire(node, node.listeners.dblclick?.length ? "dblclick" : "click");

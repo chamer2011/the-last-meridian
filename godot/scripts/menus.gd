@@ -12,8 +12,6 @@ const NARROW := 860.0
 const SLIDE := 0.22
 ## What a button of the rail opens that isn't a menu drawn here, and what to say of it until it's in this window.
 const NOT_YET := {
-	"board": "The Story board isn't in this window yet. It's in the game's own window.",
-	"mapedit": "The Map editor isn't in this window yet. It's in the game's own window.",
 }
 
 var main: Control
@@ -285,6 +283,12 @@ func key(event: InputEventKey) -> bool:
 ## Something a menu's button opens that's a window of its own.
 func _window(id: String) -> void:
 	close()
+	if _kind(id) == "board":
+		main.board.show_page()
+		return
+	if _kind(id) == "editor":
+		main.mapedit.show_page()
+		return
 	main._message(NOT_YET.get(id, "That isn't in this window yet. It's in the game's own window."))
 
 

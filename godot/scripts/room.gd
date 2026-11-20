@@ -30,6 +30,7 @@ class Console:
 	## When what's drawn was built by the game (host.gd), a click or typed words are passed on by number instead.
 	var relay := Callable()
 	var relay_typed := Callable()
+	var relay_pointed := Callable()
 
 	func _init() -> void:
 		clip_contents = true
@@ -43,6 +44,9 @@ class Console:
 		page.typed.connect(func(id: int, value: String) -> void:
 			if relay_typed.is_valid():
 				relay_typed.call(id, value))
+		page.pointed.connect(func(id: int, how: String, at: Vector2) -> void:
+			if relay_pointed.is_valid():
+				relay_pointed.call(id, how, at))
 		page.asked.connect(func(id: int, at: Vector2) -> void:
 			if id < asks.size() and asks[id].is_valid():
 				asks[id].call(at))

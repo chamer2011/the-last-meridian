@@ -99,6 +99,8 @@ var creator: HostWindow
 var computer: HostWindow
 var quests: HostWindow
 var fight_window: HostWindow
+var board: HostWindow
+var mapedit: HostWindow
 ## Everyone on the level, as the game last listed them.
 var people: Array = []
 var menus: Menus
@@ -252,6 +254,22 @@ func _ready() -> void:
 	menus = Menus.new()
 	menus.main = self
 	add_child(menus)
+	# The Story board: the game's stories and world as boxes and arrows, over everything while it's open.
+	board = HostWindow.new()
+	board.main = self
+	board.on = "board"
+	board.where = "whole"
+	board.most_wide = 4000.0
+	board.fills = true
+	add_child(board)
+	# The Map editor: a deck seen from straight above, to redraw by clicking, over everything while it's open.
+	mapedit = HostWindow.new()
+	mapedit.main = self
+	mapedit.on = "mapedit"
+	mapedit.where = "whole"
+	mapedit.most_wide = 4000.0
+	mapedit.fills = true
+	add_child(mapedit)
 
 	fade = ColorRect.new()
 	fade.color = Color(Iso.BACKGROUND, 0.0)
@@ -1390,6 +1408,16 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		if menus.key(event) or event.physical_keycode != KEY_SPACE:
 			get_viewport().set_input_as_handled()
 			return
+	# The Story board and the Map editor have the keys to themselves. Esc leaves a box that's being typed in, and otherwise puts the board away,
+	# which is the page's own key and asks first about anything not saved.
+	if event is InputEventKey and (board.open or mapedit.open):
+		if event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE:
+			if get_viewport().gui_get_focus_owner() != null:
+				get_viewport().gui_release_focus()
+			else:
+				(board if board.open else mapedit).ask({"op": "key", "key": "Escape"})
+		get_viewport().set_input_as_handled()
+		return
 	# The making of a captain and an ending's page have the keys to themselves.
 	if event is InputEventKey and (creator.open or ending.open):
 		if event.pressed and not event.echo and ending.open and not creator.open and ending.pick(event.physical_keycode - KEY_0):
@@ -1499,7 +1527,7 @@ func _zoom_by(times: float) -> void:
 
 
 func _can_walk() -> bool:
-	return playing and current >= 0 and decks[current].mover != null and menus.open_id == "" and not bag.on and (link == null or (_blocked() == "" and not fight.on and not story.talking() and not story.sending and not Live.truthy(state.get("talk"))))
+	return playing and current >= 0 and decks[current].mover != null and menus.open_id == "" and not bag.on and not board.open and not mapedit.open and (link == null or (_blocked() == "" and not fight.on and not story.talking() and not story.sending and not Live.truthy(state.get("talk"))))
 
 
 ## With no game behind the ship, a click on a square: the player walks the shortest way there, or to the floor nearest.
@@ -1885,6 +1913,12 @@ func _run_check() -> void:
 	if args.has("creator"):
 		creator.show_page()
 		await get_tree().create_timer(1.5).timeout
+	if args.has("board"):
+		board.show_page()
+		await get_tree().create_timer(2.5).timeout
+	if args.has("mapedit"):
+		mapedit.show_page()
+		await get_tree().create_timer(3.0).timeout
 	if args.has("menu"):
 		menus.open(str(args.menu))
 		await get_tree().create_timer(1.2).timeout
@@ -1899,6 +1933,11 @@ func _run_check() -> void:
 			if window == "key":
 				computer.ask({"op": "key", "key": one.substr(4)})
 				await get_tree().create_timer(1.5).timeout
+				continue
+			# "press:w:500,400,8" is one of --press's own, in its turn among the words.
+			if window == "press":
+				await _press(one.substr(6))
+				await get_tree().create_timer(1.0).timeout
 				continue
 			var page: Page = menus.page if window == "menu" else (get(window) as HostWindow).console.page
 			var spot := page.spot_of(one.substr(window.length() + 1))
@@ -1948,6 +1987,37 @@ func _press(where: String) -> void:
 			for one in clicks:
 				await _press(one)
 				await get_tree().create_timer(1.5).timeout
+			return
+		# "w:700,430,3" turns the wheel three notches down there (-3 for up; "ws:" with Shift held); "t:words" types them.
+		if where.begins_with("w:") or where.begins_with("ws:"):
+			var said := where.get_slice(":", 1).split(",")
+			for i in absi(int(said[2])):
+				var turn := InputEventMouseButton.new()
+				turn.button_index = MOUSE_BUTTON_WHEEL_DOWN if int(said[2]) > 0 else MOUSE_BUTTON_WHEEL_UP
+				turn.pressed = true
+				turn.shift_pressed = where.begins_with("ws:")
+				turn.position = Vector2(float(said[0]), float(said[1]))
+				turn.global_position = turn.position
+				Input.parse_input_event(turn)
+				await get_tree().process_frame
+			return
+		# "h:700,430" rests the pointer there.
+		if where.begins_with("h:"):
+			var over := InputEventMouseMotion.new()
+			over.position = Vector2(float(where.substr(2).get_slice(",", 0)), float(where.get_slice(",", 1)))
+			over.global_position = over.position
+			Input.parse_input_event(over)
+			await get_tree().process_frame
+			return
+		if where.begins_with("t:"):
+			for letter in where.substr(2):
+				for down in [true, false]:
+					var key := InputEventKey.new()
+					key.unicode = letter.unicode_at(0)
+					key.keycode = letter.to_upper().unicode_at(0) as Key
+					key.pressed = down
+					Input.parse_input_event(key)
+					await get_tree().process_frame
 			return
 		# "d:700,430" is a double click there; "m:700,430>760,430" presses, drags across and lets go.
 		if where.begins_with("d:"):

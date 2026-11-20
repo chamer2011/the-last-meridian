@@ -27,7 +27,7 @@ const $ = (id) => document.getElementById(id);
 const spaced = (id) => String(id ?? "").replaceAll("_", " ");
 const fill = (parent, ...children) => { for (const child of children.flat()) if (child !== null && child !== undefined && child !== false) parent.append(child); return parent; };
 const STOP = new Set("if the they she he it you someone anyone a an and or of is are that this their them its in on at for as has have then when there".split(" "));
-const KIND_WORDS = { story: "The story", place: "The place", person: "The person", species: "The species", enemy: "The enemy", item: "The item", faction: "The faction", perk: "The perk", computer: "The computer", program: "The program", part: "The part", systems: "The systems", logistics: "The logistics", port: "The port", goods: "The goods", command: "The chain of command", request: "The request" };
+const KIND_WORDS = { story: "The story", place: "The place", person: "The person", species: "The species", enemy: "The enemy", item: "The item", faction: "The faction", perk: "The perk", computer: "The computer", program: "The program", part: "The part", systems: "The systems", logistics: "The logistics", port: "The port", goods: "The goods", command: "The chain of command", request: "The request", health: "Health" };
 const FOLDERS = { story: "stories", person: "characters", place: "places", species: "species", enemy: "enemies", item: "items", faction: "factions", perk: "perks", computer: "computers", program: "programs", part: "rig-parts", systems: "systems", logistics: "logistics", port: "ports", goods: "goods", command: "command", health: "health", request: "scenes" };
 
 // A name made from words, for an ending or a fact, so nobody has to type one.
@@ -459,7 +459,7 @@ function systemsGraph() {
     const runs = c.systems.includes("everything") ? P.systems.map((_, j) => j) : c.systems.map((sid) => P.systems.findIndex((system) => system.id === sid)).filter((j) => j >= 0);
     for (const j of runs) ws.push({ from: id, to: `system${j}` });
   });
-  for (const room of L.rooms ?? []) add({ id: `room_${room.id}`, kind: "clock", col: 3, name: room.name, text: room.parts.length ? room.parts.join(", ") : "nothing", label: room.door ? "A room, with a door its systems run" : "A room" });
+  for (const room of L.rooms ?? []) add({ id: `room_${room.id}`, kind: "clock", col: 3, name: room.name, text: room.parts.length ? room.parts.join(", ") : "nothing", label: room.door ? "A room, with a door its systems run" : "A room", readOnly: "The rooms come from the place's map. What's in each is changed in the systems' own boxes." });
   if (L.place) add(linkNode(`link_place_${L.place.id}`, "place", L.place.name, "The place itself.", "The place"));
   return { list, ws };
 }
