@@ -2,10 +2,11 @@ ALMAGEST EXPLORER'S IN GODOT
 ============================
 
 This folder is the Godot view of the game: what's seen and clicked, being moved to Godot a step at
-a time, while the game's rules stay where they are (src/, in JavaScript). Steps 1 to 4 of seven are
-here, and the first parts of step 5: the room of the game being played, with everyone aboard, the
-doors, the light and the dark, fires and the clock, fights fought in the room, the story and talks
-over it, what can be clicked in the room, skill checks, the inventory, and the menus.
+a time, while the game's rules stay where they are (src/, in JavaScript). Steps 1 to 6 of seven are
+here: the room of the game being played, with everyone aboard, the doors, the light and the dark,
+fires and the clock, fights fought in the room, the story and talks over it, what can be clicked in
+the room, skill checks, the inventory, the menus, the registry printout, the quest log, computers
+and the rig, the Story board, and the Map editor with the packs' pieces.
 
 TO OPEN IT
 Double-click start-godot.bat in the game's folder (the one above this). It fetches Godot 4.3 the
@@ -20,10 +21,12 @@ WHAT'S HERE
 - scripts/room.gd: the marks over things, a thing's window, the right-click menu, the room's panel.
 - scripts/check.gd: a skill check's window.
 - scripts/bag.gd: the inventory, and whatever's open beside the pack.
-- scripts/host.gd: a window the game builds itself (the registry printout, an ending, the creator).
+- scripts/host.gd: a window the game builds itself (the registry printout, an ending, the creator,
+  a computer, the quest log, the Story board, the Map editor, the packs' pieces).
 - scripts/menus.gd: the menus' buttons down the right edge, and the panel a menu opens in.
-- scripts/page.gd: draws a menu or a window from the tree of elements it's handed. The menus' trees
-  are built by the game itself, with the code that builds them for the browser (src/godot-pages.js).
+- scripts/page.gd: draws a menu or a window from the tree of elements it's handed. The trees are
+  built by the game itself, with the code that builds them for the browser (src/godot-pages.js), so
+  the Story board and the Map editor here are the game's own, not copies of them.
 - scripts/deck_art.gd, deck_view.gd, overlay.gd, figure.gd and the scripts they use: the drawing.
 - scripts/pal.gd and the panes, the Keelworks desktop and style_test.tscn: the style test of the
   console look, approved before this, which the later steps are built from.

@@ -1,11 +1,11 @@
-## The game's room, in Godot (steps 2 to 5 of the port): the place the player's at, drawn with the art packs, with the
+## The game's room, in Godot (steps 2 to 6 of the port): the place the player's at, drawn with the art packs, with the
 ## player walking it, everyone else living their days on it, the doors, the light and the dark, fires, the clock, fights
 ## fought in the room (fight.gd), the story and talks over the room (story.gd), what can be clicked in the room and
-## the room's own panel (room.gd), skill checks (check.gd), the inventory (bag.gd) and the menus (menus.gd, drawn by page.gd).
+## the room's own panel (room.gd), skill checks (check.gd), the inventory (bag.gd), the menus (menus.gd, drawn by page.gd), and the windows the game builds itself (host.gd:
+## the printout, computers, the quest log, the Story board, the Map editor and the packs' pieces).
 ##
 ## Godot draws and takes clicks; the game's rules stay in JavaScript. Everything shown here is asked of the game itself
-## (link.gd), which is the same program the browser view talks to, so both can be open on the same game. What Godot
-## doesn't play yet (the simulator's fights, the two editors) it says so about, and waits.
+## (link.gd), which is the same program the browser view talks to, so both can be open on the same game.
 ##
 ## For checking without a screen, after the two dashes:
 ##   --shot=out.png  --wait=1.5  --width=810  --height=860  --zoom=1.3  --report (how it went, as a line of JSON)
@@ -15,7 +15,10 @@
 ##   --point=700,430 (the pointer rests there)  --port=3292 (where the game is)  --no-start (never start the game itself)  --load=test (with no game open, open
 ##   that save)  --new (with no game open, start a new one; --press-first=300,300 clicks on that screen instead)  --speed=Faster  --pause
 ##   --menu=ship (that menu open; --menu-scroll=400 scrolled so far down)  --words="computer:Systems;menu:Wait 1 day"
-##   (real clicks on whatever says that, in a window the game builds or the open menu)  --creator
+##   (real clicks on whatever says that, in a window the game builds or the open menu; "press:..." among them is
+##   one of --press's own in its turn)  --creator  --board  --mapedit
+##   --press also takes w:700,430,3 (the wheel there, three notches down; ws: with Shift), h:700,430 (the pointer
+##   rests there), t:words (typed) and m:700,430>760,430 (a drag)
 ##   --plain (as if the packs weren't there)  --no-light  --bare (the deck alone)  --loading-shot=out.png
 ##   --empty (the ship with no game behind her, as step 1 had her: --deck=2 --at=40,15 --preview)
 extends Control
