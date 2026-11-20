@@ -13,6 +13,8 @@ var most_wide := 500.0
 var where := "right"
 ## Whether its page is as tall as the window whatever is in it (the Story board, whose sheet takes up the room).
 var fills := false
+## What's done once it's been put away, if anything.
+var after_close := Callable()
 var console := RoomWindows.Console.new()
 var shade := ColorRect.new()
 var open := false
@@ -63,6 +65,8 @@ func close() -> void:
 	shade.visible = false
 	_tree = {}
 	_next.clear()
+	if after_close.is_valid():
+		after_close.call()
 
 
 ## One thing is asked of the game at a time. Meanwhile, what's typed waits its turn (the last of it for each box), and

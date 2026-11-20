@@ -182,12 +182,28 @@ export class Text {
 
 // Simple selectors are all the page's code ever asks for: ".class", "tag", "#id", those run together, or a few of
 // them with commas between (any of them will do).
+// One of them can say what something has written on it ([data-piece="..."]), and "a b" is a b inside an a.
 function matches(node, selector) {
   if (node.nodeType !== 1) return false;
   if (selector.includes(",")) return selector.split(",").some((one) => matches(node, one));
-  const last = selector.trim().split(/\s+/).at(-1);
-  const parts = last.match(/[#.]?[\w-]+/g) ?? [];
-  return parts.every((part) => (part[0] === "." ? node.classList.contains(part.slice(1)) : part[0] === "#" ? node.id === part.slice(1) : node.tagName.toLowerCase() === part.toLowerCase()));
+  const steps = (selector.trim().match(/(?:\[[^\]]*\]|[^\s\[])+/g) ?? []).filter((step) => step !== ">");
+  if (!isOne(node, steps.at(-1) ?? "")) return false;
+  let inside = node.parentNode;
+  for (let i = steps.length - 2; i >= 0; i -= 1) {
+    while (inside && !(inside.nodeType === 1 && isOne(inside, steps[i]))) inside = inside.parentNode;
+    if (!inside) return false;
+    inside = inside.parentNode;
+  }
+  return true;
+}
+function isOne(node, step) {
+  // What a selector says of something's state (:checked, :not(...)) is never so here. ("a > b" is read as b inside a.)
+  if (step.includes(":")) return false;
+  const written = [...step.matchAll(/\[([\w-]+)(?:=(?:"([^"]*)"|'([^']*)'|([^\]]*)))?\]/g)].map(([, name, ...values]) => [name, values.find((value) => value !== undefined)]);
+  const parts = step.replace(/\[[^\]]*\]/g, "").match(/[#.]?[\w-]+/g) ?? [];
+  if (!parts.length && !written.length) return false;
+  return parts.every((part) => (part[0] === "." ? node.classList.contains(part.slice(1)) : part[0] === "#" ? node.id === part.slice(1) : node.tagName.toLowerCase() === part.toLowerCase()))
+    && written.every(([name, value]) => (value === undefined ? name in node.attributes : node.attributes[name] === value));
 }
 
 // A small picture written as markup (the desktop's icons are a few coloured rectangles; the network map's wires are
@@ -482,8 +498,11 @@ export function makeDocument() {
     getElementById: (id) => root.querySelector(`#${id}`),
     querySelector: (selector) => root.querySelector(selector),
     querySelectorAll: (selector) => root.querySelectorAll(selector),
-    addEventListener: (type, run) => (all[type] ??= []).push(run),
-    removeEventListener: () => {},
+    // What asks to hear something first (as it's on its way down the page) is heard before the rest.
+    addEventListener: (type, run, first) => (first === true ? (all[type] ??= []).unshift(run) : (all[type] ??= []).push(run)),
+    removeEventListener: (type, run) => {
+      all[type] = (all[type] ?? []).filter((one) => one !== run);
+    },
     // Something done to the pointer, for whatever the page's code set listening for it on the page itself. One
     // listener tripping (it's some other window's, and that window isn't there) doesn't stop the rest.
     async send(type, event) {
@@ -562,6 +581,8 @@ export function describe(node, ids) {
   if (node.selected) out.sel = 1;
   if (node.movedTo) out.sc = node.movedTo;
   if (node.pen) out.cv = node.pen.shapes;
+  // A square that's a picture out of a file (a piece of the bought packs): which file, and which part of it.
+  if (node.dataset.file) out.pic = [node.dataset.file, ...(node.dataset.cell ? node.dataset.cell.split(",").map(Number) : [])];
   // A picture drawn a line at a time (the Story board's arrows): each path as the points it goes through, a curve as
   // a dozen short lines, with its classes first, which is all Godot draws of it.
   if (out.t === "svg" && !node.shapes) {

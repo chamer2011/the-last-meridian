@@ -101,6 +101,7 @@ var quests: HostWindow
 var fight_window: HostWindow
 var board: HostWindow
 var mapedit: HostWindow
+var pieces: HostWindow
 ## Everyone on the level, as the game last listed them.
 var people: Array = []
 var menus: Menus
@@ -270,6 +271,16 @@ func _ready() -> void:
 	mapedit.most_wide = 4000.0
 	mapedit.fills = true
 	add_child(mapedit)
+	# The packs' pieces, which the Map editor opens over itself: once a piece is chosen there, or the window is shut,
+	# the editor is looked at again.
+	pieces = HostWindow.new()
+	pieces.main = self
+	pieces.on = "pieces"
+	pieces.where = "whole"
+	pieces.most_wide = 4000.0
+	pieces.fills = true
+	pieces.after_close = func() -> void: mapedit.ask({"op": "look"})
+	add_child(pieces)
 
 	fade = ColorRect.new()
 	fade.color = Color(Iso.BACKGROUND, 0.0)
@@ -762,6 +773,7 @@ func _load(answer: Dictionary) -> void:
 	if data.decks.size() > 0:
 		dim = float(data.decks[0].scene.look.get("pixelLight", 1.0))
 	packs = Packs.new(licensed, dim)
+	Page.packs_dir = packs.dir
 	# Every picture the place could need is asked for now, so the atlas is whole before any deck is drawn.
 	if packs.found:
 		packs.gather(data.get("ways", {}))
@@ -1415,7 +1427,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			if get_viewport().gui_get_focus_owner() != null:
 				get_viewport().gui_release_focus()
 			else:
-				(board if board.open else mapedit).ask({"op": "key", "key": "Escape"})
+				(board if board.open else (pieces if pieces.open else mapedit)).ask({"op": "key", "key": "Escape"})
 		get_viewport().set_input_as_handled()
 		return
 	# The making of a captain and an ending's page have the keys to themselves.

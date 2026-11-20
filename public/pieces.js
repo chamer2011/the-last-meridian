@@ -113,8 +113,11 @@ function watch(canvas, picture) {
   }
   state.watcher.observe(canvas);
 }
+// Which picture a square is of is written on it too, for a view that draws the pictures itself (the Godot view reads
+// them from the same folder).
+const pictureOf = (picture) => ({ "data-file": picture.file, ...(picture.x === undefined ? {} : { "data-cell": [picture.x, picture.y, picture.w, picture.h].join(",") }) });
 function pictureBox(picture, words) {
-  const canvas = el("canvas", { class: "pieces-picture", role: "img", "aria-label": words });
+  const canvas = el("canvas", { class: "pieces-picture", role: "img", "aria-label": words, ...pictureOf(picture) });
   watch(canvas, picture);
   return canvas;
 }
@@ -508,7 +511,7 @@ export function closePieces() {
 
 // A small picture of a piece, for somewhere else on the page (the Map editor's list of pieces chosen lately).
 export function pieceThumb(picture, words) {
-  const canvas = el("canvas", { class: "pieces-thumb", role: "img", "aria-label": words });
+  const canvas = el("canvas", { class: "pieces-thumb", role: "img", "aria-label": words, ...pictureOf(picture) });
   // It's drawn once it has its size on the page.
   requestAnimationFrame(() => paint(canvas, picture));
   return canvas;

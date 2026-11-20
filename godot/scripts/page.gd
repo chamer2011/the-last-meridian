@@ -127,6 +127,11 @@ var _moved_seen := -1
 var _tones := {}
 ## What's being drawn on: the page itself, or one of its windows while that draws its part.
 var _pen: CanvasItem
+## Where the bought packs' pictures are on this computer (the game's licensed folder), for a page that shows some of
+## them, and the ones read so far: each file, and each picture cut and sized for its square.
+static var packs_dir := ""
+static var sheets := {}
+static var shots := {}
 
 
 func _init() -> void:
@@ -253,8 +258,9 @@ func _style(d: Dictionary, from: Dictionary) -> Dictionary:
 			s.off = not d.has("svg")
 			s.kind = PIC
 		"canvas":
-			s.off = not d.has("cv")
+			s.off = not d.has("cv") and not d.has("pic")
 			s.kind = CANVAS
+			s.faded = from.get("faded", false)
 		"label":
 			s.color = dim
 			s.size = 12.0
@@ -1292,6 +1298,115 @@ func _style(d: Dictionary, from: Dictionary) -> Dictionary:
 				s.border = rule
 				s.sides = 1
 				s.least_high = 26.0
+			"mapedit-pack":
+				# A piece of the packs chosen lately: its picture, small, and its name.
+				s.kind = ROW
+				s.gap = Vector2(6, 0)
+				s.pad = [4.0, 2.0, 4.0, 2.0]
+				s.size = 12.0
+				s.border = ink if d.has("pressed") else rule
+				s.bg = Color(ink, 0.22) if d.has("pressed") else ground
+				s.color = bright if d.has("pressed") else ink
+				s.soft = true
+				s.tone = bright
+			"pieces-thumb":
+				s.shot = 30.0
+			# The packs' pieces: every picture of the two bought packs, to tick on the ship or off, or to choose one from.
+			"pieces":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 6)
+				s.pad = [14.0, 10.0, 14.0, 10.0]
+				s.size = 14.0
+				s.tool = true
+			"pieces-head":
+				s.kind = ROW
+				s.gap = Vector2(14, 6)
+				s.pad = [0.0, 0.0, 0.0, 8.0]
+				s.border = rule
+				s.sides = 4
+			"pieces-total":
+				s.color = bright
+			"pieces-row", "pieces-belongs":
+				s.kind = ROW
+				s.gap = Vector2(4, 4)
+			"pieces-end":
+				s.push = true
+			"pieces-says":
+				s.color = WARN if _has(d, "bad") else (ink if _has(d, "ok") else dim)
+				s.least_high = 21.0
+			"pieces-body":
+				s.kind = SPLIT
+				s.split = "pieces"
+			"pieces-places":
+				# Down the left where there's the width, and along the top where there isn't.
+				s.kind = COLUMN if _wide >= 944.0 else ROW
+				s.gap = Vector2(4, 3)
+				s.apart = true
+				s.size = 13.0
+				s.pane = Color(0, 0, 0, 0)
+				s.edged = false
+			"pieces-n":
+				s.color = dim
+				s.size = 12.0
+				s.apart_before = true
+			"pieces-grid":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 16)
+				s.pane = Color(0, 0, 0, 0)
+				s.edged = false
+			"pieces-section":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 8)
+			"pieces-section-head", "pieces-open-head":
+				s.kind = ROW
+				s.gap = Vector2(12, 4)
+				if cls == "pieces-section-head":
+					s.pad = [0.0, 0.0, 0.0, 5.0]
+					s.border = rule
+					s.sides = 4
+			"pieces-tally", "pieces-empty", "pieces-label":
+				s.color = dim
+			"pieces-cards", "pieces-all":
+				s.kind = ROW
+				s.gap = Vector2(8, 8)
+				s.top = true
+			"pieces-card":
+				s.kind = COLUMN
+				s.least_wide = 148.0
+				s.most_wide = 148.0
+				s.corner = true
+				s.faded = _has(d, "off")
+			"pieces-pick":
+				# A piece's card: its picture, whether it's on the ship, its name and what it is.
+				s.pad = [4.0, 4.0, 4.0, 4.0]
+				s.gap = Vector2(0, 3)
+				s.size = 12.0
+				s.line = 1.3
+				s.faded = from.get("faded", false)
+				s.border = rule if s.faded else ink
+				s.dotted = s.faded
+				s.bg = ground if s.faded else Color(board, 1.0)
+				s.color = dim if s.faded else bright
+				s.soft = true
+				s.tone = bright
+			"pieces-tick":
+				s.then_space = true
+			"pieces-count":
+				s.color = dim
+				s.size = 11.0
+				s.new_line = true
+			"pieces-none", "pieces-from":
+				s.color = dim
+				s.size = 12.0
+			"pieces-size":
+				s.color = bright
+				s.size = 12.0
+			"pieces-open":
+				s.kind = COLUMN
+				s.gap = Vector2(0, 6)
+				s.pad = [0.0, 8.0, 0.0, 0.0]
+				s.border = ink
+				s.sides = 1
 			# What each colour of box is.
 			"l-lead":
 				s.color = bright
@@ -1789,6 +1904,10 @@ func _words(k: Variant, from: Dictionary, out: Array, on: Dictionary, state: Dic
 		mine.g = _groups
 	if s.get("apart_before", false):
 		state.space = true
+	# What starts a line of its own (what a piece is, under its name).
+	var begun := out.size()
+	if s.get("new_line", false):
+		state.space = false
 	if s.has("swatch"):
 		# A little square of a colour, before the name of what's painted in it.
 		out.append({"t": "", "w": 10.0, "sz": s.size, "col": s.swatch, "b": false, "sp": state.space, "gap": 0.0, "id": mine.id, "dis": mine.dis, "tip": mine.tip, "g": mine.g, "lit": mine.lit, "sq": [10.0, 14.0, "swatch", false]})
@@ -1825,6 +1944,8 @@ func _words(k: Variant, from: Dictionary, out: Array, on: Dictionary, state: Dic
 		_text(after, s, out, mine, state, true)
 	if s.get("then_space", false):
 		state.space = true
+	if s.get("new_line", false) and out.size() > begun:
+		out[begun]["nl"] = true
 
 
 func _text(text: String, s: Dictionary, out: Array, on: Dictionary, state: Dictionary, _glued := false) -> void:
@@ -1920,7 +2041,7 @@ func _natural(b: Box) -> float:
 		FIELD:
 			wide = _field_size(b.d, 320.0).x
 		CANVAS:
-			wide = _px(str(b.d.get("st", "")), "width", 300.0)
+			wide = s.get("shot", 138.0) if b.d.has("pic") else _px(str(b.d.get("st", "")), "width", 300.0)
 		PIC:
 			wide = s.pic
 		PLAN:
@@ -1941,6 +2062,8 @@ func _natural(b: Box) -> float:
 	b.natural = wide + pad[0] + pad[2]
 	if s.has("least_wide") and b.kind != RUN:
 		b.natural = maxf(b.natural, s.least_wide)
+	if s.has("most_wide") and b.kind != RUN:
+		b.natural = minf(b.natural, s.most_wide)
 	return b.natural
 
 
@@ -1966,15 +2089,29 @@ func _layout(b: Box, wide: float) -> void:
 			wide = field.x
 			high = field.y
 		CANVAS:
-			wide = _px(str(b.d.get("st", "")), "width", 300.0)
-			high = _px(str(b.d.get("st", "")), "height", 150.0)
+			if b.d.has("pic"):
+				# A picture out of the packs, in a square.
+				wide = s.get("shot", 138.0)
+				high = wide
+			else:
+				wide = _px(str(b.d.get("st", "")), "width", 300.0)
+				high = _px(str(b.d.get("st", "")), "height", 150.0)
 		SPLIT:
 			# The sheet and what's picked from it: side by side where there's the width for both, else one over the
 			# other. Each is laid out at its own size and shown through a window, behind which it's moved about.
 			_split = b
 			high = _split_high
 			var beside := inner >= 900.0
-			if s.get("split", "") == "tools":
+			if s.get("split", "") == "pieces":
+				# The packs' pieces: the places of the ship down the left, or along the top in as many rows as they
+				# take (a third of the room at most), and the pieces of the one picked.
+				_sheet = -1
+				var along := 0.0
+				if not beside and not b.kids.is_empty() and b.kids[0].kind != RUN:
+					_layout(b.kids[0], inner)
+					along = minf(b.kids[0].size.y, roundf(high * 0.34))
+				_views.assign([Rect2(0, 0, 262, high), Rect2(274, 0, inner - 274.0, high)] if beside else [Rect2(0, 0, inner, along), Rect2(0, along + 8.0, inner, high - along - 8.0)])
+			elif s.get("split", "") == "tools":
 				# The Map editor: its tools down the left, the deck, and what's chosen down the right; with less room,
 				# the deck over the other two.
 				var upper := roundf(high * 0.5)
@@ -2093,10 +2230,15 @@ func _layout(b: Box, wide: float) -> void:
 		_:
 			var y := 0.0
 			var first := true
+			# A card's last thing sits in its top right corner, over the rest (the [ + ] on a piece's card).
+			var cornered: Box = b.kids[-1] if s.get("corner", false) and b.kids.size() > 1 else null
 			for kid in b.kids:
 				if kid.off:
 					continue
 				_layout(kid, inner)
+				if kid == cornered:
+					kid.at = Vector2(pad[0] + inner - kid.size.x - 6.0, pad[1] + 6.0)
+					continue
 				var above: float = kid.s.get("mt", 0.0) if kid.kind != RUN else 0.0
 				if not first:
 					y += s.gap.y
@@ -2219,7 +2361,7 @@ func _layout_row(b: Box, inner: float) -> float:
 			# What's pushed to the far end of its row (what someone's doing, after their name).
 			if (kid.push or (kid.kind != RUN and kid.s.get("push", false))) and rows.size() == 1:
 				at = maxf(at, inner - (kid.size.x if kid.kind == RUN else item[1]))
-			kid.at = Vector2(at, y + (high - kid.size.y) / 2.0)
+			kid.at = Vector2(at, y + (0.0 if s.get("top", false) else (high - kid.size.y) / 2.0))
 			at += (kid.size.x if kid.kind == RUN else item[1]) + between
 		y += high + (s.gap.y if r < rows.size() - 1 else 0.0)
 	return y
@@ -2397,7 +2539,10 @@ func _paint(b: Box, at: Vector2, turned: bool) -> void:
 	if b.kind == SPLIT and _pen == self:
 		return
 	if b.kind == CANVAS:
-		_paint_shapes(b.d.get("cv", []), here)
+		if b.d.has("pic"):
+			_paint_shot(b, here)
+		else:
+			_paint_shapes(b.d.get("cv", []), here)
 		return
 	if b.kind == PIC:
 		var shapes: Dictionary = b.d.get("svg", {})
@@ -2487,6 +2632,49 @@ func _paint_shapes(shapes: Array, here: Vector2) -> void:
 				_pen.draw_colored_polygon(points, _tone(shape[1]))
 			"c":
 				_pen.draw_circle(here + Vector2(float(shape[1]), float(shape[2])), float(shape[3]), _tone(shape[4]))
+
+
+## A picture out of the bought packs in its square, on a mid grey so dark steel and white enamel both show: whole
+## pixels when there's room to make it bigger (three times at most), shrunk to fit when there isn't. The pictures are
+## read from the game's own folder as they're wanted, and nothing of them is kept on the disk.
+func _paint_shot(b: Box, here: Vector2) -> void:
+	_pen.draw_rect(Rect2(here, b.size), Color("4b545d"))
+	var shot := _shot(b.d.pic, b.size)
+	if shot == null:
+		# Not on this computer.
+		_pen.draw_rect(Rect2(here, b.size), Color("2c3035"))
+		for n in range(-int(b.size.y), int(b.size.x), 12):
+			_pen.draw_line(here + Vector2(maxf(n, 0.0), maxf(-n, 0.0)), here + Vector2(minf(n + b.size.y, b.size.x), minf(b.size.x - n, b.size.y)), Color("3a3f44"), 4.0)
+		return
+	_pen.draw_texture(shot, here + ((b.size - shot.get_size()) / 2.0).round(), Color(1, 1, 1, 0.4 if b.s.get("faded", false) else 1.0))
+
+
+func _shot(pic: Array, room: Vector2) -> Texture2D:
+	var key := "%s|%s" % [pic, room]
+	if shots.has(key):
+		return shots[key]
+	var file := str(pic[0])
+	if not sheets.has(file):
+		var path := packs_dir.path_join(file)
+		var read: Image = Image.load_from_file(path) if packs_dir != "" and FileAccess.file_exists(path) else null
+		if read != null and read.get_format() != Image.FORMAT_RGBA8:
+			read.convert(Image.FORMAT_RGBA8)
+		sheets[file] = read
+	var sheet: Image = sheets[file]
+	var made: Texture2D = null
+	if sheet != null:
+		var cell := Rect2i(int(pic[1]), int(pic[2]), int(pic[3]), int(pic[4])) if pic.size() >= 5 else Rect2i(Vector2i.ZERO, sheet.get_size())
+		var part := sheet.get_region(cell)
+		# Only the part of it with anything in it: the packs leave room round what they draw.
+		var used := part.get_used_rect()
+		if used.size.x > 0 and used.size.y > 0:
+			part = part.get_region(used)
+		var fit := minf((room.x - 8.0) / part.get_width(), (room.y - 8.0) / part.get_height())
+		var scale := minf(floorf(fit), 3.0) if fit >= 1.0 else fit
+		part.resize(maxi(1, roundi(part.get_width() * scale)), maxi(1, roundi(part.get_height() * scale)), Image.INTERPOLATE_NEAREST if scale >= 1.0 else Image.INTERPOLATE_BILINEAR)
+		made = ImageTexture.create_from_image(part)
+	shots[key] = made
+	return made
 
 
 func _tone(written: Variant) -> Color:

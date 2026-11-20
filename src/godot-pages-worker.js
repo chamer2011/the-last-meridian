@@ -34,6 +34,11 @@ globalThis.cancelAnimationFrame = (id) => clearTimeout(id);
 process.on("uncaughtException", (err) => console.error(`A page for the Godot view tripped: ${err?.message ?? err}`));
 process.on("unhandledRejection", (err) => console.error(`A page for the Godot view tripped: ${err?.message ?? err}`));
 globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+// What the page's code uses to fetch and draw pictures only once they're in sight: here nothing is fetched or drawn
+// (Godot draws the pictures itself), so nothing ever comes into sight and no picture ever arrives.
+globalThis.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
+globalThis.Image = class { set src(from) {} };
+globalThis.CSS = { escape: (text) => String(text) };
 globalThis.getComputedStyle = () => ({ getPropertyValue: () => "" });
 
 // How big a box on the Story board is, which the board's own code asks so as to stack its boxes: worked out the way
@@ -104,6 +109,7 @@ const { computerNode, initComputer, resetComputer } = await import("../public/co
 const { fightNode, initFight, resetFight, startSim } = await import("../public/fight.js");
 const { closeBoard, openBoard } = await import("../public/board.js");
 const { closeMapEditor, openMapEditor } = await import("../public/mapedit.js");
+const { closePieces, openPieces } = await import("../public/pieces.js");
 const { loadPack } = await import("../public/pixel-art.js");
 const { drawQuests, initQuests, openQuests, questTrackerNode, questsOpen, resetQuests } = await import("../public/quests.js");
 
@@ -290,15 +296,17 @@ const builders = {
   board: () => document.getElementById("board"),
   // So does the Map editor, whose plan of a deck is a picture it draws a shape at a time.
   mapedit: () => document.getElementById("mapedit"),
+  // The packs' pieces, which the Map editor opens over itself: to tick on the ship or off, or to choose one from.
+  pieces: () => document.getElementById("pieces"),
 };
 // What's put right in one of them each time it's handed over, because the page's code draws it afresh.
 const tidies = {
-  // Choosing among the packs' pictures is a window of the page's that isn't in Godot yet.
+  // The picture of the room under the plan is made in a browser: its button has nothing to switch on here.
   mapedit: () => {
-    for (const id of ["mapedit-choose", "mapedit-pieces", "mapedit-look-toggle"]) {
-      const button = document.getElementById(id);
-      if (button) button.hidden = true;
-    }
+    const button = document.getElementById("mapedit-look-toggle");
+    if (button) button.hidden = true;
+    // The window of the packs' pieces, once the editor has opened it, is Godot's to show over the editor.
+    if (document.getElementById("pieces") && !effects.some((one) => one.id === "pieces")) effects.push({ type: "window", id: "pieces" });
   },
 };
 // What's drawn into one of them only once it's on the page.
@@ -327,7 +335,12 @@ const opens = {
       el("span", {}, "Drag the dark background, or turn the wheel, to look around."),
     );
   },
+  // Opened by the Map editor (to choose a piece from), it's left as the editor opened it.
+  pieces: async () => {
+    if (!document.getElementById("pieces")) await openPieces();
+  },
   mapedit: async () => {
+    closePieces();
     closeMapEditor();
     // The room as the game will draw it, under the plan, is a picture made in a browser: there's only the plan here.
     localStorage.setItem("meridian-mapedit-look", "off");
@@ -357,11 +370,11 @@ function build(on) {
 function handOver(on, { ifChanged = false } = {}) {
   const surface = surfaces[on];
   surface.ids = [];
+  tidies[on]?.();
   const out = effects;
   effects = [];
   // Nothing to show: it was put away, or what it was about is over.
   if (!surface.root || surface.root.hidden) return { game: Boolean(ui.game), on, closed: true, effects: out };
-  tidies[on]?.();
   const tree = describe(surface.root, surface.ids);
   const menu = MENUS[ui.tab] ?? MENUS.leads;
   const page = on === "menu" ? { game: true, on, menu: ui.tab, label: menu.label, message: ui.menuMessage, tree, rail: railOf(ui.game) } : { game: Boolean(ui.game), on, tree, message: on === "sheet" ? ui.menuMessage : null };

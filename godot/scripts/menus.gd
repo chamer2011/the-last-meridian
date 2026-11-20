@@ -370,7 +370,10 @@ func effects(list: Array, from: Variant) -> void:
 			"browser":
 				OS.shell_open(main.link.address())
 			"window":
-				if str(effect.id) == "sheet":
+				if str(effect.id) == "pieces":
+					if not main.pieces.open:
+						main.pieces.show_page()
+				elif str(effect.id) == "sheet":
 					close()
 					var more := {}
 					if effect.get("person") != null:

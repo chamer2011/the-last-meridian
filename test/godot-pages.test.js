@@ -119,6 +119,15 @@ test("the stand-in page: a style set a thing at a time, a list to pick from, and
   assert.equal(box.style.cssText, "left:150px;z-index:3");
   assert.equal(box.style.left, "150px");
   assert.ok(box.matches(".board-label, .board-node"), "any of a few selectors will do");
+  // What's written on something, and something inside something.
+  const sheet = document.createElement("section");
+  sheet.className = "sheet";
+  sheet.append(box);
+  assert.ok(box.matches('[role="button"]') && box.matches("[role='button']") && box.matches("div[role]"));
+  assert.ok(!box.matches("input, textarea, [contenteditable='true']"), "nothing's written on it of typing");
+  assert.ok(box.matches(".sheet .beat") && box.matches("section > .board-node") && !box.matches(".head .beat"));
+  assert.equal(sheet.querySelectorAll(".sheet div").length, 1);
+  box.remove();
   const pick = document.createElement("select");
   for (const value of ["one", "two", "three"]) {
     const option = document.createElement("option");
@@ -432,4 +441,64 @@ test("the Map editor is the page's own too: its deck comes as shapes to draw, an
   // Close puts it away.
   const shut = await page({ op: "click", on: "mapedit", id: button(saved.tree, "Close").id, of: saved.of });
   assert.equal(shut.closed, true);
+});
+
+test("the packs' pieces open over the Map editor: each card says which picture it's of, and a click ticks a piece off the ship", async () => {
+  // A made-up pack of pictures that are only a size, and files of its own for the ticks and for what each piece is.
+  const kept = fs.mkdtempSync(path.join(os.tmpdir(), "meridian-godot-pieces-"));
+  const png = (w, h) => {
+    const file = Buffer.alloc(33);
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(file, 0);
+    file.writeUInt32BE(13, 8);
+    file.write("IHDR", 12, "ascii");
+    file.writeUInt32BE(w, 16);
+    file.writeUInt32BE(h, 20);
+    return file;
+  };
+  const pack = { "isospace/IsoSpace_Level.png": [1024, 1024], "isospace/IsoSpace_Assets.png": [1024, 1024], "isospace/IsoSpace_Doors.png": [1024, 1024], "interiors/Chairs/Chair_4_A_Tile.png": [128, 128], "interiors/Chairs/Chair_4_B_Tile.png": [128, 128], "interiors/Kitchen/Pot.png": [32, 32] };
+  for (const [file, [w, h]] of Object.entries(pack)) {
+    fs.mkdirSync(path.dirname(path.join(kept, "pack", file)), { recursive: true });
+    fs.writeFileSync(path.join(kept, "pack", file), png(w, h));
+  }
+  const ticks = path.join(kept, "pieces.txt");
+  const { data, post, page } = await startServer({ GAME_LICENSED_DIR: path.join(kept, "pack"), GAME_PIECES_FILE: ticks, GAME_FURNITURE_FILE: path.join(kept, "furniture.txt") });
+  leaveSave(data);
+  await post("/api/load", { slot: "slot1" });
+  const has = (node, cls) => String(node.c ?? "").split(" ").includes(cls);
+  const every = (node, passes, out = []) => {
+    if (typeof node === "string") return out;
+    if (passes(node)) out.push(node);
+    for (const child of node.k ?? []) every(child, passes, out);
+    return out;
+  };
+  assert.equal((await page({ op: "open", on: "pieces" })).on, "pieces", "opened by itself it's the catalogue");
+  // From the editor: its Pieces button opens the window, and Godot is told to show it.
+  const editor = await page({ op: "open", on: "mapedit", wide: 1400, high: 860 });
+  const opened = await page({ op: "click", on: "mapedit", id: button(editor.tree, "Pieces").id, of: editor.of });
+  assert.ok(opened.effects.some((effect) => effect.type === "window" && effect.id === "pieces"));
+  let pieces = await page({ op: "open", on: "pieces" });
+  for (let tries = 0; tries < 20 && !every(pieces.tree, (node) => has(node, "pieces-card")).length; tries += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    pieces = await page({ op: "open", on: "pieces" });
+  }
+  const all = button(pieces.tree, "Everything");
+  pieces = await page({ op: "click", on: "pieces", id: all.id, of: pieces.of });
+  const cards = every(pieces.tree, (node) => has(node, "pieces-card"));
+  assert.ok(cards.length >= 2, "the chair and the pot, at least");
+  // Each card's square says which file its picture is, for Godot to read from the same folder.
+  const chair = cards.find((card) => every(card, (node) => node.pic).some((node) => node.pic[0] === "interiors/Chairs/Chair_4_A_Tile.png"));
+  assert.ok(chair, "the chair's first picture");
+  const pick = find(chair, (node) => has(node, "pieces-pick"));
+  const was = has(chair, "on");
+  // A click ticks it the other way: the card is drawn again in place, and the ticks are kept in the file given.
+  const ticked = await page({ op: "click", on: "pieces", id: pick.id, of: pieces.of });
+  const now = every(ticked.tree, (node) => has(node, "pieces-card")).find((card) => every(card, (node) => node.pic).some((node) => node.pic[0] === "interiors/Chairs/Chair_4_A_Tile.png"));
+  assert.equal(has(now, "on"), !was);
+  assert.equal(every(ticked.tree, (node) => has(node, "pieces-card")).length, cards.length, "the other cards are as they were");
+  // Close sends what's changed and puts the window away; the editor is still there under it.
+  const shut = await page({ op: "click", on: "pieces", id: button(ticked.tree, "Close").id, of: ticked.of });
+  assert.equal(shut.closed, true);
+  for (let tries = 0; tries < 30 && !fs.existsSync(ticks); tries += 1) await new Promise((resolve) => setTimeout(resolve, 100));
+  assert.ok(fs.existsSync(ticks) && fs.readFileSync(ticks, "utf8").length > 20, "the ticks went to the file they were given");
+  assert.equal((await page({ op: "look", on: "mapedit" })).closed, undefined);
 });
